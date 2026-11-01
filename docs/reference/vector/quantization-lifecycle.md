@@ -120,8 +120,13 @@ Artifact records, object references, and lifecycle events persist through the
 same `RrdEngine`/rrflowKV authority, and the engine integration test proves
 ready isolation, activation, search, close/reopen, retirement, update, rebuild,
 and reactivation. A full build reads every vector version in the scope at one
-read stamp (`read_vector_versions`) and encodes every version of the named
-vector, and the quantization catalogue a build publishes into is rebuilt by
+read stamp (`read_vector_versions`) and encodes the named vector's view of
+each identity's history (`rrd_vector::source_history`). That view drops what
+a move out of the collection supersedes, and ends the version held before
+the move where the move takes effect, so a generation never proposes an
+identity that has left
+([POAM-048](../../poam/rrflow-1.0-alpha/poam-048.md)). The quantization
+catalogue a build publishes into is rebuilt by
 replaying retained changes from cursor zero
 ([POAM-028](../../poam/rrflow-1.0-alpha/poam-028.md)). The commit
 path writes each collection, named vector and field's vector deltas
@@ -150,7 +155,11 @@ uses. The build then:
 
 - reads only that source's deltas since the base's source cursor;
 - keeps every untouched identity's stored versions and their codes;
-- encodes the complete history of each changed identity.
+- encodes the same view of each changed identity's complete history.
+
+A version outside the collection that follows another outside it changes
+nothing the collection records, so the build leaves that identity as the
+base holds it, and a full build holds the same.
 
 The codec encodes each vector on its own with the configuration's seed and
 fixed codebook, so the generation is byte for byte the one a full build makes

@@ -45,8 +45,8 @@ latest-version selection, retirement, filtering, metric score, and
 deterministic order. This makes committed inserts and retirements visible
 before another graph generation is published. A version the graph stored
 before its identity moved to another collection never answers. The graph
-still proposes it, at a cost to recall
-([POAM-048](../../poam/rrflow-1.0-alpha/poam-048.md)).
+proposes it only until its next generation, which holds what the collection
+holds of each identity's history.
 
 `AllowApproximate` may select an exact path when estimated graph work is more
 expensive. `RequireApproximate` requires an identity-compatible graph and
@@ -59,6 +59,15 @@ artifact, clones its current graph state into a new build, and inserts only
 newer vector versions. It does not recompute old neighbor selection from the
 canonical corpus. The result is a new immutable generation; configuration
 changes intentionally use a full build.
+
+A generation's versions are its collection's view of every identity's history
+(`rrd_vector::source_history`). A move out of the collection drops the
+versions it supersedes at every valid time, and ends the version the
+collection held before it where the move takes effect. A graph cannot remove
+a node. So when that view no longer holds a version the active graph stores,
+`ensure_vector_index` builds the next generation in full instead of advancing
+it, and it never replays such a graph
+([POAM-048](../../poam/rrflow-1.0-alpha/poam-048.md)).
 
 `RrdEngine::ensure_vector_index` currently obtains canonical candidates by
 reading every vector version in the scope at one read stamp

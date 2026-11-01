@@ -69,9 +69,12 @@ filtered recall, and reopen behavior.
 Collection deletion scans the current vector history within an explicit
 budget, rejects live or future points, and rejects active HNSW or ready/active
 quantization artifacts, including TurboQuant. The caller must first retire
-points and governed artifacts. Historical runtime changes remain intact. An
-identity that moved to another collection still counts as a point of the one
-it left, so that collection cannot be deleted
+points and governed artifacts. Historical runtime changes remain intact. A
+point is live or future when the collection holds its identity at the
+deletion time or any later valid time: when, at that time, the identity's
+latest version names one of the collection's named vectors and is not
+retired. An identity that moved out at or before the deletion time is no
+longer a point of the collection; one whose move takes effect later still is
 ([POAM-047](../../poam/rrflow-1.0-alpha/poam-047.md)).
 
 ## Verified boundary and required convergence

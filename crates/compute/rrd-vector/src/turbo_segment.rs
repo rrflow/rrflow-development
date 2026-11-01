@@ -266,20 +266,22 @@ impl TurboQuantSegment {
     /// since it.
     ///
     /// `replaced` names every identity whose history in this source changed
-    /// after `previous`. `candidates` holds each such identity's complete
-    /// history at the new read, limited to this source. Every other identity
+    /// after `previous`. `candidates` holds what the source holds of each such
+    /// identity's complete history at the new read. Every other identity
     /// keeps its stored versions and their codes. The codec encodes each
     /// vector on its own, with the configuration's seed and fixed codebook, so
-    /// re-encoding a kept version would give the same bytes. The source cursor
-    /// is the newest version the generation holds, as for a full build, and
-    /// the result is byte for byte the segment `build` makes from the same
-    /// versions.
+    /// re-encoding a kept version would give the same bytes. `source_cursor`
+    /// is the cursor the new generation covers, as for a full build: never
+    /// less than `previous` covers or than any version it holds. The result is
+    /// byte for byte the segment `build` makes from the same versions and
+    /// cursor.
     pub fn extend(
         previous: &Self,
         config: TurboQuantSegmentConfig,
         generation: u64,
         replaced: &BTreeSet<RuntimeRef>,
         candidates: impl IntoIterator<Item = VectorCandidate>,
+        source_cursor: u64,
     ) -> Result<Self> {
         config.validate()?;
         if config.digest()? != previous.descriptor.stamp.config_digest {
@@ -287,6 +289,9 @@ impl TurboQuantSegment {
         }
         if generation <= previous.descriptor.stamp.generation {
             return invalid("a TurboQuant generation extends only an earlier generation");
+        }
+        if source_cursor < previous.descriptor.stamp.source_cursor {
+            return invalid("a TurboQuant generation never covers less than its base");
         }
         let mut candidates = candidates.into_iter().collect::<Vec<_>>();
         validate_candidate_versions(&candidates)?;
@@ -318,11 +323,12 @@ impl TurboQuantSegment {
         if versions.is_empty() || versions.len() > MAX_TURBOQUANT_CANDIDATES {
             return invalid("TurboQuant segment candidate count is outside bounds");
         }
-        let source_cursor = versions
+        if versions
             .iter()
-            .map(|(stored, _)| stored.source_cursor)
-            .max()
-            .unwrap_or_default();
+            .any(|(stored, _)| stored.source_cursor > source_cursor)
+        {
+            return invalid("TurboQuant candidate violates configuration or coverage");
+        }
         Self::assemble(config, generation, source_cursor, versions, projection)
     }
 
@@ -1001,7 +1007,7 @@ mod tests {
         ];
         let replaced = refs(&["point-2", "point-3", "point-4", "point-7"]);
         let extended =
-            TurboQuantSegment::extend(&base, config(&scope), 2, &replaced, histories.clone())
+            TurboQuantSegment::extend(&base, config(&scope), 2, &replaced, histories.clone(), 9)
                 .unwrap();
 
         let unchanged = first
@@ -1024,6 +1030,7 @@ mod tests {
                 version(&scope, 10, "point-1", None),
                 version(&scope, 1, "point-1", Some(10)),
             ],
+            10,
         )
         .unwrap();
         let reopened = TurboQuantSegment::from_bytes(again.as_bytes()).unwrap();
@@ -1046,13 +1053,21 @@ mod tests {
 
         let mut seeded = config(&scope);
         seeded.seed += 1;
-        assert!(TurboQuantSegment::extend(&base, seeded, 3, &changed, fresh()).is_err());
+        assert!(TurboQuantSegment::extend(&base, seeded, 3, &changed, fresh(), 3).is_err());
         let mut narrower = config(&scope);
         narrower.bits = TurboQuantBits::Bits2;
-        assert!(TurboQuantSegment::extend(&base, narrower, 3, &changed, fresh()).is_err());
+        assert!(TurboQuantSegment::extend(&base, narrower, 3, &changed, fresh(), 3).is_err());
         assert!(
-            TurboQuantSegment::extend(&base, config(&scope), 2, &changed, fresh()).is_err(),
+            TurboQuantSegment::extend(&base, config(&scope), 2, &changed, fresh(), 3).is_err(),
             "the next generation is later than its base"
+        );
+        assert!(
+            TurboQuantSegment::extend(&base, config(&scope), 3, &changed, fresh(), 1).is_err(),
+            "the next generation never covers less than its base"
+        );
+        assert!(
+            TurboQuantSegment::extend(&base, config(&scope), 3, &changed, fresh(), 2).is_err(),
+            "the next generation covers every version it holds"
         );
         assert!(
             TurboQuantSegment::extend(
@@ -1060,13 +1075,14 @@ mod tests {
                 config(&scope),
                 3,
                 &changed,
-                [version(&scope, 3, "a", None)]
+                [version(&scope, 3, "a", None)],
+                3,
             )
             .is_err(),
             "an unchanged identity keeps its stored versions"
         );
         assert!(
-            TurboQuantSegment::extend(&base, config(&scope), 3, &refs(&["a", "b"]), []).is_err(),
+            TurboQuantSegment::extend(&base, config(&scope), 3, &refs(&["a", "b"]), [], 3).is_err(),
             "a generation holds at least one version"
         );
         let other = ScopeId::new("instance:turbo-extend-other").unwrap();
@@ -1075,10 +1091,11 @@ mod tests {
             config(&scope),
             3,
             &changed,
-            [version(&other, 3, "b", None)]
+            [version(&other, 3, "b", None)],
+            3,
         )
         .is_err());
-        assert!(TurboQuantSegment::extend(&base, config(&scope), 3, &changed, fresh()).is_ok());
+        assert!(TurboQuantSegment::extend(&base, config(&scope), 3, &changed, fresh(), 3).is_ok());
     }
 
     #[test]
