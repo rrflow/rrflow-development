@@ -787,12 +787,15 @@ fn partial_inventory_recovery(edit_source: bool) {
         reopened_at + 200,
     )
     .unwrap();
+    // Recovery includes real elapsed work; a fixed offset from reopen can
+    // precede its committed snapshot on a loaded native runner.
+    let resume_at = recovered.status.job.updated_at_unix_ms + 1;
     let resumed = call(
         &engine,
         &session,
-        &resume(&recovered.status.job, reopened_at + 300),
+        &resume(&recovered.status.job, resume_at),
         "interrupt-resume",
-        reopened_at + 300,
+        resume_at,
     );
     if edit_source {
         assert!(matches!(
@@ -806,7 +809,7 @@ fn partial_inventory_recovery(edit_source: bool) {
                 &session.token,
                 &installed.job,
                 recovered.status.job.revision,
-                reopened_at + 400,
+                resume_at + 1,
                 "request-partial-replan",
                 "operation-partial-replan",
             )
@@ -818,7 +821,7 @@ fn partial_inventory_recovery(edit_source: bool) {
                 &replan,
                 &replan.proposal_sha256,
                 &context("partial-accept"),
-                reopened_at + 500,
+                resume_at + 2,
             )
             .unwrap();
         assert_ne!(
