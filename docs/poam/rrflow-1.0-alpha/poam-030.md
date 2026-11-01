@@ -42,7 +42,10 @@ sequence but no explicit completion flag. A scan budget that can return an
 empty nonterminal page requires a compatible continuation/completion contract
 and chain validation; it cannot be inferred from the record limit alone. This
 is a source-grounded finding, not a measured performance incident or a fix.
-The candidate's unbounded-paging stop condition is active.
+The candidate's unbounded-paging stop condition was active. On 2026-11-01 the
+repository owner decided to land the partial-page fix without it, because main
+already has this scan and the fix does not worsen it. The scan bound is now
+[POAM-049](poam-049.md).
 
 ## Impact
 

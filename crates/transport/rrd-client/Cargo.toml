@@ -20,6 +20,9 @@ rustls = { version = "0.23", default-features = false, features = ["ring", "std"
 tokio = { version = "1", features = ["net", "rt", "sync", "time"] }
 tokio-tungstenite = { version = "0.29", default-features = false, features = ["connect", "rustls-tls-webpki-roots"] }
 
+[build-dependencies]
+rrd-contract = { path = "../rrd-contract" }
+
 [dev-dependencies]
 rrd-engine = { path = "../../authority/rrd-engine" }
 rrd-estate = { path = "../../authority/rrd-estate" }

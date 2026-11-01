@@ -1,11 +1,17 @@
 // Generated from rrd-contract; do not edit.
-// OpenAPI SHA-256: 893220861b59bdc9a991fe530c35a17d6785effc2b23670930186618ada509d2
-export const ENDPOINT_OPENAPI_DOCUMENT_SHA256 = "893220861b59bdc9a991fe530c35a17d6785effc2b23670930186618ada509d2" as const;
+// OpenAPI SHA-256: 8bc8cbdba9d90ab1239ea91624e639886971e58977c0f23a31007d1b2878a9c5
+export const ENDPOINT_OPENAPI_DOCUMENT_SHA256 = "8bc8cbdba9d90ab1239ea91624e639886971e58977c0f23a31007d1b2878a9c5" as const;
 
 export const endpoints = {
   "attunement-cancel": {
     "method": "POST",
     "path": "/v1/attunement/cancel",
+    "authentication": "session_bearer",
+    "mutation": true
+  },
+  "attunement-pause": {
+    "method": "POST",
+    "path": "/v1/attunement/pause",
     "authentication": "session_bearer",
     "mutation": true
   },
@@ -20,6 +26,48 @@ export const endpoints = {
     "path": "/v1/attunement/receipt/read",
     "authentication": "session_bearer",
     "mutation": false
+  },
+  "attunement-recover-expired": {
+    "method": "POST",
+    "path": "/v1/attunement/recover-expired",
+    "authentication": "session_bearer",
+    "mutation": true
+  },
+  "attunement-replan-accept": {
+    "method": "POST",
+    "path": "/v1/attunement/replan/accept",
+    "authentication": "session_bearer",
+    "mutation": true
+  },
+  "attunement-replan-preview": {
+    "method": "POST",
+    "path": "/v1/attunement/replan/preview",
+    "authentication": "session_bearer",
+    "mutation": false
+  },
+  "attunement-replan-receipt-read": {
+    "method": "POST",
+    "path": "/v1/attunement/replan/receipt/read",
+    "authentication": "session_bearer",
+    "mutation": false
+  },
+  "attunement-resume": {
+    "method": "POST",
+    "path": "/v1/attunement/resume",
+    "authentication": "session_bearer",
+    "mutation": true
+  },
+  "attunement-start": {
+    "method": "POST",
+    "path": "/v1/attunement/start",
+    "authentication": "session_bearer",
+    "mutation": true
+  },
+  "attunement-step": {
+    "method": "POST",
+    "path": "/v1/attunement/step",
+    "authentication": "session_bearer",
+    "mutation": true
   },
   "audit-export": {
     "method": "POST",
@@ -282,6 +330,12 @@ export const endpoints = {
   "task-embedding-execute": {
     "method": "POST",
     "path": "/v1/tasks/embedding/execute",
+    "authentication": "session_bearer",
+    "mutation": true
+  },
+  "task-endpoint-propose": {
+    "method": "POST",
+    "path": "/v1/tasks/endpoint/propose",
     "authentication": "session_bearer",
     "mutation": true
   },

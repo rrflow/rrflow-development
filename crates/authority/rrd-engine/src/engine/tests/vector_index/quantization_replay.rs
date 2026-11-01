@@ -101,6 +101,7 @@ fn build_request(seed: u64) -> BuildVectorQuantizationArtifact {
         method: VectorQuantizationMethod::TurboQuant {
             bits: VectorQuantizationBits::Bits4,
             seed,
+            estimator: rrd_contract::VectorQuantizationEstimator::Mse,
         },
         filter_properties: Vec::new(),
         max_storage_keys: 100_000,

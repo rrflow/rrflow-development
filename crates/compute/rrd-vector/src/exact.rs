@@ -87,15 +87,7 @@ pub fn search_exact_ref<'a>(
     candidates: impl IntoIterator<Item = &'a VectorCandidate>,
 ) -> Result<Vec<SearchHit>> {
     request.validate()?;
-    let visibility = VectorVisibilityRequest {
-        scope: request.scope.clone(),
-        read: request.read.clone(),
-        valid_at: request.valid_at,
-        field: request.field.clone(),
-        embedding_model: request.embedding_model.clone(),
-        filter: request.filter.clone(),
-    };
-    let latest = materialize_visible_refs(&visibility, candidates)?;
+    let latest = materialize_visible_refs(&visibility(request), candidates)?;
     let mut hits = Vec::new();
     for candidate in latest {
         let vector = &candidate.vector;
@@ -123,10 +115,39 @@ pub fn materialize_visible(
         .collect())
 }
 
-fn materialize_visible_refs<'a>(
+/// The identity and source cursor of every version the exact oracle scores
+/// for `request`.
+pub(crate) fn visible_versions<'a>(
+    request: &SearchRequest,
+    candidates: impl IntoIterator<Item = &'a VectorCandidate>,
+) -> Result<BTreeSet<(&'a RuntimeRef, u64)>> {
+    request.validate()?;
+    Ok(materialize_visible_refs(&visibility(request), candidates)?
+        .into_iter()
+        .map(|candidate| (&candidate.vector.reference, candidate.source_cursor))
+        .collect())
+}
+
+fn visibility(request: &SearchRequest) -> VectorVisibilityRequest {
+    VectorVisibilityRequest {
+        scope: request.scope.clone(),
+        read: request.read.clone(),
+        valid_at: request.valid_at,
+        field: request.field.clone(),
+        embedding_model: request.embedding_model.clone(),
+        filter: request.filter.clone(),
+    }
+}
+
+/// The latest transaction-visible version of each identity at the request's
+/// valid time, before its field, retirement and payload filter apply. That
+/// version decides whether an identity is visible and which collection it is
+/// visible in, so an address filter applies to it and never to a version it
+/// replaced.
+pub fn latest_versions<'a>(
     request: &VectorVisibilityRequest,
     candidates: impl IntoIterator<Item = &'a VectorCandidate>,
-) -> Result<Vec<&'a VectorCandidate>> {
+) -> Result<BTreeMap<&'a RuntimeRef, &'a VectorCandidate>> {
     request.validate()?;
     let mut latest = BTreeMap::<&'a RuntimeRef, &'a VectorCandidate>::new();
     let mut versions = BTreeSet::new();
@@ -154,9 +175,15 @@ fn materialize_visible_refs<'a>(
             latest.insert(identity, candidate);
         }
     }
+    Ok(latest)
+}
 
+fn materialize_visible_refs<'a>(
+    request: &VectorVisibilityRequest,
+    candidates: impl IntoIterator<Item = &'a VectorCandidate>,
+) -> Result<Vec<&'a VectorCandidate>> {
     let mut visible = Vec::new();
-    for candidate in latest.into_values() {
+    for candidate in latest_versions(request, candidates)?.into_values() {
         let vector = &candidate.vector;
         if vector.field != request.field
             || vector

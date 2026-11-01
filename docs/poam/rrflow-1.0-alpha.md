@@ -43,7 +43,7 @@
 | POAM-027 | High | Open | [change-package and repository enforcement](rrflow-1.0-alpha/poam-027.md) |
 | POAM-028 | High | Open | [vector catalogue history replay and C-04 source closure](rrflow-1.0-alpha/poam-028.md) |
 | POAM-029 | High | Sequenced | [diagnostic snapshot under concurrent audited traffic](rrflow-1.0-alpha/poam-029.md) |
-| POAM-030 | High | Sequenced | [bounded audit read across a partial final journal page](rrflow-1.0-alpha/poam-030.md) |
+| POAM-030 | High | Verifying | [bounded audit read across a partial final journal page](rrflow-1.0-alpha/poam-030.md) |
 | POAM-031 | Critical | Closed | [installed-estate backups omit the installed control state](rrflow-1.0-alpha/poam-031.md) |
 | POAM-032 | High | Open | [prompt flights removed without engine absorption](rrflow-1.0-alpha/poam-032.md) |
 | POAM-033 | High | Open | [rejected native commits retain an unabortable intent](rrflow-1.0-alpha/poam-033.md) |
@@ -58,5 +58,8 @@
 | POAM-042 | High | Open | [the estate has no configurable organisation layer](rrflow-1.0-alpha/poam-042.md) |
 | POAM-043 | High | Open | [transaction previews rebuild the whole scope and skip object checks](rrflow-1.0-alpha/poam-043.md) |
 | POAM-044 | High | Open | [rrflowQL refusals are unstructured, and queries cannot be checked without running](rrflow-1.0-alpha/poam-044.md) |
-| POAM-045 | High | Open | [vector search returns a vector's old version after it moves to another collection](rrflow-1.0-alpha/poam-045.md) |
+| POAM-045 | High | Verifying | [vector search returns a vector's old version after it moves to another collection](rrflow-1.0-alpha/poam-045.md) |
 | POAM-046 | High | Open | [a vector index makes the public changefeed refuse its scope](rrflow-1.0-alpha/poam-046.md) |
+| POAM-047 | High | Open | [a collection whose vectors all moved to another collection cannot be deleted](rrflow-1.0-alpha/poam-047.md) |
+| POAM-048 | High | Open | [an approximate generation keeps proposing a vector that moved to another collection](rrflow-1.0-alpha/poam-048.md) |
+| POAM-049 | High | Open | [an audit read's journal scan grows with the journal's length](rrflow-1.0-alpha/poam-049.md) |
