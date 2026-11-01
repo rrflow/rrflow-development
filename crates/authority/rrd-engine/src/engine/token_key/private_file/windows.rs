@@ -135,7 +135,86 @@ pub(super) fn open_relative(
     create: bool,
     directory: bool,
 ) -> io::Result<File> {
-    open_relative_with_access(parent, name, create, directory, false)
+    open_relative_with_access(parent, name, create, directory, false, 0)
+}
+
+/// Make one existing directory, owned by the current user, private in place.
+/// Its contents are not touched; the caller decides what moves below it.
+pub(super) fn adopt_directory_relative(parent: &File, name: &std::ffi::OsStr) -> io::Result<File> {
+    use windows_sys::Win32::Security::Authorization::SetSecurityInfo;
+    use windows_sys::Win32::Security::{
+        GetSecurityDescriptorDacl, PROTECTED_DACL_SECURITY_INFORMATION,
+    };
+    use windows_sys::Win32::Storage::FileSystem::WRITE_DAC;
+    let file = open_relative_with_access(parent, name, false, true, false, WRITE_DAC)?;
+    let mut information = BY_HANDLE_FILE_INFORMATION::default();
+    // SAFETY: file owns the live handle and information is writable.
+    if unsafe { GetFileType(file.as_raw_handle()) } != FILE_TYPE_DISK
+        || unsafe { GetFileInformationByHandle(file.as_raw_handle(), &mut information) } == 0
+        || information.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY == 0
+        || information.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT != 0
+    {
+        return Err(denied(
+            "the existing .rrflow folder must be a real folder, not a link",
+        ));
+    }
+    let user = CurrentUser::query()?;
+    let mut owner = null_mut();
+    let mut raw = null_mut();
+    // SAFETY: the handle grants READ_CONTROL; raw owns the returned descriptor.
+    let status = unsafe {
+        GetSecurityInfo(
+            file.as_raw_handle(),
+            SE_FILE_OBJECT,
+            OWNER_SECURITY_INFORMATION,
+            &mut owner,
+            null_mut(),
+            null_mut(),
+            null_mut(),
+            &mut raw,
+        )
+    };
+    if status != 0 {
+        return Err(io::Error::from_raw_os_error(status as i32));
+    }
+    let _owner_descriptor = LocalAllocation(raw);
+    // SAFETY: owner points into the retained descriptor; both SIDs are live.
+    if owner.is_null()
+        || unsafe { IsValidSid(owner) } == 0
+        || unsafe { EqualSid(owner, user.sid()) } == 0
+    {
+        return Err(denied(
+            "the existing .rrflow folder belongs to another account",
+        ));
+    }
+    let text = user.text()?;
+    let private = descriptor(&format!("D:P(A;OICI;FA;;;{text})(A;OICI;FA;;;SY)"))?;
+    let mut present = 0;
+    let mut dacl = null_mut();
+    let mut defaulted = 0;
+    // SAFETY: private owns the converted descriptor; outputs are live.
+    if unsafe { GetSecurityDescriptorDacl(private.0, &mut present, &mut dacl, &mut defaulted) } == 0
+        || present == 0
+        || dacl.is_null()
+    {
+        return Err(io::Error::last_os_error());
+    }
+    // SAFETY: the handle grants WRITE_DAC and the DACL lives in `private`.
+    let status = unsafe {
+        SetSecurityInfo(
+            file.as_raw_handle(),
+            SE_FILE_OBJECT,
+            DACL_SECURITY_INFORMATION | PROTECTED_DACL_SECURITY_INFORMATION,
+            null_mut(),
+            null_mut(),
+            dacl,
+            null(),
+        )
+    };
+    if status != 0 {
+        return Err(io::Error::from_raw_os_error(status as i32));
+    }
+    Ok(file)
 }
 
 pub(super) fn open_empty_relative(
@@ -146,7 +225,7 @@ pub(super) fn open_empty_relative(
     // Empty lease creation needs no payload write access. Read sharing lets
     // contenders reach LockFileEx and lets read-only verification admit it.
     // Deletion and writes remain excluded for this handle's entire lifetime.
-    open_relative_with_access(parent, name, create, false, true)
+    open_relative_with_access(parent, name, create, false, true, 0)
 }
 
 fn open_relative_with_access(
@@ -155,6 +234,7 @@ fn open_relative_with_access(
     create: bool,
     directory: bool,
     empty_lease: bool,
+    extra_access: u32,
 ) -> io::Result<File> {
     use windows_sys::Wdk::Foundation::OBJECT_ATTRIBUTES;
     use windows_sys::Wdk::Storage::FileSystem::{
@@ -209,6 +289,7 @@ fn open_relative_with_access(
                 | READ_CONTROL
                 | FILE_READ_ATTRIBUTES
                 | SYNCHRONIZE
+                | extra_access
                 | if create && !empty_lease {
                     GENERIC_WRITE
                 } else {

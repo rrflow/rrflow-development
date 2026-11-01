@@ -1,7 +1,10 @@
 //! One canonical project-local filesystem layout for an installed RRFlow estate.
 
 use super::*;
-use rrd_contract::{InstallationManagedPath, InstallationManagedPathKind, InstallationRemovalRule};
+use rrd_contract::{
+    InstallationManagedPath, InstallationManagedPathKind, InstallationRemovalRule,
+    ADOPTED_ESTATE_DIRECTORY, MAX_ADOPTED_ESTATE_ENTRIES,
+};
 use rrd_store::filesystem::AnchoredPath;
 
 pub(super) const ESTATE_DIRECTORY: &str = ".rrflow";
@@ -45,7 +48,12 @@ impl EstateFilesystem {
 
     /// Discover newly created descendants without replacing any directory
     /// capability already admitted by this operation.
+    ///
+    /// Before a project has a locator, a leftover `.rrflow` folder that is not
+    /// private is left unadmitted: installation plans its adoption instead.
+    /// An installed estate (one with a locator) must stay private as it is.
     pub fn admit_missing_private_directories(&mut self, allow_missing: bool) -> Result<()> {
+        let adoptable = allow_missing && !self.has_locator()?;
         for relative in PRIVATE_ESTATE_DIRECTORIES {
             if let Some(directory) = self.private.get(relative) {
                 super::token_key::pin_private_directory(directory)
@@ -58,9 +66,49 @@ impl EstateFilesystem {
                     self.private.insert(relative, directory);
                 }
                 Err(error) if allow_missing && error.kind() == std::io::ErrorKind::NotFound => {}
+                // Children of an unadmitted leftover folder move with it.
+                Err(_) if adoptable && relative == ESTATE_DIRECTORY => break,
+                Err(_) if adoptable => {}
                 Err(error) => return Err(ServiceError::Storage(error.to_string())),
             }
         }
+        Ok(())
+    }
+
+    fn has_locator(&self) -> Result<bool> {
+        match self.project.join(LOCATOR_RELATIVE_PATH).metadata() {
+            Ok(_) => Ok(true),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(false),
+            Err(error) => Err(ServiceError::Storage(error.to_string())),
+        }
+    }
+
+    /// Make a leftover `.rrflow` folder private in place and move exactly the
+    /// planned top-level entries into `.rrflow/previous/<plan id>/`. Nothing is
+    /// deleted. Entries already moved by an interrupted attempt are skipped.
+    pub fn adopt_estate_directory(&mut self, plan_id: &str, entries: &[String]) -> Result<()> {
+        rrd_contract::validate_adopted_estate_entries(entries)
+            .map_err(|error| ServiceError::Contract(error.to_string()))?;
+        validate_managed_relative(&format!("{ESTATE_DIRECTORY}/{plan_id}"))?;
+        let estate = super::token_key::adopt_private_directory_anchored(
+            &self.project.join(ESTATE_DIRECTORY),
+        )
+        .map_err(storage_error)?;
+        let previous = open_or_create_private(&estate.join(ADOPTED_ESTATE_DIRECTORY))?;
+        let target = open_or_create_private(&previous.join(plan_id))?;
+        for name in entries {
+            let source = estate.join(name);
+            match source.metadata() {
+                Ok(_) => source
+                    .rename_new_to(&target.join(name))
+                    .map_err(storage_error)?,
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                Err(error) => return Err(storage_error(error)),
+            }
+        }
+        // Every admitted descendant moved with its entry; only the folder stays.
+        self.private.clear();
+        self.private.insert(ESTATE_DIRECTORY, estate);
         Ok(())
     }
 
@@ -236,15 +284,74 @@ impl EstateLayout {
     }
 }
 
-/// A new install may not coexist with either a pre-canonical
-/// `.rrflow/instance.toml` estate or an unrecognized `.rrflow` tree. Replay is
-/// resolved from the canonical locator before this check is called.
-pub(super) fn reject_existing_estate(project: &EstateFilesystem) -> Result<()> {
-    match project.project().join(ESTATE_DIRECTORY).metadata() {
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
-        Ok(_) => Err(ServiceError::ProjectBindingMismatch),
-        Err(error) => Err(ServiceError::Storage(error.to_string())),
-    }?;
+fn open_or_create_private(path: &AnchoredPath) -> Result<AnchoredPath> {
+    match super::token_key::create_private_directory_anchored(path) {
+        Ok(directory) => Ok(directory),
+        Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
+            super::token_key::adopt_private_directory_anchored(path).map_err(storage_error)
+        }
+        Err(error) => Err(storage_error(error)),
+    }
+}
+
+fn storage_error(error: std::io::Error) -> ServiceError {
+    ServiceError::Storage(error.to_string())
+}
+
+/// The sorted top-level entries of a leftover `.rrflow` folder, excluding the
+/// `previous` folder that retains earlier adoptions. `None` when the project
+/// has no `.rrflow`. An installed estate (one with a locator) is never adopted.
+pub(super) fn existing_estate_entries(project: &EstateFilesystem) -> Result<Option<Vec<String>>> {
+    let estate = project.project().join(ESTATE_DIRECTORY);
+    match estate.metadata() {
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => return Err(storage_error(error)),
+        Ok(metadata) if metadata.file_type().is_symlink() || !metadata.is_dir() => {
+            return Err(ServiceError::Contract(
+                "the project's .rrflow entry is not a folder; move it before installing".into(),
+            ))
+        }
+        Ok(_) => {}
+    }
+    if project.has_locator()? {
+        return Err(ServiceError::ProjectBindingMismatch);
+    }
+    let mut names = Vec::new();
+    for entry in estate.entries().map_err(storage_error)? {
+        let name = entry
+            .map_err(storage_error)?
+            .relative_path()
+            .file_name()
+            .ok_or(ServiceError::ProjectBindingMismatch)?
+            .to_owned()
+            .into_string()
+            .map_err(|_| {
+                ServiceError::Contract("a .rrflow entry name is not valid Unicode".into())
+            })?;
+        if name == ADOPTED_ESTATE_DIRECTORY {
+            continue;
+        }
+        if names.len() >= MAX_ADOPTED_ESTATE_ENTRIES {
+            return Err(ServiceError::Contract(
+                "the existing .rrflow folder has too many entries to adopt".into(),
+            ));
+        }
+        names.push(name);
+    }
+    names.sort();
+    Ok(Some(names))
+}
+
+/// A new install adopts exactly the `.rrflow` entries its plan listed and may
+/// not coexist with another installation intent. Replay is resolved from the
+/// canonical locator before this check is called.
+pub(super) fn reject_existing_estate(
+    project: &EstateFilesystem,
+    adopted: Option<&[String]>,
+) -> Result<()> {
+    if existing_estate_entries(project)?.as_deref() != adopted {
+        return Err(ServiceError::ProjectBindingMismatch);
+    }
     let entries = project
         .project()
         .entries()
@@ -315,6 +422,7 @@ pub(super) fn validate_recovery_estate(
             "credentials",
             "config.toml",
             "bootstrap.md",
+            ADOPTED_ESTATE_DIRECTORY,
             locator_pending,
             bootstrap_pending,
         ],

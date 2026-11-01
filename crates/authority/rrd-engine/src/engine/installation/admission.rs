@@ -57,7 +57,8 @@ pub(super) fn inspect(
         }
         return Ok(Admission::Recover(Box::new(intent)));
     }
-    reject_existing_estate(project)?;
+    let adopted = preview.installation.adopted_estate_entries.as_deref();
+    reject_existing_estate(project, adopted)?;
     validate_installation_target(project, preview.installation.target_kind)?;
     if project_inventory_sha256(project.project(), profile)?
         != preview.installation.project_precondition_sha256
@@ -65,6 +66,12 @@ pub(super) fn inspect(
         return Err(ServiceError::ProjectBindingMismatch);
     }
     for managed in &preview.installation.managed_paths {
+        // An adopted `.rrflow` keeps its folder; everything below it moves aside.
+        if adopted.is_some()
+            && (managed.relative_path == ".rrflow" || managed.relative_path.starts_with(".rrflow/"))
+        {
+            continue;
+        }
         if managed.kind != InstallationManagedPathKind::InstallationLease
             && project
                 .managed(&managed.relative_path)?

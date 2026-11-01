@@ -8,6 +8,7 @@ The roadmap owns Gate D acceptance. This generated index only discovers its
 linked package evidence.
 
 <!-- rrflow:generated-index:start -->
+- [Adopt a leftover `.rrflow` folder in place](adopt-leftover-rrflow-folder.md) — [`rrflow://rrflow-instance/data/change-journal/adopt-leftover-rrflow-folder`](rrflow://rrflow-instance/data/change-journal/adopt-leftover-rrflow-folder) — active implementation evidence; owner-directed import unblocker
 - [D-01.6 installed-foundation acceptance reconciliation](d-01-acceptance-reconciliation.md) — [`rrflow://rrflow-instance/data/evidence/change-journal/gate-d/d-01-acceptance-reconciliation`](rrflow://rrflow-instance/data/evidence/change-journal/gate-d/d-01-acceptance-reconciliation) — active acceptance reconciliation; this documentation candidate requires CI before merge
 - [D-01.6 supporting-reference alignment](d-01-acceptance-reference-alignment.md) — [`rrflow://rrflow-instance/data/evidence/change-journal/gate-d/d-01-acceptance-reference-alignment`](rrflow://rrflow-instance/data/evidence/change-journal/gate-d/d-01-acceptance-reference-alignment) — active correction evidence; fresh documentation candidate CI required
 - [D-01.2 retained filesystem authority](d-01-anchored-filesystem.md) — [`rrflow://rrflow-instance/data/evidence/change-journal/gate-d/d-01-anchored-filesystem`](rrflow://rrflow-instance/data/evidence/change-journal/gate-d/d-01-anchored-filesystem) — active implementation candidate; native candidate acceptance pending

@@ -1083,11 +1083,115 @@ fn installed_locator_relocates_but_never_walks_ancestors_or_pairs_foreign_state(
     assert!(open_at(&moved, &executable, 1_800_000_000_001).is_err());
 }
 
+/// A leftover `.rrflow` folder from earlier tools or runs, created with the
+/// platform's ordinary inherited permissions and holding no locator.
+fn leftover_rrflow(project: &Path) -> BTreeMap<PathBuf, Vec<u8>> {
+    std::fs::create_dir_all(project.join(".rrflow/dev/old")).unwrap();
+    std::fs::create_dir_all(project.join(".rrflow/rrd")).unwrap();
+    std::fs::write(project.join(".rrflow/instance.toml"), "format = 1\n").unwrap();
+    std::fs::write(project.join(".rrflow/dev/old/CURRENT"), "manifest-7\n").unwrap();
+    std::fs::write(project.join(".rrflow/rrd/stale.bin"), [7u8; 64]).unwrap();
+    std::fs::write(project.join("README.md"), "# project\n").unwrap();
+    inventory(&project.join(".rrflow"))
+}
+
 #[test]
-fn pre_canonical_rrflow_state_blocks_a_parallel_installation_authority() {
+fn a_leftover_rrflow_folder_is_adopted_in_place_and_keeps_every_file() {
     let project = tempfile::tempdir().unwrap();
-    std::fs::create_dir(project.path().join(".rrflow")).unwrap();
-    std::fs::write(project.path().join(".rrflow/instance.toml"), "format = 1\n").unwrap();
+    let executable = test_executable();
+    let leftover = leftover_rrflow(project.path());
+    let before = inventory(project.path());
+
+    // Planning reports the adoption and changes nothing.
+    let preview = plan(project.path());
+    assert_eq!(
+        preview.installation.adopted_estate_entries.as_deref(),
+        Some(
+            &[
+                "dev".to_owned(),
+                "instance.toml".to_owned(),
+                "rrd".to_owned()
+            ][..]
+        )
+    );
+    assert_eq!(inventory(project.path()), before);
+
+    let result = RrdEngine::apply_installation_at(
+        project.path(),
+        InstallationTargetKind::ExistingProject,
+        &preview,
+        &preview.installation.plan_sha256,
+        1_800_000_000_000,
+        &executable,
+    )
+    .unwrap();
+    assert!(!result.idempotent_replay);
+
+    // Every leftover byte is retained below `.rrflow/previous/<plan id>/`.
+    let retained = project
+        .path()
+        .join(".rrflow/previous")
+        .join(preview.installation.id.as_str());
+    assert_eq!(inventory(&retained), leftover);
+    assert!(!project.path().join(".rrflow/instance.toml").exists());
+    assert!(!project.path().join(".rrflow/dev").exists());
+    assert!(!project.path().join(".rrflow/rrd/stale.bin").exists());
+    crate::engine::token_key::validate_private_directory(&project.path().join(".rrflow")).unwrap();
+
+    // The adopted estate opens, verifies and replays like any other.
+    open_at(project.path(), &executable, 1_800_000_000_001).unwrap();
+    let report = inspect_at(project.path(), &executable, 1_800_000_000_002).unwrap();
+    assert_eq!(report.status, InstallationVerificationStatus::Passed);
+    let replay = RrdEngine::apply_installation_at(
+        project.path(),
+        InstallationTargetKind::ExistingProject,
+        &preview,
+        &preview.installation.plan_sha256,
+        1_800_000_000_003,
+        &executable,
+    )
+    .unwrap();
+    assert!(replay.idempotent_replay);
+}
+
+#[test]
+fn a_changed_leftover_rrflow_folder_refuses_the_stale_plan_without_effects() {
+    let project = tempfile::tempdir().unwrap();
+    leftover_rrflow(project.path());
+    let preview = plan(project.path());
+    std::fs::write(
+        project.path().join(".rrflow/late.txt"),
+        "added after review\n",
+    )
+    .unwrap();
+    let before = inventory(project.path());
+    assert!(RrdEngine::apply_installation_at(
+        project.path(),
+        InstallationTargetKind::ExistingProject,
+        &preview,
+        &preview.installation.plan_sha256,
+        1_800_000_000_000,
+        &test_executable(),
+    )
+    .is_err());
+    assert_eq!(inventory(project.path()), before);
+    assert!(!project.path().join(".rrflow/previous").exists());
+}
+
+#[test]
+fn an_installed_estate_is_never_adopted() {
+    let project = tempfile::tempdir().unwrap();
+    let executable = test_executable();
+    let preview = plan(project.path());
+    RrdEngine::apply_installation_at(
+        project.path(),
+        InstallationTargetKind::ExistingProject,
+        &preview,
+        &preview.installation.plan_sha256,
+        1_800_000_000_000,
+        &executable,
+    )
+    .unwrap();
     let before = inventory(project.path());
     assert!(RrdEngine::plan_installation(
         project.path(),
@@ -1095,7 +1199,7 @@ fn pre_canonical_rrflow_state_blocks_a_parallel_installation_authority() {
         &RrdEngine::generate_installation_identity().unwrap(),
         "default",
         None,
-        &test_executable(),
+        &executable,
     )
     .is_err());
     assert_eq!(inventory(project.path()), before);

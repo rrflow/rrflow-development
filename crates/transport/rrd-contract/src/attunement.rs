@@ -235,8 +235,18 @@ pub struct InstallationPlan {
     pub attunement_plan_id: CanonicalId,
     pub attunement_plan_sha256: String,
     pub actions: Vec<InstallationPlanAction>,
+    /// Present when the project already holds a `.rrflow` folder that is not
+    /// an installed estate. Apply makes that folder private in place and moves
+    /// exactly these top-level entries into `.rrflow/previous/<plan id>/`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub adopted_estate_entries: Option<Vec<String>>,
     pub plan_sha256: String,
 }
+
+/// The most entries one adoption moves; a larger leftover tree is refused.
+pub const MAX_ADOPTED_ESTATE_ENTRIES: usize = 256;
+/// The `.rrflow` entry that retains adopted contents; never itself adopted.
+pub const ADOPTED_ESTATE_DIRECTORY: &str = "previous";
 
 impl InstallationPlan {
     pub fn validate(&self) -> Result<()> {
@@ -429,6 +439,9 @@ impl InstallationPlan {
             if action.kind != expected_kind {
                 return invalid("installation actions are missing, duplicated, or out of order");
             }
+        }
+        if let Some(entries) = &self.adopted_estate_entries {
+            validate_adopted_estate_entries(entries)?;
         }
         validate_sha256(&self.plan_sha256, "installation plan_sha256")?;
         if self.plan_sha256 != installation_plan_sha256(self)? {
@@ -1674,7 +1687,35 @@ impl AttunementVerification {
     }
 }
 
+/// Adopted entries are single, sorted, unique top-level names below `.rrflow`.
+pub fn validate_adopted_estate_entries(entries: &[String]) -> Result<()> {
+    if entries.len() > MAX_ADOPTED_ESTATE_ENTRIES {
+        return invalid("the existing .rrflow folder has too many entries to adopt");
+    }
+    for entry in entries {
+        validate_bounded_text(entry, "adopted .rrflow entry", 255)?;
+        if matches!(entry.as_str(), "." | ".." | ADOPTED_ESTATE_DIRECTORY)
+            || entry.contains(['/', '\\', ':'])
+        {
+            return invalid("adopted .rrflow entries must be plain top-level names");
+        }
+    }
+    if entries.windows(2).any(|pair| pair[0] >= pair[1]) {
+        return invalid("adopted .rrflow entries must be sorted and unique");
+    }
+    Ok(())
+}
+
 pub fn installation_plan_sha256(plan: &InstallationPlan) -> Result<String> {
+    let base = installation_plan_base_sha256(plan)?;
+    match &plan.adopted_estate_entries {
+        // Plans without adoption keep their established digest exactly.
+        None => Ok(base),
+        Some(entries) => digest_json(b"rrflow-installation-plan-v4-adoption", &(base, entries)),
+    }
+}
+
+fn installation_plan_base_sha256(plan: &InstallationPlan) -> Result<String> {
     digest_json(
         b"rrflow-installation-plan-v4",
         &(
