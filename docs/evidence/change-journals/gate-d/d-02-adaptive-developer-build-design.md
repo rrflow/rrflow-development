@@ -41,6 +41,16 @@ matches. The native client has authenticated SDK session/query code and the
 estate source has preview and digest-bound installation. These observations
 do not establish an end-to-end desktop test or a complete UI audit.
 
+Main advanced to `3622fa211a933bd05d9287c366da489c29b20b09`, merging PR 239
+and pinning Connectome `c1cbff203ecee89013878609d11aed04e89d0e71`. The
+conflict inspector reported a clean merge; it was integrated by an ordinary
+merge. `git diff` of the old and new pins shows the phase module unchanged;
+`git grep` found the two declarations but no references to them or module
+imports at the new pin. The native client and estate files changed, so the
+older targeted inspection cannot qualify their current behavior; separate
+inspection of the newer checkout found SDK session/query and preview/apply
+paths. No actual desktop acceptance follows.
+
 Main's profiles name eleven phases. Caller-supplied ordered plans are
 supported; the default fallback, closed enum, terminal Verify rule and linear
 checkpoint chain still prevent calling the default dynamic. Connect and
@@ -87,3 +97,7 @@ corrected. The final `python scripts/ci/check_documentation.py` passed with
 912 document statuses, 910 classified coordinates, parent indexes and local
 links checked. The changed records and complete staged diff were reread;
 `git diff --cached --check` passed. Candidate CI and merge remain pending.
+After the main synchronization and pin correction, `python
+scripts/knowledge/render_navigation.py --check` passed with 912 nodes and
+3277 edges, and `python scripts/ci/check_documentation.py` passed with 913
+document statuses and 911 classified coordinates. `git diff --check` passed.

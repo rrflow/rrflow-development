@@ -33,11 +33,14 @@ The existing inventory tests demonstrate useful commit, interruption, and
 reopen behavior; they do not demonstrate an end-to-end prompt or developer
 handoff. The unmerged Parse draft in PR 241 is not main behavior.
 
-The exact Connectome pin `38142b77110a8f1db77e306e7d1ad375fd918267`
-also defines eleven static phase views and a fixed 30–45 minute estimate in
-`src/rrflow/attunement.ts`. A Git search of that revision found the two
+At the original baseline, Connectome pin
+`38142b77110a8f1db77e306e7d1ad375fd918267` defined eleven static phase
+views and a fixed 30–45 minute estimate in `src/rrflow/attunement.ts`.
+Main subsequently advanced its pin to
+`c1cbff203ecee89013878609d11aed04e89d0e71` in PR 239; that file is unchanged
+and retains both declarations. A Git search of both revisions found the two
 constants only at their declarations and found no imports of that module;
-this does not prove that a visible screen uses them. Its native
+this does not prove that a visible screen uses them. The current pin's native
 `src-tauri/src/rrd/client.rs` does contain an authenticated SDK session and
 query path, while `estate.rs` implements preview and exact-digest installation.
 Those source paths are implementation inventory, not a real desktop acceptance
