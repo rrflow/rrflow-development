@@ -1,0 +1,11 @@
+# C-04e: correct quantization catalogue status
+
+**Status:** active evidence correction; C-04 and E-04 remain open
+**Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/gate-c/c-04e-vector-catalogue-status-correction`
+**Owner:** OBJ-13 / C-04 / E-04 / POAM-028 / [PR155](https://github.com/rrflow/rrflow-development/pull/155)
+
+This documentation package started from development main `2e3a67d26295a763155a5129960d070914626704`, with opening commit `32de989e92255409dc97cd8768b9b8319321c74f` and the PR brief before edits. OBJ-13 and the vector quantization reference still described every search as replaying the quantization catalogue from cursor zero. That present-tense statement contradicted OBJ-03, the current [POAM-028](../../../poam/rrflow-1.0-alpha/poam-028.md) and the prior [C-04e stamped-read journal](c-04e-stamped-vector-catalogues.md).
+
+`runtime/vector_catalog.rs::quantization_artifact_catalogue_at_read` obtains a read stamp and calls `read_vector_catalogue_versions` with a finite key budget, then reconstructs the selected catalogue from returned versions. The correction describes direct stamped reads while retaining the remaining full-artifact build, lifecycle reconstruction and incremental-serving gaps. It does not change any status or assert complete TurboQuant; inner-product, model KV-cache and transfer variants, E-04 and qualification remain open. POAM-028 also retains its independent maintenance-log exception and C-04 closure evidence requirement.
+
+On Windows, `CARGO_TARGET_DIR=D:/localdev/devlabs/rrflow/target/d02-retained-root-build cargo test --offline --locked -p rrd-engine --test direct_read_source_closure` passed one source-closure allowlist test. This is a source-policy test, not a native performance, quantization quality or complete feature qualification. The prior stamped-read journal retains its direct rrflowKV/MX and growth evidence. Navigation/inventory, documentation/workflow policy and diff checks were run for this correction. No runtime source or tests changed, no upstream code was adapted, and no roadmap, objective or POA&M status changed. The files and relevant symbols reviewed were the OBJ-03/OBJ-13 rows, vector lifecycle reference, POAM-028, the C-04e journal, `quantization_artifact_catalogue_at_read` and the source-closure test; no wider audit is claimed.
