@@ -1,0 +1,10 @@
+{
+  "binarySha256": "fb9b5727e6ea0de668c723e63d008bfd976a02ca020aad218b122b61142afee0",
+  "versionExitCode": 0,
+  "readyExitCode": 0,
+  "quickVerifyExitCode": 0,
+  "pathContainsOnlySystem32": true,
+  "providerCredentialsSupplied": false,
+  "ownedServerStopped": true,
+  "fullGateJQualified": false
+}

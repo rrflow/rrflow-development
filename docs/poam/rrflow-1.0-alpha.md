@@ -60,6 +60,6 @@
 | POAM-044 | High | Open | [rrflowQL refusals are unstructured, and queries cannot be checked without running](rrflow-1.0-alpha/poam-044.md) |
 | POAM-045 | High | Verifying | [vector search returns a vector's old version after it moves to another collection](rrflow-1.0-alpha/poam-045.md) |
 | POAM-046 | High | Open | [a vector index makes the public changefeed refuse its scope](rrflow-1.0-alpha/poam-046.md) |
-| POAM-047 | High | Open | [a collection whose vectors all moved to another collection cannot be deleted](rrflow-1.0-alpha/poam-047.md) |
-| POAM-048 | High | Open | [an approximate generation keeps proposing a vector that moved to another collection](rrflow-1.0-alpha/poam-048.md) |
+| POAM-047 | High | Verifying | [a collection whose vectors all moved to another collection cannot be deleted](rrflow-1.0-alpha/poam-047.md) |
+| POAM-048 | High | Verifying | [an approximate generation keeps proposing a vector that moved to another collection](rrflow-1.0-alpha/poam-048.md) |
 | POAM-049 | High | Open | [an audit read's journal scan grows with the journal's length](rrflow-1.0-alpha/poam-049.md) |

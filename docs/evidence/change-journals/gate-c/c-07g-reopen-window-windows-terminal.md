@@ -1,0 +1,13 @@
+# C-07g: post-reopen Windows terminal failure
+
+**Status:** active retained failure evidence; qualification open
+**Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/gate-c/c-07g-reopen-window-windows-terminal`
+**Owner:** OBJ-02 / C-07g / POAM-035 / [PR151](https://github.com/rrflow/rrflow-development/pull/151)
+
+This evidence continuation was briefed before edits. The tested source is [PR153](https://github.com/rrflow/rrflow-development/pull/153) commit `33d26f13f35b7406c8242a8550f048822f9890bc`, tree `0613c6698c2576b0e0f612d7debe04fd94abbca4`; see the [launch record](c-07g-reopen-window-windows-launch.md) for executable, harness, configuration, canonical campaign and allocation. The result is a failed warm-only characterization on a 64-GiB Windows host with a 2-GiB/four-CPU Windows Job, not the required full Desktop profile or 24-hour soak.
+
+Independent terminal counting of `progress.jsonl` found 100000 corpus intents, 100000 acknowledgements, 100000 initial verifications, two lifecycle intents and acknowledgements, two forced-reopen observations with matching original/replay receipt digests, and 48604 consecutive `reopened_corpus_verified` events, followed by failure. The driver reported `api-resourceexhausted-read-pinned-bytes:d212269565902a4bb30cbe83eaea330fa0650eef72d5302886587a53a6d29807`. This identifies projected-read pinned-byte admission, but the retained classification and digest do not show the numerical limit, observed amount, individual operation or concurrent-view count. It is not proof of the precise mechanism or acknowledged data loss.
+
+The launcher exited 101 after 2939968 ms and confirmed cleanup. `result.json` reports `status: failed`, zero segments, zero operating points and `qualification_passed: false`. No measured segment or soak started. Retained local evidence is under `target/c07-windows-reopen-window-33d26f13/`. SHA-256: progress `573200489eace3cdc1af58df3cd2d43b5f61425a3e2507363627375f265a7920`; result `bebdf70f62d1f83c0a2bbff49a490efb08bf6fbad0ba1d19c51ecb6a871777ef`; launch `464996ef637ecc8ab350dea2966221a9b21715daea2e99ab1aa2918d77912163`.
+
+The new progress and bounded classification exposed the failing phase and resource category that the earlier 8721f17 result did not identify. The earlier generic digest cannot be retrospectively decoded as proof of this cause. Reviewed the terminal progress/result/launch and stderr, independently counted events and computed artifact hashes; no source, process, limit or earlier evidence was changed. Navigation, inventory, documentation, workflow and diff checks were run. A correct engine repair, exact-candidate integration, full native profile and actual 24-hour soak remain open. No roadmap or POA&M status is closed.

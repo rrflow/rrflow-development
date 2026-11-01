@@ -20,6 +20,20 @@ pub(super) fn next_sample_deadline(
         .ok_or_else(|| "resource sampling deadline overflow".into())
 }
 
+pub(super) fn after_sample_deadline(
+    scheduled: Instant,
+    period: Duration,
+    sample_observed: Instant,
+    now: Instant,
+    initial: bool,
+) -> DriverResult<Instant> {
+    next_sample_deadline(
+        if initial { sample_observed } else { scheduled },
+        period,
+        now,
+    )
+}
+
 pub(super) fn overlapping_samples(
     previous: &[ResourceSample],
     started_ns: u64,
@@ -44,6 +58,27 @@ pub(super) fn overlapping_samples(
 mod tests {
     use super::*;
     use rrflow_eval::storage::{AllocationEnforcement, NativeMetric};
+
+    #[test]
+    fn initial_observation_does_not_skip_the_first_period() {
+        let origin = Instant::now();
+        let at = |ms| origin + Duration::from_millis(ms);
+        let period = Duration::from_millis(1000);
+        assert_eq!(
+            after_sample_deadline(at(1000), period, at(184), at(184), true).unwrap(),
+            at(1184)
+        );
+        assert_eq!(
+            after_sample_deadline(at(1000), period, at(1089), at(1089), false).unwrap(),
+            at(2000)
+        );
+        assert_eq!(
+            after_sample_deadline(at(1000), period, at(2089), at(2089), false).unwrap(),
+            at(2089)
+        );
+        assert!(after_sample_deadline(origin, Duration::ZERO, origin, origin, true).is_err());
+        assert!(after_sample_deadline(origin, Duration::MAX, origin, origin, true).is_err());
+    }
 
     #[test]
     fn resource_window_schedule_does_not_add_collection_latency_or_replay_missed_ticks() {

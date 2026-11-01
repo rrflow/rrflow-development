@@ -1,0 +1,16 @@
+{
+  "command": [
+    "python",
+    "D:\\projects\\swag\\.swag\\evidence\\20261030\\controller-bundle-refresh\\relocated-primary-check.py",
+    "--archive",
+    "D:\\projects\\swag\\files\\distributions\\rrflow-controller-trial-windows-x64-8cf235ac.zip",
+    "--sha256",
+    "8fc7a5056bde73f29ffb435393d6254cac152ff0f30aea4158e597fb9749f9a3",
+    "--repository",
+    "D:/localdev/devlabs/rrflow/target/controller-testing-bundle-worktree",
+    "--output",
+    "D:\\projects\\swag\\.swag\\evidence\\20261030\\controller-bundle-refresh\\relocated-primary"
+  ],
+  "exit_code": 0,
+  "seconds": 7.59
+}
