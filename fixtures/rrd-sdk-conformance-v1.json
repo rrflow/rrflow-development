@@ -19,8 +19,8 @@
     "versions"
   ],
   "identity": {
-    "instance": "instance-73d0af55a12ccf5d12167911",
-    "estate": "estate-73d0af55a12ccf5d12167911",
+    "instance": "instance-e94433b2dad856172e39d9e9",
+    "estate": "estate-e94433b2dad856172e39d9e9",
     "principal": "sdk-conformance",
     "api_key": "sdk-conformance-key"
   },
@@ -106,7 +106,7 @@
     }
   },
   "query": {
-    "scope": "instance:instance-73d0af55a12ccf5d12167911",
+    "scope": "instance:instance-e94433b2dad856172e39d9e9",
     "query": "FROM record:document AT VALID 100 KNOWN HEAD WHERE id = \"sdk-conformance\" PROJECT id, title EXPLAIN CONTRACT",
     "parameters": {},
     "budget": {
@@ -121,7 +121,7 @@
   },
   "vector": {
     "ensure": {
-      "scope": "instance:instance-73d0af55a12ccf5d12167911",
+      "scope": "instance:instance-e94433b2dad856172e39d9e9",
       "collection_id": "documents",
       "vectors": [
         {
@@ -135,7 +135,7 @@
       ]
     },
     "search": {
-      "scope": "instance:instance-73d0af55a12ccf5d12167911",
+      "scope": "instance:instance-e94433b2dad856172e39d9e9",
       "valid_at": 100,
       "collection_id": "documents",
       "vector_name": "title",
@@ -151,11 +151,49 @@
         "mode": "exact"
       },
       "max_storage_keys": 1000
+    },
+    "quantization": {
+      "build": {
+        "scope": "instance:instance-e94433b2dad856172e39d9e9",
+        "collection_id": "documents",
+        "vector_name": "title",
+        "method": {
+          "method": "turbo_quant",
+          "bits": "bits4",
+          "seed": 7
+        },
+        "max_storage_keys": 1000
+      },
+      "activate": {
+        "scope": "instance:instance-e94433b2dad856172e39d9e9",
+        "artifact_id": "quant-turboquant-documents-title",
+        "generation": 1
+      },
+      "search": {
+        "scope": "instance:instance-e94433b2dad856172e39d9e9",
+        "valid_at": 100,
+        "collection_id": "documents",
+        "vector_name": "title",
+        "query": {
+          "kind": "dense",
+          "values": [
+            1.0,
+            0.0
+          ]
+        },
+        "top_k": 1,
+        "mode": {
+          "mode": "require_approximate",
+          "exact_rerank": 1,
+          "ef_search": 1
+        },
+        "max_storage_keys": 1000
+      }
     }
   },
   "changefeed": {
     "read": {
-      "scope": "instance:instance-73d0af55a12ccf5d12167911",
+      "scope": "instance:instance-e94433b2dad856172e39d9e9",
       "after_cursor": 0,
       "limit": 128
     },
@@ -174,9 +212,10 @@
   },
   "estate": {},
   "expected": {
-    "endpoint_count": 57,
+    "endpoint_count": 71,
     "query_identity": "record:document:sdk-conformance",
     "vector_reference": "embedding:sdk-conformance-title",
+    "quantized_access_path": "turboquant",
     "estate_revision": 1,
     "typed_error": "unauthenticated",
     "retry_attempts": 2

@@ -9,6 +9,7 @@ description = "Provider-neutral model admission and provenance-bound embedding j
 [features]
 default = []
 fastembed-local = ["dep:fastembed"]
+endpoint-chat = ["dep:ureq"]
 
 [dependencies]
 rrd-core = { path = "../../kernel/rrd-core" }
@@ -16,6 +17,7 @@ rrd-contract = { path = "../../transport/rrd-contract" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 fastembed = { version = "5.17.4", default-features = false, features = ["ort-load-dynamic"], optional = true }
+ureq = { version = "=3.4.2", default-features = false, features = ["rustls"], optional = true }
 
 [dev-dependencies]
 rrd-store = { path = "../../persistence/rrd-store" }

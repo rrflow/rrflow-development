@@ -15,6 +15,8 @@ pub fn product_capability_catalogue() -> ProductCapabilityCatalogue {
             let id = endpoint.operation.as_str().to_owned();
             let engine_binding = if id == "endpoint-configuration-preview" {
                 "rrd-engine:RrdOperation::EndpointConfigurationPreview".to_owned()
+            } else if id == "attunement-replan-preview" {
+                "rrd-engine:RrdOperation::AttunementReplanPreview".to_owned()
             } else {
                 match endpoint.action {
                     EndpointAction::Fixed { action } => {
@@ -327,19 +329,6 @@ pub fn product_capability_catalogue() -> ProductCapabilityCatalogue {
             [(
                 ProductSurface::Engine,
                 available("rrd-engine:RrdEngine::execute_retrieval_query"),
-            )],
-        ),
-    });
-    capabilities.push(ProductCapability {
-        id: "vector-quantization-lifecycle".into(),
-        label: "Vector quantization lifecycle".into(),
-        category: "vector".into(),
-        summary: "Build, list, activate, and retire immutable scalar, product, binary, and TurboQuant artifacts while preserving canonical exact reranking.".into(),
-        bindings: surface_bindings(
-            planned(ENGINE_SURFACE_PLAN_REASON),
-            [(
-                ProductSurface::Engine,
-                available("rrd-engine:RrdEngine::activate_vector_quantization_artifact,build_vector_quantization_artifact,list_vector_quantization_artifacts,retire_vector_quantization_artifact"),
             )],
         ),
     });

@@ -201,6 +201,45 @@ public sealed class SdkConformanceTests
                     + reference.GetProperty("id").GetString()
                     == expected.GetProperty("vector_reference").GetString();
             });
+        // The runners share one estate, so activate the generation this build returned.
+        JsonElement quantization = vector.GetProperty("quantization");
+        JsonElement built = await api.CallAsync(
+            OperationId.VectorQuantizationBuild,
+            quantization.GetProperty("build"),
+            Options("quantization-build", session, mutation: true),
+            TestContext.Current.CancellationToken);
+        JsonElement artifact = built.GetProperty("artifact");
+        JsonElement activateTemplate = quantization.GetProperty("activate");
+        Assert.Equal(
+            activateTemplate.GetProperty("artifact_id").GetString(),
+            artifact.GetProperty("artifact_id").GetString());
+        await api.CallAsync(
+            OperationId.VectorQuantizationActivate,
+            JsonSerializer.SerializeToElement(new Dictionary<string, object?>
+            {
+                ["scope"] = activateTemplate.GetProperty("scope").GetString(),
+                ["artifact_id"] = activateTemplate.GetProperty("artifact_id").GetString(),
+                ["generation"] = artifact.GetProperty("generation").GetUInt64(),
+            }),
+            Options("quantization-activate", session, mutation: true),
+            TestContext.Current.CancellationToken);
+        JsonElement quantized = await api.CallAsync(
+            OperationId.VectorSearch,
+            quantization.GetProperty("search"),
+            Options("quantized-search", session),
+            TestContext.Current.CancellationToken);
+        Assert.Equal(
+            expected.GetProperty("quantized_access_path").GetString(),
+            quantized.GetProperty("access_path").GetString());
+        Assert.Contains(
+            quantized.GetProperty("hits").EnumerateArray(),
+            hit =>
+            {
+                JsonElement reference = hit.GetProperty("reference");
+                return reference.GetProperty("kind").GetString() + ":"
+                    + reference.GetProperty("id").GetString()
+                    == expected.GetProperty("vector_reference").GetString();
+            });
 
         JsonElement changes = await api.CallAsync(
             OperationId.ChangefeedRead,

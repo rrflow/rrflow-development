@@ -25,6 +25,7 @@ pub enum ReadAccessPath {
     AdjacencyVersions,
     EventVersions,
     VectorVersions,
+    VectorSourceDeltas,
     SeriesVersions,
     GeoVersions,
     ObjectVersions,

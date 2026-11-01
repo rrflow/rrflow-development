@@ -41,7 +41,38 @@ impl Process {
         limit: usize,
         announcement: Option<mpsc::SyncSender<io::Result<Vec<u8>>>>,
     ) -> io::Result<Self> {
-        Self::start_inner(command, deadline, limit, announcement, None, None, false)
+        Self::start_inner(
+            command,
+            deadline,
+            limit,
+            announcement,
+            None,
+            None,
+            false,
+            None,
+        )
+    }
+
+    /// Start a test-owned child with a cancellation flag shared with its
+    /// asynchronous owner. The monitor still enforces the same deadline and
+    /// reaps the child; setting the flag never blocks the caller.
+    #[allow(dead_code)]
+    pub fn start_cancellable(
+        command: &mut Command,
+        deadline: Duration,
+        limit: usize,
+        cancel: Arc<AtomicBool>,
+    ) -> io::Result<Self> {
+        Self::start_inner(
+            command,
+            deadline,
+            limit,
+            None,
+            None,
+            None,
+            false,
+            Some(cancel),
+        )
     }
 
     #[cfg(feature = "crash-test")]
@@ -61,6 +92,7 @@ impl Process {
             Some(lines),
             Some(input),
             false,
+            None,
         )
     }
 
@@ -86,6 +118,7 @@ impl Process {
             Some(lines),
             Some(input),
             true,
+            None,
         )
     }
 
@@ -106,6 +139,7 @@ impl Process {
         pipe.flush()
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn start_inner(
         command: &mut Command,
         deadline: Duration,
@@ -114,6 +148,7 @@ impl Process {
         lines: Option<mpsc::SyncSender<io::Result<Vec<u8>>>>,
         input: Option<&[u8]>,
         retain_input: bool,
+        supplied_cancel: Option<Arc<AtomicBool>>,
     ) -> io::Result<Self> {
         if let Some(input) = input {
             if input.len() > 4096 {
@@ -126,7 +161,7 @@ impl Process {
         let stdout = child.stdout.take().unwrap();
         let stderr = child.stderr.take().unwrap();
         let child = Arc::new(Mutex::new(child));
-        let cancel = Arc::new(AtomicBool::new(false));
+        let cancel = supplied_cancel.unwrap_or_else(|| Arc::new(AtomicBool::new(false)));
         let failure = Arc::new(Mutex::new(None));
         let mut process = Self {
             child: child.clone(),

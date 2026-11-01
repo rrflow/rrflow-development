@@ -8,17 +8,18 @@ use hyper::server::conn::http1;
 use hyper_util::rt::TokioIo;
 use hyper_util::service::TowerToHyperService;
 use rrd_contract::{
-    AbortTransaction, AssembleContext, AuditDecision, BeginTransaction, CanonicalId,
-    CapabilityDescriptor, CapabilityStatus, CloseSession, CloseSubscription, CommitTransaction,
-    CorrelationId, CreateInstanceBackup, CreateSession, DeploymentForm, DeploymentProfile,
-    EndpointPresentation, EnsureQueryIndex, EnsureVectorCollection, ErrorBody, ErrorCode,
-    ExecuteQuery, ExportAudit, FollowChangefeed, HttpMethod as ContractHttpMethod,
-    ListInstanceBackups, ListKnowledgeTrees, ListQueryIndexes, ListVectorCollections, Liveness,
+    AbortTransaction, ActivateVectorQuantizationArtifact, AssembleContext, AuditDecision,
+    BeginTransaction, BuildVectorQuantizationArtifact, CanonicalId, CapabilityDescriptor,
+    CapabilityStatus, CloseSession, CloseSubscription, CommitTransaction, CorrelationId,
+    CreateInstanceBackup, CreateSession, DeploymentForm, DeploymentProfile, EndpointPresentation,
+    EnsureQueryIndex, EnsureVectorCollection, ErrorBody, ErrorCode, ExecuteQuery, ExportAudit,
+    FollowChangefeed, HttpMethod as ContractHttpMethod, ListInstanceBackups, ListKnowledgeTrees,
+    ListQueryIndexes, ListVectorCollections, ListVectorQuantizationArtifacts, Liveness,
     OpenSubscription, PollLiveQuery, PreviewTransaction, ReadAudit, ReadChangefeed,
     ReadDiagnosticSnapshot, ReadEstate, Readiness, RenewSession, ReplaceKnowledgeTrees,
     RequestContext, RequestEnvelope, ResourceId, ResourceKind, ResponseEnvelope, ResponseOutcome,
-    RestoreInstanceBackup, RetrieveVectorPoints, ScrollVectorPoints, SearchVectors,
-    ServiceCapabilities, PROTOCOL, PROTOCOL_VERSION,
+    RestoreInstanceBackup, RetireVectorQuantizationArtifact, RetrieveVectorPoints,
+    ScrollVectorPoints, SearchVectors, ServiceCapabilities, PROTOCOL, PROTOCOL_VERSION,
 };
 use rrd_engine::{
     product_capability_catalogue, AuthorizedInvocation, Invocation, InvocationCompletion,

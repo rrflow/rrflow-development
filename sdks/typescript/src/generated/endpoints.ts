@@ -1,6 +1,6 @@
 // Generated from rrd-contract; do not edit.
-// OpenAPI SHA-256: 35716b8b26b83a92673ea7a0682bd986f31ed58d3fd193abadab8917ae01e566
-export const ENDPOINT_OPENAPI_DOCUMENT_SHA256 = "35716b8b26b83a92673ea7a0682bd986f31ed58d3fd193abadab8917ae01e566" as const;
+// OpenAPI SHA-256: 8bc8cbdba9d90ab1239ea91624e639886971e58977c0f23a31007d1b2878a9c5
+export const ENDPOINT_OPENAPI_DOCUMENT_SHA256 = "8bc8cbdba9d90ab1239ea91624e639886971e58977c0f23a31007d1b2878a9c5" as const;
 
 export const endpoints = {
   "attunement-cancel": {
@@ -9,11 +9,65 @@ export const endpoints = {
     "authentication": "session_bearer",
     "mutation": true
   },
+  "attunement-pause": {
+    "method": "POST",
+    "path": "/v1/attunement/pause",
+    "authentication": "session_bearer",
+    "mutation": true
+  },
   "attunement-read": {
     "method": "POST",
     "path": "/v1/attunement/read",
     "authentication": "session_bearer",
     "mutation": false
+  },
+  "attunement-receipt-read": {
+    "method": "POST",
+    "path": "/v1/attunement/receipt/read",
+    "authentication": "session_bearer",
+    "mutation": false
+  },
+  "attunement-recover-expired": {
+    "method": "POST",
+    "path": "/v1/attunement/recover-expired",
+    "authentication": "session_bearer",
+    "mutation": true
+  },
+  "attunement-replan-accept": {
+    "method": "POST",
+    "path": "/v1/attunement/replan/accept",
+    "authentication": "session_bearer",
+    "mutation": true
+  },
+  "attunement-replan-preview": {
+    "method": "POST",
+    "path": "/v1/attunement/replan/preview",
+    "authentication": "session_bearer",
+    "mutation": false
+  },
+  "attunement-replan-receipt-read": {
+    "method": "POST",
+    "path": "/v1/attunement/replan/receipt/read",
+    "authentication": "session_bearer",
+    "mutation": false
+  },
+  "attunement-resume": {
+    "method": "POST",
+    "path": "/v1/attunement/resume",
+    "authentication": "session_bearer",
+    "mutation": true
+  },
+  "attunement-start": {
+    "method": "POST",
+    "path": "/v1/attunement/start",
+    "authentication": "session_bearer",
+    "mutation": true
+  },
+  "attunement-step": {
+    "method": "POST",
+    "path": "/v1/attunement/step",
+    "authentication": "session_bearer",
+    "mutation": true
   },
   "audit-export": {
     "method": "POST",
@@ -279,6 +333,12 @@ export const endpoints = {
     "authentication": "session_bearer",
     "mutation": true
   },
+  "task-endpoint-propose": {
+    "method": "POST",
+    "path": "/v1/tasks/endpoint/propose",
+    "authentication": "session_bearer",
+    "mutation": true
+  },
   "task-list": {
     "method": "POST",
     "path": "/v1/tasks/list",
@@ -338,6 +398,30 @@ export const endpoints = {
     "path": "/v1/vector/points/scroll",
     "authentication": "session_bearer",
     "mutation": false
+  },
+  "vector-quantization-activate": {
+    "method": "POST",
+    "path": "/v1/vector/quantizations/activate",
+    "authentication": "session_bearer",
+    "mutation": true
+  },
+  "vector-quantization-build": {
+    "method": "POST",
+    "path": "/v1/vector/quantizations/build",
+    "authentication": "session_bearer",
+    "mutation": true
+  },
+  "vector-quantization-list": {
+    "method": "POST",
+    "path": "/v1/vector/quantizations/list",
+    "authentication": "session_bearer",
+    "mutation": false
+  },
+  "vector-quantization-retire": {
+    "method": "POST",
+    "path": "/v1/vector/quantizations/retire",
+    "authentication": "session_bearer",
+    "mutation": true
   },
   "vector-search": {
     "method": "POST",

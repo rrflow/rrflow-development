@@ -134,4 +134,109 @@ impl AppState {
             },
         )
     }
+
+    pub(in crate::http) fn build_vector_quantization(
+        &self,
+        headers: &HeaderMap,
+        body: &[u8],
+        now: u64,
+    ) -> HttpResponse {
+        self.with_authenticated_envelope::<BuildVectorQuantizationArtifact, _, _>(
+            headers,
+            body,
+            now,
+            RrdOperation::VectorCollectionEnsure,
+            None,
+            |envelope, session, token| {
+                self.service
+                    .build_vector_quantization_artifact(
+                        session,
+                        token,
+                        &envelope.payload,
+                        &envelope.context,
+                        now,
+                    )
+                    .map_err(api_error)
+            },
+        )
+    }
+
+    pub(in crate::http) fn list_vector_quantizations(
+        &self,
+        headers: &HeaderMap,
+        body: &[u8],
+        now: u64,
+    ) -> HttpResponse {
+        self.with_authenticated_envelope::<ListVectorQuantizationArtifacts, _, _>(
+            headers,
+            body,
+            now,
+            RrdOperation::VectorCollectionList,
+            None,
+            |envelope, session, token| {
+                self.service
+                    .list_vector_quantization_artifacts(
+                        session,
+                        token,
+                        &envelope.payload,
+                        now,
+                        envelope.context.request_id.as_str(),
+                        envelope.context.operation_id.as_str(),
+                    )
+                    .map_err(api_error)
+            },
+        )
+    }
+
+    pub(in crate::http) fn activate_vector_quantization(
+        &self,
+        headers: &HeaderMap,
+        body: &[u8],
+        now: u64,
+    ) -> HttpResponse {
+        self.with_authenticated_envelope::<ActivateVectorQuantizationArtifact, _, _>(
+            headers,
+            body,
+            now,
+            RrdOperation::VectorCollectionEnsure,
+            None,
+            |envelope, session, token| {
+                self.service
+                    .activate_vector_quantization_artifact(
+                        session,
+                        token,
+                        &envelope.payload,
+                        &envelope.context,
+                        now,
+                    )
+                    .map_err(api_error)
+            },
+        )
+    }
+
+    pub(in crate::http) fn retire_vector_quantization(
+        &self,
+        headers: &HeaderMap,
+        body: &[u8],
+        now: u64,
+    ) -> HttpResponse {
+        self.with_authenticated_envelope::<RetireVectorQuantizationArtifact, _, _>(
+            headers,
+            body,
+            now,
+            RrdOperation::VectorCollectionEnsure,
+            None,
+            |envelope, session, token| {
+                self.service
+                    .retire_vector_quantization_artifact(
+                        session,
+                        token,
+                        &envelope.payload,
+                        &envelope.context,
+                        now,
+                    )
+                    .map_err(api_error)
+            },
+        )
+    }
 }

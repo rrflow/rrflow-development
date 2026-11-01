@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-OUTPUT = ROOT / "docs" / "roadmap" / "rrflow-1.0-file-plan.jsonl"
+OUTPUT = ROOT / "target" / "rrflow-1.0-file-plan.jsonl"
 ROADMAP = ROOT / "docs" / "roadmap" / "rrflow-1.0.md"
 ACTIVE_CHANGE_PLAN = "docs/roadmap/rrflow-1.0-active-change.json"
 
@@ -761,7 +761,7 @@ PLANNED_PATHS: dict[str, tuple[str, ...]] = {
         "D-01",
         "J-02",
     ),
-    "crates/authority/rrd-engine/assets/install/default-profile-v2.json": (
+    "crates/authority/rrd-engine/assets/install/default-profile-v3.json": (
         "D-01",
         "J-03",
         "J-05",
@@ -1553,7 +1553,7 @@ PLANNED_PATHS: dict[str, tuple[str, ...]] = {
     ),
     "crates/adapters/rrflow-cli/tests/repair_conformance.rs": ("D-11", "J-02"),
     "crates/adapters/rrflow-cli/tests/automation_install_conformance.rs": ("I-06",),
-    "crates/authority/rrd-engine/assets/install/clyffy-profile-v2.json": ("D-01",),
+    "crates/authority/rrd-engine/assets/install/clyffy-profile-v3.json": ("D-01",),
     "crates/authority/rrd-engine/assets/install/templates/generic-project-v1.md": ("D-01",),
     "crates/authority/rrd-engine/assets/install/.gitattributes": ("D-01", "J-05"),
     "crates/adapters/rrflow-cli/tests/fixtures/install-empty/.keep": ("D-01",),
@@ -1693,9 +1693,6 @@ def git_files() -> list[str]:
         capture_output=True,
     )
     paths = [item.decode("utf-8") for item in result.stdout.split(b"\0") if item]
-    output_relative = OUTPUT.relative_to(ROOT).as_posix()
-    if output_relative not in paths:
-        paths.append(output_relative)
     return sorted(paths)
 
 
@@ -2007,6 +2004,7 @@ def main() -> int:
             f"execution-inventory: OK: {len(expected.splitlines())} current, generated, and planned path records"
         )
         return 0
+    OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_bytes(expected)
     print(
         f"execution-inventory: wrote {len(expected.splitlines())} current, generated, and planned path records"

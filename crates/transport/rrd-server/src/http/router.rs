@@ -49,6 +49,15 @@ macro_rules! http_dispatch_catalogue {
 http_dispatch_catalogue! {
     AttunementCancel => ("attunement-cancel", RrdOperation::EstateAdmin),
     AttunementRead => ("attunement-read", RrdOperation::EstateRead),
+    AttunementReceiptRead => ("attunement-receipt-read", RrdOperation::EstateRead),
+    AttunementStart => ("attunement-start", RrdOperation::EstateAdmin),
+    AttunementStep => ("attunement-step", RrdOperation::EstateAdmin),
+    AttunementReplanPreview => ("attunement-replan-preview", RrdOperation::AttunementReplanPreview),
+    AttunementReplanAccept => ("attunement-replan-accept", RrdOperation::EstateAdmin),
+    AttunementReplanReceiptRead => ("attunement-replan-receipt-read", RrdOperation::EstateRead),
+    AttunementPause => ("attunement-pause", RrdOperation::EstateAdmin),
+    AttunementRecoverExpired => ("attunement-recover-expired", RrdOperation::EstateAdmin),
+    AttunementResume => ("attunement-resume", RrdOperation::EstateAdmin),
     AuditExport => ("audit-export", RrdOperation::AuditExport),
     AuditRead => ("audit-read", RrdOperation::AuditRead),
     BackupCreate => ("backup-create", RrdOperation::BackupCreate),
@@ -90,6 +99,7 @@ http_dispatch_catalogue! {
     TaskBudgetRead => ("task-budget-read", RrdOperation::ReasoningRead),
     TaskBudgetStop => ("task-budget-stop", RrdOperation::ReasoningWrite),
     TaskEmbeddingExecute => ("task-embedding-execute", RrdOperation::ReasoningWrite),
+    TaskEndpointPropose => ("task-endpoint-propose", RrdOperation::EndpointPropose),
     TaskAttemptRead => ("task-attempt-read", RrdOperation::ReasoningRead),
     TaskClose => ("task-close", RrdOperation::TaskWrite),
     TaskList => ("task-list", RrdOperation::TaskRead),
@@ -106,6 +116,22 @@ http_dispatch_catalogue! {
     VectorCollectionList => ("vector-collection-list", RrdOperation::VectorCollectionList),
     VectorPointRetrieve => ("vector-point-retrieve", RrdOperation::VectorPointRetrieve),
     VectorPointScroll => ("vector-point-scroll", RrdOperation::VectorPointScroll),
+    VectorQuantizationActivate => (
+        "vector-quantization-activate",
+        RrdOperation::VectorCollectionEnsure
+    ),
+    VectorQuantizationBuild => (
+        "vector-quantization-build",
+        RrdOperation::VectorCollectionEnsure
+    ),
+    VectorQuantizationList => (
+        "vector-quantization-list",
+        RrdOperation::VectorCollectionList
+    ),
+    VectorQuantizationRetire => (
+        "vector-quantization-retire",
+        RrdOperation::VectorCollectionEnsure
+    ),
     VectorSearch => ("vector-search", RrdOperation::VectorSearch),
 }
 
@@ -228,7 +254,26 @@ impl AppState {
                 self.replace_knowledge_trees(&headers, &body, now)
             }
             Some(HttpDispatch::AttunementRead) => self.read_attunement(&headers, &body, now),
+            Some(HttpDispatch::AttunementReceiptRead) => {
+                self.read_attunement_receipt(&headers, &body, now)
+            }
             Some(HttpDispatch::AttunementCancel) => self.cancel_attunement(&headers, &body, now),
+            Some(HttpDispatch::AttunementStart) => self.start_attunement(&headers, &body, now),
+            Some(HttpDispatch::AttunementPause) => self.pause_attunement(&headers, &body, now),
+            Some(HttpDispatch::AttunementRecoverExpired) => {
+                self.recover_expired_attunement(&headers, &body, now)
+            }
+            Some(HttpDispatch::AttunementResume) => self.resume_attunement(&headers, &body, now),
+            Some(HttpDispatch::AttunementStep) => self.step_attunement(&headers, &body, now),
+            Some(HttpDispatch::AttunementReplanPreview) => {
+                self.preview_attunement_replan(&headers, &body, now)
+            }
+            Some(HttpDispatch::AttunementReplanAccept) => {
+                self.accept_attunement_replan(&headers, &body, now)
+            }
+            Some(HttpDispatch::AttunementReplanReceiptRead) => {
+                self.read_attunement_replan_receipt(&headers, &body, now)
+            }
             Some(HttpDispatch::SessionCreate) => self.create_session(&headers, &body, now),
             Some(HttpDispatch::SessionRenew) => self.renew_session(&headers, &body, &path, now),
             Some(HttpDispatch::SessionClose) => self.close_session(&headers, &body, &path, now),
@@ -282,6 +327,9 @@ impl AppState {
             Some(HttpDispatch::TaskEmbeddingExecute) => {
                 self.execute_task_embedding(&headers, &body, now)
             }
+            Some(HttpDispatch::TaskEndpointPropose) => {
+                self.propose_task_endpoint(&headers, &body, now)
+            }
             Some(HttpDispatch::TaskAttemptRead) => self.read_task_attempt(&headers, &body, now),
             Some(HttpDispatch::TaskClose) => self.close_task(&headers, &body, now),
             Some(HttpDispatch::TaskList) => self.list_tasks(&headers, &body, now),
@@ -297,6 +345,18 @@ impl AppState {
             }
             Some(HttpDispatch::VectorPointRetrieve) => {
                 self.retrieve_vector_points(&headers, &body, now)
+            }
+            Some(HttpDispatch::VectorQuantizationBuild) => {
+                self.build_vector_quantization(&headers, &body, now)
+            }
+            Some(HttpDispatch::VectorQuantizationList) => {
+                self.list_vector_quantizations(&headers, &body, now)
+            }
+            Some(HttpDispatch::VectorQuantizationActivate) => {
+                self.activate_vector_quantization(&headers, &body, now)
+            }
+            Some(HttpDispatch::VectorQuantizationRetire) => {
+                self.retire_vector_quantization(&headers, &body, now)
             }
             Some(HttpDispatch::VectorSearch) => self.search_vectors(&headers, &body, now),
             Some(HttpDispatch::EstateRead) => self.read_estate(&headers, &body, &path, now),

@@ -1,6 +1,6 @@
 # Estate organisation contract
 
-**Status:** active target contract; no part is implemented — the registry carries only the inert `namespace`/`database` label ([POAM-042](../../poam/rrflow-1.0-alpha/poam-042.md))
+**Status:** active target contract; H-11a is implemented (domain and category definitions, kind and collection membership, and kind tags in the schema registry); record tags, scoped reads, isolation and per-domain evidence are not ([POAM-042](../../poam/rrflow-1.0-alpha/poam-042.md))
 **Coordinate:** `rrflow://rrflow-instance/data/reference/data/estate-organisation`
 **Owner:** domains, categories and tags inside one estate: membership, scoping, isolation, per-domain evidence, defaults and tuning
 

@@ -25,6 +25,41 @@ pub struct StorageInspectionPage {
 
 impl RrflowKvStore {
     pub fn inspect_storage(&self, rows: usize, bytes: usize) -> Result<StorageInspectionCursor> {
+        self.inspect_storage_projected(rows, bytes, ProjectedReadRange::all())
+    }
+
+    /// Retain a snapshot over one explicitly selected half-open physical range.
+    pub fn inspect_storage_range(
+        &self,
+        rows: usize,
+        bytes: usize,
+        start: Vec<u8>,
+        end: Vec<u8>,
+    ) -> Result<StorageInspectionCursor> {
+        let range = ProjectedReadRange::new(start, Some(end))?;
+        self.inspect_storage_projected(rows, bytes, range)
+    }
+
+    /// Inspect current records of one semantic kind without exposing the key codec.
+    pub fn inspect_storage_record_kind(
+        &self,
+        rows: usize,
+        bytes: usize,
+        scope: &rrd_core::ScopeId,
+        kind: &rrd_core::RuntimeType,
+    ) -> Result<StorageInspectionCursor> {
+        let prefix = keyspaces::runtime_kind_prefix(keyspaces::RUNTIME_RECORDS, scope, kind);
+        let end = prefix_end(&prefix);
+        let range = ProjectedReadRange::new(prefix, end)?;
+        self.inspect_storage_projected(rows, bytes, range)
+    }
+
+    fn inspect_storage_projected(
+        &self,
+        rows: usize,
+        bytes: usize,
+        range: ProjectedReadRange,
+    ) -> Result<StorageInspectionCursor> {
         if rows == 0 || rows > 4096 || bytes == 0 || bytes > 4 * 1024 * 1024 {
             return Err(Error::Substrate(
                 "invalid storage inspection batch budget".into(),
@@ -34,7 +69,7 @@ impl RrflowKvStore {
         let snapshot = database.snapshot();
         let bytes = bytes.min(database.projected_output_memory().stats().limit_bytes);
         let stream = database.begin_projected_read(ProjectedReadRequest {
-            ranges: vec![ProjectedReadRange::all()],
+            ranges: vec![range],
             projection: ProjectedReadProjection::KeyValue,
             snapshot,
             budget: ProjectedReadBudget {

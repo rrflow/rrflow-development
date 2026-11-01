@@ -14,6 +14,86 @@ C-07 and the repository-wide review remain open.
 
 ## Observed deficiency
 
+The [controller publication integration](../../evidence/change-journals/gate-g/controller-publication-integration.md)
+composes PR228 into the failed controller source. The original concurrency case,
+all 353 engine tests and 208 contract/inference/client tests now pass locally.
+Remaining installed and native/protected acceptance is separate; the historical
+failure and its uncertain exact native operation remain recorded. POAM-035 stays open.
+
+The [controller/Inventory integration](../../evidence/change-journals/gate-g/controller-inventory-integration.md)
+full engine suite exposed a Windows concurrent quantization-build failure:
+immutable object publication returned OS error 5, Access is denied. The focused
+test subsequently passed, so that run does not clear the failure. Object-store
+publication at that source checked target existence before a replacing rename; a
+native probe reproduces code 5 when a concurrently published winner is held
+without delete sharing. Non-replacing publication reports an existing target
+instead. The original error's exact operation remains unproven. Characterize
+the publication race at the persistence owner and retain digest verification,
+durability and concurrency checks before refreshing dependent qualification.
+Do not weaken the concurrent oracle or claim that a passing retry is a repair.
+
+The [immutable-object publication repair](../../evidence/change-journals/gate-c/c-07-object-publication-repair.md)
+first reproduces two deterministic failures, then preserves a verified
+reader-held winner through non-replacing publication and rejects corrupt
+collisions. Windows owner validation passes 257 storage tests and six native
+filesystem tests with strict lint. The original engine failure's exact operation
+is unproven; combined engine, native CI and installed qualification remain
+required. This component result does not close POAM-035.
+
+The [immutable-object collision observation](../../evidence/change-journals/gate-c/c-07-object-publication-observation.md)
+records a Windows concurrent quantization-build failure and a replacing-rename
+hazard with a reader-held winner. A passing focused rerun does not clear the
+failure. Characterize the late-publisher boundary, preserve the winner after
+digest verification, retain durability/crash hooks and verify the combined
+engine before dependent qualification. The exact original error location is
+unproven; no repair or gate completion is claimed by the native probe.
+
+The [native sampler worker candidate](../../evidence/change-journals/gate-c/c-07g-native-sample-worker.md)
+locally exercised held and interrupted resource acquisition and Windows Job
+membership for the engine, harness and helper. A [subsequent Windows Job test](../../evidence/change-journals/gate-c/c-07g-native-worker-windows-ci.md)
+observed the held helper terminate after its test parent was killed and the
+launcher quiesced the Job. It has not established bounded cleanup when native
+termination or reaping fails, abrupt parent death outside that Job or on other
+platforms, helper image identity, frozen-profile overhead or the 24-hour soak.
+The original delayed-sample cause remains unproven; this candidate does not
+close C-07 or POAM-035.
+
+The [Windows image-pin candidate](../../evidence/change-journals/gate-c/c-07g-windows-harness-image-pin.md)
+reproduced a running copied harness pathname being renamed and holds its
+qualification image and non-reparse ancestors across the owned Job. On the
+tested host, a hard link could still be added and a same-file rename could
+succeed; replacing the pinned path with different bytes was denied. This does
+not establish binary provenance before the pin, uncontained launch identity,
+bounded native cleanup, hosted CI or the frozen capacity/soak evidence.
+
+The [bounded acquisition candidate](../../evidence/change-journals/gate-c/c-07g-bounded-native-acquisition.md)
+addresses a separate wait: the sampler previously awaited its worker response
+without a deadline if the monitor could not finish. On expiry it now reports an
+error and, while the owner remains alive, denies admission until its monitor
+finishes. A deliberately delayed monitor test covers that state; it does not
+prove an operating-system-stuck process can be terminated or reaped, and C-07
+remains open.
+
+The [Windows supervisor cleanup test](../../evidence/change-journals/gate-c/c-07g-windows-timeout-supervisor.md)
+deliberately leaves a real held helper alive after an acquisition timeout and
+incomplete cleanup report, then observes the owned Job terminate it after the
+test harness exits. The monitor's refusal to forward cancellation is injected;
+this does not by itself establish termination of an OS-stuck process or Linux cleanup.
+
+The [Linux cgroup supervisor test](../../evidence/change-journals/gate-c/c-07g-linux-cgroup-supervisor.md)
+separately verified engine, harness and helper containment, then observed a
+killable helper exit after its timed-out test harness and the launcher's owned
+cgroup cleanup in one delegated WSL2 scope. It retained pidfds to identify the
+actual processes. Monitor unresponsiveness was injected; native Linux hardware,
+OS-stuck termination, full-profile and soak evidence remain open.
+
+The [SDK candidate CI correction record](../../evidence/change-journals/gate-h/h-04-sdk-windows-manifest-ci-correction.md)
+retains a macOS installed-domain-crash failure from run 40730847766: native
+`hdiutil create` returned `Resource busy` while preparing a capacity image.
+The native fixture reported failure; the cause and an applicable repair are
+not established. This observation does not establish an SDK-induced failure or
+clear any C-07 native evidence.
+
 The retained Windows sampler failure observed a 1.269-second diagnostics RPC
 but did not capture internal lock wait or assembly timing. The
 [diagnostic attribution candidate](../../evidence/change-journals/gate-c/c-07g-diagnostic-lock-attribution.md)
@@ -1163,6 +1243,15 @@ quantization build/activation operations. [C-07's joined evidence sequence](../.
 tracks the missing end-to-end and scale evidence; no part of C-07 is closed by
 this observation.
 
+PR194 candidate [40920440107](https://github.com/rrflow/rrflow-development/actions/runs/40920440107)
+failed on macOS `hdiutil create` with `Resource busy` after earlier cases
+reported detachment. The cause is unknown. The fixture's temporary directory
+is not retained after a GitHub-hosted runner is decommissioned, and the prior
+log kept only a short native-output tail. The
+[diagnostic candidate](../../evidence/change-journals/gate-c/c-07-native-create-diagnostics.md)
+adds bounded native-only case diagnostics and an artifact path; it does not
+repair the underlying failure or establish native matrix or soak acceptance.
+
 The [selected-segment pin repair](../../evidence/change-journals/gate-c/c-07g-selected-segment-read-pins.md)
 records integrated Windows candidate 5d554483 independently verifying all 100000 initial
 records and completing two reopens, then failing after 47240 post-reopen verifications.
@@ -1195,3 +1284,12 @@ and version; the cause of the delay
 cause remains unproven. The earlier source's and this run's evidence stay bound
 to their respective identities. Trace the diagnostics path before another
 full-corpus run; native profile and actual 24-hour qualification remain open.
+
+
+The [integrated full-corpus Windows characterization](../../evidence/change-journals/gate-c/c-07-integrated-full-corpus-pinned-read-failure.md) at source `8cd74121` acknowledged and independently read back all 100,000 corpus records before and after two restarts, then failed the first measured segment after six retained warmup segments. The explicit projected-read admission charge was 4,822,111,508 bytes against the configured 4,294,967,296-byte pinned-read limit. A measured operating point, characterization soak and 24-hour qualification did not complete. The measured-phase held inspection cursor requests the full range, but the retained error alone does not prove the exact invocation or ownership composition. Characterize the request and actual pinned owners before a bounded repair; do not raise the limit or weaken the reader-lifetime oracle. Candidate and protected CI and the native matrix remain open.
+
+The [pre-failure pinned-charge observation](../../evidence/change-journals/gate-c/c-07-integrated-pinned-charge-observation.md) records a final warmup sample with 4,761,174,042 segment bytes and 60,903,916 memtable bytes, 33,550 bytes below the later rejected charge when added. The sample predates the rejection and supports but does not prove the full-range ownership hypothesis.
+
+The [real macOS diagnostic preflight](../../evidence/change-journals/gate-c/c-07-real-macos-capacity-outcome.md) passed 32 native APFS capacity cases on one hosted aarch64 debug run with 32 owned-image-detached markers. The earlier `Resource busy` did not recur; its cause remains unknown. This is not integrated candidate or protected CI and does not close the separate full-size pinned-read failure, native matrix or soak.
+
+The [4,000-record semantic-reader Windows characterization](../../evidence/change-journals/gate-c/c-07-semantic-4k-outcome.md) completed and verified its evidence, including retained-reader maintenance overlap and two forced restarts. Its measured phase nevertheless recorded one rejected mixed write (`api-conflict-storage-conflict`) and two latency-budget breaches on a shared host. The cause is unresolved; characterize the conflict and latency before using this profile for qualification. This short run is not the full 100,000-record campaign, native matrix or 24-hour soak. C-07 and POAM-035 remain open.

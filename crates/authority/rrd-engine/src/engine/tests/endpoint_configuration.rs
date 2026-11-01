@@ -17,6 +17,7 @@ fn profile(name: &str) -> EndpointProfileInput {
     EndpointProfileInput {
         contract_version: 1,
         name: CanonicalId::new(name).unwrap(),
+        selection_policy: None,
         bindings: vec![EndpointBinding {
             id: CanonicalId::new("knowledge-source").unwrap(),
             class: WorkloadClass::VectorStore,
@@ -102,6 +103,97 @@ fn read(engine: &RrdEngine, lease: &SessionLease) -> EndpointConfiguration {
             "read-operation",
         )
         .unwrap()
+}
+
+#[test]
+fn actual_selector_settings_follow_existing_configuration_approval_and_reopen() {
+    // A configuration proposal derived from actual captured settings; this
+    // fresh test estate does not claim to be the captured production identity.
+    let fixture = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../transport/rrd-contract/tests/fixtures/endpoint-selection-observed/available");
+    let configuration: EndpointConfiguration =
+        serde_json::from_slice(&std::fs::read(fixture.join("configuration.json")).unwrap())
+            .unwrap();
+    let captured = configuration.profile.unwrap();
+    let allowance: rrd_contract::EndpointSelectionAllowance =
+        serde_json::from_slice(&std::fs::read(fixture.join("allowance.json")).unwrap()).unwrap();
+    let request: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(fixture.join("choice-request.json")).unwrap())
+            .unwrap();
+    let controller = captured
+        .bindings
+        .iter()
+        .find(|b| b.service_id.as_str() == request["model"].as_str().unwrap())
+        .unwrap();
+    let policy = rrd_contract::EndpointSelectionPolicy {
+        contract_version: allowance.contract_version,
+        purpose: rrd_contract::EndpointSelectionPurpose::ExperimentalProposal,
+        allow_unverified_identity: true,
+        allow_network: true,
+        maximum_concurrent_proposals: controller.limits.max_concurrency,
+        controller_binding_id: controller.id.clone(),
+        workload_class: allowance.workload_class,
+        limits: allowance.limits,
+        candidates: allowance.candidates,
+        system_prompt: request["messages"][0]["content"].as_str().unwrap().into(),
+        maximum_output_tokens: request["max_tokens"].as_u64().unwrap().try_into().unwrap(),
+        temperature_milli: (request["temperature"].as_f64().unwrap() * 1000.0) as u16,
+    };
+    let input = EndpointProfileInput {
+        contract_version: captured.contract_version,
+        name: captured.name,
+        bindings: captured.bindings,
+        selection_policy: Some(policy.clone()),
+    };
+    let (root, mut engine) = isolated_engine();
+    bind(&mut engine, "selector-policy-persistence");
+    let lease = session(&engine, 1_000);
+    let before = read(&engine, &lease);
+    let plan = engine
+        .preview_endpoint_configuration(
+            &lease.session_id,
+            &lease.token,
+            &PreviewEndpointConfiguration {
+                expected_revision: 0,
+                profile: Some(input),
+            },
+            1_001,
+            "policy-preview",
+            "policy-preview",
+        )
+        .unwrap();
+    assert_eq!(read(&engine, &lease), before);
+    let mut tampered = plan.clone();
+    tampered
+        .profile
+        .as_mut()
+        .unwrap()
+        .selection_policy
+        .as_mut()
+        .unwrap()
+        .maximum_output_tokens += 1;
+    assert!(apply(&engine, &lease, &tampered).is_err());
+    assert_eq!(read(&engine, &lease), before);
+    let installed = apply(&engine, &lease, &plan).unwrap();
+    assert_eq!(
+        installed
+            .profile
+            .as_ref()
+            .unwrap()
+            .selection_policy
+            .as_ref(),
+        Some(&policy)
+    );
+    let projected = policy.allowance(&installed).unwrap();
+    drop(engine);
+    let mut engine = RrdEngine::open(root.path(), instance(), TOKEN_KEY).unwrap();
+    bind(&mut engine, "selector-policy-persistence");
+    assert_eq!(read(&engine, &lease), installed);
+    assert_eq!(apply(&engine, &lease, &plan).unwrap(), installed);
+    let revoked = apply(&engine, &lease, &preview(&engine, &lease, 1, None)).unwrap();
+    assert!(projected.validate_for(&revoked).is_err());
+    assert!(policy.allowance(&revoked).is_err());
+    assert!(apply(&engine, &lease, &plan).is_err());
 }
 
 #[test]
