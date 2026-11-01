@@ -21,6 +21,13 @@ still do not form one planner-selected, stamped native access system. Elias-Fano
 posting compression, TurboQuant_prod, and LSM-VEC-style disk navigation are evidence-gated
 candidates, not implemented defaults.
 
+An installed-project Inventory exposed a traversal syntax gap: a snapshot
+digest beginning with a digit could not be used as a start ID, and typed
+traversal queries did not round-trip that identity. The [query repair
+journal](../../evidence/change-journals/gate-e/e-01-traversal-source-identities.md)
+tracks the quoted-ID repair and its candidate evidence. This does not close
+the wider graph-access or project-cycle requirements.
+
 The existing traversal also replayed its entire accumulated selected history at
 every breadth-first depth. The
 [incremental reduction journal](../../evidence/change-journals/gate-e/e-01-incremental-graph-reduction.md)

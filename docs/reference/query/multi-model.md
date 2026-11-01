@@ -26,6 +26,12 @@ rrflowQL currently accepts:
 - `traverse:<relation> START <kind>:<id> DIRECTION <OUTGOING|INCOMING|BOTH>
   DEPTH <1..32>` for bounded recursive graph expansion.
 
+Traversal start IDs that begin with a digit or contain query punctuation or
+whitespace must be double-quoted, for example `START node:"123abc"`. Existing
+unquoted word IDs such as `START node:alpha` remain valid. Quoted IDs use the
+same string escapes as query literals and remain subject to runtime identity
+validation. The canonical query quotes an ID when necessary to preserve it.
+
 The six data families and traversal syntax use explicit `AT VALID` and
 `KNOWN` coordinates. Binding uses a captured schema and read stamp, planning
 is content-addressed, and execution enforces scan, row, output, and batch
