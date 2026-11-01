@@ -32,6 +32,15 @@ Parse draft. The Connectome worktree inspected in another checkout was at
 `38142b77110a8f1db77e306e7d1ad375fd918267`; its contents are not evidence for
 the pin. A pinned-revision client audit remains necessary.
 
+Subsequently inspected `src/rrflow/attunement.ts` and targeted project,
+native SDK client and estate source at the exact pin, via GitHub's contents
+API and `git grep` against the existing submodule object. The phase module
+defines eleven static views and a 30–45 minute estimate; searches for the two
+constant names found only their definitions and a module-import search found no
+matches. The native client has authenticated SDK session/query code and the
+estate source has preview and digest-bound installation. These observations
+do not establish an end-to-end desktop test or a complete UI audit.
+
 Main's profiles name eleven phases. Caller-supplied ordered plans are
 supported; the default fallback, closed enum, terminal Verify rule and linear
 checkpoint chain still prevent calling the default dynamic. Connect and

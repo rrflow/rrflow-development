@@ -18,6 +18,10 @@ the phase enum and checkpoint progression remain closed and linear. The
 maps this verified gap, the existing preservation obligations and the required
 project-to-handoff oracle. Neither that design nor this entry implements
 dynamic selection or changes POAM-006's open status.
+The exact Connectome pin also contains eleven static phase declarations and
+a fixed duration estimate. A search at that revision found no references to
+those two constants outside their definitions; visible use is unproven. The
+supporting design records the exact source and required client reconciliation.
 
 The immediate remediation is D-02's durable attunement executor, then the
 D-03/D-04/D-05 real-project workflow and consumed E/F prerequisites in the

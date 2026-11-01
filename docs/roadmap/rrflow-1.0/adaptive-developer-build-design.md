@@ -33,6 +33,16 @@ The existing inventory tests demonstrate useful commit, interruption, and
 reopen behavior; they do not demonstrate an end-to-end prompt or developer
 handoff. The unmerged Parse draft in PR 241 is not main behavior.
 
+The exact Connectome pin `38142b77110a8f1db77e306e7d1ad375fd918267`
+also defines eleven static phase views and a fixed 30–45 minute estimate in
+`src/rrflow/attunement.ts`. A Git search of that revision found the two
+constants only at their declarations and found no imports of that module;
+this does not prove that a visible screen uses them. Its native
+`src-tauri/src/rrd/client.rs` does contain an authenticated SDK session and
+query path, while `estate.rs` implements preview and exact-digest installation.
+Those source paths are implementation inventory, not a real desktop acceptance
+result. The wider pinned UI integration remains unaudited.
+
 This is a product gap, not a finding that every fixed constant or explicit
 verification requirement is bad. Protocol versions, resource ceilings and
 fail-closed validation can be fixed for a documented reason. A global fixed
@@ -126,7 +136,7 @@ operator can inspect why a replan is required; no old receipt is rewritten.
 | Draft PR 241 Parse implementation and `rrd-attunement` | Reconcile its source binding and parser tests into the chosen capability contract. Before activation prove process isolation, memory/time/output enforcement, cancellation/reaping and stale-source publication on each claimed native platform. Its whole-inventory read bound is not 100,000-record evidence. |
 | `rrd-contract::endpoint_catalogue`, `rrd-engine::product_capability_catalogue`, server dispatch, generated SDKs | Use one executable owner for new operations and schema projections. Verify actual HTTP/SDK dispatch and permissions; a catalogue row alone is not execution. |
 | `rrd-query` graph traversal and store transaction paths | Retrieve the same persisted project/source identity through rrflowQL and public readback after reopen. PR 242 is a separate candidate, not merged proof. |
-| Connectome pinned submodule, `docs/reference/client/connectome.md`, H-06 | Inspect and test the exact pin. Use generated/public clients and authenticated readback; UI cannot own plans, source state or claim verified work from health responses. |
+| Connectome pinned `src/rrflow/attunement.ts`, native `src-tauri/src/rrd/{client,estate}.rs`, `docs/reference/client/connectome.md`, H-06 | Reconcile the static phase/estimate declarations with the engine projection; inspect remaining callers at the implementation revision. Use the existing authenticated SDK session, generated/public operations and readback; UI cannot own plans, source state or claim verified work from health responses. Test the exact pinned desktop. |
 
 Before deleting or replacing a path, its implementation PR must complete the
 repository's traceability map, characterize existing persisted formats and
