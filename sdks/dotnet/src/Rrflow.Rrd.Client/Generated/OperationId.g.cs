@@ -1,11 +1,20 @@
 // Generated from rrd-contract; do not edit.
-// OpenAPI SHA-256: 35716b8b26b83a92673ea7a0682bd986f31ed58d3fd193abadab8917ae01e566
+// OpenAPI SHA-256: 8bc8cbdba9d90ab1239ea91624e639886971e58977c0f23a31007d1b2878a9c5
 namespace Rrflow.Rrd;
 
 public enum OperationId
 {
     AttunementCancel,
+    AttunementPause,
     AttunementRead,
+    AttunementReceiptRead,
+    AttunementRecoverExpired,
+    AttunementReplanAccept,
+    AttunementReplanPreview,
+    AttunementReplanReceiptRead,
+    AttunementResume,
+    AttunementStart,
+    AttunementStep,
     AuditExport,
     AuditRead,
     BackupCreate,
@@ -49,6 +58,7 @@ public enum OperationId
     TaskBudgetStop,
     TaskClose,
     TaskEmbeddingExecute,
+    TaskEndpointPropose,
     TaskList,
     TaskOpen,
     TaskRead,
@@ -60,6 +70,10 @@ public enum OperationId
     VectorCollectionList,
     VectorPointRetrieve,
     VectorPointScroll,
+    VectorQuantizationActivate,
+    VectorQuantizationBuild,
+    VectorQuantizationList,
+    VectorQuantizationRetire,
     VectorSearch,
 }
 
@@ -79,13 +93,22 @@ public sealed record Endpoint(
 
 public static class EndpointCatalog
 {
-    public const string OpenApiDocumentSha256 = "35716b8b26b83a92673ea7a0682bd986f31ed58d3fd193abadab8917ae01e566";
-    public const int Count = 57;
+    public const string OpenApiDocumentSha256 = "8bc8cbdba9d90ab1239ea91624e639886971e58977c0f23a31007d1b2878a9c5";
+    public const int Count = 71;
 
     public static Endpoint Get(OperationId operation) => operation switch
     {
         OperationId.AttunementCancel => new("attunement-cancel", "POST", "/v1/attunement/cancel", Authentication.SessionBearer, true),
+        OperationId.AttunementPause => new("attunement-pause", "POST", "/v1/attunement/pause", Authentication.SessionBearer, true),
         OperationId.AttunementRead => new("attunement-read", "POST", "/v1/attunement/read", Authentication.SessionBearer, false),
+        OperationId.AttunementReceiptRead => new("attunement-receipt-read", "POST", "/v1/attunement/receipt/read", Authentication.SessionBearer, false),
+        OperationId.AttunementRecoverExpired => new("attunement-recover-expired", "POST", "/v1/attunement/recover-expired", Authentication.SessionBearer, true),
+        OperationId.AttunementReplanAccept => new("attunement-replan-accept", "POST", "/v1/attunement/replan/accept", Authentication.SessionBearer, true),
+        OperationId.AttunementReplanPreview => new("attunement-replan-preview", "POST", "/v1/attunement/replan/preview", Authentication.SessionBearer, false),
+        OperationId.AttunementReplanReceiptRead => new("attunement-replan-receipt-read", "POST", "/v1/attunement/replan/receipt/read", Authentication.SessionBearer, false),
+        OperationId.AttunementResume => new("attunement-resume", "POST", "/v1/attunement/resume", Authentication.SessionBearer, true),
+        OperationId.AttunementStart => new("attunement-start", "POST", "/v1/attunement/start", Authentication.SessionBearer, true),
+        OperationId.AttunementStep => new("attunement-step", "POST", "/v1/attunement/step", Authentication.SessionBearer, true),
         OperationId.AuditExport => new("audit-export", "POST", "/v1/audit/export", Authentication.SessionBearer, false),
         OperationId.AuditRead => new("audit-read", "POST", "/v1/audit/read", Authentication.SessionBearer, false),
         OperationId.BackupCreate => new("backup-create", "POST", "/v1/backups", Authentication.SessionBearer, true),
@@ -129,6 +152,7 @@ public static class EndpointCatalog
         OperationId.TaskBudgetStop => new("task-budget-stop", "POST", "/v1/tasks/budget/stop", Authentication.SessionBearer, true),
         OperationId.TaskClose => new("task-close", "POST", "/v1/tasks/close", Authentication.SessionBearer, true),
         OperationId.TaskEmbeddingExecute => new("task-embedding-execute", "POST", "/v1/tasks/embedding/execute", Authentication.SessionBearer, true),
+        OperationId.TaskEndpointPropose => new("task-endpoint-propose", "POST", "/v1/tasks/endpoint/propose", Authentication.SessionBearer, true),
         OperationId.TaskList => new("task-list", "POST", "/v1/tasks/list", Authentication.SessionBearer, false),
         OperationId.TaskOpen => new("task-open", "POST", "/v1/tasks", Authentication.SessionBearer, true),
         OperationId.TaskRead => new("task-read", "POST", "/v1/tasks/read", Authentication.SessionBearer, false),
@@ -140,6 +164,10 @@ public static class EndpointCatalog
         OperationId.VectorCollectionList => new("vector-collection-list", "POST", "/v1/vector/collections/list", Authentication.SessionBearer, false),
         OperationId.VectorPointRetrieve => new("vector-point-retrieve", "POST", "/v1/vector/points/retrieve", Authentication.SessionBearer, false),
         OperationId.VectorPointScroll => new("vector-point-scroll", "POST", "/v1/vector/points/scroll", Authentication.SessionBearer, false),
+        OperationId.VectorQuantizationActivate => new("vector-quantization-activate", "POST", "/v1/vector/quantizations/activate", Authentication.SessionBearer, true),
+        OperationId.VectorQuantizationBuild => new("vector-quantization-build", "POST", "/v1/vector/quantizations/build", Authentication.SessionBearer, true),
+        OperationId.VectorQuantizationList => new("vector-quantization-list", "POST", "/v1/vector/quantizations/list", Authentication.SessionBearer, false),
+        OperationId.VectorQuantizationRetire => new("vector-quantization-retire", "POST", "/v1/vector/quantizations/retire", Authentication.SessionBearer, true),
         OperationId.VectorSearch => new("vector-search", "POST", "/v1/vector/search", Authentication.SessionBearer, false),
         _ => throw new System.ArgumentOutOfRangeException(nameof(operation)),
     };

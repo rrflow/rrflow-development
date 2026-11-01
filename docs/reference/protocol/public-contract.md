@@ -63,7 +63,7 @@ version, which remains frozen at `1.0.0` by the
 [version policy](../release/version-policy.md).
 
 The deterministic OpenAPI projection is currently bound to SHA-256
-`35716b8b26b83a92673ea7a0682bd986f31ed58d3fd193abadab8917ae01e566`.
+`8bc8cbdba9d90ab1239ea91624e639886971e58977c0f23a31007d1b2878a9c5`.
 Changing its bytes requires an explicit protocol/schema review and regeneration
 of every checked-in SDK surface; `scripts/ci/check_generated_surfaces.py`
 verifies the SDK projections, the signal reference, and this citation against
@@ -98,6 +98,14 @@ deadlines, cancellation, unavailability, corruption, unsupported versions, and
 internal failures. Error messages and detail values are bounded. Credentials,
 secrets, arbitrary headers, and private storage types are not public contract
 payloads.
+
+A transaction commit whose exact outcome is absent and whose runtime cursor has
+advanced past the lease's read cursor returns `conflict` with `retryable=false`.
+Its details identify `transaction-snapshot-stale`, the bounded expected and
+actual cursors, and `abort-and-reexecute-transaction`. The caller must abort the
+old transaction and redo its reads, decisions and writes on a fresh snapshot.
+The engine does not silently rebase or replay the stale commit. A generic
+conflict or uncertain outcome does not carry this conclusion.
 
 ## Deployment and capability discovery
 
@@ -310,6 +318,23 @@ Native installed view/pin/output ceilings also apply; the metadata registry
 admits at most the smaller of 64 or the installed active-view ceiling. Open
 retries with different parameters conflict; matching retries observe the
 current retained page. Cursor IDs may be reused after release or expiry.
+
+An explicit `open_range` action accepts the same batch and lifetime budgets
+plus nonempty `start` and `end` byte arrays of at most 4,096 bytes each. It
+retains a physical snapshot over the half-open interval `[start, end)`; the
+start must sort before the end. This is an operator-supplied physical range,
+not a semantic query or an automatically chosen subset. It uses the same native
+pin limits, authorization and ownership lifecycle. The original `open` remains
+a full-range snapshot and may be denied when its selected ownership exceeds the
+configured ceiling. Neither action returns physical keys or values.
+
+`open_record_kind` takes the same budgets and a canonical record-kind identifier.
+The engine uses the already authorized instance scope, and rrflowKV derives the
+physical prefix for current records internally. The response remains a physical
+inspection hash and counters, not a semantic record query. A selected range can
+still overlap every immutable segment or exceed the native pin ceiling; callers
+must handle the same bounded admission failure. The action returns no raw keys
+or values and follows the same session, retry and owner-release rules.
 
 `observe` hashes the current retained page without advancing. `advance`
 supplies `expected_ordinal`; replaying the immediately previous advance returns

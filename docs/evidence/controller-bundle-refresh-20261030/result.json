@@ -1,0 +1,14 @@
+{
+  "archive_sha256": "8fc7a5056bde73f29ffb435393d6254cac152ff0f30aea4158e597fb9749f9a3",
+  "binary_sha256": "2ef231864e983673ac82eeadc158be993770917cd1f0ae81b52bb4a951c457a1",
+  "binary_source_commit": "8cf235ac06a92bc16ae74e746ff1928fb8415b47",
+  "version_matches_receipt": true,
+  "path_contains_only_system32": true,
+  "provider_credentials_supplied": false,
+  "ready_phases": 2,
+  "owned_servers_stopped": 2,
+  "quick_verify_phases": 2,
+  "reopen_identity_matches": true,
+  "clean_machine_qualified": false,
+  "model_or_worker_execution": false
+}

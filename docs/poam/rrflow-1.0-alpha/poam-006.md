@@ -58,6 +58,29 @@ and distribution binding and act on the instance's own catalogue and staging roo
 estate cannot yet register backups the served engine created, so a retention decision over
 such a catalogue is refused.
 
+## Nested repository setup gap
+
+At development source `5b4039fe930332895c1b24138891d39f600030c7`, a
+source-built Windows `rrflow` install preview against the actual pinned
+`connectome/` checkout failed with `inventory Git input: external or
+non-directory Git metadata requires admission`. Its `.git` is a Gitfile naming
+the superproject's module directory. The parent inventory identifies its
+tracked gitlink but records that entry as excluded and does not descend. There
+is no implemented setup choice to exclude it, install a separate instance, or
+include it as a source in one instance.
+
+A separate read-only preview on the existing RRFlow checkout failed the private
+owner/protected-DACL check. The precise rejected object was not identified; do
+not infer that changing the `.rrflow` directory alone is a repair. The
+[diagnostic journal](../../evidence/change-journals/gate-d/nested-repository-boundary-decision.md)
+records the binary and observed errors. No project state or ACL was changed.
+
+D-01/D-03 and H-06 own remediation and the real-checkout acceptance in
+[Gate D](../../roadmap/rrflow-1.0/gate-d.md#nested-repository-setup). It includes
+bounded, explicitly authorized metadata roots and source identity, user choice,
+exact-plan revalidation, both estate layouts, restart and isolation. No new
+gate or completed status follows from this decision.
+
 ## Build-plan admission gaps
 
 Verified at `337d136210ff59b2359f898e717166c087dd5bfc`:
@@ -102,6 +125,88 @@ Other future algorithm choices remain owned experiments at E/F/G/J; they must
 not be described as validated decisions before their named evidence exists.
 
 ## Impact
+
+### Protected replan receipt-test chronology
+
+The selected-plan dependency's protected run `41156697702` failed its
+optional-engine profile: the replan receipt test supplied fixed timestamps
+that could precede the previous effect's actual recorded completion. The engine
+correctly refused the non-advancing transition. The
+[candidate integration record](../../evidence/change-journals/gate-d/d-03-candidate-integration-clock.md)
+binds the exact job log, isolated build and correction to the test's chronology.
+Production time checks and all receipt/replay assertions remain intact; a local
+default-profile pass does not clear the protected failure. Native candidate and
+merge-group checks remain required, and POAM-006 stays open.
+
+The broader local profile also exposed four undeclared bounded change-page
+reads in the new Inventory tests. The same record classifies those exact
+test-only oracles in the existing source-closure allowlist; it does not permit
+runtime query/retrieval log replay or weaken the scanner's exact counts.
+
+The subsequent candidate at `61bfe5a6` failed a different test in Linux
+engine-authority job `124415867194`: four Inventory-following fixtures assumed
+completion within 20 ms. The
+[completion-relative test correction](../../evidence/change-journals/gate-d/d-03-completion-relative-tests.md)
+binds subsequent effects and read/reopen times to returned job completion while
+preserving every original assertion and production enforcement. The native
+failure remains retained; local passes do not substitute for corrected
+candidate and protected qualification. No POA&M status changes.
+
+### Whole-repository Inventory publication and binary replacement
+
+PR226's [incremental publication record](../../evidence/change-journals/gate-d/d-03-incremental-publication.md)
+retains an installed unchanged-input failure: every entry/edge was republished.
+Current authenticated fact comparison now permits bounded write reuse, and
+private progress binds its exact publication work set before reusing an offset.
+Focused and interruption/reopen checks pass; full candidate and real-repository
+qualification remain pending. This does not establish zero-content-read
+freshness, reduced RSS, safe upgrades or completed D-03 acceptance.
+
+The [installed incremental trial](../../evidence/change-journals/gate-d/d-03-incremental-installed-trial.md)
+records an initial fresh-estate `ProjectBindingMismatch` before server readiness.
+Offline inspection and a separate restart subsequently passed without modifying
+the binding; the cause remains unresolved and must be diagnosed before native
+qualification. Continuing that preserved estate proved 4,279 initial mutations,
+three on unchanged input, six after an ordinary README edit and successor plan,
+then three on another unchanged run, with exact reopen and offline verification.
+This does not erase the initial failure or establish a repeatable turnkey start.
+
+PR227's [startup binding separation](../../evidence/change-journals/gate-d/d-03-startup-binding-inspection.md)
+characterizes an independent lockout: invalid project Git input prevents opening
+otherwise valid installed engine state because startup unnecessarily computes
+the full source-inspection report. The focused correction preserves all estate
+binding checks and keeps source admission on dependent operations; startup and
+job readback pass, invalid-input Start denies, repaired input starts, and bootstrap
+tampering still denies startup. All 342 engine tests and strict lint pass locally.
+The [combined installed trial](../../evidence/change-journals/gate-d/d-03-startup-installed-trial.md)
+at `39a7b644` now passes unavailable-input startup/readback, unchanged job after
+denied Start, repaired-input admission, and the actual repository's 4,279/3/6/3
+Inventory/restart/edit/successor history. Seven installed CLI lifecycle cases pass.
+Quick verification passes its 13 checks but explicitly reports current content
+different from the original installation precondition; the scheduled Verify phase
+did not run. Candidate/protected, platform and upgrade qualification remain open.
+The denial is currently surfaced as HTTP 500/internal, and the original
+intermittent rejection's exact cause remains unproven.
+
+At `2cfc0bd9`, an installed 1,870-path public RRFlow repository rejected
+Inventory at the native 16 MiB physical batch ceiling. Reopen preserved the
+Connect checkpoint and cursor; no Inventory completion was published. The
+[bounded publication repair](../../evidence/change-journals/gate-d/d-03-bounded-inventory-publication.md)
+uses engine-owned observation groups and private resumable progress, with the
+complete snapshot/head/checkpoint/receipt published only in the final atomic
+transaction. The same source revision in a separately installed candidate estate
+passes Inventory, restart, an ordinary-edit successor and second Inventory.
+Interruption and edits during partial publication cannot certify completion;
+the edited job can accept a successor. This is draft Windows evidence, not
+full D-03 acceptance. Final manifests/retirements still have a physical batch
+bound, and retention/scale/native-race qualification remain open.
+
+The rebuilt executable cannot reopen the original installed estate because its
+hash differs from the sealed binding. That denial is preserved; no locator or
+stored binding was rewritten. An authorized, recoverable binary replacement
+path is still required before public deployment can promise safe upgrades.
+The successful same-revision trial is a separate installation, not an upgrade
+or recovery of the old estate. D/J and POAM-006 remain open.
 
 The [D-01.3 real-process oracle](../../evidence/change-journals/gate-d/d-01-install-exclusion-oracle.md)
 reproduced concurrent recovery of a live install intent: a second process
@@ -386,6 +491,18 @@ The [installed WAL denial characterization](../../evidence/change-journals/gate-
 adds direct installed-open and verification evidence for torn/missing active
 WAL preservation. Both cases pass locally without production changes; the final
 native candidate must execute the added test before D-01 acceptance closes.
+
+## Standalone database example
+
+The documented source-built local database path had a reproducible Windows
+installation failure: Cargo's primary executable and its `deps` entry were
+hard links to the same file, while installed executable admission requires a
+single link. A clean source build succeeded, the original path was denied,
+and a separately copied executable with the same SHA-256 completed an actual
+installed database lifecycle. The security boundary remains intact. The
+[standalone database journey journal](../../evidence/change-journals/gate-h/h-04-standalone-rrflowdb-journey.md)
+records the guide correction and test; Linux/macOS hosted results, candidate
+CI and merge qualification remain pending. This does not close D-01 or H-04.
 
 ## Endpoint and task contract integration
 

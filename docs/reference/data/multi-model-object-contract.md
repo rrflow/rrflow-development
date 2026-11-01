@@ -111,8 +111,8 @@ recall execution:
 - `runtime_data_snapshot` reads every version family directly at the read
   stamp (`RuntimeVersionedSource::all()`) and reconstructs all logical families
   for the requested valid time; it is a whole-scope read, not an indexed one;
-- the vector artifact and quantization catalogues are still rebuilt by
-  replaying retained changes from cursor zero on every vector operation
+- the vector artifact and quantization catalogues come from direct stamped
+  reads within their typed ranges, but C-04's closure evidence is still open
   ([POAM-028](../../poam/rrflow-1.0-alpha/poam-028.md));
 - both adjacency directions are written as native keys, but no production
   reader uses them; traversal still loads relations by identity and scans them

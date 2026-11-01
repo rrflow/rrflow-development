@@ -1,11 +1,21 @@
 use std::io::{self, Write};
 
 fn main() {
-    if std::env::args().len() != 1 {
-        eprintln!("usage: rrd-contract-export");
+    let args: Vec<_> = std::env::args().skip(1).collect();
+    if !args.is_empty() && args != ["--catalogue"] {
+        eprintln!("usage: rrd-contract-export [--catalogue]");
         std::process::exit(2);
     }
-    let document = match rrd_contract::openapi_document() {
+    let exported = if args.is_empty() {
+        rrd_contract::openapi_document()
+    } else {
+        let catalogue = rrd_contract::endpoint_catalogue();
+        catalogue.validate().and_then(|()| {
+            serde_json::to_value(catalogue)
+                .map_err(|error| rrd_contract::ContractError(error.to_string()))
+        })
+    };
+    let document = match exported {
         Ok(document) => document,
         Err(error) => {
             eprintln!("RRD contract export failed: {error}");

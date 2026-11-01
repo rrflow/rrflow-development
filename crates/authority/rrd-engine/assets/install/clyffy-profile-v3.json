@@ -1,0 +1,219 @@
+{
+  "format_version": 3,
+  "id": "clyffy",
+  "configuration_asset": "default-estate-configuration-v3.toml",
+  "deployment": {
+    "contract_version": 1,
+    "deployment_form": "single_node_server",
+    "storage_profile": "rrflow_kv",
+    "endpoint_presentation": "loopback_http_websocket"
+  },
+  "initial_principal_id": "local-operator",
+  "credential_bytes": 32,
+  "initial_grant_policy": "local-owner-all-actions",
+  "inactive_capabilities": [
+    "external-model-provider",
+    "project-generator",
+    "remote-mesh",
+    "subprocess-datafusion"
+  ],
+  "attunement_phases": [
+    {
+      "phase": "connect",
+      "configuration": "local-project-read-only",
+      "estimated_items": 1,
+      "estimated_input_bytes": 0
+    },
+    {
+      "phase": "inventory",
+      "configuration": "bounded-content-inventory",
+      "estimated_items": 1,
+      "estimated_input_bytes": 0
+    },
+    {
+      "phase": "parse",
+      "configuration": "language-adapters-inactive-until-discovered",
+      "estimated_items": 0,
+      "estimated_input_bytes": 0
+    },
+    {
+      "phase": "normalize",
+      "configuration": "canonical-source-records",
+      "estimated_items": 0,
+      "estimated_input_bytes": 0
+    },
+    {
+      "phase": "entity_link",
+      "configuration": "project-local-identities",
+      "estimated_items": 0,
+      "estimated_input_bytes": 0
+    },
+    {
+      "phase": "lexical_index",
+      "configuration": "native-lexical-candidate",
+      "estimated_items": 0,
+      "estimated_input_bytes": 0
+    },
+    {
+      "phase": "embed",
+      "configuration": "provider-unconfigured",
+      "estimated_items": 0,
+      "estimated_input_bytes": 0
+    },
+    {
+      "phase": "vector_index",
+      "configuration": "inactive-until-embedding-authorized",
+      "estimated_items": 0,
+      "estimated_input_bytes": 0
+    },
+    {
+      "phase": "graph",
+      "configuration": "runtime-graph-relations",
+      "estimated_items": 0,
+      "estimated_input_bytes": 0
+    },
+    {
+      "phase": "ground",
+      "configuration": "source-and-read-stamp-required",
+      "estimated_items": 0,
+      "estimated_input_bytes": 0
+    },
+    {
+      "phase": "verify",
+      "configuration": "reopen-and-evidence-checks",
+      "estimated_items": 1,
+      "estimated_input_bytes": 0
+    }
+  ],
+  "estimated_min_duration_ms": 0,
+  "estimated_max_duration_ms": 0,
+  "template_asset": "templates/generic-project-v1.md",
+  "specialization": {
+    "format_version": 1,
+    "id": "clyffy",
+    "revision": 1,
+    "seat": {
+      "id": "clyffy",
+      "display_name": "Clyffy",
+      "purpose": "Work with the user to clarify intent, organize project work and coordinate authorized AI development through RRFlow."
+    },
+    "instructions": "Clarify the user's intended outcome and project boundaries. Plan coherent changes, inspect the current code and evidence, preserve unrelated work, and verify results. Use configured provider capabilities and budgets; distinguish proposed work from completed work.",
+    "endpoint_profile": null
+  },
+  "inventory_policy": {
+    "format_version": 1,
+    "logical_root": "project-source",
+    "git": "detect_at_root",
+    "symlinks": "record_without_following",
+    "mounts": "record_without_following",
+    "reuse": "conservative_native_observation",
+    "limits": {
+      "entries": 100000,
+      "depth": 128,
+      "path_bytes": 4096,
+      "metadata_bytes": 67108864,
+      "file_bytes": 8388608,
+      "content_bytes": 1073741824,
+      "output_bytes": 134217728,
+      "elapsed_ms": 30000,
+      "open_files": 32,
+      "workers": 1,
+      "attempts": 1,
+      "git_input_bytes": 16777216,
+      "git_entries": 100000,
+      "git_allocation_bytes": 33554432,
+      "ignore_sources": 4096,
+      "ignore_patterns": 100000
+    },
+    "exclusions": [
+      {
+        "id": "vcs-internals",
+        "pattern": ".git"
+      },
+      {
+        "id": "estate-state",
+        "pattern": ".rrflow"
+      },
+      {
+        "id": "swag-local-state",
+        "pattern": ".swag"
+      },
+      {
+        "id": "rust-build",
+        "pattern": "target/"
+      },
+      {
+        "id": "node-dependencies",
+        "pattern": "node_modules/"
+      },
+      {
+        "id": "vendor-dependencies",
+        "pattern": "vendor/"
+      },
+      {
+        "id": "build-output",
+        "pattern": "build/"
+      },
+      {
+        "id": "distribution-output",
+        "pattern": "dist/"
+      },
+      {
+        "id": "coverage-output",
+        "pattern": "coverage/"
+      },
+      {
+        "id": "cache-directory",
+        "pattern": ".cache/"
+      },
+      {
+        "id": "python-cache",
+        "pattern": "__pycache__/"
+      },
+      {
+        "id": "python-test-cache",
+        "pattern": ".pytest_cache/"
+      },
+      {
+        "id": "python-environment",
+        "pattern": ".venv/"
+      },
+      {
+        "id": "next-build",
+        "pattern": ".next/"
+      },
+      {
+        "id": "turbo-cache",
+        "pattern": ".turbo/"
+      },
+      {
+        "id": "temporary-files",
+        "pattern": "*.tmp"
+      },
+      {
+        "id": "environment-suffix",
+        "pattern": "*.env"
+      },
+      {
+        "id": "environment-secrets",
+        "pattern": ".env"
+      },
+      {
+        "id": "environment-variants",
+        "pattern": ".env.*"
+      },
+      {
+        "id": "private-keys",
+        "pattern": "*.key"
+      },
+      {
+        "id": "pem-secrets",
+        "pattern": "*.pem"
+      },
+      {
+        "id": "pkcs-secrets",
+        "pattern": "*.p12"
+      }
+    ]
+  }
+}

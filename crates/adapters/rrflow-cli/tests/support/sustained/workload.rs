@@ -4,12 +4,136 @@ use rrd_client::{RequestOptions, RrdClient, Session};
 use rrd_contract::*;
 use rrflow_eval::storage::{digest, Digest, ReadKeyDistribution, StorageLoadKind, WriteTransition};
 use std::collections::{BTreeMap, BTreeSet};
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
+use std::time::Instant;
+
+pub(super) const WORKLOAD_RECORD_KIND: &str = "capacity_document";
 
 type Result<T> = std::result::Result<T, String>;
 
+#[test]
+fn slow_write_phase_trace_is_bounded_and_private() {
+    let counter = AtomicUsize::new(0);
+    assert_eq!(
+        admit_write_trace(&counter, "load-secret", 199_999_999),
+        WriteTraceAdmission::Skip
+    );
+    assert_eq!(
+        admit_write_trace(&counter, "seed-secret", 200_000_000),
+        WriteTraceAdmission::Skip
+    );
+    let results = std::thread::scope(|scope| {
+        let workers: Vec<_> = (0..8)
+            .map(|_| {
+                scope.spawn(|| {
+                    (0..16)
+                        .map(|_| admit_write_trace(&counter, "load-secret", 200_000_000))
+                        .collect::<Vec<_>>()
+                })
+            })
+            .collect();
+        workers
+            .into_iter()
+            .flat_map(|worker| worker.join().unwrap())
+            .collect::<Vec<_>>()
+    });
+    assert_eq!(
+        results
+            .iter()
+            .filter(|value| **value == WriteTraceAdmission::Record)
+            .count(),
+        64
+    );
+    assert_eq!(
+        results
+            .iter()
+            .filter(|value| **value == WriteTraceAdmission::Exhausted)
+            .count(),
+        1
+    );
+    let line = format_write_trace("load-secret", 123, 456, 600, WriteTraceOutcome::Accepted);
+    assert!(line.contains(&rrd_core::digest::sha256_hex(b"load-secret")));
+    assert!(line.contains("begin_ns=123 commit_ns=456 total_ns=600 outcome=accepted"));
+    assert!(!line.contains("load-secret"));
+}
+
+const SLOW_WRITE_NS: u64 = 200_000_000;
+const MAX_WRITE_TRACES: usize = 64;
+static WRITE_TRACES: AtomicUsize = AtomicUsize::new(0);
+
+#[derive(Debug, PartialEq, Eq)]
+enum WriteTraceAdmission {
+    Skip,
+    Record,
+    Exhausted,
+}
+
+#[derive(Clone, Copy)]
+enum WriteTraceOutcome {
+    Accepted,
+    CommitError,
+    BeginError,
+}
+
+fn admit_write_trace(counter: &AtomicUsize, key: &str, total_ns: u64) -> WriteTraceAdmission {
+    if !key.starts_with("load-") || total_ns < SLOW_WRITE_NS {
+        return WriteTraceAdmission::Skip;
+    }
+    match counter.try_update(Ordering::Relaxed, Ordering::Relaxed, |count| {
+        (count <= MAX_WRITE_TRACES).then_some(count + 1)
+    }) {
+        Ok(count) if count < MAX_WRITE_TRACES => WriteTraceAdmission::Record,
+        Ok(_) => WriteTraceAdmission::Exhausted,
+        Err(_) => WriteTraceAdmission::Skip,
+    }
+}
+
+fn format_write_trace(
+    key: &str,
+    begin_ns: u64,
+    commit_ns: u64,
+    total_ns: u64,
+    outcome: WriteTraceOutcome,
+) -> String {
+    let outcome = match outcome {
+        WriteTraceOutcome::Accepted => "accepted",
+        WriteTraceOutcome::CommitError => "commit-error",
+        WriteTraceOutcome::BeginError => "begin-error",
+    };
+    format!(
+        "c07_write_phase_trace request_sha256={} begin_ns={begin_ns} commit_ns={commit_ns} total_ns={total_ns} outcome={outcome}",
+        rrd_core::digest::sha256_hex(key.as_bytes())
+    )
+}
+
+fn record_write_trace(
+    key: &str,
+    begin_ns: u64,
+    commit_ns: u64,
+    total_ns: u64,
+    outcome: WriteTraceOutcome,
+) {
+    match admit_write_trace(&WRITE_TRACES, key, total_ns) {
+        WriteTraceAdmission::Skip => {}
+        WriteTraceAdmission::Record => {
+            eprintln!(
+                "{}",
+                format_write_trace(key, begin_ns, commit_ns, total_ns, outcome)
+            )
+        }
+        WriteTraceAdmission::Exhausted => {
+            eprintln!("c07_write_phase_trace_exhausted limit={MAX_WRITE_TRACES}")
+        }
+    }
+}
+
+fn elapsed_ns(started: Instant) -> u64 {
+    started.elapsed().as_nanos().try_into().unwrap_or(u64::MAX)
+}
+
 #[derive(Clone)]
 pub(super) struct Workload {
+    pub native_worker: super::native_worker::Owner,
     pub client: RrdClient,
     pub session: Session,
     pub valid_at: u64,
@@ -74,6 +198,85 @@ fn error(value: impl std::fmt::Display) -> String {
     value.to_string()
 }
 
+// The conflict subtype is a diagnostic hint, not an authorization decision or
+// evidence that any effect committed. Numeric forms must match the closed
+// native error grammar; no server-supplied content is returned.
+fn conflict_numeric_pair(detail: &str, prefix: &str, separator: &str) -> bool {
+    let Some((expected, actual)) = detail
+        .strip_prefix(prefix)
+        .and_then(|rest| rest.split_once(separator))
+    else {
+        return false;
+    };
+    [expected, actual].into_iter().all(|value| {
+        value
+            .parse::<u64>()
+            .is_ok_and(|number| number.to_string() == value)
+    })
+}
+
+// This is diagnostic classification only; it does not infer publication or
+// retry effects. Never copy dynamic server text into the evidence stream.
+fn structured_snapshot_conflict(error: &ErrorBody) -> Option<(u64, u64)> {
+    if error.code != ErrorCode::Conflict || error.retryable || error.details.len() != 4 {
+        return None;
+    }
+    let value = |name: &str| error.details.get(&CanonicalId::new(name).ok()?);
+    if value("reason")?.as_str() != "transaction-snapshot-stale"
+        || value("next-action")?.as_str() != "abort-and-reexecute-transaction"
+    {
+        return None;
+    }
+    let expected = value("expected-cursor")?;
+    let actual = value("actual-cursor")?;
+    let expected_number = expected.parse::<u64>().ok()?;
+    let actual_number = actual.parse::<u64>().ok()?;
+    (expected_number.to_string() == *expected
+        && actual_number.to_string() == *actual
+        && actual_number > expected_number)
+        .then_some((expected_number, actual_number))
+}
+
+// Only closed numeric cursor values and a one-way synthetic request digest are
+// retained. A reported conflict is not proof of effect or of its internal origin.
+pub(super) fn runtime_conflict_trace(
+    error: &rrd_client::Error,
+    key: &str,
+    read_cursor: u64,
+    counter: &AtomicUsize,
+) -> Option<String> {
+    let rrd_client::Error::Api { error, .. } = error else {
+        return None;
+    };
+    if error.code != ErrorCode::Conflict {
+        return None;
+    }
+    let (expected_number, actual_number) = if let Some(pair) = structured_snapshot_conflict(error) {
+        pair
+    } else {
+        let detail = error
+            .message
+            .strip_prefix("StorageConflict(\"runtime commit conflict: expected cursor ")?
+            .strip_suffix("\")")?;
+        let (expected, actual) = detail.split_once(", actual cursor ")?;
+        let expected_number = expected.parse::<u64>().ok()?;
+        let actual_number = actual.parse::<u64>().ok()?;
+        if expected_number.to_string() != expected || actual_number.to_string() != actual {
+            return None;
+        }
+        (expected_number, actual_number)
+    };
+    counter
+        .try_update(Ordering::Relaxed, Ordering::Relaxed, |count| {
+            (count < 32).then_some(count + 1)
+        })
+        .ok()?;
+    Some(format!(
+        "c07_runtime_conflict_trace request_sha256={} read_cursor={} expected_cursor={} actual_cursor={}",
+        rrd_core::digest::sha256_hex(key.as_bytes()), read_cursor, expected_number, actual_number
+    ))
+}
+
 // Diagnostic-only projection of the current engine's error spelling. This is
 // never used to infer effects or retryability. Return constants, not message
 // slices: even an arbitrary server body can disclose only an allowlisted label.
@@ -132,6 +335,43 @@ fn engine_error_label(message: &str) -> Option<&'static str> {
             ("claim codec: ", "storage-codec"),
             ("kernel: ", "storage-kernel"),
             ("corrupt sequence watermark: ", "storage-watermark"),
+        ] {
+            if detail.starts_with(prefix) {
+                return Some(label);
+            }
+        }
+    }
+    if let Some(detail) = message
+        .strip_prefix("StorageConflict(\"")
+        .and_then(|detail| detail.strip_suffix("\")"))
+    {
+        if conflict_numeric_pair(
+            detail,
+            "runtime commit conflict: expected cursor ",
+            ", actual cursor ",
+        ) {
+            return Some("storage-runtime-conflict");
+        }
+        if conflict_numeric_pair(
+            detail,
+            "runtime schema conflict: expected revision ",
+            ", actual revision ",
+        ) {
+            return Some("storage-schema-conflict");
+        }
+        for (prefix, label) in [
+            (
+                "idempotency key is already bound to different content: ",
+                "storage-idempotency-conflict",
+            ),
+            (
+                "control state changed concurrently: ",
+                "storage-control-conflict",
+            ),
+            (
+                "runtime read stamp does not match retained state: ",
+                "storage-read-stamp-conflict",
+            ),
         ] {
             if detail.starts_with(prefix) {
                 return Some(label);
@@ -217,7 +457,7 @@ fn pinned_read_denial(message: &str) -> Option<(u64, u64)> {
 
 // Preserve only the closed client/API classification and a digest of details.
 // Server messages, transport text and credentials never enter campaign output.
-fn client_error(value: rrd_client::Error) -> String {
+pub(super) fn client_error(value: rrd_client::Error) -> String {
     use rrd_client::Error;
     let code = match &value {
         Error::Api { error, .. } => {
@@ -228,7 +468,12 @@ fn client_error(value: rrd_client::Error) -> String {
                     serde_json::json!({"resource":"pinned_bytes","limit":limit,"observed":observed})
                 );
             }
-            if let Some(label) = engine_error_label(&error.message) {
+            let label = if structured_snapshot_conflict(error).is_some() {
+                Some("storage-runtime-conflict")
+            } else {
+                engine_error_label(&error.message)
+            };
+            if let Some(label) = label {
                 code.push('-');
                 code.push_str(label);
             }
@@ -246,6 +491,117 @@ fn client_error(value: rrd_client::Error) -> String {
     };
     let detail = digest("c07g.client-error", &value.to_string()).expect("error digest");
     format!("{code}:{}", detail.as_str())
+}
+
+#[test]
+fn runtime_conflict_trace_is_closed_correlatable_and_bounded() {
+    use std::sync::atomic::AtomicUsize;
+    let api = |message: &str| rrd_client::Error::Api {
+        status: 409_u16.try_into().unwrap(),
+        error: ErrorBody {
+            code: ErrorCode::Conflict,
+            message: message.into(),
+            retryable: false,
+            details: BTreeMap::new(),
+        },
+    };
+    let engine_error = rrd_engine::ServiceError::from(rrd_store::Error::RuntimeConflict {
+        expected: 7,
+        actual: 9,
+    });
+    let valid = api(&engine_error.to_string());
+    let counter = AtomicUsize::new(0);
+    let line = runtime_conflict_trace(&valid, "synthetic-secret-key", 7, &counter).unwrap();
+    assert!(line.contains("read_cursor=7 expected_cursor=7 actual_cursor=9"));
+    assert!(line.contains(&rrd_core::digest::sha256_hex(b"synthetic-secret-key")));
+    assert!(!line.contains("synthetic-secret-key"));
+    for invalid in [
+        "StorageConflict(\"runtime commit conflict: expected cursor 07, actual cursor 9\")",
+        "StorageConflict(\"runtime commit conflict: expected cursor 7, actual cursor 9 secret\")",
+        "StorageConflict(\"runtime commit conflict: expected cursor -1, actual cursor 9\")",
+        "StorageConflict(\"runtime commit conflict: expected cursor 18446744073709551616, actual cursor 9\")",
+        "StorageConflict(\"runtime schema conflict: expected revision 7, actual revision 9\")",
+    ] {
+        assert!(runtime_conflict_trace(&api(invalid), "key", 7, &counter).is_none());
+    }
+    let concurrent = AtomicUsize::new(0);
+    let admitted = std::thread::scope(|scope| {
+        let handles: Vec<_> = (0..8)
+            .map(|_| {
+                scope.spawn(|| {
+                    (0..16)
+                        .filter(|_| runtime_conflict_trace(&valid, "key", 7, &concurrent).is_some())
+                        .count()
+                })
+            })
+            .collect();
+        handles
+            .into_iter()
+            .map(|h| h.join().unwrap())
+            .sum::<usize>()
+    });
+    assert_eq!(admitted, 32);
+}
+
+#[test]
+fn structured_snapshot_conflict_is_closed_and_retains_diagnostic_evidence() {
+    let mut error = ErrorBody {
+        code: ErrorCode::Conflict,
+        message: "private-server-text".into(),
+        retryable: false,
+        details: [
+            ("reason", "transaction-snapshot-stale"),
+            ("next-action", "abort-and-reexecute-transaction"),
+            ("expected-cursor", "7"),
+            ("actual-cursor", "9"),
+        ]
+        .into_iter()
+        .map(|(key, value)| (CanonicalId::new(key).unwrap(), value.into()))
+        .collect(),
+    };
+    assert_eq!(structured_snapshot_conflict(&error), Some((7, 9)));
+    let api = |body: ErrorBody| rrd_client::Error::Api {
+        status: 409_u16.try_into().unwrap(),
+        error: body,
+    };
+    let line =
+        runtime_conflict_trace(&api(error.clone()), "secret-key", 7, &AtomicUsize::new(0)).unwrap();
+    assert!(line.contains("read_cursor=7 expected_cursor=7 actual_cursor=9"));
+    assert!(!line.contains("secret"));
+    let classified = client_error(api(error.clone()));
+    assert!(classified.starts_with("api-conflict-storage-runtime-conflict:"));
+    assert!(!classified.contains("private"));
+    for invalid in ["07", "-1", "18446744073709551616", "9 private", "7"] {
+        error
+            .details
+            .insert(CanonicalId::new("actual-cursor").unwrap(), invalid.into());
+        assert_eq!(structured_snapshot_conflict(&error), None);
+        assert!(
+            runtime_conflict_trace(&api(error.clone()), "secret-key", 7, &AtomicUsize::new(0))
+                .is_none()
+        );
+    }
+    error
+        .details
+        .insert(CanonicalId::new("actual-cursor").unwrap(), "9".into());
+    error.retryable = true;
+    assert_eq!(structured_snapshot_conflict(&error), None);
+    error.retryable = false;
+    error.code = ErrorCode::Internal;
+    assert_eq!(structured_snapshot_conflict(&error), None);
+    error.code = ErrorCode::Conflict;
+    error
+        .details
+        .insert(CanonicalId::new("next-action").unwrap(), "private".into());
+    assert_eq!(structured_snapshot_conflict(&error), None);
+    error.details.insert(
+        CanonicalId::new("next-action").unwrap(),
+        "abort-and-reexecute-transaction".into(),
+    );
+    error
+        .details
+        .insert(CanonicalId::new("extra").unwrap(), "private".into());
+    assert_eq!(structured_snapshot_conflict(&error), None);
 }
 
 #[test]
@@ -277,6 +633,71 @@ fn pinned_read_denial_reports_only_exact_numeric_resource_values() {
     ] {
         assert_eq!(pinned_read_denial(invalid), None, "accepted malformed denial");
     }
+}
+
+#[test]
+fn diagnostic_labels_distinguish_storage_conflicts_without_private_data() {
+    let cases = [
+        (
+            rrd_store::Error::RuntimeConflict {
+                expected: 7,
+                actual: 9,
+            },
+            "storage-runtime-conflict",
+        ),
+        (
+            rrd_store::Error::RuntimeSchemaConflict {
+                expected: 1,
+                actual: 2,
+            },
+            "storage-schema-conflict",
+        ),
+        (
+            rrd_store::Error::IdempotencyConflict("secret-key".into()),
+            "storage-idempotency-conflict",
+        ),
+        (
+            rrd_store::Error::ControlConflict("secret-control".into()),
+            "storage-control-conflict",
+        ),
+        (
+            rrd_store::Error::ReadStampMismatch("secret-stamp".into()),
+            "storage-read-stamp-conflict",
+        ),
+    ];
+    for (error, label) in cases {
+        let converted = rrd_engine::ServiceError::from(error);
+        assert_eq!(converted.kind(), rrd_engine::ServiceErrorKind::Conflict);
+        assert_eq!(engine_error_label(&converted.to_string()), Some(label));
+        let encoded = client_error(rrd_client::Error::Api {
+            status: 409_u16.try_into().unwrap(),
+            error: ErrorBody {
+                code: ErrorCode::Conflict,
+                message: converted.to_string(),
+                retryable: false,
+                details: BTreeMap::new(),
+            },
+        });
+        assert!(encoded.starts_with(&format!("api-conflict-{label}:")));
+        assert_eq!(
+            super::failure_code(&encoded).as_str(),
+            format!("api-conflict-{label}")
+        );
+        assert!(!encoded.contains("secret"));
+    }
+    for malformed in [
+        "StorageConflict(\"runtime commit conflict: expected cursor not-a-number, actual cursor 9\")",
+        "StorageConflict(\"runtime commit conflict: expected cursor 01, actual cursor 9\")",
+        "StorageConflict(\"runtime commit conflict: expected cursor 18446744073709551616, actual cursor 9\")",
+        "StorageConflict(\"unknown private secret\")",
+        "StorageConflict(\"runtime schema conflict: expected revision 1, actual revision 2\")suffix",
+    ] {
+        assert_eq!(engine_error_label(malformed), Some("storage-conflict"));
+    }
+    assert_eq!(
+        engine_error_label("StorageConflictSecret(\"private\")"),
+        None
+    );
 }
 
 #[test]
@@ -547,7 +968,7 @@ impl Workload {
     }
     fn mutations(&self, key: &str, revision: u64) -> Vec<TransactionMutation> {
         let mut mutations = vec![TransactionMutation::PutRecord {
-            reference: reference("capacity_document", key),
+            reference: reference(WORKLOAD_RECORD_KIND, key),
             valid_from: self.valid_at,
             valid_to: None,
             properties: BTreeMap::from([
@@ -558,8 +979,8 @@ impl Workload {
         for ordinal in 0..self.edges_per_record {
             mutations.push(TransactionMutation::PutRelation {
                 reference: reference("capacity_link", &format!("edge-{ordinal}-{key}")),
-                from: reference("capacity_document", key),
-                to: reference("capacity_document", "anchor"),
+                from: reference(WORKLOAD_RECORD_KIND, key),
+                to: reference(WORKLOAD_RECORD_KIND, "anchor"),
                 valid_from: self.valid_at,
                 valid_to: None,
                 properties: BTreeMap::from([("revision".into(), QueryValue::Unsigned(revision))]),
@@ -568,7 +989,7 @@ impl Workload {
         for ordinal in 0..self.vectors_per_record {
             mutations.push(TransactionMutation::PutVector {
                 reference: reference("capacity_vector", &format!("vector-{ordinal}-{key}")),
-                subject: reference("capacity_document", key),
+                subject: reference(WORKLOAD_RECORD_KIND, key),
                 collection_id: id("capacity_documents"),
                 vector_name: id("body"),
                 field: id("embedding"),
@@ -593,6 +1014,8 @@ impl Workload {
         )
     }
     async fn commit(&self, key: &str, request: CommitTransaction) -> Result<CommitReceipt> {
+        let started = Instant::now();
+        let total_started = started;
         let lease = self
             .client
             .begin_transaction(
@@ -603,15 +1026,47 @@ impl Workload {
                 },
                 options(&format!("{key}-begin")),
             )
-            .await
-            .map_err(client_error)?;
+            .await;
+        let begin_ns = elapsed_ns(started);
+        let lease = match lease {
+            Ok(lease) => lease,
+            Err(error) => {
+                record_write_trace(
+                    key,
+                    begin_ns,
+                    0,
+                    elapsed_ns(total_started),
+                    WriteTraceOutcome::BeginError,
+                );
+                return Err(client_error(error));
+            }
+        };
+        let started = Instant::now();
         let result = self
             .client
             .commit_transaction(&self.session, &lease.transaction_id, request, options(key))
             .await;
+        let commit_ns = elapsed_ns(started);
+        record_write_trace(
+            key,
+            begin_ns,
+            commit_ns,
+            elapsed_ns(total_started),
+            if result.is_ok() {
+                WriteTraceOutcome::Accepted
+            } else {
+                WriteTraceOutcome::CommitError
+            },
+        );
         match result {
             Ok(receipt) => Ok(receipt),
             Err(error) => {
+                static CONFLICT_TRACES: AtomicUsize = AtomicUsize::new(0);
+                if let Some(trace) =
+                    runtime_conflict_trace(&error, key, lease.read_cursor, &CONFLICT_TRACES)
+                {
+                    eprintln!("{trace}");
+                }
                 let cause = client_error(error);
                 // A broad Conflict/ResourceExhausted code is not proof of no
                 // effect. The engine refuses abort while an intent is uncertain
@@ -678,7 +1133,7 @@ impl Workload {
                 .ok_or("schema revision overflow")?;
             registry.migration = "installed capacity corpus".into();
             for (name, model) in [
-                ("capacity_document", DataLogicalModel::Document),
+                (WORKLOAD_RECORD_KIND, DataLogicalModel::Document),
                 ("capacity_link", DataLogicalModel::GraphRelation),
                 ("capacity_vector", DataLogicalModel::Vector),
             ] {
@@ -701,7 +1156,7 @@ impl Workload {
                 );
             }
             registry.records.insert(
-                id("capacity_document"),
+                id(WORKLOAD_RECORD_KIND),
                 DataRecordSchema {
                     properties: BTreeMap::from([
                         (
@@ -725,8 +1180,8 @@ impl Workload {
             registry.relations.insert(
                 id("capacity_link"),
                 DataRelationSchema {
-                    from: BTreeSet::from([id("capacity_document")]),
-                    to: BTreeSet::from([id("capacity_document")]),
+                    from: BTreeSet::from([id(WORKLOAD_RECORD_KIND)]),
+                    to: BTreeSet::from([id(WORKLOAD_RECORD_KIND)]),
                     properties: BTreeMap::from([(
                         "revision".into(),
                         DataPropertySchema {
@@ -740,7 +1195,7 @@ impl Workload {
             let mutations = vec![
                 TransactionMutation::PutSchema { registry },
                 TransactionMutation::PutRecord {
-                    reference: reference("capacity_document", "anchor"),
+                    reference: reference(WORKLOAD_RECORD_KIND, "anchor"),
                     valid_from: self.valid_at,
                     valid_to: None,
                     properties: BTreeMap::new(),
@@ -856,7 +1311,7 @@ impl Workload {
         if write.retired() {
             let mut targets = vec![(
                 DataLogicalModel::Document,
-                reference("capacity_document", &key),
+                reference(WORKLOAD_RECORD_KIND, &key),
             )];
             targets.extend((0..self.edges_per_record).map(|n| {
                 (
@@ -1095,7 +1550,7 @@ impl Workload {
                     "capacity_vector",
                     &format!("vector-{expected_vector_ordinal}-{expected_key}"),
                 )
-                && hit.subject == reference("capacity_document", expected_key),
+                && hit.subject == reference(WORKLOAD_RECORD_KIND, expected_key),
             "search winner differs from independent oracle",
         )?;
         check(
@@ -1223,7 +1678,7 @@ impl Workload {
                 .ok_or("vector reference differs")?;
             check(
                 seen.insert(ordinal)
-                    && vector.subject == reference("capacity_document", key)
+                    && vector.subject == reference(WORKLOAD_RECORD_KIND, key)
                     && vector.value == self.vector(revision.wrapping_add(u64::from(ordinal))),
                 "mixed vector differs from independent input",
             )?;

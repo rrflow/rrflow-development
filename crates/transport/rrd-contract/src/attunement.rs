@@ -5,8 +5,8 @@
 //! authority that may persist transitions and checkpoints.
 
 use crate::{
-    invalid, sha256_bytes, validate_sha256, CanonicalId, DeploymentProfile, EstateConfiguration,
-    InstalledEstateIdentity, MemorySeatDefinition, Result, SecurityAction,
+    invalid, sha256_bytes, validate_sha256, CanonicalId, CorrelationId, DeploymentProfile,
+    EstateConfiguration, InstalledEstateIdentity, MemorySeatDefinition, Result, SecurityAction,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -20,6 +20,9 @@ pub use bootstrap::{
 };
 
 pub const INSTALL_ATTUNEMENT_CONTRACT_VERSION: u16 = 1;
+/// Attunement plans and job transitions bind ordered plan positions in v2.
+/// Installation results and restore envelopes retain their separate version.
+pub const ATTUNEMENT_CONTRACT_VERSION: u16 = 2;
 /// Independent identity and initial-root binding are mandatory for new plans.
 /// Attunement and installation-result envelopes retain their own version.
 pub const INSTALLATION_PLAN_CONTRACT_VERSION: u16 = 4;
@@ -30,25 +33,6 @@ pub const MAX_ATTUNEMENT_PHASES: usize = 32;
 pub const MAX_ATTUNEMENT_FAILURE_BYTES: usize = 4_096;
 pub const MAX_ATTUNEMENT_CANCEL_REASON_BYTES: usize = 4_096;
 pub const MAX_ATTUNEMENT_VERIFICATION_CHECKS: usize = 256;
-
-/// The canonical order in which an estate becomes queryable and verified.
-///
-/// A phase may perform no content work when its inputs are unchanged or its
-/// optional capability is not configured, but it still produces a checkpoint
-/// that explains and binds that outcome. Callers cannot skip phase positions.
-pub const ATTUNEMENT_PHASES: [AttunementPhase; 11] = [
-    AttunementPhase::Connect,
-    AttunementPhase::Inventory,
-    AttunementPhase::Parse,
-    AttunementPhase::Normalize,
-    AttunementPhase::EntityLink,
-    AttunementPhase::LexicalIndex,
-    AttunementPhase::Embed,
-    AttunementPhase::VectorIndex,
-    AttunementPhase::Graph,
-    AttunementPhase::Ground,
-    AttunementPhase::Verify,
-];
 
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema,
@@ -66,24 +50,6 @@ pub enum AttunementPhase {
     Graph,
     Ground,
     Verify,
-}
-
-impl AttunementPhase {
-    pub const fn sequence(self) -> u16 {
-        match self {
-            Self::Connect => 1,
-            Self::Inventory => 2,
-            Self::Parse => 3,
-            Self::Normalize => 4,
-            Self::EntityLink => 5,
-            Self::LexicalIndex => 6,
-            Self::Embed => 7,
-            Self::VectorIndex => 8,
-            Self::Graph => 9,
-            Self::Ground => 10,
-            Self::Verify => 11,
-        }
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -561,9 +527,6 @@ pub struct AttunementPhasePlan {
 
 impl AttunementPhasePlan {
     fn validate(&self) -> Result<()> {
-        if self.sequence != self.phase.sequence() {
-            return invalid("attunement phase sequence does not match its canonical phase");
-        }
         validate_sha256(
             &self.configuration_sha256,
             "attunement phase configuration_sha256",
@@ -571,14 +534,27 @@ impl AttunementPhasePlan {
     }
 }
 
+fn attunement_version_schema(_: &mut schemars::SchemaGenerator) -> schemars::Schema {
+    schemars::json_schema!({"type": "integer", "const": ATTUNEMENT_CONTRACT_VERSION})
+}
+
+fn attunement_steps_schema(generator: &mut schemars::SchemaGenerator) -> schemars::Schema {
+    let mut schema = <Vec<AttunementPhasePlan>>::json_schema(generator);
+    schema.insert("minItems".into(), serde_json::json!(1));
+    schema.insert("maxItems".into(), serde_json::json!(MAX_ATTUNEMENT_PHASES));
+    schema
+}
+
 /// A bounded, content-addressed plan over one project source snapshot.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct AttunementPlan {
+    #[schemars(schema_with = "attunement_version_schema")]
     pub contract_version: u16,
     pub id: CanonicalId,
     pub target: InstalledEstateIdentity,
     pub source_sha256: String,
+    #[schemars(schema_with = "attunement_steps_schema")]
     pub phases: Vec<AttunementPhasePlan>,
     pub estimated_min_duration_ms: u64,
     pub estimated_max_duration_ms: u64,
@@ -587,17 +563,19 @@ pub struct AttunementPlan {
 
 impl AttunementPlan {
     pub fn validate(&self) -> Result<()> {
-        validate_contract_version(self.contract_version)?;
+        validate_attunement_contract_version(self.contract_version)?;
         self.target.validate()?;
         validate_sha256(&self.source_sha256, "attunement source_sha256")?;
-        if self.phases.len() != ATTUNEMENT_PHASES.len() || self.phases.len() > MAX_ATTUNEMENT_PHASES
-        {
-            return invalid("attunement plan must contain every canonical phase exactly once");
+        if self.phases.is_empty() || self.phases.len() > MAX_ATTUNEMENT_PHASES {
+            return invalid("attunement plan must contain a bounded nonempty sequence");
         }
-        for (phase, expected) in self.phases.iter().zip(ATTUNEMENT_PHASES) {
+        for (index, phase) in self.phases.iter().enumerate() {
             phase.validate()?;
-            if phase.phase != expected {
-                return invalid("attunement phases are missing, duplicated, or out of order");
+            if usize::from(phase.sequence) != index + 1 {
+                return invalid("attunement phase sequence must match its plan position");
+            }
+            if (phase.phase == AttunementPhase::Verify) != (index + 1 == self.phases.len()) {
+                return invalid("attunement plan must end with exactly one verification step");
             }
         }
         if self.estimated_min_duration_ms > self.estimated_max_duration_ms {
@@ -608,10 +586,6 @@ impl AttunementPlan {
             return invalid("attunement plan digest does not match its content");
         }
         Ok(())
-    }
-
-    fn phase(&self, phase: AttunementPhase) -> &AttunementPhasePlan {
-        &self.phases[usize::from(phase.sequence() - 1)]
     }
 }
 
@@ -643,6 +617,7 @@ impl AttunementRuntimeCoordinates {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct AttunementPhaseCheckpoint {
+    #[schemars(schema_with = "attunement_version_schema")]
     pub contract_version: u16,
     pub job_id: CanonicalId,
     pub plan_sha256: String,
@@ -664,15 +639,19 @@ impl AttunementPhaseCheckpoint {
         previous: Option<&Self>,
     ) -> Result<()> {
         plan.validate()?;
-        validate_contract_version(self.contract_version)?;
+        validate_attunement_contract_version(self.contract_version)?;
         if &self.job_id != job_id || self.plan_sha256 != plan.plan_sha256 {
             return invalid("attunement checkpoint does not bind its job and plan");
         }
-        if self.sequence != self.phase.sequence() {
-            return invalid("attunement checkpoint sequence does not match its phase");
-        }
-        let planned = plan.phase(self.phase);
-        if self.configuration_sha256 != planned.configuration_sha256 {
+        let planned = self
+            .sequence
+            .checked_sub(1)
+            .and_then(|index| plan.phases.get(usize::from(index)))
+            .ok_or_else(|| {
+                crate::ContractError("attunement checkpoint sequence is outside its plan".into())
+            })?;
+        if self.phase != planned.phase || self.configuration_sha256 != planned.configuration_sha256
+        {
             return invalid("attunement checkpoint configuration digest differs from its plan");
         }
         validate_sha256(&self.input_sha256, "attunement checkpoint input_sha256")?;
@@ -680,7 +659,7 @@ impl AttunementPhaseCheckpoint {
         match previous {
             None if self.sequence == 1 && self.input_sha256 == plan.source_sha256 => {}
             Some(previous)
-                if self.sequence == previous.sequence + 1
+                if previous.sequence.checked_add(1) == Some(self.sequence)
                     && self.input_sha256 == previous.output_sha256 =>
             {
                 if self.committed_at_unix_ms < previous.committed_at_unix_ms {
@@ -793,6 +772,7 @@ impl AttunementFailure {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct AttunementJob {
+    #[schemars(schema_with = "attunement_version_schema")]
     pub contract_version: u16,
     pub id: CanonicalId,
     pub plan_id: CanonicalId,
@@ -814,7 +794,7 @@ pub struct AttunementJob {
 impl AttunementJob {
     pub fn validate(&self, plan: &AttunementPlan) -> Result<()> {
         plan.validate()?;
-        validate_contract_version(self.contract_version)?;
+        validate_attunement_contract_version(self.contract_version)?;
         if self.plan_id != plan.id || self.plan_sha256 != plan.plan_sha256 {
             return invalid("attunement job does not bind its plan identity and digest");
         }
@@ -824,13 +804,13 @@ impl AttunementJob {
         if self.created_at_unix_ms == 0 || self.updated_at_unix_ms < self.created_at_unix_ms {
             return invalid("attunement job timestamps are invalid");
         }
-        if self.checkpoints.len() > ATTUNEMENT_PHASES.len() {
-            return invalid("attunement job has more checkpoints than canonical phases");
+        if self.checkpoints.len() > plan.phases.len() {
+            return invalid("attunement job has more checkpoints than planned steps");
         }
         let mut previous = None;
-        for (checkpoint, expected_phase) in self.checkpoints.iter().zip(ATTUNEMENT_PHASES) {
-            if checkpoint.phase != expected_phase {
-                return invalid("attunement job checkpoints are not a canonical phase prefix");
+        for (checkpoint, planned) in self.checkpoints.iter().zip(&plan.phases) {
+            if checkpoint.phase != planned.phase || checkpoint.sequence != planned.sequence {
+                return invalid("attunement job checkpoints are not a plan prefix");
             }
             checkpoint.validate_for(plan, &self.id, previous)?;
             if checkpoint.committed_at_unix_ms < self.created_at_unix_ms
@@ -841,7 +821,7 @@ impl AttunementJob {
             previous = Some(checkpoint);
         }
 
-        let next_phase = self.next_phase();
+        let next_phase = self.next_phase(plan);
         match self.state {
             AttunementJobState::Pending => {
                 if self.revision != 1
@@ -900,7 +880,7 @@ impl AttunementJob {
                 }
             }
             AttunementJobState::Succeeded => {
-                if self.checkpoints.len() != ATTUNEMENT_PHASES.len()
+                if self.checkpoints.len() != plan.phases.len()
                     || self.current_phase.is_some()
                     || self.lease.is_some()
                     || self.failure.is_some()
@@ -998,8 +978,16 @@ impl AttunementJob {
         Ok(())
     }
 
-    pub fn next_phase(&self) -> Option<AttunementPhase> {
-        ATTUNEMENT_PHASES.get(self.checkpoints.len()).copied()
+    pub fn next_phase(&self, plan: &AttunementPlan) -> Option<AttunementPhase> {
+        if self.plan_id != plan.id
+            || self.plan_sha256 != plan.plan_sha256
+            || plan.validate().is_err()
+        {
+            return None;
+        }
+        plan.phases
+            .get(self.checkpoints.len())
+            .map(|step| step.phase)
     }
 
     fn last_checkpoint_sha256(&self) -> Option<&str> {
@@ -1014,6 +1002,7 @@ impl AttunementJob {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct AttunementStatus {
+    #[schemars(schema_with = "attunement_version_schema")]
     pub contract_version: u16,
     pub observed_at_unix_ms: u64,
     pub job: AttunementJob,
@@ -1021,7 +1010,7 @@ pub struct AttunementStatus {
 
 impl AttunementStatus {
     pub fn validate(&self, plan: &AttunementPlan) -> Result<()> {
-        validate_contract_version(self.contract_version)?;
+        validate_attunement_contract_version(self.contract_version)?;
         self.job.validate(plan)?;
         if self.observed_at_unix_ms < self.job.updated_at_unix_ms {
             return invalid("attunement status observation predates the job snapshot");
@@ -1034,13 +1023,14 @@ impl AttunementStatus {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct ReadAttunement {
+    #[schemars(schema_with = "attunement_version_schema")]
     pub contract_version: u16,
     pub job_id: CanonicalId,
 }
 
 impl ReadAttunement {
     pub fn validate(&self) -> Result<()> {
-        validate_contract_version(self.contract_version)
+        validate_attunement_contract_version(self.contract_version)
     }
 }
 
@@ -1067,9 +1057,381 @@ impl AttunementReadResult {
     }
 }
 
+/// Read the authenticated principal's receipt without replaying its command.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ReadAttunementReceipt {
+    #[schemars(schema_with = "attunement_version_schema")]
+    pub contract_version: u16,
+    pub job_id: CanonicalId,
+    pub idempotency_key: CorrelationId,
+}
+
+impl ReadAttunementReceipt {
+    pub fn validate(&self) -> Result<()> {
+        validate_attunement_contract_version(self.contract_version)
+    }
+}
+
+/// Original committed outcome and the immutable plan it references.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct AttunementReceipt {
+    pub principal_id: CanonicalId,
+    pub operation_sha256: String,
+    pub plan: AttunementPlan,
+    pub status: AttunementStatus,
+    pub source_verification: AttunementSourceVerification,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct AttunementReceiptReadResult {
+    pub receipt: Option<AttunementReceipt>,
+}
+
+/// Start the engine-owned job against its exact immutable plan.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct StartAttunement {
+    #[schemars(schema_with = "attunement_version_schema")]
+    pub contract_version: u16,
+    pub job_id: CanonicalId,
+    pub plan_sha256: String,
+    pub expected_revision: u64,
+    pub lease_ms: u64,
+}
+
+impl StartAttunement {
+    pub fn validate(&self) -> Result<()> {
+        validate_attunement_contract_version(self.contract_version)?;
+        validate_sha256(&self.plan_sha256, "attunement plan digest")
+    }
+}
+
+/// Advance the job whose plan is already bound to this revision and lease.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct StepAttunement {
+    #[schemars(schema_with = "attunement_version_schema")]
+    pub contract_version: u16,
+    pub job_id: CanonicalId,
+    pub expected_revision: u64,
+    pub lease_generation: u64,
+}
+
+impl StepAttunement {
+    pub fn validate(&self) -> Result<()> {
+        validate_attunement_contract_version(self.contract_version)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct PauseAttunement {
+    #[schemars(schema_with = "attunement_version_schema")]
+    pub contract_version: u16,
+    pub job_id: CanonicalId,
+    pub expected_revision: u64,
+    pub lease_generation: u64,
+}
+
+impl PauseAttunement {
+    pub fn validate(&self) -> Result<()> {
+        validate_attunement_contract_version(self.contract_version)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct RecoverExpiredAttunement {
+    #[schemars(schema_with = "attunement_version_schema")]
+    pub contract_version: u16,
+    pub job_id: CanonicalId,
+    pub expected_revision: u64,
+}
+
+impl RecoverExpiredAttunement {
+    pub fn validate(&self) -> Result<()> {
+        validate_attunement_contract_version(self.contract_version)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ResumeAttunementWithLease {
+    pub request: ResumeAttunement,
+    pub lease_ms: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct AttunementControlResponse {
+    pub status: AttunementStatus,
+    pub idempotent_replay: bool,
+}
+
+impl AttunementControlResponse {
+    pub fn validate_for(
+        &self,
+        job_id: &CanonicalId,
+        previous_revision: u64,
+        plan: &AttunementPlan,
+    ) -> Result<()> {
+        self.status.validate(plan)?;
+        if self.status.job.id != *job_id
+            || previous_revision.checked_add(1) != Some(self.status.job.revision)
+        {
+            return invalid(
+                "attunement control response does not bind the requested job and revision",
+            );
+        }
+        Ok(())
+    }
+}
+
+/// Preview is a bounded source observation, not an atomic snapshot.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct AttunementReplanPreview {
+    pub predecessor_job_id: CanonicalId,
+    pub predecessor_revision: u64,
+    pub generation: u64,
+    pub plan: AttunementPlan,
+    pub proposal_sha256: String,
+}
+
+/// Hashes are shared with the engine so clients validate exactly the same
+/// source, predecessor and proposal identity without owning lifecycle state.
+pub fn attunement_replan_seed(
+    job_id: &CanonicalId,
+    revision: u64,
+    old_plan_sha256: &str,
+    generation: u64,
+    source_sha256: &str,
+) -> Result<String> {
+    plain_json_sha256(&(
+        "attunement-replan-v1",
+        job_id,
+        revision,
+        old_plan_sha256,
+        generation,
+        source_sha256,
+    ))
+}
+
+pub fn attunement_replan_preview_sha256(
+    job_id: &CanonicalId,
+    revision: u64,
+    generation: u64,
+    plan: &AttunementPlan,
+) -> Result<String> {
+    plain_json_sha256(&(
+        "attunement-replan-preview-v1",
+        job_id,
+        revision,
+        generation,
+        plan,
+    ))
+}
+
+pub fn attunement_replan_accept_sha256(
+    preview: &AttunementReplanPreview,
+    digest: &str,
+) -> Result<String> {
+    plain_json_sha256(&("attunement-accept-replan-v1", preview, digest))
+}
+
+fn plain_json_sha256(value: &impl Serialize) -> Result<String> {
+    let encoded = serde_json::to_vec(value).map_err(|error| {
+        crate::ContractError(format!("contract digest encoding failed: {error}"))
+    })?;
+    Ok(sha256_bytes(&encoded))
+}
+
+impl AttunementReplanPreview {
+    pub fn validate_for(
+        &self,
+        job_id: &CanonicalId,
+        revision: u64,
+        old_plan: &AttunementPlan,
+    ) -> Result<()> {
+        old_plan.validate()?;
+        self.plan.validate()?;
+        if self.predecessor_job_id != *job_id
+            || self.predecessor_revision != revision
+            || self.generation == 0
+        {
+            return invalid("attunement replan predecessor or generation does not match request");
+        }
+        let seed = attunement_replan_seed(
+            job_id,
+            revision,
+            &old_plan.plan_sha256,
+            self.generation,
+            &self.plan.source_sha256,
+        )?;
+        let mut expected = old_plan.clone();
+        expected.id = CanonicalId::new(format!("attune-{}", &seed[..24]))?;
+        expected.source_sha256 = self.plan.source_sha256.clone();
+        expected.plan_sha256 = self.plan.plan_sha256.clone();
+        if self.plan != expected
+            || self.proposal_sha256
+                != attunement_replan_preview_sha256(job_id, revision, self.generation, &self.plan)?
+        {
+            return invalid("attunement replan plan or proposal digest differs");
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct AttunementReplanResult {
+    pub predecessor: AttunementStatus,
+    pub successor: AttunementStatus,
+    pub plan: AttunementPlan,
+    pub idempotent_replay: bool,
+}
+
+impl AttunementReplanResult {
+    pub fn validate_for(
+        &self,
+        preview: &AttunementReplanPreview,
+        old_plan: &AttunementPlan,
+    ) -> Result<()> {
+        preview.validate_for(
+            &preview.predecessor_job_id,
+            preview.predecessor_revision,
+            old_plan,
+        )?;
+        self.predecessor.validate(old_plan)?;
+        self.successor.validate(&self.plan)?;
+        let expected_successor =
+            CanonicalId::new(format!("job-{}", &preview.plan.plan_sha256[..24]))?;
+        if self.plan != preview.plan
+            || self.predecessor.job.id != preview.predecessor_job_id
+            || preview.predecessor_revision.checked_add(1) != Some(self.predecessor.job.revision)
+            || self.predecessor.job.state != AttunementJobState::CancelRequested
+            || self.successor.job.id != expected_successor
+            || self.successor.job.state != AttunementJobState::Pending
+        {
+            return invalid("attunement replan result lineage differs from proposal");
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct AttunementReplanReceiptView {
+    pub principal_id: CanonicalId,
+    pub operation_sha256: String,
+    pub preview: AttunementReplanPreview,
+    pub predecessor_plan: AttunementPlan,
+    pub result: AttunementReplanResult,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct PreviewAttunementReplan {
+    #[schemars(schema_with = "attunement_version_schema")]
+    pub contract_version: u16,
+    pub job_id: CanonicalId,
+    pub expected_revision: u64,
+}
+
+impl PreviewAttunementReplan {
+    pub fn validate(&self) -> Result<()> {
+        validate_attunement_contract_version(self.contract_version)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct AcceptAttunementReplan {
+    #[schemars(schema_with = "attunement_version_schema")]
+    pub contract_version: u16,
+    pub preview: AttunementReplanPreview,
+    pub proposal_sha256: String,
+}
+
+impl AcceptAttunementReplan {
+    pub fn validate(&self) -> Result<()> {
+        validate_attunement_contract_version(self.contract_version)?;
+        validate_sha256(&self.proposal_sha256, "attunement proposal digest")
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct AttunementReplanReceiptReadResult {
+    pub receipt: Option<AttunementReplanReceiptView>,
+}
+
+impl AttunementReplanReceiptReadResult {
+    pub fn validate_for(
+        &self,
+        request: &ReadAttunementReceipt,
+        principal: &CanonicalId,
+        instance: &CanonicalId,
+    ) -> Result<()> {
+        request.validate()?;
+        if let Some(receipt) = &self.receipt {
+            receipt.preview.validate_for(
+                &request.job_id,
+                receipt.preview.predecessor_revision,
+                &receipt.predecessor_plan,
+            )?;
+            receipt
+                .result
+                .validate_for(&receipt.preview, &receipt.predecessor_plan)?;
+            if receipt.principal_id != *principal
+                || receipt.predecessor_plan.target.instance_id != *instance
+                || receipt.operation_sha256
+                    != attunement_replan_accept_sha256(
+                        &receipt.preview,
+                        &receipt.preview.proposal_sha256,
+                    )?
+                || receipt.result.idempotent_replay
+            {
+                return invalid("attunement replan receipt identity or digest differs");
+            }
+        }
+        Ok(())
+    }
+}
+
+impl AttunementReceiptReadResult {
+    pub fn validate_for(
+        &self,
+        request: &ReadAttunementReceipt,
+        principal: &CanonicalId,
+        instance: &CanonicalId,
+    ) -> Result<()> {
+        request.validate()?;
+        if let Some(receipt) = &self.receipt {
+            validate_sha256(
+                &receipt.operation_sha256,
+                "attunement receipt operation digest",
+            )?;
+            receipt.plan.validate()?;
+            receipt.status.validate(&receipt.plan)?;
+            if receipt.status.job.id != request.job_id
+                || receipt.principal_id != *principal
+                || receipt.plan.target.instance_id != *instance
+            {
+                return invalid("attunement receipt identity does not match request");
+            }
+        }
+        Ok(())
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct ResumeAttunement {
+    #[schemars(schema_with = "attunement_version_schema")]
     pub contract_version: u16,
     pub job_id: CanonicalId,
     pub plan_sha256: String,
@@ -1081,8 +1443,14 @@ pub struct ResumeAttunement {
 }
 
 impl ResumeAttunement {
+    /// Validate fields that do not depend on the current durable job state.
+    pub fn validate(&self) -> Result<()> {
+        validate_attunement_contract_version(self.contract_version)?;
+        validate_sha256(&self.plan_sha256, "attunement command plan_sha256")
+    }
+
     pub fn validate_for(&self, job: &AttunementJob, plan: &AttunementPlan) -> Result<()> {
-        validate_contract_version(self.contract_version)?;
+        self.validate()?;
         job.validate(plan)?;
         if !matches!(
             job.state,
@@ -1103,7 +1471,7 @@ impl ResumeAttunement {
             self.requested_at_unix_ms,
             job,
         )?;
-        if job.next_phase() != Some(self.resume_from_phase) {
+        if job.next_phase(plan) != Some(self.resume_from_phase) {
             return invalid("attunement resume phase does not match the next canonical phase");
         }
         Ok(())
@@ -1113,6 +1481,7 @@ impl ResumeAttunement {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct CancelAttunement {
+    #[schemars(schema_with = "attunement_version_schema")]
     pub contract_version: u16,
     pub job_id: CanonicalId,
     pub plan_sha256: String,
@@ -1133,8 +1502,8 @@ pub struct AttunementCancelResult {
 
 impl AttunementCancelResult {
     pub fn validate_for(&self, request: &CancelAttunement) -> Result<()> {
-        validate_contract_version(self.status.contract_version)?;
-        validate_contract_version(self.status.job.contract_version)?;
+        validate_attunement_contract_version(self.status.contract_version)?;
+        validate_attunement_contract_version(self.status.job.contract_version)?;
         let job = &self.status.job;
         if job.id != request.job_id
             || job.plan_sha256 != request.plan_sha256
@@ -1150,7 +1519,7 @@ impl AttunementCancelResult {
 
 impl CancelAttunement {
     pub fn validate_for(&self, job: &AttunementJob, plan: &AttunementPlan) -> Result<()> {
-        validate_contract_version(self.contract_version)?;
+        validate_attunement_contract_version(self.contract_version)?;
         job.validate(plan)?;
         if !matches!(
             job.state,
@@ -1206,6 +1575,7 @@ impl AttunementVerificationCheck {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct AttunementVerification {
+    #[schemars(schema_with = "attunement_version_schema")]
     pub contract_version: u16,
     pub job_id: CanonicalId,
     pub plan_sha256: String,
@@ -1220,7 +1590,7 @@ pub struct AttunementVerification {
 
 impl AttunementVerification {
     pub fn validate_for(&self, job: &AttunementJob, plan: &AttunementPlan) -> Result<()> {
-        validate_contract_version(self.contract_version)?;
+        validate_attunement_contract_version(self.contract_version)?;
         job.validate(plan)?;
         if self.job_id != job.id
             || self.plan_sha256 != job.plan_sha256
@@ -1375,6 +1745,13 @@ pub fn attunement_verification_sha256(verification: &AttunementVerification) -> 
             verification.verified_at_unix_ms,
         ),
     )
+}
+
+fn validate_attunement_contract_version(version: u16) -> Result<()> {
+    if version != ATTUNEMENT_CONTRACT_VERSION {
+        return invalid(format!("unsupported attunement contract version {version}; expected {ATTUNEMENT_CONTRACT_VERSION}"));
+    }
+    Ok(())
 }
 
 pub(crate) fn validate_contract_version(version: u16) -> Result<()> {

@@ -86,59 +86,13 @@ impl RrdEngine {
                     rrd_vector::VectorMemoryTier::Cached,
                 )
             };
-        let direct = read_vector_search_versions(self, &read, request.max_storage_keys)?;
-        let candidates = rrd_vector::candidates_from_changes(&direct.changes, &scope)
-            .into_iter()
-            .filter(|candidate| {
-                collection_address
-                    .as_ref()
-                    .is_none_or(|(collection, vector)| {
-                        vector_matches_collection(&candidate.vector, collection, vector)
-                    })
-            })
-            .collect::<Vec<_>>();
-        let canonical_candidates = u64::try_from(candidates.len())
-            .map_err(|_| ServiceError::Vector("vector candidate count exceeds u64".into()))?;
-        let source_cursor = candidates
-            .iter()
-            .filter(|candidate| candidate.vector.field == field)
-            .map(|candidate| candidate.source_cursor)
-            .max()
-            .unwrap_or(0);
-        let query = internal_vector_query(&request.query);
-        let (mode, ef_search) = match request.mode {
-            VectorSearchMode::Exact => (rrd_vector::SearchMode::Exact, 1),
-            VectorSearchMode::AllowApproximate {
-                exact_rerank,
-                ef_search,
-            } => (
-                rrd_vector::SearchMode::AllowApproximate {
-                    exact_rerank: usize::try_from(exact_rerank).map_err(|_| {
-                        ServiceError::Vector("vector exact_rerank exceeds usize".into())
-                    })?,
-                },
-                usize::try_from(ef_search)
-                    .map_err(|_| ServiceError::Vector("vector ef_search exceeds usize".into()))?,
-            ),
-            VectorSearchMode::RequireApproximate {
-                exact_rerank,
-                ef_search,
-            } => (
-                rrd_vector::SearchMode::RequireApproximate {
-                    exact_rerank: usize::try_from(exact_rerank).map_err(|_| {
-                        ServiceError::Vector("vector exact_rerank exceeds usize".into())
-                    })?,
-                },
-                usize::try_from(ef_search)
-                    .map_err(|_| ServiceError::Vector("vector ef_search exceeds usize".into()))?,
-            ),
-        };
+        let (mode, ef_search) = internal_search_mode(request.mode)?;
         let search = rrd_vector::SearchRequest {
             scope: scope.clone(),
             read: read.clone(),
             valid_at: request.valid_at,
-            field,
-            query,
+            field: field.clone(),
+            query: internal_vector_query(&request.query),
             metric,
             embedding_model,
             top_k: usize::try_from(request.top_k)
@@ -150,6 +104,90 @@ impl RrdEngine {
                 .map(internal_vector_filter)
                 .transpose()?,
         };
+        // A request that requires an approximate path on a named dense vector
+        // reads the stamped catalogue first, so an active TurboQuant
+        // generation can serve it without reading every vector version.
+        let catalogue = match (&collection_address, &search.mode, &search.query) {
+            (
+                Some(_),
+                rrd_vector::SearchMode::RequireApproximate { .. },
+                rrd_vector::VectorQuery::Dense { .. },
+            ) => Some(
+                crate::runtime::vector_catalog::read_vector_catalogue_versions(
+                    &self.storage,
+                    &read,
+                    &[],
+                    rrd_store::RuntimeReadBudget::new(request.max_storage_keys)?,
+                )
+                .map_err(crate::engine::error::storage_read_error)?,
+            ),
+            _ => None,
+        };
+        if let (Some(catalogue), Some((collection_id, vector_name))) =
+            (&catalogue, &collection_address)
+        {
+            if let Some(result) = self.search_turboquant_generation(
+                request,
+                &read,
+                &search,
+                (collection_id, vector_name),
+                memory_tier,
+                ef_search,
+                catalogue,
+            )? {
+                return Ok(result);
+            }
+        }
+        let direct = match catalogue {
+            None => read_vector_search_versions(self, &read, request.max_storage_keys)?,
+            // The catalogue is already read: read the vector versions under
+            // what remains of the one budget, in the combined read's order.
+            Some(catalogue) => {
+                let vectors = self
+                    .storage
+                    .runtime()
+                    .read_versioned(
+                        &read,
+                        &[rrd_store::RuntimeVersionedSource::Vectors { kind: None }],
+                        remaining_budget(
+                            request.max_storage_keys,
+                            catalogue.evidence.keys_examined,
+                        )?,
+                    )
+                    .map_err(crate::engine::error::storage_read_error)?;
+                let read_evidence = crate::runtime::merge_read_evidence(
+                    request.max_storage_keys,
+                    [
+                        crate::runtime::public_read_evidence(catalogue.evidence)?,
+                        crate::runtime::public_read_evidence(vectors.evidence)?,
+                    ],
+                )?;
+                let mut changes = vectors.changes;
+                changes.extend(catalogue.changes);
+                DirectVectorRead {
+                    selected_versions: u64::try_from(changes.len()).map_err(|_| {
+                        ServiceError::Vector("selected vector versions exceed u64".into())
+                    })?,
+                    changes,
+                    read_evidence,
+                }
+            }
+        };
+        let candidates = rrd_vector::candidates_from_changes(&direct.changes, &scope);
+        let candidates = match &collection_address {
+            Some((collection, vector)) => {
+                collection_versions(&search_visibility(&search), candidates, collection, vector)?
+            }
+            None => candidates,
+        };
+        let canonical_candidates = u64::try_from(candidates.len())
+            .map_err(|_| ServiceError::Vector("vector candidate count exceeds u64".into()))?;
+        let source_cursor = candidates
+            .iter()
+            .filter(|candidate| candidate.vector.field == field)
+            .map(|candidate| candidate.source_cursor)
+            .max()
+            .unwrap_or(0);
         let crate::VectorRuntimeManifest {
             mut runtime,
             bindings,
@@ -203,65 +241,355 @@ impl RrdEngine {
         let execution = runtime
             .execute_search(&search, &prepared)
             .map_err(core_vector)?;
-        let access_path = match execution.plan.selected.kind {
-            rrd_vector::AccessPathKind::ExactScan => "exact_scan",
-            rrd_vector::AccessPathKind::ExactSegment => "exact_segment",
-            rrd_vector::AccessPathKind::Hnsw => "hnsw",
-            rrd_vector::AccessPathKind::ScalarQuantized => "scalar_quantized",
-            rrd_vector::AccessPathKind::ProductQuantized => "product_quantized",
-            rrd_vector::AccessPathKind::BinaryQuantized => "binary_quantized",
-            rrd_vector::AccessPathKind::TurboQuant => "turboquant",
-        };
         let loaded_artifact_bytes = bindings
             .get(&(
                 execution.plan.selected.id.clone(),
                 execution.plan.selected.generation,
             ))
             .map_or(0, |binding| binding.object.length);
-        let resources = VectorSearchResourceEvidence {
-            canonical_candidates,
-            selected_candidates: execution.plan.selected.estimated_candidates,
-            ef_search: u64::try_from(prepared.ef_search())
-                .map_err(|_| ServiceError::Vector("vector ef_search exceeds u64".into()))?,
-            exact_rerank: u64::try_from(execution.plan.selected.exact_rerank)
-                .map_err(|_| ServiceError::Vector("vector exact_rerank exceeds u64".into()))?,
-            overlay_candidates: execution.plan.selected.overlay_candidates,
-            selected_generation: (!matches!(
-                execution.plan.selected.kind,
-                rrd_vector::AccessPathKind::ExactScan
-            ))
-            .then_some(execution.plan.selected.generation),
-            loaded_artifact_bytes,
-            result_hits: u64::try_from(execution.hits.len())
-                .map_err(|_| ServiceError::Vector("vector result count exceeds u64".into()))?,
-        };
-        Ok(VectorSearchResult {
-            scope: request.scope.clone(),
-            collection_id: request.collection_id.clone(),
-            vector_name: request.vector_name.clone(),
-            read_manifest_sha256: read.manifest_id,
-            known_at_cursor: read.commit_cursor,
-            selected_versions: direct.selected_versions,
-            read_evidence: direct.read_evidence,
-            plan_sha256: prepared.plan_digest().into(),
-            access_path: CanonicalId::new(access_path)
-                .map_err(|error| ServiceError::Vector(error.to_string()))?,
-            exact: !execution.plan.selected.kind.is_approximate(),
-            resources,
-            hits: execution
-                .hits
-                .into_iter()
-                .map(|hit| {
-                    Ok(VectorSearchHit {
-                        reference: public_data_ref(&hit.reference)?,
-                        subject: public_data_ref(&hit.subject)?,
-                        source_cursor: hit.source_cursor,
-                        score: hit.score,
-                    })
-                })
-                .collect::<Result<_>>()?,
-        })
+        search_result(
+            request,
+            read,
+            Searched {
+                selected_versions: direct.selected_versions,
+                read_evidence: direct.read_evidence,
+                canonical_candidates,
+                loaded_artifact_bytes,
+            },
+            &prepared,
+            execution,
+        )
     }
+
+    /// Serves a request that requires an approximate path on a named dense
+    /// vector from that vector's active TurboQuant generation and the stamped
+    /// source delta since it, when that generation is the request's only
+    /// eligible approximate path. It reads only the identities the delta
+    /// names and the generation's own candidates, and reranks every one
+    /// exactly through the same planner and execution as every search.
+    /// `None` leaves the request to the general path.
+    #[allow(clippy::too_many_arguments)]
+    fn search_turboquant_generation(
+        &self,
+        request: &SearchVectors,
+        read: &ReadStamp,
+        search: &rrd_vector::SearchRequest,
+        (collection_id, vector_name): (&CanonicalId, &CanonicalId),
+        memory_tier: rrd_vector::VectorMemoryTier,
+        ef_search: usize,
+        catalogue: &rrd_store::RuntimeVersionedRead,
+    ) -> Result<Option<VectorSearchResult>> {
+        let rrd_vector::SearchMode::RequireApproximate { exact_rerank } = search.mode else {
+            return Ok(None);
+        };
+        let scope = &read.scope;
+        let manifest = crate::runtime::vector_catalog::vector_runtime_metadata_from_changes(
+            &catalogue.changes,
+            scope,
+            Vec::new(),
+        )
+        .map_err(|error| ServiceError::Vector(error.to_string()))?;
+        let mut eligible = manifest
+            .bindings
+            .values()
+            .filter(|binding| vector_artifact_relevant(&binding.descriptor, search));
+        let (Some(binding), None) = (eligible.next(), eligible.next()) else {
+            return Ok(None);
+        };
+        if binding.kind != rrd_vector::VectorArtifactKind::TurboQuant {
+            return Ok(None);
+        }
+        let lifecycle =
+            crate::runtime::vector_catalog::quantization_artifact_catalogue_from_changes(
+                &catalogue.changes,
+                scope,
+            )
+            .map_err(|error| ServiceError::Vector(error.to_string()))?;
+        if !lifecycle.active_entries().any(|entry| {
+            entry.descriptor == binding.descriptor
+                && entry.collection_id.as_str() == collection_id.as_str()
+                && entry.vector_name.as_str() == vector_name.as_str()
+        }) {
+            return Ok(None);
+        }
+        let artifact = {
+            let mut residency = self
+                .vector_residency
+                .lock()
+                .map_err(|_| ServiceError::Storage("vector residency lock is poisoned".into()))?;
+            residency.reconcile(
+                &manifest
+                    .bindings
+                    .values()
+                    .map(crate::VectorArtifactBinding::key)
+                    .collect(),
+            );
+            match residency.acquire(memory_tier, binding, &self.objects) {
+                Ok(acquisition) => acquisition.artifact,
+                Err(error) if error.is_pressure() => {
+                    return Err(ServiceError::VectorPressure(error.to_string()))
+                }
+                Err(error) => return Err(ServiceError::Vector(error.to_string())),
+            }
+        };
+        let rrd_vector::VectorArtifact::TurboQuant(segment) = artifact.as_ref() else {
+            return Err(ServiceError::Vector(
+                "the active TurboQuant binding loaded another artifact".into(),
+            ));
+        };
+        let generation = segment.descriptor().stamp.source_cursor;
+
+        // Every identity whose version in this source changed after the
+        // generation, with its complete authenticated history.
+        let budget = request.max_storage_keys;
+        let mut examined = catalogue.evidence.keys_examined;
+        let source = rrd_store::VectorSourceAddress {
+            collection: rrd_core::VectorCollectionAddress {
+                collection_id: collection_id.as_str().into(),
+                vector_name: vector_name.as_str().into(),
+            },
+            field: search.field.clone(),
+        };
+        let deltas = self
+            .storage
+            .runtime()
+            .read_vector_deltas(
+                read,
+                &source,
+                generation,
+                remaining_budget(budget, examined)?,
+            )
+            .map_err(crate::engine::error::storage_read_error)?;
+        examined = examined.saturating_add(deltas.evidence.keys_examined);
+        let changed = deltas
+            .deltas
+            .iter()
+            .map(|delta| delta.reference.clone())
+            .collect::<std::collections::BTreeSet<_>>();
+        // The generation's own candidates at its cursor, with the planner's
+        // rerank width; those unchanged since it are read by identity.
+        let unchanged = segment
+            .search_candidates_at(search, exact_rerank, generation)
+            .map_err(core_vector)?
+            .into_iter()
+            .map(|hit| hit.reference)
+            .filter(|reference| !changed.contains(reference))
+            .collect::<std::collections::BTreeSet<_>>();
+        let rerank = if unchanged.is_empty() {
+            None
+        } else {
+            Some(
+                self.storage
+                    .runtime()
+                    .read_versioned(
+                        read,
+                        &unchanged
+                            .into_iter()
+                            .map(|reference| rrd_store::RuntimeVersionedSource::Identity {
+                                model: rrd_core::RuntimeLogicalModel::Vector,
+                                reference,
+                            })
+                            .collect::<Vec<_>>(),
+                        remaining_budget(budget, examined)?,
+                    )
+                    .map_err(crate::engine::error::storage_read_error)?,
+            )
+        };
+        // Both reads hold each identity's complete history, so a moved
+        // identity resolves to the collection it moved to.
+        let canonical =
+            collection_versions(
+                &search_visibility(search),
+                rrd_vector::candidates_from_changes(&deltas.changes, scope)
+                    .into_iter()
+                    .chain(rerank.iter().flat_map(|rerank| {
+                        rrd_vector::candidates_from_changes(&rerank.changes, scope)
+                    }))
+                    .collect(),
+                collection_id,
+                vector_name,
+            )?;
+        let canonical_candidates = u64::try_from(canonical.len())
+            .map_err(|_| ServiceError::Vector("vector candidate count exceeds u64".into()))?;
+        let source_cursor = canonical
+            .iter()
+            .filter(|candidate| candidate.vector.field == search.field)
+            .map(|candidate| candidate.source_cursor)
+            .max()
+            .unwrap_or(0);
+
+        let mut runtime = rrd_vector::VectorRuntime::new(canonical).map_err(core_vector)?;
+        runtime
+            .restore_quantization_lifecycle_active_descriptor(binding.descriptor.clone())
+            .map_err(core_vector)?;
+        runtime
+            .install_loaded_artifact(artifact.clone())
+            .map_err(core_vector)?;
+        let prepared = runtime
+            .prepare_search_at(search, source_cursor, ef_search)
+            .map_err(core_vector)?;
+        if prepared.plan().selected.kind != rrd_vector::AccessPathKind::TurboQuant
+            || prepared.plan().selected.exact_rerank != exact_rerank
+        {
+            return Err(ServiceError::Vector(
+                "the TurboQuant plan differs from the candidates it was given".into(),
+            ));
+        }
+        let execution = runtime
+            .execute_search(search, &prepared)
+            .map_err(core_vector)?;
+        let mut selected_versions = catalogue.changes.len() + deltas.changes.len();
+        let mut evidence = vec![
+            crate::runtime::public_read_evidence(catalogue.evidence.clone())?,
+            crate::runtime::public_read_evidence(deltas.evidence)?,
+        ];
+        if let Some(rerank) = rerank {
+            selected_versions += rerank.changes.len();
+            evidence.push(crate::runtime::public_read_evidence(rerank.evidence)?);
+        }
+        search_result(
+            request,
+            read.clone(),
+            Searched {
+                selected_versions: u64::try_from(selected_versions).map_err(|_| {
+                    ServiceError::Vector("selected vector versions exceed u64".into())
+                })?,
+                read_evidence: crate::runtime::merge_read_evidence(budget, evidence)?,
+                canonical_candidates,
+                loaded_artifact_bytes: binding.object.length,
+            },
+            &prepared,
+            execution,
+        )
+        .map(Some)
+    }
+}
+
+/// What one search read and hydrated, for its public result.
+struct Searched {
+    selected_versions: u64,
+    read_evidence: rrd_contract::ReadEvidence,
+    canonical_candidates: u64,
+    loaded_artifact_bytes: u64,
+}
+
+fn search_result(
+    request: &SearchVectors,
+    read: ReadStamp,
+    searched: Searched,
+    prepared: &rrd_vector::PreparedVectorSearch,
+    execution: rrd_vector::SearchExecution,
+) -> Result<VectorSearchResult> {
+    let access_path = match execution.plan.selected.kind {
+        rrd_vector::AccessPathKind::ExactScan => "exact_scan",
+        rrd_vector::AccessPathKind::ExactSegment => "exact_segment",
+        rrd_vector::AccessPathKind::Hnsw => "hnsw",
+        rrd_vector::AccessPathKind::ScalarQuantized => "scalar_quantized",
+        rrd_vector::AccessPathKind::ProductQuantized => "product_quantized",
+        rrd_vector::AccessPathKind::BinaryQuantized => "binary_quantized",
+        rrd_vector::AccessPathKind::TurboQuant => "turboquant",
+    };
+    let resources = VectorSearchResourceEvidence {
+        canonical_candidates: searched.canonical_candidates,
+        selected_candidates: execution.plan.selected.estimated_candidates,
+        ef_search: u64::try_from(prepared.ef_search())
+            .map_err(|_| ServiceError::Vector("vector ef_search exceeds u64".into()))?,
+        exact_rerank: u64::try_from(execution.plan.selected.exact_rerank)
+            .map_err(|_| ServiceError::Vector("vector exact_rerank exceeds u64".into()))?,
+        overlay_candidates: execution.plan.selected.overlay_candidates,
+        selected_generation: (!matches!(
+            execution.plan.selected.kind,
+            rrd_vector::AccessPathKind::ExactScan
+        ))
+        .then_some(execution.plan.selected.generation),
+        loaded_artifact_bytes: searched.loaded_artifact_bytes,
+        result_hits: u64::try_from(execution.hits.len())
+            .map_err(|_| ServiceError::Vector("vector result count exceeds u64".into()))?,
+    };
+    Ok(VectorSearchResult {
+        scope: request.scope.clone(),
+        collection_id: request.collection_id.clone(),
+        vector_name: request.vector_name.clone(),
+        read_manifest_sha256: read.manifest_id,
+        known_at_cursor: read.commit_cursor,
+        selected_versions: searched.selected_versions,
+        read_evidence: searched.read_evidence,
+        plan_sha256: prepared.plan_digest().into(),
+        access_path: CanonicalId::new(access_path)
+            .map_err(|error| ServiceError::Vector(error.to_string()))?,
+        exact: !execution.plan.selected.kind.is_approximate(),
+        resources,
+        hits: execution
+            .hits
+            .into_iter()
+            .map(|hit| {
+                Ok(VectorSearchHit {
+                    reference: public_data_ref(&hit.reference)?,
+                    subject: public_data_ref(&hit.subject)?,
+                    source_cursor: hit.source_cursor,
+                    score: hit.score,
+                })
+            })
+            .collect::<Result<_>>()?,
+    })
+}
+
+/// The visibility a search resolves its candidates at. The payload filter
+/// is left to the runtime, which applies it to the version that resolves.
+fn search_visibility(search: &rrd_vector::SearchRequest) -> rrd_vector::VectorVisibilityRequest {
+    rrd_vector::VectorVisibilityRequest {
+        scope: search.scope.clone(),
+        read: search.read.clone(),
+        valid_at: search.valid_at,
+        field: search.field.clone(),
+        embedding_model: search.embedding_model.clone(),
+        filter: None,
+    }
+}
+
+/// What remains of one request's key budget after `examined` keys. An
+/// exhausted budget is the same denial a read past it raises.
+fn remaining_budget(budget: u64, examined: u64) -> Result<rrd_store::RuntimeReadBudget> {
+    match budget
+        .checked_sub(examined)
+        .filter(|remaining| *remaining > 0)
+    {
+        Some(remaining) => Ok(rrd_store::RuntimeReadBudget::new(remaining)?),
+        None => Err(ServiceError::from(
+            rrd_store::Error::RuntimeReadBudgetExceeded {
+                limit: budget,
+                observed: examined.saturating_add(1),
+            },
+        )),
+    }
+}
+
+fn internal_search_mode(mode: VectorSearchMode) -> Result<(rrd_vector::SearchMode, usize)> {
+    let to_usize = |value: u64, label: &str| {
+        usize::try_from(value)
+            .map_err(|_| ServiceError::Vector(format!("vector {label} exceeds usize")))
+    };
+    Ok(match mode {
+        VectorSearchMode::Exact => (rrd_vector::SearchMode::Exact, 1),
+        VectorSearchMode::AllowApproximate {
+            exact_rerank,
+            ef_search,
+        } => (
+            rrd_vector::SearchMode::AllowApproximate {
+                exact_rerank: to_usize(exact_rerank, "exact_rerank")?,
+            },
+            to_usize(ef_search, "ef_search")?,
+        ),
+        VectorSearchMode::RequireApproximate {
+            exact_rerank,
+            ef_search,
+        } => (
+            rrd_vector::SearchMode::RequireApproximate {
+                exact_rerank: to_usize(exact_rerank, "exact_rerank")?,
+            },
+            to_usize(ef_search, "ef_search")?,
+        ),
+    })
 }
 
 fn vector_artifact_relevant(

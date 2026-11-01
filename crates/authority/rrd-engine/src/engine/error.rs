@@ -8,6 +8,11 @@ pub enum ServiceError {
     Estate(String),
     Storage(String),
     StorageConflict(String),
+    /// A proven-absent transaction commit whose read cursor is no longer current.
+    TransactionSnapshotStale {
+        expected: u64,
+        actual: u64,
+    },
     StorageAdmission(String),
     AdmissionCancelled,
     SessionNotFound,
@@ -29,6 +34,11 @@ pub enum ServiceError {
     ReasoningBudgetStopped(ReasoningBudgetStop),
     ReasoningAttemptRecorded {
         outcome_sha256: Option<String>,
+    },
+    TaskAttemptInvalidated(rrd_contract::TaskAttemptInvalidation),
+    EndpointCallFailed {
+        reason: &'static str,
+        execution_may_continue: bool,
     },
     InferenceCancelled {
         execution_may_continue: bool,
@@ -65,6 +75,8 @@ pub enum ServiceError {
     PermissionDenied,
     DeadlineExceeded,
     ProjectBindingMismatch,
+    /// The currently observed project precondition differs from the accepted plan.
+    AttunementSourceChanged,
     /// Another process holds the installed estate's single writer lock.
     EstateInUse(String),
     ClockUnavailable(ClockObservationFailure),
@@ -128,7 +140,10 @@ impl ServiceError {
             | Self::InferenceCancelled { .. }
             | Self::ReasoningBudgetStopped(_)
             | Self::ReasoningAttemptRecorded { .. }
+            | Self::TaskAttemptInvalidated(_)
+            | Self::EndpointCallFailed { .. }
             | Self::ProjectBindingMismatch
+            | Self::AttunementSourceChanged
             | Self::EstateInUse(_) => ServiceErrorKind::FailedPrecondition,
             Self::TransactionQuota
             | Self::StorageAdmission(_)
@@ -141,7 +156,9 @@ impl ServiceError {
             Self::DeadlineExceeded | Self::InferenceDeadlineExceeded { .. } => {
                 ServiceErrorKind::DeadlineExceeded
             }
-            Self::StorageConflict(_) => ServiceErrorKind::Conflict,
+            Self::StorageConflict(_) | Self::TransactionSnapshotStale { .. } => {
+                ServiceErrorKind::Conflict
+            }
             Self::Storage(_) | Self::Backup(_) | Self::Estate(_) => ServiceErrorKind::Internal,
         }
     }
