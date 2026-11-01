@@ -55,6 +55,40 @@ claim parsing or retrieval; a configured embedding provider alone does not prove
 vectors were generated. The complete journey requires all relevant package
 receipts and does not erase remaining release qualification.
 
+## Nested repository setup
+
+The owner's 2026-10-31 direction makes a discovered nested repository a user
+choice. Offer exclude, separate project/instance (recommended), and one project
+instance containing both selected repositories. Explain that independent
+instances retain separate stores and authentication and that any cross-project
+read requires its own explicit link. The one-instance choice is one bounded
+project with independently identified source repositories and one estate, not
+a silent merge of pre-existing estates. The
+[topology owner](../../architecture/instance-topology.md#user-selected-repository-boundaries)
+defines the semantics.
+
+D-01/D-03 must expose source-bound repository candidates in a no-effect preview,
+carry the selected membership and every admitted Git metadata root into the
+exact plan, and revalidate them before apply and during inventory. An assistant
+may explain the choices and ask the user, but cannot accept a choice or expand
+its own filesystem authority. Gitfile, parent index, configuration, ignore and
+back-reference inputs need explicit bounded admission and identity/race checks;
+external metadata is not followed merely because an untrusted file names it.
+The selected repositories remain source inputs, not engine dependencies or an
+excuse to execute Git or fetch during installation.
+
+Acceptance must use the real RRFlow repository and its pinned Connectome
+submodule as well as adverse inputs. Verify each of exclude, separate and
+shared choices; exact preview and stale-plan denial; no changes before apply;
+independent authenticated instances and read isolation for separate projects;
+one transaction/read-stamp authority and source-specific provenance for the
+shared project; edit/delete, restart and readback; wrong Gitfile target,
+changed parent index, symlink/mount escape, missing metadata and cancellation.
+Run the installed primary binary and the public client path; report unsupported
+choices explicitly until they work. The [real-checkout gap](../../poam/rrflow-1.0-alpha/poam-006.md#nested-repository-setup-gap)
+remains open. This requirement does not by itself qualify later graph/vector
+indexing, project links, UI or cloud behavior.
+
 ## Project-workflow build packages
 
 These refine D-02 through D-05, not a second roadmap. At audit baseline

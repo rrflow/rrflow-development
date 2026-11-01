@@ -58,6 +58,29 @@ and distribution binding and act on the instance's own catalogue and staging roo
 estate cannot yet register backups the served engine created, so a retention decision over
 such a catalogue is refused.
 
+## Nested repository setup gap
+
+At development source `5b4039fe930332895c1b24138891d39f600030c7`, a
+source-built Windows `rrflow` install preview against the actual pinned
+`connectome/` checkout failed with `inventory Git input: external or
+non-directory Git metadata requires admission`. Its `.git` is a Gitfile naming
+the superproject's module directory. The parent inventory identifies its
+tracked gitlink but records that entry as excluded and does not descend. There
+is no implemented setup choice to exclude it, install a separate instance, or
+include it as a source in one instance.
+
+A separate read-only preview on the existing RRFlow checkout failed the private
+owner/protected-DACL check. The precise rejected object was not identified; do
+not infer that changing the `.rrflow` directory alone is a repair. The
+[diagnostic journal](../../evidence/change-journals/gate-d/nested-repository-boundary-decision.md)
+records the binary and observed errors. No project state or ACL was changed.
+
+D-01/D-03 and H-06 own remediation and the real-checkout acceptance in
+[Gate D](../../roadmap/rrflow-1.0/gate-d.md#nested-repository-setup). It includes
+bounded, explicitly authorized metadata roots and source identity, user choice,
+exact-plan revalidation, both estate layouts, restart and isolation. No new
+gate or completed status follows from this decision.
+
 ## Build-plan admission gaps
 
 Verified at `337d136210ff59b2359f898e717166c087dd5bfc`:
