@@ -1,4 +1,4 @@
-// OpenAPI SHA-256: 43205ef142fdbe8a7a5f2ca970c05bdbf789a6aeddaba4742a94be9e37067ca2
+// OpenAPI SHA-256: 8bc8cbdba9d90ab1239ea91624e639886971e58977c0f23a31007d1b2878a9c5
 export interface paths {
     "/v1/attunement/cancel": {
         parameters: {
@@ -42610,6 +42610,8 @@ export interface operations {
                                     } | {
                                         /** @enum {string} */
                                         bits: "bits4" | "bits2" | "bits1_5" | "bits1";
+                                        /** @description Absent means `mse`, as before the inner-product estimator existed. */
+                                        estimator?: "mse" | "inner_product";
                                         /** @constant */
                                         method: "turbo_quant";
                                         /** Format: uint64 */
@@ -42711,6 +42713,8 @@ export interface operations {
                                     } | {
                                         /** @enum {string} */
                                         bits: "bits4" | "bits2" | "bits1_5" | "bits1";
+                                        /** @description Absent means `mse`, as before the inner-product estimator existed. */
+                                        estimator?: "mse" | "inner_product";
                                         /** @constant */
                                         method: "turbo_quant";
                                         /** Format: uint64 */
@@ -42804,6 +42808,8 @@ export interface operations {
                         } | {
                             /** @enum {string} */
                             bits: "bits4" | "bits2" | "bits1_5" | "bits1";
+                            /** @description Absent means `mse`, as before the inner-product estimator existed. */
+                            estimator?: "mse" | "inner_product";
                             /** @constant */
                             method: "turbo_quant";
                             /** Format: uint64 */
@@ -42897,6 +42903,8 @@ export interface operations {
                                     } | {
                                         /** @enum {string} */
                                         bits: "bits4" | "bits2" | "bits1_5" | "bits1";
+                                        /** @description Absent means `mse`, as before the inner-product estimator existed. */
+                                        estimator?: "mse" | "inner_product";
                                         /** @constant */
                                         method: "turbo_quant";
                                         /** Format: uint64 */
@@ -43061,6 +43069,8 @@ export interface operations {
                                     } | {
                                         /** @enum {string} */
                                         bits: "bits4" | "bits2" | "bits1_5" | "bits1";
+                                        /** @description Absent means `mse`, as before the inner-product estimator existed. */
+                                        estimator?: "mse" | "inner_product";
                                         /** @constant */
                                         method: "turbo_quant";
                                         /** Format: uint64 */
@@ -43289,6 +43299,8 @@ export interface operations {
                                     } | {
                                         /** @enum {string} */
                                         bits: "bits4" | "bits2" | "bits1_5" | "bits1";
+                                        /** @description Absent means `mse`, as before the inner-product estimator existed. */
+                                        estimator?: "mse" | "inner_product";
                                         /** @constant */
                                         method: "turbo_quant";
                                         /** Format: uint64 */
@@ -43392,6 +43404,8 @@ export interface operations {
                                     } | {
                                         /** @enum {string} */
                                         bits: "bits4" | "bits2" | "bits1_5" | "bits1";
+                                        /** @description Absent means `mse`, as before the inner-product estimator existed. */
+                                        estimator?: "mse" | "inner_product";
                                         /** @constant */
                                         method: "turbo_quant";
                                         /** Format: uint64 */
@@ -43552,6 +43566,8 @@ export interface operations {
                                     } | {
                                         /** @enum {string} */
                                         bits: "bits4" | "bits2" | "bits1_5" | "bits1";
+                                        /** @description Absent means `mse`, as before the inner-product estimator existed. */
+                                        estimator?: "mse" | "inner_product";
                                         /** @constant */
                                         method: "turbo_quant";
                                         /** Format: uint64 */
@@ -43653,6 +43669,8 @@ export interface operations {
                                     } | {
                                         /** @enum {string} */
                                         bits: "bits4" | "bits2" | "bits1_5" | "bits1";
+                                        /** @description Absent means `mse`, as before the inner-product estimator existed. */
+                                        estimator?: "mse" | "inner_product";
                                         /** @constant */
                                         method: "turbo_quant";
                                         /** Format: uint64 */
