@@ -20,6 +20,7 @@ use rrd_contract::{
 use std::collections::BTreeMap;
 
 mod catalogue_reads;
+mod collection_moves;
 mod incremental_generations;
 mod point_reads;
 mod quantization_replay;

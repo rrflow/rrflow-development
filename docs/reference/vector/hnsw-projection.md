@@ -39,10 +39,14 @@ the base cursor, overlay cursor, and overlay candidate count.
 
 Graph traversal proposes dense candidates. Non-matching records remain
 available for navigation but cannot enter the eligible layer-zero result heap.
-The exact oracle then evaluates graph candidates plus covered overlay versions
-for transaction visibility, valid time, latest-version selection, retirement,
-filtering, metric score, and deterministic order. This makes committed inserts
-and retirements visible before another graph generation is published.
+The exact oracle then evaluates the canonical versions of every identity that
+the graph or the overlay proposes, for transaction visibility, valid time,
+latest-version selection, retirement, filtering, metric score, and
+deterministic order. This makes committed inserts and retirements visible
+before another graph generation is published. A version the graph stored
+before its identity moved to another collection never answers. The graph
+still proposes it, at a cost to recall
+([POAM-048](../../poam/rrflow-1.0-alpha/poam-048.md)).
 
 `AllowApproximate` may select an exact path when estimated graph work is more
 expensive. `RequireApproximate` requires an identity-compatible graph and

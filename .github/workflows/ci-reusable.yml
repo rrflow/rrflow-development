@@ -256,6 +256,8 @@ jobs:
         run: python3 scripts/check_version.py
       - name: Test build provenance and diagnostic profile policy
         run: python3 scripts/test_build_rrflow.py
+      - name: Test experimental controller archive rejection
+        run: python3 scripts/test_controller_trial_package.py
       - name: Enforce repository CI policy
         run: |
           python3 scripts/ci/test_candidate_admission.py
@@ -263,7 +265,9 @@ jobs:
           python3 scripts/ci/test_sdk_attunement_policy.py
           python3 scripts/ci/test_rrflowdb_standalone.py
           python3 scripts/ci/test_cache_warm_policy.py
+          python3 scripts/ci/test_inspect_merge_conflicts.py
           python3 scripts/ci/check_workflow.py
+          python3 scripts/ci/test_inspect_candidate_runs.py
       - name: Test offline qualification input and artifact policy
         run: python3 scripts/ci/test_offline_lifecycle.py
       - name: Test offline controller outcome review exchange

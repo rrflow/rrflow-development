@@ -58,17 +58,14 @@ impl RrdEngine {
                 .map(internal_vector_filter)
                 .transpose()?,
         };
-        let addressed = rrd_vector::candidates_from_changes(&direct.changes, &scope)
-            .into_iter()
-            .filter(|candidate| {
-                vector_matches_collection(
-                    &candidate.vector,
-                    &request.collection_id,
-                    &request.vector_name,
-                )
-            });
+        let held = collection_versions(
+            &visibility,
+            rrd_vector::candidates_from_changes(&direct.changes, &scope),
+            &request.collection_id,
+            &request.vector_name,
+        )?;
         let mut candidates =
-            rrd_vector::materialize_visible(&visibility, addressed).map_err(core_vector)?;
+            rrd_vector::materialize_visible(&visibility, held).map_err(core_vector)?;
         candidates.sort_by(|left, right| left.vector.reference.cmp(&right.vector.reference));
         if let Some(after) = &request.after_reference {
             let after = runtime_ref(after)?;
@@ -175,19 +172,15 @@ impl RrdEngine {
             embedding_model: config.embedding_model.clone(),
             filter: None,
         };
-        // Resolve the latest valid identity before filtering its address. A
-        // collection/name move must not resurrect an older matching version.
-        let candidates = rrd_vector::candidates_from_changes(&direct.changes, &scope);
-        let visible = rrd_vector::materialize_visible(&visibility, candidates)
+        let held = collection_versions(
+            &visibility,
+            rrd_vector::candidates_from_changes(&direct.changes, &scope),
+            &request.collection_id,
+            &request.vector_name,
+        )?;
+        let visible = rrd_vector::materialize_visible(&visibility, held)
             .map_err(core_vector)?
             .into_iter()
-            .filter(|candidate| {
-                vector_matches_collection(
-                    &candidate.vector,
-                    &request.collection_id,
-                    &request.vector_name,
-                )
-            })
             .map(|candidate| (candidate.vector.reference.clone(), candidate))
             .collect::<BTreeMap<_, _>>();
         let mut points = Vec::new();
