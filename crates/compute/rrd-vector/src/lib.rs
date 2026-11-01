@@ -18,6 +18,7 @@ mod quantization_catalog;
 mod quantized_segment;
 mod runtime;
 mod segment;
+mod source;
 mod turbo_segment;
 mod turboquant;
 
@@ -79,6 +80,7 @@ pub use runtime::{
 pub use segment::{
     ImmutableVectorSegment, SegmentDescriptor, VectorSegmentConfig, VECTOR_SEGMENT_FORMAT_VERSION,
 };
+pub use source::{source_history, SourceHistory};
 pub use turbo_segment::{
     TurboQuantDescriptor, TurboQuantSegment, TurboQuantSegmentConfig,
     TURBOQUANT_SEGMENT_FORMAT_VERSION,

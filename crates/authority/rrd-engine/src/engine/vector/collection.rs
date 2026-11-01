@@ -364,7 +364,7 @@ impl RrdEngine {
                 request.collection_id
             ))
         })?;
-        self.require_empty_collection(request, &scope, collection, &direct.changes)?;
+        self.require_empty_collection(request, &read, collection, &direct.changes)?;
         require_no_collection_artifacts(self, &scope, &request.collection_id, collection)?;
         let mutation = collection_mutation_context(session_id, context, now);
         let (catalogue, deleted_collection, idempotent_replay) = repository
@@ -384,46 +384,75 @@ impl RrdEngine {
         })
     }
 
+    /// Refuses while the collection holds an identity at any valid time from
+    /// the deletion on: while, at some such time, the identity's latest
+    /// version names one of the collection's named vectors and is not
+    /// retired. A move out of the collection ends that hold where the move
+    /// takes effect (POAM-047).
     fn require_empty_collection(
         &self,
         request: &DeleteVectorCollection,
-        scope: &ScopeId,
+        read: &ReadStamp,
         collection: &rrd_vector::CollectionEntry,
         changes: &[RuntimeChange],
     ) -> Result<()> {
-        let mut latest = BTreeMap::new();
-        for candidate in rrd_vector::candidates_from_changes(changes, scope) {
+        let addressed = |candidate: &rrd_vector::VectorCandidate| {
             let address = &candidate.vector.collection;
-            let addressed = address.collection_id == request.collection_id.as_str()
+            address.collection_id == request.collection_id.as_str()
                 && collection
                     .definition
                     .vectors
                     .keys()
-                    .any(|name| name.as_str() == address.vector_name);
-            if !addressed {
-                continue;
-            }
-            candidate.validate().map_err(core_vector)?;
-            let identity = candidate.vector.reference.clone();
-            if latest
-                .get(&identity)
-                .is_none_or(|current: &rrd_vector::VectorCandidate| {
-                    current.source_cursor < candidate.source_cursor
-                })
-            {
-                latest.insert(identity, candidate);
-            }
+                    .any(|name| name.as_str() == address.vector_name)
+        };
+        let mut histories = BTreeMap::<rrd_core::RuntimeRef, Vec<_>>::new();
+        for candidate in rrd_vector::candidates_from_changes(changes, &read.scope) {
+            histories
+                .entry(candidate.vector.reference.clone())
+                .or_insert_with(Vec::new)
+                .push(candidate);
         }
-        if latest.values().any(|candidate| {
-            candidate
-                .vector
-                .valid_to
-                .is_none_or(|valid_to| valid_to > request.valid_at)
-        }) {
-            return Err(ServiceError::Vector(format!(
-                "vector collection {} still contains live or future points; retire them through one transaction at or before the deletion time",
-                request.collection_id
-            )));
+        for history in histories
+            .values()
+            .filter(|history| history.iter().any(addressed))
+        {
+            // An identity's latest version changes only where a version
+            // starts to apply, so it is resolved at the deletion time and at
+            // every later start.
+            let times = std::iter::once(request.valid_at)
+                .chain(
+                    history
+                        .iter()
+                        .map(|candidate| candidate.vector.valid_from)
+                        .filter(|valid_from| *valid_from > request.valid_at),
+                )
+                .collect::<std::collections::BTreeSet<_>>();
+            for valid_at in times {
+                let visibility = rrd_vector::VectorVisibilityRequest {
+                    scope: read.scope.clone(),
+                    read: read.clone(),
+                    valid_at,
+                    field: history[0].vector.field.clone(),
+                    embedding_model: None,
+                    filter: None,
+                };
+                let held = rrd_vector::latest_versions(&visibility, history)
+                    .map_err(core_vector)?
+                    .into_values()
+                    .any(|latest| {
+                        addressed(latest)
+                            && latest
+                                .vector
+                                .valid_to
+                                .is_none_or(|valid_to| valid_at < valid_to)
+                    });
+                if held {
+                    return Err(ServiceError::Vector(format!(
+                        "vector collection {} still contains live or future points; retire them through one transaction at or before the deletion time",
+                        request.collection_id
+                    )));
+                }
+            }
         }
         Ok(())
     }
@@ -843,6 +872,20 @@ pub(in crate::engine) fn vector_matches_collection(
 ) -> bool {
     vector.collection.collection_id == collection_id.as_str()
         && vector.collection.vector_name == vector_name.as_str()
+}
+
+/// What a generation built for `collection_id`/`vector_name` holds of
+/// `candidates`, which must be complete histories in every source, and the
+/// cursor it covers (POAM-048). A move out of the address ends what the
+/// generation holds of the identity where the move takes effect.
+pub(in crate::engine) fn source_history(
+    candidates: impl IntoIterator<Item = rrd_vector::VectorCandidate>,
+    collection_id: &CanonicalId,
+    vector_name: &CanonicalId,
+) -> rrd_vector::SourceHistory {
+    rrd_vector::source_history(candidates, |candidate| {
+        vector_matches_collection(&candidate.vector, collection_id, vector_name)
+    })
 }
 
 /// The versions in `collection_id`/`vector_name` of every identity the
