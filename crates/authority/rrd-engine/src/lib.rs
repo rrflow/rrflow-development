@@ -20,6 +20,15 @@ pub mod runtime;
 #[cfg(feature = "full")]
 pub use capabilities::product_capability_catalogue;
 pub use edge::{OfflineDocument, OfflineEdgeConfig, OfflineEdgeIndex, OfflineQueryResult};
+/// Internal entry for the primary executable's isolated parsing child.
+/// The caller must start it with native resource and lifetime enforcement.
+#[cfg(feature = "full")]
+#[doc(hidden)]
+pub fn run_internal_parse_worker() -> std::io::Result<()> {
+    let stdin = std::io::stdin();
+    let stdout = std::io::stdout();
+    rrd_attunement::worker::run_worker(&mut stdin.lock(), &mut stdout.lock())
+}
 #[cfg(feature = "full")]
 pub use engine::{
     attunement_proposal_schema, load_attunement_proposal, load_estate_configuration,

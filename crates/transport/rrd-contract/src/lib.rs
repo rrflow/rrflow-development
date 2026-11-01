@@ -65,9 +65,9 @@ pub use attunement::{
     InstallationRemovalRule, InstallationResult, InstallationSpecialization,
     InstallationStorageGeneration, InstallationTargetKind, PauseAttunement,
     PreviewAttunementReplan, ReadAttunement, ReadAttunementReceipt, RecoverExpiredAttunement,
-    ResumeAttunement, ResumeAttunementWithLease, StartAttunement, StepAttunement,
-    ATTUNEMENT_CONTRACT_VERSION, INSTALLATION_BOOTSTRAP_VERSION, INSTALLATION_LEASE_PATH,
-    INSTALLATION_LEASE_PRECONDITION, INSTALLATION_PLAN_CONTRACT_VERSION,
+    ResumeAttunement, ResumeAttunementWithLease, SourceParseBinding, SourceParsePolicy,
+    StartAttunement, StepAttunement, ATTUNEMENT_CONTRACT_VERSION, INSTALLATION_BOOTSTRAP_VERSION,
+    INSTALLATION_LEASE_PATH, INSTALLATION_LEASE_PRECONDITION, INSTALLATION_PLAN_CONTRACT_VERSION,
     INSTALL_ATTUNEMENT_CONTRACT_VERSION, MAX_ATTUNEMENT_CANCEL_REASON_BYTES,
     MAX_ATTUNEMENT_FAILURE_BYTES, MAX_ATTUNEMENT_PHASES, MAX_ATTUNEMENT_VERIFICATION_CHECKS,
     MAX_BOOTSTRAP_RECORD_BYTES, MAX_BOOTSTRAP_TEXT_BYTES, MAX_INSTALLATION_ACTIONS,
@@ -260,7 +260,7 @@ use std::fmt;
 pub const PROTOCOL: &str = "rrd";
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const OPENAPI_DOCUMENT_SHA256: &str =
-    "8bc8cbdba9d90ab1239ea91624e639886971e58977c0f23a31007d1b2878a9c5";
+    "c04d0b515716e4c14257a2ed9409114440b31fb27ef94aac8eba27d3d8abf46f";
 pub const MAX_ID_BYTES: usize = 128;
 pub const MAX_MESSAGE_BYTES: usize = 4_096;
 pub const MAX_CAPABILITIES: usize = 512;

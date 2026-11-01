@@ -25,6 +25,7 @@ fn first_inventory() -> (
             description: format!("{phase:?}"),
             estimated_items: 0,
             estimated_input_bytes: 0,
+            parse_policy: None,
         })
         .collect(),
         estimated_min_duration_ms: 0,

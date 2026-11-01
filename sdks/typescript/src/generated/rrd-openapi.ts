@@ -1,4 +1,4 @@
-// OpenAPI SHA-256: 8bc8cbdba9d90ab1239ea91624e639886971e58977c0f23a31007d1b2878a9c5
+// OpenAPI SHA-256: c04d0b515716e4c14257a2ed9409114440b31fb27ef94aac8eba27d3d8abf46f
 export interface paths {
     "/v1/attunement/cancel": {
         parameters: {
@@ -3923,6 +3923,32 @@ export interface operations {
                                         estimated_input_bytes: number;
                                         /** Format: uint64 */
                                         estimated_items: number;
+                                        /** @description Versioned, project-selected limits for one authorized Parse step. */
+                                        parse_policy?: {
+                                            bindings: {
+                                                /** @description Case-sensitive final extension, without a leading dot. */
+                                                extension: string;
+                                                /**
+                                                 * @description A canonical public identifier component.
+                                                 *
+                                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                                 *     labels are separate data and may use arbitrary Unicode.
+                                                 */
+                                                language: string;
+                                            }[];
+                                            /** @constant */
+                                            format_version: 1;
+                                            /** @description Maximum encoded bytes in one atomic publication group. */
+                                            max_commit_bytes: number;
+                                            max_depth: number;
+                                            max_elapsed_ms: number;
+                                            max_file_bytes: number;
+                                            max_files: number;
+                                            max_input_bytes: number;
+                                            max_memory_bytes: number;
+                                            max_nodes: number;
+                                            max_output_bytes: number;
+                                        } | null;
                                         /** @enum {string} */
                                         phase: "connect" | "inventory" | "parse" | "normalize" | "entity_link" | "lexical_index" | "embed" | "vector_index" | "graph" | "ground" | "verify";
                                         /** Format: uint16 */
@@ -4128,6 +4154,32 @@ export interface operations {
                                         estimated_input_bytes: number;
                                         /** Format: uint64 */
                                         estimated_items: number;
+                                        /** @description Versioned, project-selected limits for one authorized Parse step. */
+                                        parse_policy?: {
+                                            bindings: {
+                                                /** @description Case-sensitive final extension, without a leading dot. */
+                                                extension: string;
+                                                /**
+                                                 * @description A canonical public identifier component.
+                                                 *
+                                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                                 *     labels are separate data and may use arbitrary Unicode.
+                                                 */
+                                                language: string;
+                                            }[];
+                                            /** @constant */
+                                            format_version: 1;
+                                            /** @description Maximum encoded bytes in one atomic publication group. */
+                                            max_commit_bytes: number;
+                                            max_depth: number;
+                                            max_elapsed_ms: number;
+                                            max_file_bytes: number;
+                                            max_files: number;
+                                            max_input_bytes: number;
+                                            max_memory_bytes: number;
+                                            max_nodes: number;
+                                            max_output_bytes: number;
+                                        } | null;
                                         /** @enum {string} */
                                         phase: "connect" | "inventory" | "parse" | "normalize" | "entity_link" | "lexical_index" | "embed" | "vector_index" | "graph" | "ground" | "verify";
                                         /** Format: uint16 */
@@ -4393,6 +4445,32 @@ export interface operations {
                                             estimated_input_bytes: number;
                                             /** Format: uint64 */
                                             estimated_items: number;
+                                            /** @description Versioned, project-selected limits for one authorized Parse step. */
+                                            parse_policy?: {
+                                                bindings: {
+                                                    /** @description Case-sensitive final extension, without a leading dot. */
+                                                    extension: string;
+                                                    /**
+                                                     * @description A canonical public identifier component.
+                                                     *
+                                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                                     *     labels are separate data and may use arbitrary Unicode.
+                                                     */
+                                                    language: string;
+                                                }[];
+                                                /** @constant */
+                                                format_version: 1;
+                                                /** @description Maximum encoded bytes in one atomic publication group. */
+                                                max_commit_bytes: number;
+                                                max_depth: number;
+                                                max_elapsed_ms: number;
+                                                max_file_bytes: number;
+                                                max_files: number;
+                                                max_input_bytes: number;
+                                                max_memory_bytes: number;
+                                                max_nodes: number;
+                                                max_output_bytes: number;
+                                            } | null;
                                             /** @enum {string} */
                                             phase: "connect" | "inventory" | "parse" | "normalize" | "entity_link" | "lexical_index" | "embed" | "vector_index" | "graph" | "ground" | "verify";
                                             /** Format: uint16 */
@@ -4608,6 +4686,32 @@ export interface operations {
                                             estimated_input_bytes: number;
                                             /** Format: uint64 */
                                             estimated_items: number;
+                                            /** @description Versioned, project-selected limits for one authorized Parse step. */
+                                            parse_policy?: {
+                                                bindings: {
+                                                    /** @description Case-sensitive final extension, without a leading dot. */
+                                                    extension: string;
+                                                    /**
+                                                     * @description A canonical public identifier component.
+                                                     *
+                                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                                     *     labels are separate data and may use arbitrary Unicode.
+                                                     */
+                                                    language: string;
+                                                }[];
+                                                /** @constant */
+                                                format_version: 1;
+                                                /** @description Maximum encoded bytes in one atomic publication group. */
+                                                max_commit_bytes: number;
+                                                max_depth: number;
+                                                max_elapsed_ms: number;
+                                                max_file_bytes: number;
+                                                max_files: number;
+                                                max_input_bytes: number;
+                                                max_memory_bytes: number;
+                                                max_nodes: number;
+                                                max_output_bytes: number;
+                                            } | null;
                                             /** @enum {string} */
                                             phase: "connect" | "inventory" | "parse" | "normalize" | "entity_link" | "lexical_index" | "embed" | "vector_index" | "graph" | "ground" | "verify";
                                             /** Format: uint16 */
@@ -5184,6 +5288,32 @@ export interface operations {
                                     estimated_input_bytes: number;
                                     /** Format: uint64 */
                                     estimated_items: number;
+                                    /** @description Versioned, project-selected limits for one authorized Parse step. */
+                                    parse_policy?: {
+                                        bindings: {
+                                            /** @description Case-sensitive final extension, without a leading dot. */
+                                            extension: string;
+                                            /**
+                                             * @description A canonical public identifier component.
+                                             *
+                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                             *     labels are separate data and may use arbitrary Unicode.
+                                             */
+                                            language: string;
+                                        }[];
+                                        /** @constant */
+                                        format_version: 1;
+                                        /** @description Maximum encoded bytes in one atomic publication group. */
+                                        max_commit_bytes: number;
+                                        max_depth: number;
+                                        max_elapsed_ms: number;
+                                        max_file_bytes: number;
+                                        max_files: number;
+                                        max_input_bytes: number;
+                                        max_memory_bytes: number;
+                                        max_nodes: number;
+                                        max_output_bytes: number;
+                                    } | null;
                                     /** @enum {string} */
                                     phase: "connect" | "inventory" | "parse" | "normalize" | "entity_link" | "lexical_index" | "embed" | "vector_index" | "graph" | "ground" | "verify";
                                     /** Format: uint16 */
@@ -5288,6 +5418,32 @@ export interface operations {
                                         estimated_input_bytes: number;
                                         /** Format: uint64 */
                                         estimated_items: number;
+                                        /** @description Versioned, project-selected limits for one authorized Parse step. */
+                                        parse_policy?: {
+                                            bindings: {
+                                                /** @description Case-sensitive final extension, without a leading dot. */
+                                                extension: string;
+                                                /**
+                                                 * @description A canonical public identifier component.
+                                                 *
+                                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                                 *     labels are separate data and may use arbitrary Unicode.
+                                                 */
+                                                language: string;
+                                            }[];
+                                            /** @constant */
+                                            format_version: 1;
+                                            /** @description Maximum encoded bytes in one atomic publication group. */
+                                            max_commit_bytes: number;
+                                            max_depth: number;
+                                            max_elapsed_ms: number;
+                                            max_file_bytes: number;
+                                            max_files: number;
+                                            max_input_bytes: number;
+                                            max_memory_bytes: number;
+                                            max_nodes: number;
+                                            max_output_bytes: number;
+                                        } | null;
                                         /** @enum {string} */
                                         phase: "connect" | "inventory" | "parse" | "normalize" | "entity_link" | "lexical_index" | "embed" | "vector_index" | "graph" | "ground" | "verify";
                                         /** Format: uint16 */
@@ -5598,6 +5754,32 @@ export interface operations {
                                         estimated_input_bytes: number;
                                         /** Format: uint64 */
                                         estimated_items: number;
+                                        /** @description Versioned, project-selected limits for one authorized Parse step. */
+                                        parse_policy?: {
+                                            bindings: {
+                                                /** @description Case-sensitive final extension, without a leading dot. */
+                                                extension: string;
+                                                /**
+                                                 * @description A canonical public identifier component.
+                                                 *
+                                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                                 *     labels are separate data and may use arbitrary Unicode.
+                                                 */
+                                                language: string;
+                                            }[];
+                                            /** @constant */
+                                            format_version: 1;
+                                            /** @description Maximum encoded bytes in one atomic publication group. */
+                                            max_commit_bytes: number;
+                                            max_depth: number;
+                                            max_elapsed_ms: number;
+                                            max_file_bytes: number;
+                                            max_files: number;
+                                            max_input_bytes: number;
+                                            max_memory_bytes: number;
+                                            max_nodes: number;
+                                            max_output_bytes: number;
+                                        } | null;
                                         /** @enum {string} */
                                         phase: "connect" | "inventory" | "parse" | "normalize" | "entity_link" | "lexical_index" | "embed" | "vector_index" | "graph" | "ground" | "verify";
                                         /** Format: uint16 */
@@ -5968,6 +6150,32 @@ export interface operations {
                                         estimated_input_bytes: number;
                                         /** Format: uint64 */
                                         estimated_items: number;
+                                        /** @description Versioned, project-selected limits for one authorized Parse step. */
+                                        parse_policy?: {
+                                            bindings: {
+                                                /** @description Case-sensitive final extension, without a leading dot. */
+                                                extension: string;
+                                                /**
+                                                 * @description A canonical public identifier component.
+                                                 *
+                                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                                 *     labels are separate data and may use arbitrary Unicode.
+                                                 */
+                                                language: string;
+                                            }[];
+                                            /** @constant */
+                                            format_version: 1;
+                                            /** @description Maximum encoded bytes in one atomic publication group. */
+                                            max_commit_bytes: number;
+                                            max_depth: number;
+                                            max_elapsed_ms: number;
+                                            max_file_bytes: number;
+                                            max_files: number;
+                                            max_input_bytes: number;
+                                            max_memory_bytes: number;
+                                            max_nodes: number;
+                                            max_output_bytes: number;
+                                        } | null;
                                         /** @enum {string} */
                                         phase: "connect" | "inventory" | "parse" | "normalize" | "entity_link" | "lexical_index" | "embed" | "vector_index" | "graph" | "ground" | "verify";
                                         /** Format: uint16 */
@@ -6070,6 +6278,32 @@ export interface operations {
                                         estimated_input_bytes: number;
                                         /** Format: uint64 */
                                         estimated_items: number;
+                                        /** @description Versioned, project-selected limits for one authorized Parse step. */
+                                        parse_policy?: {
+                                            bindings: {
+                                                /** @description Case-sensitive final extension, without a leading dot. */
+                                                extension: string;
+                                                /**
+                                                 * @description A canonical public identifier component.
+                                                 *
+                                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                                 *     labels are separate data and may use arbitrary Unicode.
+                                                 */
+                                                language: string;
+                                            }[];
+                                            /** @constant */
+                                            format_version: 1;
+                                            /** @description Maximum encoded bytes in one atomic publication group. */
+                                            max_commit_bytes: number;
+                                            max_depth: number;
+                                            max_elapsed_ms: number;
+                                            max_file_bytes: number;
+                                            max_files: number;
+                                            max_input_bytes: number;
+                                            max_memory_bytes: number;
+                                            max_nodes: number;
+                                            max_output_bytes: number;
+                                        } | null;
                                         /** @enum {string} */
                                         phase: "connect" | "inventory" | "parse" | "normalize" | "entity_link" | "lexical_index" | "embed" | "vector_index" | "graph" | "ground" | "verify";
                                         /** Format: uint16 */
@@ -6229,6 +6463,32 @@ export interface operations {
                                             estimated_input_bytes: number;
                                             /** Format: uint64 */
                                             estimated_items: number;
+                                            /** @description Versioned, project-selected limits for one authorized Parse step. */
+                                            parse_policy?: {
+                                                bindings: {
+                                                    /** @description Case-sensitive final extension, without a leading dot. */
+                                                    extension: string;
+                                                    /**
+                                                     * @description A canonical public identifier component.
+                                                     *
+                                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                                     *     labels are separate data and may use arbitrary Unicode.
+                                                     */
+                                                    language: string;
+                                                }[];
+                                                /** @constant */
+                                                format_version: 1;
+                                                /** @description Maximum encoded bytes in one atomic publication group. */
+                                                max_commit_bytes: number;
+                                                max_depth: number;
+                                                max_elapsed_ms: number;
+                                                max_file_bytes: number;
+                                                max_files: number;
+                                                max_input_bytes: number;
+                                                max_memory_bytes: number;
+                                                max_nodes: number;
+                                                max_output_bytes: number;
+                                            } | null;
                                             /** @enum {string} */
                                             phase: "connect" | "inventory" | "parse" | "normalize" | "entity_link" | "lexical_index" | "embed" | "vector_index" | "graph" | "ground" | "verify";
                                             /** Format: uint16 */
@@ -6289,6 +6549,32 @@ export interface operations {
                                                 estimated_input_bytes: number;
                                                 /** Format: uint64 */
                                                 estimated_items: number;
+                                                /** @description Versioned, project-selected limits for one authorized Parse step. */
+                                                parse_policy?: {
+                                                    bindings: {
+                                                        /** @description Case-sensitive final extension, without a leading dot. */
+                                                        extension: string;
+                                                        /**
+                                                         * @description A canonical public identifier component.
+                                                         *
+                                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                                         *     labels are separate data and may use arbitrary Unicode.
+                                                         */
+                                                        language: string;
+                                                    }[];
+                                                    /** @constant */
+                                                    format_version: 1;
+                                                    /** @description Maximum encoded bytes in one atomic publication group. */
+                                                    max_commit_bytes: number;
+                                                    max_depth: number;
+                                                    max_elapsed_ms: number;
+                                                    max_file_bytes: number;
+                                                    max_files: number;
+                                                    max_input_bytes: number;
+                                                    max_memory_bytes: number;
+                                                    max_nodes: number;
+                                                    max_output_bytes: number;
+                                                } | null;
                                                 /** @enum {string} */
                                                 phase: "connect" | "inventory" | "parse" | "normalize" | "entity_link" | "lexical_index" | "embed" | "vector_index" | "graph" | "ground" | "verify";
                                                 /** Format: uint16 */
@@ -6365,6 +6651,32 @@ export interface operations {
                                                 estimated_input_bytes: number;
                                                 /** Format: uint64 */
                                                 estimated_items: number;
+                                                /** @description Versioned, project-selected limits for one authorized Parse step. */
+                                                parse_policy?: {
+                                                    bindings: {
+                                                        /** @description Case-sensitive final extension, without a leading dot. */
+                                                        extension: string;
+                                                        /**
+                                                         * @description A canonical public identifier component.
+                                                         *
+                                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                                         *     labels are separate data and may use arbitrary Unicode.
+                                                         */
+                                                        language: string;
+                                                    }[];
+                                                    /** @constant */
+                                                    format_version: 1;
+                                                    /** @description Maximum encoded bytes in one atomic publication group. */
+                                                    max_commit_bytes: number;
+                                                    max_depth: number;
+                                                    max_elapsed_ms: number;
+                                                    max_file_bytes: number;
+                                                    max_files: number;
+                                                    max_input_bytes: number;
+                                                    max_memory_bytes: number;
+                                                    max_nodes: number;
+                                                    max_output_bytes: number;
+                                                } | null;
                                                 /** @enum {string} */
                                                 phase: "connect" | "inventory" | "parse" | "normalize" | "entity_link" | "lexical_index" | "embed" | "vector_index" | "graph" | "ground" | "verify";
                                                 /** Format: uint16 */
@@ -6678,6 +6990,32 @@ export interface operations {
                                             estimated_input_bytes: number;
                                             /** Format: uint64 */
                                             estimated_items: number;
+                                            /** @description Versioned, project-selected limits for one authorized Parse step. */
+                                            parse_policy?: {
+                                                bindings: {
+                                                    /** @description Case-sensitive final extension, without a leading dot. */
+                                                    extension: string;
+                                                    /**
+                                                     * @description A canonical public identifier component.
+                                                     *
+                                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                                     *     labels are separate data and may use arbitrary Unicode.
+                                                     */
+                                                    language: string;
+                                                }[];
+                                                /** @constant */
+                                                format_version: 1;
+                                                /** @description Maximum encoded bytes in one atomic publication group. */
+                                                max_commit_bytes: number;
+                                                max_depth: number;
+                                                max_elapsed_ms: number;
+                                                max_file_bytes: number;
+                                                max_files: number;
+                                                max_input_bytes: number;
+                                                max_memory_bytes: number;
+                                                max_nodes: number;
+                                                max_output_bytes: number;
+                                            } | null;
                                             /** @enum {string} */
                                             phase: "connect" | "inventory" | "parse" | "normalize" | "entity_link" | "lexical_index" | "embed" | "vector_index" | "graph" | "ground" | "verify";
                                             /** Format: uint16 */
@@ -6738,6 +7076,32 @@ export interface operations {
                                                 estimated_input_bytes: number;
                                                 /** Format: uint64 */
                                                 estimated_items: number;
+                                                /** @description Versioned, project-selected limits for one authorized Parse step. */
+                                                parse_policy?: {
+                                                    bindings: {
+                                                        /** @description Case-sensitive final extension, without a leading dot. */
+                                                        extension: string;
+                                                        /**
+                                                         * @description A canonical public identifier component.
+                                                         *
+                                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                                         *     labels are separate data and may use arbitrary Unicode.
+                                                         */
+                                                        language: string;
+                                                    }[];
+                                                    /** @constant */
+                                                    format_version: 1;
+                                                    /** @description Maximum encoded bytes in one atomic publication group. */
+                                                    max_commit_bytes: number;
+                                                    max_depth: number;
+                                                    max_elapsed_ms: number;
+                                                    max_file_bytes: number;
+                                                    max_files: number;
+                                                    max_input_bytes: number;
+                                                    max_memory_bytes: number;
+                                                    max_nodes: number;
+                                                    max_output_bytes: number;
+                                                } | null;
                                                 /** @enum {string} */
                                                 phase: "connect" | "inventory" | "parse" | "normalize" | "entity_link" | "lexical_index" | "embed" | "vector_index" | "graph" | "ground" | "verify";
                                                 /** Format: uint16 */
@@ -6814,6 +7178,32 @@ export interface operations {
                                                 estimated_input_bytes: number;
                                                 /** Format: uint64 */
                                                 estimated_items: number;
+                                                /** @description Versioned, project-selected limits for one authorized Parse step. */
+                                                parse_policy?: {
+                                                    bindings: {
+                                                        /** @description Case-sensitive final extension, without a leading dot. */
+                                                        extension: string;
+                                                        /**
+                                                         * @description A canonical public identifier component.
+                                                         *
+                                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                                         *     labels are separate data and may use arbitrary Unicode.
+                                                         */
+                                                        language: string;
+                                                    }[];
+                                                    /** @constant */
+                                                    format_version: 1;
+                                                    /** @description Maximum encoded bytes in one atomic publication group. */
+                                                    max_commit_bytes: number;
+                                                    max_depth: number;
+                                                    max_elapsed_ms: number;
+                                                    max_file_bytes: number;
+                                                    max_files: number;
+                                                    max_input_bytes: number;
+                                                    max_memory_bytes: number;
+                                                    max_nodes: number;
+                                                    max_output_bytes: number;
+                                                } | null;
                                                 /** @enum {string} */
                                                 phase: "connect" | "inventory" | "parse" | "normalize" | "entity_link" | "lexical_index" | "embed" | "vector_index" | "graph" | "ground" | "verify";
                                                 /** Format: uint16 */
