@@ -1,4 +1,4 @@
-// OpenAPI SHA-256: f1856602eb3b5ba419f600b3be0e9626d62ad533032fe220a2728795bd28048a
+// OpenAPI SHA-256: 8bc8cbdba9d90ab1239ea91624e639886971e58977c0f23a31007d1b2878a9c5
 export interface paths {
     "/v1/attunement/cancel": {
         parameters: {
@@ -42610,6 +42610,8 @@ export interface operations {
                                     } | {
                                         /** @enum {string} */
                                         bits: "bits4" | "bits2" | "bits1_5" | "bits1";
+                                        /** @description Absent means `mse`, as before the inner-product estimator existed. */
+                                        estimator?: "mse" | "inner_product";
                                         /** @constant */
                                         method: "turbo_quant";
                                         /** Format: uint64 */
@@ -42711,6 +42713,8 @@ export interface operations {
                                     } | {
                                         /** @enum {string} */
                                         bits: "bits4" | "bits2" | "bits1_5" | "bits1";
+                                        /** @description Absent means `mse`, as before the inner-product estimator existed. */
+                                        estimator?: "mse" | "inner_product";
                                         /** @constant */
                                         method: "turbo_quant";
                                         /** Format: uint64 */
@@ -42804,6 +42808,8 @@ export interface operations {
                         } | {
                             /** @enum {string} */
                             bits: "bits4" | "bits2" | "bits1_5" | "bits1";
+                            /** @description Absent means `mse`, as before the inner-product estimator existed. */
+                            estimator?: "mse" | "inner_product";
                             /** @constant */
                             method: "turbo_quant";
                             /** Format: uint64 */
@@ -42897,6 +42903,8 @@ export interface operations {
                                     } | {
                                         /** @enum {string} */
                                         bits: "bits4" | "bits2" | "bits1_5" | "bits1";
+                                        /** @description Absent means `mse`, as before the inner-product estimator existed. */
+                                        estimator?: "mse" | "inner_product";
                                         /** @constant */
                                         method: "turbo_quant";
                                         /** Format: uint64 */
@@ -42919,6 +42927,18 @@ export interface operations {
                                      */
                                     vector_name: string;
                                 };
+                                /**
+                                 * Format: uint64
+                                 * @description The generation this build extended with the vectors changed since it;
+                                 *     absent when the build encoded every version.
+                                 */
+                                base_generation?: number | null;
+                                /**
+                                 * Format: uint64
+                                 * @description Vector versions this build encoded. An extended generation carries the
+                                 *     rest from its base; a replay encodes none.
+                                 */
+                                encoded_versions: number;
                                 idempotent_replay: boolean;
                                 /** @description Complete logical I/O evidence for normal semantic reads at one stamp. */
                                 read_evidence: {
@@ -43049,6 +43069,8 @@ export interface operations {
                                     } | {
                                         /** @enum {string} */
                                         bits: "bits4" | "bits2" | "bits1_5" | "bits1";
+                                        /** @description Absent means `mse`, as before the inner-product estimator existed. */
+                                        estimator?: "mse" | "inner_product";
                                         /** @constant */
                                         method: "turbo_quant";
                                         /** Format: uint64 */
@@ -43071,6 +43093,18 @@ export interface operations {
                                      */
                                     vector_name: string;
                                 };
+                                /**
+                                 * Format: uint64
+                                 * @description The generation this build extended with the vectors changed since it;
+                                 *     absent when the build encoded every version.
+                                 */
+                                base_generation?: number | null;
+                                /**
+                                 * Format: uint64
+                                 * @description Vector versions this build encoded. An extended generation carries the
+                                 *     rest from its base; a replay encodes none.
+                                 */
+                                encoded_versions: number;
                                 idempotent_replay: boolean;
                                 /** @description Complete logical I/O evidence for normal semantic reads at one stamp. */
                                 read_evidence: {
@@ -43265,6 +43299,8 @@ export interface operations {
                                     } | {
                                         /** @enum {string} */
                                         bits: "bits4" | "bits2" | "bits1_5" | "bits1";
+                                        /** @description Absent means `mse`, as before the inner-product estimator existed. */
+                                        estimator?: "mse" | "inner_product";
                                         /** @constant */
                                         method: "turbo_quant";
                                         /** Format: uint64 */
@@ -43368,6 +43404,8 @@ export interface operations {
                                     } | {
                                         /** @enum {string} */
                                         bits: "bits4" | "bits2" | "bits1_5" | "bits1";
+                                        /** @description Absent means `mse`, as before the inner-product estimator existed. */
+                                        estimator?: "mse" | "inner_product";
                                         /** @constant */
                                         method: "turbo_quant";
                                         /** Format: uint64 */
@@ -43528,6 +43566,8 @@ export interface operations {
                                     } | {
                                         /** @enum {string} */
                                         bits: "bits4" | "bits2" | "bits1_5" | "bits1";
+                                        /** @description Absent means `mse`, as before the inner-product estimator existed. */
+                                        estimator?: "mse" | "inner_product";
                                         /** @constant */
                                         method: "turbo_quant";
                                         /** Format: uint64 */
@@ -43629,6 +43669,8 @@ export interface operations {
                                     } | {
                                         /** @enum {string} */
                                         bits: "bits4" | "bits2" | "bits1_5" | "bits1";
+                                        /** @description Absent means `mse`, as before the inner-product estimator existed. */
+                                        estimator?: "mse" | "inner_product";
                                         /** @constant */
                                         method: "turbo_quant";
                                         /** Format: uint64 */

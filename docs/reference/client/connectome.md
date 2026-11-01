@@ -67,6 +67,21 @@ offering. Hosted project execution, previews, web launch, account creation,
 and synchronization are product targets requiring their own public-contract
 integration and proof; this source registration supplies none of those effects.
 
+### Nested repository choice
+
+When the engine supplies a repository-discovery preview, Connectome presents
+the detected nested repository and lets the user exclude it, add it as a
+separate project and instance, or include it in the same project instance.
+Recommend the separate-project choice, explain the difference in storage and
+access, and show the exact selected roots and installation effects before apply.
+An assistant may help the user choose; an unanswered question never approves a
+choice or blocks unrelated exploration. Present an unavailable state until
+the engine offers this preview and the selected flow is implemented. Connectome
+does not infer repository membership, authorize reads, or own the decision.
+The [topology](../../architecture/instance-topology.md#user-selected-repository-boundaries)
+and [Gate D proof](../../roadmap/rrflow-1.0/gate-d.md#nested-repository-setup)
+remain the owners of semantics and real-project acceptance.
+
 ### Native local workbench
 
 The current engine exposes the [public task effort flow](../inference/lfg-swag.md#public-task-effort-flow)

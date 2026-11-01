@@ -28,7 +28,12 @@ def owned_root(tmp_path: Path) -> Iterator[Path]:
 
 
 @pytest.mark.skipif(not os.environ.get("RRFLOW_TEST_BINARY"), reason="real primary not provided")
-def test_installed_python_stale_plan_replans_and_starts(owned_root: Path) -> None:
+@pytest.mark.parametrize(
+    "selected_progress", [False, True], ids=["stale-start", "selected-after-progress"]
+)
+def test_installed_python_stale_plan_replans_and_starts(
+    owned_root: Path, selected_progress: bool
+) -> None:
     built_binary = Path(os.environ["RRFLOW_TEST_BINARY"]).resolve(strict=True)
     binary = owned_root / built_binary.name
     shutil.copy2(built_binary, binary)
@@ -49,6 +54,40 @@ def test_installed_python_stale_plan_replans_and_starts(owned_root: Path) -> Non
         return json.loads(result.stdout)
 
     identity = cli("install", "identity")["installation_identity"]
+    proposal_args: list[str] = []
+    if selected_progress:
+        proposal_file = owned_root / "attunement-proposal.json"
+        proposal_file.write_text(
+            json.dumps(
+                {
+                    "format_version": 1,
+                    "steps": [
+                        {
+                            "phase": "connect",
+                            "description": "first",
+                            "estimated_items": 1,
+                            "estimated_input_bytes": 0,
+                        },
+                        {
+                            "phase": "connect",
+                            "description": "second",
+                            "estimated_items": 1,
+                            "estimated_input_bytes": 0,
+                        },
+                        {
+                            "phase": "verify",
+                            "description": "verify",
+                            "estimated_items": 1,
+                            "estimated_input_bytes": 0,
+                        },
+                    ],
+                    "estimated_min_duration_ms": 0,
+                    "estimated_max_duration_ms": 1000,
+                }
+            ),
+            encoding="utf-8",
+        )
+        proposal_args = ["--attunement-proposal", str(proposal_file)]
     preview = cli(
         "--json",
         "install",
@@ -59,6 +98,7 @@ def test_installed_python_stale_plan_replans_and_starts(owned_root: Path) -> Non
         "existing",
         "--project",
         str(project),
+        *proposal_args,
     )
     preview_file = owned_root / "plan.json"
     preview_file.write_text(json.dumps(preview), encoding="utf-8")
@@ -79,7 +119,8 @@ def test_installed_python_stale_plan_replans_and_starts(owned_root: Path) -> Non
     job_id = "job-" + plan["plan_sha256"][:24]
     locator = tomllib.loads((project / ".rrflow" / "config.toml").read_text(encoding="utf-8"))
     credential = json.loads((project / locator["operator_credential"]).read_text(encoding="utf-8"))
-    source.write_text("changed source\n", encoding="utf-8")
+    if not selected_progress:
+        source.write_text("changed source\n", encoding="utf-8")
     lines: queue.Queue[str] = queue.Queue(maxsize=1)
     with (owned_root / "server-stderr.log").open("wb") as stderr:
         process = subprocess.Popen(
@@ -127,9 +168,44 @@ def test_installed_python_stale_plan_replans_and_starts(owned_root: Path) -> Non
                     "expected_revision": 1,
                     "lease_ms": 30000,
                 }
+                current_revision = 1
+                stale_operation = "attunement-start"
+                stale_request = start
+                if selected_progress:
+                    assert len(plan["phases"]) == 3
+                    running = client.call(
+                        "attunement-start",
+                        start,
+                        options("initial-start", session=session, mutation=True),
+                    )
+                    current = running["status"]["job"]
+                    for index in (1, 2):
+                        advanced = client.call(
+                            "attunement-step",
+                            {
+                                "contract_version": plan["contract_version"],
+                                "job_id": job_id,
+                                "expected_revision": current["revision"],
+                                "lease_generation": current["lease"]["generation"],
+                            },
+                            options(f"step-{index}", session=session, mutation=True),
+                        )
+                        current = advanced["status"]["job"]
+                    assert len(current["checkpoints"]) == 2
+                    current_revision = current["revision"]
+                    source.write_text("changed after two steps\n", encoding="utf-8")
+                    stale_operation = "attunement-step"
+                    stale_request = {
+                        "contract_version": plan["contract_version"],
+                        "job_id": job_id,
+                        "expected_revision": current_revision,
+                        "lease_generation": current["lease"]["generation"],
+                    }
                 with pytest.raises(RrdApiError) as captured:
                     client.call(
-                        "attunement-start", start, options("stale", session=session, mutation=True)
+                        stale_operation,
+                        stale_request,
+                        options("stale", session=session, mutation=True),
                     )
                 assert captured.value.status == 412
                 assert captured.value.code == "failed_precondition"
@@ -143,13 +219,13 @@ def test_installed_python_stale_plan_replans_and_starts(owned_root: Path) -> Non
                     {"contract_version": plan["contract_version"], "job_id": job_id},
                     options("read", session=session),
                 )
-                assert before["status"]["job"]["revision"] == 1
+                assert before["status"]["job"]["revision"] == current_revision
                 replan = client.call(
                     "attunement-replan-preview",
                     {
                         "contract_version": plan["contract_version"],
                         "job_id": job_id,
-                        "expected_revision": 1,
+                        "expected_revision": current_revision,
                     },
                     options("preview", session=session),
                 )
@@ -164,6 +240,7 @@ def test_installed_python_stale_plan_replans_and_starts(owned_root: Path) -> Non
                 )
                 assert accepted["predecessor"]["job"]["state"] == "cancel_requested"
                 assert accepted["plan"]["source_sha256"] != plan["source_sha256"]
+                assert accepted["plan"]["phases"] == plan["phases"]
                 successor = accepted["successor"]["job"]
                 new_start = {
                     "contract_version": plan["contract_version"],

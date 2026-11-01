@@ -66,8 +66,8 @@ pub use attunement::{
     InstallationStorageGeneration, InstallationTargetKind, PauseAttunement,
     PreviewAttunementReplan, ReadAttunement, ReadAttunementReceipt, RecoverExpiredAttunement,
     ResumeAttunement, ResumeAttunementWithLease, StartAttunement, StepAttunement,
-    ATTUNEMENT_CONTRACT_VERSION, ATTUNEMENT_PHASES, INSTALLATION_BOOTSTRAP_VERSION,
-    INSTALLATION_LEASE_PATH, INSTALLATION_LEASE_PRECONDITION, INSTALLATION_PLAN_CONTRACT_VERSION,
+    ATTUNEMENT_CONTRACT_VERSION, INSTALLATION_BOOTSTRAP_VERSION, INSTALLATION_LEASE_PATH,
+    INSTALLATION_LEASE_PRECONDITION, INSTALLATION_PLAN_CONTRACT_VERSION,
     INSTALL_ATTUNEMENT_CONTRACT_VERSION, MAX_ATTUNEMENT_CANCEL_REASON_BYTES,
     MAX_ATTUNEMENT_FAILURE_BYTES, MAX_ATTUNEMENT_PHASES, MAX_ATTUNEMENT_VERIFICATION_CHECKS,
     MAX_BOOTSTRAP_RECORD_BYTES, MAX_BOOTSTRAP_TEXT_BYTES, MAX_INSTALLATION_ACTIONS,
@@ -260,7 +260,7 @@ use std::fmt;
 pub const PROTOCOL: &str = "rrd";
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const OPENAPI_DOCUMENT_SHA256: &str =
-    "f1856602eb3b5ba419f600b3be0e9626d62ad533032fe220a2728795bd28048a";
+    "8bc8cbdba9d90ab1239ea91624e639886971e58977c0f23a31007d1b2878a9c5";
 pub const MAX_ID_BYTES: usize = 128;
 pub const MAX_MESSAGE_BYTES: usize = 4_096;
 pub const MAX_CAPABILITIES: usize = 512;
@@ -1356,6 +1356,9 @@ pub enum VectorQuantizationMethod {
     TurboQuant {
         bits: VectorQuantizationBits,
         seed: u64,
+        /// Absent means `mse`, as before the inner-product estimator existed.
+        #[serde(default, skip_serializing_if = "VectorQuantizationEstimator::is_mse")]
+        estimator: VectorQuantizationEstimator,
     },
 }
 
@@ -1385,6 +1388,26 @@ impl VectorQuantizationMethod {
     }
 }
 
+/// How a TurboQuant generation estimates a query's inner products.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum VectorQuantizationEstimator {
+    /// TurboQuant_mse: each coordinate's nearest codebook value, rescaled to
+    /// the vector's length.
+    #[default]
+    Mse,
+    /// TurboQuant_prod: an MSE stage one bit narrower plus one sign bit per
+    /// coordinate of its residual's Gaussian projection, an unbiased estimate
+    /// of inner products.
+    InnerProduct,
+}
+
+impl VectorQuantizationEstimator {
+    pub fn is_mse(&self) -> bool {
+        *self == Self::Mse
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum VectorQuantizationArtifactState {
@@ -1408,6 +1431,14 @@ pub struct BuildVectorQuantizationArtifact {
 impl BuildVectorQuantizationArtifact {
     pub fn validate(&self) -> Result<()> {
         validate_vector_scope(&self.scope)?;
+        if let VectorQuantizationMethod::TurboQuant {
+            bits: VectorQuantizationBits::Bits1_5,
+            estimator: VectorQuantizationEstimator::InnerProduct,
+            ..
+        } = self.method
+        {
+            return invalid("1.5-bit TurboQuant has no inner-product estimator");
+        }
         if self.max_storage_keys == 0 || self.max_storage_keys > MAX_VECTOR_STORAGE_KEYS {
             return invalid(format!(
                 "quantization build max_storage_keys must be in 1..={MAX_VECTOR_STORAGE_KEYS}"
@@ -1511,6 +1542,13 @@ pub struct BuildVectorQuantizationArtifactResult {
     pub artifact: VectorQuantizationArtifactSnapshot,
     pub selected_versions: u64,
     pub read_evidence: ReadEvidence,
+    /// The generation this build extended with the vectors changed since it;
+    /// absent when the build encoded every version.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub base_generation: Option<u64>,
+    /// Vector versions this build encoded. An extended generation carries the
+    /// rest from its base; a replay encodes none.
+    pub encoded_versions: u64,
     pub idempotent_replay: bool,
 }
 

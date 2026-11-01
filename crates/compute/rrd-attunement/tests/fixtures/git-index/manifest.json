@@ -1,0 +1,116 @@
+{
+  "purpose": "Authored parser correctness fixtures; not training or routing evaluation data.",
+  "generator": "generate_git_indexes.py",
+  "git_version": "git version 2.55.0.windows.5",
+  "commands": [
+    [
+      "init",
+      "--object-format=sha1"
+    ],
+    [
+      "hash-object",
+      "-w",
+      "--stdin"
+    ],
+    [
+      "update-index",
+      "--index-info"
+    ],
+    [
+      "update-index",
+      "--index-version=2"
+    ],
+    [
+      "update-index",
+      "--skip-worktree",
+      "src/main.rs"
+    ],
+    [
+      "update-index",
+      "--index-version=3"
+    ],
+    [
+      "update-index",
+      "--index-version=4"
+    ],
+    [
+      "update-index",
+      "--split-index"
+    ],
+    [
+      "init",
+      "--object-format=sha256"
+    ],
+    [
+      "hash-object",
+      "-w",
+      "--stdin"
+    ],
+    [
+      "update-index",
+      "--index-info"
+    ],
+    [
+      "update-index",
+      "--index-version=2"
+    ],
+    [
+      "init",
+      "--object-format=sha1"
+    ],
+    [
+      "init",
+      "--object-format=sha1"
+    ],
+    [
+      "hash-object",
+      "-w",
+      "--stdin"
+    ],
+    [
+      "update-index",
+      "--index-info"
+    ],
+    [
+      "update-index",
+      "--index-version=4"
+    ]
+  ],
+  "files": [
+    {
+      "file": "sha1-v2.index",
+      "bytes": 368,
+      "sha256": "0e59406bba5643914153f3b49d9de69cfe5e80940e56aa69e1fae90eaa29d833"
+    },
+    {
+      "file": "sha1-v3.index",
+      "bytes": 368,
+      "sha256": "f542efe10652de4e9c52a34328c97252e9952752fbff31cf4dba29f0ddef1979"
+    },
+    {
+      "file": "sha1-v4.index",
+      "bytes": 351,
+      "sha256": "eaaef8f97c6edb87a4108b0ce2c029086041da3260b5f3c2f5096746a84fa3c2"
+    },
+    {
+      "file": "sha1-split.index",
+      "bytes": 100,
+      "sha256": "95ad470c815f8a1a79b0e17ae22d770ac839a1c722fb29c53632195ac5234b3b"
+    },
+    {
+      "file": "sha256-v2.index",
+      "bytes": 412,
+      "sha256": "37e9f97aa8c3e0c0a94d573ed123329aebb2355572dba4ae64a845eacf79d0ff"
+    },
+    {
+      "file": "ignore-oracle.json",
+      "bytes": 6422,
+      "sha256": "f808a34e07fcefe1263c2a0bf09ffa86369014c6f8188aa3732b903ae60eeb35"
+    },
+    {
+      "file": "sha1-compressed-v4.index",
+      "bytes": 8880,
+      "sha256": "19148410a4c1ce891164c5b6dfe0db0010efc41328b54abc1852baab5671b85c"
+    }
+  ]
+}
