@@ -39,6 +39,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     corpus.query.scope.clone_from(&scope);
     corpus.vector.ensure.scope.clone_from(&scope);
     corpus.vector.search.scope.clone_from(&scope);
+    corpus.vector.quantization.build.scope.clone_from(&scope);
+    corpus.vector.quantization.activate.scope.clone_from(&scope);
+    corpus.vector.quantization.search.scope.clone_from(&scope);
     corpus.changefeed.read.scope = scope;
     corpus.validate()?;
     if std::env::args().skip(1).any(|arg| arg == "--check") {
@@ -56,6 +59,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "/query/scope",
             "/vector/ensure/scope",
             "/vector/search/scope",
+            "/vector/quantization/build/scope",
+            "/vector/quantization/activate/scope",
+            "/vector/quantization/search/scope",
             "/changefeed/read/scope",
         ] {
             *original

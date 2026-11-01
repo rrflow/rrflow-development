@@ -11,11 +11,26 @@ use rrd_contract::{
     InstallationRecordKind, InstallationRemovalRule, InstallationResult,
     InstallationSpecialization, InstallationStorageGeneration, InstallationTargetKind,
     InstalledEstateIdentity, MemorySeatDefinition, ResumeAttunement, SecurityAction,
-    StorageProfileKind, ATTUNEMENT_CONTRACT_VERSION, ATTUNEMENT_PHASES,
-    INSTALLATION_PLAN_CONTRACT_VERSION, INSTALL_ATTUNEMENT_CONTRACT_VERSION,
+    StorageProfileKind, ATTUNEMENT_CONTRACT_VERSION, INSTALLATION_PLAN_CONTRACT_VERSION,
+    INSTALL_ATTUNEMENT_CONTRACT_VERSION,
 };
 use schemars::{schema_for, JsonSchema};
 use serde::{Deserialize, Serialize};
+
+// Test fixture only: runtime plans own their positions and may differ.
+const ATTUNEMENT_PHASES: [AttunementPhase; 11] = [
+    AttunementPhase::Connect,
+    AttunementPhase::Inventory,
+    AttunementPhase::Parse,
+    AttunementPhase::Normalize,
+    AttunementPhase::EntityLink,
+    AttunementPhase::LexicalIndex,
+    AttunementPhase::Embed,
+    AttunementPhase::VectorIndex,
+    AttunementPhase::Graph,
+    AttunementPhase::Ground,
+    AttunementPhase::Verify,
+];
 
 const CREATED_AT: u64 = 1_800_000_000_000;
 
@@ -205,12 +220,16 @@ fn attunement_plan() -> AttunementPlan {
         phases: ATTUNEMENT_PHASES
             .iter()
             .copied()
-            .map(|phase| AttunementPhasePlan {
-                phase,
-                sequence: phase.sequence(),
-                configuration_sha256: digest(100 + u64::from(phase.sequence())),
-                estimated_items: u64::from(phase.sequence()) * 10,
-                estimated_input_bytes: u64::from(phase.sequence()) * 1_024,
+            .enumerate()
+            .map(|(index, phase)| {
+                let sequence = u16::try_from(index + 1).unwrap();
+                AttunementPhasePlan {
+                    phase,
+                    sequence,
+                    configuration_sha256: digest(100 + u64::from(sequence)),
+                    estimated_items: u64::from(sequence) * 10,
+                    estimated_input_bytes: u64::from(sequence) * 1_024,
+                }
             })
             .collect(),
         estimated_min_duration_ms: 1_800_000,
@@ -604,7 +623,7 @@ fn job(
         code: canonical_id("phase-execution-failed"),
         message: "phase execution failed before commit".into(),
         retryable: true,
-        evidence_sha256: digest(400 + u64::from(phase.unwrap().sequence())),
+        evidence_sha256: digest(400 + u64::try_from(checkpoint_count + 1).unwrap()),
         observed_at_unix_ms: updated_at_unix_ms,
     });
     AttunementJob {

@@ -89,6 +89,60 @@ fn binary() -> PathBuf {
     DISTRIBUTION.with(|distribution| distribution.executable.clone())
 }
 
+async fn inventory_through_client(
+    client: &RrdClient,
+    session: &rrd_client::Session,
+    pending: &rrd_contract::AttunementJob,
+    plan: &rrd_contract::AttunementPlan,
+    prefix: &str,
+) -> rrd_contract::AttunementJob {
+    let options = |suffix: &str| {
+        let key = format!("{prefix}-{suffix}");
+        RequestOptions::mutation(&key, &key, &key).unwrap()
+    };
+    let mut job = client
+        .start_attunement(
+            session,
+            rrd_contract::StartAttunement {
+                contract_version: rrd_contract::ATTUNEMENT_CONTRACT_VERSION,
+                job_id: pending.id.clone(),
+                plan_sha256: pending.plan_sha256.clone(),
+                expected_revision: pending.revision,
+                lease_ms: 60_000,
+            },
+            plan,
+            options("start"),
+        )
+        .await
+        .unwrap()
+        .status
+        .job;
+    for phase in [
+        rrd_contract::AttunementPhase::Connect,
+        rrd_contract::AttunementPhase::Inventory,
+    ] {
+        assert_eq!(job.current_phase, Some(phase));
+        job = client
+            .step_attunement(
+                session,
+                rrd_contract::StepAttunement {
+                    contract_version: rrd_contract::ATTUNEMENT_CONTRACT_VERSION,
+                    job_id: job.id.clone(),
+                    expected_revision: job.revision,
+                    lease_generation: job.lease.as_ref().unwrap().generation,
+                },
+                plan,
+                options(&format!("{phase:?}")),
+            )
+            .await
+            .unwrap()
+            .status
+            .job;
+        assert_eq!(job.checkpoints.last().unwrap().phase, phase);
+    }
+    job
+}
+
 fn installed_binary_replans_and_reads_receipt_after_forced_restart() {
     use serde_json::{json, Value};
     use std::io::{Read, Write};
@@ -288,6 +342,7 @@ fn installed_binary_replans_and_reads_receipt_after_forced_restart() {
     std::fs::write(project.join("README.md"), "typed client edit\n").unwrap();
     let mut typed_acceptance = None;
     let mut typed_successor = None;
+    let mut typed_inventory = None;
     for pass in 0..2 {
         let (mut child, address) = RunningEngine::start(&project, &mut captured);
         let client = RrdClient::connect_local(
@@ -356,6 +411,16 @@ fn installed_binary_replans_and_reads_receipt_after_forced_restart() {
                     .await
                     .unwrap();
                 assert!(!result.idempotent_replay);
+                typed_inventory = Some(
+                    inventory_through_client(
+                        &client,
+                        &session,
+                        &result.successor.job,
+                        &request.preview.plan,
+                        "binary-inventory",
+                    )
+                    .await,
+                );
                 typed_successor = Some(result.successor.job);
                 typed_acceptance = Some(request);
             } else {
@@ -394,6 +459,75 @@ fn installed_binary_replans_and_reads_receipt_after_forced_restart() {
                 assert_eq!(
                     Some(receipt.receipt.unwrap().result.successor.job),
                     typed_successor
+                );
+                let inventoried = typed_inventory.as_ref().unwrap();
+                let current_plan = &typed_acceptance.as_ref().unwrap().preview.plan;
+                let read = client
+                    .read_attunement(
+                        &session,
+                        rrd_contract::ReadAttunement {
+                            contract_version: rrd_contract::ATTUNEMENT_CONTRACT_VERSION,
+                            job_id: inventoried.id.clone(),
+                        },
+                        RequestOptions::read("binary-inventory-read", "binary-inventory-read")
+                            .unwrap(),
+                    )
+                    .await
+                    .unwrap();
+                assert_eq!(
+                    read.status.job, *inventoried,
+                    "acknowledged Inventory survives process death"
+                );
+                std::fs::write(project.join("README.md"), "edit after durable Inventory\n")
+                    .unwrap();
+                let preview = client
+                    .preview_attunement_replan(
+                        &session,
+                        rrd_contract::PreviewAttunementReplan {
+                            contract_version: rrd_contract::ATTUNEMENT_CONTRACT_VERSION,
+                            job_id: inventoried.id.clone(),
+                            expected_revision: inventoried.revision,
+                        },
+                        current_plan,
+                        RequestOptions::read("binary-inventory-replan", "binary-inventory-replan")
+                            .unwrap(),
+                    )
+                    .await
+                    .unwrap();
+                let successor_plan = preview.plan.clone();
+                let result = client
+                    .accept_attunement_replan(
+                        &session,
+                        rrd_contract::AcceptAttunementReplan {
+                            contract_version: rrd_contract::ATTUNEMENT_CONTRACT_VERSION,
+                            proposal_sha256: preview.proposal_sha256.clone(),
+                            preview,
+                        },
+                        current_plan,
+                        RequestOptions::mutation(
+                            "binary-inventory-accept",
+                            "binary-inventory-accept",
+                            "binary-inventory-accept",
+                        )
+                        .unwrap(),
+                    )
+                    .await
+                    .unwrap();
+                let next = inventory_through_client(
+                    &client,
+                    &session,
+                    &result.successor.job,
+                    &successor_plan,
+                    "binary-second-inventory",
+                )
+                .await;
+                assert_ne!(
+                    next.checkpoints[1].output_sha256,
+                    inventoried.checkpoints[1].output_sha256
+                );
+                assert!(
+                    next.checkpoints[1].coordinates.runtime_cursor
+                        > inventoried.checkpoints[1].coordinates.runtime_cursor
                 );
             }
         });
@@ -898,6 +1032,229 @@ fn raw_database_and_development_commands_fail_during_argument_parsing() {
             "unexpected {removed_option} rejection: {error}"
         );
     }
+}
+
+#[test]
+fn installed_plan_accepts_selected_attunement_and_rejects_tampering() {
+    let root = tempfile::tempdir().unwrap();
+    let project = root.path().join("project");
+    std::fs::create_dir(&project).unwrap();
+    std::fs::write(project.join("README.md"), "selected project\n").unwrap();
+    let before = inventory(&project);
+    let schema = invoke(&["install", "attunement-schema"]);
+    assert_success(&schema, "attunement schema");
+    let schema: serde_json::Value = serde_json::from_slice(&schema.stdout).unwrap();
+    assert_eq!(
+        schema["properties"]["format_version"]["const"],
+        rrd_engine::ATTUNEMENT_PROPOSAL_FORMAT_VERSION
+    );
+    assert_eq!(schema["properties"]["steps"]["minItems"], 1);
+    assert_eq!(
+        schema["properties"]["steps"]["maxItems"],
+        rrd_contract::MAX_ATTUNEMENT_PHASES
+    );
+    assert_eq!(
+        schema["$defs"]["AttunementProposalStep"]["properties"]["description"]["maxLength"],
+        1024
+    );
+    assert_eq!(
+        inventory(&project),
+        before,
+        "schema discovery wrote project state"
+    );
+    let identity = invoke(&["install", "identity"]);
+    assert_success(&identity, "identity");
+    let identity: serde_json::Value = serde_json::from_slice(&identity.stdout).unwrap();
+    let proposal_path = root.path().join("attunement.json");
+    let step = |phase: &str, config: &str| {
+        serde_json::json!({
+            "phase": phase, "description": config,
+            "estimated_items": 1, "estimated_input_bytes": 0
+        })
+    };
+    let proposal = serde_json::json!({
+        "format_version": 1, "steps": [step("connect", "first"), step("connect", "second"), step("verify", "verify")],
+        "estimated_min_duration_ms": 0, "estimated_max_duration_ms": 1000
+    });
+    std::fs::write(&proposal_path, serde_json::to_vec(&proposal).unwrap()).unwrap();
+    let plan = invoke(&[
+        "install",
+        "plan",
+        "--identity",
+        identity["installation_identity"].as_str().unwrap(),
+        "--mode",
+        "existing",
+        "--project",
+        project.to_str().unwrap(),
+        "--attunement-proposal",
+        proposal_path.to_str().unwrap(),
+    ]);
+    assert_success(&plan, "selected install plan");
+    assert_eq!(inventory(&project), before, "preview wrote project state");
+    let preview: serde_json::Value = serde_json::from_slice(&plan.stdout).unwrap();
+    assert_eq!(preview["attunement_proposal"], proposal);
+    let phases = preview["attunement"]["phases"].as_array().unwrap();
+    assert_eq!(phases.len(), 3);
+    assert_eq!(phases[0]["phase"], "connect");
+    assert_eq!(phases[1]["phase"], "connect");
+    assert_eq!(phases[1]["sequence"], 2);
+    assert_eq!(phases[2]["phase"], "verify");
+    let digest = preview["installation"]["plan_sha256"].as_str().unwrap();
+    let mut second = proposal.clone();
+    second["steps"] = serde_json::json!([step("connect", "other"), step("verify", "verify")]);
+    std::fs::write(&proposal_path, serde_json::to_vec(&second).unwrap()).unwrap();
+    let another = invoke(&[
+        "install",
+        "plan",
+        "--identity",
+        identity["installation_identity"].as_str().unwrap(),
+        "--mode",
+        "existing",
+        "--project",
+        project.to_str().unwrap(),
+        "--attunement-proposal",
+        proposal_path.to_str().unwrap(),
+    ]);
+    assert_success(&another, "second selected plan");
+    let another: serde_json::Value = serde_json::from_slice(&another.stdout).unwrap();
+    assert_ne!(another["installation"]["plan_sha256"], digest);
+    assert_eq!(another["attunement"]["phases"].as_array().unwrap().len(), 2);
+    let mut reordered = proposal.clone();
+    reordered["steps"] = serde_json::json!([
+        step("inventory", "inventory"),
+        step("connect", "connect"),
+        step("verify", "verify")
+    ]);
+    std::fs::write(&proposal_path, serde_json::to_vec(&reordered).unwrap()).unwrap();
+    let reordered_preview = invoke(&[
+        "install",
+        "plan",
+        "--identity",
+        identity["installation_identity"].as_str().unwrap(),
+        "--mode",
+        "existing",
+        "--project",
+        project.to_str().unwrap(),
+        "--attunement-proposal",
+        proposal_path.to_str().unwrap(),
+    ]);
+    assert_success(&reordered_preview, "reordered selected plan");
+    let reordered_preview: serde_json::Value =
+        serde_json::from_slice(&reordered_preview.stdout).unwrap();
+    assert_eq!(
+        reordered_preview["attunement"]["phases"][0]["phase"],
+        "inventory"
+    );
+    assert_eq!(
+        reordered_preview["attunement"]["phases"][1]["phase"],
+        "connect"
+    );
+    assert_ne!(reordered_preview["installation"]["plan_sha256"], digest);
+    assert_eq!(
+        inventory(&project),
+        before,
+        "alternative previews wrote project state"
+    );
+    for invalid in [
+        serde_json::json!({"format_version": 1, "steps": [step("unknown-effect", "x"), step("verify", "v")], "estimated_min_duration_ms": 0, "estimated_max_duration_ms": 1}),
+        serde_json::json!({"format_version": 1, "steps": [step("connect", "x")], "estimated_min_duration_ms": 0, "estimated_max_duration_ms": 1}),
+        serde_json::json!({"format_version": 99, "steps": [step("verify", "v")], "estimated_min_duration_ms": 0, "estimated_max_duration_ms": 1}),
+        serde_json::json!({"format_version": 1, "steps": [step("connect", &"x".repeat(1025)), step("verify", "v")], "estimated_min_duration_ms": 0, "estimated_max_duration_ms": 1}),
+        serde_json::json!({"format_version": 1, "steps": vec![step("verify", "v"); rrd_contract::MAX_ATTUNEMENT_PHASES + 1], "estimated_min_duration_ms": 0, "estimated_max_duration_ms": 1}),
+    ] {
+        std::fs::write(&proposal_path, serde_json::to_vec(&invalid).unwrap()).unwrap();
+        let rejected = invoke(&[
+            "install",
+            "plan",
+            "--identity",
+            identity["installation_identity"].as_str().unwrap(),
+            "--mode",
+            "existing",
+            "--project",
+            project.to_str().unwrap(),
+            "--attunement-proposal",
+            proposal_path.to_str().unwrap(),
+        ]);
+        assert!(!rejected.status.success(), "invalid proposal was accepted");
+        assert_eq!(
+            inventory(&project),
+            before,
+            "invalid preview wrote project state"
+        );
+    }
+    let path = root.path().join("preview.json");
+    let mut tampered = preview.clone();
+    tampered["attunement_proposal"]["steps"][0]["description"] = "changed".into();
+    std::fs::write(&path, serde_json::to_vec(&tampered).unwrap()).unwrap();
+    let rejected = invoke(&[
+        "install",
+        "apply",
+        "--mode",
+        "existing",
+        "--project",
+        project.to_str().unwrap(),
+        "--plan",
+        path.to_str().unwrap(),
+        "--expect",
+        digest,
+    ]);
+    assert!(!rejected.status.success(), "changed proposal was accepted");
+    assert_eq!(
+        inventory(&project),
+        before,
+        "rejected proposal wrote project state"
+    );
+    for version in [None, Some(99)] {
+        let mut invalid = preview.clone();
+        if let Some(version) = version {
+            invalid["preview_format_version"] = version.into();
+        } else {
+            invalid
+                .as_object_mut()
+                .unwrap()
+                .remove("preview_format_version");
+        }
+        std::fs::write(&path, serde_json::to_vec(&invalid).unwrap()).unwrap();
+        let rejected = invoke(&[
+            "install",
+            "apply",
+            "--mode",
+            "existing",
+            "--project",
+            project.to_str().unwrap(),
+            "--plan",
+            path.to_str().unwrap(),
+            "--expect",
+            digest,
+        ]);
+        assert!(
+            !rejected.status.success(),
+            "unknown preview version was accepted"
+        );
+        assert_eq!(
+            inventory(&project),
+            before,
+            "invalid preview wrote project state"
+        );
+    }
+    // Apply consumes the sealed preview rather than rereading the changed input file.
+    std::fs::write(&proposal_path, b"no longer a proposal").unwrap();
+    std::fs::write(&path, &plan.stdout).unwrap();
+    let applied = invoke(&[
+        "install",
+        "apply",
+        "--mode",
+        "existing",
+        "--project",
+        project.to_str().unwrap(),
+        "--plan",
+        path.to_str().unwrap(),
+        "--expect",
+        digest,
+    ]);
+    assert_success(&applied, "apply selected plan");
+    let verified = invoke(&["verify", "--project", project.to_str().unwrap()]);
+    assert_success(&verified, "verify installed selected plan");
 }
 
 #[test]
