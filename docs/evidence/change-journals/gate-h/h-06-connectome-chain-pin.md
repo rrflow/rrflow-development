@@ -11,7 +11,8 @@
 **Starting revision.** `development/main`
 `15f36a8758e32b33c930a20da836def3e5cc3207`, tree
 `a674bdf4a428b4b0af0d4ec8ed921aee7f52c9b0`, on branch
-`agent/connectome-pin-2026-11-01`, in the pull request opened from that branch.
+`agent/connectome-pin-2026-11-01`, in
+[PR #239](https://github.com/rrflow/rrflow-development/pull/239).
 
 **Change brief.**
 
@@ -129,4 +130,5 @@ official promotion changes. The pin is source association; it does not
 qualify the UI or H-06.
 
 **PR, CI and merge.**
-The pull request from this branch is opened, not enqueued. Its candidate CI and merge are pending.
+[PR #239](https://github.com/rrflow/rrflow-development/pull/239) is opened,
+not enqueued. Its candidate CI and merge are pending.
