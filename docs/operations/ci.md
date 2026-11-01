@@ -343,6 +343,19 @@ command plus `--check`. Newly created paths become current inventory records;
 the pull request description still binds their intended scope. This removes a
 shared generated merge-conflict point without removing any candidate CI test.
 
+For a local conflict preview, run
+`python3 scripts/ci/inspect_merge_conflicts.py BASE_REVISION HEAD_REVISION`.
+The report binds both revisions to commit IDs and marks only paths in the
+existing generated-projection registry with their generator. Every other path
+requires review, including authored digest citations. Git may report a conflict
+without individual paths; that is still a conflict. The command does not modify
+the index, working files, or refs, but Git may write unreachable merge-tree
+objects. It does not resolve anything or authorize a merge. The existing
+candidate and protected merge-queue checks remain required. The command refuses
+configured external merge drivers and is intended for trusted checkouts; it is
+not a security sandbox. `python3 scripts/ci/test_inspect_merge_conflicts.py`
+in the verify job covers these behaviors with temporary Git repositories.
+
 The Connectome UI is optional for engine operation, while candidate CI follows
 repository policy and recursively materializes every declared submodule. The
 Connectome development repository is public and can be acquired anonymously.
