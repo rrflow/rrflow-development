@@ -1,6 +1,6 @@
 // Generated from rrd-contract; do not edit.
-// OpenAPI SHA-256: 8bc8cbdba9d90ab1239ea91624e639886971e58977c0f23a31007d1b2878a9c5
-export const ENDPOINT_OPENAPI_DOCUMENT_SHA256 = "8bc8cbdba9d90ab1239ea91624e639886971e58977c0f23a31007d1b2878a9c5" as const;
+// OpenAPI SHA-256: 57ef2f38fecf0a0d7a96fa5b9fa46c548b260bdc82c371d084456b39a708e6d1
+export const ENDPOINT_OPENAPI_DOCUMENT_SHA256 = "57ef2f38fecf0a0d7a96fa5b9fa46c548b260bdc82c371d084456b39a708e6d1" as const;
 
 export const endpoints = {
   "attunement-cancel": {
@@ -8,6 +8,12 @@ export const endpoints = {
     "path": "/v1/attunement/cancel",
     "authentication": "session_bearer",
     "mutation": true
+  },
+  "attunement-job-list": {
+    "method": "POST",
+    "path": "/v1/attunement/jobs/list",
+    "authentication": "session_bearer",
+    "mutation": false
   },
   "attunement-pause": {
     "method": "POST",

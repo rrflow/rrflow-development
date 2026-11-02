@@ -1,10 +1,11 @@
 // Generated from rrd-contract; do not edit.
-// OpenAPI SHA-256: 8bc8cbdba9d90ab1239ea91624e639886971e58977c0f23a31007d1b2878a9c5
+// OpenAPI SHA-256: 57ef2f38fecf0a0d7a96fa5b9fa46c548b260bdc82c371d084456b39a708e6d1
 namespace Rrflow.Rrd;
 
 public enum OperationId
 {
     AttunementCancel,
+    AttunementJobList,
     AttunementPause,
     AttunementRead,
     AttunementReceiptRead,
@@ -93,12 +94,13 @@ public sealed record Endpoint(
 
 public static class EndpointCatalog
 {
-    public const string OpenApiDocumentSha256 = "8bc8cbdba9d90ab1239ea91624e639886971e58977c0f23a31007d1b2878a9c5";
-    public const int Count = 71;
+    public const string OpenApiDocumentSha256 = "57ef2f38fecf0a0d7a96fa5b9fa46c548b260bdc82c371d084456b39a708e6d1";
+    public const int Count = 72;
 
     public static Endpoint Get(OperationId operation) => operation switch
     {
         OperationId.AttunementCancel => new("attunement-cancel", "POST", "/v1/attunement/cancel", Authentication.SessionBearer, true),
+        OperationId.AttunementJobList => new("attunement-job-list", "POST", "/v1/attunement/jobs/list", Authentication.SessionBearer, false),
         OperationId.AttunementPause => new("attunement-pause", "POST", "/v1/attunement/pause", Authentication.SessionBearer, true),
         OperationId.AttunementRead => new("attunement-read", "POST", "/v1/attunement/read", Authentication.SessionBearer, false),
         OperationId.AttunementReceiptRead => new("attunement-receipt-read", "POST", "/v1/attunement/receipt/read", Authentication.SessionBearer, false),
