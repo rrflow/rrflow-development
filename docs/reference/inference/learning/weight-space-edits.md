@@ -40,7 +40,7 @@ found no peer review or independent replication on the review date.
 
 | Concern | Required boundary |
 |---|---|
-| Target | Only weights the operator holds. Hosted provider models cannot be edited. RRFlow has no trained model today, so G-06a must first supply a real candidate with a diagnosed failure. |
+| Target | Only weights the operator holds. Hosted provider models cannot be edited. RRFlow admits no trained model today. The separate SWAG project holds an unqualified experimental checkpoint, so G-06a must first supply a qualified baseline and a real candidate with a diagnosed failure. |
 | Fit to controllers | The published gain came from runaway reasoning. A controller's short, grammar-bound decision may rarely fail that way. This is an untested inference, and a candidate experiment must test it before relying on it. |
 | Editing model | An admitted external activity with explicit egress authorization and budget, never a default dependency. Weights trained on project data may carry that data, so sharing them is a separate permission from context sharing or training consent. |
 | Sandbox | Bounded code runs and forward passes, no network, and no bypass of the [experiment limits](controller-training.md#experiments-and-release). |

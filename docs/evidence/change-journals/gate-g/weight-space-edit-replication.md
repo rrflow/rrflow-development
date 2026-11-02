@@ -144,6 +144,11 @@ on undisclosed hardware.
   that the control's promise was visible when the order was chosen.
 - vLLM warned that it casts 18 `linear_attn.norm` tensors from float32 to bfloat16.
   None is an edited tensor, and the warning appears in every arm.
+- A first draft of the contract said RRFlow has no trained model. RRFlow admits none,
+  but the separate SWAG project holds an unqualified experimental checkpoint, so the
+  contract now says that. The author also ran the smoke test on a laptop GPU after
+  relying on `spark.md`'s "hardware unverified" status, which that project's records
+  show is out of date.
 
 ## Checks not run
 
