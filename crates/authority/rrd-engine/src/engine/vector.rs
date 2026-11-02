@@ -7,7 +7,7 @@ mod quantization;
 mod search;
 
 pub(in crate::engine) use collection::{
-    collection_versions, internal_vector_metric, public_vector_collection,
+    collection_versions, internal_vector_metric, public_vector_collection, source_history,
     validate_collection_query, vector_collection_error, vector_matches_collection,
 };
 pub(in crate::engine) use points::public_data_ref;

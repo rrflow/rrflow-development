@@ -35,6 +35,10 @@ closed without merge, and its original branch is retained. Its behavior needs
 adaptation into the current native session and project-workspace boundaries;
 a newer pin or Git ancestry is not replacement evidence. Engine PR16 qualifies
 the public configuration API, not a completed knowledge editor in that pin.
+The [2026-11-01 pin](../../evidence/change-journals/gate-h/h-06-connectome-chain-pin.md)
+does not contain it either. `8a9eb5e5` is not an ancestor of Connectome
+`c1cbff203ecee89013878609d11aed04e89d0e71`, and that revision has no
+knowledge-tree editor or native knowledge bridge.
 
 ### Nomen and first hosted profile
 

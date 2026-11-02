@@ -38,6 +38,26 @@ E-04 stack at E-04d `f34451ee`, with POAM-045's fix applied:
 A collection whose vectors have all moved elsewhere can never be deleted. Its
 definition and payload-index declarations stay in the catalogue.
 
+## Remediation
+
+Pull request #217 makes deletion resolve membership with the latest-version
+rule (`rrd_vector::latest_versions`) over each identity's complete history.
+It resolves at the deletion time and at every later valid time where one of
+the identity's versions starts to apply. It refuses while, at any of those
+times, the identity's latest version names one of the collection's named
+vectors and is not retired.
+
+The #211 probe is now a permanent test. Two engine tests in
+`engine::tests::vector_index::collection_moves` show:
+
+- a collection that every identity has left can be deleted;
+- deletion is refused while a move out takes effect only later, while an
+  identity has moved back, and while one moves back only after the deletion
+  time.
+
+The row is Verifying until Gate C records that evidence at the merged
+revision.
+
 ## Owning gates
 
 C-04

@@ -5,6 +5,36 @@ use rrd_query::{
 };
 
 #[test]
+fn traversal_start_ids_round_trip_exactly_when_quoted() {
+    let ids = [
+        "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+        "0000000000000000000000000000000000000000000000000000000000000000",
+        "123",
+        "node:with spaces",
+        "quote\"and\\slash",
+        "λ source",
+        "line\nbreak\tvalue",
+    ];
+    for id in ids {
+        let encoded = serde_json::to_string(id).unwrap();
+        let text = format!("FROM traverse:edge START node:{encoded} DIRECTION OUTGOING DEPTH 1 AT VALID 1 KNOWN HEAD PROJECT node_id");
+        let query = parse(&text).unwrap_or_else(|error| panic!("{text}: {error}"));
+        let Source::Traversal { start, .. } = &query.source else {
+            panic!("expected traversal")
+        };
+        assert_eq!(start.id.as_str(), id);
+        let canonical = query.canonical();
+        assert_eq!(parse(&canonical).unwrap(), query, "{canonical}");
+    }
+    let simple = "FROM traverse:edge START node:alpha DIRECTION OUTGOING DEPTH 1 AT VALID 1 KNOWN HEAD PROJECT node_id";
+    assert_eq!(parse(simple).unwrap().canonical(), simple);
+    for invalid in ["\"\"", "\"\\u0000\"", "\"\0\""] {
+        let text = format!("FROM traverse:edge START node:{invalid} DIRECTION OUTGOING DEPTH 1 AT VALID 1 KNOWN HEAD PROJECT node_id");
+        assert!(parse(&text).is_err(), "{text}");
+    }
+}
+
+#[test]
 fn parser_corpus_round_trips_to_one_canonical_form() {
     let corpus = [
         "FROM record:document AT VALID 100 KNOWN HEAD PROJECT *",

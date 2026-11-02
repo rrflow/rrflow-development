@@ -85,21 +85,14 @@ impl RrdEngine {
 
         let read = self.storage.runtime().read_stamp(&scope)?;
         let direct = read_vector_versions(self, &read, request.max_storage_keys)?;
-        let candidates = rrd_vector::candidates_from_changes(&direct.changes, &scope)
-            .into_iter()
-            .filter(|candidate| {
-                vector_matches_collection(
-                    &candidate.vector,
-                    &request.collection_id,
-                    &request.vector_name,
-                )
-            })
-            .collect::<Vec<_>>();
-        let source_cursor = candidates
-            .iter()
-            .map(|candidate| candidate.source_cursor)
-            .max()
-            .unwrap_or(0);
+        let rrd_vector::SourceHistory {
+            versions: candidates,
+            source_cursor,
+        } = source_history(
+            rrd_vector::candidates_from_changes(&direct.changes, &scope),
+            &request.collection_id,
+            &request.vector_name,
+        );
         let data = rrd_store::DataRuntimeRef::new(&self.storage, &self.objects);
         let mut runtime = crate::reopen_vector_runtime(&data, &scope, candidates.clone())
             .map_err(|error| ServiceError::Vector(error.to_string()))?;
@@ -124,7 +117,17 @@ impl RrdEngine {
             };
             let active = active.clone();
             let desired = hnsw_config(request, vector, scope.clone(), projection_id.clone())?;
-            if active.config() == &desired {
+            // A graph keeps every version it stores. When this source's
+            // history no longer holds one of them, as after a move out of the
+            // collection, only a full build drops it (POAM-048).
+            let active_cursor = active.descriptor().stamp.source_cursor;
+            let keeps_its_versions = active.stored_versions()
+                == candidates
+                    .iter()
+                    .filter(|candidate| candidate.source_cursor <= active_cursor)
+                    .map(|candidate| (candidate.vector.reference.clone(), candidate.source_cursor))
+                    .collect::<BTreeSet<_>>();
+            if active.config() == &desired && keeps_its_versions {
                 if source_cursor < active.descriptor().stamp.source_cursor {
                     return Err(ServiceError::Vector(
                         "canonical vector coverage regressed behind the active HNSW index".into(),

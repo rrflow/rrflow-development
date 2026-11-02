@@ -60,11 +60,10 @@ and overlay propose from those canonical candidates. An exact segment's hits
 stand only when the canonical candidates confirm each one; otherwise the exact
 scan answers. No artifact format or byte changes.
 
-The generations still store a moved identity's replaced version and can
-propose it. The rerank discards it, so an approximate search near it returns
-fewer hits than it asked for; that recall cost is
-[POAM-048](poam-048.md). A collection that every identity has left still
-refuses deletion ([POAM-047](poam-047.md)).
+That rerank alone left the generations proposing a moved identity's replaced
+version, which cost recall ([POAM-048](poam-048.md)). It also left a
+collection that every identity has left refusing deletion
+([POAM-047](poam-047.md)). Pull request #217 fixes both.
 
 The oracle is `engine::tests::vector_index::collection_moves` (seven tests)
 and `rrd-vector` `runtime::tests::an_accelerator_never_answers_with_an_identity_that_moved_away`.
