@@ -8,6 +8,7 @@ These linked records cover repository engineering rather than runtime gate
 completion. Their listing is generated from record metadata.
 
 <!-- rrflow:generated-index:start -->
+- [Adaptive-planning measurement and provider screening evidence](adaptive-planning-measurement-evidence.md) — [`rrflow://rrflow-instance/data/evidence/change-journal/repository/adaptive-planning-measurement-evidence`](rrflow://rrflow-instance/data/evidence/change-journal/repository/adaptive-planning-measurement-evidence) — active candidate evidence; installed-engine evaluation remains open
 - [Existing alpha stack: one preserved integration candidate](alpha-stack-consolidation.md) — [`rrflow://rrflow-instance/data/evidence/alpha-stack-consolidation`](rrflow://rrflow-instance/data/evidence/alpha-stack-consolidation) — active source-preservation evidence; final candidate and merge qualification pending
 - [Alpha stack: integrate bounded fill-write recovery](alpha-stack-fill-write-integration.md) — [`rrflow://rrflow-instance/data/evidence/alpha-stack-fill-write-integration`](rrflow://rrflow-instance/data/evidence/alpha-stack-fill-write-integration) — active integration evidence; replacement native candidate pending
 - [Authored Connectome optional source integration](authored-connectome-optional-source-journal.md) — [`rrflow://rrflow-instance/data/evidence/change-journal/repository/authored-connectome-optional-source-journal`](rrflow://rrflow-instance/data/evidence/change-journal/repository/authored-connectome-optional-source-journal) — active immutable change-journal evidence

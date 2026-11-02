@@ -318,8 +318,8 @@ jobs:
         run: cargo test --locked -p rrd-client --test generated_catalogue
       - name: Enforce RRFlow engine ownership
         run: cargo test -p rrd-engine --test workspace_architecture --locked
-      - name: Verify controlled evaluation evidence
-        run: cargo run --locked -p rrflow-eval -- verify eval/results/2026-08-18-summary.json
+      - name: Test provider screening evidence consistency
+        run: cargo test --locked -p rrflow-eval --test provider_compatibility
       - name: Enforce kernel dependency boundary
         run: |
           tree="$(cargo tree --locked -p rrd-core --edges normal --depth 1 --prefix none --format '{p}' --color never)"
