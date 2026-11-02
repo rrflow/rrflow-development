@@ -75,6 +75,14 @@ not infer that changing the `.rrflow` directory alone is a repair. The
 [diagnostic journal](../../evidence/change-journals/gate-d/nested-repository-boundary-decision.md)
 records the binary and observed errors. No project state or ACL was changed.
 
+At main `e6f3632b32f1c9be33c1951886a9d9a2be648ddf`, a separate native
+Windows fixture with inherited `.rrflow` and `.rrflow/rrd` directories and
+existing files reproduces the same protected-DACL error at installation preview.
+This identifies a reproducible class of failure, not the exact object responsible
+in the real checkout. The [repair journal](../../evidence/change-journals/gate-d/existing-project-admission-windows.md)
+retains the failing oracle and limits. The installer repair and real-project
+acceptance remain open.
+
 D-01/D-03 and H-06 own remediation and the real-checkout acceptance in
 [Gate D](../../roadmap/rrflow-1.0/gate-d.md#nested-repository-setup). It includes
 bounded, explicitly authorized metadata roots and source identity, user choice,
