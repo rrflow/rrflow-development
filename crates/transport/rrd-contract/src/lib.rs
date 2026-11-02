@@ -25,6 +25,8 @@ pub use endpoint_selection::{
 };
 mod observation_source;
 pub use observation_source::*;
+mod observation_delivery;
+pub use observation_delivery::*;
 mod flight;
 mod function;
 #[path = "generated/signal_catalogue.rs"]
@@ -261,7 +263,7 @@ use std::fmt;
 pub const PROTOCOL: &str = "rrd";
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const OPENAPI_DOCUMENT_SHA256: &str =
-    "57ef2f38fecf0a0d7a96fa5b9fa46c548b260bdc82c371d084456b39a708e6d1";
+    "1c508a4b2819d4470e6717a304f9990595da25ed09ef729d5fa0b76324bc2975";
 pub const MAX_ID_BYTES: usize = 128;
 pub const MAX_MESSAGE_BYTES: usize = 4_096;
 pub const MAX_CAPABILITIES: usize = 512;
@@ -3088,6 +3090,9 @@ pub enum SecurityAction {
     ReasoningRead,
     ReasoningWrite,
     EndpointPropose,
+    ObservationPrepare,
+    ObservationDeliver,
+    ObservationRead,
     KnowledgeTreeRead,
     KnowledgeTreeWrite,
 }
@@ -3095,7 +3100,7 @@ pub enum SecurityAction {
 impl SecurityAction {
     /// Canonical policy-action catalogue. Installation profiles and other
     /// projections consume this list instead of maintaining parallel copies.
-    pub const ALL: [Self; 54] = [
+    pub const ALL: [Self; 57] = [
         Self::ServiceInspect,
         Self::UnknownRequest,
         Self::SessionCreate,
@@ -3148,6 +3153,9 @@ impl SecurityAction {
         Self::ReasoningRead,
         Self::ReasoningWrite,
         Self::EndpointPropose,
+        Self::ObservationPrepare,
+        Self::ObservationDeliver,
+        Self::ObservationRead,
         Self::KnowledgeTreeRead,
         Self::KnowledgeTreeWrite,
     ];
@@ -4135,6 +4143,36 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             "TaskAttemptView",
         ),
         endpoint(
+            "observation-prepare",
+            HttpMethod::Post,
+            "/v1/observations/prepare",
+            EndpointAuthentication::SessionBearer,
+            true,
+            SecurityAction::ObservationPrepare,
+            "PrepareObservationDelivery",
+            "ObservationDeliverySnapshot",
+        ),
+        endpoint(
+            "observation-deliver",
+            HttpMethod::Post,
+            "/v1/observations/deliver",
+            EndpointAuthentication::SessionBearer,
+            true,
+            SecurityAction::ObservationDeliver,
+            "DeliverObservation",
+            "ObservationDeliverySnapshot",
+        ),
+        endpoint(
+            "observation-read",
+            HttpMethod::Post,
+            "/v1/observations/read",
+            EndpointAuthentication::SessionBearer,
+            false,
+            SecurityAction::ObservationRead,
+            "ReadObservationDelivery",
+            "ObservationDeliveryReadResult",
+        ),
+        endpoint(
             "task-endpoint-propose",
             HttpMethod::Post,
             "/v1/tasks/endpoint/propose",
@@ -4641,6 +4679,11 @@ fn request_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "ConfigureTaskBudget" => schema_json::<RequestEnvelope<ConfigureTaskBudget>>(),
         "ExecuteTaskEmbedding" => schema_json::<RequestEnvelope<ExecuteTaskEmbedding>>(),
         "EndpointSelectionRequest" => schema_json::<RequestEnvelope<EndpointSelectionRequest>>(),
+        "PrepareObservationDelivery" => {
+            schema_json::<RequestEnvelope<PrepareObservationDelivery>>()
+        }
+        "DeliverObservation" => schema_json::<RequestEnvelope<DeliverObservation>>(),
+        "ReadObservationDelivery" => schema_json::<RequestEnvelope<ReadObservationDelivery>>(),
         "ReadTaskAttempt" => schema_json::<RequestEnvelope<ReadTaskAttempt>>(),
         "ReadTaskBudget" => schema_json::<RequestEnvelope<ReadTaskBudget>>(),
         "StopTaskBudget" => schema_json::<RequestEnvelope<StopTaskBudget>>(),
@@ -4747,6 +4790,12 @@ fn response_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "TaskResult" => schema_json::<ResponseEnvelope<TaskResult>>(),
         "TaskPage" => schema_json::<ResponseEnvelope<TaskPage>>(),
         "TaskReadResult" => schema_json::<ResponseEnvelope<TaskReadResult>>(),
+        "ObservationDeliverySnapshot" => {
+            schema_json::<ResponseEnvelope<ObservationDeliverySnapshot>>()
+        }
+        "ObservationDeliveryReadResult" => {
+            schema_json::<ResponseEnvelope<ObservationDeliveryReadResult>>()
+        }
         "AttunementReadResult" => schema_json::<ResponseEnvelope<AttunementReadResult>>(),
         "AttunementJobPage" => schema_json::<ResponseEnvelope<AttunementJobPage>>(),
         "AttunementControlResponse" => schema_json::<ResponseEnvelope<AttunementControlResponse>>(),

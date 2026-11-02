@@ -55,7 +55,7 @@ impl EndpointCredentials {
         }
         Ok(Self { values })
     }
-    fn resolve(&self, reference: &CredentialReference) -> Option<&str> {
+    pub(in crate::engine) fn resolve(&self, reference: &CredentialReference) -> Option<&str> {
         self.values
             .get(&(reference.provider.clone(), reference.name.clone()))
             .map(String::as_str)

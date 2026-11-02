@@ -15,7 +15,7 @@ impl RrdEngine {
         )
     }
 
-    pub(super) fn attempt_key(
+    pub(in crate::engine) fn attempt_key(
         &self,
         scope: &str,
         task: &CanonicalId,
