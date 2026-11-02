@@ -2,9 +2,9 @@
 
 package rrd
 
-// OpenAPI SHA-256: 8bc8cbdba9d90ab1239ea91624e639886971e58977c0f23a31007d1b2878a9c5
+// OpenAPI SHA-256: fefbaa7fb31b733a731b48f884fb3adaddc4942aed2882c31a6efc1d8b65af69
 
-const EndpointOpenAPIDocumentSHA256 = "8bc8cbdba9d90ab1239ea91624e639886971e58977c0f23a31007d1b2878a9c5"
+const EndpointOpenAPIDocumentSHA256 = "fefbaa7fb31b733a731b48f884fb3adaddc4942aed2882c31a6efc1d8b65af69"
 
 type OperationID string
 
@@ -45,6 +45,9 @@ const (
 	OperationHealthReady                  OperationID = "health-ready"
 	OperationKnowledgeTreeList            OperationID = "knowledge-tree-list"
 	OperationKnowledgeTreeReplace         OperationID = "knowledge-tree-replace"
+	OperationObservationDeliver           OperationID = "observation-deliver"
+	OperationObservationPrepare           OperationID = "observation-prepare"
+	OperationObservationRead              OperationID = "observation-read"
 	OperationOpenapiRead                  OperationID = "openapi-read"
 	OperationQueryExecute                 OperationID = "query-execute"
 	OperationQueryExport                  OperationID = "query-export"
@@ -119,6 +122,9 @@ var endpoints = map[OperationID]Endpoint{
 	OperationHealthReady:                  {Method: "GET", Path: "/v1/health/ready", Authentication: "public", Mutation: false},
 	OperationKnowledgeTreeList:            {Method: "POST", Path: "/v1/knowledge/trees/list", Authentication: "session_bearer", Mutation: false},
 	OperationKnowledgeTreeReplace:         {Method: "POST", Path: "/v1/knowledge/trees/replace", Authentication: "session_bearer", Mutation: true},
+	OperationObservationDeliver:           {Method: "POST", Path: "/v1/observations/deliver", Authentication: "session_bearer", Mutation: true},
+	OperationObservationPrepare:           {Method: "POST", Path: "/v1/observations/prepare", Authentication: "session_bearer", Mutation: true},
+	OperationObservationRead:              {Method: "POST", Path: "/v1/observations/read", Authentication: "session_bearer", Mutation: false},
 	OperationOpenapiRead:                  {Method: "GET", Path: "/v1/schema/openapi", Authentication: "public", Mutation: false},
 	OperationQueryExecute:                 {Method: "POST", Path: "/v1/query", Authentication: "session_bearer", Mutation: false},
 	OperationQueryExport:                  {Method: "POST", Path: "/v1/query/export", Authentication: "session_bearer", Mutation: false},

@@ -14,6 +14,7 @@ use std::sync::{Arc, Barrier};
 // returned, never a fixed later offset that assumes how long the call took.
 const BASE: u64 = 1_800_000_000_000;
 mod inventory_delta;
+mod observation_delivery;
 mod startup_binding;
 
 struct Installed {
