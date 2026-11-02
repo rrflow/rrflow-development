@@ -8,12 +8,14 @@ import plistlib
 import subprocess
 from pathlib import Path
 import tempfile
+import time
 import unittest
 from unittest.mock import patch
 
 import run_native_capacity as runner
 import run_filesystem_containment as containment
 import check_workflow
+from test_offline_lifecycle import end_holder, held_output_command
 
 
 class NativeCapacityCases(unittest.TestCase):
@@ -66,6 +68,86 @@ class NativeCapacityCases(unittest.TestCase):
         self.assertEqual(receipt["command_category"], "other")
         self.assertEqual((receipt["mode"], receipt["point"]), ("unknown", "unknown"))
         self.assertIsNone(receipt["child_returncode"])
+
+    def native_child(self, command, verb):
+        """Run a real child under an owned native command's identity."""
+        real = runner.run
+
+        def run(*arguments, **kwargs):
+            self.assertEqual(arguments[:2], ("hdiutil", verb))
+            return real(*command, **kwargs)
+        return patch.object(runner, "run", run)
+
+    def test_failed_create_with_held_output_retains_real_status_and_stderr(self):
+        for held, stdout, stderr in [("stdout", True, False), ("stderr", False, True), ("both", True, True)]:
+            with self.subTest(held=held), tempfile.TemporaryDirectory(prefix="rrflow-capacity-") as temporary:
+                root = Path(temporary).resolve(strict=True)
+                diagnostics = root / "rrflow-capacity-diagnostics"
+                pid_file = root / "holder.pid"
+                environment = {"RUNNER_TEMP": str(root), "RRFLOW_CAPACITY_DIAGNOSTICS": str(diagnostics)}
+                begin = time.monotonic()
+                try:
+                    with patch.dict(os.environ, environment), patch.object(runner.sys, "platform", "darwin"), \
+                            self.native_child(held_output_command(pid_file, stdout, stderr), "create"):
+                        with self.assertRaises(runner.NativeCommandFailure) as caught:
+                            runner.cases(self.config, root)
+                finally:
+                    end_holder(pid_file)
+                self.assertLess(time.monotonic() - begin, 30, "the output-close wait must stay bounded")
+                error = caught.exception
+                self.assertEqual((error.tool, error.verb, error.returncode), ("hdiutil", "create", 1))
+                self.assertIn("Resource busy", str(error))
+                self.assertIsInstance(error.__cause__, runner.CommandOutputNotClosed)
+                files = list(diagnostics.glob("*.json"))
+                self.assertEqual(len(files), 1)
+                receipt = json.loads(files[0].read_text(encoding="utf8"))
+                self.assertEqual((receipt["tool"], receipt["verb"], receipt["returncode"]), ("hdiutil", "create", 1))
+                self.assertEqual((receipt["mode"], receipt["point"], receipt["case_index"]),
+                                 ("fresh", runner.POINTS[0], 1))
+                self.assertIn("Resource busy", receipt["stdout_tail"])
+                self.assertIn("Resource busy", receipt["stderr_tail"])
+                self.assertEqual((receipt["stdout_open"], receipt["stderr_open"]), (stdout, stderr))
+
+    def test_failed_attach_with_held_output_reports_status_and_keeps_closed_receipt(self):
+        pid_file = self.root / "holder.pid"
+        diagnostics = self.root / "rrflow-capacity-diagnostics"
+        environment = {"RUNNER_TEMP": str(self.root), "RRFLOW_CAPACITY_DIAGNOSTICS": str(diagnostics)}
+        try:
+            with self.native_child(held_output_command(pid_file, True, False), "attach"):
+                with self.assertRaisesRegex(runner.NativeCommandFailure, "Resource busy") as caught:
+                    runner.native_command("hdiutil", "attach", timeout=30)
+        finally:
+            end_holder(pid_file)
+        with patch.dict(os.environ, environment):
+            runner.retain_native_failure(self.config, self.root, "fresh", runner.POINTS[0], 1, caught.exception)
+        raw = next(diagnostics.glob("*.json")).read_text(encoding="utf8")
+        receipt = json.loads(raw)
+        self.assertEqual(receipt["kind"], "command-output-not-closed")
+        self.assertEqual(receipt["child_returncode"], 1)
+        self.assertEqual((receipt["stdout_open"], receipt["stderr_open"]), (True, False))
+        self.assertNotIn("Resource busy", raw)
+
+    def test_successful_native_command_with_held_output_remains_a_closed_failure(self):
+        pid_file = self.root / "holder.pid"
+        try:
+            with self.native_child(held_output_command(pid_file, True, False, 0, "partial native output"), "attach"):
+                with self.assertRaises(runner.CommandOutputNotClosed) as caught:
+                    runner.native_command("hdiutil", "attach", timeout=30)
+        finally:
+            end_holder(pid_file)
+        self.assertEqual(caught.exception.child_returncode, 0)
+        self.assertIsNone(caught.exception.captured)
+
+    def test_native_deadline_with_held_output_stays_bounded_and_reports_status(self):
+        pid_file = self.root / "holder.pid"
+        try:
+            with self.native_child(held_output_command(pid_file, True, False, status=None), "create"):
+                with self.assertRaises(runner.NativeCommandFailure) as caught:
+                    runner.native_command("hdiutil", "create", timeout=5)
+        finally:
+            end_holder(pid_file)
+        self.assertNotEqual(caught.exception.returncode, 0)
+        self.assertIn("Resource busy", caught.exception.stderr_tail)
 
     @contextmanager
     def volume(self, fixture, size):

@@ -863,7 +863,9 @@ not replace the full native capacity matrix or permit retry-until-green.
 
 An owned APFS image creation failure records bounded `hdiutil create -verbose`
 output, the failing mode and point, harness digest and CI run coordinates in a
-dedicated runner-temp JSON file. The macOS job attempts to upload only those
+dedicated runner-temp JSON file. A non-zero exit is recorded this way even when
+a descendant keeps the command's output open; the record then names which stream
+stayed open. The macOS job attempts to upload only those
 diagnostic JSON files, including after a failed capacity step. No disk image or
 product output is uploaded. A lost runner or failed artifact upload can still
 prevent retention. The record does not classify the cause, retry the case, or
