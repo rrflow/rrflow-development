@@ -10,6 +10,14 @@ independently.
 
 ## Observed deficiency
 
+At `e6f3632b32f1c9be33c1951886a9d9a2be648ddf`, the engine's endpoint
+selection packet contains the task and allowance but no LFG observation.
+A local three-process characterization reached RRFlow and LFG through two
+separate SWAG calls; it did not pass LFG data into RRFlow or route from that
+data. The [integration journal](../../evidence/change-journals/gate-g/lfg-engine-admission.md)
+records the first bounded adapter and its limits. Engine admission, source
+binding, controlled selection and replay remain open.
+
 The [optimized Windows artifact trial](../../evidence/change-journals/repository/controller-testing-bundle-artifact.md)
 passed actual proposal/reopen and three response-fault histories, but exposed a
 real model reliability gap: after configuration invalidation, the fresh provider
