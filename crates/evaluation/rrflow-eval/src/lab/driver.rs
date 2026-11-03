@@ -60,6 +60,16 @@ pub struct CaseResult {
     pub recall_min: f64,
 }
 
+/// What a system's cheapest request costs, the one that reads its version. A search cannot
+/// be faster than this, so a latency close to it measured the transport and not the system.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct RequestFloor {
+    pub clients: u32,
+    pub p50_ms: f64,
+    pub p95_ms: f64,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct SystemRun {
@@ -84,6 +94,8 @@ pub struct SystemRun {
     /// What served the searches, in the system's own words.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub index_evidence: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub request_floor: Option<RequestFloor>,
     pub started_at_unix_ms: u64,
     pub finished_at_unix_ms: u64,
 }
@@ -452,6 +464,7 @@ pub fn empty_run(
         memory_bytes: None,
         disk_bytes: None,
         index_evidence: None,
+        request_floor: None,
         started_at_unix_ms: now,
         finished_at_unix_ms: now,
     }
