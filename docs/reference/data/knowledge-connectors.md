@@ -307,10 +307,10 @@ streaming requirements.
 
 ### External knowledge services
 
-DuckDB analytical exchange, source import and optional bundled execution have
-a separate [interoperability contract](duckdb.md). Support is not implemented;
-the existing Parquet export is its starting boundary, not conformance evidence.
-Its ordered packages remain under D-06 and depend on C-07/F as specified there.
+The earlier DuckDB runtime and interoperability direction was withdrawn by the
+owner. DuckDB and ClickHouse are [research inputs for native rrflowDB](duckdb.md),
+not required services, bundled workers or planned connector profiles. Existing
+Parquet export does not prove import or full streaming.
 
 HydraDB, Pinecone Nexus, Qdrant and SurrealDB each require a separately implemented and
 qualified optional adapter; none is qualified by this document.

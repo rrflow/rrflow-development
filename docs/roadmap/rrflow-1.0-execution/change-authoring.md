@@ -36,6 +36,45 @@ code volume, compilation, elapsed time or synthetic load alone is not product
 progress. Documentation-only changes demonstrate corrected context, never a
 new engine capability.
 
+When the requested outcome is a joined user journey, anchor the work to an
+executable test or driver of that journey before choosing component work. For
+the current project-indexing objective, the target is an installed binary that
+admits a project, publishes source-derived facts and returns the same authorized
+evidence through rrflowQL after reopening; the roadmap owns the full acceptance
+requirements. Preserve the actual red or unavailable boundary and its exact
+revision. Link every prerequisite to that oracle and name the next missing
+boundary and integration owner. A native worker, parser unit test, plan or
+passing partial query is prerequisite evidence; it does not satisfy the joined
+journey. Work may be divided into safe reviewable PRs, but choose their scope
+and integration order to advance the same driver, resolve overlapping sources
+before parallel edits, and avoid repeated full candidate runs for incomplete
+drafts. Do not weaken native, authorization, durability, CI or merge gates to
+make the driver green.
+
+The integration driver carries that journey across the required bounded PRs,
+not just the first component. In the existing PR briefs and journals, keep the
+candidate/main identities, last installed command and result, remaining
+blocking boundaries, overlap and merge order, and next concrete action. After
+a prerequisite passes, continue to the next authorized dependent change or
+rerun the joined driver; do not treat the prerequisite as the requested user
+outcome. If a documented stop condition or external blocker prevents that
+continuation, retain the exact failure and next action. For overlapping packages, land the
+dependency through its normal gate and merge it into the dependent candidate;
+do not start a competing edit or force a merge. Run focused checks while a
+draft is incomplete, group compatible fixes for the coherent candidate, then
+run required candidate and merge-group CI on the actual ready revisions. This
+is a delivery practice within the existing PR and journal owners, not a new
+runtime workflow, status ledger, or permission to skip checks.
+
+Whole-codebase review is a separate, explicit coverage claim. Generate its
+mechanical inventory from the exact Git tree and record which files or line
+ranges were actually examined, the object digests, reviewer findings and the
+unreviewed remainder in the relevant evidence records. A file list, a line
+count, a search hit, a model-generated summary or a passing test does not prove
+that its lines were reviewed. Reconcile changed objects before extending a
+prior claim. This review evidence does not replace the roadmap or create a
+second runtime/status authority.
+
 If the promised behavior does not advance, retain the failure, stop dependent
 work and rework the package at its owning boundary. Do not replace missing
 implementation with unrelated telemetry or repeated benchmarks. Record what

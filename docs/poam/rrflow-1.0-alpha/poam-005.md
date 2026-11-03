@@ -21,14 +21,14 @@ still do not form one planner-selected, stamped native access system. Elias-Fano
 posting compression, TurboQuant_prod, and LSM-VEC-style disk navigation are evidence-gated
 candidates, not implemented defaults.
 
-The installed document-and-graph journey exposed another query boundary:
-rrflowQL's record-source binder looks in the strict record-schema catalogue and
-rejects a registered schemaless document as unregistered. The typed-document
-journey and the failing observation are recorded in the
-[document and graph journal](../../evidence/change-journals/gate-h/h-04-document-graph-journey.md).
-Dynamic field typing, projection and execution for schemaless records require
-their own implementation and evidence; a typed-document success does not close
-that gap.
+The installed document-and-graph journey originally found that the record
+binder rejected a registered schemaless document. The
+[document and graph journal](../../evidence/change-journals/gate-h/h-04-document-graph-journey.md)
+preserves that observation at its original revision. The subsequent
+[schemaless projection repair](../../evidence/change-journals/gate-e/e-01-schemaless-document-query.md)
+admits bounded untyped projection and tests a document/relationship join and
+reopen; it does not establish dynamic-property predicates or arbitrary join
+keys. The typed-document example and this repair do not close POAM-005.
 
 An installed-project Inventory exposed a traversal syntax gap: a snapshot
 digest beginning with a digit could not be used as a start ID, and typed
@@ -48,6 +48,15 @@ complete native access qualification remain open. Research-to-boundary choices
 are explained by the [scale rationale](../../architecture/engine-scale-and-contracts.md#graph-vector-and-knowledge-research-mapped-to-rrflow).
 
 ## Impact
+
+The [schemaless document query journal](../../evidence/change-journals/gate-e/e-01-schemaless-document-query.md)
+records the original rejection and the subsequent merged projection repair.
+Dynamic-property predicates and joins still require explicit type and
+execution semantics. Properties named like built-in fields (such as `id`) are
+currently shadowed in record query rows; arbitrary property namespace access
+still needs a defined contract. The projection repair does not qualify those cases.
+Its local results cannot close this ledger or establish general document-query
+support.
 
 Context can remain slow, and a derived index can still become stale, lose exact semantics,
 or select an unbounded path until the accepted deltas have stamped materializers, exact

@@ -25,6 +25,8 @@ mod adjacency_reads;
 mod identity_ranges;
 #[path = "query/identity_reads.rs"]
 mod identity_reads;
+#[path = "query/relational_select.rs"]
+mod relational_select;
 #[path = "query/stamped_admission.rs"]
 mod stamped_admission;
 
@@ -1227,4 +1229,203 @@ fn a_schemaless_record_table_can_start_a_traversal() {
     .unwrap();
     assert_eq!(execution.returned_rows, 1);
     assert_eq!(execution.batches[0].rows[0].values["node_id"], value("a"));
+}
+
+#[test]
+fn schemaless_document_projection_and_graph_join_survive_reopen() {
+    let root = tempfile::tempdir().unwrap();
+    let path = root.path().join("database");
+    let scope = ScopeId::new("instance:test").unwrap();
+    let kind = RuntimeType::new("note").unwrap();
+    let relation = RuntimeType::new("cites").unwrap();
+    let mut registry = RuntimeSchemaRegistry::empty(1, "schemaless projection");
+    registry
+        .define_record_table(
+            RuntimeType::new("strict_note").unwrap(),
+            RuntimeLogicalModel::Document,
+            RuntimeRecordSchema {
+                properties: BTreeMap::from([(
+                    "title".into(),
+                    RuntimePropertySchema::required(RuntimeValueType::String),
+                )]),
+                ..RuntimeRecordSchema::default()
+            },
+        )
+        .unwrap();
+    registry.tables.insert(
+        kind.clone(),
+        RuntimeTableSchema::schemaless(RuntimeLogicalModel::Document),
+    );
+    registry
+        .define_relation_table(
+            relation.clone(),
+            RuntimeRelationSchema {
+                from: BTreeSet::from([kind.clone()]),
+                to: BTreeSet::from([kind.clone()]),
+                ..RuntimeRelationSchema::default()
+            },
+        )
+        .unwrap();
+    let first = RuntimeRef::new("note", "a").unwrap();
+    let second = RuntimeRef::new("note", "b").unwrap();
+    let nested = RuntimeValue::Map(BTreeMap::from([(
+        "revision".into(),
+        RuntimeValue::Unsigned(1),
+    )]));
+    let record = |reference: RuntimeRef, payload: RuntimeValue| RuntimeMutation::Record {
+        record: RuntimeRecord {
+            reference,
+            valid_from: 10,
+            valid_to: None,
+            properties: BTreeMap::from([("payload".into(), payload)]),
+        },
+    };
+    let engine = RrflowKvStore::open(&path).unwrap();
+    let committed = engine
+        .runtime()
+        .commit(&RuntimeCommit {
+            scope: scope.clone(),
+            at: 100,
+            actor: "agent:test".into(),
+            expected_cursor: 0,
+            mutations: vec![
+                RuntimeMutation::Schema { registry },
+                record(first.clone(), nested.clone()),
+                record(second.clone(), value("text")),
+                RuntimeMutation::Relation {
+                    relation: RuntimeRelation {
+                        reference: RuntimeRef::new("cites", "a-b").unwrap(),
+                        from: first.clone(),
+                        to: second,
+                        valid_from: 10,
+                        valid_to: None,
+                        properties: RuntimeProperties::new(),
+                    },
+                },
+            ],
+        })
+        .unwrap();
+    let old_cursor = committed.last_cursor;
+    let sources = vec![
+        Source::Record { kind: kind.clone() },
+        Source::Relation { kind: relation },
+    ];
+    let run = |engine: &RrflowKvStore, text: &str| {
+        let catalog =
+            Catalog::capture_for_sources(engine, &scope, &sources, read_budget()).unwrap();
+        let bound = bind(&parse(text).unwrap(), &Parameters::new(), &catalog).unwrap();
+        execute(engine, &plan(&bound).unwrap(), &ExecutionBudget::default()).unwrap()
+    };
+    let query = "FROM record:note AT VALID 100 KNOWN HEAD PROJECT id, payload, missing";
+    let initial = run(&engine, query);
+    let rows = flattened_rows(&initial);
+    assert_eq!(rows.len(), 2);
+    assert_eq!(rows[0].values["payload"], nested);
+    assert_eq!(rows[1].values["payload"], value("text"));
+    assert!(rows
+        .iter()
+        .all(|row| row.values["missing"] == RuntimeValue::Null));
+    let all = run(
+        &engine,
+        "FROM record:note AT VALID 100 KNOWN HEAD PROJECT *",
+    );
+    assert_eq!(flattened_rows(&all)[0].values["payload"], nested);
+    let joined = run(&engine, "FROM record:note JOIN relation:cites ON id = from_id AT VALID 100 KNOWN HEAD PROJECT left.id, left.payload, right.to_id");
+    let rows = flattened_rows(&joined);
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].values["left.payload"], nested);
+    assert_eq!(rows[0].values["right.to_id"], value("b"));
+    let empty = run(
+        &engine,
+        "FROM record:note AT VALID 1 KNOWN HEAD PROJECT payload, missing",
+    );
+    assert_eq!(empty.returned_rows, 0);
+    let updated_cursor = engine
+        .runtime()
+        .commit(&RuntimeCommit {
+            scope: scope.clone(),
+            at: 101,
+            actor: "agent:test".into(),
+            expected_cursor: old_cursor,
+            mutations: vec![record(first, value("changed"))],
+        })
+        .unwrap()
+        .last_cursor;
+    let historical_query =
+        format!("FROM record:note AT VALID 100 KNOWN {old_cursor} PROJECT id, payload");
+    assert_eq!(
+        flattened_rows(&run(&engine, &historical_query))[0].values["payload"],
+        nested
+    );
+    assert_eq!(
+        flattened_rows(&run(&engine, query))[0].values["payload"],
+        value("changed")
+    );
+    drop(engine);
+    let reopened = RrflowKvStore::open(&path).unwrap();
+    assert_eq!(
+        flattened_rows(&run(&reopened, &historical_query))[0].values["payload"],
+        nested
+    );
+    assert_eq!(
+        flattened_rows(&run(&reopened, query))[0].values["payload"],
+        value("changed")
+    );
+    let catalog = Catalog::capture_for_sources(&reopened, &scope, &sources, read_budget()).unwrap();
+    let physical =
+        plan(&bind(&parse(query).unwrap(), &Parameters::new(), &catalog).unwrap()).unwrap();
+    let budget = ExecutionBudget {
+        max_input_rows: 1,
+        ..ExecutionBudget::default()
+    };
+    assert!(matches!(
+        execute(&reopened, &physical, &budget),
+        Err(Error::Budget(_))
+    ));
+    let dynamic_filter =
+        parse("FROM record:note AT VALID 100 KNOWN HEAD WHERE payload = \"text\" PROJECT id")
+            .unwrap();
+    assert!(bind(&dynamic_filter, &Parameters::new(), &catalog).is_err());
+    let projected_filter = parse(
+        "FROM record:note AT VALID 100 KNOWN HEAD WHERE payload = \"text\" PROJECT id, payload",
+    )
+    .unwrap();
+    assert!(bind(&projected_filter, &Parameters::new(), &catalog).is_err());
+    let strict_source = Source::Record {
+        kind: RuntimeType::new("strict_note").unwrap(),
+    };
+    let strict_catalog =
+        Catalog::capture_for_sources(&reopened, &scope, &[strict_source], read_budget()).unwrap();
+    let unknown_strict =
+        parse("FROM record:strict_note AT VALID 100 KNOWN HEAD PROJECT missing").unwrap();
+    assert!(bind(&unknown_strict, &Parameters::new(), &strict_catalog).is_err());
+    reopened
+        .runtime()
+        .commit(&RuntimeCommit {
+            scope: scope.clone(),
+            at: 102,
+            actor: "agent:test".into(),
+            expected_cursor: updated_cursor,
+            mutations: vec![RuntimeMutation::Record {
+                record: RuntimeRecord {
+                    reference: RuntimeRef::new("note", "forged").unwrap(),
+                    valid_from: 10,
+                    valid_to: None,
+                    properties: BTreeMap::from([("__rrd_identity".into(), value("forged"))]),
+                },
+            }],
+        })
+        .unwrap();
+    let catalog = Catalog::capture_for_sources(&reopened, &scope, &sources, read_budget()).unwrap();
+    for text in [
+        "FROM record:note AT VALID 100 KNOWN HEAD PROJECT __rrd_identity",
+        "FROM record:note AT VALID 100 KNOWN HEAD PROJECT *",
+    ] {
+        let plan =
+            plan(&bind(&parse(text).unwrap(), &Parameters::new(), &catalog).unwrap()).unwrap();
+        assert!(matches!(
+            execute(&reopened, &plan, &ExecutionBudget::default()),
+            Err(Error::Binding(_))
+        ));
+    }
 }

@@ -5,8 +5,8 @@ use rrd_contract::{
 };
 use rrd_core::{
     RuntimeCommit, RuntimeEventSchema, RuntimeLogicalModel, RuntimeMutation, RuntimeProperties,
-    RuntimePropertySchema, RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry,
-    RuntimeType, RuntimeValue, RuntimeValueType, ScopeId,
+    RuntimePropertySchema, RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeRelationSchema,
+    RuntimeSchemaRegistry, RuntimeType, RuntimeValue, RuntimeValueType, ScopeId,
 };
 use rrd_engine::RrdEngine;
 use rrd_security::{
@@ -106,6 +106,61 @@ impl Drop for RunningServerProcess {
         }
         let _ = child.kill();
         let _ = child.wait();
+    }
+}
+
+fn start_installed_process(
+    server_binary: &Path,
+    project: &Path,
+    executable: &Path,
+    temporary: &Path,
+    name: &str,
+) -> RunningServerProcess {
+    let ready = temporary.join(format!("{name}.READY"));
+    let shutdown_request = temporary.join(format!("{name}.SHUTDOWN.REQUEST"));
+    let shutdown_complete = temporary.join(format!("{name}.SHUTDOWN.COMPLETE"));
+    let mut child = Command::new(server_binary)
+        .args([
+            "--project",
+            project.to_str().unwrap(),
+            "--distribution-executable",
+            executable.to_str().unwrap(),
+            "--bind",
+            "127.0.0.1:0",
+            "--ready-file",
+            ready.to_str().unwrap(),
+            "--shutdown-request-file",
+            shutdown_request.to_str().unwrap(),
+            "--shutdown-complete-file",
+            shutdown_complete.to_str().unwrap(),
+        ])
+        .spawn()
+        .unwrap();
+    let deadline = Instant::now() + INTEGRATION_IO_TIMEOUT;
+    while !ready.is_file() {
+        if let Some(status) = child.try_wait().unwrap() {
+            panic!("rrd-server child exited before readiness: {status}");
+        }
+        if Instant::now() >= deadline {
+            let _ = child.kill();
+            let _ = child.wait();
+            panic!("rrd-server child did not publish readiness");
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    let readiness: Value = serde_json::from_slice(&std::fs::read(&ready).unwrap()).unwrap();
+    let address = readiness["url"]
+        .as_str()
+        .unwrap()
+        .strip_prefix("http://")
+        .unwrap()
+        .parse()
+        .unwrap();
+    RunningServerProcess {
+        address,
+        child: Some(child),
+        shutdown_request,
+        shutdown_complete,
     }
 }
 
@@ -611,6 +666,16 @@ fn extend_installed_schema_for_deployment_corpus(root: &Path, scope: &str) {
                     RuntimePropertySchema::required(RuntimeValueType::String),
                 )]),
                 ..RuntimeRecordSchema::default()
+            },
+        )
+        .unwrap();
+    registry
+        .define_relation_table(
+            RuntimeType::new("deployment_link").unwrap(),
+            RuntimeRelationSchema {
+                from: BTreeSet::from([RuntimeType::new("document").unwrap()]),
+                to: BTreeSet::from([RuntimeType::new("document").unwrap()]),
+                ..RuntimeRelationSchema::default()
             },
         )
         .unwrap();
@@ -2178,6 +2243,39 @@ fn data_transaction_atomically_commits_every_public_model_and_replays_after_rest
             expected.2
         );
     }
+    let select_relationship = envelope(
+        json!({
+            "scope": "instance:socket-test",
+            "query": "SELECT left.id, right.to_id FROM record:document JOIN relation:linked ON id = from_id AT VALID 100 KNOWN HEAD WHERE left.id = \"alpha\"",
+            "parameters": {},
+            "budget": {
+                "max_storage_keys": 100,
+                "max_rows": 10,
+                "max_output_bytes": 4096,
+                "max_batch_rows": 10
+            }
+        }),
+        None,
+        None,
+    );
+    let (status, denied) = post(&server, "/v1/query", &select_relationship, None);
+    assert_eq!(status, 401, "{denied}");
+    let (status, selected) = post(
+        &server,
+        "/v1/query",
+        &select_relationship,
+        Some((&session_id, &token)),
+    );
+    assert_eq!(status, 200, "{selected}");
+    let selected = payload(&selected);
+    assert_eq!(selected["known_at_cursor"], 11);
+    assert_eq!(selected["rows"].as_array().unwrap().len(), 1);
+    assert_eq!(selected["rows"][0]["values"]["left.id"]["value"], "alpha");
+    assert_eq!(
+        selected["rows"][0]["values"]["right.to_id"]["value"],
+        "beta"
+    );
+    let selected_rows = selected["rows"].clone();
     let live_query = envelope(
         json!({
             "scope": "instance:socket-test",
@@ -2390,6 +2488,15 @@ fn data_transaction_atomically_commits_every_public_model_and_replays_after_rest
     server.stop();
 
     let server = start(&root);
+    let (status, selected_after_restart) = post(
+        &server,
+        "/v1/query",
+        &select_relationship,
+        Some((&session_id, &token)),
+    );
+    assert_eq!(status, 200, "{selected_after_restart}");
+    assert_eq!(payload(&selected_after_restart)["known_at_cursor"], 11);
+    assert_eq!(payload(&selected_after_restart)["rows"], selected_rows);
     let (status, replayed) = post(&server, &path, &commit, Some((&session_id, &token)));
     assert_eq!(status, 200, "{replayed}");
     assert_eq!(payload(&replayed)["idempotent_replay"], true);
@@ -2603,52 +2710,13 @@ fn standalone_daemon_process_passes_the_shared_corpus_and_exclusively_owns_its_r
         value
     };
 
-    let ready = temporary.path().join("RRD.READY");
-    let shutdown_request = temporary.path().join("SHUTDOWN.REQUEST");
-    let shutdown_complete = temporary.path().join("SHUTDOWN.COMPLETE");
-    let mut child = Command::new(&server_binary)
-        .args([
-            "--project",
-            project.to_str().unwrap(),
-            "--distribution-executable",
-            executable.to_str().unwrap(),
-            "--bind",
-            "127.0.0.1:0",
-            "--ready-file",
-            ready.to_str().unwrap(),
-            "--shutdown-request-file",
-            shutdown_request.to_str().unwrap(),
-            "--shutdown-complete-file",
-            shutdown_complete.to_str().unwrap(),
-        ])
-        .spawn()
-        .unwrap();
-    let deadline = Instant::now() + INTEGRATION_IO_TIMEOUT;
-    while !ready.is_file() {
-        if let Some(status) = child.try_wait().unwrap() {
-            panic!("rrd-server child exited before readiness: {status}");
-        }
-        if Instant::now() >= deadline {
-            let _ = child.kill();
-            let _ = child.wait();
-            panic!("rrd-server child did not publish readiness");
-        }
-        std::thread::sleep(Duration::from_millis(10));
-    }
-    let readiness: Value = serde_json::from_slice(&std::fs::read(&ready).unwrap()).unwrap();
-    let address = readiness["url"]
-        .as_str()
-        .unwrap()
-        .strip_prefix("http://")
-        .unwrap()
-        .parse()
-        .unwrap();
-    let process = RunningServerProcess {
-        address,
-        child: Some(child),
-        shutdown_request,
-        shutdown_complete,
-    };
+    let process = start_installed_process(
+        &server_binary,
+        &project,
+        &executable,
+        temporary.path(),
+        "first",
+    );
 
     assert!(RrflowKvStore::open(&root).is_err());
     let (status, capabilities) = http(process.address, "GET", "/v1/capabilities", &[], &[]);
@@ -2719,10 +2787,21 @@ fn standalone_daemon_process_passes_the_shared_corpus_and_exclusively_owns_its_r
         .as_str()
         .unwrap()
         .to_owned();
-    let mutations = deployment_mutations()
+    let mut mutations = deployment_mutations()
         .into_iter()
         .skip(1)
         .collect::<Vec<_>>();
+    mutations.push(
+        serde_json::from_value(json!({
+            "mutation": "put_relation",
+            "reference": {"kind": "deployment_link", "id": "alpha-gamma"},
+            "from": {"kind": "document", "id": "alpha"},
+            "to": {"kind": "document", "id": "gamma"},
+            "valid_from": 100,
+            "properties": {}
+        }))
+        .unwrap(),
+    );
     let operation_sha256 = transaction_operation_sha256(&mutations);
     let commit = installed_envelope(
         json!({
@@ -2746,8 +2825,8 @@ fn standalone_daemon_process_passes_the_shared_corpus_and_exclusively_owns_its_r
     );
     assert_eq!(status, 200, "{committed}");
     assert_eq!(payload(&committed)["first_runtime_cursor"], 4);
-    assert_eq!(payload(&committed)["last_runtime_cursor"], 5);
-    assert_eq!(payload(&committed)["mutation_count"], 2);
+    assert_eq!(payload(&committed)["last_runtime_cursor"], 6);
+    assert_eq!(payload(&committed)["mutation_count"], 3);
 
     let corpus = deployment_corpus();
     let query = installed_envelope(
@@ -2811,9 +2890,75 @@ fn standalone_daemon_process_passes_the_shared_corpus_and_exclusively_owns_its_r
         ReadAccessPath::RecordVersions,
     );
 
+    let relationship_query = installed_envelope(
+        json!({
+            "scope": scope,
+            "query": "SELECT left.id, right.to_id FROM record:document JOIN relation:deployment_link ON id = from_id AT VALID 100 KNOWN HEAD WHERE left.id = \"alpha\"",
+            "parameters": {},
+            "budget": {
+                "max_storage_keys": 100,
+                "max_rows": 10,
+                "max_output_bytes": 16384,
+                "max_batch_rows": 10
+            }
+        }),
+        None,
+        None,
+    );
+    let (status, relationship) = http(
+        process.address,
+        "POST",
+        "/v1/query",
+        &[
+            ("Content-Type", "application/json"),
+            ("X-RRD-Session", session),
+            ("Authorization", &authorization),
+        ],
+        &serde_json::to_vec(&relationship_query).unwrap(),
+    );
+    assert_eq!(status, 200, "{relationship}");
+    let relationship = payload(&relationship);
+    assert_eq!(relationship["known_at_cursor"], 6);
+    assert_eq!(relationship["rows"].as_array().unwrap().len(), 1);
+    assert_eq!(
+        relationship["rows"][0]["values"]["left.id"]["value"],
+        "alpha"
+    );
+    assert_eq!(
+        relationship["rows"][0]["values"]["right.to_id"]["value"],
+        "gamma"
+    );
+    let expected_relationship_rows = relationship["rows"].clone();
+
     process.stop();
     let reopened = RrflowKvStore::open(&root).unwrap();
-    assert_eq!(reopened.runtime().cursor().unwrap(), 5);
+    assert_eq!(reopened.runtime().cursor().unwrap(), 6);
+    drop(reopened);
+    let process = start_installed_process(
+        &server_binary,
+        &project,
+        &executable,
+        temporary.path(),
+        "restarted",
+    );
+    let (status, restored_relationship) = http(
+        process.address,
+        "POST",
+        "/v1/query",
+        &[
+            ("Content-Type", "application/json"),
+            ("X-RRD-Session", session),
+            ("Authorization", &authorization),
+        ],
+        &serde_json::to_vec(&relationship_query).unwrap(),
+    );
+    assert_eq!(status, 200, "{restored_relationship}");
+    assert_eq!(payload(&restored_relationship)["known_at_cursor"], 6);
+    assert_eq!(
+        payload(&restored_relationship)["rows"],
+        expected_relationship_rows
+    );
+    process.stop();
 }
 
 #[test]
