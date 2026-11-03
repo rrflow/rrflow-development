@@ -206,9 +206,16 @@ proposal descriptions for later readback. Retain the approved preview if those
 descriptions are needed. Editing a project source after preview still requires
 a fresh plan or authorized replan.
 
+An explicitly proposed Parse step may include a versioned `parse_policy` with
+case-sensitive extension/language bindings and work limits. Its values remain
+in the selected plan and change its digest; an absent policy remains inactive.
+The engine checks policy placement and applicable Inventory and transaction
+ceilings when planning and applying installation. The policy is a declaration:
+Parse execution and enforcement of its native memory limit are not yet available.
+
 Without a proposal the bundled profile supplies its current eleven-step
-template; it is no longer the only allowed sequence. Only Connect currently
-executes; other steps fail explicitly as unavailable. This interface admits an
+template; it is no longer the only allowed sequence. Connect and bounded
+Inventory currently execute; other steps fail explicitly as unavailable. This interface admits an
 explicit proposal and does not yet automatically select a per-prompt schema,
 generate a handoff, invoke a model, or establish indexing completion.
 

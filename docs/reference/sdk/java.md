@@ -132,7 +132,7 @@ checked-in `OperationId.java` contains:
   `7efde511a5ba3b1cad630d2c63c473a966fb871182c8bd3a5fb85c3673924a11`.
 
 That audit describes an earlier projection. The current generated OpenAPI
-SHA-256 is `fefbaa7fb31b733a731b48f884fb3adaddc4942aed2882c31a6efc1d8b65af69`.
+SHA-256 is `ab55887653d7499ced47f6be542b2db17baa3321ca0b3ce6846796d06e77efaf`.
 
 An earlier flat record incorrectly said 34 routes when the generator, enum,
 unit assertion, public catalogue, and OpenAPI projection contained 33. The

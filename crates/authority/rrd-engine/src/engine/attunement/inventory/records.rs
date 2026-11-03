@@ -23,6 +23,58 @@ pub(super) fn head_key(instance: &CanonicalId) -> String {
     format!("server/state/{instance}/inventory/head")
 }
 
+pub(super) fn load_for_parse(
+    engine: &RrdEngine,
+    plan: &AttunementPlan,
+    checkpoint: &AttunementPhaseCheckpoint,
+    max_bytes: u64,
+    max_entries: u64,
+    remaining_keys: &mut u64,
+) -> Result<Proposal> {
+    let head_bytes = engine
+        .storage
+        .control()
+        .get(&head_key(&engine.instance))?
+        .ok_or(ServiceError::ProjectBindingMismatch)?;
+    let head: Head = decode(&head_bytes)?;
+    let coordinates = &checkpoint.coordinates;
+    let scope = ScopeId::new(format!("instance:{}", engine.instance)).map_err(contract)?;
+    if head.format_version != 1
+        || head.project_id != plan.target.project_id
+        || head.read.scope != scope
+        || head.proposal_sha256 != checkpoint.output_sha256
+        || head.read.manifest_id != coordinates.runtime_manifest_sha256
+        || head.read.commit_cursor != coordinates.runtime_cursor
+        || head.read.schema_revision != coordinates.schema_revision
+        || head.read.catalog_revision != coordinates.catalogue_revision
+    {
+        return Err(ServiceError::ProjectBindingMismatch);
+    }
+    let reference = RuntimeRef::new(SNAPSHOT, &head.proposal_sha256).map_err(contract)?;
+    let mut records = read_records(
+        engine,
+        &head.read,
+        std::slice::from_ref(&reference),
+        remaining_keys,
+    )?;
+    let snapshot = records.remove(&reference).ok_or_else(invalid)?;
+    let header = properties_json(&snapshot.properties)?;
+    if header
+        .get("source_precondition_sha256")
+        .and_then(serde_json::Value::as_str)
+        != Some(plan.source_sha256.as_str())
+    {
+        return Err(ServiceError::ProjectBindingMismatch);
+    }
+    let (read_head, proposal) = load_prior(engine, plan, max_bytes, max_entries, remaining_keys)?;
+    if read_head.as_deref() != Some(head_bytes.as_slice()) {
+        return Err(ServiceError::StorageConflict(
+            "Inventory head changed during Parse admission".into(),
+        ));
+    }
+    proposal.ok_or(ServiceError::ProjectBindingMismatch)
+}
+
 pub(super) fn load_prior(
     engine: &RrdEngine,
     plan: &AttunementPlan,
