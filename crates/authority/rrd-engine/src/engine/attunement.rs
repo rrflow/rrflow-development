@@ -22,6 +22,8 @@ pub use rrd_contract::{
 use std::time::Instant;
 
 mod inventory;
+#[cfg(windows)]
+mod windows_supervisor;
 #[allow(unused_imports)] // The installed Parse executor will consume this binding.
 pub(in crate::engine) use inventory::load_parse_inventory;
 
