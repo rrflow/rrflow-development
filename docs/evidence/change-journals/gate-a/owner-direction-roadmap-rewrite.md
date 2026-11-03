@@ -168,3 +168,32 @@ script invocation passed. The first inventory `--check` observed expected
 drift while the documentation edits were ungenerated; regeneration fixed it.
 No engine or C-07 tests were run in this follow-up. Candidate CI must evaluate
 the later commit, not inherit the prior run's result.
+
+
+## Owner clarification: streamed relationship access
+
+The PR brief was expanded before editing Gate E, Gate F and engine data flow.
+The owner directed rrflowQL to remain relational; canonical relationships and
+dynamically selected graph-shaped views share the rrflowDB transaction. The
+target now requires native ordered adjacency, the C-06g-derived stamped
+projected stream, the configured physical page cache, bounded memtable merge
+and mapped-buffer lifetime, with no raw-pointer bypass. An estate-scoped
+(table, ID) remains the record identity for structured and schemaless records.
+The current executor uses `AdjacencyExpansion` and
+`read_versioned_expanding`, not the C-06g stream; the current `begin_projected_read`
+and `ProjectedReadStream` provide only the underlying physical stream. F-01
+and F-03 remain unimplemented for this end-to-end path. E-01/F tests must
+measure relevant edges and versions, seeks, LSM runs, keys/pages, cache,
+resources and exact correctness while increasing unrelated data. Ordered seeks
+and version/proof work mean an unconditional zero-overhead O(E) claim is not
+shown. Current relationship bytes, persisted identity and tests were not
+changed by this documentation package.
+
+Research: [Arrow columnar layout](https://arrow.apache.org/docs/format/Columnar.html)
+describes relocatable buffers and conditional physical characteristics;
+[DataFusion TableProvider](https://docs.rs/datafusion/latest/datafusion/catalog/trait.TableProvider.html)
+describes streaming and projection/filter support. These are design inputs,
+not RRFlow streaming, zero-copy or performance evidence. No upstream code was
+copied. The owner also requested PostgreSQL and project source support; native
+compatibility and an explicitly admitted external source remain separate
+implementation requirements rather than a single claimed adapter.

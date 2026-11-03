@@ -121,6 +121,65 @@ remain Gate E-01 work. A structural differential is neither a committed mutation
 nor a live query result until its owning `RrdEngine` operation validates and
 commits the corresponding proposal.
 
+### Relationship access behind the relational interface
+
+Canonical relationships are typed, temporal records under the same rrflowDB
+transaction authority as endpoint records, audit and index deltas. Changes
+belonging to one accepted operation commit atomically. Relationship and
+endpoint identities remain estate-scoped `(table, id)` pairs;
+schemaless record properties do not change identity. A graph view is a bounded,
+request-specific projection of those relationships, not a graph database,
+second transaction owner or a reason to require a custom graph query language.
+Some relationships may be durable while others are ephemeral; their source,
+authorization, lifetime and provenance are explicit.
+
+The E-01/F-01/F-03 target derives outgoing and incoming adjacency from those
+canonical records into rrflowKV's typed ordered key/version spine and
+authenticated page-compatible binary metadata. On flush and compaction,
+preserve row/version identity and Arrow-compatible layout; do not turn file
+offsets or process addresses into durable record identities. An owner-bound,
+generation-scoped handle may accelerate access only while its snapshot and
+mapping lease remain valid. Memtable changes merge at the same read stamp as
+immutable pages. Relationship queries and internal expansion use the same
+bounded projected storage stream, authorization and configured physical page
+cache as the rest of the read path; they cannot open a separate raw pointer
+path around it. A mutable memtable is not an immutable-page cache entry.
+
+Implementation placement and present gap:
+
+- `rrd-store/src/keyspaces.rs` and `access/semantic_commit.rs` own canonical
+  relationship changes and both ordered adjacency directions in the same
+  transaction; source/history, deletes and moves must stay equivalent.
+- `rrd-store/src/access/versioned_read.rs` and `rrd-query/src/physical/graph.rs`
+  currently select authenticated adjacency ranges and relation histories.
+  `rrd-query/src/execute.rs` uses expanding semantic reads and materializes
+  changes: this is not the C-06g projected stream or a proven Arrow stream.
+- `rrd-lsm/src/database.rs::begin_projected_read` and
+  `rrd-lsm/src/segment/reader.rs::ProjectedReadStream` own the existing C-06g
+  physical stream and page/lease accounting. F-01 must adapt it through the
+  same stamped query boundary; F-03 must make relationship expansion consume
+  that path. The F-01 provider and streamed relationship execution do not yet
+  exist. Native physical execution may optimize this stream; it cannot bypass
+  its identity, authorization, limits, cache policy or lifetime accounting.
+
+For a selected neighborhood, the design goal is work proportional to visited
+edges and relevant versions rather than a scan of all `N` records. Ordered
+index seeks, frontier size, overlapping LSM runs, version histories, proof
+validation, cache misses and decoded pages add real work, so an unconditional
+`O(E)` bound independent of all those inputs is not established. E-01/F-01
+must hold the neighborhood and relevant history fixed while increasing
+unrelated estate size and report edge visits, seeks, examined keys and pages,
+versions, bytes, cache hits/misses, allocations, CPU and tail latency. Include
+high-degree/cyclic graphs, cold/warm cache, many runs, updates, deletes, old
+stamps, interruption, compaction and restart. Compare against an independent
+exact relational oracle and both configured cache policies; neither a passing
+small test nor an adjacency-key count proves an asymptotic or speed claim.
+Borrow raw mmap buffers only where format, alignment and authentication permit
+it and retain the mapping lease for every consumer; compressed or incompatible
+pages require bounded owned decode. PostgreSQL recursive queries illustrate a
+relational way to express walks, but this is not a claim that rrflowQL or the
+H-08 profile already implements recursive SQL.
+
 ## rrflowKV physical target
 
 rrflowKV combines write-optimized state with scan-optimized immutable storage
