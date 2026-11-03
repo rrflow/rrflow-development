@@ -133,6 +133,9 @@ impl SystemAdapter for MilvusAdapter {
                 && index["pendingRows"].as_u64() == Some(0)
                 && index["indexedRows"] == index["totalRows"])
         })?;
+        // A collection created with an index is already loaded, and a later handoff moves its
+        // search off growing segments. Reloading means every measured search uses the index.
+        self.call("/collections/release", &json!({"collectionName": name}))?;
         self.call("/collections/load", &json!({"collectionName": name}))?;
         wait_until(deadline, "Milvus load", || {
             let value = self.call(
