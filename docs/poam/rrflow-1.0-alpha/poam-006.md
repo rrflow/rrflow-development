@@ -525,3 +525,13 @@ parsed values. Explicit sorted rendering in the existing test/refresher fixes
 that representation ambiguity without changing runtime hashing or weakening
 byte assertions. Both public feature flows remain at the existing engine
 boundary; combined candidate qualification and the wider lifecycle remain open.
+
+## Linux ARM64 installed evidence gap
+
+At public main `3a72a6b4adc43c842f67a59f4fc91d725eac7580`, the candidate CI
+has Linux x86-64, Windows and macOS jobs but no Linux ARM64 native installed
+lane. The [ARM64 qualification journal](../../evidence/change-journals/gate-d/d-01-linux-arm64-candidate-ci.md)
+records the proposed required lane and its actual results. A checked-in job,
+cross-compilation or another platform's pass does not qualify Linux ARM64;
+native candidate/merge-group execution and the separate capacity, recovery,
+offline and soak evidence remain open.
