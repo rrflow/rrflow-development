@@ -40,11 +40,13 @@ The 2026-10-25 audit at `337d136210ff59b2359f898e717166c087dd5bfc`
 found that the prior storage-first paragraph contradicted the corrected roadmap.
 Follow the [current dependency spine](../roadmap/rrflow-1.0/executable-dependency-spine.md)
 and [Gate D build packages](../roadmap/rrflow-1.0/gate-d.md#project-workflow-build-packages).
-Installation is accepted; ingestion is not. D-02a must first resolve the actual
-admission/authorization contract, followed by durable worker execution and the
-real-project source-to-retrieval flow. Status/resume/cancel types without handlers
-are a specific blocker, not an available API. The owner's planning hold prevents
-runtime work while required decisions remain unresolved.
+The installed lifecycle has accepted bounded evidence; real-project ingestion is
+not complete. Public attunement read/control and replan handlers now exist, but
+the complete background executor, selected parser publication and usable
+project-to-retrieval flow remain unproven. The owner has directed implementation
+to resume; each durable effect still needs its own admitted authorization and
+evidence. See [POAM-006](../poam/rrflow-1.0-alpha/poam-006.md) and the current
+Gate D package records for the exact remaining gaps.
 
 Preserve existing native growth repairs and frozen campaign evidence. C-07
 still requires its complete native/profile/repetition/24-hour qualification;
@@ -53,6 +55,55 @@ binary's results. Qualification no longer postpones missing project ingestion.
 The existing [local database example](../reference/sdk/rrflowdb-local.md)
 exercises records/edges/queries/reopen; it is not source indexing, vector quality,
 model reasoning, PostgreSQL compatibility or cloud synchronization proof.
+
+### Boundary-based reasoning after the developer build
+
+The owner intends RRFlow to work with large real projects such as
+platform_devpulse and RRFlow itself. The near-term deliverable remains the
+working developer build: install and open an existing project, index permitted
+source, retrieve source-grounded context, and inspect progress and results in
+Connectome. Existing storage and cache work needed to make that journey work
+continues. After a usable candidate exists, establish repeatable baselines and
+tune it; final alpha, C-07 and release qualification retain their own exits.
+
+A subsequent target is to derive configurable **reasoning shards** from
+observed or explicitly configured project boundaries: for example, a module,
+service or other meaningful responsibility. A shard is a candidate unit for
+selecting and organizing reasoning context, not automatically a physical
+rrflowKV shard, a distributed database, or a new authorization authority.
+Boundaries can overlap or change, and relationships across them remain
+retrievable under the same `RrdEngine` authorization and read identity. The
+engine must be able to represent uncertainty and user corrections rather than
+assuming a folder name or manifest fully describes a project.
+
+The intended custom KV-cache strategy must be specified and evaluated at its
+actual boundary. rrflowKV stores durable project state and has physical cache
+policies; an ephemeral request context is assembled from authorized, stamped
+state. A model's attention KV cache is a different, model/runtime-specific
+object. If model-cache reuse is pursued, it must bind the model, tokenizer,
+prefix, configuration and scope supported by that runtime; storage-cache hits
+must not be reported as model-token savings. No cache design, compatibility or
+performance result is claimed here.
+
+For each proposed shard/cache strategy, retain source and configuration
+identity, cross-boundary dependencies, exclusions and update provenance. An
+ordinary edit invalidates affected derived material and permits a bounded
+successor/replan under the previously authorized scope. Compare against the
+working baseline on representative large-project questions, cross-boundary
+changes and no-answer cases, at matched correctness and resource budgets.
+Report answer/patch verification, retrieval quality and freshness, latency,
+CPU/memory/I/O, cache behavior and actual model-token/cost data when available,
+including construction and maintenance costs. Unknown usage stays unknown.
+An improvement to one metric alone is not evidence that the reasoning engine
+is competitive; advance to the next stage when the measured evidence shows
+sufficient promise for the stated workload and quality criteria.
+
+[GitHub's dependency-graph documentation](https://docs.github.com/en/code-security/concepts/supply-chain-security/dependency-graph-data)
+illustrates that manifest-based dependency discovery has a defined scope, not a
+complete semantic boundary map. [Tree-sitter's incremental parsing documentation](https://tree-sitter.github.io/tree-sitter/using-parsers/3-advanced-parsing.html)
+requires applying the exact edit before reusing a syntax tree. [vLLM's prefix-cache design](https://docs.vllm.ai/projects/vllm-omni/en/v0.32.0/design/feature/prefix_caching/)
+illustrates model-specific prefix reuse, not RRFlow cache compatibility. These
+are research inputs, not implementation or comparative evidence.
 
 ### Evidence-based build decisions
 
