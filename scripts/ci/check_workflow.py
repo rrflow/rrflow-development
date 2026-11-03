@@ -231,19 +231,32 @@ def verify_native_capacity_diagnostics(job: str) -> None:
 def verify_native_capacity_preflight(workflow: str) -> None:
     """A manual characterization cannot stand in for candidate or merge CI."""
     events = re.search(r"(?ms)^on:\n(.*?)(?=^\S)", workflow)
-    require(events is not None and events.group(1) == "  workflow_dispatch:\n\n",
-            "native preflight must be manual only")
+    require(
+        events is not None
+        and re.findall(r"(?m)^  ([a-z_]+):", events.group(1)) == ["workflow_dispatch"],
+        "native preflight must be manual only",
+    )
+    for name, default in [("point", "all"), ("mode", "both"), ("repetitions", '"3"')]:
+        pattern = rf"(?ms)^      {name}:\n(?:(?!^      \w+:).)*?^        default: {re.escape(default)}$"
+        require(re.search(pattern, events.group(1)) is not None,
+                f"native preflight default drifted: {name}")
     jobs = job_blocks(workflow)
     require(set(jobs) == {"native-preflight"}, "native preflight must remain isolated")
     job = jobs["native-preflight"]
     for required in ["runs-on: macos-latest", 'test "$(git rev-parse HEAD)" = "$GITHUB_SHA"',
                      "python3 scripts/ci/test_native_capacity.py", "python3 scripts/ci/test_macos_native_failure_preflight.py",
-                     "python3 scripts/ci/macos_native_failure_preflight.py", "python3 scripts/ci/run_native_capacity.py",
+                     "python3 scripts/ci/macos_native_failure_preflight.py", "python3 scripts/ci/run_macos_capacity_preflight.py",
+                     "python3 scripts/ci/test_macos_capacity_preflight.py",
+                     "RRFLOW_PREFLIGHT_POINT: ${{ inputs.point }}",
+                     "RRFLOW_PREFLIGHT_MODE: ${{ inputs.mode }}",
+                     "RRFLOW_PREFLIGHT_REPETITIONS: ${{ inputs.repetitions }}",
+                     '--point "$RRFLOW_PREFLIGHT_POINT" --mode "$RRFLOW_PREFLIGHT_MODE"',
+                     '--repetitions "$RRFLOW_PREFLIGHT_REPETITIONS"',
                      "RRFLOW_CAPACITY_DIAGNOSTICS: ${{ runner.temp }}/rrflow-capacity-diagnostics",
                      "path: ${{ runner.temp }}/rrflow-capacity-diagnostics/*.json", "if: always()"]:
         require(required in job, f"native preflight missing: {required}")
-    require(job.count("--mode fresh --mode existing") == 3 and "continue-on-error" not in job,
-            "native preflight must run all repeated cases without ignoring failure")
+    require("continue-on-error" not in job,
+            "native preflight must not ignore failures")
     for name, artifact_path, missing in [
         ("Retain injected native failure receipt",
          "${{ runner.temp }}/rrflow-native-failure-probe/rrflow-capacity-diagnostics/*.json", "error"),
