@@ -22,6 +22,8 @@ pub use rrd_contract::{
 use std::time::Instant;
 
 mod inventory;
+#[cfg(target_os = "linux")]
+mod linux_supervisor;
 #[cfg(windows)]
 mod windows_supervisor;
 #[allow(unused_imports)] // The installed Parse executor will consume this binding.
