@@ -36,6 +36,30 @@ code volume, compilation, elapsed time or synthetic load alone is not product
 progress. Documentation-only changes demonstrate corrected context, never a
 new engine capability.
 
+When the requested outcome is a joined user journey, anchor the work to an
+executable test or driver of that journey before choosing component work. For
+the current project-indexing objective, the target is an installed binary that
+admits a project, publishes source-derived facts and returns the same authorized
+evidence through rrflowQL after reopening; the roadmap owns the full acceptance
+requirements. Preserve the actual red or unavailable boundary and its exact
+revision. Link every prerequisite to that oracle and name the next missing
+boundary and integration owner. A native worker, parser unit test, plan or
+passing partial query is prerequisite evidence; it does not satisfy the joined
+journey. Work may be divided into safe reviewable PRs, but choose their scope
+and integration order to advance the same driver, resolve overlapping sources
+before parallel edits, and avoid repeated full candidate runs for incomplete
+drafts. Do not weaken native, authorization, durability, CI or merge gates to
+make the driver green.
+
+Whole-codebase review is a separate, explicit coverage claim. Generate its
+mechanical inventory from the exact Git tree and record which files or line
+ranges were actually examined, the object digests, reviewer findings and the
+unreviewed remainder in the relevant evidence records. A file list, a line
+count, a search hit, a model-generated summary or a passing test does not prove
+that its lines were reviewed. Reconcile changed objects before extending a
+prior claim. This review evidence does not replace the roadmap or create a
+second runtime/status authority.
+
 If the promised behavior does not advance, retain the failure, stop dependent
 work and rework the package at its owning boundary. Do not replace missing
 implementation with unrelated telemetry or repeated benchmarks. Record what

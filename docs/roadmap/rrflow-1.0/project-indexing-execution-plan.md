@@ -27,6 +27,17 @@ resource ceilings and must pause or yield when those ceilings require it.
 
 The first joined proof may run without a model or vector provider: lexical and graph retrieval with source citations must work, and unavailable vector/inference capability is reported. The complete alpha objective additionally requires vector access, configurable reasoning and other named gates; a lexical slice cannot close it. Knowledge-path connectors, LFG, SWAG and provider capture are explicitly configured integrations; the default installed estate cannot depend on them. Parquet is analytical interchange, not the canonical commit log or a prerequisite for a small local project.
 
+The existing installed-process driver is
+`crates/adapters/rrflow-cli/tests/installed_lifecycle.rs` test
+`installed_engine_plans_applies_serves_discovers_authenticates_and_reopens`.
+Its recorded run on parser draft `77fd7e8fde316cfd22ec1c367aaf75de50db5539`
+reached Parse and failed `phase-unavailable`; that result is not a test run of
+the later draft. The dispatcher still has no Parse executor at the reviewed
+candidate `fa2409867fd906a85f5b98b2e512107dd2044c08`. Preserve this driver and
+extend it to check actual persisted span/query readback, edits and restart. The
+native supervisor components are prerequisites; rerun the joined driver after
+its execution boundary changes, and retain the failing result until it passes.
+
 RRFlow's intended fast prompt cycles and long-running multi-day work both use
 the same authority, persistent state and configurable effort/resource policies.
 Long jobs need durable checkpoints, bounded leases and heartbeat/recovery,
