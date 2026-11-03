@@ -185,18 +185,40 @@ manifest before any run, and a run from a different design cannot join a report.
 across arms and compared by exact McNemar. An arm with no repository is the floor: if it solves
 tasks, they test what a model remembers.
 
-Nothing runs until a manifest names `models` and a `spend` limit, because those are decisions for
-whoever pays. Then:
+A study is the small set of choices made over that catalog, in a file like
+[`studies/rrflow-planning-pilot.json`](studies/rrflow-planning-pilot.json): stage, tasks, arms,
+baseline, floor, models, repetitions, spend, and the name of the variable holding the key. Nothing
+runs until it names models and a spend limit, because those are decisions for whoever pays.
+
+[`study-requirements.json`](study-requirements.json) says what any study must do, why, and which
+source that comes from. Check a study against it, then write its frozen plan, which is refused until
+the binding requirements are met:
 
 ```bash
-rrflow-lab tasks-order --manifest eval/lab/tasks/rrflow-package-planning.json
-rrflow-lab tasks-run --manifest FILE --task ID --arm ID --model ID --repetition N   --checkout DIR --empty DIR --out runs/tasks
-rrflow-lab tasks-combine --manifest FILE --in runs/tasks --out report.json
+FILES="--catalog eval/lab/tasks/rrflow-package-planning.json --requirements eval/lab/study-requirements.json --sources eval/lab/sources.json"
+rrflow-lab study-check --config eval/lab/studies/rrflow-planning-pilot.json $FILES
+rrflow-lab study-plan --config eval/lab/studies/rrflow-planning-pilot.json $FILES --out plan.json
 ```
 
-`--checkout` is the task's repository at its `revision`, and `--empty` is an empty directory.
+A pilot may run although it cannot answer the question, and its report says so. A confirmatory study
+needs enough distinct tasks for exact McNemar to reach its alpha, and an audit proving capture.
+
+```bash
+rrflow-lab tasks-order --manifest plan.json
+rrflow-lab tasks-run --manifest plan.json --task ID --arm ID --model ID --repetition N --checkout DIR --empty DIR --out runs/tasks
+rrflow-lab tasks-audit --manifest plan.json --in runs/tasks --out audit.json
+rrflow-lab tasks-combine --manifest plan.json --in runs/tasks --out report.json
+```
+
+`--checkout` is the task's repository at its `revision`, and `--empty` is an empty directory. An arm
+with an MCP tool also takes `--mcp-config` and `--chunks`, the file `tasks-import --chunks-out` wrote.
 Real runs use `claude --bare`, which keeps a person's memory and settings out and needs
-`ANTHROPIC_API_KEY`. Pilot on a few tasks before freezing a design.
+`ANTHROPIC_API_KEY`.
+
+Run one task in each arm first, then audit. The audit reads what the runs hold, per arm and per
+field, and exits non-zero if anything required is missing. A finished run lacking data stays visible
+and does not count, and neither does a run whose MCP server never connected, so a parsing gap costs
+one run per arm and not a whole study. A run that reports no cost is charged at its per-run limit.
 
 RRFlow cannot yet return a repository's content through its own path, so `rrflow-attuned` is a
 declared gap. `rrflow-harness-import` searches text this harness imports through public operations,
