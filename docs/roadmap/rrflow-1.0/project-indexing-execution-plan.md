@@ -3,7 +3,7 @@
 **Status:** active supporting implementation proposal; no runtime or gate accepted
 **Coordinate:** `rrflow://rrflow-instance/data/design/installed-project-indexing-plan`
 **Owner:** [Gate D project workflow](gate-d.md#project-workflow-build-packages); [alpha objective](../../objectives/rrflow-1.0-alpha.md#observable-engine-objective); [POAM-006](../../poam/rrflow-1.0-alpha/poam-006.md)
-**Reviewed:** public main `3a72a6b4adc43c842f67a59f4fc91d725eac7580`; parser draft [#241](https://github.com/rrflow/rrflow-development/pull/241) `63ace16fa5155fc0d91ca57e594368549779922b`; inherited-directory draft [#247](https://github.com/rrflow/rrflow-development/pull/247) remains separate and incomplete.
+**Reviewed:** public main `3a72a6b4adc43c842f67a59f4fc91d725eac7580`; parser draft [#241](https://github.com/rrflow/rrflow-development/pull/241) `ba11fdb35d5a080ab3e66361b89f942064d75d39`; interrupted-refresh regression [#252](https://github.com/rrflow/rrflow-development/pull/252) `28afd7a047100c7eb8cf36d5d27f268551384bc1`; inherited-directory draft [#247](https://github.com/rrflow/rrflow-development/pull/247) remains separate and incomplete.
 
 This is an implementing-agent handoff for the first real project-to-query cycle. It refines the [adaptive developer design](adaptive-developer-build-design.md), not the release order, alpha objective, POA&M status, or a fixed runtime sequence. Refresh the revisions, PRs, their CI and source references before implementing each package. A local test or a proposed symbol below is not evidence that an installed workflow works.
 
@@ -55,7 +55,7 @@ workloads after the installed project loop works.
 | Project admission | `crates/authority/rrd-engine/src/engine/installation.rs` and `installation/inventory.rs` scan under a compiled policy. `AnchoredPath` and observations constrain source access. The current scan retains entries and is not an atomic filesystem snapshot. The existing-project branch #247 still has unresolved interrupted staging and ACL re-admission. | Keep preview/apply, source anchoring and installed identity in `RrdEngine`; reconcile retained directories without altering project ACLs, moving existing entries or replacing user data. |
 | Default plan | `assets/install/default-profile-v3.json` and `clyffy-profile-v3.json` contain the same eleven phases; `installation.rs` copies the profile absent a supplied proposal. `rrd-contract/src/attunement.rs` validates a linear phase chain ending in Verify. | Replace fixed default selection with available, configured engine capability/effect selection and versioned dependency-bound records. Preserve traceability of existing formats and characterize them before removal. |
 | Inventory | `attunement/inventory.rs`, `inventory/records.rs`, `publication.rs`, and `reuse.rs` bind proposal, source recheck, publication groups, lease and head. The final transaction links job checkpoint, receipt and head to the runtime read stamp. | Reuse the same canonical runtime and transaction authority; prove partial groups are not presented as a complete head. Make large-snapshot reads bounded rather than reconstructing the entire proposal. |
-| Parse | Main's `engine/attunement.rs` executes Connect and Inventory and returns `phase-unavailable` for other phases. Draft #241 adds `rrd-attunement/src/parse.rs` and `worker.rs`, a selected policy, bound source reading and worker response validation. It does **not** supply the native supervisor, publication or installed Parse execution. Its `records::load_for_parse` currently reconstructs the whole Inventory proposal with a size bound. | Complete #241 or carry its characterized behavior into the adaptive capability contract. Do not activate until native worker admission, source/lease recheck, transaction publication, replay and the real installed test pass. |
+| Parse | Main's `engine/attunement.rs` executes Connect and Inventory and returns `phase-unavailable` for other phases. Draft #241 adds `rrd-attunement/src/parse.rs` and `worker.rs`, a selected policy, bound source reading, response validation, Windows/Linux child-containment foundations and a Windows pipe experiment. The Windows pipe experiment has an unresolved concurrent blanket-inheritance risk and no integrated deadline or executable admission. It supplies neither committed span publication nor installed Parse execution. `records::load_for_parse` currently reconstructs the whole Inventory proposal with a size bound. | Complete #241 or carry its characterized behavior into the adaptive capability contract. Do not activate until native worker admission, source/lease recheck, transaction publication, replay and the real installed test pass. |
 | Query and prompt context | `engine/query.rs`, `engine/context.rs`, `engine/retrieval.rs`, `engine/vector/search.rs`, and `rrd-query` contain real query/retrieval components. The draft `parse_source_is_bound_to_the_committed_inventory_after_reopen` traverses the committed Inventory relation after reopening; it does not publish parsed spans. `context.rs` currently fixes RRF constant and seed/text/vector/graph weights in code. | Read the same persisted source/span identities through scoped rrflowQL and context, then make ranking/graph selection a versioned bounded policy with effective values and origins visible. Check actual D-05/E/F prerequisite evidence before claiming access paths qualify. |
 | Parquet | `engine/query_export.rs` rejects truncated results and currently bounds the export at 1,024 rows. `rrd-query/tests/parquet_export.rs` characterizes typed bounded files. | Keep the bounded export honest. D-06/F own larger streaming, import and external interoperability; none is proof of native WAL or project indexing. |
 | UX and integrations | The pinned Connectome's `src-tauri/src/rrd/client.rs` and `estate.rs` contain client/preview paths; static phase declarations in `src/rrflow/attunement.ts` do not prove a live screen. The pinned UI has not been fully qualified for this journey. | Audit the exact pin and wire existing/public generated operations to engine state. Add client-facing status only where the authoritative operation exists; no UI-owned lifecycle or plan. |
@@ -123,18 +123,336 @@ These packages are review/merge units following the existing D-02/D-03/D-04/D-05
 
 The first executable target is package 3's real source/span result joined to packages 1–2, then package 4's retrieval and package 6's installed proof. Preparation for the latter starts with its failing driver, not after a collection of isolated green unit tests. This dependency order does not require eleven runtime operations or prevent independent read-only exploration. The repository's existing D-05 sequence and gate prerequisites still govern acceptance.
 
+## Execution reset: one integrated developer build
+
+This section is an implementation handoff, not a new roadmap or a sequence
+of runtime reasoning stages. One named integration driver owns the installed
+project journey through the PR dependency chain. Refresh all heads before
+work; the following are observations, not merge claims:
+
+| Candidate | Actual state at this review | Integration action |
+|---|---|---|
+| Public main `3a72a6b4` | Fixed eleven-phase defaults; installed Parse unavailable; C-07 open. | Use as the source baseline, not the old root checkout. |
+| [#252](https://github.com/rrflow/rrflow-development/pull/252) `28afd7a0` | Red Windows real-engine regression: an interrupted refresh leaves the old completed head but exposes a newer root record at `KNOWN HEAD`; the checkpoint cursor still reads the old record, including after reopen. No repair. | Complete the generation-visibility contract below and its tests; land through exact candidate and merge-group checks. |
+| [#241](https://github.com/rrflow/rrflow-development/pull/241) `ba11fdb3` | Parser and private native foundations exist. A source-built Windows primary binary returned a syntax span through a job and pipe. Installed project test still fails `phase-unavailable`; the Windows inherited-handle experiment has an unresolved concurrent-launch risk. | Integrate #252 by ordinary merge, resolve the shared source/test files and regenerate projections. Complete worker admission and durable source publication before readiness. |
+| [#247](https://github.com/rrflow/rrflow-development/pull/247) | Existing-directory work is a separate incomplete draft; earlier review found staging and ACL re-admission gaps. | Characterize and complete in dependency order when the chosen real project needs it. Never move user entries or change inherited project permissions to make admission succeed. |
+| This design #243 | Supporting design and workflow changes only; draft CI is skipped. | Reconcile it with the final implementations; documentation is not an alpha or merge prerequisite unless the owning PR requires it. |
+
+The installed driver is
+`crates/adapters/rrflow-cli/tests/installed_lifecycle.rs::installed_engine_plans_applies_serves_discovers_authenticates_and_reopens`.
+At #241 `b5fa4499`, Windows reached and queried the committed Inventory
+identities after forced restart, then failed on Parse. At #241 `ba11fdb3` the
+same failure remained. The controlling outcome is a **new passing installed
+source-to-query assertion** in this driver, including actual parsed spans,
+restart, edit/delete and independent expected source bytes. A pass through
+Inventory alone is not that outcome. Keep the failing test visible; do not
+mark an incomplete draft ready solely to obtain an expensive candidate run.
+
+### Resolve completed-generation visibility at the storage and query owners
+
+The current `inventory/records.rs::mutations` writes records under stable
+logical IDs, `publication.rs::Publication::publish` commits groups before
+`finish` changes the head, and `records.rs::load_prior` reads the stored
+checkpoint stamp. The pointer alone does not isolate head-time reads of those
+same IDs. A current snapshot and its entries must be selected together; the
+root digest, content identity, membership, graph and index cannot come from
+different generations.
+
+Use **generation indirection in the existing rrflowKV/rrd-store authority** as
+the implementation target: bounded private generation data is durably written
+without becoming current semantic records; an authenticated, bounded manifest
+names its ordered membership and source/configuration identities; the existing
+runtime/control transaction atomically selects the complete generation with
+the job checkpoint and receipt. A reader captures one authenticated selection
+with its read stamp and resolves source records, containment and derived
+indexes through it. Distinguish stable project/source identity from immutable
+physical fact/version identity. Reuse unchanged content-addressed facts where
+the complete dependency set is equal. Intermediate, abandoned and superseded
+generations are not current merely because their bytes were committed.
+
+This is a design to implement and prove, not an existing substrate feature. It
+must not create a second database, a client-owned head, or an untracked source
+of semantic truth. Implement selection as a versioned engine-owned semantic
+event committed in the **same** transaction as the complete head, checkpoint
+and receipt. Its bounded payload binds the scope, generation/root digest,
+manifest/page count, source/configuration/plan identity and predecessor. The
+existing `ReadStamp` cursor and authenticated runtime accumulator must be
+shown to cover that event; do not change its wire format merely to add another
+head. At an arbitrary requested cursor, `rrd-store` resolves the latest authorized
+selection at or before that cursor through a bounded typed index and verifies
+its inclusion, then authenticates selected generation pages against the
+event's root. A missing or corrupt proof fails the read. Restrict publication
+of the selection event and its reserved data types to the existing engine
+authority; a caller's arbitrary event cannot select a source generation.
+
+Implement that resolver and bounded physical reads in
+`rrd-store/src/repository/runtime.rs`, `access/versioned_read.rs` and
+`access/semantic_commit/`, with any required schema/index definitions at their
+existing owner. The current `ReadStamp` and accumulator do **not** yet prove
+this proposed relationship. Query/export evidence must report the actual read
+stamp and selected generation; a selected source generation is part of the
+logical state at that stamp, not a silent rewind of every other record. A
+design that requires the final transaction to contain every source entry,
+edge, deletion or member ID at arbitrary admitted scale is not bounded
+publication. Prove atomic selection, inclusion and recovery before enabling
+the resolver; if the existing event/index mechanism cannot establish those
+properties, revise this PR brief and retain the red oracle.
+
+Make the change visible consistently in `engine/query.rs::execute_query_scoped`,
+`poll_live_query_page`, `ensure_query_index`, `engine/query_export.rs`,
+`engine/retrieval.rs`, `engine/context.rs`, and the corresponding `rrd-query`
+pipeline, GraphQL/client and index paths that can consume these records. Map
+each actual call before editing: source-only, traversal, joins with unrelated
+records, literal/parameter/HEAD cursors, live queries, exports and direct
+diagnostic reads need explicit semantics. An unqualified scan must not claim
+or leak an abandoned generation as current. A mixed query must preserve one
+honestly reported view; it may return an explicit unsupported/error result
+until that combination is implemented, but must not silently rewind unrelated
+data or pretend a second cursor is the caller's requested HEAD. Preserve
+authorization before candidate generation and recheck newly revoked access.
+
+Replace the monolithic `entry_ids` reconstruction in `inventory/records.rs`
+with ordered bounded pages and authenticated membership; charge aggregate
+keys, bytes, elapsed time and output across pages and retries. Store only the
+small root/count/page commitments in the final atomic publication. Deleted
+entries and obsolete indexes leave the selected generation without requiring
+one oversized final retirement batch; old retained read stamps remain valid
+until their existing retention policy permits reclamation. A live reader pins
+the generations it needs; cancellation cannot publish a partial head, and
+reclamation cannot remove pinned data. Measure write amplification and retained
+bytes rather than assuming zero-cost reuse.
+
+Before replacing the current record/link representation, characterize the
+existing stable logical IDs, serialized proposal/head digests, deletion and
+reopen tests, and the public queries used by #241 and the installed client.
+The same canonical reader must authenticate already committed pre-release
+snapshots and their old read stamps; new writes use the new representation.
+For an existing estate, admit an explicit engine-owned initial selection from
+the previously completed, authenticated head, and atomically record it before
+selecting any new generation; do not treat an incomplete progress group as a
+completed snapshot. The old checkpoint continues to use its original retained
+read stamp. Test the initial selection, interrupted upgrade/retry and an estate
+with no completed head; a purely implicit conversion is not evidence. Do not
+silently rewrite an estate, require reinstall after an ordinary edit, or
+introduce a separate legacy engine. If this cannot be achieved at the existing
+authority, retain the failing test and resolve the contract before declaring a
+repair.
+
+Extend #252's real-engine oracle to require: old snapshot/root and unrelated
+HEAD data remain correct after each interrupted group; the selected generation
+changes exactly once after completion; a different edit produces a successor
+without discarding unaffected receipts; deletes and permission revocation do
+not appear current; old pinned readers retain their old results; restart and
+same-key replay do not duplicate publication; competing jobs/changed source
+and lease reject before selection; and raw scans, joins, export, live and index
+reads cannot bypass the selection. Include a deliberately small page/batch
+fixture, then the owning 100,000-record profile. The existing 2,048-file
+regression is real Windows evidence, not a 100,000-record pass.
+
+### Join the parser, adaptive plan and visible prompt cycle
+
+Use the installed plan and committed source selection, not a worker-supplied
+path or a second source inventory. In #241, bind the exact shipped executable
+to the installed distribution and close the check/use replacement window;
+then admit only the declared source and policy, stream bounded bytes, validate
+the returned grammar, digest and byte ranges, and recheck authorization, lease,
+source dependencies and expected generation at publication. The existing
+Windows anonymous-pipe experiment cannot be enabled while another concurrently
+launched child could inherit its handles. Evaluate a private, authenticated,
+deadline-controlled local IPC channel with peer-process identity and explicit
+ACL/remote denial; Microsoft's documented default named-pipe ACL is not a
+private channel. On Linux prove actual child identity, descriptor containment,
+parent-death cleanup, timeout and reaping. Unsupported environments report
+unavailable; they do not silently run an unbounded parser. Windows project
+files retain their inherited permissions.
+
+The owner of a parser request must bound **both** pipe directions, source and
+output bytes, process memory, total elapsed time, concurrent workers and
+cleanup. Handle a child that never reads, writes an oversized or truncated
+frame, sends a forged identity, exits early, or is killed while writing. Kill
+and reap the owned process, discard partial output, and leave no accepted
+checkpoint. A successful worker result is a proposal until the engine commits
+source spans, graph relationships, job progress and receipt together under the
+selected generation. Test real primary-binary execution, not just the pure
+parser or test executable. The stored source's content digest must match the
+bytes independently checked by the test after reopen.
+
+For default planning, replace both `attunement_phases` arrays and the linear
+terminal-Verify assumptions in `rrd-contract/src/attunement.rs`,
+`installation.rs` and `engine/attunement.rs` with a versioned engine-owned
+capability/effect catalogue and per-request selection. Available/configured
+capabilities, project facts, user scope, permission, budget and effort select
+work; an optional provider is not activated by discovery. Empty, short and
+different selections are valid. Fixed wire-format versions, digest algorithms,
+security bounds and OS invariants may be constants when documented; a fixed
+number of reasoning steps or a preselected provider is not the runtime plan.
+Characterize existing v2 plans/checkpoints and installed digests, then preserve
+their accepted effects through the same canonical reader and authorized
+successor mechanism. No schema of private thought and no second lifecycle.
+
+The generated effect/handoff schema must be derived from the executable
+contract owner and include: plan/version/digest and predecessor; project,
+source binding and effective-configuration revisions; capability/version;
+declared read dependencies including membership and negative lookups;
+authorization and question dependencies; budgets, idempotency and verification
+predicate; and effect receipt, outcome and resulting read/commit coordinates.
+Before **each mediated durable or external effect**, validate those fields,
+the relevant source and lease, and the allowed capability. A changed relevant
+input produces a fenced successor; an unrelated edit preserves independently
+valid work. A question blocks only effects that depend on it; otherwise the
+engine continues authorized background work with visible progress. Persist
+memory and effect receipts independently of sampled traces. A schema cannot
+force an agent with unrestricted filesystem access to follow a plan: the
+engine enforces mediated effects, while CI/review compares actual repository
+changes and receipts against the PR brief.
+
+The first project prompt uses persisted source-derived lexical/graph evidence
+without requiring a model or external vector service. Publish the selected
+avenues, effective graph/retrieval limits and reasons for unavailable avenues;
+then add configured vector/embedding and LFG/SWAG through the same engine
+contract. rrflowKV durable cache and prompt-local context are distinct
+lifetimes under one authority. Connectome reads those public operations and
+displays source, progress, configuration and audit records; it does not create
+the job or plan. Parquet remains the existing bounded analytical export until
+its separate streaming/import evidence is met. Knowledge paths to local data,
+Qdrant, SurrealDB and services are explicitly configured adapters, not implicit
+storage backends or proof of competitive performance.
+
+For onboarding, ask for the project boundary and fresh/existing choice only
+when they are not already determined; ask for a nested-repository boundary or
+an external capability only when the selected action genuinely needs that
+decision. Show the exact proposed RRFlow-owned project map, files, permitted
+source roots, exclusions, permissions, budget and configuration digest before
+the authorized write. Use inherited Windows access without changing the
+project's ACL or moving its files. Create and discover the map automatically
+through the engine after apply, and make it a replaceable projection of the
+engine record. Safe discovery and explicitly authorized local background work
+do not wait for an optional model or connector answer. Missing permission,
+excluded paths, progress, pause/recovery and errors must be understandable in
+the public status operation and Connectome; the existing map owner's actual
+contract and collision/removal behavior must be proved before writing.
+
+The project journey after the first source-to-query proof is still required:
+
+| Result | Canonical change and independent evidence |
+|---|---|
+| Configure KV, QL and DB | Expose effective engine-owned settings, origins, limits and digest via the executable operation catalogue; preview authorized changes and show them in Connectome. Restart/replay must retain the accepted setting and deny an unapproved expansion. |
+| Use any supported AI client | Generate operations/models from `rrd-contract`'s executable catalogue through `rrd-client`, language SDKs and `scripts/ci/run_sdk_conformance.py`. Exercise an actual project session, prompt, receipt and reopen through the public interface. Per-project/boundary isolation is the default; any global integration is explicit and separately authorized. |
+| Connect LFG and SWAG | Apply `docs/reference/inference/lfg-swag.md` at engine contracts, exposing availability, chosen policy, budgets and evidence. A mock or UI toggle is not a connected model; unavailable integrations stay visible as such. |
+| Attach knowledge paths | Local folders and service connectors start as discovered, inactive candidates. Preview source boundary, permissions, data movement and removal behavior; index only after authorization. Prove source-specific identity, revoke/delete, restart and no implicit replacement of rrflowDB. Qdrant/SurrealDB ingestion or migration is separately qualified. |
+| Observe and optimize | Record durable job/effect/memory receipts plus bounded metrics for inventory, source generation, retrieval and worker failure. Freeze corpus, judgments, hardware, baseline, thresholds and seeds before comparing recall, freshness, latency, memory or competitors. Sampled traces aid diagnosis and cannot stand in for audit. |
+| Extend native rrflowDB | Keep transaction/WAL and semantic authority in RRFlow; map researched DuckDB/ClickHouse techniques to Rust query/storage owners with provenance and tests, not a renamed external runtime. PostgreSQL compatibility, Parquet streaming/import, ANN/TurboQuant accuracy and platform qualification keep their own gates. |
+
+For the agent handoff, the eventual generated contract's minimal semantic
+shape is the following; the fields and validators are **proposed**, not a
+currently enforced API. The catalogue owns the final wire schema and SDKs.
+
+```json
+{
+  "contract_version": 1,
+  "plan_digest": "<canonical-plan-digest>",
+  "predecessor_digest": null,
+  "scope": {"estate": "<id>", "project": "<id>"},
+  "source": {"binding_revision": "<digest>", "read_stamp": "<engine-stamp>"},
+  "configuration_digest": "<effective-config-digest>",
+  "effects": [{
+    "id": "<id>", "capability": "<catalogue-id-and-version>",
+    "reads": ["<typed-complete-dependency>"], "questions": [],
+    "authorization_revision": "<revision>", "budget": "<bounded-policy>",
+    "idempotency_key": "<key>", "verify": "<observable-predicate>"
+  }],
+  "receipts": [{"effect_id": "<id>", "outcome": "<state>", "evidence_digest": "<digest>"}]
+}
+```
+
+Require canonical serialization and digest verification, supported capability
+and typed inputs, scoped read-set/source identity, policy and authorization,
+dependency acyclicity, resource admission and idempotency at execution. A
+receipt must bind the *actual* effect and verification, including denied,
+interrupted and uncertain states; it must not be populated in advance as proof.
+For an unmediated repository edit, the PR description and its linked journal
+are the reviewable change brief; compare the actual diff and test artifacts to
+that brief. Neither this example nor an instruction file can technically stop
+an agent with independent filesystem access. Enforce whatever can be enforced
+at the engine effect boundary and report the remaining external-review limit.
+
+### Delivery, CI and measurement
+
+The integration driver owns one current candidate tree and a ledger inside the
+existing PR/journals: outcome; exact main/branch/tree/binary identities; last
+installed command and failure; completed prerequisites; next failing boundary;
+overlapping files and integration order; and candidate/merge-group run links.
+The journal records actual commands, failures and unrun checks. It is evidence,
+not a new runtime plan or status authority. Do not open a competing PR for an
+overlapping file; if repository policy requires a separate bounded PR, land
+its dependency first, merge it normally into the dependent draft, and rerun
+the joined driver. A focused component pass leads directly to its next
+dependent change or installed test in the same working session. When a
+documented stop condition or an external blocker prevents continuation, record
+the exact next action; do not leave a component green as the session's implied outcome.
+
+Run focused red/green checks locally, then the affected owning suite and the
+integrated driver. Run generated-surface checks when those surfaces change.
+Request full candidate CI when the coherent candidate is ready; preserve all
+required native, crash, reopen, SDK and merge-group gates. A draft skip is not
+acceptance. Inspect a failed run's exact revision/log before rerunning; group
+compatible repairs on the same candidate rather than restarting the whole
+pipeline for every isolated edit. After a ready PR has its required checks and
+review, use the existing merge queue/auto-merge policy and verify the merge and
+branch deletion; never force or bypass the queue.
+
+The repository reports auto-merge and branch deletion enabled. At this review
+its repository-level runner list and repository Actions variables were empty;
+the organization runner endpoint returned HTTP 403, so organization runners
+and server availability are **unknown**. `ci.yml` selects self-hosted Linux
+only with the configured repository variables and permitted event source.
+Verify the owner's runner group, isolation, labels, local cache and trust
+boundary before changing routing; do not move untrusted public-fork code onto a
+privileged server. GitHub's Actions cache is cloud-hosted even for self-hosted
+runners; a deliberately managed local cache is a separate operator setup.
+Preserve the hosted Windows/macOS lanes and exact-candidate requirements.
+
+C-07 remains its own storage exit. The retained 100,000-operation candidate
+acknowledged all writes but verified only 44,556 before the original two-hour
+setup limit; other runs failed differently, and no single cause is proven.
+Use the existing sampled diagnostics and exact workload to attribute the
+specific remaining limit, fix at its owner, then run the frozen native capacity
+matrix, independent full readback, failure/recovery histories and actual
+24-hour soak from `gate-c-07.md`. A short preflight, this source-generation
+repair or a green component suite is not C-07 closure.
+
+Primary references: [FoundationDB generation indirection](https://apple.github.io/foundationdb/developer-guide.html),
+[Windows pipe security](https://learn.microsoft.com/en-us/windows/win32/ipc/named-pipe-security-and-access-rights),
+[GitHub ephemeral runners](https://docs.github.com/en/actions/reference/runners/self-hosted-runners),
+and [GitHub cache storage](https://docs.github.com/en/actions/concepts/workflows-and-actions/dependency-caching).
+These inform design choices; they do not establish RRFlow correctness or
+authorize copying upstream code.
+
 ## Tests, measurements and stop conditions
 
 Existing characterization commands, not claims about this new implementation:
 
 ```text
+cargo test --locked -p rrd-engine --lib interrupted_refresh_does_not_expose_partial_facts_as_completed_snapshot -- --nocapture
+cargo test --locked -p rrd-engine --lib inventory_delta::
+cargo test --locked -p rrd-engine --lib inventory_interruption_preserves_incomplete_groups_and_resumes_after_reopen
+cargo test --locked -p rrd-engine --lib inventory_edit_during_publication_rejects_stale_completion_and_allows_replan
+cargo test --locked -p rrd-engine --lib windows_supervisor::tests
 cargo test --locked -p rrd-contract --test attunement_contract
 cargo test --locked -p rrd-engine --lib inventory_checkpoint_and_source_records_commit_reopen_and_replan_together
 cargo test --locked -p rrd-engine --lib git_selected_plan_ignores_irrelevant_edits_replans_tracked_edits_and_reopens
 cargo test --locked -p rrflow-cli --test installed_lifecycle -- --nocapture
 ```
 
-On #241, `cargo test --locked -p rrd-attunement` and its actual `parser_worker` process test characterize the draft; they do not prove native supervision or engine publication. Confirm every filter selects a nonzero test count. Add a named installed-flow driver and run the smallest red case before each package's code, then its owning suites, generated contract/SDK checks, candidate CI and protected merge-group CI. Preserve existing crash and reopen cases rather than replacing them with mocks.
+The interrupted-refresh test exists only on #252; `windows_supervisor::tests`
+exists only on #241 and selects tests only on Windows. On #241,
+`cargo test --locked -p rrd-attunement` and its actual `parser_worker` process
+test characterize the draft; they do not prove native supervision or engine
+publication. Confirm every filter selects a nonzero test count. Extend the named
+installed-flow driver and run the smallest red case before each package's code,
+then its owning suites, generated contract/SDK checks, candidate CI and
+protected merge-group CI. Preserve existing crash and reopen cases rather than
+replacing them with mocks.
 
 The independent expected ledger is derived from the fixture files and authorized plan, not from the engine's claimed totals. Compare source bytes/digests, span bounds, current graph/lexical results, actual file effects, job receipts, and restored state. Required cases include excluded/secret paths, symlink and mount escape, permissions revoked mid-run, file replacement, malformed syntax, unsupported language, changed and unrelated files, deletes, size/node/time limits, slow or killed worker, stale lease, repeated idempotency key with same and different content, cancellation, storage-full, process death before and after publication, and two estates. Distinguish acknowledged success, denied, retryable, incomplete and uncertain outcomes.
 

@@ -51,6 +51,21 @@ before parallel edits, and avoid repeated full candidate runs for incomplete
 drafts. Do not weaken native, authorization, durability, CI or merge gates to
 make the driver green.
 
+The integration driver carries that journey across the required bounded PRs,
+not just the first component. In the existing PR briefs and journals, keep the
+candidate/main identities, last installed command and result, remaining
+blocking boundaries, overlap and merge order, and next concrete action. After
+a prerequisite passes, continue to the next authorized dependent change or
+rerun the joined driver; do not treat the prerequisite as the requested user
+outcome. If a documented stop condition or external blocker prevents that
+continuation, retain the exact failure and next action. For overlapping packages, land the
+dependency through its normal gate and merge it into the dependent candidate;
+do not start a competing edit or force a merge. Run focused checks while a
+draft is incomplete, group compatible fixes for the coherent candidate, then
+run required candidate and merge-group CI on the actual ready revisions. This
+is a delivery practice within the existing PR and journal owners, not a new
+runtime workflow, status ledger, or permission to skip checks.
+
 Whole-codebase review is a separate, explicit coverage claim. Generate its
 mechanical inventory from the exact Git tree and record which files or line
 ranges were actually examined, the object digests, reviewer findings and the
