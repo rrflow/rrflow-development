@@ -9,7 +9,7 @@ asked for Connectome's palette to be merged, and the owner's standing order for 
 move the pin, then design.
 
 **Starting revision and pull request.** `bf0b86a4`, this repository's `main`. Pull request:
-[#269](https://github.com/rrflow/rrflow-development/pull/269).
+[#270](https://github.com/rrflow/rrflow-development/pull/270).
 
 **Change brief.** The gitlink moves from `c1cbff20`, Connectome `main` after #27, to
 `95ba9975c506886f79984ad956e5dba557369f93`, Connectome `main` after #38. It stays bound to engine/SDK
