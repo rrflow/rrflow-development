@@ -268,15 +268,34 @@ _CAPTURE_COMMANDS = {
 }
 
 
+_OUTPUT_CLOSE_SECONDS = 2
+
+
 class CommandOutputNotClosed(RuntimeError):
-    """Closed metadata only; no arguments, paths or captured product output."""
-    def __init__(self, command_category, child_returncode, stdout_open, stderr_open):
+    """Closed metadata only; no arguments, paths or captured product output.
+
+    `captured` is never rendered. It holds a failed command's bounded output for
+    a caller that owns that command as evidence, such as an owned-image OS tool.
+    """
+    def __init__(self, command_category, child_returncode, stdout_open, stderr_open, captured=None):
         self.command_category = command_category if command_category in _CAPTURE_COMMANDS.values() else "other"
         self.child_returncode = (child_returncode if type(child_returncode) is int
                                  and -(2 ** 31) <= child_returncode < 2 ** 31 else None)
         self.stdout_open = bool(stdout_open)
         self.stderr_open = bool(stderr_open)
+        self.captured = captured
         super().__init__("command output did not close")
+
+
+def _await_process_group_exit(group: int, deadline: float, failed: threading.Event) -> None:
+    while time.monotonic() < deadline and not failed.is_set():
+        try:
+            os.killpg(group, 0)
+        except ProcessLookupError:
+            return
+        except PermissionError:
+            pass  # Darwin reports EPERM while only zombies remain; keep waiting.
+        time.sleep(0.01)
 
 
 def run(*arguments: str, **kwargs: object) -> subprocess.CompletedProcess:
@@ -303,7 +322,9 @@ def run(*arguments: str, **kwargs: object) -> subprocess.CompletedProcess:
 
     def capture(pipe, destination):
         try:
-            while chunk := pipe.read(65536):
+            # read() would block for a full buffer or EOF, losing what a command
+            # wrote before a descendant kept its pipe open.
+            while chunk := pipe.read1(65536):
                 if len(destination) + len(chunk) > limit:
                     exceeded.set()
                     return
@@ -331,6 +352,10 @@ def run(*arguments: str, **kwargs: object) -> subprocess.CompletedProcess:
             time.sleep(0.01)
     finally:
         if process_group:
+            # No owned descendant outlives this call, but a clean exit alone is no
+            # reason to kill one mid-work: it gets the output-close bound to finish.
+            if child.returncode == 0:
+                _await_process_group_exit(child.pid, min(deadline, time.monotonic() + _OUTPUT_CLOSE_SECONDS), exceeded)
             try:
                 os.killpg(child.pid, signal.SIGKILL)
             except ProcessLookupError:
@@ -339,16 +364,17 @@ def run(*arguments: str, **kwargs: object) -> subprocess.CompletedProcess:
             child.kill()
         child.wait(timeout=10)
         for reader in readers:
-            reader.join(timeout=2)
+            reader.join(timeout=_OUTPUT_CLOSE_SECONDS)
     open_streams = [reader.is_alive() for reader in readers]
+    result = subprocess.CompletedProcess(arguments, child.returncode,
+                                         streams[0].decode("utf-8", errors="replace"),
+                                         streams[1].decode("utf-8", errors="replace"))
     if any(open_streams):
         tool = Path(arguments[0]).name
         verb = arguments[1] if len(arguments) > 1 else ""
         category = _CAPTURE_COMMANDS.get((tool, verb), "other")
-        raise CommandOutputNotClosed(category, child.returncode, *open_streams)
-    result = subprocess.CompletedProcess(arguments, child.returncode,
-                                         streams[0].decode("utf-8", errors="replace"),
-                                         streams[1].decode("utf-8", errors="replace"))
+        raise CommandOutputNotClosed(category, child.returncode, *open_streams,
+                                     captured=result if child.returncode != 0 else None)
     if on_completion is not None:
         on_completion(result)
     require(error is None and not exceeded.is_set() and not failures, error or "command output limit exceeded")

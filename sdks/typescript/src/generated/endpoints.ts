@@ -1,6 +1,6 @@
 // Generated from rrd-contract; do not edit.
-// OpenAPI SHA-256: c04d0b515716e4c14257a2ed9409114440b31fb27ef94aac8eba27d3d8abf46f
-export const ENDPOINT_OPENAPI_DOCUMENT_SHA256 = "c04d0b515716e4c14257a2ed9409114440b31fb27ef94aac8eba27d3d8abf46f" as const;
+// OpenAPI SHA-256: ab55887653d7499ced47f6be542b2db17baa3321ca0b3ce6846796d06e77efaf
+export const ENDPOINT_OPENAPI_DOCUMENT_SHA256 = "ab55887653d7499ced47f6be542b2db17baa3321ca0b3ce6846796d06e77efaf" as const;
 
 export const endpoints = {
   "attunement-cancel": {
@@ -212,6 +212,24 @@ export const endpoints = {
     "path": "/v1/knowledge/trees/replace",
     "authentication": "session_bearer",
     "mutation": true
+  },
+  "observation-deliver": {
+    "method": "POST",
+    "path": "/v1/observations/deliver",
+    "authentication": "session_bearer",
+    "mutation": true
+  },
+  "observation-prepare": {
+    "method": "POST",
+    "path": "/v1/observations/prepare",
+    "authentication": "session_bearer",
+    "mutation": true
+  },
+  "observation-read": {
+    "method": "POST",
+    "path": "/v1/observations/read",
+    "authentication": "session_bearer",
+    "mutation": false
   },
   "query-execute": {
     "method": "POST",

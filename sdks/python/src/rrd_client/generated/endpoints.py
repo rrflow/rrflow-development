@@ -1,9 +1,9 @@
 # Generated from rrd-contract; do not edit.
-# OpenAPI SHA-256: c04d0b515716e4c14257a2ed9409114440b31fb27ef94aac8eba27d3d8abf46f
+# OpenAPI SHA-256: ab55887653d7499ced47f6be542b2db17baa3321ca0b3ce6846796d06e77efaf
 from typing import Final, Literal, TypedDict
 
 ENDPOINT_OPENAPI_DOCUMENT_SHA256: Final[str] = (
-    "c04d0b515716e4c14257a2ed9409114440b31fb27ef94aac8eba27d3d8abf46f"
+    "ab55887653d7499ced47f6be542b2db17baa3321ca0b3ce6846796d06e77efaf"
 )
 
 OperationId = Literal[
@@ -43,6 +43,9 @@ OperationId = Literal[
     "health-ready",
     "knowledge-tree-list",
     "knowledge-tree-replace",
+    "observation-deliver",
+    "observation-prepare",
+    "observation-read",
     "openapi-read",
     "query-execute",
     "query-export",
@@ -304,6 +307,24 @@ ENDPOINTS: Final[dict[OperationId, Endpoint]] = {
         "method": "POST",
         "mutation": True,
         "path": "/v1/knowledge/trees/replace",
+    },
+    "observation-deliver": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": True,
+        "path": "/v1/observations/deliver",
+    },
+    "observation-prepare": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": True,
+        "path": "/v1/observations/prepare",
+    },
+    "observation-read": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": False,
+        "path": "/v1/observations/read",
     },
     "openapi-read": {
         "authentication": "public",

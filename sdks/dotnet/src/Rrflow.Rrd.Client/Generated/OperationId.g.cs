@@ -1,5 +1,5 @@
 // Generated from rrd-contract; do not edit.
-// OpenAPI SHA-256: c04d0b515716e4c14257a2ed9409114440b31fb27ef94aac8eba27d3d8abf46f
+// OpenAPI SHA-256: ab55887653d7499ced47f6be542b2db17baa3321ca0b3ce6846796d06e77efaf
 namespace Rrflow.Rrd;
 
 public enum OperationId
@@ -40,6 +40,9 @@ public enum OperationId
     HealthReady,
     KnowledgeTreeList,
     KnowledgeTreeReplace,
+    ObservationDeliver,
+    ObservationPrepare,
+    ObservationRead,
     OpenapiRead,
     QueryExecute,
     QueryExport,
@@ -93,8 +96,8 @@ public sealed record Endpoint(
 
 public static class EndpointCatalog
 {
-    public const string OpenApiDocumentSha256 = "c04d0b515716e4c14257a2ed9409114440b31fb27ef94aac8eba27d3d8abf46f";
-    public const int Count = 71;
+    public const string OpenApiDocumentSha256 = "ab55887653d7499ced47f6be542b2db17baa3321ca0b3ce6846796d06e77efaf";
+    public const int Count = 74;
 
     public static Endpoint Get(OperationId operation) => operation switch
     {
@@ -134,6 +137,9 @@ public static class EndpointCatalog
         OperationId.HealthReady => new("health-ready", "GET", "/v1/health/ready", Authentication.Public, false),
         OperationId.KnowledgeTreeList => new("knowledge-tree-list", "POST", "/v1/knowledge/trees/list", Authentication.SessionBearer, false),
         OperationId.KnowledgeTreeReplace => new("knowledge-tree-replace", "POST", "/v1/knowledge/trees/replace", Authentication.SessionBearer, true),
+        OperationId.ObservationDeliver => new("observation-deliver", "POST", "/v1/observations/deliver", Authentication.SessionBearer, true),
+        OperationId.ObservationPrepare => new("observation-prepare", "POST", "/v1/observations/prepare", Authentication.SessionBearer, true),
+        OperationId.ObservationRead => new("observation-read", "POST", "/v1/observations/read", Authentication.SessionBearer, false),
         OperationId.OpenapiRead => new("openapi-read", "GET", "/v1/schema/openapi", Authentication.Public, false),
         OperationId.QueryExecute => new("query-execute", "POST", "/v1/query", Authentication.SessionBearer, false),
         OperationId.QueryExport => new("query-export", "POST", "/v1/query/export", Authentication.SessionBearer, false),

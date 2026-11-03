@@ -34,10 +34,12 @@ class NotRun(RuntimeError):
 
 class NativeCommandFailure(RuntimeError):
     """Failure from one owned native command, with bounded diagnostic output."""
-    def __init__(self, tool, verb, result):
+    def __init__(self, tool, verb, result, stdout_open=False, stderr_open=False):
         self.tool = tool
         self.verb = verb
         self.returncode = result.returncode
+        self.stdout_open = stdout_open
+        self.stderr_open = stderr_open
         self.stdout_head = result.stdout[:8192]
         self.stdout_tail = result.stdout[-8192:]
         self.stderr_head = result.stderr[:8192]
@@ -97,6 +99,7 @@ def retain_native_failure(config, fixture, mode, point, case_index, error):
                        "tool": source.tool, "verb": source.verb, "returncode": source.returncode,
                        "stdout_head": source.stdout_head, "stdout_tail": source.stdout_tail,
                        "stderr_head": source.stderr_head, "stderr_tail": source.stderr_tail,
+                       "stdout_open": source.stdout_open, "stderr_open": source.stderr_open,
                        "cleanup_state": "unknown"}
             encoded = json.dumps(receipt, ensure_ascii=False).encode("utf-8", errors="replace")
             require(len(encoded) <= 256 * 1024, "capacity diagnostic exceeds output bound")
@@ -149,7 +152,14 @@ def loop_binding(device: str, image: Path):
 def native_command(*arguments, **kwargs):
     # These are owned-image OS commands only, never credential-bearing product
     # output. Keep the failing tool and bounded native message in CI evidence.
-    result = run(*arguments, check=False, **kwargs)
+    try:
+        result = run(*arguments, check=False, **kwargs)
+    except CommandOutputNotClosed as unclosed:
+        # A descendant holding the pipe must not hide this command's own failure.
+        if unclosed.captured is None:
+            raise
+        raise NativeCommandFailure(arguments[0], arguments[1], unclosed.captured,
+                                   unclosed.stdout_open, unclosed.stderr_open) from unclosed
     if result.returncode != 0:
         raise NativeCommandFailure(arguments[0], arguments[1], result)
     return result
