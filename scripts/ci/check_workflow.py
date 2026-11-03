@@ -112,6 +112,44 @@ def job_blocks(workflow: str) -> dict[str, str]:
     }
 
 
+def verify_linux_arm64_ci(caller: str, reusable: str) -> None:
+    """Require a native ARM64 result without routing fork code to private hosts."""
+    routing = (
+        "      linux-arm64-runner: >-\n"
+        "        ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)\n"
+        "            && vars.CI_SELF_HOSTED_ENABLED == 'true'\n"
+        "            && (vars.CI_LINUX_ARM64_RUNNER || '[\"ubuntu-24.04-arm\"]')\n"
+        "            || '[\"ubuntu-24.04-arm\"]' }}\n"
+    )
+    require(caller.count(routing) == 1, "native ARM64 routing or fork isolation is missing")
+    require("      linux-arm64-runner:\n" in reusable,
+            "reusable CI must require its ARM64 runner input")
+    jobs = job_blocks(reusable)
+    require("native-arm64" in jobs, "native ARM64 qualification job is missing")
+    arm = jobs["native-arm64"]
+    for required in [
+        "runs-on: ${{ fromJSON(inputs.linux-arm64-runner) }}",
+        'test "$RUNNER_OS" = Linux',
+        'test "$RUNNER_ARCH" = ARM64',
+        'test "$(uname -m)" = aarch64',
+        "host: aarch64-unknown-linux-gnu",
+        "cargo test -p rrd-lsm --test filesystem --test manifest --locked",
+        "cargo test -p rrd-store --test installed_lifecycle --test semantic_commit_atomicity --locked",
+        "cargo test -p rrd-attunement --locked",
+        "cargo test -p rrflow-cli --test installed_lifecycle --locked -- --nocapture",
+    ]:
+        require(arm.count(required) == 1, f"native ARM64 qualification missing: {required}")
+    require("continue-on-error:" not in arm and not re.search(r"(?m)^\s+if:", arm),
+            "native ARM64 qualification cannot be skipped or ignored")
+    gate = jobs.get("ci-gate", "")
+    require("      - native-arm64\n" in gate
+            and "ARM64_RESULT: ${{ needs.native-arm64.result }}" in gate
+            and 'test "$ARM64_RESULT" = success' in gate,
+            "candidate gate must require the native ARM64 result")
+    require(reusable.count("python3 scripts/ci/test_linux_arm64_policy.py") == 1,
+            "native ARM64 policy regressions must run exactly once")
+
+
 def verify_native_sample_worker_ci(reopen: str, verify: str) -> None:
     """Keep bounded failure, Windows lifecycle and Linux image oracles required."""
     marker = "      - name: Require installed stale-snapshot conflict safety\n"
@@ -776,6 +814,7 @@ def main() -> None:
     reusable = workflows[REUSABLE]
     jobs = job_blocks(reusable)
     verify_candidate_admission(caller)
+    verify_linux_arm64_ci(caller, reusable)
     warmer = workflows.get(WORKFLOW_DIRECTORY / "ci-cache-warm.yml")
     require(warmer is not None, "trusted macOS reopen cache warmer is absent")
     verify_macos_reopen_cache_warm(warmer, jobs["installed-reopen"])
@@ -834,6 +873,7 @@ def main() -> None:
     )
 
     expected_jobs = {
+        "native-arm64",
         "installed-reopen",
         "installed-crash",
         "topology-smoke",
