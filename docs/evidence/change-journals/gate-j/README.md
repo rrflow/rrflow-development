@@ -9,4 +9,5 @@ linked package evidence.
 
 <!-- rrflow:generated-index:start -->
 - [A comparison lab for RRFlow against other systems](comparison-lab.md) — [`rrflow://rrflow-instance/data/evidence/change-journal/gate-j/comparison-lab`](rrflow://rrflow-instance/data/evidence/change-journal/gate-j/comparison-lab) — active implementation evidence; diagnostic results only, no gate advanced
+- [One file per system and per test](lab-catalog.md) — [`rrflow://rrflow-instance/data/evidence/change-journal/gate-j/lab-catalog`](rrflow://rrflow-instance/data/evidence/change-journal/gate-j/lab-catalog) — active implementation evidence; run through the script on a laptop, and not yet on `clyffy-01`
 <!-- rrflow:generated-index:end -->

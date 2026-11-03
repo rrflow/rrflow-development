@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "binding": {
+    "id": "lance-ivf-rq",
+    "label": "Lance, IVF with RaBitQ",
+    "kind": "custom",
+    "location": "loopback",
+    "endpoint": "http://127.0.0.1:18090",
+    "artifact": "lancedb 0.41.0 and pylance 14.0.2, locked in eval/lab/lance-requirements.txt, behind eval/lab/lance_system.py",
+    "storage_profile": "Lance files on local disk",
+    "availability": {
+      "state": "available"
+    },
+    "index": {
+      "index": "ivf_rq",
+      "partitions": 316
+    },
+    "search_ladder": [
+      {
+        "id": "nprobes-5",
+        "nprobes": 5,
+        "exact_rerank": 100
+      },
+      {
+        "id": "nprobes-10",
+        "nprobes": 10,
+        "exact_rerank": 100
+      },
+      {
+        "id": "nprobes-20",
+        "nprobes": 20,
+        "exact_rerank": 100
+      },
+      {
+        "id": "nprobes-40",
+        "nprobes": 40,
+        "exact_rerank": 100
+      },
+      {
+        "id": "nprobes-80",
+        "nprobes": 80,
+        "exact_rerank": 100
+      },
+      {
+        "id": "nprobes-160",
+        "nprobes": 160,
+        "exact_rerank": 100
+      }
+    ],
+    "memory_probe": [
+      "eval/lab/probe.sh",
+      "memory",
+      "shim"
+    ],
+    "disk_probe": [
+      "eval/lab/probe.sh",
+      "disk",
+      "shim"
+    ],
+    "limits": [
+      "Lance is embedded and has no server, so it runs behind a Python HTTP shim. JSON handling and Python's lock count against it, which most affects the 8-client cases."
+    ]
+  },
+  "launch": {
+    "kind": "process",
+    "command": [
+      "{env:RRFLOW_LAB_LANCE_PYTHON}",
+      "{lab}/lance_system.py",
+      "18090",
+      "{data}"
+    ],
+    "port": 18090,
+    "pid_file": "shim.pid",
+    "embedded_under_vectordbbench": true,
+    "ready": {
+      "url": "http://127.0.0.1:18090/health",
+      "seconds": 60
+    }
+  }
+}

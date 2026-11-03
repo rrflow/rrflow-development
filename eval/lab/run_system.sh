@@ -91,70 +91,83 @@ start_rrflow() {
   eval "$(python3 "$here/rrflow_credentials.py" "$work/project")"
 }
 
-case "$system" in
-  rrflow-*) require_port_free 19477 ;;
-  qdrant) require_port_free 16333 ;;
-  surrealdb | surrealdb-4) require_port_free 18000 ;;
-  milvus) require_port_free 19530 ;;
-  custom-reference) require_port_free 18089 ;;
-  lance-*) require_port_free 18090 ;;
-esac
+definition=$here/systems/$system.json
+if [ ! -f "$definition" ]; then
+  echo "no $definition: a new system is one file there, plus a shim if it needs one" >&2
+  exit 2
+fi
+declare -A launch=()
+"$RRFLOW_LAB_BIN" launch-info --system "$definition" > "$work/launch.info"
+while IFS='=' read -r key value; do
+  launch[$key]=$value
+done < "$work/launch.info"
+if [ "${launch[kind]}" = none ]; then
+  echo "$system is a declared gap, so there is nothing to run. Its reason appears in the report."
+  exit 0
+fi
+for port in ${launch[ports]:-}; do
+  require_port_free "$port"
+done
 
-case "$system" in
-  rrflow-*) start_rrflow ;;
-  qdrant)
-    container=lab-qdrant
-    docker run -d --name "$container" "${docker_cpus[@]}" -p 127.0.0.1:16333:6333       -v "$work/data:/qdrant/storage" \
-      qdrant/qdrant@sha256:9bfc89f9914fc14876a88c05270685921a55b8877b254a98bcc1cc2f0a424cd2 > /dev/null
-    wait_http http://127.0.0.1:16333/ 60
-    ;;
-  surrealdb | surrealdb-4)
-    surreal_image=surrealdb/surrealdb@sha256:3db515b88e79737aa828c05fbf1515748004ba57495ff89a013851cc3f1ad4b9
-    if [ "$system" = surrealdb-4 ]; then
-      surreal_image=surrealdb/surrealdb@sha256:c35893410644e65fa90aa1bef446ac9cb0a0c2733b9d405ce3eb56754b85c330
+wait_ready() {
+  local contains=${launch[ready_contains]:-}
+  for _ in $(seq 1 "${launch[ready_seconds]}"); do
+    if [ -n "$contains" ]; then
+      curl -s --max-time 2 "${launch[ready_url]}" | grep -q "$contains" && return 0
+    else
+      curl -s -o /dev/null --max-time 2 "${launch[ready_url]}" && return 0
     fi
-    container=lab-surrealdb
-    SURREAL_LAB_USER=lab
-    SURREAL_LAB_SECRET=$(python3 -c 'import secrets; print(secrets.token_hex(24))')
-    export SURREAL_LAB_USER SURREAL_LAB_SECRET
-    docker run -d --name "$container" "${docker_cpus[@]}" -p 127.0.0.1:18000:8000 \
-      -e SURREAL_USER="$SURREAL_LAB_USER" -e SURREAL_PASS="$SURREAL_LAB_SECRET" \
-      -e SURREAL_CAPS_ALLOW_ALL=true --user root -v "$work/data:/data" \
-      "$surreal_image" \
-      start surrealkv:///data/lab > /dev/null
-    wait_http http://127.0.0.1:18000/version 60
-    ;;
-  milvus)
-    container=lab-milvus
-    docker run -d --name "$container" "${docker_cpus[@]}" -e ETCD_USE_EMBED=true \
-      -e ETCD_DATA_DIR=/var/lib/milvus/etcd -e COMMON_STORAGETYPE=local -e DEPLOY_MODE=STANDALONE \
-      -p 127.0.0.1:19530:19530 -p 127.0.0.1:19091:9091 -v "$work/data:/var/lib/milvus" \
-      milvusdb/milvus@sha256:b9b79b4a284b41cd12d60abc418310f84621fa4c977d409b38f501519a7ccf8a \
-      milvus run standalone > /dev/null
-    for _ in $(seq 1 180); do
-      curl -s --max-time 2 http://127.0.0.1:19091/healthz | grep -q OK && break
-      sleep 1
-    done
-    ;;
-  custom-reference)
-    "${pinned[@]}" python3 "$here/reference_custom_system.py" 18089 &
-    background=$!
-    wait_http http://127.0.0.1:18089/health 30
-    ;;
-  lance-*)
-    # VectorDBBench embeds Lance in its own process, so it needs no server from here.
-    if [ -z "${RRFLOW_LAB_VDBBENCH:-}" ]; then
-      # Lance is embedded, so its shim is its server, on the same cores and disk as the others.
-      : "${RRFLOW_LAB_LANCE_PYTHON:?set RRFLOW_LAB_LANCE_PYTHON to a Python with lance-requirements.txt installed}"
-      "${pinned[@]}" "$RRFLOW_LAB_LANCE_PYTHON" "$here/lance_system.py" 18090 "$work/data" &
-      background=$!
-      echo "$background" > "$work/shim.pid"
-      wait_http http://127.0.0.1:18090/health 60
+    sleep 1
+  done
+  echo "${launch[ready_url]} did not answer" >&2
+  return 1
+}
+
+# Words, separated by NUL, so no value here is ever read as shell.
+launch_words() {
+  "$RRFLOW_LAB_BIN" launch-args --system "$definition" --data "$work/data" --lab "$here" \
+    ${cpuset:+--cpuset "$cpuset"} > "$work/launch.args"
+  mapfile -d '' -t words < "$work/launch.args"
+}
+
+start_container() {
+  local pair secret outside
+  for pair in ${launch[host_env]:-}; do
+    export "${pair?}"
+  done
+  # A secret is generated for this run, and reaches the container by name, off the process list.
+  for pair in ${launch[secrets]:-}; do
+    secret=$(python3 -c 'import secrets; print(secrets.token_hex(24))')
+    export "${pair%%=*}=$secret" "${pair#*=}=$secret"
+  done
+  for pair in ${launch[env_from_host]:-}; do
+    outside=${pair#*=}
+    export "${pair%%=*}=${!outside}"
+  done
+  launch_words
+  container=${launch[container]}
+  docker run -d "${words[@]}" > /dev/null
+  wait_ready
+}
+
+start_process() {
+  launch_words
+  "${pinned[@]}" "${words[@]}" &
+  background=$!
+  if [ -n "${launch[pid_file]:-}" ]; then
+    echo "$background" > "$work/${launch[pid_file]}"
+  fi
+  wait_ready
+}
+
+case "${launch[kind]}" in
+  rrflow_engine) start_rrflow ;;
+  container) start_container ;;
+  process)
+    # A harness that embeds the system in its own process needs no server from here.
+    if [ -z "${RRFLOW_LAB_VDBBENCH:-}" ] || [ "${launch[embedded_under_vectordbbench]:-}" != true ]; then
+      start_process
     fi
-    ;;
-  *)
-    echo "unknown system $system; a new custom system adds its own start case here" >&2
-    exit 2
     ;;
 esac
 
@@ -168,15 +181,8 @@ sampler=$!
 if [ -n "${RRFLOW_LAB_VDBBENCH:-}" ]; then
   # Its dataset stays between runs, and each result is kept beside the run for rrflow-lab import.
   ef=${RRFLOW_LAB_VDBBENCH_EF:-128}
-  case "$system" in
-    qdrant) driver=(qdrantlocal --url http://127.0.0.1:16333 --m 16 --ef-construct 100 --hnsw-ef "$ef") ;;
-    milvus) driver=(milvushnsw --uri http://127.0.0.1:19530 --m 16 --ef-construction 100 --ef-search "$ef") ;;
-    lance-hnsw-sq) driver=(lancedbivfhnswsq --uri "$work/data/vdbbench" --num-partitions 1 --m 16 --ef-construction 100 --ef "$ef") ;;
-    *)
-      echo "no VectorDBBench client is set up for $system" >&2
-      exit 2
-      ;;
-  esac
+  "$RRFLOW_LAB_BIN" vdbbench-args --system "$definition" --data "$work/data" --ef "$ef" > "$work/driver.args"
+  mapfile -d '' -t driver < "$work/driver.args"
   results=$work/vdbbench-results
   mkdir -p "$results"
   DATASET_LOCAL_DIR=${RRFLOW_LAB_VDBBENCH_DATASETS:-$HOME/lab-vdbbench-datasets} RESULTS_LOCAL_DIR=$results \

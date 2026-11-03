@@ -61,8 +61,13 @@ trusting a surprising number: a single run cannot tell a slow system from a busy
 | Another harness's results | `rrflow-lab import`, which labels them as imported | VectorDBBench |
 | Awareness of what is new | [`sources.json`](sources.json) and [`check_sources.py`](check_sources.py) | Every suite and system here, and the REA list |
 
-Adding a system to a manifest keeps the runs already made, because a report's runs share
-the test and not the whole manifest. Changing a system's binding means rerunning that system.
+A system is one file in [`systems/`](systems), with its pin and how it starts. A test is one file in
+[`tests/`](tests), with its data and workload, the systems it uses, and only what differs for it. The
+`vector-*.json` manifests are generated from those by `rrflow-lab resolve-all`, and a test holds them
+equal, so moving to a newer release means changing one file.
+
+Adding a system keeps the runs already made, because a report's runs share the test and not the
+whole manifest. Changing a system's binding means rerunning that system.
 
 ### A dataset
 
@@ -125,9 +130,9 @@ usually behind a thin shim. It is a small HTTP API:
 
 [`reference_custom_system.py`](reference_custom_system.py) is a complete
 implementation in about 90 lines of standard-library Python. To add a system:
-write the shim, add a binding to the manifest with its pinned artifact and
-storage profile, and add a start case to `run_system.sh`. Its results then appear
-beside the others without any new client code. Report evidence if you can, because an index
+write the shim, add `systems/<id>.json` with its binding and how it starts, and list it in a test
+under `tests/`. Then run `rrflow-lab resolve-all --tests eval/lab/tests --systems eval/lab/systems
+--out eval/lab`. Its results appear beside the others without any new client code or script change. Report evidence if you can, because an index
 that goes unused looks like a good result. A system with its own built-in
 adapter, like Qdrant, implements `SystemAdapter` in `crates/evaluation/rrflow-eval/src/lab/`
 and its responses are captured into `tests/lab_adapters.rs`.

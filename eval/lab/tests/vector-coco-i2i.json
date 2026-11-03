@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "test": {
+    "id": "vector-coco-i2i",
+    "title": "Vector search, 113,287 real image embeddings",
+    "family": "vector-search",
+    "revision": 1
+  },
+  "corpus": {
+    "source": {
+      "generator": "imported",
+      "origin": "COCO image embeddings as published for ANN-Benchmarks, file coco-i2i-512-angular.hdf5, SHA-256 fcaf3573d0decd37fa241883843037b503736dde14e99e1f0d9472a765d94e19",
+      "license": "COCO's terms: annotations CC BY 4.0, images under Flickr's terms. Local benchmarking only, and nothing is stored in this repository",
+      "points_sha256": "5c091dd98f765a4959013135baa6bcb6955bd71be6d11b142e548217122e976d",
+      "queries_sha256": "85ead4917ac796bf480e68b56775d000c985f0e1857915f546bbfc920b36036d",
+      "category_seed": 20261103
+    },
+    "points": 113287,
+    "dimensions": 512,
+    "metric": "cosine",
+    "categories": 10
+  },
+  "workload": {
+    "queries": 1000,
+    "k": 10,
+    "warmup_queries": 100,
+    "ingest_batch": 500,
+    "concurrency": [
+      1,
+      8
+    ],
+    "filtered": true,
+    "request_timeout_ms": 300000,
+    "readiness_timeout_ms": 3600000,
+    "max_case_seconds": 300
+  },
+  "quality": {
+    "recall_target": 0.95
+  },
+  "systems": [
+    {
+      "system": "rrflow-exact"
+    },
+    {
+      "system": "rrflow-turboquant"
+    },
+    {
+      "system": "rrflow-hnsw"
+    },
+    {
+      "system": "rrflow-routed"
+    },
+    {
+      "system": "rrflow-exact-raised"
+    },
+    {
+      "system": "rrflow-turboquant-raised"
+    },
+    {
+      "system": "qdrant"
+    },
+    {
+      "system": "surrealdb"
+    },
+    {
+      "system": "surrealdb-4"
+    },
+    {
+      "system": "milvus"
+    },
+    {
+      "system": "lance-hnsw-sq"
+    },
+    {
+      "system": "lance-ivf-rq",
+      "index": {
+        "index": "ivf_rq",
+        "partitions": 336
+      }
+    },
+    {
+      "system": "custom-reference"
+    }
+  ]
+}

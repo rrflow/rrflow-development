@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "binding": {
+    "id": "custom-reference",
+    "label": "Reference custom system, exact scan in Python",
+    "kind": "custom",
+    "location": "loopback",
+    "endpoint": "http://127.0.0.1:18089",
+    "artifact": "eval/lab/reference_custom_system.py",
+    "storage_profile": "memory only",
+    "availability": {
+      "state": "not_applicable",
+      "reason": "A reference for the custom protocol, in plain Python. It is measured only on the small corpus."
+    },
+    "index": {
+      "index": "exact"
+    },
+    "search_ladder": [
+      {
+        "id": "exact"
+      }
+    ]
+  },
+  "launch": {
+    "kind": "process",
+    "command": [
+      "python3",
+      "{lab}/reference_custom_system.py",
+      "18089"
+    ],
+    "port": 18089,
+    "ready": {
+      "url": "http://127.0.0.1:18089/health",
+      "seconds": 30
+    }
+  }
+}

@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "test": {
+    "id": "vector-medium",
+    "title": "Vector search, medium corpus",
+    "family": "vector-search",
+    "revision": 1
+  },
+  "corpus": {
+    "source": {
+      "generator": "gaussian_mixture",
+      "seed": 20261103,
+      "clusters": 32,
+      "spread_milli": 500
+    },
+    "points": 200000,
+    "dimensions": 384,
+    "metric": "cosine",
+    "categories": 10
+  },
+  "workload": {
+    "queries": 1000,
+    "k": 10,
+    "warmup_queries": 100,
+    "ingest_batch": 500,
+    "concurrency": [
+      1,
+      8
+    ],
+    "filtered": true,
+    "request_timeout_ms": 300000,
+    "readiness_timeout_ms": 3600000,
+    "max_case_seconds": 300
+  },
+  "quality": {
+    "recall_target": 0.95
+  },
+  "systems": [
+    {
+      "system": "rrflow-exact"
+    },
+    {
+      "system": "rrflow-turboquant"
+    },
+    {
+      "system": "rrflow-hnsw"
+    },
+    {
+      "system": "rrflow-routed"
+    },
+    {
+      "system": "rrflow-exact-raised"
+    },
+    {
+      "system": "rrflow-turboquant-raised"
+    },
+    {
+      "system": "qdrant"
+    },
+    {
+      "system": "surrealdb"
+    },
+    {
+      "system": "surrealdb-4"
+    },
+    {
+      "system": "milvus"
+    },
+    {
+      "system": "lance-hnsw-sq"
+    },
+    {
+      "system": "lance-ivf-rq",
+      "index": {
+        "index": "ivf_rq",
+        "partitions": 447
+      }
+    },
+    {
+      "system": "custom-reference"
+    }
+  ]
+}
