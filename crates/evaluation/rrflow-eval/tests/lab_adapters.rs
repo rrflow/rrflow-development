@@ -383,6 +383,7 @@ fn milvus_speaks_its_real_wire_format() {
             r#"{"code":0,"data":[{"failReason":"","indexName":"v","indexState":"Finished","indexType":"HNSW","indexedRows":2,"pendingRows":0,"totalRows":2}]}"#,
         ),
         (200, ok),
+        (200, ok),
         (
             200,
             r#"{"code":0,"data":{"loadProgress":100,"loadState":"LoadStateLoaded"},"message":""}"#,
@@ -412,8 +413,11 @@ fn milvus_speaks_its_real_wire_format() {
     adapter.ingest(&batch()).unwrap();
     assert_eq!(server.request(2).json()["data"][1]["category"], 1);
     adapter.finish_ingest(deadline()).unwrap();
+    // Reloading after the index finishes is what makes a search use it.
+    assert_eq!(server.request(6).path, "/v2/vectordb/collections/release");
+    assert_eq!(server.request(7).path, "/v2/vectordb/collections/load");
     assert_eq!(search_filtered(&adapter), vec![4, 10]);
-    let search = server.request(8).json();
+    let search = server.request(9).json();
     assert_eq!(search["filter"], "category == 1");
     assert_eq!(search["searchParams"]["params"]["ef"], 32);
     assert_eq!(search["consistencyLevel"], "Strong");
