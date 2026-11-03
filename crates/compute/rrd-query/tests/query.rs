@@ -25,6 +25,8 @@ mod adjacency_reads;
 mod identity_ranges;
 #[path = "query/identity_reads.rs"]
 mod identity_reads;
+#[path = "query/relational_select.rs"]
+mod relational_select;
 #[path = "query/stamped_admission.rs"]
 mod stamped_admission;
 
