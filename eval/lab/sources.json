@@ -104,7 +104,7 @@
         "repository": "erikbern/ann-benchmarks"
       },
       "status": "in_use",
-      "purpose": "Its published datasets come in through eval/lab/import_corpus.py. Its harness is not run."
+      "purpose": "Its published datasets come in through eval/lab/import_corpus.py. Its harness is not run, and its README now says it is no longer actively maintained and points to VIBE."
     },
     {
       "id": "coco-i2i-512",
@@ -163,7 +163,7 @@
         "package": "inspect-ai"
       },
       "status": "planned",
-      "purpose": "Candidate for task definitions and logs in the reasoning tests, imported into this report rather than replacing it."
+      "purpose": "Next to import and run. A test is a Python task with a dataset, solver and scorer. Logs hold per-sample scores, and a scripted mock model lets it run with no model call. Never run its score command on an untrusted log, because that runs code the log names."
     },
     {
       "id": "promptfoo",
@@ -177,8 +177,8 @@
         "from": "github_release",
         "repository": "promptfoo/promptfoo"
       },
-      "status": "watching",
-      "purpose": "Prompt-level comparison from configuration files. It suits regression checks better than agent task grading."
+      "status": "planned",
+      "purpose": "To import, and not to run. Writes JSON with per-case success, score, latency and cost. Its failure filters are worth copying. Its blog of 2026-03-09 says it agreed to join OpenAI and stays open source. Whether that closed is unverified."
     },
     {
       "id": "mlflow",
@@ -193,7 +193,7 @@
         "repository": "mlflow/mlflow"
       },
       "status": "watching",
-      "purpose": "Tracking and evaluation platform. Its results could be imported if an owner workflow uses it."
+      "purpose": "An idea to copy: its paired comparison of two evaluation runs reports pairs, difference, interval and p-value, and says when there are too few pairs. It is documented for 3.18.0 and absent from the pinned release."
     },
     {
       "id": "phoenix",
@@ -201,13 +201,14 @@
       "kind": "harness",
       "url": "https://github.com/Arize-ai/phoenix",
       "license": "Elastic-2.0",
-      "pinned": "",
+      "pinned": "21.0.0",
       "checked_on": "2026-11-03",
       "track": {
-        "from": "manual"
+        "from": "pypi",
+        "package": "arize-phoenix"
       },
-      "status": "watching",
-      "purpose": "Tracing and evaluation. Its Elastic License 2.0 is not an OSI-approved license, so read its terms before any use."
+      "status": "not_used",
+      "purpose": "Left out for now. Its license bars offering it as a hosted service, which conflicts with the open-source cloud direction. Importing its results looks possible, and that is not legal advice."
     },
     {
       "id": "deepeval",
@@ -215,29 +216,29 @@
       "kind": "harness",
       "url": "https://github.com/confident-ai/deepeval",
       "license": "Apache-2.0",
-      "pinned": "python-v4.2.4",
+      "pinned": "4.3.2",
       "checked_on": "2026-11-03",
       "track": {
-        "from": "github_release",
-        "repository": "confident-ai/deepeval"
+        "from": "pypi",
+        "package": "deepeval"
       },
       "status": "watching",
-      "purpose": "Agent and retrieval metrics. Its model-graded metrics would need an independent check."
+      "purpose": "Writes JSON with per-case metrics when given a results folder. Its local viewer uploads to a hosted service, so it is not a first choice. GitHub's latest release lags PyPI, so PyPI is tracked."
     },
     {
       "id": "ragas",
       "title": "Ragas",
       "kind": "harness",
-      "url": "https://github.com/explodinggradients/ragas",
+      "url": "https://github.com/vibrantlabsai/ragas",
       "license": "Apache-2.0",
       "pinned": "v0.4.3",
       "checked_on": "2026-11-03",
       "track": {
         "from": "github_release",
-        "repository": "explodinggradients/ragas"
+        "repository": "vibrantlabsai/ragas"
       },
       "status": "watching",
-      "purpose": "Retrieval metrics. Its last release was 2026-01-13, so check it is still maintained before use."
+      "purpose": "Metrics for retrieval and answers, with free-form CSV or JSONL output and no interface. Its repository moved, and its last commit on main was 2026-02-24."
     },
     {
       "id": "awesome-reverse-engineer-anything",
@@ -305,13 +306,14 @@
       "kind": "study",
       "url": "https://arxiv.org/abs/2609.05441",
       "license": "See the paper",
-      "pinned": "",
+      "pinned": "293933d96b1d1849e1f20d1bb324def5de9ed33f",
       "checked_on": "2026-11-03",
       "track": {
-        "from": "manual"
+        "from": "github_commit",
+        "repository": "smshweta/merit-bench"
       },
       "status": "planned",
-      "purpose": "23,440 scored episodes grading memory by task success and cost. It found agents acted on a correctly retrieved value only 55% of the time, so the reasoning tests must separate what was retrieved from what was used."
+      "purpose": "23,440 scored episodes grading memory by task success and cost. It found agents acted on a correctly retrieved value only 55% of the time, so the reasoning tests must separate what was retrieved from what was used. Code at github.com/smshweta/merit-bench under MIT. Its results.jsonl records memory_had_fact and memory_utilized, and systems join by writing a small memory class. It needs a model, and no independent replication has been found."
     },
     {
       "id": "ground-truth-first",
@@ -340,6 +342,155 @@
       },
       "status": "watching",
       "purpose": "Recall benchmarks for agent memory. This survey comes from a vendor, and its scores are that vendor's own. Newer suites grade actions, which suits planning better."
+    },
+    {
+      "id": "harbor",
+      "title": "Harbor",
+      "kind": "harness",
+      "url": "https://github.com/harbor-framework/harbor",
+      "license": "Apache-2.0",
+      "pinned": "v0.25.0",
+      "checked_on": "2026-11-03",
+      "track": {
+        "from": "github_release",
+        "repository": "harbor-framework/harbor"
+      },
+      "status": "planned",
+      "purpose": "A test is a folder with instructions, an environment, a check and a reference solution, which is the closest outside shape to agent-tasks. Its oracle and nop agents can prove a check with no model. It needs Docker."
+    },
+    {
+      "id": "longmemeval",
+      "title": "LongMemEval",
+      "kind": "task_suite",
+      "url": "https://github.com/xiaowu0162/LongMemEval",
+      "license": "MIT for the code. Dataset terms not yet checked",
+      "pinned": "9e0b455f4ef0e2ab8f2e582289761153549043fc",
+      "checked_on": "2026-11-03",
+      "track": {
+        "from": "github_commit",
+        "repository": "xiaowu0162/LongMemEval"
+      },
+      "status": "planned",
+      "purpose": "Agent-memory questions. Its answer session identities can score retrieval alone, with no model for keyword and graph arms. Open issues report label errors, so results need that caveat."
+    },
+    {
+      "id": "vibe",
+      "title": "VIBE",
+      "kind": "harness",
+      "url": "https://github.com/vector-index-bench/vibe",
+      "license": "MIT",
+      "pinned": "7ac76c1f8320a411ce7c9cb3791bdd7f2349b30c",
+      "checked_on": "2026-11-03",
+      "track": {
+        "from": "github_commit",
+        "repository": "vector-index-bench/vibe"
+      },
+      "status": "watching",
+      "purpose": "The benchmark ANN-Benchmarks now points to, with newer datasets. Databases are out of its scope, so RRFlow cannot join it as a system."
+    },
+    {
+      "id": "state-bench",
+      "title": "STATE-Bench",
+      "kind": "task_suite",
+      "url": "https://github.com/microsoft/STATE-Bench",
+      "license": "MIT",
+      "pinned": "v0.8.1",
+      "checked_on": "2026-11-03",
+      "track": {
+        "from": "github_release",
+        "repository": "microsoft/STATE-Bench"
+      },
+      "status": "watching",
+      "purpose": "A newer agent suite from Microsoft. Its result files have not been read yet."
+    },
+    {
+      "id": "otava",
+      "title": "Apache Otava",
+      "kind": "harness",
+      "url": "https://github.com/apache/otava",
+      "license": "Apache-2.0",
+      "pinned": "0.8.0-incubating",
+      "checked_on": "2026-11-03",
+      "track": {
+        "from": "github_release",
+        "repository": "apache/otava"
+      },
+      "status": "planned",
+      "purpose": "Finds where a series of results changed, using change-point detection. It needs a history of runs first, and it is being rewritten, so it should be pinned."
+    },
+    {
+      "id": "langfuse",
+      "title": "Langfuse",
+      "kind": "harness",
+      "url": "https://github.com/langfuse/langfuse",
+      "license": "MIT outside its ee folder",
+      "pinned": "v4.74.0",
+      "checked_on": "2026-11-03",
+      "track": {
+        "from": "github_release",
+        "repository": "langfuse/langfuse"
+      },
+      "status": "watching",
+      "purpose": "An idea to copy: its guide to comparing runs teaches clearly, including that a missing case is not a passing case. It is not run here."
+    },
+    {
+      "id": "opik",
+      "title": "Opik",
+      "kind": "harness",
+      "url": "https://github.com/comet-ml/opik",
+      "license": "Apache-2.0",
+      "pinned": "2.2.139",
+      "checked_on": "2026-11-03",
+      "track": {
+        "from": "github_release",
+        "repository": "comet-ml/opik"
+      },
+      "status": "watching",
+      "purpose": "Similar in shape to Langfuse. Its results include per-case score results."
+    },
+    {
+      "id": "every-eval-ever",
+      "title": "Every Eval Ever",
+      "kind": "harness",
+      "url": "https://github.com/evaleval/every_eval_ever",
+      "license": "MIT",
+      "pinned": "v0.3.0",
+      "checked_on": "2026-11-03",
+      "track": {
+        "from": "github_release",
+        "repository": "evaleval/every_eval_ever"
+      },
+      "status": "watching",
+      "purpose": "A shared naming for evaluation results, with a converter from Inspect. Its field names are worth borrowing for a workbench file."
+    },
+    {
+      "id": "inspect-scout",
+      "title": "Inspect Scout",
+      "kind": "harness",
+      "url": "https://github.com/meridianlabs-ai/inspect_scout",
+      "license": "MIT",
+      "pinned": "0.6.2",
+      "checked_on": "2026-11-03",
+      "track": {
+        "from": "github_release",
+        "repository": "meridianlabs-ai/inspect_scout"
+      },
+      "status": "watching",
+      "purpose": "Scanners whose findings sit apart from scores, an idea that suits the capture audit."
+    },
+    {
+      "id": "locomo",
+      "title": "LoCoMo",
+      "kind": "task_suite",
+      "url": "https://github.com/snap-research/locomo",
+      "license": "CC BY-NC 4.0",
+      "pinned": "",
+      "checked_on": "2026-11-03",
+      "track": {
+        "from": "manual"
+      },
+      "status": "not_used",
+      "purpose": "Left out. Its license is non-commercial, its result keys vary by model, and a competitor's published audit reports wrong answers and a judge accepting wrong ones."
     }
   ]
 }
