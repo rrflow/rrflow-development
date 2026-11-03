@@ -74,7 +74,11 @@ fn a_packet_over_varied_text_validates_after_crossing_the_wire() {
                 scope: CanonicalId::new("data").unwrap(),
                 timeout_ms: 1_000,
             },
-            &mutation_context(&id("wire-begin"), "request-wire-begin", "operation-wire-begin"),
+            &mutation_context(
+                &id("wire-begin"),
+                "request-wire-begin",
+                "operation-wire-begin",
+            ),
             1_050,
         )
         .unwrap();
