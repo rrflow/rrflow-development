@@ -71,6 +71,16 @@ milestone, **not the fifteen-objective alpha exit**. The existing alpha exit
 below remains unchanged, including SQL compatibility, learning and TurboQuant
 requirements. Naming a checkpoint must never silently narrow that scope.
 
+The owner-directed sequence is to make that developer build usable first, then
+benchmark and tune the actual project-to-context and reasoning flow. A later
+research and implementation target is to derive configurable reasoning shards
+from boundaries in large projects and use a custom KV cache where experiments
+show it helps. The benchmark work may begin as soon as a usable candidate exists;
+it does not declare the full alpha exit or waive C-07. Boundary-derived shards
+and their cache are not prerequisites for the first usable developer build, and
+are not established capabilities. The [scale rationale](../architecture/engine-scale-and-contracts.md#boundary-based-reasoning-after-the-developer-build)
+defines what must be measured before stronger claims or the next stage.
+
 Claims must be falsifiable. Successful retrieval is not proof that an answer is
 correct; deterministic parser relations differ from model-inferred relations;
 a model confidence score is not a fact. Every inferred claim retains source,
