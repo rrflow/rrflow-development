@@ -260,7 +260,19 @@ async fn a_client_builds_an_index_and_a_filtered_search_uses_it() {
                 operation_sha256: transaction_operation_sha256(&mutations),
                 mutations,
             },
-            mutation("commit"),
+            RequestOptions::new(
+                "commit",
+                "commit",
+                Some("commit"),
+                Some(
+                    std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap()
+                        .as_millis() as u64
+                        + 60_000,
+                ),
+            )
+            .unwrap(),
         )
         .await
         .unwrap();

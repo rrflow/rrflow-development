@@ -4283,6 +4283,36 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             "VectorCollectionCatalogueSnapshot",
         ),
         endpoint(
+            "vector-index-ensure",
+            HttpMethod::Post,
+            "/v1/vector/indexes/ensure",
+            EndpointAuthentication::SessionBearer,
+            true,
+            SecurityAction::VectorCollectionEnsure,
+            "EnsureVectorIndex",
+            "EnsureVectorIndexResult",
+        ),
+        endpoint(
+            "vector-payload-index-delete",
+            HttpMethod::Post,
+            "/v1/vector/payload-indexes/delete",
+            EndpointAuthentication::SessionBearer,
+            true,
+            SecurityAction::VectorPayloadIndexDelete,
+            "DeleteVectorPayloadIndex",
+            "DeleteVectorPayloadIndexResult",
+        ),
+        endpoint(
+            "vector-payload-index-ensure",
+            HttpMethod::Post,
+            "/v1/vector/payload-indexes/ensure",
+            EndpointAuthentication::SessionBearer,
+            true,
+            SecurityAction::VectorPayloadIndexEnsure,
+            "EnsureVectorPayloadIndex",
+            "EnsureVectorPayloadIndexResult",
+        ),
+        endpoint(
             "vector-point-retrieve",
             HttpMethod::Post,
             "/v1/vector/points/retrieve",
@@ -4745,6 +4775,9 @@ fn request_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "RetrieveVectorPoints" => schema_json::<RequestEnvelope<RetrieveVectorPoints>>(),
         "ScrollVectorPoints" => schema_json::<RequestEnvelope<ScrollVectorPoints>>(),
         "SearchVectors" => schema_json::<RequestEnvelope<SearchVectors>>(),
+        "EnsureVectorIndex" => schema_json::<RequestEnvelope<EnsureVectorIndex>>(),
+        "EnsureVectorPayloadIndex" => schema_json::<RequestEnvelope<EnsureVectorPayloadIndex>>(),
+        "DeleteVectorPayloadIndex" => schema_json::<RequestEnvelope<DeleteVectorPayloadIndex>>(),
         "BuildVectorQuantizationArtifact" => {
             schema_json::<RequestEnvelope<BuildVectorQuantizationArtifact>>()
         }
@@ -4847,6 +4880,13 @@ fn response_envelope_schema(name: &str) -> Result<serde_json::Value> {
             schema_json::<ResponseEnvelope<VectorCollectionCatalogueSnapshot>>()
         }
         "VectorSearchResult" => schema_json::<ResponseEnvelope<VectorSearchResult>>(),
+        "EnsureVectorIndexResult" => schema_json::<ResponseEnvelope<EnsureVectorIndexResult>>(),
+        "EnsureVectorPayloadIndexResult" => {
+            schema_json::<ResponseEnvelope<EnsureVectorPayloadIndexResult>>()
+        }
+        "DeleteVectorPayloadIndexResult" => {
+            schema_json::<ResponseEnvelope<DeleteVectorPayloadIndexResult>>()
+        }
         "BuildVectorQuantizationArtifactResult" => {
             schema_json::<ResponseEnvelope<BuildVectorQuantizationArtifactResult>>()
         }
