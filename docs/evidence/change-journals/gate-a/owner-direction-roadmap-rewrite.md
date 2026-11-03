@@ -111,3 +111,60 @@ merge-group CI remain required before merge. No runtime tests, C-07 capacity
 matrix, soak, PostgreSQL/SQLite conformance, installed end-to-end alpha or
 competitive benchmark was run for this documentation change. None is claimed
 complete, and no POA&M lifecycle status changes.
+
+
+## Supporting-record correction, 2026-11-03
+
+A follow-up review against public main `ed3027b79e41dfcdf5b27e57f07346f11f6da347`
+found that the active engine data-flow record described the eleven-step
+sequence as a frozen target and said no installed executor or inventory
+implementation existed. It also presented three router decisions as a
+permanent limit. The historical Connectome audit treated the eleven names as
+a target projection, and the active historical research matrix presented its
+old attunement status as current. The PR brief was extended before edits to
+those three supporting records. The corrections distinguish today's fixed
+default and limited execution from the capability-selected target; they do
+not claim adaptive planning has been implemented. Source checks inspected both
+profile JSON files, `installation.rs` selection and sealed-preview validation,
+`rrd-contract/src/attunement.rs` plan/checkpoint/job validators, and
+`engine/attunement.rs` execution and source checks. PR #252 head
+`f39b09c44bc6eadacbf1f7ac57cc7261f93466b5` remains a draft with the
+interrupted-refresh mixed-generation oracle failing. PR #241 remains a
+dependency-blocked parser draft; its branch is not proof of installed Parse.
+
+[Temporal replay](https://docs.temporal.io/encyclopedia/event-history/event-history-typescript)
+informs replay and external-activity separation;
+[Camunda workflow patterns](https://docs.camunda.io/docs/components/concepts/workflow-patterns/)
+show conditional branches are supported orchestration patterns, not evidence
+that any particular sequence is necessary for RRFlow.
+[OpenTelemetry sampling](https://opentelemetry.io/docs/concepts/sampling/)
+may omit spans, so sampled diagnostics cannot replace durable receipts. No
+upstream implementation was copied; no runtime trace or performance test was
+needed to correct these documentation statements. No runtime behavior,
+roadmap completion state, candidate merge or C-07 qualification is claimed.
+
+The full data-flow review additionally found that its incremental section
+asserted zero content reads for every unchanged refresh and imposed a complete
+project snapshot for every durable effect. The correction requires a complete
+relevant dependency boundary, conservatively refreshes where its completeness
+cannot be established, and treats zero content reads as an evidence-dependent
+optimization. The historical research introduction now identifies its dated
+baseline and no longer presents a three-decision router or a complete-project
+snapshot as the universal target. The PR brief recorded these specific extra
+findings after their data-flow prose edit; the earlier brief had named the
+supporting records but not these two findings. The three supporting records
+were read in sections; source citations and their historical status remain.
+
+Follow-up checks: `python scripts/knowledge/render_navigation.py` and
+`python scripts/knowledge/render_navigation.py --check` passed (18 indexes,
+948 nodes, 3388 edges, no index changes); `python scripts/ci/check_documentation.py`
+passed (949 document statuses, 947 coordinates); `python
+scripts/ci/test_execution_inventory.py` passed all 11 tests; the inventory
+generator and its `--check` passed with 2349 records; and `git diff --check`
+passed. An initial `python -m unittest scripts.ci.test_execution_inventory`
+failed because that invocation omits the script directory from Python's import
+path (`ModuleNotFoundError: build_execution_inventory`); the repository's
+script invocation passed. The first inventory `--check` observed expected
+drift while the documentation edits were ungenerated; regeneration fixed it.
+No engine or C-07 tests were run in this follow-up. Candidate CI must evaluate
+the later commit, not inherit the prior run's result.
