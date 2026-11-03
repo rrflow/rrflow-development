@@ -1,0 +1,114 @@
+{
+  "schema": "rrflow.worker-observation-installed-evidence/v1",
+  "sourceCommit": "5319a0c5cb7f6f924d38ba313b2ab856561e0a10",
+  "binarySha256": "365c0efce1dc3c3559565100ef77c9e237af48ed129d2824dc6973910bb888c7",
+  "binaryBytes": 173427200,
+  "profile": "dev",
+  "sourceDirty": false,
+  "receiverBinarySha256": "786b6c48e64fc7c5962b1b4dc427af1b06867f8c05a54669e096ebf27a9b82bb",
+  "receiverBuild": {
+    "revision": "b4c04ceec6686db056b53bc48de44137c5c2f885",
+    "target": "x86_64-pc-windows-msvc",
+    "migrations": "49958799aa5f8780958938199e6f327b9012d44db209998045f326a733501a34"
+  },
+  "taskSource": "https://github.com/rrflow/rrflow-development/pull/229",
+  "taskSourceHead": "52e2254af0ad616295975f35aef1154ca5634713",
+  "serviceIdAlias": "swag-qwen3-coder-intent-20261028",
+  "proposal": {
+    "attempt_id": "actual-proposal-111557bd63ce406e880c4d20b4b5ee36",
+    "task_id": "task-2f778fcef43f543e5f63f56974e10e3c88b4c07d7607c1867d82c22c803ccc0b",
+    "configuration_sha256": "74effb071e9efd46444261acd5896111a25b1db57e51cd94f0ab6f56e6d0a1b0",
+    "request_sha256": "5e5b219602eb2eacd238bcb13f222d9496fb7f4308f21c5fb6d8fe56e6b777b4",
+    "response_sha256": "5f7f1129ba0224da024ec63d9ead836544bd4ae6c93edee0835d72af3a936fbe",
+    "elapsed_ms": 2590,
+    "http_status": 200,
+    "usage": {
+      "prompt_tokens": 2107,
+      "completion_tokens": 20,
+      "total_tokens": 2127
+    }
+  },
+  "worker": {
+    "attempt_id": "actual-worker-db605936fcda4564a8da76991589f0ea",
+    "task_id": "task-2f778fcef43f543e5f63f56974e10e3c88b4c07d7607c1867d82c22c803ccc0b",
+    "selection_attempt_id": "actual-proposal-111557bd63ce406e880c4d20b4b5ee36",
+    "configuration_sha256": "74effb071e9efd46444261acd5896111a25b1db57e51cd94f0ab6f56e6d0a1b0",
+    "request_sha256": "91d1d99e499829fe653286bb1cb2f61a2ec52d9ee385590c53c9f8fdcce3cbef",
+    "response_sha256": "0e20ef255970deec84e6536969aa683b82db2a25a3717a03afca7e9913b879cd",
+    "content_sha256": "1e37e57007e86e5d0dfe0039cd5edba57ef387e50fa2f61b47e5ff9431db35f9",
+    "elapsed_ms": 15807,
+    "http_status": 200,
+    "usage": {
+      "prompt_tokens": 1607,
+      "completion_tokens": 208,
+      "total_tokens": 1815
+    }
+  },
+  "recoveryWithoutProviderCredentials": true,
+  "restartReadbackEqual": true,
+  "sameAttemptReplayRejected": true,
+  "export": {
+    "eventId": "f6a853b4-5313-8c15-a429-614775480cc4",
+    "workerConfigurationSha256": "74effb071e9efd46444261acd5896111a25b1db57e51cd94f0ab6f56e6d0a1b0",
+    "exportConfigurationSha256": "d6639dd3b346925e9b40615cb88c5235711c0c7d381c0eadaa0867ffda401690",
+    "sourceResponseSha256": "c3e580114056e233b9ff0a0c97bc95e6e7590a49ea0c3c2f8ac1ac39c707ed8a",
+    "payloadSha256": "288be310419e65dc9e7dbdc0f6f632b2cfbd2ad5013d24610cac60ab4f42b8b1",
+    "receiverEvents": 1,
+    "deliveryAttempts": 1,
+    "modelBudgetUnchanged": true,
+    "taskStatus": "open"
+  },
+  "receiverEvent": {
+    "agent": "rrflow",
+    "capture_id": "76833971-e889-887f-a1ad-1fbfc505723b",
+    "engine": {
+      "attempt_id": "actual-worker-db605936fcda4564a8da76991589f0ea",
+      "configuration_sha256": "74effb071e9efd46444261acd5896111a25b1db57e51cd94f0ab6f56e6d0a1b0",
+      "instance_id": "instance-a6aef1aecd1d42ddbad8d376",
+      "job_id": null,
+      "operation": "task-attempt-read",
+      "plan_sha256": null,
+      "response_sha256": "c3e580114056e233b9ff0a0c97bc95e6e7590a49ea0c3c2f8ac1ac39c707ed8a",
+      "scope": "instance:instance-a6aef1aecd1d42ddbad8d376",
+      "source_sha256": null,
+      "task_id": "task-2f778fcef43f543e5f63f56974e10e3c88b4c07d7607c1867d82c22c803ccc0b",
+      "version": 1
+    },
+    "event_id": "f6a853b4-5313-8c15-a429-614775480cc4",
+    "exit_code": null,
+    "kind": "engine.observed",
+    "model": null,
+    "native_id": null,
+    "native_status": null,
+    "native_type": null,
+    "observed_at": "2026-11-03T08:40:06.081Z",
+    "operation_id": "worker-export-6b4414e294f840b5846534b88c32667e",
+    "parent_native_id": null,
+    "parent_operation_id": null,
+    "payload": null,
+    "schema": "rroflow.capture/v1",
+    "sequence": 0,
+    "session_id": "76833971-e889-887f-a1ad-1fbfc505723b",
+    "tool_name": null,
+    "usage": null
+  },
+  "ownedTrialProcessesStopped": true,
+  "scope": {
+    "localInstalledReceiver": true,
+    "hostedServiceQualified": false,
+    "projectEffectsVerified": false,
+    "uiWorkflowQualified": false,
+    "modelQualityQualified": false,
+    "independentlyReviewedOutcomes": 0,
+    "trainingDataCreated": false,
+    "totalServingMemoryMeasured": false
+  },
+  "rawReceiptSha256": {
+    "build-receipt.json": "9cca16b82af18c4babbe4f052c8c77d8cdd76b66e36a943c5dd31a9f6f3fd8b0",
+    "live/result.json": "2b6739a5b5f9c7fc0aebaadcebca13fc6963dcbee7bd9d1a9aa4c1790ec2839d",
+    "recovery/result.json": "aa0bc57f277998fe183c747f42b0f76a56878b1c23a1c143aaddc52529148991",
+    "export/result.json": "ca6687fa310d2e9b62f62d672d0eea71a920a9080747e80e2ea9f8c020efcd9d",
+    "export/receiver-before-restart.json": "ba93b5196e03174dbc435223353e574a172cbdc96e7a801116be7cb1bbbbc63f",
+    "export/receiver-after-restart.json": "ba93b5196e03174dbc435223353e574a172cbdc96e7a801116be7cb1bbbbc63f"
+  }
+}

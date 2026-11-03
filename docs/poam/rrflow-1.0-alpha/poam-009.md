@@ -12,9 +12,12 @@ independently.
 
 The [worker/observation reconciliation](../../evidence/change-journals/gate-g/task-worker-observation-main.md)
 composes the worker candidate with landed observation delivery and discovery.
-It retains both configuration policies and native operations; local validation,
-candidate publication and installed qualification remain distinct. It does not
-supply template project effects or close the full development journey.
+It retains both configuration policies and native operations. The
+[installed worker/receiver trial](../../evidence/change-journals/gate-g/task-worker-observation-installed.md)
+then proves an actual model selection and worker draft, credential-free recovery,
+and correlated metadata delivery/readback through the local installed receiver.
+Candidate publication and protected CI remain open. This does not supply template
+project effects or close the full development journey.
 
 The [terminal-response repair](../../evidence/change-journals/gate-g/task-worker-terminal-response.md)
 addresses a reproduced completion-classification defect: a matching worker reply
