@@ -98,9 +98,12 @@ fn a_scope_with_index_generations_keeps_its_public_changefeed() {
             &lease.session_id,
             &lease.token,
             &index_request(),
+            &mutation_context(
+                &id("operation-index-identities-build"),
+                "request-index-identities-build",
+                "operation-index-identities-build",
+            ),
             400,
-            "request-index-identities-build",
-            "operation-index-identities-build",
         )
         .unwrap();
     publish_exact_segment(&engine, 1);
@@ -143,4 +146,66 @@ fn a_scope_with_index_generations_keeps_its_public_changefeed() {
         })
         .count();
     assert_eq!(objects, 2, "each artifact publishes one object");
+}
+
+fn ensure_under_key(
+    engine: &RrdEngine,
+    lease: &SessionLease,
+    request: &EnsureVectorIndex,
+    key: &str,
+    now: u64,
+) -> Result<rrd_contract::EnsureVectorIndexResult, ServiceError> {
+    engine.ensure_vector_index(
+        &lease.session_id,
+        &lease.token,
+        request,
+        &mutation_context(
+            &id(key),
+            &format!("request-{now}"),
+            &format!("operation-{now}"),
+        ),
+        now,
+    )
+}
+
+/// POAM-053: a retried public build finds the generation it published, even
+/// after the source moved on, and survives a restart. Another request under
+/// that key is a conflict, and a new key builds the next generation.
+#[test]
+fn an_index_build_honours_its_retry_key() {
+    let (root, engine, lease) = fixture();
+    let first = ensure_under_key(&engine, &lease, &index_request(), "build-key", 400).unwrap();
+    assert!(!first.idempotent_replay);
+    assert_eq!(first.index.generation, 1);
+
+    commit_vectors(
+        &engine,
+        &lease,
+        500,
+        vec![
+            document_mutation("c", "gamma"),
+            vector_mutation("c", vec![0.5, 0.5]),
+        ],
+    );
+    let retried = ensure_under_key(&engine, &lease, &index_request(), "build-key", 510).unwrap();
+    assert!(retried.idempotent_replay);
+    assert_eq!(retried.index.generation, 1);
+    assert_eq!(retried.index.artifact_sha256, first.index.artifact_sha256);
+
+    drop(engine);
+    let engine = RrdEngine::open(root.path(), instance(), TOKEN_KEY).unwrap();
+    let reopened = ensure_under_key(&engine, &lease, &index_request(), "build-key", 520).unwrap();
+    assert!(reopened.idempotent_replay);
+    assert_eq!(reopened.index.generation, 1);
+
+    let mut other = index_request();
+    other.max_storage_keys += 1;
+    assert!(matches!(
+        ensure_under_key(&engine, &lease, &other, "build-key", 530),
+        Err(ServiceError::IdempotencyConflict)
+    ));
+
+    let next = ensure_under_key(&engine, &lease, &index_request(), "next-key", 540).unwrap();
+    assert!(!next.idempotent_replay);
+    assert_eq!(next.index.generation, 2);
 }

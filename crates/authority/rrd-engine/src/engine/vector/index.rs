@@ -25,10 +25,12 @@ impl RrdEngine {
         session_id: &CorrelationId,
         token: &CorrelationId,
         request: &EnsureVectorIndex,
+        context: &RequestContext,
         now: u64,
-        request_id: &str,
-        operation_id: &str,
     ) -> Result<EnsureVectorIndexResult> {
+        context
+            .validate(true)
+            .map_err(|error| ServiceError::Contract(error.to_string()))?;
         request
             .validate()
             .map_err(|error| ServiceError::Vector(error.to_string()))?;
@@ -37,8 +39,8 @@ impl RrdEngine {
             token,
             SecurityAction::VectorCollectionEnsure,
             now,
-            request_id,
-            operation_id,
+            context.request_id.as_str(),
+            context.operation_id.as_str(),
         )?;
         let scope = self.query_scope(&request.scope)?;
         let catalogue = rrd_vector::VectorCollectionRepository::new(&self.storage, scope.clone())
