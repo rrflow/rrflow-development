@@ -343,6 +343,64 @@ The project journey after the first source-to-query proof is still required:
 | Observe and optimize | Record durable job/effect/memory receipts plus bounded metrics for inventory, source generation, retrieval and worker failure. Freeze corpus, judgments, hardware, baseline, thresholds and seeds before comparing recall, freshness, latency, memory or competitors. Sampled traces aid diagnosis and cannot stand in for audit. |
 | Extend native rrflowDB | Keep transaction/WAL and semantic authority in RRFlow; map researched DuckDB/ClickHouse techniques to Rust query/storage owners with provenance and tests, not a renamed external runtime. PostgreSQL compatibility, Parquet streaming/import, ANN/TurboQuant accuracy and platform qualification keep their own gates. |
 
+### Embedded database, columnar compaction and fast routing direction
+
+The owner requests an embedded Rust library mode and a durable write path that
+uses rrflowKV for hot state and writes compressed Parquet row groups during
+background compaction. This is a target for the existing rrflowDB/rrflowKV
+authority, not an implemented storage format. Embedded callers must use the
+same `RrdEngine`, estate authorization, transaction, schema and recovery
+semantics as the daemon; an in-memory profile is explicitly volatile. The
+existing engine libraries are implementation inventory, not a qualified,
+stable embedded SDK. PostgreSQL SQL/wire behavior remains H-08 work.
+
+In persistent mode, acknowledge a durable transaction only after its WAL
+record has reached the configured durability boundary; an in-memory buffer
+alone cannot survive a crash. Apply committed versions to a bounded memtable,
+then publish immutable compaction output with authenticated manifests,
+recovery ordering and safe reader retention. The requested Parquet design must
+carry keys, versions, tombstones, schema, ordering and source/read identity;
+prove atomic publication, restart, interrupted compaction and exact visibility
+before it replaces the existing native segment representation. A single
+transaction or foreground point lookup must not wait for a whole analytical
+rewrite, and WAL reclamation must wait until the selected durable state permits
+it. Preserve existing native LSM behavior and tests until the replacement
+proves these requirements. [PostgreSQL's WAL documentation](https://www.postgresql.org/docs/18/wal-intro.html)
+explains the durable-log ordering; it does not prove RRFlow's implementation.
+
+Keep point lookups, transactional mutations and graph adjacency on their
+native indexed paths; expose an authorized, stamped Arrow/DataFusion analytical
+stream for scans and eligible SWAG/LFG feature batches. Parquet is a columnar
+file format, not the transaction manager or an automatically zero-copy memory
+layout. Column/page projection and predicate pruning may skip work only when
+the actual metadata and predicate support permit it; decode, allocation and
+decompression must be accounted for. The [Arrow Parquet reader](https://docs.rs/parquet/59.2.0/parquet/arrow/arrow_reader/struct.ArrowReaderBuilder.html)
+exposes projection, row-group and row-filter primitives, not automatic
+application-specific predicate evaluation. Current rrflowQL Parquet export is
+bounded to 1,024 untruncated rows; it is not compaction or a streaming scan.
+
+SWAG and LFG are configured, authorized capabilities at the existing engine
+edge. A local fast path must admit its exact model/configuration and resource
+budgets, recheck its source identity, report selected or skipped avenues, and
+fail closed on unavailable or stale inputs. No external model, process spawn or
+unbounded worker is implicit. Compare an independently frozen corpus and
+correctness rubric against configured LLM-agent baselines and against RRFlow's
+own no-pushdown baseline, including no-answer and stale/denied cases. Measure
+end-to-end decision latency and p50/p95/p99, throughput, CPU/GPU, memory,
+allocation/decoded/scanned bytes, cache warmth and maintenance, write/space
+amplification, recovery, model usage and answer quality. A sub-10 ms decision,
+zero synchronization cost, zero-copy or competitive superiority is a
+hypothesis until those matched tests pass on named hardware.
+
+[pgrust](https://github.com/malisper/pgrust/tree/38634b408dea373f3944006dfbf74d19cbfc409f)
+is a PostgreSQL-in-Rust reference with documented vectorized execution and
+columnar/WAL ideas. At that revision its project describes an embedded variant
+as future work, notes `unsafe` code, recommends against production use and
+licenses its code under AGPL-3.0. Study specific behavior and failure semantics
+at the owning H-08/F/C boundaries; do not import or copy its code without a
+separate provenance/license and architecture decision. Its benchmarks and
+compatibility claims are not RRFlow evidence.
+
 For the agent handoff, the eventual generated contract's minimal semantic
 shape is the following; the fields and validators are **proposed**, not a
 currently enforced API. The catalogue owns the final wire schema and SDKs.
