@@ -42,6 +42,14 @@ retain the failing oracle. D-03 owns the repair; D-04 must not treat an
 unqualified head query as a complete source snapshot. This does not establish
 that a checkpoint-pinned read is broken or close any roadmap item.
 
+The [selection-index fault characterization](../../evidence/change-journals/gate-d/d-03-interrupted-refresh-visibility.md#selection-index-omission-fault-injection-2026-11-03)
+deliberately removed a newer selection-like event's semantic index entry while
+leaving its log and accumulator intact. The current stamped reader returned an
+older included event without detecting the omission, including after reopen.
+This injected fault is not an observed consequence of normal interruption.
+It shows that selection must not rely on returned-event inclusion proofs alone
+to establish a bounded, complete and fresh generation choice.
+
 D-01's bounded installed foundation is now [accepted](../../roadmap/rrflow-1.0/gate-d-evidence.md#d-01-accepted-installed-foundation-2026-10-21).
 The native proof covers Linux, macOS and Windows source/outbound isolation,
 owner/permission/path/mount denial, exclusive install recovery and both actual
