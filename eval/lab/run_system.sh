@@ -96,6 +96,7 @@ case "$system" in
   surrealdb) require_port_free 18000 ;;
   milvus) require_port_free 19530 ;;
   custom-reference) require_port_free 18089 ;;
+  lance-*) require_port_free 18090 ;;
 esac
 
 case "$system" in
@@ -134,6 +135,14 @@ case "$system" in
     "${pinned[@]}" python3 "$here/reference_custom_system.py" 18089 &
     background=$!
     wait_http http://127.0.0.1:18089/health 30
+    ;;
+  lance-*)
+    # Lance is embedded, so its shim is its server, on the same cores and disk as the others.
+    : "${RRFLOW_LAB_LANCE_PYTHON:?set RRFLOW_LAB_LANCE_PYTHON to a Python with lance-requirements.txt installed}"
+    "${pinned[@]}" "$RRFLOW_LAB_LANCE_PYTHON" "$here/lance_system.py" 18090 "$work/data" &
+    background=$!
+    echo "$background" > "$work/shim.pid"
+    wait_http http://127.0.0.1:18090/health 60
     ;;
   *)
     echo "unknown system $system; a new custom system adds its own start case here" >&2

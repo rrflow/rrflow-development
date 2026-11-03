@@ -5,7 +5,13 @@
 //! platforms and change the digest.
 use super::manifest::{CorpusSource, CorpusSpec, LabMetric};
 use super::{sha256_hex, Result};
+use crate::storage::Digest;
 use std::cmp::Ordering;
+use std::path::Path;
+
+/// Where the files named by an imported corpus's digests are kept.
+pub const CORPUS_DIRECTORY_ENV: &str = "RRFLOW_LAB_CORPUS_DIR";
+const QUERY_STREAM: u64 = 0x0071_7565_7269_6573;
 
 struct SplitMix64(u64);
 
@@ -109,21 +115,22 @@ fn sample(
 
 /// Points and queries come from one mixture but separate streams, so queries are
 /// realistic neighbors of the data and never exact copies of it.
-pub fn generate(spec: &CorpusSpec, queries: u32) -> (VectorSet, VectorSet) {
-    let CorpusSource::GaussianMixture {
-        seed,
-        clusters,
-        spread_milli,
-    } = &spec.source;
+fn generate_mixture(
+    spec: &CorpusSpec,
+    seed: u64,
+    clusters: u32,
+    spread_milli: u32,
+    queries: u32,
+) -> (VectorSet, VectorSet) {
     let dimensions = spec.dimensions as usize;
-    let mut rng = SplitMix64(*seed);
-    let mut centers = Vec::with_capacity(*clusters as usize * dimensions);
-    for _ in 0..*clusters as usize * dimensions {
+    let mut rng = SplitMix64(seed);
+    let mut centers = Vec::with_capacity(clusters as usize * dimensions);
+    for _ in 0..clusters as usize * dimensions {
         centers.push(rng.normal());
     }
-    let spread = f64::from(*spread_milli) / 1000.0;
+    let spread = f64::from(spread_milli) / 1000.0;
     let mut points_rng = SplitMix64(seed ^ 0x0000_706F_696E_7473);
-    let mut queries_rng = SplitMix64(seed ^ 0x0071_7565_7269_6573);
+    let mut queries_rng = SplitMix64(seed ^ QUERY_STREAM);
     (
         sample(
             &mut points_rng,
@@ -144,6 +151,110 @@ fn score(metric: LabMetric, left: &[f32], right: &[f32]) -> f32 {
             .zip(right)
             .map(|(a, b)| (a - b) * (a - b))
             .sum::<f32>(),
+    }
+}
+
+fn read_pinned(
+    directory: &Path,
+    digest: &Digest,
+    dimensions: usize,
+    count: usize,
+) -> Result<Vec<f32>> {
+    let path = directory.join(format!("{}.f32le", digest.as_str()));
+    let bytes = std::fs::read(&path).map_err(|error| format!("{}: {error}", path.display()))?;
+    if sha256_hex(&bytes) != digest.as_str() {
+        return Err(format!("{} does not match its digest", path.display()));
+    }
+    let wanted = count * dimensions;
+    if bytes.len() % (dimensions * 4) != 0 || bytes.len() < wanted * 4 {
+        return Err(format!(
+            "{} does not hold {count} vectors of {dimensions} dimensions",
+            path.display()
+        ));
+    }
+    let (chunks, _) = bytes[..wanted * 4].as_chunks::<4>();
+    let values: Vec<f32> = chunks
+        .iter()
+        .map(|chunk| f32::from_le_bytes(*chunk))
+        .collect();
+    if values.iter().any(|value| !value.is_finite()) {
+        return Err(format!("{} holds a non-finite value", path.display()));
+    }
+    Ok(values)
+}
+
+fn imported_set(mut values: Vec<f32>, spec: &CorpusSpec, seed: u64) -> VectorSet {
+    let dimensions = spec.dimensions as usize;
+    if spec.metric == LabMetric::Cosine {
+        for vector in values.chunks_exact_mut(dimensions) {
+            let norm = vector
+                .iter()
+                .map(|value| f64::from(*value) * f64::from(*value))
+                .sum::<f64>()
+                .sqrt();
+            if norm > 0.0 {
+                vector
+                    .iter_mut()
+                    .for_each(|value| *value = (f64::from(*value) / norm) as f32);
+            }
+        }
+    }
+    let mut rng = SplitMix64(seed);
+    let categories = (0..values.len() / dimensions)
+        .map(|_| (rng.next() % u64::from(spec.categories)) as u32)
+        .collect();
+    VectorSet {
+        dimensions,
+        values,
+        categories,
+    }
+}
+
+/// Reads a corpus prepared by `import_corpus.py`, refusing any file that is not the one
+/// the manifest pinned. Its first `points` and `queries` vectors are the test.
+pub fn read_imported(
+    directory: &Path,
+    spec: &CorpusSpec,
+    queries: u32,
+) -> Result<(VectorSet, VectorSet)> {
+    let CorpusSource::Imported {
+        points_sha256,
+        queries_sha256,
+        category_seed,
+        ..
+    } = &spec.source
+    else {
+        return Err("this corpus is not imported".into());
+    };
+    let dimensions = spec.dimensions as usize;
+    let points = read_pinned(directory, points_sha256, dimensions, spec.points as usize)?;
+    let asked = read_pinned(directory, queries_sha256, dimensions, queries as usize)?;
+    Ok((
+        imported_set(points, spec, *category_seed),
+        imported_set(asked, spec, category_seed ^ QUERY_STREAM),
+    ))
+}
+
+/// The points and queries of a corpus, whichever kind it is.
+pub fn generate(spec: &CorpusSpec, queries: u32) -> Result<(VectorSet, VectorSet)> {
+    match &spec.source {
+        CorpusSource::GaussianMixture {
+            seed,
+            clusters,
+            spread_milli,
+        } => Ok(generate_mixture(
+            spec,
+            *seed,
+            *clusters,
+            *spread_milli,
+            queries,
+        )),
+        CorpusSource::Imported { .. } => {
+            let directory = std::env::var_os(CORPUS_DIRECTORY_ENV).ok_or_else(|| {
+                format!("an imported corpus needs {CORPUS_DIRECTORY_ENV} to name its directory")
+            })?;
+            read_imported(Path::new(&directory), spec, queries)
+        }
     }
 }
 

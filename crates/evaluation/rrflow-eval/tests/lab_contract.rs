@@ -1,7 +1,7 @@
 //! The lab must grade independently, keep failures visible, and refuse results that
 //! cannot honestly sit side by side.
 use rrflow_eval::lab::adapter::{CollectionSpec, PointBatch, SearchRequest, SystemAdapter};
-use rrflow_eval::lab::corpus::{exact_answers, generate, GroundTruth, VectorSet};
+use rrflow_eval::lab::corpus::{exact_answers, generate, read_imported, GroundTruth, VectorSet};
 use rrflow_eval::lab::custom::CustomProtocol;
 use rrflow_eval::lab::driver::{combine, prepare_inputs, run_system, Inputs, SystemRun};
 use rrflow_eval::lab::manifest::{
@@ -10,7 +10,8 @@ use rrflow_eval::lab::manifest::{
     VectorComparisonManifest, WorkloadSpec,
 };
 use rrflow_eval::lab::report::{LabReport, SystemStatus, TestIdentity, VerdictOutcome};
-use rrflow_eval::lab::{canonical_json, Result};
+use rrflow_eval::lab::sources::SourceList;
+use rrflow_eval::lab::{canonical_json, sha256_hex, Result};
 use rrflow_eval::storage::{schema, Id};
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
@@ -38,11 +39,13 @@ fn binding(name: &str) -> SystemBinding {
             id: id("default"),
             ef: None,
             exact_rerank: None,
+            nprobes: None,
         }],
         credentials: CredentialReferences::default(),
         memory_probe: None,
         disk_probe: None,
         engine_settings: BTreeMap::new(),
+        limits: Vec::new(),
     }
 }
 
@@ -234,7 +237,7 @@ fn verdict(report: &LabReport, verdict_id: &str) -> VerdictOutcome {
 #[test]
 fn corpus_is_pinned_so_every_platform_tests_the_same_data() {
     let manifest = manifest(vec![binding("a")]);
-    let (points, queries) = generate(&manifest.corpus, manifest.workload.queries);
+    let (points, queries) = generate(&manifest.corpus, manifest.workload.queries).unwrap();
     assert_eq!(points.len(), 200);
     assert_eq!(queries.len(), 16);
     assert_ne!(points.vector(0), queries.vector(0));
@@ -452,6 +455,163 @@ fn warmup_stops_for_a_system_refusing_everything_but_not_for_one_still_answering
 }
 
 #[test]
+fn adding_a_system_keeps_earlier_runs_but_changing_one_does_not() {
+    let original = manifest(vec![binding("first")]);
+    let inputs = prepare_inputs(&original).unwrap();
+    let run = run_with(&original, "first", &PerfectSystem::new(), &inputs);
+
+    let mut grown = original.clone();
+    grown.systems.push(binding("second"));
+    let report = combine(&grown, std::slice::from_ref(&run), Vec::new()).unwrap();
+    let shown = |name: &str| {
+        report
+            .systems
+            .iter()
+            .find(|system| system.id.as_str() == name)
+            .unwrap()
+            .status
+    };
+    assert_eq!(shown("first"), SystemStatus::Completed);
+    assert_eq!(shown("second"), SystemStatus::NotRun);
+
+    let mut changed = original.clone();
+    changed.systems[0].artifact = "another-artifact".into();
+    let refused = combine(&changed, std::slice::from_ref(&run), Vec::new()).unwrap_err();
+    assert!(refused.contains("different binding"), "{refused}");
+
+    let mut other_test = original.clone();
+    other_test.workload.k = 3;
+    let refused = combine(&other_test, std::slice::from_ref(&run), Vec::new()).unwrap_err();
+    assert!(refused.contains("different test"), "{refused}");
+}
+
+fn imported_corpus(points_sha256: &str, queries_sha256: &str) -> CorpusSpec {
+    CorpusSpec {
+        source: CorpusSource::Imported {
+            origin: "unit test vectors".into(),
+            license: "test".into(),
+            points_sha256: rrflow_eval::storage::Digest::try_from(points_sha256.to_string())
+                .unwrap(),
+            queries_sha256: rrflow_eval::storage::Digest::try_from(queries_sha256.to_string())
+                .unwrap(),
+            category_seed: 7,
+        },
+        points: 3,
+        dimensions: 2,
+        metric: LabMetric::Cosine,
+        categories: 2,
+    }
+}
+
+fn pinned_file(directory: &Path, values: &[f32]) -> String {
+    let bytes: Vec<u8> = values
+        .iter()
+        .flat_map(|value| value.to_le_bytes())
+        .collect();
+    let digest = sha256_hex(&bytes);
+    std::fs::write(directory.join(format!("{digest}.f32le")), bytes).unwrap();
+    digest
+}
+
+#[test]
+fn an_imported_corpus_loads_only_from_the_file_it_pinned() {
+    let directory = tempfile::tempdir().unwrap();
+    let points = pinned_file(directory.path(), &[3.0, 4.0, 0.0, 2.0, 1.0, 0.0, 9.0, 9.0]);
+    let queries = pinned_file(directory.path(), &[0.0, 5.0]);
+    let spec = imported_corpus(&points, &queries);
+
+    let (loaded, asked) = read_imported(directory.path(), &spec, 1).unwrap();
+    assert_eq!(
+        loaded.len(),
+        3,
+        "the test takes the first points it declares"
+    );
+    assert_eq!(
+        loaded.vector(0),
+        [0.6, 0.8],
+        "cosine vectors are normalized"
+    );
+    assert_eq!(loaded.vector(1), [0.0, 1.0]);
+    assert_eq!(asked.vector(0), [0.0, 1.0]);
+    let (again, _) = read_imported(directory.path(), &spec, 1).unwrap();
+    assert_eq!(
+        loaded.digest(),
+        again.digest(),
+        "categories come from the seed"
+    );
+
+    let damaged = directory.path().join(format!("{points}.f32le"));
+    std::fs::write(&damaged, [0_u8; 32]).unwrap();
+    let refused = read_imported(directory.path(), &spec, 1).unwrap_err();
+    assert!(refused.contains("does not match its digest"), "{refused}");
+
+    let absent = imported_corpus(&"a".repeat(64), &queries);
+    assert!(read_imported(directory.path(), &absent, 1).is_err());
+}
+
+#[test]
+fn an_imported_corpus_needs_enough_finite_vectors() {
+    let directory = tempfile::tempdir().unwrap();
+    let short = pinned_file(directory.path(), &[1.0, 0.0]);
+    let queries = pinned_file(directory.path(), &[0.0, 1.0]);
+    let refused =
+        read_imported(directory.path(), &imported_corpus(&short, &queries), 1).unwrap_err();
+    assert!(refused.contains("does not hold 3 vectors"), "{refused}");
+
+    let invalid = pinned_file(directory.path(), &[f32::NAN, 0.0, 1.0, 0.0, 1.0, 1.0]);
+    let refused =
+        read_imported(directory.path(), &imported_corpus(&invalid, &queries), 1).unwrap_err();
+    assert!(refused.contains("non-finite"), "{refused}");
+}
+
+#[test]
+fn an_ivf_binding_needs_a_custom_system_and_probes_within_its_partitions() {
+    let mut ivf = binding("lance");
+    ivf.index = IndexSpec::IvfRq { partitions: 4 };
+    ivf.search_ladder[0].nprobes = Some(2);
+    manifest(vec![ivf.clone()]).validate().unwrap();
+
+    let mut too_many = ivf.clone();
+    too_many.search_ladder[0].nprobes = Some(5);
+    assert!(manifest(vec![too_many]).validate().is_err());
+
+    let mut built_in = ivf;
+    built_in.kind = SystemKind::Qdrant;
+    let refused = manifest(vec![built_in]).validate().unwrap_err();
+    assert!(
+        refused.contains("only through a custom system"),
+        "{refused}"
+    );
+}
+
+#[test]
+fn the_checked_in_source_list_is_valid_and_names_every_compared_system() {
+    let directory = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../eval/lab");
+    let list: SourceList =
+        serde_json::from_slice(&std::fs::read(directory.join("sources.json")).unwrap()).unwrap();
+    list.validate().unwrap();
+    for name in [
+        "qdrant",
+        "milvus",
+        "surrealdb",
+        "lancedb",
+        "vectordbbench",
+        "awesome-reverse-engineer-anything",
+    ] {
+        assert!(
+            list.sources.iter().any(|source| source.id.as_str() == name),
+            "{name} is missing"
+        );
+    }
+    let mut repeated = list.clone();
+    repeated.sources.push(list.sources[0].clone());
+    assert!(repeated.validate().is_err());
+    let mut unencrypted = list.clone();
+    unencrypted.sources[0].url = "http://example.org".into();
+    assert!(unencrypted.validate().is_err());
+}
+
+#[test]
 fn a_system_with_no_run_is_reported_as_not_run() {
     let manifest = manifest(vec![binding("ran"), binding("absent")]);
     let inputs = prepare_inputs(&manifest).unwrap();
@@ -505,7 +665,7 @@ fn runs_with_different_inputs_or_manifests_cannot_be_combined() {
     let mut changed = manifest_a.clone();
     changed.workload.k = 4;
     let refused = combine(&changed, &[a], Vec::new()).unwrap_err();
-    assert!(refused.contains("different manifest"), "{refused}");
+    assert!(refused.contains("different test"), "{refused}");
 }
 
 #[test]
@@ -663,6 +823,7 @@ fn generated_schemas_match_the_checked_in_projections() {
         ("lab-run-v1.json", schema::<SystemRun>()),
         ("lab-report-v1.json", schema::<LabReport>()),
         ("lab-custom-protocol-v1.json", schema::<CustomProtocol>()),
+        ("lab-sources-v1.json", schema::<SourceList>()),
     ] {
         let expected = canonical_json(&generated).unwrap();
         let actual = std::fs::read(directory.join(name))

@@ -155,6 +155,10 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "properties": {
+    "binding_sha256": {
+      "$ref": "#/$defs/Digest",
+      "description": "The binding this run was made under, so a changed binding cannot reuse it."
+    },
     "cases": {
       "items": {
         "$ref": "#/$defs/CaseResult"
@@ -245,6 +249,7 @@
     "schema_version",
     "system",
     "identities",
+    "binding_sha256",
     "environment",
     "status",
     "cases",

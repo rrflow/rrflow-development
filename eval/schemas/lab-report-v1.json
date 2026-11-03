@@ -53,9 +53,10 @@
       "type": "string"
     },
     "LabEvidenceClass": {
-      "description": "Only diagnostic evidence exists today. J-04 acceptance requires its own\nqualification and cannot be claimed through this report.",
+      "description": "J-04 acceptance requires its own qualification and cannot be claimed through this\nreport. Imported evidence was measured by another harness, and this lab only restates it.",
       "enum": [
-        "diagnostic"
+        "diagnostic",
+        "imported"
       ],
       "type": "string"
     },

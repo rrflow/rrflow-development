@@ -2,8 +2,10 @@
 use rrflow_eval::lab::adapter::connect;
 use rrflow_eval::lab::custom::CustomProtocol;
 use rrflow_eval::lab::driver::{combine, empty_run, prepare_inputs, run_system, SystemRun};
+use rrflow_eval::lab::import::{import_vectordbbench, MAX_IMPORT_BYTES};
 use rrflow_eval::lab::manifest::{Availability, VectorComparisonManifest};
 use rrflow_eval::lab::report::{ArtifactReference, LabReport, SystemStatus};
+use rrflow_eval::lab::sources::SourceList;
 use rrflow_eval::lab::{canonical_json, sha256_hex, Result};
 use rrflow_eval::storage::{schema, Digest};
 use std::collections::BTreeMap;
@@ -16,6 +18,8 @@ const USAGE: &str = "usage:
   rrflow-lab inputs --manifest FILE
   rrflow-lab run --manifest FILE --system ID --out DIR [--note KEY=VALUE]...
   rrflow-lab combine --manifest FILE --in DIR --out FILE
+  rrflow-lab import --from vectordbbench --result FILE --harness-version VERSION --recall-target NUMBER --out FILE
+  rrflow-lab sources --file FILE
   rrflow-lab schemas --out DIR";
 
 struct Arguments {
@@ -195,6 +199,42 @@ fn combine_runs(arguments: &Arguments) -> Result<ExitCode> {
     Ok(ExitCode::SUCCESS)
 }
 
+fn import_results(arguments: &Arguments) -> Result<ExitCode> {
+    let format = arguments.required("from")?;
+    if format != "vectordbbench" {
+        return Err(format!(
+            "no importer for {format}; vectordbbench is the one available"
+        ));
+    }
+    let path = arguments.required("result")?;
+    let metadata = std::fs::metadata(path).map_err(|error| format!("{path}: {error}"))?;
+    if metadata.len() > MAX_IMPORT_BYTES {
+        return Err(format!("{path} exceeds the import size bound"));
+    }
+    let target = arguments
+        .required("recall-target")?
+        .parse::<f64>()
+        .map_err(|error| format!("recall target: {error}"))?;
+    let bytes = std::fs::read(path).map_err(|error| format!("{path}: {error}"))?;
+    let report =
+        import_vectordbbench(&bytes, path, arguments.required("harness-version")?, target)?;
+    publish(
+        Path::new(arguments.required("out")?),
+        &canonical_json(&report)?,
+    )?;
+    Ok(ExitCode::SUCCESS)
+}
+
+fn check_sources(arguments: &Arguments) -> Result<ExitCode> {
+    let path = arguments.required("file")?;
+    let bytes = std::fs::read(path).map_err(|error| format!("{path}: {error}"))?;
+    let list: SourceList =
+        serde_json::from_slice(&bytes).map_err(|error| format!("{path}: {error}"))?;
+    list.validate()?;
+    println!("{} sources are valid", list.sources.len());
+    Ok(ExitCode::SUCCESS)
+}
+
 fn write_schemas(arguments: &Arguments) -> Result<ExitCode> {
     let directory = PathBuf::from(arguments.required("out")?);
     for (name, value) in [
@@ -202,6 +242,7 @@ fn write_schemas(arguments: &Arguments) -> Result<ExitCode> {
         ("lab-run-v1.json", schema::<SystemRun>()),
         ("lab-report-v1.json", schema::<LabReport>()),
         ("lab-custom-protocol-v1.json", schema::<CustomProtocol>()),
+        ("lab-sources-v1.json", schema::<SourceList>()),
     ] {
         std::fs::write(directory.join(name), canonical_json(&value)?)
             .map_err(|error| error.to_string())?;
@@ -231,6 +272,8 @@ fn dispatch(arguments: &[String]) -> Result<ExitCode> {
         }
         "run" => run(&parsed),
         "combine" => combine_runs(&parsed),
+        "import" => import_results(&parsed),
+        "sources" => check_sources(&parsed),
         "schemas" => write_schemas(&parsed),
         _ => Err(USAGE.into()),
     }

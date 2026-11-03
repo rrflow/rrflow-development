@@ -103,6 +103,44 @@
             "spread_milli"
           ],
           "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Real vectors prepared by `import_corpus.py`, kept outside the repository and named\nby digest. Each file holds little-endian 32-bit floats.",
+          "properties": {
+            "category_seed": {
+              "description": "The data has no filter field, so categories are assigned from this seed.",
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "generator": {
+              "const": "imported",
+              "type": "string"
+            },
+            "license": {
+              "type": "string"
+            },
+            "origin": {
+              "description": "Where the data came from, for a reader of the report.",
+              "type": "string"
+            },
+            "points_sha256": {
+              "$ref": "#/$defs/Digest"
+            },
+            "queries_sha256": {
+              "$ref": "#/$defs/Digest"
+            }
+          },
+          "required": [
+            "generator",
+            "origin",
+            "license",
+            "points_sha256",
+            "queries_sha256",
+            "category_seed"
+          ],
+          "type": "object"
         }
       ]
     },
@@ -165,6 +203,10 @@
         }
       },
       "type": "object"
+    },
+    "Digest": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
     },
     "Id": {
       "maxLength": 96,
@@ -234,6 +276,25 @@
             "seed"
           ],
           "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "index": {
+              "const": "ivf_rq",
+              "type": "string"
+            },
+            "partitions": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "index",
+            "partitions"
+          ],
+          "type": "object"
         }
       ]
     },
@@ -280,6 +341,15 @@
         },
         "id": {
           "$ref": "#/$defs/Id"
+        },
+        "nprobes": {
+          "description": "How many partitions an IVF index probes.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
         }
       },
       "required": [
@@ -333,6 +403,13 @@
         },
         "label": {
           "type": "string"
+        },
+        "limits": {
+          "description": "What a reader must know about this system's results, repeated in the report.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
         },
         "location": {
           "$ref": "#/$defs/SystemLocation"
