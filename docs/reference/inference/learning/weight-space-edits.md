@@ -1,6 +1,6 @@
 # Weight-space edit candidates
 
-**Status:** active experimental method contract; replication tool exists, no complete replication run recorded and no RRFlow model edited
+**Status:** active experimental method contract; complete control arm recorded and early stop passed; thinking arms not run, decision not reached and no RRFlow model edited
 **Coordinate:** `rrflow://rrflow-instance/data/reference/inference/learning/weight-space-edits`
 **Owner:** the weight-space edit candidate method, its replication protocol and its frozen decision rule
 
@@ -20,7 +20,8 @@ and [release](https://github.com/RikiyaT/lm_understand-logs) were reviewed on
 language-model result is run `p50c`, which edited Qwen3.5-0.8B on a 50-pass
 budget. RRFlow recomputed the release's per-problem results and rebuilt its
 weights; the [package journal](../../../evidence/change-journals/gate-g/weight-space-edit-replication.md)
-holds that evidence. No generation has been repeated at full scale.
+holds that evidence. A fresh control arm has run at full scale, but the release's
+edited and unedited generations have not been repeated.
 
 | Finding | Basis | Consequence for RRFlow |
 |---|---|---|
@@ -28,7 +29,8 @@ holds that evidence. No generation has been repeated at full scale.
 | The edit changed 130,188 entries, 0.016% of the model, but 10.6% and 8.1% of the two edited matrices by norm. | Rebuilt bit for bit from public weights. | Report matrix-level change. A small entry count does not show a small change. |
 | The strongest result used 50 forward passes, a Python kernel and 20.3 hours elapsed, 4.7 of them waiting on an unreachable model. | Release run records. | Treat it as measurement-guided editing, with budgets, not reasoning alone. |
 | The edit fixed runaway loops. Answers cut at the token limit fell from 93.0% to about 33% on MATH-500, yet edited answers still averaged 22,037 tokens. The editing model reported that 576 of its 579 rescued practice items had been truncated. | Recomputed release scores and the run's final report. | It removed an obstacle. The authors state that it could not add a missing ability. |
-| The model card says the model "operates in non-thinking mode by default" and warns about thinking loops. The baseline was measured with thinking on. | [Model card](https://huggingface.co/Qwen/Qwen3.5-0.8B) at revision `2fc06364715b967f1860aea9cf38778875588b17`. | The release gives no non-thinking baseline. Changing that setting is an untested alternative to the edit. |
+| The model card says the model "operates in non-thinking mode by default" and warns about thinking loops. The baseline was measured with thinking on. | [Model card](https://huggingface.co/Qwen/Qwen3.5-0.8B) at revision `2fc06364715b967f1860aea9cf38778875588b17`. | The release gives no non-thinking baseline, so RRFlow measured one. |
+| With thinking off, the unedited model scored 44.6 on MATH-500 and 56.6 on GSM8K. The published edit leads by 3.5 and 10.5 points, with intervals above zero, while using about 6 and 10 times the tokens per answer. | Complete fresh control arm against released per-problem results, on different setups. | The edit keeps an advantage, but the setting alone recovers about 91% and 80% of its gain at far lower cost. Compare any weight edit against such a setting. |
 | Gemma 3 270M, which rarely loops, did not improve. Other runs in the results table submitted no edit. Each post run is a single attempt per budget. | Release results table. | One success does not establish a repeatable method. |
 | The release omits the editing harness and two graders, and its `mathqa.py` cannot be imported without an unreleased module. | Release README and code. | The editing process cannot be repeated from the release. The rebuild and the evaluation can. |
 | Editing used a hosted model. The reading experiments sent it weights as text, and in the Qwen run it received whatever its kernel printed. | Release setup and post. | Information derived from the target's weights leaves the machine unless the editing model runs locally. |
@@ -62,9 +64,11 @@ repository at the revision above, `tokenizer.json`
 (`04b1c301231dd422b8860db31311ab2721511346a32cb1e079c4c4e5f1fe4696`). Install
 `vllm`, `datasets`, `math-verify==0.9.0`, `latex2sympy2_extended==1.11.0` and
 `antlr4-python3-runtime==4.13.2`. The tool refuses another `math-verify` version.
-The published vLLM version is not recorded, so each run records its own. On a
-host with no CUDA compiler, vLLM's default sampler cannot start; set
-`VLLM_USE_FLASHINFER_SAMPLER=0`, which the run also records.
+The published vLLM version is not recorded, so each run records its own. The
+control arm used vLLM 0.33.0; the 0.20.1 in NVIDIA's `vllm:26.05` image does not
+register this text-only architecture. On a host with no CUDA compiler, vLLM's
+default sampler cannot start; set `VLLM_USE_FLASHINFER_SAMPLER=0`, which the run
+also records.
 
 Rebuild and prepare first. These steps need no GPU and fail closed on any
 digest, problem or gold-answer mismatch:
@@ -103,12 +107,24 @@ done
 ```
 
 Run the two thinking arms only if the early-stop rule below allows it. By the
-published mean token counts they need about 215 million generated tokens.
+published mean token counts they need about 215 million generated tokens, of which
+the edited arm needs about 76 million. Run the edited arm first:
 
 ```bash
 for set in math500 gsm8k; do
   python3 $TOOL evaluate --checkpoint work/p50c --benchmark work/bench/$set.jsonl \
     --arm work/edited --set $set --protocol think35
+  python3 $TOOL compare --baseline $EXP/eval/p50c --candidate work/edited --set $set
+  python3 $TOOL compare --baseline work/control --candidate work/edited --set $set
+done
+```
+
+If those comparisons already rule out `reproduced` or `edit_better_than_setting`,
+the decision below can only be `stop`, so record that and skip the unedited arm.
+Otherwise run it and decide:
+
+```bash
+for set in math500 gsm8k; do
   python3 $TOOL evaluate --checkpoint work/unedited --benchmark work/bench/$set.jsonl \
     --arm work/base --set $set --protocol think35
 done
@@ -133,6 +149,11 @@ problem-level standard error.
 | Does the effect reproduce? | `reproduced` when, on both sets, the edit beats the unedited thinking arm with an interval above zero, and its accuracy is within 5 points of the published edited run. `partial` when it beats the arm but misses that margin. Otherwise `not_reproduced`. |
 | Does it beat the documented setting? | `edit_better_than_setting` when the edit beats the unedited non-thinking arm with an interval above zero on both sets. `setting_better_than_edit` when that arm wins on either set with an interval below zero. Otherwise `no_demonstrated_advantage`. |
 | Decision | `continue` only for `reproduced` with `edit_better_than_setting`. Everything else is `stop`: record the result and do not start a candidate experiment on this evidence. |
+
+The complete control arm passed the early-stop check on 2026-11-03. That permits
+the thinking arms and proves nothing further: the comparison pairs a fresh run
+with the published scores, so only a same-setup edited arm can settle the
+remaining questions.
 
 `continue` means only that the published edit holds on this model and beats that
 setting. It says nothing about RRFlow's controllers, activates nothing and

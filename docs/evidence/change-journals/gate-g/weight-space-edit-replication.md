@@ -1,6 +1,6 @@
 # Weight-space edit replication tool and contract
 
-**Status:** active offline preparation; tool verified on real released data and a real GPU smoke test; no complete replication run
+**Status:** active offline preparation; complete control arm recorded and early stop passed; thinking arms not run, so no replication and no decision
 **Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/gate-g/weight-space-edit-replication`
 **Owner:** G-06a offline preparation; OBJ-12 learning method extension; driver: Claude Code session for the repository owner
 **Pull request:** [250](https://github.com/rrflow/rrflow-development/pull/250)
@@ -119,6 +119,40 @@ rates came from at most 16 concurrent samples with FlashInfer kernels disabled, 
 a full batch may differ. One published shard reached about 12,400 tokens per second
 on undisclosed hardware.
 
+## Complete control arm
+
+The repository owner asked to run this on a DGX Spark. `clyffy-01` (GB10, about
+121 GiB unified memory, aarch64) was idle, and the arm ran there from about 00:54
+to 02:30 UTC on 2026-11-03: 8 shards, about 1 hour 36 minutes, 10.45 million tokens,
+about 2,050 tokens per second, no guard stops and at least 47 GiB always available.
+It used tool SHA-256 `348887a0…`, vLLM 0.33.0, torch 2.14.0, transformers 5.20.2,
+math-verify 0.9.0 and `VLLM_USE_FLASHINFER_SAMPLER=0`. A fresh resolve would change
+none of the 202 installed packages at that time; vLLM 0.33.0 was then the latest
+stable release, and its pins hold torch and transformers below their newest
+versions. The package list has SHA-256 `07d279c4b26a9fb2…`.
+
+Retained on that host under `~/weight-edit-replication-20261102`: `work/control`,
+with sorted-tar SHA-256
+`b85c4d3abb4ce4ce0efe684ff746fa975a309d3c4eb93519d224225061a71920`, plus `logs/`,
+`lock/` and the guard and run scripts. A host is not durable evidence storage, so
+copy these before reclaiming that folder.
+
+| Set | Control accuracy, cut share, mean tokens | Published `p50c` | Paired lead of `p50c`, 95% interval | `p50c` improved / regressed / tied | Control gain over published unedited |
+|---|---|---|---|---|---|
+| MATH-500 | 44.60, 32.2%, 3,716 | 48.10, 33.0%, 22,037 | 3.50, [0.92, 6.08] | 139 / 113 / 248 | 36.70, [33.57, 39.83] |
+| GSM8K | 56.60, 4.1%, 1,144 | 67.10, 7.2%, 11,993 | 10.50, [8.32, 12.68] | 385 / 168 / 766 | 42.76, [40.50, 45.02] |
+
+The published edit beats the control with an interval above zero on both sets, so
+the early-stop clause does not stop the work. The author's hint from the four-problem
+smoke test, that the setting might match the edit, is not supported at full scale. The
+control still recovers about 91% and 80% of the edit's gain, at about 8,300 and 2,000
+tokens per correct answer against about 45,800 and 17,900.
+
+Limits: the two columns come from different setups, and the published vLLM version is
+unknown. The control's token limit is 8,192 against 32,768, as each setting specifies,
+and 32.2% of its MATH-500 answers reached that limit. This is one run of a seeded
+protocol, and no independent review has occurred.
+
 ## Surfaced failures and corrections
 
 - A first draft reported real `p10c` as an archive mismatch. The sparse-only check
@@ -144,6 +178,12 @@ on undisclosed hardware.
   that the control's promise was visible when the order was chosen.
 - vLLM warned that it casts 18 `linear_attn.norm` tensors from float32 to bfloat16.
   None is an edited tensor, and the warning appears in every arm.
+- NVIDIA's `vllm:26.05` image on the Spark does not register `Qwen3_5ForCausalLM`.
+  Rather than override the architecture, the run installed vLLM 0.33.0 in its own folder.
+- The run's stop guard first matched `pgrep -f Runner.Worker`, which also matched the
+  author's own monitoring commands and could have stopped the run falsely. It now
+  matches the exact process name. A fake process of that name then stopped a real
+  engine in one check, leaving no process and no published part.
 - A first draft of the contract said RRFlow has no trained model. RRFlow admits none,
   but the separate SWAG project holds an unqualified experimental checkpoint, so the
   contract now says that. The author also ran the smoke test on a laptop GPU after
@@ -152,17 +192,19 @@ on undisclosed hardware.
 
 ## Checks not run
 
-No complete arm has run, so nothing here replicates the published result or decides
-the rule. Also not run: the release's editing process, which needs an unreleased
-harness and a hosted model; the low-rank `p10c` rebuild; IFEval and the multiple-choice
-sets, whose graders are unreleased; FlashInfer's default sampler; `vllm download-kernels`;
-any evaluate path outside WSL2 Ubuntu; and any weight edit of an RRFlow model.
+Only the control arm has run completely, so nothing here replicates the published
+result or decides the rule. Not run: the edited and unedited thinking arms beyond
+four problems; the release's editing process, which needs an unreleased harness and a
+hosted model; the low-rank `p10c` rebuild; IFEval and the multiple-choice sets, whose
+graders are unreleased; FlashInfer's default sampler; `vllm download-kernels`; any
+evaluate path outside WSL2 Ubuntu and one GB10 Spark; and any weight edit of an RRFlow
+model.
 
 ## Remaining errors and owner
 
 No RRFlow-owned deficiency was found, so the POA&M is unchanged. The next action is the
-complete control arm, which the repository owner decides because it occupies a GPU
-for hours. G-06a still needs a real reviewed corpus before any candidate experiment.
+complete edited arm, which the repository owner decides because it occupies a Spark for
+many hours. G-06a still needs a real reviewed corpus before any candidate experiment.
 
 ## Review and status
 
