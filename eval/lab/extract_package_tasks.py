@@ -129,12 +129,17 @@ def arms():
             "repository_access": True,
             "tools": read_only,
         },
-        gap(
-            "rrflow-harness-import",
-            "The model with RRFlow, over text a harness imported",
-            "unimplemented",
-            "The importer and tool path are not yet proven on a real engine. This arm would measure BM25 and graph retrieval over text the harness chunked, and would not measure attunement, parsing or embeddings.",
-        ),
+        {
+            "id": "rrflow-harness-import",
+            "label": "The model with read-only tools and RRFlow, over text a harness imported",
+            "availability": {"state": "available"},
+            "repository_access": True,
+            "tools": read_only + ["mcp__rrflow__rrflow_context"],
+            "preface": "You also have a tool, rrflow_context, that searches this repository's text by keywords and returns matching chunks with their paths. Ask it for few items, because each item adds text to this conversation.",
+            "limits": [
+                "This arm measures lexical and graph retrieval over text a harness chunked and imported through public operations. It does not measure attunement, parsing or embeddings, which RRFlow cannot yet apply to a repository.",
+            ],
+        },
         gap("rrflow-attuned", "The model with RRFlow, over an attuned project", "unimplemented", NOT_YET),
         gap(
             "rrflow-routed",

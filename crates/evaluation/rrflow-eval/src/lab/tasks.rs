@@ -448,6 +448,8 @@ pub struct RunInputs<'a> {
     pub empty_directory: &'a Path,
     /// Spent so far in this study, which a run must not push past the total.
     pub spent_usd: f64,
+    /// Where an arm with MCP tools finds its server.
+    pub mcp_config: Option<&'a Path>,
 }
 
 /// Runs one key from the plan. A provider's failure is a result and comes back as a run.
@@ -466,6 +468,14 @@ pub fn run_task(
     require(
         arm.availability == Availability::Available,
         &format!("{} is declared as not running", arm.id.as_str()),
+    )?;
+    let uses_mcp = arm.tools.iter().any(|tool| tool.starts_with("mcp__"));
+    require(
+        uses_mcp == inputs.mcp_config.is_some(),
+        &format!(
+            "{} must have an MCP configuration exactly when it uses an MCP tool",
+            arm.id.as_str()
+        ),
     )?;
     let task = manifest
         .tasks
@@ -489,7 +499,7 @@ pub fn run_task(
         model: &model.model,
         effort: model.effort.as_deref(),
         tools: &arm.tools,
-        mcp_config: None,
+        mcp_config: inputs.mcp_config,
         max_seconds: spend.max_seconds_per_run,
         max_usd: spend.max_usd_per_run,
     });

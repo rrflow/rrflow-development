@@ -8,6 +8,7 @@ pub mod corpus;
 pub mod custom;
 pub mod driver;
 pub mod import;
+pub mod knowledge;
 pub mod manifest;
 pub mod milvus;
 pub mod provider;

@@ -187,9 +187,14 @@ rrflow-lab tasks-combine --manifest FILE --in runs/tasks --out report.json
 Real runs use `claude --bare`, which keeps a person's memory and settings out and needs
 `ANTHROPIC_API_KEY`. Pilot on a few tasks before freezing a design.
 
-RRFlow's own arms are declared gaps today, and their reasons say why: RRFlow cannot yet return a
-repository's content to an agent. The
-[package journal](../../docs/evidence/change-journals/gate-j/reasoning-tests.md) has the details.
+RRFlow cannot yet return a repository's content through its own path, so `rrflow-attuned` is a
+declared gap. `rrflow-harness-import` searches text this harness imports through public operations,
+and it measures lexical and graph retrieval and nothing more.
+
+[`retrieval_signal.py`](retrieval_signal.py) measures that retrieval with no model: it sends each
+task to the real `rrflow-mcp` process and scores the files returned, beside plain BM25 over the same
+chunks. The [package journal](../../docs/evidence/change-journals/gate-j/reasoning-tests.md) has its
+first results and what they do not show.
 
 ## Reading a result
 

@@ -5,9 +5,11 @@ use rrflow_eval::lab::driver::{
     combine, empty_run, now_unix_ms, prepare_inputs, run_system, SystemRun,
 };
 use rrflow_eval::lab::import::{import_vectordbbench, MAX_IMPORT_BYTES};
+use rrflow_eval::lab::knowledge::{read_repository_text, CHUNK_TABLE};
 use rrflow_eval::lab::manifest::{Availability, VectorComparisonManifest};
 use rrflow_eval::lab::provider::ClaudeCode;
 use rrflow_eval::lab::report::{ArtifactReference, LabReport, SystemStatus};
+use rrflow_eval::lab::rrflow::RrflowAdapter;
 use rrflow_eval::lab::sources::SourceList;
 use rrflow_eval::lab::tasks::{
     combine_task_runs, run_order, run_task, RunInputs, RunKey, TaskComparisonManifest, TaskRun,
@@ -30,6 +32,8 @@ const USAGE: &str = "usage:
   rrflow-lab tasks-order --manifest FILE
   rrflow-lab tasks-run --manifest FILE --task ID --arm ID --model ID --repetition N --checkout DIR --empty DIR --out DIR
   rrflow-lab tasks-combine --manifest FILE --in DIR --out FILE
+  rrflow-lab tasks-import --checkout DIR --endpoint URL [--chunks-out FILE]
+  rrflow-lab report-validate --file FILE
   rrflow-lab schemas --out DIR";
 
 struct Arguments {
@@ -312,11 +316,65 @@ fn run_one_task(arguments: &Arguments) -> Result<ExitCode> {
             checkout: Path::new(arguments.required("checkout")?),
             empty_directory: Path::new(arguments.required("empty")?),
             spent_usd,
+            mcp_config: arguments.values.get("mcp-config").map(Path::new),
         },
     )?;
     publish(&directory.join(format!("{name}.reply.json")), &raw)?;
     publish(&run_path, &canonical_json(&run)?)?;
     eprintln!("{name}: {:?}, solved {}", run.outcome, run.score.solved);
+    Ok(ExitCode::SUCCESS)
+}
+
+/// Credentials come from the environment, as for a lab run, and never reach a file or log.
+fn import_repository(arguments: &Arguments) -> Result<ExitCode> {
+    let credential = |name: &str| {
+        std::env::var(name).map_err(|_| format!("{name} must name the engine's credential"))
+    };
+    let checkout = Path::new(arguments.required("checkout")?);
+    let started = std::time::Instant::now();
+    let text = read_repository_text(checkout)?;
+    if let Some(path) = arguments.values.get("chunks-out") {
+        let mut lines = Vec::new();
+        for chunk in &text.chunks {
+            lines.extend(
+                serde_json::to_vec(&serde_json::json!({
+                    "id": format!("record:{CHUNK_TABLE}:{}", chunk.reference_id()),
+                    "path": chunk.path,
+                    "text": chunk.text
+                }))
+                .map_err(|error| error.to_string())?,
+            );
+            lines.push(b'\n');
+        }
+        publish(Path::new(path), &lines)?;
+    }
+    let adapter = RrflowAdapter::connect_to(
+        arguments.required("endpoint")?,
+        &credential("RRFLOW_LAB_INSTANCE")?,
+        &credential("RRFLOW_LAB_PRINCIPAL")?,
+        credential("RRFLOW_LAB_SECRET")?,
+        std::time::Duration::from_secs(300),
+    )?;
+    adapter.import_chunks(&text.chunks)?;
+    println!(
+        "{}",
+        serde_json::json!({
+            "files": text.files,
+            "files_left_out": text.files_left_out,
+            "chunks": text.chunks.len(),
+            "seconds": started.elapsed().as_secs_f64()
+        })
+    );
+    Ok(ExitCode::SUCCESS)
+}
+
+fn validate_report(arguments: &Arguments) -> Result<ExitCode> {
+    let path = arguments.required("file")?;
+    let bytes = std::fs::read(path).map_err(|error| format!("{path}: {error}"))?;
+    let report: LabReport =
+        serde_json::from_slice(&bytes).map_err(|error| format!("{path}: {error}"))?;
+    report.validate()?;
+    println!("report is valid");
     Ok(ExitCode::SUCCESS)
 }
 
@@ -398,6 +456,8 @@ fn dispatch(arguments: &[String]) -> Result<ExitCode> {
         }
         "tasks-run" => run_one_task(&parsed),
         "tasks-combine" => combine_tasks(&parsed),
+        "tasks-import" => import_repository(&parsed),
+        "report-validate" => validate_report(&parsed),
         "schemas" => write_schemas(&parsed),
         _ => Err(USAGE.into()),
     }

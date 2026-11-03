@@ -1,5 +1,6 @@
 //! A task comparison must grade independently, refuse to spend without a decision, and never
 //! claim an arm helped without paired evidence. No test here can start a model.
+use rrflow_eval::lab::knowledge::{chunk_text, importable, MAX_CHUNK_BYTES, MAX_FILE_BYTES};
 use rrflow_eval::lab::manifest::Availability;
 use rrflow_eval::lab::provider::{
     claude_arguments, parse_claude_output, AgentProvider, AgentReply, AgentRequest,
@@ -139,6 +140,7 @@ fn run_with(manifest: &TaskComparisonManifest, provider: &Scripted, key: &RunKey
             checkout: Path::new("checkout"),
             empty_directory: Path::new("empty"),
             spent_usd: 0.0,
+            mcp_config: None,
         },
     )
     .unwrap()
@@ -248,6 +250,7 @@ fn nothing_runs_until_models_and_a_spend_limit_are_chosen() {
                 checkout: Path::new("checkout"),
                 empty_directory: Path::new("empty"),
                 spent_usd: 0.0,
+                mcp_config: None,
             },
         )
         .unwrap_err()
@@ -273,6 +276,7 @@ fn a_run_that_could_pass_the_total_spend_is_refused() {
             checkout: Path::new("checkout"),
             empty_directory: Path::new("empty"),
             spent_usd: 9.5,
+            mcp_config: None,
         },
     )
     .unwrap_err();
@@ -501,6 +505,7 @@ fn a_changed_design_or_a_declared_gap_cannot_use_a_run() {
             checkout: Path::new("checkout"),
             empty_directory: Path::new("empty"),
             spent_usd: 0.0,
+            mcp_config: None,
         },
     )
     .unwrap_err();
@@ -541,6 +546,94 @@ fn a_reply_without_a_plan_or_a_failed_run_stays_visible_and_unsolved() {
     let timed_out = run_with(&manifest, &slow, &key("t1", "alone", 1));
     assert_eq!(timed_out.outcome, TaskRunOutcome::TimedOut);
     assert!(!timed_out.score.solved);
+}
+
+#[test]
+fn an_arm_with_an_mcp_tool_must_be_given_its_server_and_no_other_arm_may_be() {
+    let mut manifest = manifest();
+    manifest.arms[2]
+        .tools
+        .push("mcp__rrflow__rrflow_context".into());
+    let provider = Scripted::replying(GOOD);
+    let run = |arm: &str, config: Option<&Path>| {
+        run_task(
+            &manifest,
+            &key("t1", arm, 1),
+            &RunInputs {
+                provider: &provider,
+                checkout: Path::new("checkout"),
+                empty_directory: Path::new("empty"),
+                spent_usd: 0.0,
+                mcp_config: config,
+            },
+        )
+    };
+    let config = Path::new("mcp.json");
+    assert!(run("helper", None).is_err());
+    assert!(run("alone", Some(config)).is_err());
+    assert!(run("helper", Some(config)).is_ok());
+    assert!(run("alone", None).is_ok());
+}
+
+#[test]
+fn repository_text_is_chunked_on_lines_and_never_loses_any() {
+    let text = "first line\n".repeat(400);
+    let chunks = chunk_text("a/b.rs", &text);
+    assert!(chunks.len() > 1);
+    assert!(chunks
+        .iter()
+        .all(|chunk| chunk.text.len() <= MAX_CHUNK_BYTES));
+    assert!(chunks.iter().all(|chunk| chunk.text.ends_with('\n')));
+    let joined: String = chunks.iter().map(|chunk| chunk.text.as_str()).collect();
+    assert_eq!(joined, text);
+    let ordinals: Vec<u64> = chunks.iter().map(|chunk| chunk.ordinal).collect();
+    assert_eq!(ordinals, (0..chunks.len() as u64).collect::<Vec<_>>());
+
+    // One line longer than a chunk, with characters wider than one byte.
+    let wide = "é".repeat(MAX_CHUNK_BYTES);
+    let chunks = chunk_text("a.md", &wide);
+    assert!(chunks
+        .iter()
+        .all(|chunk| chunk.text.len() <= MAX_CHUNK_BYTES));
+    assert_eq!(
+        chunks
+            .iter()
+            .map(|chunk| chunk.text.as_str())
+            .collect::<String>(),
+        wide
+    );
+    assert!(chunk_text("a.md", "  \n\n").is_empty());
+}
+
+#[test]
+fn only_a_trackable_text_file_is_imported_and_never_a_tests_answers() {
+    assert!(importable("src/a.rs", b"fn a() {}"));
+    assert!(!importable("src/a.bin", b"a\0b"), "binary");
+    assert!(!importable("src/a.rs", &[0xFF, 0xFE]), "not UTF-8");
+    assert!(!importable("src/a.rs", b""), "empty");
+    assert!(!importable("Cargo.lock", b"text"), "a lock file");
+    assert!(
+        !importable("eval/lab/tasks/plan.json", b"text"),
+        "a test's own answers"
+    );
+    assert!(
+        !importable("big.md", &vec![b'a'; MAX_FILE_BYTES + 1]),
+        "too large"
+    );
+}
+
+#[test]
+fn a_chunk_becomes_one_public_mutation_with_a_stable_identity() {
+    let chunk = &chunk_text("src/a.rs", "fn a() {}\n")[0];
+    let same = &chunk_text("src/a.rs", "fn changed() {}\n")[0];
+    assert_eq!(chunk.reference_id(), same.reference_id(), "text can change");
+    assert_ne!(
+        chunk.reference_id(),
+        chunk_text("src/b.rs", "fn a() {}\n")[0].reference_id()
+    );
+    let decoded: Vec<rrd_contract::TransactionMutation> =
+        serde_json::from_value(serde_json::json!([chunk.mutation()])).unwrap();
+    assert_eq!(decoded.len(), 1);
 }
 
 #[test]
