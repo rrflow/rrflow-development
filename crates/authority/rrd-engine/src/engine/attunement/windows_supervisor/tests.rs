@@ -2,6 +2,23 @@ use super::ManagedChild;
 use std::ffi::OsStr;
 use std::time::Duration;
 
+#[test]
+fn parent_death_marker_requires_complete_pid() {
+    assert_eq!(completed_pid(""), None);
+    assert_eq!(completed_pid("12"), None);
+    assert_eq!(completed_pid("12x\n"), None);
+    assert_eq!(completed_pid("0\n"), None);
+    assert_eq!(completed_pid("123\n"), Some(123));
+}
+
+fn completed_pid(value: &str) -> Option<u32> {
+    let digits = value.strip_suffix('\n')?;
+    if digits.is_empty() || !digits.bytes().all(|byte| byte.is_ascii_digit()) {
+        return None;
+    }
+    digits.parse().ok().filter(|pid| *pid != 0)
+}
+
 fn start(case: &str, memory: u64) -> std::io::Result<ManagedChild> {
     let executable = std::env::current_exe()?;
     ManagedChild::spawn(
@@ -120,7 +137,9 @@ fn native_job_kills_child_when_its_supervisor_process_dies() {
     let started = Instant::now();
     let child_pid = loop {
         if let Ok(contents) = std::fs::read_to_string(&marker) {
-            break contents.parse::<u32>().unwrap();
+            if let Some(pid) = completed_pid(&contents) {
+                break pid;
+            }
         }
         assert!(
             started.elapsed() < Duration::from_secs(15),
@@ -192,7 +211,7 @@ fn child_supervises_a_child() {
         .create_new(true)
         .open(marker_for(std::process::id()))
         .unwrap();
-    write!(marker, "{pid}").unwrap();
+    writeln!(marker, "{pid}").unwrap();
     marker.flush().unwrap();
     std::thread::sleep(Duration::from_secs(30));
     drop(worker);
