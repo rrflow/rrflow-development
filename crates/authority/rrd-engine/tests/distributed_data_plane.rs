@@ -24,8 +24,12 @@ fn node(index: u8) -> PlacementNode {
 }
 
 fn catalogue() -> DistributedAuthorityCatalogue {
+    catalogue_for("cluster-a")
+}
+
+fn catalogue_for(cluster: &str) -> DistributedAuthorityCatalogue {
     plan_distributed_authority(
-        ClusterId::new("cluster-a").unwrap(),
+        ClusterId::new(cluster).unwrap(),
         1,
         100,
         (1..=6).map(node).collect(),
@@ -65,6 +69,26 @@ fn stamp(index: u64, epoch: u64, node: &NodeId) -> ShardReadStamp {
         placement_epoch: epoch,
         state_digest: digest::sha256_hex(format!("{node}:{index}").as_bytes()),
     }
+}
+
+/// POAM-046: this record lives in the scope the public changefeed reads, and
+/// the changefeed refuses a whole page over one identity that is not canonical.
+/// A cluster id may hold any bytes, so the engine refuses one it could not
+/// project before it prepares a commit.
+#[test]
+fn a_cluster_id_the_public_changefeed_cannot_project_is_refused() {
+    let temporary = tempfile::tempdir().unwrap();
+    let engine = RrdEngine::open(
+        &temporary.path().join("engine"),
+        CanonicalId::new("cluster-identity").unwrap(),
+        [7_u8; 32],
+    )
+    .unwrap();
+    let error = engine
+        .prepare_distributed_authority(&catalogue_for("cluster:a"), "metadata-controller", 10_000)
+        .err()
+        .expect("a colon cannot be projected");
+    assert!(error.to_string().contains("is not public"), "{error}");
 }
 
 #[test]
