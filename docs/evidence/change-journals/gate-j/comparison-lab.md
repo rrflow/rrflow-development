@@ -65,15 +65,16 @@ fix in the corrections below.
 | System and setting | Plain, 1 client | Plain, 8 clients | Filtered, 1 client | Filtered, 8 clients | Ingest | Memory / disk MiB |
 |---|---|---|---|---|---|---|
 | Qdrant 1.20.0, ef-16 | 1.67 ms, 602 qps | 3,014 qps | 1.16 ms, 880 qps | 9,851 qps | 15,456/s | 153 / 467 |
-| Milvus 3.0.5, ef-32, filtered ef-16 | 2.29 ms, 443 qps | see the run | 2.45 ms, 412 qps | see the run | 8,762/s | 341 / 259 |
+| Milvus 3.0.5, ef-32, filtered ef-16 | 2.29 ms, 443 qps | 6,837 qps | 2.45 ms, 412 qps | 6,392 qps | 8,762/s | 341 / 259 |
 | SurrealDB 3.3.5, plain ef-32, filtered ef-16 | 15.0 ms, 67 qps | 478 qps | 19.7 ms, 51 qps | 376 qps | 3,510/s | 869 / 275 |
 | RRFlow TurboQuant, rerank-40 | 67.3 ms, 14.9 qps | 71.6 qps | refused | refused | 831/s | 1,600 / 290 |
 | RRFlow exact | 1,411 ms, 0.7 qps | 2.5 qps | 1,360 ms, 0.7 qps | 2.5 qps | 855/s | 1,331 / 260 |
 
 **100,000 points of 384 dimensions (`vector-100k.json`), `runs/vector-100k-3`, report
-`be7a4895105faf0d1990c54c7841925853b451857bcd49ba7cb504fa197e9583`, with the GPU at 0% in all 367
-host samples.** RRFlow's arms have read limits raised to 16 GiB, on an engine carrying #259's fix,
-SHA-256 prefix `4c08aeaafe452630`.
+`be7a4895105faf0d1990c54c7841925853b451857bcd49ba7cb504fa197e9583`.** RRFlow's arms have read
+limits raised to 16 GiB, on an engine carrying #259's fix, SHA-256 prefix `4c08aeaafe452630`. The GPU
+was at 0% in all 373 host samples. TurboQuant's runs came just before host samples existed, in
+`runs/vector-100k-2` and `runs/vector-100k-order`, and the two agree with each other within 2%.
 
 | System and setting | Plain, 1 client | Plain, 8 clients | Filtered, 1 client | Filtered, 8 clients | Ingest | Memory / disk MiB |
 |---|---|---|---|---|---|---|
@@ -96,7 +97,7 @@ treat a difference of about 15% between two runs as noise.
 | System and setting | Plain, 1 client | Plain, 8 clients | Filtered, 1 client | Filtered, 8 clients | Ingest | Memory / disk MiB |
 |---|---|---|---|---|---|---|
 | Qdrant 1.20.0, plain ef-64, filtered ef-16 | 1.33 ms, 749 qps | 5,345 qps | 2.38 ms, 430 qps | 1,740 qps | 15,576/s | 240 / 601 |
-| Milvus 3.0.5, plain ef-128, filtered ef-32 | 2.94 ms, 339 qps | see the run | 2.89 ms, 345 qps | see the run | 8,837/s | 792 / 1,964 |
+| Milvus 3.0.5, plain ef-128, filtered ef-32 | 2.94 ms, 339 qps | 2,638 qps | 2.89 ms, 345 qps | 3,679 qps | 8,837/s | 792 / 1,964 |
 | SurrealDB 3.3.5, plain ef-256, filtered ef-32 | 32.3 ms, 31 qps | 226 qps | 51.8 ms, 19 qps | 140 qps | 2,676/s | 4,673 / 3,267 |
 | RRFlow, every arm | refused | refused | refused | refused | 462-571/s | see below |
 
