@@ -18,6 +18,7 @@ fn profile(name: &str) -> EndpointProfileInput {
         contract_version: 1,
         name: CanonicalId::new(name).unwrap(),
         selection_policy: None,
+        observation_policy: None,
         bindings: vec![EndpointBinding {
             id: CanonicalId::new("knowledge-source").unwrap(),
             class: WorkloadClass::VectorStore,
@@ -144,6 +145,7 @@ fn actual_selector_settings_follow_existing_configuration_approval_and_reopen() 
         name: captured.name,
         bindings: captured.bindings,
         selection_policy: Some(policy.clone()),
+        observation_policy: None,
     };
     let (root, mut engine) = isolated_engine();
     bind(&mut engine, "selector-policy-persistence");

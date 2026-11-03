@@ -355,7 +355,7 @@ jobs:
           - name: service-protocol
             packages: "-p rrd-server -p rrd-client -p rrflow-mcp -p rrflow-cli"
           - name: product-operations
-            packages: "-p rrd-kubernetes -p rrflow-edge -p rrflow-eval"
+            packages: "-p rrd-kubernetes -p rrd-observation -p rrflow-edge -p rrflow-eval"
     env:
       CARGO_BUILD_JOBS: "2"
       CARGO_PROFILE_TEST_DEBUG: "0"

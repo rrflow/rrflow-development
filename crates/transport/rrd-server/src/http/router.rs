@@ -49,6 +49,7 @@ macro_rules! http_dispatch_catalogue {
 http_dispatch_catalogue! {
     AttunementCancel => ("attunement-cancel", RrdOperation::EstateAdmin),
     AttunementRead => ("attunement-read", RrdOperation::EstateRead),
+    AttunementJobList => ("attunement-job-list", RrdOperation::EstateRead),
     AttunementReceiptRead => ("attunement-receipt-read", RrdOperation::EstateRead),
     AttunementStart => ("attunement-start", RrdOperation::EstateAdmin),
     AttunementStep => ("attunement-step", RrdOperation::EstateAdmin),
@@ -100,6 +101,9 @@ http_dispatch_catalogue! {
     TaskBudgetStop => ("task-budget-stop", RrdOperation::ReasoningWrite),
     TaskEmbeddingExecute => ("task-embedding-execute", RrdOperation::ReasoningWrite),
     TaskEndpointPropose => ("task-endpoint-propose", RrdOperation::EndpointPropose),
+    ObservationPrepare => ("observation-prepare", RrdOperation::ObservationPrepare),
+    ObservationDeliver => ("observation-deliver", RrdOperation::ObservationDeliver),
+    ObservationRead => ("observation-read", RrdOperation::ObservationRead),
     TaskAttemptRead => ("task-attempt-read", RrdOperation::ReasoningRead),
     TaskClose => ("task-close", RrdOperation::TaskWrite),
     TaskList => ("task-list", RrdOperation::TaskRead),
@@ -254,6 +258,9 @@ impl AppState {
                 self.replace_knowledge_trees(&headers, &body, now)
             }
             Some(HttpDispatch::AttunementRead) => self.read_attunement(&headers, &body, now),
+            Some(HttpDispatch::AttunementJobList) => {
+                self.list_attunement_jobs(&headers, &body, now)
+            }
             Some(HttpDispatch::AttunementReceiptRead) => {
                 self.read_attunement_receipt(&headers, &body, now)
             }
@@ -316,6 +323,15 @@ impl AppState {
             Some(HttpDispatch::FlightList) => self.list_prompt_flights(&headers, &body, now),
             Some(HttpDispatch::FlightRead) => self.read_prompt_flight(&headers, &body, now),
             Some(HttpDispatch::TaskOpen) => self.open_task(&headers, &body, now),
+            Some(HttpDispatch::ObservationPrepare) => {
+                self.prepare_observation_delivery(&headers, &body, now)
+            }
+            Some(HttpDispatch::ObservationDeliver) => {
+                self.deliver_observation(&headers, &body, now)
+            }
+            Some(HttpDispatch::ObservationRead) => {
+                self.read_observation_delivery(&headers, &body, now)
+            }
             Some(HttpDispatch::EmbeddingBuiltinActivate) => {
                 self.activate_builtin_embedding(&headers, &body, now)
             }

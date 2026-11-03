@@ -13,4 +13,5 @@ mod task;
 mod vector;
 
 mod endpoint_configuration;
+mod observation_delivery;
 mod reasoning_budget;

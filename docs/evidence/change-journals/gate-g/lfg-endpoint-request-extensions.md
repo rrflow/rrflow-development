@@ -81,3 +81,12 @@ and its navigation index are evidence, not another implementation authority.
 
 No access rights, engine dispatch, LFG admission, provider capability or user
 subscription is inferred from an accepted extra field. Release gates remain open.
+
+
+## Local integration with job discovery, 2026-11-03
+
+Starting candidate `919ea4aad371ef20c3909707d145edc33d43a8db`; prospective dependency #248 `c4a3b96a4d1a18fbf19f819f37ce237c0b749873` is in the protected merge queue. The PR brief was updated before this local merge preparation. Seven hand-authored conflicts contained only the two competing current OpenAPI digests; their surrounding text was identical. The other twelve conflicted SDK and signal paths are replaceable projections. They were regenerated from the combined catalogue and contract rather than choosing either PR's generated content as the final result. No historical digest citations were rewritten.
+
+The combined contract exports 75 operations including `attunement-job-list` at `/v1/attunement/jobs/list`; its SHA-256 is `978e20e8128dea9d17367f66492200d675372d53c3cef92b381ff0b001bcbbc2`. `cargo test --offline --locked -p rrd-contract --test endpoint_selection --test attunement_discovery` passed 14 tests. `python scripts/ci/check_generated_surfaces.py --check`, `python scripts/knowledge/render_navigation.py --check`, `cargo fmt --all --check` and the TypeScript SDK's `corepack pnpm check` (seven tests, lint, typecheck and generation) passed on Windows. The first Python generator invocation failed because `ruff` was absent from PATH; rerunning with this checkout's `sdks/python/.venv/Scripts` on PATH succeeded. `cargo test --offline --locked -p rrd-contract` also passed the full contract suite. `python scripts/ci/check_documentation.py` passed. `cargo test --offline --locked -p rrd-engine --lib` passed 332 tests with four ignored; the focused discovery and proposal tests also passed. Python, Go, Java and .NET generated-endpoint checks passed. `cargo clippy --offline --locked -p rrd-contract -p rrd-engine --all-targets -- -D warnings` passed. The final CI and integration status are recorded with the candidate.
+
+This remains local speculative integration until #248 lands and actual main is checked. It does not establish that an external LFG call was performed or that the adaptive plan is implemented. No gate status changes.
