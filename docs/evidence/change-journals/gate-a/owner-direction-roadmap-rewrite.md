@@ -180,9 +180,12 @@ projected stream, the configured physical page cache, bounded memtable merge
 and mapped-buffer lifetime, with no raw-pointer bypass. An estate-scoped
 (table, ID) remains the record identity for structured and schemaless records.
 The current executor uses `AdjacencyExpansion` and
-`read_versioned_expanding`, not the C-06g stream; the current `begin_projected_read`
-and `ProjectedReadStream` provide only the underlying physical stream. F-01
-and F-03 remain unimplemented for this end-to-end path. E-01/F tests must
+`read_versioned_expanding`. Tracing the repository transaction further shows
+that rrflowKV range scans already call `transaction/scan.rs::bounded`, which
+uses the C-06g projected reader and copies batches into owned rows. The earlier
+claim that this path did not use the C-06g reader was incorrect. The current
+`begin_projected_read` and `ProjectedReadStream` do not provide end-to-end
+Arrow query streaming; F-01 and F-03 remain unimplemented for that path. E-01/F tests must
 measure relevant edges and versions, seeks, LSM runs, keys/pages, cache,
 resources and exact correctness while increasing unrelated data. Ordered seeks
 and version/proof work mean an unconditional zero-overhead O(E) claim is not
