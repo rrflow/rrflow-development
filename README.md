@@ -44,6 +44,15 @@ separate planned behavior from executable work. Known admission/configuration
 blockers are [explicitly recorded](docs/poam/rrflow-1.0-alpha/poam-006.md#build-plan-admission-gaps);
 a roadmap is not evidence that those capabilities already work.
 
+The immediate priority is a developer build that can open and index a real
+project, serve source-grounded context, and show its work in Connectome. Once
+that build is usable, use measured baselines to tune it. The later direction is
+to derive configurable reasoning shards from project boundaries and evaluate
+custom KV-cache strategies on large projects such as platform_devpulse and
+RRFlow itself. These are targets, not implemented or competitive-performance
+claims. The [scale rationale](docs/architecture/engine-scale-and-contracts.md#boundary-based-reasoning-after-the-developer-build)
+records the intended relationship and proof.
+
 ## Engine, UI, cloud, and desktop
 
 RRFlow is the reasoning engine. **Connectome** is its operator and developer
