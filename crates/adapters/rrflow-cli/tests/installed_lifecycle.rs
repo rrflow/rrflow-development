@@ -512,6 +512,53 @@ fn installed_binary_replans_and_reads_receipt_after_forced_restart() {
                     read.status.job, *inventoried,
                     "acknowledged Inventory survives process death"
                 );
+                // Derive the fixture identities independently of the returned
+                // rows. A job checkpoint alone does not prove that its source
+                // records are reachable through the public query boundary.
+                #[derive(serde::Serialize)]
+                struct SourceScope<'a> {
+                    estate: &'a str,
+                    project: &'a str,
+                    root: &'a str,
+                }
+                let scope = SourceScope {
+                    estate: current_plan.target.estate_id.as_str(),
+                    project: current_plan.target.project_id.as_str(),
+                    root: "project-source",
+                };
+                let checkpoint = &inventoried.checkpoints[1];
+                let result = client
+                    .execute_query(
+                        &session,
+                        ExecuteQuery {
+                            scope: format!("instance:{}", client.instance_id()),
+                            query: format!(
+                                "FROM traverse:source-tree-contains START source-tree-snapshot:\"{}\" DIRECTION OUTGOING DEPTH 2 AT VALID {} KNOWN {} PROJECT node_id, depth",
+                                checkpoint.output_sha256,
+                                checkpoint.committed_at_unix_ms,
+                                checkpoint.coordinates.runtime_cursor,
+                            ),
+                            parameters: BTreeMap::new(),
+                            budget: QueryBudget::default(),
+                        },
+                        RequestOptions::read("binary-source-readback", "binary-source-readback")
+                            .unwrap(),
+                    )
+                    .await
+                    .unwrap();
+                assert_eq!(result.known_at_cursor, checkpoint.coordinates.runtime_cursor);
+                for path in ["README.md", "sample.rs"] {
+                    let bytes = serde_json::to_vec(&("rrflow-source-entry-v1", &scope, path))
+                        .unwrap();
+                    let identity = rrd_engine::digest::sha256_hex(&bytes);
+                    assert!(
+                        result.rows.iter().any(|row| {
+                            row.values.get("node_id") == Some(&QueryValue::String(identity.clone()))
+                        }),
+                        "committed Inventory does not reach fixture source {path}"
+                    );
+                }
+                eprintln!("installed inventory query readback verified after restart");
                 std::fs::write(project.join("README.md"), "edit after durable Inventory\n")
                     .unwrap();
                 let preview = client
