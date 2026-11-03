@@ -1392,6 +1392,7 @@ fn bounded_changefeed_follow_wakes_on_a_commit_and_times_out_at_the_same_cursor(
             "query": "FROM record:document AT VALID 100 KNOWN HEAD PROJECT title",
             "parameters": {},
             "after_cursor": 3,
+            "result_identity_version": rrd_core::result_identity::RESULT_IDENTITY_VERSION,
             "budget": {
                 "max_storage_keys": 100,
                 "max_rows": 10,
@@ -1404,6 +1405,20 @@ fn bounded_changefeed_follow_wakes_on_a_commit_and_times_out_at_the_same_cursor(
         None,
         None,
     );
+    let mut old_live = live.clone();
+    old_live["payload"]
+        .as_object_mut()
+        .unwrap()
+        .remove("result_identity_version");
+    old_live["payload"]["wait_timeout_ms"] = json!(0);
+    let (status, refused) = post(
+        &server,
+        "/v1/query/live/poll",
+        &old_live,
+        Some((&session_id, &token)),
+    );
+    assert_eq!(status, 400, "{refused}");
+    assert!(refused.to_string().contains("result identity version"));
     let address = server.address;
     let live_body = serde_json::to_vec(&live).unwrap();
     let live_session = session_id.clone();
@@ -1475,6 +1490,7 @@ fn bounded_changefeed_follow_wakes_on_a_commit_and_times_out_at_the_same_cursor(
             "query": "FROM record:document AT VALID 100 KNOWN HEAD PROJECT title",
             "parameters": {},
             "after_cursor": 4,
+            "result_identity_version": rrd_core::result_identity::RESULT_IDENTITY_VERSION,
             "budget": {
                 "max_storage_keys": 100,
                 "max_rows": 10,
@@ -2127,12 +2143,12 @@ fn data_transaction_atomically_commits_every_public_model_and_replays_after_rest
     for (query, identity, expected) in [
         (
             "FROM series:series AT VALID 100 KNOWN HEAD WHERE series_id = \"latency\" PROJECT observed_at, value",
-            "series:series:latency:100:latency-100",
+            "series:sample:latency-100",
             ("value", "unsigned", json!(17)),
         ),
         (
             "FROM series:series AT VALID 100 KNOWN HEAD WHERE observed_at >= 100 AND series_id != \"other\" PROJECT observed_at",
-            "series:series:latency:100:latency-100",
+            "series:sample:latency-100",
             ("observed_at", "unsigned", json!(100)),
         ),
         (
@@ -2142,7 +2158,7 @@ fn data_transaction_atomically_commits_every_public_model_and_replays_after_rest
         ),
         (
             "FROM traverse:linked START document:alpha DIRECTION OUTGOING DEPTH 3 AT VALID 100 KNOWN HEAD PROJECT node_id, depth, path",
-            "traversal:linked:document:alpha:1:alpha-beta:beta",
+            "traversal:linked:document:alpha:1:alpha-beta:document:beta",
             ("node_id", "string", json!("beta")),
         ),
     ] {
@@ -2207,10 +2223,7 @@ fn data_transaction_atomically_commits_every_public_model_and_replays_after_rest
     let live = payload(&live);
     assert_eq!(live["from_cursor"], 0);
     assert_eq!(live["through_cursor"], 11);
-    assert_eq!(
-        live["added"][0]["identity"],
-        "series:series:latency:100:latency-100"
-    );
+    assert_eq!(live["added"][0]["identity"], "series:sample:latency-100");
     assert!(live["updated"].as_array().unwrap().is_empty());
     assert!(live["removed"].as_array().unwrap().is_empty());
     let ensure_index = envelope(

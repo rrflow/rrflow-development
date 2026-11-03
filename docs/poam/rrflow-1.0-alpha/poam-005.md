@@ -10,6 +10,27 @@ independently.
 
 ## Observed deficiency
 
+Native `RuntimeRef` accepts nonempty UTF-8 kind and ID components without NUL,
+but public `DataReference` uses the narrower lowercase ASCII `CanonicalId` for
+both. Public mutation and anchor operations therefore cannot represent all
+native record references. Query source kinds also require an unquoted word.
+Expanding those boundaries requires one traced contract and generated-client
+change; changing only a formatter does not resolve the mismatch.
+
+The current query grammar also exposes `traverse:` as an explicit graph
+source. The requested relational-first experience needs relationship discovery
+and traversal behind the same transaction and query authority; a separate
+graph-specific query is not evidence of that experience. Its existing temporal
+and adjacency behavior must be traced into a relational-facing replacement
+before that syntax or its tests are removed.
+
+The query/context result identity previously concatenated unrestricted reference
+components with `:`. For example, `(a:b, c)` and `(a, b:c)` both became
+`record:a:b:c`; context's candidate map could then coalesce distinct records.
+Draft [PR 266](https://github.com/rrflow/rrflow-development/pull/266) repairs
+the result projection and invalidates incompatible derived-index selection;
+it does not establish the broader public identifier change or close this item.
+
 Accepted C-03 proves atomic multi-family publication/recovery, and C-04's accepted evidence
 proves authenticated direct semantic-version selection and exact snapshots without normal
 runtime-log reconstruction. Vector search now reads its artifact and quantization catalogues
