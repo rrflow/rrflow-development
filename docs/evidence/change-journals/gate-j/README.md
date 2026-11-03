@@ -9,4 +9,5 @@ linked package evidence.
 
 <!-- rrflow:generated-index:start -->
 - [A comparison lab for RRFlow against other systems](comparison-lab.md) — [`rrflow://rrflow-instance/data/evidence/change-journal/gate-j/comparison-lab`](rrflow://rrflow-instance/data/evidence/change-journal/gate-j/comparison-lab) — active implementation evidence; diagnostic results only, no gate advanced
+- [Testing whether RRFlow helps an agent plan](reasoning-tests.md) — [`rrflow://rrflow-instance/data/evidence/change-journal/gate-j/reasoning-tests`](rrflow://rrflow-instance/data/evidence/change-journal/gate-j/reasoning-tests) — active implementation evidence; no model has been called and no result exists
 <!-- rrflow:generated-index:end -->

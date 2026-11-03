@@ -1,0 +1,188 @@
+{
+  "$defs": {
+    "Digest": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "Id": {
+      "maxLength": 96,
+      "minLength": 1,
+      "pattern": "^[a-z0-9][a-z0-9_.-]*$",
+      "type": "string"
+    },
+    "PlanScore": {
+      "additionalProperties": false,
+      "properties": {
+        "file_precision": {
+          "format": "double",
+          "type": "number"
+        },
+        "file_recall": {
+          "format": "double",
+          "type": "number"
+        },
+        "files_expected": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "files_matched": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "files_named": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "records_cited": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "records_expected": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "solved": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "files_named",
+        "files_matched",
+        "files_expected",
+        "file_recall",
+        "file_precision",
+        "records_cited",
+        "records_expected",
+        "solved"
+      ],
+      "type": "object"
+    },
+    "TaskRunOutcome": {
+      "oneOf": [
+        {
+          "const": "planned",
+          "description": "It replied with a plan, which was graded.",
+          "type": "string"
+        },
+        {
+          "const": "no_plan",
+          "description": "It replied without a readable plan, which counts as not solved.",
+          "type": "string"
+        },
+        {
+          "const": "timed_out",
+          "description": "It hit its time limit, which counts as not solved.",
+          "type": "string"
+        },
+        {
+          "const": "provider_failed",
+          "description": "The provider failed, which counts as not solved and stays visible.",
+          "type": "string"
+        }
+      ]
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "arm": {
+      "$ref": "#/$defs/Id"
+    },
+    "cost_usd": {
+      "format": "double",
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "input_tokens": {
+      "format": "uint64",
+      "minimum": 0,
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "manifest_sha256": {
+      "$ref": "#/$defs/Digest"
+    },
+    "model": {
+      "$ref": "#/$defs/Id"
+    },
+    "outcome": {
+      "$ref": "#/$defs/TaskRunOutcome"
+    },
+    "output_tokens": {
+      "format": "uint64",
+      "minimum": 0,
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "reason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "repetition": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "reply_sha256": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Digest"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The provider's whole output, kept beside the run under this digest."
+    },
+    "schema_version": {
+      "format": "uint16",
+      "maximum": 65535,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "score": {
+      "$ref": "#/$defs/PlanScore"
+    },
+    "seconds": {
+      "format": "double",
+      "type": "number"
+    },
+    "task": {
+      "$ref": "#/$defs/Id"
+    },
+    "turns": {
+      "format": "uint64",
+      "minimum": 0,
+      "type": [
+        "integer",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "schema_version",
+    "manifest_sha256",
+    "task",
+    "arm",
+    "model",
+    "repetition",
+    "outcome",
+    "score",
+    "seconds"
+  ],
+  "title": "TaskRun",
+  "type": "object"
+}

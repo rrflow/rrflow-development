@@ -161,6 +161,36 @@ this same report.
 Change a test deliberately: changing its corpus, workload or quality target changes its
 digest, and runs from before and after cannot be combined.
 
+## Test whether something helps an agent
+
+Vector tests say how fast a system finds nearest vectors. They say nothing about whether it
+helps an agent do real work. `agent-tasks` tests that, with
+[`tasks/rrflow-package-planning.json`](tasks/rrflow-package-planning.json) as its first package.
+
+Each task comes from a merged pull request: the behavior its brief asked for, at the revision it
+started from, with the files it really changed as an answer the agent never sees.
+[`extract_package_tasks.py`](extract_package_tasks.py) builds them. The design is frozen in the
+manifest before any run, and a run from a different design cannot join a report. Runs are paired
+across arms and compared by exact McNemar. An arm with no repository is the floor: if it solves
+tasks, they test what a model remembers.
+
+Nothing runs until a manifest names `models` and a `spend` limit, because those are decisions for
+whoever pays. Then:
+
+```bash
+rrflow-lab tasks-order --manifest eval/lab/tasks/rrflow-package-planning.json
+rrflow-lab tasks-run --manifest FILE --task ID --arm ID --model ID --repetition N   --checkout DIR --empty DIR --out runs/tasks
+rrflow-lab tasks-combine --manifest FILE --in runs/tasks --out report.json
+```
+
+`--checkout` is the task's repository at its `revision`, and `--empty` is an empty directory.
+Real runs use `claude --bare`, which keeps a person's memory and settings out and needs
+`ANTHROPIC_API_KEY`. Pilot on a few tasks before freezing a design.
+
+RRFlow's own arms are declared gaps today, and their reasons say why: RRFlow cannot yet return a
+repository's content to an agent. The
+[package journal](../../docs/evidence/change-journals/gate-j/reasoning-tests.md) has the details.
+
 ## Reading a result
 
 The first measured results and their limits are in the

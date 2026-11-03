@@ -11,6 +11,7 @@ use rrflow_eval::lab::manifest::{
 };
 use rrflow_eval::lab::report::{LabReport, SystemStatus, TestIdentity, VerdictOutcome};
 use rrflow_eval::lab::sources::SourceList;
+use rrflow_eval::lab::tasks::{TaskComparisonManifest, TaskRun};
 use rrflow_eval::lab::{canonical_json, sha256_hex, Result};
 use rrflow_eval::storage::{schema, Id};
 use serde_json::{json, Value};
@@ -824,6 +825,11 @@ fn generated_schemas_match_the_checked_in_projections() {
         ("lab-report-v1.json", schema::<LabReport>()),
         ("lab-custom-protocol-v1.json", schema::<CustomProtocol>()),
         ("lab-sources-v1.json", schema::<SourceList>()),
+        (
+            "lab-task-manifest-v1.json",
+            schema::<TaskComparisonManifest>(),
+        ),
+        ("lab-task-run-v1.json", schema::<TaskRun>()),
     ] {
         let expected = canonical_json(&generated).unwrap();
         let actual = std::fs::read(directory.join(name))

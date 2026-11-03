@@ -1,13 +1,19 @@
 //! Run and combine comparison-lab tests. See eval/lab/README.md.
 use rrflow_eval::lab::adapter::connect;
 use rrflow_eval::lab::custom::CustomProtocol;
-use rrflow_eval::lab::driver::{combine, empty_run, prepare_inputs, run_system, SystemRun};
+use rrflow_eval::lab::driver::{
+    combine, empty_run, now_unix_ms, prepare_inputs, run_system, SystemRun,
+};
 use rrflow_eval::lab::import::{import_vectordbbench, MAX_IMPORT_BYTES};
 use rrflow_eval::lab::manifest::{Availability, VectorComparisonManifest};
+use rrflow_eval::lab::provider::ClaudeCode;
 use rrflow_eval::lab::report::{ArtifactReference, LabReport, SystemStatus};
 use rrflow_eval::lab::sources::SourceList;
+use rrflow_eval::lab::tasks::{
+    combine_task_runs, run_order, run_task, RunInputs, RunKey, TaskComparisonManifest, TaskRun,
+};
 use rrflow_eval::lab::{canonical_json, sha256_hex, Result};
-use rrflow_eval::storage::{schema, Digest};
+use rrflow_eval::storage::{schema, Digest, Id};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -20,6 +26,10 @@ const USAGE: &str = "usage:
   rrflow-lab combine --manifest FILE --in DIR --out FILE
   rrflow-lab import --from vectordbbench --result FILE --harness-version VERSION --recall-target NUMBER --out FILE
   rrflow-lab sources --file FILE
+  rrflow-lab tasks-validate --manifest FILE
+  rrflow-lab tasks-order --manifest FILE
+  rrflow-lab tasks-run --manifest FILE --task ID --arm ID --model ID --repetition N --checkout DIR --empty DIR --out DIR
+  rrflow-lab tasks-combine --manifest FILE --in DIR --out FILE
   rrflow-lab schemas --out DIR";
 
 struct Arguments {
@@ -235,6 +245,98 @@ fn check_sources(arguments: &Arguments) -> Result<ExitCode> {
     Ok(ExitCode::SUCCESS)
 }
 
+fn load_tasks(path: &str) -> Result<TaskComparisonManifest> {
+    let bytes = std::fs::read(path).map_err(|error| format!("{path}: {error}"))?;
+    let manifest: TaskComparisonManifest =
+        serde_json::from_slice(&bytes).map_err(|error| format!("{path}: {error}"))?;
+    manifest.validate()?;
+    Ok(manifest)
+}
+
+fn task_id(text: &str) -> Result<Id> {
+    Id::try_from(text.to_string())
+}
+
+fn saved_task_runs(directory: &Path) -> Result<Vec<(PathBuf, TaskRun)>> {
+    let mut runs = Vec::new();
+    if !directory.exists() {
+        return Ok(runs);
+    }
+    for entry in std::fs::read_dir(directory).map_err(|error| error.to_string())? {
+        let path = entry.map_err(|error| error.to_string())?.path();
+        if path.to_string_lossy().ends_with(".run.json") {
+            let bytes = std::fs::read(&path).map_err(|error| error.to_string())?;
+            let run: TaskRun = serde_json::from_slice(&bytes)
+                .map_err(|error| format!("{}: {error}", path.display()))?;
+            runs.push((path, run));
+        }
+    }
+    runs.sort_by(|left, right| left.0.cmp(&right.0));
+    Ok(runs)
+}
+
+fn run_one_task(arguments: &Arguments) -> Result<ExitCode> {
+    let manifest = load_tasks(arguments.required("manifest")?)?;
+    let key = RunKey {
+        task: task_id(arguments.required("task")?)?,
+        arm: task_id(arguments.required("arm")?)?,
+        model: task_id(arguments.required("model")?)?,
+        repetition: arguments
+            .required("repetition")?
+            .parse()
+            .map_err(|error| format!("repetition: {error}"))?,
+    };
+    let directory = PathBuf::from(arguments.required("out")?);
+    std::fs::create_dir_all(&directory).map_err(|error| error.to_string())?;
+    let name = format!(
+        "{}.{}.{}.{}",
+        key.task.as_str(),
+        key.arm.as_str(),
+        key.model.as_str(),
+        key.repetition
+    );
+    let run_path = directory.join(format!("{name}.run.json"));
+    if run_path.exists() {
+        eprintln!("{name}: already measured");
+        return Ok(ExitCode::SUCCESS);
+    }
+    let spent_usd = saved_task_runs(&directory)?
+        .iter()
+        .filter_map(|(_, run)| run.cost_usd)
+        .sum();
+    let (run, raw) = run_task(
+        &manifest,
+        &key,
+        &RunInputs {
+            provider: &ClaudeCode,
+            checkout: Path::new(arguments.required("checkout")?),
+            empty_directory: Path::new(arguments.required("empty")?),
+            spent_usd,
+        },
+    )?;
+    publish(&directory.join(format!("{name}.reply.json")), &raw)?;
+    publish(&run_path, &canonical_json(&run)?)?;
+    eprintln!("{name}: {:?}, solved {}", run.outcome, run.score.solved);
+    Ok(ExitCode::SUCCESS)
+}
+
+fn combine_tasks(arguments: &Arguments) -> Result<ExitCode> {
+    let manifest = load_tasks(arguments.required("manifest")?)?;
+    let directory = PathBuf::from(arguments.required("in")?);
+    let mut runs = Vec::new();
+    let mut artifacts = Vec::new();
+    for (path, run) in saved_task_runs(&directory)? {
+        artifacts.push(artifact(&path, "one graded task run")?);
+        runs.push(run);
+    }
+    let report = combine_task_runs(&manifest, &runs, artifacts, now_unix_ms())?;
+    publish(
+        Path::new(arguments.required("out")?),
+        &canonical_json(&report)?,
+    )?;
+    Ok(ExitCode::SUCCESS)
+}
+
 fn write_schemas(arguments: &Arguments) -> Result<ExitCode> {
     let directory = PathBuf::from(arguments.required("out")?);
     for (name, value) in [
@@ -243,6 +345,11 @@ fn write_schemas(arguments: &Arguments) -> Result<ExitCode> {
         ("lab-report-v1.json", schema::<LabReport>()),
         ("lab-custom-protocol-v1.json", schema::<CustomProtocol>()),
         ("lab-sources-v1.json", schema::<SourceList>()),
+        (
+            "lab-task-manifest-v1.json",
+            schema::<TaskComparisonManifest>(),
+        ),
+        ("lab-task-run-v1.json", schema::<TaskRun>()),
     ] {
         std::fs::write(directory.join(name), canonical_json(&value)?)
             .map_err(|error| error.to_string())?;
@@ -274,6 +381,23 @@ fn dispatch(arguments: &[String]) -> Result<ExitCode> {
         "combine" => combine_runs(&parsed),
         "import" => import_results(&parsed),
         "sources" => check_sources(&parsed),
+        "tasks-validate" => {
+            let manifest = load_tasks(parsed.required("manifest")?)?;
+            println!("{} tasks are valid", manifest.tasks.len());
+            Ok(ExitCode::SUCCESS)
+        }
+        "tasks-order" => {
+            let manifest = load_tasks(parsed.required("manifest")?)?;
+            for key in run_order(&manifest) {
+                println!(
+                    "{}",
+                    serde_json::to_string(&key).map_err(|error| error.to_string())?
+                );
+            }
+            Ok(ExitCode::SUCCESS)
+        }
+        "tasks-run" => run_one_task(&parsed),
+        "tasks-combine" => combine_tasks(&parsed),
         "schemas" => write_schemas(&parsed),
         _ => Err(USAGE.into()),
     }

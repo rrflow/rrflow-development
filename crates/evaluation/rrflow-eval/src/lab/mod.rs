@@ -10,11 +10,13 @@ pub mod driver;
 pub mod import;
 pub mod manifest;
 pub mod milvus;
+pub mod provider;
 pub mod qdrant;
 pub mod report;
 pub mod rrflow;
 pub mod sources;
 pub mod surrealdb;
+pub mod tasks;
 
 use serde::Serialize;
 use sha2::{Digest as _, Sha256};
