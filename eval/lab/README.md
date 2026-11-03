@@ -22,7 +22,7 @@ measurements, declared questions and their answers, and its limits.
 | Every system faces the same data. | The corpus uses arithmetic that IEEE 754 fixes exactly, and its digests match across x86 and ARM. `combine` refuses runs with different inputs or a different manifest. |
 | Speed counts only at matched quality. | Queries per second at the target recall exists only for error-free cases that met the target declared before running. A system that never met it has no value, and a reader can see that. |
 | Failures stay visible. | A system that fails, could not run, or lacks a capability appears with its reason. It cannot have results, and it cannot read as a pass. |
-| Each system runs alone. | `run_system.sh` starts one system fresh on the same cores and disk, measures it, then removes it. It refuses to start if a stale server is answering on that port. |
+| Each system runs alone. | `run_system.sh` starts one system fresh on the same cores and disk, measures it, then removes it. It refuses to start if a stale server is answering on that port. It also keeps `SYSTEM.host.csv` beside the run, and warns if the GPU was busy. Those samples can show that other work was running, but they cannot prove a host was quiet. |
 | Versions are pinned. | Images are pinned by digest in the manifest, and each run records what the server itself reports. |
 | Secrets stay out of files. | Manifests name environment variables only, and unknown fields are rejected, so a report can be published with its manifest. |
 
@@ -47,6 +47,11 @@ drive the load. Use your host's topology. `TMPDIR` must be on the disk under
 test, since a RAM-backed `/tmp` would flatter whatever stores its data there.
 Keep the run directory: it holds every latency and recall sample, and the report
 binds those files by digest.
+
+Run on a host with nothing else working. On a GB10 the CPU and GPU share memory and
+power, and a GPU job roughly halved every system's search speed in one campaign
+without showing as CPU load. Repeat a run before trusting a surprising number: a
+single run cannot tell a slow system from a busy host.
 
 ## Add a system
 

@@ -25,7 +25,11 @@ mkdir -p "$work/data"
 chmod 0777 "$work/data"
 container=
 background=
+sampler=
 cleanup() {
+  if [ -n "$sampler" ]; then
+    kill "$sampler" 2> /dev/null || true
+  fi
   if [ -n "$container" ]; then
     docker logs --tail 2000 "$container" > "$run_directory/$system.server.log" 2>&1 || true
     docker rm -f -v "$container" > /dev/null 2>&1 || true
@@ -141,7 +145,19 @@ status=0
 client_cpuset=${RRFLOW_LAB_CLIENT_CPUSET:-}
 client=()
 [ -n "$client_cpuset" ] && client=(taskset -c "$client_cpuset")
+host_samples=$run_directory/$system.host.csv
+"${client[@]}" "$here/sample_host.sh" > "$host_samples" &
+sampler=$!
 (cd "$repository" && "${client[@]}" "$RRFLOW_LAB_BIN" run --manifest "$manifest" --system "$system" \
   --out "$run_directory" --note "server_cpuset=${cpuset:-unpinned}" \
   --note "client_cpuset=${client_cpuset:-unpinned}") || status=$?
+# Another workload can slow a run without touching its cores, so a busy GPU is reported.
+awk -F, 'NR > 1 && $4 != "" {
+    samples++
+    if ($4 > 5) busy++
+    if ($4 > peak) peak = $4
+  }
+  END {
+    if (busy) printf "warning: GPU busy in %d of %d host samples, peak %d%%; other work may have slowed this run\n", busy, samples, peak
+  }' "$host_samples" >&2
 exit "$status"
