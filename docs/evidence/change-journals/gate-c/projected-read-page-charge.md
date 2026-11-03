@@ -86,11 +86,11 @@ Real runs on `clyffy-01`, one system at a time, on an engine with SHA-256 prefix
   limit, which this package does not touch:
   `ConfigurationLimit("runtime versioned read exceeded key budget 1000000: observed 1000001")`.
   [POAM-054](https://github.com/rrflow/rrflow-development/pull/253) in #253 records it.
-- **100,000 points, `runs/vector-100k-1`, report SHA-256
-  `5cd3d8b0775456dfb04aad1e94e301147babf7116bb589a579cffedb00aff83d`.** These are RRFlow's
-  first answers at this size. Exact search returned recall 1.0 at a p50 of 10,953 ms plain
-  and 10,699 ms filtered. TurboQuant returned recall 0.99 at rerank-40 with a p50 of 472 ms.
-  #253's journal holds the comparison and its limits.
+- **100,000 points, on a quiet host, `runs/vector-100k-3`, report SHA-256
+  `be7a4895105faf0d1990c54c7841925853b451857bcd49ba7cb504fa197e9583`.** These are RRFlow's
+  first answers at this size. Exact search returned recall 1.0 at a p50 of 7,470 ms plain and
+  7,250 ms filtered. TurboQuant returned recall 0.99 at rerank-40 with a p50 of 313 ms, and
+  318 ms on a second run. #253's journal holds the comparison and its limits.
 
 ## Surfaced failures and corrections
 
@@ -107,6 +107,11 @@ Real runs on `clyffy-01`, one system at a time, on an engine with SHA-256 prefix
   binary, so later targets had not run. The results above use `--no-fail-fast`.
 - **The fix did not reach 200,000 points.** It removes the ceiling it set out to remove, and
   the next limit is a public contract constant, which is the owner's decision.
+- **The first 100,000-point numbers were wrong, and were reported.** A run in
+  `runs/vector-100k-1` gave 10,953 ms exact and 472 ms TurboQuant, and this journal first
+  recorded them. That run fell in a window when memory history shows another GPU workload on
+  the same host, and every comparator came out about half as fast as on a quiet host. It is
+  not used. The fix itself was not in doubt: it changes the charge, not what a search does.
 
 ## Checks not run and remaining errors
 
@@ -114,8 +119,10 @@ Real runs on `clyffy-01`, one system at a time, on an engine with SHA-256 prefix
   locally, because no contract or generated surface changed.
 - Whether keeping pages helps at 8 clients is unmeasured.
 - Ingest was not compared under control. The 200,000-point run ingested 462 points per
-  second here and 472 to 571 on an older revision, in separate campaigns. This package
-  changes only the read path, and the difference is unexplained.
+  second, in the same busy window, against 472 to 571 on an older revision. On a quiet host
+  this build ingests 100,000 points at 633 to 641 per second. The starting revision has not
+  been measured at that size, so there is no before-and-after. This package changes only the
+  read path.
 - POAM-035, C-07 and POAM-054 stay open. Exact search and TurboQuant builds still read every
   stored vector in one read.
 
