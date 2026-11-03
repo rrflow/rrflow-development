@@ -122,9 +122,9 @@ control is proof of those downstream capabilities or full H-06 acceptance.
 Newer RRFlow installation-plan contract v2 requires an explicit identity from
 `rrflow install identity`, retained across preview regeneration and supplied
 with `install plan --identity`. The
-[2026-11-01 pin receipt](../../evidence/change-journals/gate-h/h-06-connectome-chain-pin.md)
+[2026-11-03 pin receipt](../../evidence/change-journals/gate-h/h-06-connectome-teal-pin.md)
 moves the pinned workbench to Connectome
-`c1cbff203ecee89013878609d11aed04e89d0e71`. That revision is bound to engine/SDK
+`95ba9975c506886f79984ad956e5dba557369f93`. That revision is bound to engine/SDK
 `15f36a8758e32b33c930a20da836def3e5cc3207`. Its native preview allocates that
 identity, serve sends it back, and its real-engine process tests pass against
 that engine. That is component evidence, not qualification of the installation
@@ -499,7 +499,7 @@ unknown. Changing projects isolates caches, sessions and in-flight results;
 concurrent engines never imply context sharing.
 
 The current pinned workbench binds engine/SDK `15f36a8758e32b33c930a20da836def3e5cc3207`
-([2026-11-01 pin receipt](../../evidence/change-journals/gate-h/h-06-connectome-chain-pin.md)).
+([2026-11-03 pin receipt](../../evidence/change-journals/gate-h/h-06-connectome-teal-pin.md)).
 H-06 must keep engine assets, SDK, installation adapter and public-control
 consumers updated together and qualify the resulting exact pair. An existing UI
 data lens does not prove this new user journey or compatibility with a later

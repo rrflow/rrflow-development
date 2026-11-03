@@ -39,6 +39,9 @@ The [2026-11-01 pin](../../evidence/change-journals/gate-h/h-06-connectome-chain
 does not contain it either. `8a9eb5e5` is not an ancestor of Connectome
 `c1cbff203ecee89013878609d11aed04e89d0e71`, and that revision has no
 knowledge-tree editor or native knowledge bridge.
+The [2026-11-03 pin](../../evidence/change-journals/gate-h/h-06-connectome-teal-pin.md)
+does not contain it either: `8a9eb5e5` is not an ancestor of Connectome
+`95ba9975c506886f79984ad956e5dba557369f93`.
 
 ### Nomen and first hosted profile
 
