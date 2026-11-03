@@ -21,6 +21,7 @@ pub use rrd_contract::{
 };
 use std::time::Instant;
 
+mod discovery;
 mod inventory;
 #[cfg(target_os = "linux")]
 mod linux_supervisor;
