@@ -95,6 +95,7 @@ pub enum LogicalOperator {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LogicalPlan {
     pub contract_version: u16,
+    pub result_identity_version: u16,
     pub read: ReadStamp,
     pub schema_revision: u64,
     pub source_cursor: u64,
@@ -295,6 +296,10 @@ pub(crate) fn prepare_binding(
             .values()
             .filter(|entry| entry.definition.source == query.source)
             .filter(|entry| entry.maintenance.is_some())
+            .filter(|entry| {
+                entry.result_identity_version
+                    == Some(rrd_core::result_identity::RESULT_IDENTITY_VERSION)
+            })
             .filter_map(|entry| {
                 let matched_prefix = entry
                     .definition
@@ -422,6 +427,7 @@ pub fn plan(bound: &BoundQuery) -> Result<PhysicalPlan> {
     }
     let logical = LogicalPlan {
         contract_version: bound.contract_version,
+        result_identity_version: rrd_core::result_identity::RESULT_IDENTITY_VERSION,
         read: bound.read.clone(),
         schema_revision: bound.schema_revision,
         source_cursor: bound.source_cursor,
@@ -916,6 +922,13 @@ impl PhysicalPlan {
                 "unsupported query contract version {}",
                 self.logical.contract_version
             )));
+        }
+        if self.logical.result_identity_version
+            != rrd_core::result_identity::RESULT_IDENTITY_VERSION
+        {
+            return Err(Error::Integrity(
+                "physical plan has an unsupported result identity version".into(),
+            ));
         }
         self.logical
             .read
