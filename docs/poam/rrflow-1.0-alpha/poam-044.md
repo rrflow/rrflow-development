@@ -37,6 +37,14 @@ Connectome's real-engine process tests (`rrd::client::process::language` and
 
 The cited code is unchanged at `development/main` `618269b4`.
 
+At main `ed3027b79e41dfcdf5b27e57f07346f11f6da347`,
+`rrd-query/src/syntax.rs` supports RRFlow's bounded relational grammar with
+sources, equijoins, filters and projection, and its transaction program uses
+bound `MUTATE` operations. This is not the PostgreSQL SQL/client profile or
+a qualified SQLite compatibility surface. H-08 owns PostgreSQL semantics;
+H-12 must define and qualify the requested SQLite SQL, API/ABI and file
+surfaces independently. These are distinct from the diagnostic defects above.
+
 ## Impact
 
 - An editor cannot tell an operator that a query is invalid as they type
@@ -48,7 +56,7 @@ The cited code is unchanged at `development/main` `618269b4`.
 
 ## Owning gates
 
-E-05, H-03, H-04
+E-05, H-03, H-04, H-08, H-12
 
 E-05 owns explain plans; an explanation is produced without executing the
 query. H-03 owns live-query evaluation, including validation when a live query

@@ -15,6 +15,14 @@ either independently.
 | [ ] | F-03 | Implement graph expansion, BM25 candidate generation, HNSW candidate generation, and `math::rrf()` as native physical operators that exchange stamped Arrow batches with DataFusion. | `rrd-query`, `rrd-vector` | Mixed query tests prove one stamp, deterministic ordering, exact reranking, and no external database round trip. |
 | [ ] | F-04 | Enforce query memory, spill, elapsed-time, scanned-key, graph-step, candidate, and result-byte budgets across native and DataFusion operators. | `rrd-query`, `rrd-engine` | Each limit has a deterministic truncation or denial fixture with measured resource evidence. |
 | [ ] | F-05 | Add read-stamp/query/projection caches with byte accounting and cursor/schema invalidation. | `rrd-engine`, `rrd-query` | Repeated-query benchmark shows bounded reuse; mutation and schema tests prove stale batches are never returned. |
+| [ ] | F-06 | Implement configurable engine-owned background compaction of selected cold history, audit and analytical data into compressed Parquet row groups, with the native WAL and transaction authority unchanged. Decide and document the canonical versus derived status of each cold artifact before reclaiming its source; preserve table/record identity, versions, tombstones, provenance, authorization and read stamps. | `rrd-lsm`, `rrd-store`, `rrd-query`, `rrd-engine` | Independent hot/cold and retained-stamp results agree across update/delete, interruption, full disk, corruption, concurrent reads, restart and reclamation. Durable publication never loses an acknowledged write or exposes an incomplete generation. Show bounded background work and actual rows/pages/bytes read, decoded and compressed; measure selective projection/predicate pruning against an exact unpruned oracle. Bounded export alone does not pass. |
+
+F-06 is a target, not an assertion that Parquet currently backs rrflowKV.
+The current v6 segment path and its accepted tests remain authoritative until
+an exact replacement or archival design proves its identity, snapshot,
+recovery and reclamation semantics. Evaluate native Parquet-compatible writing
+against the existing locked Rust implementation and the format specification;
+do not equate columnar files with WAL durability or automatic zero-copy.
 
 ## Consumption by the real-project build
 
@@ -29,4 +37,5 @@ prerequisite and measured allocation/batch-lifetime oracle.
 ## Exit condition
 
 Gate F exits only when DataFusion consumes streamed authoritative access paths
-instead of hiding an eager whole-estate materialization.
+instead of hiding an eager whole-estate materialization, and F-06's Parquet
+cold-storage publication, query and recovery cases pass.
