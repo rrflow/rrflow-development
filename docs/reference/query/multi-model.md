@@ -35,7 +35,34 @@ Native references permit more characters than the public `DataReference`
 contract and query source-kind grammar currently accept; see
 [POAM-005](../../poam/rrflow-1.0-alpha/poam-005.md).
 
-rrflowQL currently accepts:
+rrflowQL is the relational query surface over rrflowDB records and their
+relationships. A record identity is its table/kind and ID within its estate.
+Graph-shaped views and adjacency access paths are derived from relationships;
+they are not a separate database or an extra record-identity authority.
+Project files and an existing project PostgreSQL database are distinct
+potential source bindings: the latter requires an explicitly configured and
+authorized [knowledge-path adapter](../data/knowledge-connectors.md), and is
+not implemented merely by parsing a query. Separately, native rrflowDB's
+[PostgreSQL compatibility profile](../protocol/postgresql.md) remains target
+work, not a claim that this query form speaks PostgreSQL.
+
+The current bounded native query supports a SQL-like `SELECT` projection
+before `FROM`, including a join to a relationship source:
+
+```text
+SELECT left.id, right.to_id
+FROM record:document JOIN relation:depends_on ON id = from_id
+AT VALID $when KNOWN HEAD WHERE left.status = $status
+```
+
+This form lowers to the same query, read stamp, planner, execution budgets and
+canonical representation as the existing `FROM ... PROJECT` form. It requires
+the native source and temporal syntax shown; it is not PostgreSQL SQL or a
+claim of PostgreSQL compatibility. Unsupported SQL fails rather than being
+silently approximated. The `SELECT` form accepts relational sources and does
+not expose the traversal source as a table.
+
+The current established source families are:
 
 - `record:<kind>` for bitemporal records;
 - `relation:<kind>` for directed typed relations;

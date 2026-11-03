@@ -25,7 +25,7 @@ background with visible progress; an unanswered optional provider question
 must not stop local inventory. Idle/soak work uses configurable foreground
 resource ceilings and must pause or yield when those ceilings require it.
 
-The first joined proof may run without a model or vector provider: lexical and graph retrieval with source citations must work, and unavailable vector/inference capability is reported. The complete alpha objective additionally requires vector access, configurable reasoning and other named gates; a lexical slice cannot close it. Knowledge-path connectors, LFG, SWAG and provider capture are explicitly configured integrations; the default installed estate cannot depend on them. Parquet is analytical interchange, not the canonical commit log or a prerequisite for a small local project.
+The first joined proof may run without a model or vector provider: lexical and graph retrieval with source citations must work, and unavailable vector/inference capability is reported. The complete alpha objective additionally requires vector access, configurable reasoning and other named gates; a lexical slice cannot close it. Knowledge-path connectors, LFG, SWAG and provider capture are explicitly configured integrations; the default installed estate cannot depend on them. Parquet supports analytical exchange and the requested future cold-storage lifecycle, not the WAL or a prerequisite for a small local project.
 
 The existing installed-process driver is
 `crates/adapters/rrflow-cli/tests/installed_lifecycle.rs` test
@@ -57,7 +57,7 @@ workloads after the installed project loop works.
 | Inventory | `attunement/inventory.rs`, `inventory/records.rs`, `publication.rs`, and `reuse.rs` bind proposal, source recheck, publication groups, lease and head. The final transaction links job checkpoint, receipt and head to the runtime read stamp. | Reuse the same canonical runtime and transaction authority; prove partial groups are not presented as a complete head. Make large-snapshot reads bounded rather than reconstructing the entire proposal. |
 | Parse | Main's `engine/attunement.rs` executes Connect and Inventory and returns `phase-unavailable` for other phases. Draft #241 adds `rrd-attunement/src/parse.rs` and `worker.rs`, a selected policy, bound source reading, response validation, Windows/Linux child-containment foundations and a Windows pipe experiment. The Windows pipe experiment has an unresolved concurrent blanket-inheritance risk and no integrated deadline or executable admission. It supplies neither committed span publication nor installed Parse execution. `records::load_for_parse` currently reconstructs the whole Inventory proposal with a size bound. | Complete #241 or carry its characterized behavior into the adaptive capability contract. Do not activate until native worker admission, source/lease recheck, transaction publication, replay and the real installed test pass. |
 | Query and prompt context | `engine/query.rs`, `engine/context.rs`, `engine/retrieval.rs`, `engine/vector/search.rs`, and `rrd-query` contain real query/retrieval components. The draft `parse_source_is_bound_to_the_committed_inventory_after_reopen` traverses the committed Inventory relation after reopening; it does not publish parsed spans. `context.rs` currently fixes RRF constant and seed/text/vector/graph weights in code. | Read the same persisted source/span identities through scoped rrflowQL and context, then make ranking/graph selection a versioned bounded policy with effective values and origins visible. Check actual D-05/E/F prerequisite evidence before claiming access paths qualify. |
-| Parquet | `engine/query_export.rs` rejects truncated results and currently bounds the export at 1,024 rows. `rrd-query/tests/parquet_export.rs` characterizes typed bounded files. | Keep the bounded export honest. D-06/F own larger streaming, import and external interoperability; none is proof of native WAL or project indexing. |
+| Parquet | `engine/query_export.rs` rejects truncated results and currently bounds the export at 1,024 rows. `rrd-query/tests/parquet_export.rs` characterizes typed bounded files. | D-06 owns exchange/import; F-06 owns the missing background cold-storage lifecycle. Neither bounded export nor a file alone proves WAL durability or project indexing. |
 | UX and integrations | The pinned Connectome's `src-tauri/src/rrd/client.rs` and `estate.rs` contain client/preview paths; static phase declarations in `src/rrflow/attunement.ts` do not prove a live screen. The pinned UI has not been fully qualified for this journey. | Audit the exact pin and wire existing/public generated operations to engine state. Add client-facing status only where the authoritative operation exists; no UI-owned lifecycle or plan. |
 
 ## Source and effect model
@@ -313,8 +313,9 @@ then add configured vector/embedding and LFG/SWAG through the same engine
 contract. rrflowKV durable cache and prompt-local context are distinct
 lifetimes under one authority. Connectome reads those public operations and
 displays source, progress, configuration and audit records; it does not create
-the job or plan. Parquet remains the existing bounded analytical export until
-its separate streaming/import evidence is met. Knowledge paths to local data,
+the job or plan. Current Parquet behavior remains bounded analytical export;
+F-06 separately requires background cold storage and D-06 exchange/import.
+Knowledge paths to local data,
 Qdrant, SurrealDB and services are explicitly configured adapters, not implicit
 storage backends or proof of competitive performance.
 
@@ -341,7 +342,7 @@ The project journey after the first source-to-query proof is still required:
 | Connect LFG and SWAG | Apply `docs/reference/inference/lfg-swag.md` at engine contracts, exposing availability, chosen policy, budgets and evidence. A mock or UI toggle is not a connected model; unavailable integrations stay visible as such. |
 | Attach knowledge paths | Local folders and service connectors start as discovered, inactive candidates. Preview source boundary, permissions, data movement and removal behavior; index only after authorization. Prove source-specific identity, revoke/delete, restart and no implicit replacement of rrflowDB. Qdrant/SurrealDB ingestion or migration is separately qualified. |
 | Observe and optimize | Record durable job/effect/memory receipts plus bounded metrics for inventory, source generation, retrieval and worker failure. Freeze corpus, judgments, hardware, baseline, thresholds and seeds before comparing recall, freshness, latency, memory or competitors. Sampled traces aid diagnosis and cannot stand in for audit. |
-| Extend native rrflowDB | Keep transaction/WAL and semantic authority in RRFlow; map researched DuckDB/ClickHouse techniques to Rust query/storage owners with provenance and tests, not a renamed external runtime. PostgreSQL compatibility, Parquet streaming/import, ANN/TurboQuant accuracy and platform qualification keep their own gates. |
+| Extend native rrflowDB | Keep transaction/WAL and semantic authority in RRFlow; map researched DuckDB/ClickHouse techniques to Rust query/storage owners with provenance and tests, not a renamed external runtime. PostgreSQL and SQLite compatibility, Parquet cold storage and streaming/import, ANN/TurboQuant accuracy and platform qualification keep their own gates. |
 
 ### Embedded database, columnar compaction and fast routing direction
 

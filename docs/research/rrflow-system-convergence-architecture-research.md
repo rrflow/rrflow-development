@@ -8,6 +8,13 @@
 **Scope:** the current RRFlow repository, the path from rrflowMX through rrflowKV and Arrow/DataFusion, native graph/lexical/vector access, deterministic project-tree inventory, installation/attunement, provider-neutral agent context, explicit automation, external project data adapters, and production observability/diagnostic/fault evidence
 **Assumptions:** one RRFlow instance per project/environment; `RrdEngine` is the sole semantic, authorization, and mutation authority; version remains `1.0.0`; current code is inventory until the roadmap's behavioral evidence passes; the repository owner reports separate source-use rights for SurrealDB and Qdrant, whose legal scope is not adjudicated by this technical record
 
+This is dated research, not a live implementation inventory or a release
+order. Its original snapshot and source observations remain useful history;
+current direction and status are owned by the [roadmap](../roadmap/rrflow-1.0.md)
+and [indexing implementation plan](../roadmap/rrflow-1.0/project-indexing-execution-plan.md).
+In particular, its earlier fixed-phase and full-snapshot assumptions are not
+requirements for every request or effect.
+
 ## Direct answer
 
 The repository is not a start-over. It contains substantial WAL, MVCC,
@@ -23,8 +30,9 @@ reconstruction. The remaining hot-path gaps are that graph, lexical, and
 vector serving still rebuild broad in-memory projections; query execution
 eagerly materializes `Vec<QueryRow>` before Arrow; DataFusion's provider wraps
 that materialization instead of streaming rrflowKV pages; live query
-evaluation reruns two snapshots; and installation/attunement has contracts but
-no persisted executor.
+evaluation reruns two snapshots. At the research baseline, installation and
+attunement had contracts but no persisted executor; later main added persisted
+jobs and Connect/Inventory execution while leaving other executors unavailable.
 
 The correct convergence target is a hybrid storage engine, not a generic
 row-only LSM and not “Arrow everywhere”:
@@ -46,19 +54,21 @@ row-only LSM and not “Arrow everywhere”:
 5. HNSW and quantization are replaceable projections over exact canonical
    vectors. Approximate candidates are filtered and exactly reranked; exact
    search remains the oracle and fallback.
-6. LFG or any other model adapter receives a bounded, authorized route packet
-   and may only select a recipe, propose a branch, or request narrower context.
-   It cannot choose raw storage keys, physical indexes, authorization, or
-   mutations.
+6. LFG or another model adapter receives bounded, authorized inputs and may
+   propose decisions supported by the versioned engine contract. The current
+   three proposal types are an implementation baseline, not an exhaustive
+   permanent vocabulary. The adapter cannot choose raw storage keys, physical
+   indexes, authorization, or mutations.
 7. PostgreSQL, Turso, Dragonfly, SQL stores, and project databases are
    discovered as governed external sources/adapters. They are never selected
    implicitly as rrflowDB persistence and never become a parallel RRFlow
    authority.
-8. Project attunement starts by committing one deterministic, bounded tree
-   snapshot. Filesystem metadata and eligible content enter through an
-   engine-authorized read plan; pure attunement code proposes normalized
-   records; only `RrdEngine` commits them. Parsing, graph/index construction,
-   skills, routines, and model context consume that exact snapshot digest.
+8. Project discovery is adaptive. For persisted source facts or reproducible
+   effects, filesystem observations enter through an engine-authorized read
+   plan and `RrdEngine` commits validated records with the relevant source
+   identity. An effect whose complete dependency boundary is narrower does not
+   require an unrelated full-project snapshot; a whole-project completeness
+   claim does. Recheck dependencies and replan safely after relevant edits.
 9. One causal operation graph follows work across ingress, authorization,
    storage, native indexes, Arrow/DataFusion, inference, attunement, routines,
    and delivery. Durable RRFlow evidence and process-local/exported telemetry
@@ -88,8 +98,9 @@ The researched dependency spine is:
    paths in E;
 6. stream stamped rrflowKV batches into native Arrow operators and DataFusion
    with honest pushdown and one resource budget in F;
-7. run D-05's normalize-through-verify attunement phases against those accepted
-   C/E/F paths, then close the remaining deployment portions of D;
+7. integrate the D-05 capabilities selected for each authorized project or
+   request against the accepted C/E/F paths, then close the remaining
+   deployment portions of D; this is not a mandatory phase sequence;
 8. import and read back the deterministic knowledge package through those
    persisted attunement paths;
 9. connect LFG, dynamic context, feedback, public delivery, and Connectome in
@@ -613,6 +624,10 @@ renamed.
 
 ## Current-code gap matrix
 
+The historical matrix below reflects the research baseline, not a live status
+source. In particular, its original attunement row was superseded by the
+[current indexing implementation plan](../roadmap/rrflow-1.0/project-indexing-execution-plan.md).
+
 | Claim | Current evidence | Missing proof | Roadmap owner |
 |---|---|---|---|
 | rrflowKV is persistent | `rrd-lsm` has WAL, MVCC versions, manifest/CURRENT, immutable segments, recovery, snapshots, compaction, and failure injection | one final format, no earlier-format readers, transaction conflicts, hybrid column pages, crash matrix | C-01..C-07 |
@@ -626,7 +641,7 @@ renamed.
 | production diagnostics are reproducible | selected binaries install Rust `tracing` subscribers; rrflowKV and DataFusion expose scattered local counters | optimized diagnostic profile with release-semantic parity; build identity; closed metric instruments/attributes; latency protocol; correlated log/trace/metric export; overhead/cardinality/self-telemetry limits; sanitized capture bundle; deterministic fault and profiler lanes | C-06/C-07, F-04, H-05, J-02, J-04, J-05 |
 | dynamic context works | engine context/retrieval functions and RRF helpers exist | planner-selected eligible avenues with selected/skipped evidence, pure RRF, versioned feedback | H-01, H-02 |
 | live delivery works | durable subscriptions and WebSocket delivery exist | commit-impact predicate deltas; current semantic live query reruns two snapshots | H-03 |
-| install/attunement works | strict B-01 plan/job/checkpoint contracts and the canonical eleven phases exist | installer, persisted engine executor, deterministic project-tree snapshot/change-set, pure attunement compute crate, and phase-by-phase real fixtures | D-01..D-10 |
+| install/attunement works | At the historical baseline, strict B-01 plan/job/checkpoint contracts and a fixed eleven-phase list existed. Later main has persisted jobs plus Connect and Inventory execution; the fixed list remains a defect, not a target. | Capability-selected plans, safe source-generation publication, installed Parse and index/query/restart proof remain open; consult the linked implementation plan for exact revision and current failure evidence. | D-01..D-10 |
 | LFG is pluggable | embedding inference, the B-02 router wire contract, and B-03 manifest/handshake/byte admission exist | executable `RouterBackend`, LFG adapter, constrained decode, route execution | G-01..G-06 |
 | automation is governed | bounded synchronous functions and proposed-transaction bindings exist | direct vocabulary convergence, canonical event envelope, persisted post-commit trigger conditions, resumable routine graphs, skill packages, explicit removable host-event adapters, and replacement of the false package-hook lifecycle | A-07, I-01..I-07 |
 

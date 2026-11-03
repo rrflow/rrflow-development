@@ -94,6 +94,18 @@ than native IDs, as recorded in POAM-005.
 This record remains provisional until dependency integration, the remaining
 review and candidate/merge-group evidence are complete.
 
+The SQL dependency [PR 265](https://github.com/rrflow/rrflow-development/pull/265)
+merged on public main at `bf0b86a4c3adef1d8dfe7183909758ebe81a91a2`. Its ordinary
+merge into this candidate produced one conflict in `docs/reference/query/multi-model.md`;
+the resolution retains both the identity contract and SQL-like SELECT behavior.
+The automatically merged HTTP test retains both the identity-version checks and
+SELECT integration. The post-merge Windows query and relational SELECT tests
+passed 30 tests, and `cargo test --offline --locked -p rrd-server --test http_process`
+passed all 21 tests. Candidate and merge-group CI remain required.
+The post-merge execution inventory check initially reported drift; regenerating
+the local projection and rerunning `python scripts/ci/build_execution_inventory.py --check`
+passed with 2,356 records. Documentation and navigation checks also passed.
+
 ## Change checklist and review boundary
 
 - [x] Bind this prerequisite to OBJ-02/OBJ-07/OBJ-14, Gate E and POAM-005 in PR 266 before source changes.
