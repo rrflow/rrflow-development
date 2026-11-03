@@ -143,15 +143,13 @@ case "$system" in
     ;;
   lance-*)
     # VectorDBBench embeds Lance in its own process, so it needs no server from here.
-    if [ -n "${RRFLOW_LAB_VDBBENCH:-}" ]; then
-      :
-    else
-    # Lance is embedded, so its shim is its server, on the same cores and disk as the others.
-    : "${RRFLOW_LAB_LANCE_PYTHON:?set RRFLOW_LAB_LANCE_PYTHON to a Python with lance-requirements.txt installed}"
-    "${pinned[@]}" "$RRFLOW_LAB_LANCE_PYTHON" "$here/lance_system.py" 18090 "$work/data" &
-    background=$!
-    echo "$background" > "$work/shim.pid"
-    wait_http http://127.0.0.1:18090/health 60
+    if [ -z "${RRFLOW_LAB_VDBBENCH:-}" ]; then
+      # Lance is embedded, so its shim is its server, on the same cores and disk as the others.
+      : "${RRFLOW_LAB_LANCE_PYTHON:?set RRFLOW_LAB_LANCE_PYTHON to a Python with lance-requirements.txt installed}"
+      "${pinned[@]}" "$RRFLOW_LAB_LANCE_PYTHON" "$here/lance_system.py" 18090 "$work/data" &
+      background=$!
+      echo "$background" > "$work/shim.pid"
+      wait_http http://127.0.0.1:18090/health 60
     fi
     ;;
   *)
@@ -186,9 +184,9 @@ if [ -n "${RRFLOW_LAB_VDBBENCH:-}" ]; then
     --k 10 --num-concurrency 1,8 --concurrency-duration 30 --db-label "lab-$system-ef-$ef" || status=$?
   find "$results" -name 'result_*.json' -exec cp {} "$run_directory/$system.ef-$ef.vdbbench.json" \;
 else
-(cd "$repository" && "${client[@]}" "$RRFLOW_LAB_BIN" run --manifest "$manifest" --system "$system" \
-  --out "$run_directory" --note "server_cpuset=${cpuset:-unpinned}" \
-  --note "client_cpuset=${client_cpuset:-unpinned}") || status=$?
+  (cd "$repository" && "${client[@]}" "$RRFLOW_LAB_BIN" run --manifest "$manifest" --system "$system" \
+    --out "$run_directory" --note "server_cpuset=${cpuset:-unpinned}" \
+    --note "client_cpuset=${client_cpuset:-unpinned}") || status=$?
 fi
 # Another workload can slow a run without touching its cores, so a busy GPU is reported.
 awk -F, 'NR > 1 && $4 != "" {

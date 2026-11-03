@@ -89,7 +89,7 @@ result file in this lab's report:
 
 ```bash
 python3 -m venv ~/lab-vdbbench && ~/lab-vdbbench/bin/pip install --require-hashes -r eval/lab/vdbbench-requirements.txt
-RRFLOW_LAB_VDBBENCH=~/lab-vdbbench/bin/vectordbbench RRFLOW_LAB_VDBBENCH_CASE=Performance768D100K \
+RRFLOW_LAB_VDBBENCH=~/lab-vdbbench/bin/vectordbbench RRFLOW_LAB_VDBBENCH_CASE=Performance1536D50K \
   eval/lab/run_system.sh qdrant runs/vdbbench
 rrflow-lab import --from vectordbbench --result runs/vdbbench/qdrant.ef-128.vdbbench.json \
   --harness-version 2.0.0 --recall-target 0.95 --out imported.json
