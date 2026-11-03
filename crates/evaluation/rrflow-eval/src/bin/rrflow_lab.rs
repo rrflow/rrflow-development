@@ -1,5 +1,9 @@
 //! Run and combine comparison-lab tests. See eval/lab/README.md.
 use rrflow_eval::lab::adapter::connect;
+use rrflow_eval::lab::catalog::{
+    launch_arguments, launch_info, resolve_test, vectordbbench_arguments, SystemDefinition,
+    TestDefinition,
+};
 use rrflow_eval::lab::custom::CustomProtocol;
 use rrflow_eval::lab::driver::{combine, empty_run, prepare_inputs, run_system, SystemRun};
 use rrflow_eval::lab::import::{import_vectordbbench, MAX_IMPORT_BYTES};
@@ -9,12 +13,17 @@ use rrflow_eval::lab::sources::SourceList;
 use rrflow_eval::lab::{canonical_json, sha256_hex, Result};
 use rrflow_eval::storage::{schema, Digest};
 use std::collections::BTreeMap;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 const MAX_MANIFEST_BYTES: u64 = 8 * 1024 * 1024;
 const USAGE: &str = "usage:
   rrflow-lab validate --manifest FILE
+  rrflow-lab resolve-all --tests DIR --systems DIR --out DIR
+  rrflow-lab launch-info --system FILE
+  rrflow-lab launch-args --system FILE --data DIR --lab DIR [--cpuset CORES]
+  rrflow-lab vdbbench-args --system FILE --data DIR --ef N
   rrflow-lab inputs --manifest FILE
   rrflow-lab run --manifest FILE --system ID --out DIR [--note KEY=VALUE]...
   rrflow-lab combine --manifest FILE --in DIR --out FILE
@@ -225,6 +234,51 @@ fn import_results(arguments: &Arguments) -> Result<ExitCode> {
     Ok(ExitCode::SUCCESS)
 }
 
+fn load_system(path: &str) -> Result<SystemDefinition> {
+    let bytes = std::fs::read(path).map_err(|error| format!("{path}: {error}"))?;
+    let definition: SystemDefinition =
+        serde_json::from_slice(&bytes).map_err(|error| format!("{path}: {error}"))?;
+    definition.validate()?;
+    Ok(definition)
+}
+
+/// Words a shell reads back with `mapfile -d ''`, so no value is ever parsed by a shell.
+fn print_words(words: &[String]) -> Result<ExitCode> {
+    let mut out = std::io::stdout().lock();
+    for word in words {
+        out.write_all(word.as_bytes())
+            .and_then(|()| out.write_all(&[0]))
+            .map_err(|error| error.to_string())?;
+    }
+    Ok(ExitCode::SUCCESS)
+}
+
+fn resolve_all(arguments: &Arguments) -> Result<ExitCode> {
+    let mut systems = BTreeMap::new();
+    let directory = arguments.required("systems")?;
+    for entry in std::fs::read_dir(directory).map_err(|error| format!("{directory}: {error}"))? {
+        let path = entry.map_err(|error| error.to_string())?.path();
+        let definition = load_system(&path.to_string_lossy())?;
+        systems.insert(definition.binding.id.clone(), definition);
+    }
+    let out = PathBuf::from(arguments.required("out")?);
+    let directory = arguments.required("tests")?;
+    for entry in std::fs::read_dir(directory).map_err(|error| format!("{directory}: {error}"))? {
+        let path = entry.map_err(|error| error.to_string())?.path();
+        let bytes = std::fs::read(&path).map_err(|error| error.to_string())?;
+        let test: TestDefinition = serde_json::from_slice(&bytes)
+            .map_err(|error| format!("{}: {error}", path.display()))?;
+        let manifest = resolve_test(&test, &systems)?;
+        let mut text =
+            serde_json::to_string_pretty(&manifest).map_err(|error| error.to_string())?;
+        text.push('\n');
+        let target = out.join(path.file_name().ok_or("a test has no file name")?);
+        std::fs::write(&target, text).map_err(|error| error.to_string())?;
+        println!("{}", target.display());
+    }
+    Ok(ExitCode::SUCCESS)
+}
+
 fn check_sources(arguments: &Arguments) -> Result<ExitCode> {
     let path = arguments.required("file")?;
     let bytes = std::fs::read(path).map_err(|error| format!("{path}: {error}"))?;
@@ -243,6 +297,8 @@ fn write_schemas(arguments: &Arguments) -> Result<ExitCode> {
         ("lab-report-v1.json", schema::<LabReport>()),
         ("lab-custom-protocol-v1.json", schema::<CustomProtocol>()),
         ("lab-sources-v1.json", schema::<SourceList>()),
+        ("lab-system-v1.json", schema::<SystemDefinition>()),
+        ("lab-test-v1.json", schema::<TestDefinition>()),
     ] {
         std::fs::write(directory.join(name), canonical_json(&value)?)
             .map_err(|error| error.to_string())?;
@@ -274,6 +330,25 @@ fn dispatch(arguments: &[String]) -> Result<ExitCode> {
         "combine" => combine_runs(&parsed),
         "import" => import_results(&parsed),
         "sources" => check_sources(&parsed),
+        "resolve-all" => resolve_all(&parsed),
+        "launch-info" => {
+            for (key, value) in launch_info(&load_system(parsed.required("system")?)?) {
+                println!("{key}={value}");
+            }
+            Ok(ExitCode::SUCCESS)
+        }
+        "launch-args" => print_words(&launch_arguments(
+            &load_system(parsed.required("system")?)?,
+            parsed.required("data")?,
+            parsed.required("lab")?,
+            parsed.values.get("cpuset").map(String::as_str),
+            &|name| std::env::var(name).ok(),
+        )?),
+        "vdbbench-args" => print_words(&vectordbbench_arguments(
+            &load_system(parsed.required("system")?)?,
+            parsed.required("data")?,
+            parsed.required("ef")?,
+        )?),
         "schemas" => write_schemas(&parsed),
         _ => Err(USAGE.into()),
     }

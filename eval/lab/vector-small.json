@@ -135,7 +135,8 @@
       "index": {
         "index": "exact"
       },
-      "search_ladder": []
+      "search_ladder": [],
+      "credentials": {}
     },
     {
       "id": "rrflow-routed",
@@ -152,7 +153,8 @@
       "index": {
         "index": "exact"
       },
-      "search_ladder": []
+      "search_ladder": [],
+      "credentials": {}
     },
     {
       "id": "qdrant",
@@ -192,6 +194,7 @@
           "ef": 256
         }
       ],
+      "credentials": {},
       "memory_probe": [
         "eval/lab/probe.sh",
         "memory",
@@ -347,6 +350,7 @@
           "ef": 256
         }
       ],
+      "credentials": {},
       "memory_probe": [
         "eval/lab/probe.sh",
         "memory",
@@ -401,6 +405,7 @@
           "exact_rerank": 256
         }
       ],
+      "credentials": {},
       "memory_probe": [
         "eval/lab/probe.sh",
         "memory",
@@ -433,35 +438,36 @@
       "search_ladder": [
         {
           "id": "nprobes-5",
-          "nprobes": 5,
-          "exact_rerank": 100
+          "exact_rerank": 100,
+          "nprobes": 5
         },
         {
           "id": "nprobes-10",
-          "nprobes": 10,
-          "exact_rerank": 100
+          "exact_rerank": 100,
+          "nprobes": 10
         },
         {
           "id": "nprobes-20",
-          "nprobes": 20,
-          "exact_rerank": 100
+          "exact_rerank": 100,
+          "nprobes": 20
         },
         {
           "id": "nprobes-40",
-          "nprobes": 40,
-          "exact_rerank": 100
+          "exact_rerank": 100,
+          "nprobes": 40
         },
         {
           "id": "nprobes-80",
-          "nprobes": 80,
-          "exact_rerank": 100
+          "exact_rerank": 100,
+          "nprobes": 80
         },
         {
           "id": "nprobes-141",
-          "nprobes": 141,
-          "exact_rerank": 100
+          "exact_rerank": 100,
+          "nprobes": 141
         }
       ],
+      "credentials": {},
       "memory_probe": [
         "eval/lab/probe.sh",
         "memory",
@@ -494,7 +500,8 @@
         {
           "id": "exact"
         }
-      ]
+      ],
+      "credentials": {}
     }
   ]
 }

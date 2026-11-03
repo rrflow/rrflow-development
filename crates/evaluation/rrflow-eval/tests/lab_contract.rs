@@ -1,6 +1,7 @@
 //! The lab must grade independently, keep failures visible, and refuse results that
 //! cannot honestly sit side by side.
 use rrflow_eval::lab::adapter::{CollectionSpec, PointBatch, SearchRequest, SystemAdapter};
+use rrflow_eval::lab::catalog::{SystemDefinition, TestDefinition};
 use rrflow_eval::lab::corpus::{exact_answers, generate, read_imported, GroundTruth, VectorSet};
 use rrflow_eval::lab::custom::CustomProtocol;
 use rrflow_eval::lab::driver::{combine, prepare_inputs, run_system, Inputs, SystemRun};
@@ -827,6 +828,8 @@ fn generated_schemas_match_the_checked_in_projections() {
         ("lab-report-v1.json", schema::<LabReport>()),
         ("lab-custom-protocol-v1.json", schema::<CustomProtocol>()),
         ("lab-sources-v1.json", schema::<SourceList>()),
+        ("lab-system-v1.json", schema::<SystemDefinition>()),
+        ("lab-test-v1.json", schema::<TestDefinition>()),
     ] {
         let expected = canonical_json(&generated).unwrap();
         let actual = std::fs::read(directory.join(name))
