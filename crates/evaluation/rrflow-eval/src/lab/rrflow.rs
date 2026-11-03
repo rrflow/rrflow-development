@@ -9,7 +9,7 @@ use super::Result;
 use rrd_client::{ClientConfig, RequestOptions, RrdClient, Session};
 use rrd_contract::{
     transaction_operation_sha256, BeginTransaction, CanonicalId, CommitTransaction, CreateSession,
-    ReadDataSchema, RenewSession, SessionLimits, TransactionMutation, MAX_TRANSACTION_CLAIMS,
+    ReadDataSchema, SessionLimits, TransactionMutation, MAX_TRANSACTION_CLAIMS,
     MAX_VECTOR_STORAGE_KEYS,
 };
 use serde::de::DeserializeOwned;
@@ -29,7 +29,10 @@ const MAX_COMMIT_BYTES: usize = 960 * 1024;
 const VALID_FROM: u64 = 100;
 const VALID_AT: u64 = 200;
 const SESSION_LEASE_MS: u64 = 3_600_000;
-const SESSION_RENEW_AFTER: Duration = Duration::from_secs(1_200);
+/// Renewing cannot pass a session's absolute expiry, and it invalidates the token another
+/// client may be about to send. So a long run opens new sessions instead, and each earlier
+/// one stays valid for whatever is still using it.
+const SESSION_REPLACE_AFTER: Duration = Duration::from_secs(1_200);
 
 #[derive(Debug, Clone)]
 struct Prepared {
@@ -41,12 +44,14 @@ struct Prepared {
 
 struct Lease {
     session: Session,
-    renewed_at: Instant,
+    opened_at: Instant,
 }
 
 pub struct RrflowAdapter {
     runtime: Runtime,
     client: RrdClient,
+    principal: CanonicalId,
+    secret: String,
     lease: RwLock<Lease>,
     scope: String,
     run: String,
@@ -61,6 +66,29 @@ fn decode<T: DeserializeOwned>(value: Value) -> Result<T> {
 
 fn id(text: &str) -> Result<CanonicalId> {
     CanonicalId::new(text).map_err(|error| error.to_string())
+}
+
+fn open_session(
+    runtime: &Runtime,
+    client: &RrdClient,
+    principal: &CanonicalId,
+    secret: &str,
+    options: RequestOptions,
+) -> Result<Session> {
+    runtime
+        .block_on(client.create_session(
+            principal.clone(),
+            secret,
+            CreateSession {
+                limits: SessionLimits {
+                    idle_timeout_ms: SESSION_LEASE_MS,
+                    absolute_timeout_ms: SESSION_LEASE_MS,
+                    max_open_transactions: 8,
+                },
+            },
+            options,
+        ))
+        .map_err(|error| error.to_string())
 }
 
 /// The point mutations for one commit.
@@ -152,27 +180,17 @@ impl RrflowAdapter {
             &format!("{run}-session"),
         )
         .map_err(|error| error.to_string())?;
-        let session = runtime
-            .block_on(client.create_session(
-                id(&principal)?,
-                &secret,
-                CreateSession {
-                    limits: SessionLimits {
-                        idle_timeout_ms: SESSION_LEASE_MS,
-                        absolute_timeout_ms: SESSION_LEASE_MS,
-                        max_open_transactions: 8,
-                    },
-                },
-                options,
-            ))
-            .map_err(|error| error.to_string())?;
+        let principal = id(&principal)?;
+        let session = open_session(&runtime, &client, &principal, &secret, options)?;
         let scope = format!("instance:{}", client.instance_id());
         Ok(Self {
             runtime,
             client,
+            principal,
+            secret,
             lease: RwLock::new(Lease {
                 session,
-                renewed_at: Instant::now(),
+                opened_at: Instant::now(),
             }),
             scope,
             run,
@@ -199,25 +217,24 @@ impl RrflowAdapter {
             .map_err(|error| error.to_string())
     }
 
-    /// A long ingest can outlive one lease, so writes renew it before it can lapse.
+    /// A long ingest or search run can outlive one lease.
     fn session(&self) -> Result<Session> {
         {
             let lease = self.lease.read().map_err(|_| "session lock poisoned")?;
-            if lease.renewed_at.elapsed() < SESSION_RENEW_AFTER {
+            if lease.opened_at.elapsed() < SESSION_REPLACE_AFTER {
                 return Ok(lease.session.clone());
             }
         }
         let mut lease = self.lease.write().map_err(|_| "session lock poisoned")?;
-        if lease.renewed_at.elapsed() >= SESSION_RENEW_AFTER {
-            let options = self.mutation_options("renew")?;
-            lease.session = self
-                .runtime
-                .block_on(
-                    self.client
-                        .renew_session(&lease.session, RenewSession {}, options),
-                )
-                .map_err(|error| error.to_string())?;
-            lease.renewed_at = Instant::now();
+        if lease.opened_at.elapsed() >= SESSION_REPLACE_AFTER {
+            lease.session = open_session(
+                &self.runtime,
+                &self.client,
+                &self.principal,
+                &self.secret,
+                self.mutation_options("session")?,
+            )?;
+            lease.opened_at = Instant::now();
         }
         Ok(lease.session.clone())
     }
@@ -469,6 +486,12 @@ impl SystemAdapter for RrflowAdapter {
 mod tests {
     use super::*;
     use rrd_contract::SearchVectors;
+
+    #[test]
+    fn a_replaced_session_outlasts_the_slowest_request_still_using_it() {
+        const SLOWEST_REQUEST: Duration = Duration::from_secs(300);
+        assert!(SESSION_REPLACE_AFTER + SLOWEST_REQUEST < Duration::from_millis(SESSION_LEASE_MS));
+    }
 
     #[test]
     fn point_mutations_decode_as_public_transaction_mutations() {

@@ -431,6 +431,27 @@ fn every_search_failing_is_a_failed_run_not_a_silent_zero() {
 }
 
 #[test]
+fn warmup_stops_for_a_system_refusing_everything_but_not_for_one_still_answering() {
+    let mut manifest = manifest(vec![binding("system")]);
+    manifest.workload.warmup_queries = 200;
+    manifest.workload.concurrency = vec![1];
+    let inputs = prepare_inputs(&manifest).unwrap();
+    let queries = manifest.workload.queries as usize;
+    let cases = 2;
+
+    let refusing = FailingSystem::new(false, 1);
+    run_with(&manifest, "system", &refusing, &inputs);
+    assert_eq!(
+        refusing.calls.load(Ordering::Relaxed),
+        (20 + queries) * cases
+    );
+
+    let flaky = FailingSystem::new(false, 3);
+    run_with(&manifest, "system", &flaky, &inputs);
+    assert_eq!(flaky.calls.load(Ordering::Relaxed), (200 + queries) * cases);
+}
+
+#[test]
 fn a_system_with_no_run_is_reported_as_not_run() {
     let manifest = manifest(vec![binding("ran"), binding("absent")]);
     let inputs = prepare_inputs(&manifest).unwrap();
@@ -655,7 +676,11 @@ fn generated_schemas_match_the_checked_in_projections() {
 
 #[test]
 fn the_checked_in_manifests_are_valid_and_keep_every_comparator() {
-    for name in ["vector-small.json", "vector-medium.json"] {
+    for name in [
+        "vector-small.json",
+        "vector-100k.json",
+        "vector-medium.json",
+    ] {
         let path = Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../../../eval/lab")
             .join(name);

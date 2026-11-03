@@ -192,11 +192,17 @@ fn measure_case(
     };
     let limit = Duration::from_secs(manifest.workload.max_case_seconds);
     let warmup_deadline = Instant::now() + limit;
+    // A system refusing every query has nothing to warm, and a refusal can be slow.
+    let mut refused = 0;
     for index in 0..manifest.workload.warmup_queries as usize {
-        if Instant::now() >= warmup_deadline {
+        if Instant::now() >= warmup_deadline || refused >= ERRORS_BEFORE_GIVING_UP {
             break;
         }
-        let _ = search(index);
+        refused = if search(index).outcome.is_err() {
+            refused + 1
+        } else {
+            0
+        };
     }
     let next = AtomicUsize::new(0);
     let samples = Mutex::new(Vec::with_capacity(queries));
