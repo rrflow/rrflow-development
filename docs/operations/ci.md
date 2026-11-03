@@ -233,6 +233,16 @@ uploaded. The [D-01 acceptance record](../roadmap/rrflow-1.0/gate-d-evidence.md#
 binds the first accepted three-platform result to its exact candidate. Later
 changes still require their own candidate CI; this result cannot qualify a
 different revision or a signed platform bundle.
+
+The `native-arm64` candidate job additionally requires an actual Linux ARM64
+runner and an `aarch64-unknown-linux-gnu` Rust host before executing the native
+storage/recovery, source-admission and primary-executable installed-lifecycle
+tests. Its result is part of the same aggregate gate for ready PRs and merge
+groups. The job log identifies its candidate and host; a cross-compile or a
+skipped job is not native evidence. This bounded lane does not run the full
+offline-denial, 100-cycle, native-capacity matrix or 24-hour soak on ARM64 and
+does not claim those qualifications. Those remain with their existing owners.
+
 The C-07c client-history extension runs after each fresh/existing restore
 fixture. A bounded test-owned relay forwards one commit and suppresses its
 entire response. The public client records uncertainty; three forced native
@@ -725,6 +735,7 @@ The repository variables below contain JSON `runs-on` values:
 | `CI_SELF_HOSTED_ENABLED` | `true` | disabled |
 | `CI_LINUX_STANDARD_RUNNER` | `["rrflow-standard"]` | `["ubuntu-latest"]` |
 | `CI_LINUX_HEAVY_RUNNER` | `["rrflow-heavy"]` | `["ubuntu-latest"]` |
+| `CI_LINUX_ARM64_RUNNER` | operator-provisioned Linux ARM64 labels | `["ubuntu-24.04-arm"]` |
 
 A pull request whose head repository differs from the base repository is
 forced onto GitHub-hosted Linux even when the variables exist. Missing or

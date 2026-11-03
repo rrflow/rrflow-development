@@ -11,6 +11,10 @@ on:
         description: JSON runs-on value for a trusted heavy Linux runner
         required: true
         type: string
+      linux-arm64-runner:
+        description: JSON runs-on value for a trusted native Linux ARM64 runner
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -20,6 +24,41 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  native-arm64:
+    name: native Linux ARM64 installed lifecycle
+    runs-on: ${{ fromJSON(inputs.linux-arm64-runner) }}
+    timeout-minutes: 45
+    env:
+      CARGO_BUILD_JOBS: "2"
+      CARGO_PROFILE_DEV_DEBUG: "0"
+      CARGO_PROFILE_TEST_DEBUG: "0"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          submodules: recursive
+      - uses: dtolnay/rust-toolchain@d124f86f28ff42855784ff3319f48ac182c248f8 # 1.99.1
+      - name: Require native Linux ARM64 host
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$RUNNER_OS" = Linux
+          test "$RUNNER_ARCH" = ARM64
+          test "$(uname -m)" = aarch64
+          rustc -vV | grep -Fx 'host: aarch64-unknown-linux-gnu'
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          shared-key: linux-arm64-native
+          cache-on-failure: false
+      - name: Test native storage and recovery
+        run: |
+          cargo test -p rrd-lsm --test filesystem --test manifest --locked
+          cargo test -p rrd-store --test installed_lifecycle --test semantic_commit_atomicity --locked
+      - name: Test source inventory and Git admission components
+        run: cargo test -p rrd-attunement --locked
+      - name: Test installed primary executable lifecycle
+        run: cargo test -p rrflow-cli --test installed_lifecycle --locked -- --nocapture
+
   topology-smoke:
     name: installed RRFlow lifecycle
     runs-on: ${{ fromJSON(inputs.linux-standard-runner) }}
@@ -261,6 +300,7 @@ jobs:
       - name: Enforce repository CI policy
         run: |
           python3 scripts/ci/test_candidate_admission.py
+          python3 scripts/ci/test_linux_arm64_policy.py
           python3 scripts/ci/test_native_sample_policy.py
           python3 scripts/ci/test_sdk_attunement_policy.py
           python3 scripts/ci/test_rrflowdb_standalone.py
@@ -355,7 +395,7 @@ jobs:
           - name: service-protocol
             packages: "-p rrd-server -p rrd-client -p rrflow-mcp -p rrflow-cli"
           - name: product-operations
-            packages: "-p rrd-kubernetes -p rrflow-edge -p rrflow-eval"
+            packages: "-p rrd-kubernetes -p rrd-observation -p rrflow-edge -p rrflow-eval"
     env:
       CARGO_BUILD_JOBS: "2"
       CARGO_PROFILE_TEST_DEBUG: "0"
@@ -789,6 +829,7 @@ jobs:
     name: ci-gate
     if: ${{ always() }}
     needs:
+      - native-arm64
       - topology-smoke
       - estate-portability
       - verify
@@ -803,6 +844,7 @@ jobs:
     steps:
       - name: Require every CI partition
         env:
+          ARM64_RESULT: ${{ needs.native-arm64.result }}
           TOPOLOGY_RESULT: ${{ needs.topology-smoke.result }}
           PORTABILITY_RESULT: ${{ needs.estate-portability.result }}
           VERIFY_RESULT: ${{ needs.verify.result }}
@@ -813,6 +855,7 @@ jobs:
           INSTALLED_CRASH_RESULT: ${{ needs.installed-crash.result }}
           INSTALLED_REOPEN_RESULT: ${{ needs.installed-reopen.result }}
         run: |
+          test "$ARM64_RESULT" = success
           test "$TOPOLOGY_RESULT" = success
           test "$PORTABILITY_RESULT" = success
           test "$VERIFY_RESULT" = success

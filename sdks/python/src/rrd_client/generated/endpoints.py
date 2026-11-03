@@ -1,13 +1,14 @@
 # Generated from rrd-contract; do not edit.
-# OpenAPI SHA-256: 8bc8cbdba9d90ab1239ea91624e639886971e58977c0f23a31007d1b2878a9c5
+# OpenAPI SHA-256: 1c508a4b2819d4470e6717a304f9990595da25ed09ef729d5fa0b76324bc2975
 from typing import Final, Literal, TypedDict
 
 ENDPOINT_OPENAPI_DOCUMENT_SHA256: Final[str] = (
-    "8bc8cbdba9d90ab1239ea91624e639886971e58977c0f23a31007d1b2878a9c5"
+    "1c508a4b2819d4470e6717a304f9990595da25ed09ef729d5fa0b76324bc2975"
 )
 
 OperationId = Literal[
     "attunement-cancel",
+    "attunement-job-list",
     "attunement-pause",
     "attunement-read",
     "attunement-receipt-read",
@@ -43,6 +44,9 @@ OperationId = Literal[
     "health-ready",
     "knowledge-tree-list",
     "knowledge-tree-replace",
+    "observation-deliver",
+    "observation-prepare",
+    "observation-read",
     "openapi-read",
     "query-execute",
     "query-export",
@@ -94,6 +98,12 @@ ENDPOINTS: Final[dict[OperationId, Endpoint]] = {
         "method": "POST",
         "mutation": True,
         "path": "/v1/attunement/cancel",
+    },
+    "attunement-job-list": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": False,
+        "path": "/v1/attunement/jobs/list",
     },
     "attunement-pause": {
         "authentication": "session_bearer",
@@ -304,6 +314,24 @@ ENDPOINTS: Final[dict[OperationId, Endpoint]] = {
         "method": "POST",
         "mutation": True,
         "path": "/v1/knowledge/trees/replace",
+    },
+    "observation-deliver": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": True,
+        "path": "/v1/observations/deliver",
+    },
+    "observation-prepare": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": True,
+        "path": "/v1/observations/prepare",
+    },
+    "observation-read": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": False,
+        "path": "/v1/observations/read",
     },
     "openapi-read": {
         "authentication": "public",

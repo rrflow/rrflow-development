@@ -25,6 +25,8 @@ pub use endpoint_selection::{
 };
 mod observation_source;
 pub use observation_source::*;
+mod observation_delivery;
+pub use observation_delivery::*;
 mod flight;
 mod function;
 #[path = "generated/signal_catalogue.rs"]
@@ -53,24 +55,25 @@ pub use attunement::{
     attunement_replan_preview_sha256, attunement_replan_seed, attunement_verification_sha256,
     installation_plan_sha256, installation_result_sha256, AcceptAttunementReplan,
     AttunementCancelResult, AttunementControlResponse, AttunementFailure, AttunementJob,
-    AttunementJobState, AttunementLease, AttunementPhase, AttunementPhaseCheckpoint,
-    AttunementPhasePlan, AttunementPlan, AttunementReadResult, AttunementReceipt,
-    AttunementReceiptReadResult, AttunementReplanPreview, AttunementReplanReceiptReadResult,
-    AttunementReplanReceiptView, AttunementReplanResult, AttunementRuntimeCoordinates,
-    AttunementSourceVerification, AttunementStatus, AttunementVerification,
-    AttunementVerificationCheck, AttunementVerificationStatus, CancelAttunement,
-    InstallationActionDisposition, InstallationActionKind, InstallationActionResult,
-    InstallationBootstrap, InstallationBootstrapPolicy, InstallationManagedPath,
-    InstallationManagedPathKind, InstallationPlan, InstallationPlanAction, InstallationRecordKind,
-    InstallationRemovalRule, InstallationResult, InstallationSpecialization,
-    InstallationStorageGeneration, InstallationTargetKind, PauseAttunement,
-    PreviewAttunementReplan, ReadAttunement, ReadAttunementReceipt, RecoverExpiredAttunement,
-    ResumeAttunement, ResumeAttunementWithLease, StartAttunement, StepAttunement,
-    ATTUNEMENT_CONTRACT_VERSION, INSTALLATION_BOOTSTRAP_VERSION, INSTALLATION_LEASE_PATH,
-    INSTALLATION_LEASE_PRECONDITION, INSTALLATION_PLAN_CONTRACT_VERSION,
+    AttunementJobPage, AttunementJobState, AttunementJobSummary, AttunementLease, AttunementPhase,
+    AttunementPhaseCheckpoint, AttunementPhasePlan, AttunementPlan, AttunementReadResult,
+    AttunementReceipt, AttunementReceiptReadResult, AttunementReplanPreview,
+    AttunementReplanReceiptReadResult, AttunementReplanReceiptView, AttunementReplanResult,
+    AttunementRuntimeCoordinates, AttunementSourceVerification, AttunementStatus,
+    AttunementVerification, AttunementVerificationCheck, AttunementVerificationStatus,
+    CancelAttunement, InstallationActionDisposition, InstallationActionKind,
+    InstallationActionResult, InstallationBootstrap, InstallationBootstrapPolicy,
+    InstallationManagedPath, InstallationManagedPathKind, InstallationPlan, InstallationPlanAction,
+    InstallationRecordKind, InstallationRemovalRule, InstallationResult,
+    InstallationSpecialization, InstallationStorageGeneration, InstallationTargetKind,
+    ListAttunementJobs, PauseAttunement, PreviewAttunementReplan, ReadAttunement,
+    ReadAttunementReceipt, RecoverExpiredAttunement, ResumeAttunement, ResumeAttunementWithLease,
+    StartAttunement, StepAttunement, ATTUNEMENT_CONTRACT_VERSION, INSTALLATION_BOOTSTRAP_VERSION,
+    INSTALLATION_LEASE_PATH, INSTALLATION_LEASE_PRECONDITION, INSTALLATION_PLAN_CONTRACT_VERSION,
     INSTALL_ATTUNEMENT_CONTRACT_VERSION, MAX_ATTUNEMENT_CANCEL_REASON_BYTES,
-    MAX_ATTUNEMENT_FAILURE_BYTES, MAX_ATTUNEMENT_PHASES, MAX_ATTUNEMENT_VERIFICATION_CHECKS,
-    MAX_BOOTSTRAP_RECORD_BYTES, MAX_BOOTSTRAP_TEXT_BYTES, MAX_INSTALLATION_ACTIONS,
+    MAX_ATTUNEMENT_FAILURE_BYTES, MAX_ATTUNEMENT_JOB_PAGE, MAX_ATTUNEMENT_JOB_PAGE_BYTES,
+    MAX_ATTUNEMENT_PHASES, MAX_ATTUNEMENT_VERIFICATION_CHECKS, MAX_BOOTSTRAP_RECORD_BYTES,
+    MAX_BOOTSTRAP_TEXT_BYTES, MAX_INSTALLATION_ACTIONS,
 };
 pub use capability_surface::{
     ProductCapability, ProductCapabilityCatalogue, ProductSurface, SurfaceBinding,
@@ -260,7 +263,7 @@ use std::fmt;
 pub const PROTOCOL: &str = "rrd";
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const OPENAPI_DOCUMENT_SHA256: &str =
-    "8bc8cbdba9d90ab1239ea91624e639886971e58977c0f23a31007d1b2878a9c5";
+    "1c508a4b2819d4470e6717a304f9990595da25ed09ef729d5fa0b76324bc2975";
 pub const MAX_ID_BYTES: usize = 128;
 pub const MAX_MESSAGE_BYTES: usize = 4_096;
 pub const MAX_CAPABILITIES: usize = 512;
@@ -3087,6 +3090,9 @@ pub enum SecurityAction {
     ReasoningRead,
     ReasoningWrite,
     EndpointPropose,
+    ObservationPrepare,
+    ObservationDeliver,
+    ObservationRead,
     KnowledgeTreeRead,
     KnowledgeTreeWrite,
 }
@@ -3094,7 +3100,7 @@ pub enum SecurityAction {
 impl SecurityAction {
     /// Canonical policy-action catalogue. Installation profiles and other
     /// projections consume this list instead of maintaining parallel copies.
-    pub const ALL: [Self; 54] = [
+    pub const ALL: [Self; 57] = [
         Self::ServiceInspect,
         Self::UnknownRequest,
         Self::SessionCreate,
@@ -3147,6 +3153,9 @@ impl SecurityAction {
         Self::ReasoningRead,
         Self::ReasoningWrite,
         Self::EndpointPropose,
+        Self::ObservationPrepare,
+        Self::ObservationDeliver,
+        Self::ObservationRead,
         Self::KnowledgeTreeRead,
         Self::KnowledgeTreeWrite,
     ];
@@ -3814,6 +3823,16 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             "AttunementReadResult",
         ),
         endpoint(
+            "attunement-job-list",
+            HttpMethod::Post,
+            "/v1/attunement/jobs/list",
+            EndpointAuthentication::SessionBearer,
+            false,
+            SecurityAction::EstateRead,
+            "ListAttunementJobs",
+            "AttunementJobPage",
+        ),
+        endpoint(
             "flight-launch",
             HttpMethod::Post,
             "/v1/flights",
@@ -4122,6 +4141,36 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             SecurityAction::ReasoningRead,
             "ReadTaskAttempt",
             "TaskAttemptView",
+        ),
+        endpoint(
+            "observation-prepare",
+            HttpMethod::Post,
+            "/v1/observations/prepare",
+            EndpointAuthentication::SessionBearer,
+            true,
+            SecurityAction::ObservationPrepare,
+            "PrepareObservationDelivery",
+            "ObservationDeliverySnapshot",
+        ),
+        endpoint(
+            "observation-deliver",
+            HttpMethod::Post,
+            "/v1/observations/deliver",
+            EndpointAuthentication::SessionBearer,
+            true,
+            SecurityAction::ObservationDeliver,
+            "DeliverObservation",
+            "ObservationDeliverySnapshot",
+        ),
+        endpoint(
+            "observation-read",
+            HttpMethod::Post,
+            "/v1/observations/read",
+            EndpointAuthentication::SessionBearer,
+            false,
+            SecurityAction::ObservationRead,
+            "ReadObservationDelivery",
+            "ObservationDeliveryReadResult",
         ),
         endpoint(
             "task-endpoint-propose",
@@ -4630,6 +4679,11 @@ fn request_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "ConfigureTaskBudget" => schema_json::<RequestEnvelope<ConfigureTaskBudget>>(),
         "ExecuteTaskEmbedding" => schema_json::<RequestEnvelope<ExecuteTaskEmbedding>>(),
         "EndpointSelectionRequest" => schema_json::<RequestEnvelope<EndpointSelectionRequest>>(),
+        "PrepareObservationDelivery" => {
+            schema_json::<RequestEnvelope<PrepareObservationDelivery>>()
+        }
+        "DeliverObservation" => schema_json::<RequestEnvelope<DeliverObservation>>(),
+        "ReadObservationDelivery" => schema_json::<RequestEnvelope<ReadObservationDelivery>>(),
         "ReadTaskAttempt" => schema_json::<RequestEnvelope<ReadTaskAttempt>>(),
         "ReadTaskBudget" => schema_json::<RequestEnvelope<ReadTaskBudget>>(),
         "StopTaskBudget" => schema_json::<RequestEnvelope<StopTaskBudget>>(),
@@ -4675,6 +4729,7 @@ fn request_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "ListTasks" => schema_json::<RequestEnvelope<ListTasks>>(),
         "ReadTask" => schema_json::<RequestEnvelope<ReadTask>>(),
         "ReadAttunement" => schema_json::<RequestEnvelope<ReadAttunement>>(),
+        "ListAttunementJobs" => schema_json::<RequestEnvelope<ListAttunementJobs>>(),
         "StartAttunement" => schema_json::<RequestEnvelope<StartAttunement>>(),
         "StepAttunement" => schema_json::<RequestEnvelope<StepAttunement>>(),
         "PauseAttunement" => schema_json::<RequestEnvelope<PauseAttunement>>(),
@@ -4735,7 +4790,14 @@ fn response_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "TaskResult" => schema_json::<ResponseEnvelope<TaskResult>>(),
         "TaskPage" => schema_json::<ResponseEnvelope<TaskPage>>(),
         "TaskReadResult" => schema_json::<ResponseEnvelope<TaskReadResult>>(),
+        "ObservationDeliverySnapshot" => {
+            schema_json::<ResponseEnvelope<ObservationDeliverySnapshot>>()
+        }
+        "ObservationDeliveryReadResult" => {
+            schema_json::<ResponseEnvelope<ObservationDeliveryReadResult>>()
+        }
         "AttunementReadResult" => schema_json::<ResponseEnvelope<AttunementReadResult>>(),
+        "AttunementJobPage" => schema_json::<ResponseEnvelope<AttunementJobPage>>(),
         "AttunementControlResponse" => schema_json::<ResponseEnvelope<AttunementControlResponse>>(),
         "AttunementReplanPreview" => schema_json::<ResponseEnvelope<AttunementReplanPreview>>(),
         "AttunementReplanResult" => schema_json::<ResponseEnvelope<AttunementReplanResult>>(),
