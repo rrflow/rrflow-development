@@ -49,9 +49,8 @@ Keep the run directory: it holds every latency and recall sample, and the report
 binds those files by digest.
 
 Run on a host with nothing else working. On a GB10 the CPU and GPU share memory and
-power, and a GPU job roughly halved every system's search speed in one campaign
-without showing as CPU load. Repeat a run before trusting a surprising number: a
-single run cannot tell a slow system from a busy host.
+power, so GPU work can slow a search without showing as CPU load. Repeat a run before
+trusting a surprising number: a single run cannot tell a slow system from a busy host.
 
 ## Add a system
 

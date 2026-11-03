@@ -61,4 +61,5 @@
 - [POAM-049 — an audit read's journal scan grows with the journal's length](poam-049.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-049`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-049) — active parent-owned POA&M detail
 - [POAM-053 — clients cannot build RRFlow's HNSW or payload indexes](poam-053.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-053`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-053) — active parent-owned POA&M detail
 - [POAM-054 — a default install accepts a vector corpus its search then refuses](poam-054.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-054`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-054) — active parent-owned POA&M detail
+- [POAM-055 — a vector search the engine will refuse first reads every vector](poam-055.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-055`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-055) — active parent-owned POA&M detail
 <!-- rrflow:generated-index:end -->
