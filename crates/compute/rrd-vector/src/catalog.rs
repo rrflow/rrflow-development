@@ -13,6 +13,15 @@ use std::collections::{BTreeMap, BTreeSet};
 pub const VECTOR_ARTIFACT_CATALOG_VERSION: u16 = 2;
 pub const VECTOR_ARTIFACT_RECORD_TYPE: &str = "vector_artifact";
 
+/// The idempotent operation that published a generation: its key and the
+/// SHA-256 of the request, recorded in the same commit as the generation.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct VectorArtifactOperationReceipt {
+    pub idempotency_key: String,
+    pub operation_sha256: String,
+}
+
 /// One immutable, reconstructable vector projection publication.
 ///
 /// The descriptor says what may be served. The object reference says exactly
@@ -30,6 +39,8 @@ pub struct VectorArtifactCatalogEntry {
     pub published_at: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub build_evidence: Option<HnswBuildEvidence>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub operation: Option<VectorArtifactOperationReceipt>,
     pub entry_digest: String,
 }
 
@@ -62,6 +73,7 @@ impl VectorArtifactCatalogEntry {
             object,
             published_at,
             None,
+            None,
         )
     }
 
@@ -72,6 +84,7 @@ impl VectorArtifactCatalogEntry {
         object: ObjectReference,
         published_at: u64,
         build_evidence: Option<HnswBuildEvidence>,
+        operation: Option<VectorArtifactOperationReceipt>,
     ) -> Result<Self> {
         let mut entry = Self {
             contract_version: VECTOR_ARTIFACT_CATALOG_VERSION,
@@ -81,6 +94,7 @@ impl VectorArtifactCatalogEntry {
             object,
             published_at,
             build_evidence,
+            operation,
             entry_digest: String::new(),
         };
         entry.validate_components()?;
@@ -195,6 +209,7 @@ impl VectorArtifactCatalogEntry {
             &self.object,
             self.published_at,
             &self.build_evidence,
+            &self.operation,
         ));
         encoded.map_err(|error| rrd_core::Error::InvalidRuntime {
             reason: format!("vector artifact catalog identity cannot be encoded: {error}"),

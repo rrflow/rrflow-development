@@ -31,6 +31,9 @@ impl RrdEngine {
         context
             .validate(true)
             .map_err(|error| ServiceError::Contract(error.to_string()))?;
+        let idempotency_key = context.idempotency_key.as_ref().ok_or_else(|| {
+            ServiceError::Contract("vector index ensure requires idempotency".into())
+        })?;
         request
             .validate()
             .map_err(|error| ServiceError::Vector(error.to_string()))?;
@@ -43,6 +46,38 @@ impl RrdEngine {
             context.operation_id.as_str(),
         )?;
         let scope = self.query_scope(&request.scope)?;
+        let operation_sha256 = operation_digest(request)?;
+        // The catalogue entry records the key in the commit that published the
+        // generation. A retry finds that generation even after the source has
+        // moved on, and another request under the key is a conflict.
+        let recorded = crate::vector_artifact_catalog_entries(&self.storage, &scope)
+            .map_err(|error| ServiceError::Vector(error.to_string()))?
+            .into_iter()
+            .find(|entry| {
+                entry
+                    .operation
+                    .as_ref()
+                    .is_some_and(|receipt| receipt.idempotency_key == idempotency_key.as_str())
+            });
+        if let Some(entry) = recorded {
+            if entry
+                .operation
+                .as_ref()
+                .is_none_or(|receipt| receipt.operation_sha256 != operation_sha256)
+            {
+                return Err(ServiceError::IdempotencyConflict);
+            }
+            let read = self.storage.runtime().read_stamp(&scope)?;
+            let direct = read_vector_versions(self, &read, request.max_storage_keys)?;
+            return replay_vector_index(
+                &self.storage,
+                entry.descriptor,
+                &request.collection_id,
+                &request.vector_name,
+                direct.selected_versions,
+                direct.read_evidence,
+            );
+        }
         let catalogue = rrd_vector::VectorCollectionRepository::new(&self.storage, scope.clone())
             .load()
             .map_err(vector_collection_error)?;
@@ -217,6 +252,10 @@ impl RrdEngine {
             expected_revision,
             artifact,
             Some(build_evidence),
+            Some(rrd_vector::VectorArtifactOperationReceipt {
+                idempotency_key: idempotency_key.as_str().into(),
+                operation_sha256,
+            }),
             &format!("session:{}", session_id.as_str()),
             now,
         )

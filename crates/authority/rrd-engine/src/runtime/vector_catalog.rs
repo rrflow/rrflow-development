@@ -200,19 +200,23 @@ where
         expected_catalog_revision,
         artifact,
         None,
+        None,
         actor,
         at,
     )
 }
 
 /// Publishes one immutable artifact and its validated physical build evidence
-/// in the same authoritative catalogue record.
+/// in the same authoritative catalogue record, with the idempotent operation
+/// that asked for it.
+#[allow(clippy::too_many_arguments)]
 pub fn publish_traced_vector_artifact_with_evidence<D>(
     data: &D,
     runtime: &mut VectorRuntime,
     expected_catalog_revision: u64,
     artifact: VectorArtifact,
     build_evidence: Option<rrd_vector::HnswBuildEvidence>,
+    operation: Option<rrd_vector::VectorArtifactOperationReceipt>,
     actor: &str,
     at: Millis,
 ) -> Result<VectorArtifactPublication, Box<dyn std::error::Error>>
@@ -316,6 +320,7 @@ where
         object.clone(),
         at,
         build_evidence,
+        operation,
     )?;
     let record = catalog_record(&entry)?;
 
