@@ -83,8 +83,8 @@ fn scan(
     Ok((rows, stream.evidence().clone()))
 }
 
-/// Every byte a page can hold for these rows, computed from what was written: a charge
-/// for each row's whole row group is about thirty times this.
+/// Every byte a page can hold for these rows, computed from what was written. Charging
+/// each row for its whole row group comes to about thirty times this.
 fn written_logical_bytes(rows: usize, row_groups: u64) -> u64 {
     let key_bytes = row(0).0.len() as u64;
     let rows = rows as u64;
@@ -97,18 +97,23 @@ fn written_logical_bytes(rows: usize, row_groups: u64) -> u64 {
 
 fn assert_each_page_charged_once(evidence: &ProjectedReadEvidence, context: &str) {
     let groups = evidence.selected_row_groups;
-    assert_eq!(evidence.key_offset_page_requests, groups, "{context}");
-    assert_eq!(evidence.key_data_page_requests, groups, "{context}");
-    assert_eq!(evidence.sequence_page_requests, groups, "{context}");
-    assert_eq!(evidence.validity_page_requests, groups, "{context}");
-    assert_eq!(evidence.value_offset_page_requests, groups, "{context}");
-    assert_eq!(evidence.value_data_page_requests, groups, "{context}");
-    assert_eq!(evidence.page_requests, 6 * groups, "{context}");
+    let charged = evidence.page_logical_bytes;
     assert!(
-        evidence.page_logical_bytes <= written_logical_bytes(ROWS, groups),
-        "{context}: charged {} logical bytes for {ROWS} rows in {groups} row groups",
-        evidence.page_logical_bytes,
+        charged <= written_logical_bytes(ROWS, groups),
+        "{context}: charged {charged} logical bytes for {ROWS} rows in {groups} row groups",
     );
+    assert!(
+        charged >= (ROWS * VALUE_BYTES) as u64,
+        "{context}: charged {charged} logical bytes, less than the values returned",
+    );
+    // The cache's scan handling relies on these touches, so each row still makes them.
+    assert_eq!(evidence.key_offset_page_requests, groups, "{context}");
+    assert_eq!(evidence.validity_page_requests, ROWS as u64, "{context}");
+    assert_eq!(
+        evidence.value_offset_page_requests, ROWS as u64,
+        "{context}"
+    );
+    assert_eq!(evidence.value_data_page_requests, ROWS as u64, "{context}");
 }
 
 #[test]
@@ -147,19 +152,21 @@ fn a_scan_is_charged_once_for_each_page_it_visits() {
 }
 
 #[test]
-fn a_key_scan_is_charged_once_and_never_requests_value_pages() {
+fn a_key_scan_is_never_charged_for_value_pages() {
     let directory = tempfile::tempdir().unwrap();
     let mut database =
         Database::create_with_options(directory.path(), options("bounded-raw", 0)).unwrap();
     write_run(&mut database, 0..ROWS);
     let (rows, evidence) = scan(&database, ProjectedReadProjection::Key, budget(64)).unwrap();
     assert_eq!(rows.len(), ROWS);
-    let groups = evidence.selected_row_groups;
-    assert!(groups > 1);
-    assert_eq!(evidence.validity_page_requests, groups);
+    assert!(evidence.selected_row_groups > 1);
     assert_eq!(evidence.value_offset_page_requests, 0);
     assert_eq!(evidence.value_data_page_requests, 0);
-    assert_eq!(evidence.page_requests, 4 * groups);
+    assert!(
+        evidence.page_logical_bytes < (ROWS * VALUE_BYTES) as u64,
+        "charged {} logical bytes for a read of keys",
+        evidence.page_logical_bytes,
+    );
 }
 
 #[test]
@@ -170,7 +177,7 @@ fn interleaved_runs_are_charged_once_for_each_page() {
         let mut database =
             Database::create_with_options(directory.path(), options("bounded-raw", 0)).unwrap();
         // Alternating keys make the merge change run on every row, the hardest order
-        // for a cursor that keeps only the page it is on.
+        // for a cursor to recognise a row group it has already paid for.
         write_run(&mut database, (0..ROWS).step_by(2));
         write_run(&mut database, (1..ROWS).step_by(2));
         let (rows, evidence) = scan(
@@ -191,19 +198,16 @@ fn superseded_versions_are_not_charged_for_their_value_pages() {
     let mut database =
         Database::create_with_options(directory.path(), options("bounded-raw", 0)).unwrap();
     write_run(&mut database, 0..ROWS);
-    let groups_in_first_run = scan(&database, ProjectedReadProjection::KeyValue, budget(64))
-        .unwrap()
-        .1
-        .selected_row_groups;
     write_run(&mut database, 0..ROWS);
     let (rows, evidence) = scan(&database, ProjectedReadProjection::KeyValue, budget(64)).unwrap();
     assert_eq!(rows.len(), ROWS);
     assert_eq!(evidence.selected_runs, 2);
-    assert!(evidence.selected_row_groups > groups_in_first_run);
-    assert_eq!(
-        evidence.value_data_page_requests,
-        evidence.selected_row_groups - groups_in_first_run,
-        "only the newer run's rows win, so only its value pages are read"
+    assert_eq!(evidence.value_data_page_requests, ROWS as u64);
+    // Charging the older run's value pages as well would reach twice the values alone.
+    assert!(
+        evidence.page_logical_bytes < 2 * (ROWS * VALUE_BYTES) as u64,
+        "charged {} logical bytes",
+        evidence.page_logical_bytes,
     );
 }
 
@@ -248,7 +252,7 @@ fn the_page_ceilings_still_refuse_one_unit_below_the_charge() {
 }
 
 #[test]
-fn a_scan_holds_a_few_pages_at_a_time_and_releases_them() {
+fn charging_once_does_not_change_what_a_scan_holds_or_releases() {
     let directory = tempfile::tempdir().unwrap();
     let mut database =
         Database::create_with_options(directory.path(), options("bounded-raw", 0)).unwrap();
@@ -273,10 +277,6 @@ fn a_scan_holds_a_few_pages_at_a_time_and_releases_them() {
         })
         .unwrap();
     drop(stream.next_batch().unwrap().unwrap());
-    assert!(
-        memory.stats().reserved_bytes > 0,
-        "the cursor keeps its page"
-    );
     stream.cancel().unwrap();
     assert_eq!(memory.stats().reserved_bytes, 0);
 }

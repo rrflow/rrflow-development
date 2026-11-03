@@ -1227,15 +1227,14 @@ struct SegmentProjectedCursor {
     row_group: usize,
     row: usize,
     loaded_spine: Option<KeySpine>,
-    // A row group's rows share these pages, so like the spine each is kept and paid
-    // for once. Rows reach each kind in row-group order, so one slot per kind is enough.
-    loaded_validity: Option<LoadedValuePage>,
-    loaded_offsets: Option<LoadedValuePage>,
-    loaded_data: Option<LoadedValuePage>,
+    // The row group each value page was last charged for. Rows reach each kind in
+    // row-group order, so a row group's rows pay for its page's bytes once, as the
+    // spine does. Each row still counts a request and touches the cache.
+    charged_validity: Option<usize>,
+    charged_offsets: Option<usize>,
+    charged_data: Option<usize>,
     lookahead: Option<RawSegmentRow>,
 }
-
-type LoadedValuePage = (usize, Arc<super::LoadedPage>);
 
 impl SegmentProjectedCursor {
     fn new(
@@ -1255,9 +1254,9 @@ impl SegmentProjectedCursor {
             row_group,
             row: 0,
             loaded_spine: None,
-            loaded_validity: None,
-            loaded_offsets: None,
-            loaded_data: None,
+            charged_validity: None,
+            charged_offsets: None,
+            charged_data: None,
             lookahead: None,
         }
     }
@@ -1376,7 +1375,7 @@ impl SegmentProjectedCursor {
             ));
         };
         let validity = self.segment.load_projected_value_page(
-            &mut self.loaded_validity,
+            &mut self.charged_validity,
             *row_group,
             PageKind::ValueValidity,
             meter,
@@ -1387,7 +1386,7 @@ impl SegmentProjectedCursor {
         }
         let value_len = if projection == ProjectedReadProjection::KeyValue {
             let offsets = self.segment.load_projected_value_page(
-                &mut self.loaded_offsets,
+                &mut self.charged_offsets,
                 *row_group,
                 PageKind::ValueOffsets,
                 meter,
@@ -1432,7 +1431,7 @@ impl SegmentProjectedCursor {
             ));
         };
         let data = self.segment.load_projected_value_page(
-            &mut self.loaded_data,
+            &mut self.charged_data,
             row_group,
             PageKind::ValueData,
             meter,
@@ -1477,21 +1476,17 @@ impl Segment {
         })
     }
 
-    fn load_projected_value_page<'page>(
+    fn load_projected_value_page(
         &self,
-        loaded: &'page mut Option<LoadedValuePage>,
+        charged: &mut Option<usize>,
         row_group: usize,
         kind: PageKind,
         meter: &mut ProjectedReadMeter,
         cache_access: PageCacheAccess,
-    ) -> Result<&'page super::LoadedPage> {
-        if loaded.as_ref().is_none_or(|(group, _)| *group != row_group) {
-            // Release the last page first, so a scan never holds two of one kind.
-            *loaded = None;
-            let page = self.load_projected_page(row_group, kind, meter, cache_access)?;
-            *loaded = Some((row_group, page));
-        }
-        Ok(&loaded.as_ref().expect("the page was just loaded").1)
+    ) -> Result<Arc<super::LoadedPage>> {
+        let first_visit = *charged != Some(row_group);
+        *charged = Some(row_group);
+        self.load_metered_page(row_group, kind, first_visit, meter, cache_access)
     }
 
     fn load_projected_page(
@@ -1501,12 +1496,28 @@ impl Segment {
         meter: &mut ProjectedReadMeter,
         cache_access: PageCacheAccess,
     ) -> Result<Arc<super::LoadedPage>> {
+        self.load_metered_page(row_group, kind, true, meter, cache_access)
+    }
+
+    fn load_metered_page(
+        &self,
+        row_group: usize,
+        kind: PageKind,
+        charge_bytes: bool,
+        meter: &mut ProjectedReadMeter,
+        cache_access: PageCacheAccess,
+    ) -> Result<Arc<super::LoadedPage>> {
         let descriptor = self
             .row_groups
             .get(row_group)
             .ok_or_else(|| Error::InvalidSegment("row-group index is outside the segment".into()))?
             .page(kind);
-        meter.request_page(kind, descriptor.logical_bytes as u64)?;
+        let logical_bytes = if charge_bytes {
+            descriptor.logical_bytes as u64
+        } else {
+            0
+        };
+        meter.request_page(kind, logical_bytes)?;
         let (page, evidence) = self.load_page_with_access(row_group, kind, cache_access)?;
         meter.record_page_load(evidence)?;
         Ok(page)
