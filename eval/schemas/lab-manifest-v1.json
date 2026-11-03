@@ -1,0 +1,513 @@
+{
+  "$defs": {
+    "Availability": {
+      "description": "A declared gap is reported as such. It can never read as a passing result.",
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "state": {
+              "const": "available",
+              "type": "string"
+            }
+          },
+          "required": [
+            "state"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "reason": {
+              "type": "string"
+            },
+            "state": {
+              "const": "unavailable",
+              "type": "string"
+            }
+          },
+          "required": [
+            "state",
+            "reason"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "reason": {
+              "type": "string"
+            },
+            "state": {
+              "const": "unimplemented",
+              "type": "string"
+            }
+          },
+          "required": [
+            "state",
+            "reason"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "reason": {
+              "type": "string"
+            },
+            "state": {
+              "const": "not_applicable",
+              "type": "string"
+            }
+          },
+          "required": [
+            "state",
+            "reason"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "CorpusSource": {
+      "description": "Generated from fixed arithmetic so its digest matches on every platform.",
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "clusters": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "generator": {
+              "const": "gaussian_mixture",
+              "type": "string"
+            },
+            "seed": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "spread_milli": {
+              "description": "Standard deviation around a cluster center, in thousandths.",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "generator",
+            "seed",
+            "clusters",
+            "spread_milli"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "CorpusSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "categories": {
+          "description": "Filtered search selects one of these, so selectivity is about 1/categories.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "dimensions": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "metric": {
+          "$ref": "#/$defs/LabMetric"
+        },
+        "points": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "source": {
+          "$ref": "#/$defs/CorpusSource"
+        }
+      },
+      "required": [
+        "source",
+        "points",
+        "dimensions",
+        "metric",
+        "categories"
+      ],
+      "type": "object"
+    },
+    "CredentialReferences": {
+      "additionalProperties": false,
+      "description": "Environment variable names only. The values never enter a file.",
+      "properties": {
+        "instance_env": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "principal_env": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "secret_env": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "Id": {
+      "maxLength": 96,
+      "minLength": 1,
+      "pattern": "^[a-z0-9][a-z0-9_.-]*$",
+      "type": "string"
+    },
+    "IndexSpec": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "index": {
+              "const": "exact",
+              "type": "string"
+            }
+          },
+          "required": [
+            "index"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "ef_construction": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "index": {
+              "const": "hnsw",
+              "type": "string"
+            },
+            "m": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "index",
+            "m",
+            "ef_construction"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "bits": {
+              "type": "string"
+            },
+            "index": {
+              "const": "turbo_quant",
+              "type": "string"
+            },
+            "seed": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "index",
+            "bits",
+            "seed"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "LabMetric": {
+      "enum": [
+        "cosine",
+        "dot",
+        "euclidean"
+      ],
+      "type": "string"
+    },
+    "QualitySpec": {
+      "additionalProperties": false,
+      "properties": {
+        "recall_target": {
+          "description": "Speed is compared only at or above this recall, declared before running.",
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "recall_target"
+      ],
+      "type": "object"
+    },
+    "SearchSetting": {
+      "additionalProperties": false,
+      "properties": {
+        "ef": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "exact_rerank": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "id": {
+          "$ref": "#/$defs/Id"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "SystemBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact": {
+          "description": "Pinned image or build identity, compared with what the server reports.",
+          "type": "string"
+        },
+        "availability": {
+          "$ref": "#/$defs/Availability"
+        },
+        "credentials": {
+          "$ref": "#/$defs/CredentialReferences",
+          "default": {}
+        },
+        "disk_probe": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "endpoint": {
+          "type": "string"
+        },
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "index": {
+          "$ref": "#/$defs/IndexSpec"
+        },
+        "kind": {
+          "$ref": "#/$defs/SystemKind"
+        },
+        "label": {
+          "type": "string"
+        },
+        "location": {
+          "$ref": "#/$defs/SystemLocation"
+        },
+        "memory_probe": {
+          "description": "Commands that print one integer byte count on standard output.",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "search_ladder": {
+          "items": {
+            "$ref": "#/$defs/SearchSetting"
+          },
+          "type": "array"
+        },
+        "storage_profile": {
+          "description": "What backs the data, because memory and durable disk are different claims.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "kind",
+        "location",
+        "endpoint",
+        "artifact",
+        "storage_profile",
+        "availability",
+        "index",
+        "search_ladder"
+      ],
+      "type": "object"
+    },
+    "SystemKind": {
+      "enum": [
+        "rrflow",
+        "qdrant",
+        "surrealdb",
+        "milvus",
+        "custom"
+      ],
+      "type": "string"
+    },
+    "SystemLocation": {
+      "description": "A reader must be able to see when a result crossed a network.",
+      "enum": [
+        "loopback",
+        "lan"
+      ],
+      "type": "string"
+    },
+    "TestIdentity": {
+      "additionalProperties": false,
+      "properties": {
+        "family": {
+          "$ref": "#/$defs/Id"
+        },
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "revision": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "family",
+        "revision"
+      ],
+      "type": "object"
+    },
+    "WorkloadSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "concurrency": {
+          "items": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "filtered": {
+          "type": "boolean"
+        },
+        "ingest_batch": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "k": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "max_case_seconds": {
+          "description": "A case stops here and reports the samples it reached.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "queries": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "readiness_timeout_ms": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "request_timeout_ms": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "warmup_queries": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "queries",
+        "k",
+        "warmup_queries",
+        "ingest_batch",
+        "concurrency",
+        "filtered",
+        "request_timeout_ms",
+        "readiness_timeout_ms",
+        "max_case_seconds"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "corpus": {
+      "$ref": "#/$defs/CorpusSpec"
+    },
+    "quality": {
+      "$ref": "#/$defs/QualitySpec"
+    },
+    "schema_version": {
+      "format": "uint16",
+      "maximum": 65535,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "systems": {
+      "items": {
+        "$ref": "#/$defs/SystemBinding"
+      },
+      "type": "array"
+    },
+    "test": {
+      "$ref": "#/$defs/TestIdentity"
+    },
+    "workload": {
+      "$ref": "#/$defs/WorkloadSpec"
+    }
+  },
+  "required": [
+    "schema_version",
+    "test",
+    "corpus",
+    "workload",
+    "quality",
+    "systems"
+  ],
+  "title": "VectorComparisonManifest",
+  "type": "object"
+}

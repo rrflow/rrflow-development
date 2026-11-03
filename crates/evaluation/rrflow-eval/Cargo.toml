@@ -10,8 +10,11 @@ description = "controlled, paired frontier-runtime evaluation harness"
 serde = { workspace = true }
 serde_json = { workspace = true }
 rrd-contract = { path = "../../transport/rrd-contract" }
+rrd-client = { path = "../../transport/rrd-client" }
 schemars = "1.2"
 sha2 = "0.11"
+tokio = { version = "1", features = ["rt-multi-thread"] }
+ureq = { version = "=3.4.2", default-features = false }
 
 [dev-dependencies]
 tempfile = "3"
@@ -19,3 +22,7 @@ tempfile = "3"
 [[bin]]
 name = "rrflow-eval"
 path = "src/main.rs"
+
+[[bin]]
+name = "rrflow-lab"
+path = "src/bin/rrflow_lab.rs"
