@@ -1,4 +1,5 @@
 use crate::contract::invalid;
+use crate::exact::visible_versions;
 use crate::{
     search_exact_ref, AccessPathKind, CompactDenseSegment, HnswIndex, HnswKernel,
     ImmutableVectorSegment, QuantizationMethod, QuantizedKernel, QuantizedSegment, SearchHit,
@@ -577,28 +578,45 @@ impl VectorRuntime {
                 }
                 match (plan.selected.kind, artifact.as_ref()) {
                     (AccessPathKind::ExactSegment, VectorArtifact::ExactSegment(segment)) => {
-                        segment.search_at(request, plan.required_source_cursor)?
+                        let hits = segment.search_at(request, plan.required_source_cursor)?;
+                        self.confirm_segment_hits(request, hits)?
                     }
                     (AccessPathKind::ExactSegment, VectorArtifact::CompactDense(segment)) => {
-                        segment.search_at(
+                        let hits = segment.search_at(
                             request,
                             crate::DenseKernel::Auto,
                             plan.required_source_cursor,
-                        )?
+                        )?;
+                        self.confirm_segment_hits(request, hits)?
                     }
                     (AccessPathKind::Hnsw, VectorArtifact::Hnsw(index)) => {
-                        let base = index.search_candidates_with_kernel(
-                            request,
-                            prepared.ef_search,
-                            HnswKernel::Auto,
-                        )?;
-                        search_exact_ref(
-                            request,
-                            base.iter().chain(self.overlay(
+                        // The graph proposes the versions it stored and the
+                        // overlay those changed since it. Each proposed
+                        // identity is reranked from its canonical history, so
+                        // a version the graph kept after its identity moved
+                        // to another collection never answers.
+                        let mut references = index
+                            .search_candidates_with_kernel(
+                                request,
+                                prepared.ef_search,
+                                HnswKernel::Auto,
+                            )?
+                            .into_iter()
+                            .map(|candidate| candidate.vector.reference)
+                            .collect::<BTreeSet<_>>();
+                        references.extend(
+                            self.overlay(
                                 index.descriptor().stamp.source_cursor,
                                 plan.required_source_cursor,
                                 |candidate| hnsw_covers_candidate(index.descriptor(), candidate),
-                            )),
+                            )
+                            .map(|candidate| candidate.vector.reference.clone()),
+                        );
+                        search_exact_ref(
+                            request,
+                            self.canonical.iter().filter(|candidate| {
+                                references.contains(&candidate.vector.reference)
+                            }),
                         )?
                     }
                     (
@@ -661,6 +679,27 @@ impl VectorRuntime {
     pub fn search(&self, request: &SearchRequest, ef_search: usize) -> Result<SearchExecution> {
         let prepared = self.prepare_search(request, ef_search)?;
         self.execute_search(request, &prepared)
+    }
+
+    /// An exact segment answers from the versions it stored. Its hits stand
+    /// when every one is the version the canonical candidates make visible
+    /// and they are as many as the request can have. Otherwise, as when an
+    /// identity the segment stored has moved to another collection, the
+    /// canonical exact scan answers.
+    fn confirm_segment_hits(
+        &self,
+        request: &SearchRequest,
+        hits: Vec<SearchHit>,
+    ) -> Result<Vec<SearchHit>> {
+        let visible = visible_versions(request, &self.canonical)?;
+        if hits.len() == request.top_k.min(visible.len())
+            && hits
+                .iter()
+                .all(|hit| visible.contains(&(&hit.reference, hit.source_cursor)))
+        {
+            return Ok(hits);
+        }
+        search_exact_ref(request, &self.canonical)
     }
 }
 
@@ -829,6 +868,92 @@ mod tests {
         assert_eq!(exact.hits[0].reference.id.as_str(), "a");
     }
 
+    /// Each accelerator was built while `moved` was in this collection; the
+    /// canonical candidates no longer hold it here. `kept` has three versions,
+    /// so a scan costs more than the exact segments and they are planned.
+    #[test]
+    fn an_accelerator_never_answers_with_an_identity_that_moved_away() {
+        let scope = ScopeId::new("instance:vector-moves").unwrap();
+        let canonical = vec![
+            candidate(&scope, 2, "kept", vec![1.0, 0.0]),
+            candidate(&scope, 3, "kept", vec![0.8, 0.6]),
+            candidate(&scope, 4, "kept", vec![0.0, 1.0]),
+            candidate(&scope, 5, "other", vec![0.6, 0.8]),
+        ];
+        let built = vec![
+            candidate(&scope, 1, "moved", vec![1.0, 0.0]),
+            canonical[2].clone(),
+            canonical[3].clone(),
+        ];
+        let segment = VectorSegmentConfig {
+            id: ProjectionId::new("vector:exact:moves").unwrap(),
+            scope: scope.clone(),
+            field: "body".into(),
+            dimensions: 2,
+            metric: ScoreMetric::Dot,
+            embedding_model: None,
+            filter_properties: BTreeSet::new(),
+        };
+        let artifacts: [(VectorArtifact, SearchMode, AccessPathKind); 3] = [
+            (
+                ImmutableVectorSegment::build(segment.clone(), 1, 5, built.clone())
+                    .unwrap()
+                    .into(),
+                SearchMode::Exact,
+                AccessPathKind::ExactSegment,
+            ),
+            (
+                CompactDenseSegment::build(segment, 1, 5, built.clone())
+                    .unwrap()
+                    .into(),
+                SearchMode::Exact,
+                AccessPathKind::ExactSegment,
+            ),
+            (
+                HnswIndex::build(
+                    HnswConfig {
+                        id: ProjectionId::new("vector:hnsw:moves").unwrap(),
+                        scope: scope.clone(),
+                        field: "body".into(),
+                        dimensions: 2,
+                        metric: ScoreMetric::Dot,
+                        embedding_model: None,
+                        m: 4,
+                        ef_construction: 8,
+                        max_level: 4,
+                        seed: 9,
+                        filter_properties: BTreeSet::new(),
+                    },
+                    1,
+                    5,
+                    built,
+                )
+                .unwrap()
+                .into(),
+                SearchMode::RequireApproximate { exact_rerank: 3 },
+                AccessPathKind::Hnsw,
+            ),
+        ];
+        for (artifact, mode, kind) in artifacts {
+            let mut runtime = VectorRuntime::new(canonical.clone()).unwrap();
+            runtime.publish(0, artifact).unwrap();
+            let mut search = request(scope.clone(), mode);
+            search.read = ReadStamp::new(scope.clone(), None, 0, 5, Some("11".repeat(32))).unwrap();
+            search.top_k = 2;
+            let execution = runtime.search(&search, 8).unwrap();
+            assert_eq!(execution.plan.selected.kind, kind);
+            assert_eq!(
+                execution
+                    .hits
+                    .iter()
+                    .map(|hit| (hit.reference.id.as_str(), hit.source_cursor))
+                    .collect::<Vec<_>>(),
+                [("other", 5), ("kept", 4)],
+                "{kind:?}"
+            );
+        }
+    }
+
     #[test]
     fn every_artifact_codec_round_trips_with_exact_descriptor_identity() {
         let scope = ScopeId::new("instance:vector-codecs").unwrap();
@@ -884,6 +1009,7 @@ mod tests {
                     seed: 11,
                     embedding_model: None,
                     filter_properties: BTreeSet::new(),
+                    estimator: crate::TurboQuantEstimator::Mse,
                 },
                 1,
                 2,
@@ -921,6 +1047,7 @@ mod tests {
                 seed: 77,
                 embedding_model: None,
                 filter_properties: BTreeSet::new(),
+                estimator: crate::TurboQuantEstimator::Mse,
             },
             1,
             3,
@@ -960,6 +1087,7 @@ mod tests {
                 seed: 17,
                 embedding_model: None,
                 filter_properties: BTreeSet::new(),
+                estimator: crate::TurboQuantEstimator::Mse,
             },
             1,
             2,
@@ -1012,6 +1140,7 @@ mod tests {
                 seed: 11,
                 embedding_model: None,
                 filter_properties: BTreeSet::new(),
+                estimator: crate::TurboQuantEstimator::Mse,
             },
             1,
             2,
@@ -1032,6 +1161,7 @@ mod tests {
                 seed: 13,
                 embedding_model: None,
                 filter_properties: BTreeSet::new(),
+                estimator: crate::TurboQuantEstimator::Mse,
             },
             1,
             2,

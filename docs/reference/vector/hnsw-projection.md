@@ -39,10 +39,14 @@ the base cursor, overlay cursor, and overlay candidate count.
 
 Graph traversal proposes dense candidates. Non-matching records remain
 available for navigation but cannot enter the eligible layer-zero result heap.
-The exact oracle then evaluates graph candidates plus covered overlay versions
-for transaction visibility, valid time, latest-version selection, retirement,
-filtering, metric score, and deterministic order. This makes committed inserts
-and retirements visible before another graph generation is published.
+The exact oracle then evaluates the canonical versions of every identity that
+the graph or the overlay proposes, for transaction visibility, valid time,
+latest-version selection, retirement, filtering, metric score, and
+deterministic order. This makes committed inserts and retirements visible
+before another graph generation is published. A version the graph stored
+before its identity moved to another collection never answers. The graph
+proposes it only until its next generation, which holds what the collection
+holds of each identity's history.
 
 `AllowApproximate` may select an exact path when estimated graph work is more
 expensive. `RequireApproximate` requires an identity-compatible graph and
@@ -56,11 +60,20 @@ newer vector versions. It does not recompute old neighbor selection from the
 canonical corpus. The result is a new immutable generation; configuration
 changes intentionally use a full build.
 
+A generation's versions are its collection's view of every identity's history
+(`rrd_vector::source_history`). A move out of the collection drops the
+versions it supersedes at every valid time, and ends the version the
+collection held before it where the move takes effect. A graph cannot remove
+a node. So when that view no longer holds a version the active graph stores,
+`ensure_vector_index` builds the next generation in full instead of advancing
+it, and it never replays such a graph
+([POAM-048](../../poam/rrflow-1.0-alpha/poam-048.md)).
+
 `RrdEngine::ensure_vector_index` currently obtains canonical candidates by
 reading every vector version in the scope at one read stamp
 (`read_vector_versions`, a whole-family read rather than a cursor-zero replay),
-rebuilds the vector artifact catalogue by replaying retained changes from
-cursor zero ([POAM-028](../../poam/rrflow-1.0-alpha/poam-028.md)), reopens the
+reads the vector artifact catalogue through authenticated, budgeted typed
+version ranges ([POAM-028](../../poam/rrflow-1.0-alpha/poam-028.md)), reopens the
 active artifact, builds or advances a generation, stages its content-addressed
 object, and publishes the descriptor through the engine-owned vector artifact
 transaction.

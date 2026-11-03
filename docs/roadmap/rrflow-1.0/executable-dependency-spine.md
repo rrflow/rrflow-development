@@ -167,6 +167,32 @@ failures and durable readback across the joined flow. One green event, a mock
 service, elapsed engineering time or a UI screenshot cannot close these rows.
 Gate J still owns comparative claims, signed delivery and final release.
 
+### First complete cycle
+
+On 2026-10-31 the owner asked for one whole cycle to be proven before work
+widens: add a folder and index it, let configured idle time improve its
+relationships, and turn a prompt into reasoning, a graph and a plan handoff
+with its schema. The cycle groups existing packages in the order above; it adds
+no order, runtime workflow or status. Each checkpoint is shown through
+Connectome's public-operation projections (H-06), first on Gate D's authored
+small fixture project and then on a real folder.
+
+| Checkpoint | Existing owners | Observable acceptance |
+|---|---|---|
+| 1. Start a project from a folder and control its job | D-01; D-02a/b public job operations allowed on 2026-10-26 ([POAM-040](../../poam/rrflow-1.0-alpha/poam-040.md)) | The new project's job, phase, resume, cancel and receipts read back through public operations after restart. |
+| 2. The folder becomes a committed snapshot | D-03 | Exclusions are visible; editing one file changes only that file and its containment. |
+| 3. Symbols and source spans | D-04 | Symbols resolve to exact byte ranges; a one-file edit reparses only that file. |
+| 4. Links, lexical, vectors and graph | H-11a; D-05a–d with the E-03/E-04 paths they consume | A question about the project returns cited spans and the graph around them at one read stamp. |
+| 5. Idle-time maintenance set from a panel | D-02c; H-06 | The operator sets idle windows and budgets. Relationship refresh and index maintenance run only inside them, stop at the budget and leave receipts. Needs the settings-operation decision that D-02a records as undecided. |
+| 6. Prompt to plan handoff | [OBJ-14](../../objectives/rrflow-1.0-alpha.md#required-outcomes); [POAM-038](../../poam/rrflow-1.0-alpha/poam-038.md), [POAM-039](../../poam/rrflow-1.0-alpha/poam-039.md); H-01/H-05 | A prompt yields grounded reasoning with its graph, then a versioned, source-bound plan with open-question records, handed off as a digest-checked record whose generated schema Connectome shows. |
+
+The same frozen question set is asked before and after idle-time maintenance
+and both answers are retained. That is characterization, not learning:
+improvement that accumulates over time remains order 8 (G/I) and OBJ-12.
+The cycle's next unmet checkpoint is its active package. A defect found inside
+a checkpoint gets a failing test and its fix there; other findings are
+recorded in the POA&M and wait.
+
 ## Continuing implementation and accepted foundations
 
 A-07 freezes the operation-name, causal-link, attribute, and propagation

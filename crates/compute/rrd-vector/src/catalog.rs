@@ -533,6 +533,7 @@ mod tests {
                 candidate_versions: 1,
                 packed_vector_bytes: 1,
                 full_precision_vector_bytes: 8,
+                estimator: crate::TurboQuantEstimator::Mse,
             },
         }
     }

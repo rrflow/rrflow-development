@@ -67,6 +67,21 @@ offering. Hosted project execution, previews, web launch, account creation,
 and synchronization are product targets requiring their own public-contract
 integration and proof; this source registration supplies none of those effects.
 
+### Nested repository choice
+
+When the engine supplies a repository-discovery preview, Connectome presents
+the detected nested repository and lets the user exclude it, add it as a
+separate project and instance, or include it in the same project instance.
+Recommend the separate-project choice, explain the difference in storage and
+access, and show the exact selected roots and installation effects before apply.
+An assistant may help the user choose; an unanswered question never approves a
+choice or blocks unrelated exploration. Present an unavailable state until
+the engine offers this preview and the selected flow is implemented. Connectome
+does not infer repository membership, authorize reads, or own the decision.
+The [topology](../../architecture/instance-topology.md#user-selected-repository-boundaries)
+and [Gate D proof](../../roadmap/rrflow-1.0/gate-d.md#nested-repository-setup)
+remain the owners of semantics and real-project acceptance.
+
 ### Native local workbench
 
 The current engine exposes the [public task effort flow](../inference/lfg-swag.md#public-task-effort-flow)
@@ -106,10 +121,32 @@ control is proof of those downstream capabilities or full H-06 acceptance.
 
 Newer RRFlow installation-plan contract v2 requires an explicit identity from
 `rrflow install identity`, retained across preview regeneration and supplied
-with `install plan --identity`. The pinned workbench above uses its named older
-engine/SDK pair; it is not qualification of that new installation contract.
-Updating its engine bundle requires updating and testing this adapter input as
-described in the [implementation guide](connectome-implementation-guide.md#run-the-current-installed-engine).
+with `install plan --identity`. The
+[2026-11-01 pin receipt](../../evidence/change-journals/gate-h/h-06-connectome-chain-pin.md)
+moves the pinned workbench to Connectome
+`c1cbff203ecee89013878609d11aed04e89d0e71`. That revision is bound to engine/SDK
+`15f36a8758e32b33c930a20da836def3e5cc3207`. Its native preview allocates that
+identity, serve sends it back, and its real-engine process tests pass against
+that engine. That is component evidence, not qualification of the installation
+contract. Updating its engine bundle again requires updating and testing this
+adapter input as described in the
+[implementation guide](connectome-implementation-guide.md#run-the-current-installed-engine).
+
+The same pin brings these Connectome changes, each landed through Connectome's
+merge queue:
+
+- governed effects, live results, the value model and the rrflowQL editor
+  language;
+- the API reference read from the operation catalogue;
+- each project's instance lifecycle, which attaches to an instance started
+  elsewhere;
+- search generations and an exact-versus-TurboQuant comparison in the Vectors
+  lens;
+- a native task and controller-proposal workspace;
+- an explicit endpoint credential mapping at project start. The renderer
+  holds only the mapping's path; only the engine reads the file.
+
+Source association is not H-06 acceptance.
 
 The desktop shows the native installation preview, requires its exact accepted
 digest, and regenerates the plan before apply. Existing estates reopen through
@@ -461,10 +498,12 @@ identity. Every metric says whether it is measured, estimated, unsupported or
 unknown. Changing projects isolates caches, sessions and in-flight results;
 concurrent engines never imply context sharing.
 
-The current pinned workbench still binds engine/SDK `4860a253663c9c757800aafeb40890b76114c4f0`.
-H-06 must update engine assets, SDK, installation adapter and public-control
-consumers together and qualify the resulting exact pair. An existing UI data
-lens does not prove this new user journey or compatibility with current RRFlow.
+The current pinned workbench binds engine/SDK `15f36a8758e32b33c930a20da836def3e5cc3207`
+([2026-11-01 pin receipt](../../evidence/change-journals/gate-h/h-06-connectome-chain-pin.md)).
+H-06 must keep engine assets, SDK, installation adapter and public-control
+consumers updated together and qualify the resulting exact pair. An existing UI
+data lens does not prove this new user journey or compatibility with a later
+RRFlow.
 
 The first full demonstration must start from an ordinary empty/existing project,
 without manually seeding engine records. From this UI, prove setup, automatic

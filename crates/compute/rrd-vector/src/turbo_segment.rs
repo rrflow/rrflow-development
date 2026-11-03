@@ -1,9 +1,12 @@
 use crate::contract::invalid;
 use crate::exact::validate_candidate_versions;
+use crate::qjl::{QjlProjection, MAX_QJL_DIMENSIONS};
+use crate::turboquant::{inner_product_packed_len, inner_product_padded_dimensions};
 use crate::{
     AccessPathKind, CandidatePath, EmbeddingModelBinding, QuantizedKernel,
     QuantizedMemoryPlacement, ScoreMetric, SearchHit, SearchRequest, TurboQuantBits,
-    TurboQuantVector, VectorCandidate, VectorQuery,
+    TurboQuantEstimator, TurboQuantInnerProductCode, TurboQuantQuery, TurboQuantVector,
+    VectorCandidate, VectorQuery,
 };
 use memmap2::{Mmap, MmapOptions};
 use rrd_core::{
@@ -14,7 +17,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs::File;
 use std::path::Path;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 pub const TURBOQUANT_SEGMENT_FORMAT_VERSION: u16 = 1;
 const TURBOQUANT_SEGMENT_MAGIC: &[u8; 8] = b"RRDTQ001";
@@ -36,6 +39,10 @@ pub struct TurboQuantSegmentConfig {
     pub embedding_model: Option<EmbeddingModelBinding>,
     #[serde(default)]
     pub filter_properties: BTreeSet<String>,
+    /// Absent for MSE, so an MSE configuration, and its digest, read as they
+    /// did before the inner-product estimator existed.
+    #[serde(default, skip_serializing_if = "TurboQuantEstimator::is_mse")]
+    pub estimator: TurboQuantEstimator,
 }
 
 impl TurboQuantSegmentConfig {
@@ -56,10 +63,37 @@ impl TurboQuantSegmentConfig {
         if let Some(model) = &self.embedding_model {
             model.validate()?;
         }
+        if self.estimator == TurboQuantEstimator::InnerProduct {
+            if self.bits == TurboQuantBits::Bits1_5 {
+                return invalid("1.5-bit TurboQuant has no inner-product estimator");
+            }
+            if self.metric == ScoreMetric::Manhattan {
+                return invalid(
+                    "the TurboQuant inner-product estimator scores dot, cosine and euclidean metrics",
+                );
+            }
+            if inner_product_padded_dimensions(self.dimensions) > MAX_QJL_DIMENSIONS {
+                return invalid(format!(
+                    "the TurboQuant inner-product estimator accepts at most {MAX_QJL_DIMENSIONS} padded dimensions"
+                ));
+            }
+        }
         Ok(())
     }
 
-    fn digest(&self) -> Result<String> {
+    /// S for this configuration, which an inner-product build and search use.
+    fn projection(&self) -> Result<Option<QjlProjection>> {
+        match self.estimator {
+            TurboQuantEstimator::Mse => Ok(None),
+            TurboQuantEstimator::InnerProduct => {
+                QjlProjection::new(inner_product_padded_dimensions(self.dimensions), self.seed)
+                    .map(Some)
+            }
+        }
+    }
+
+    /// The digest a generation's stamp carries as its configuration digest.
+    pub fn digest(&self) -> Result<String> {
         self.validate()?;
         serde_json::to_vec(self)
             .map(|bytes| digest::sha256_hex(&bytes))
@@ -83,6 +117,8 @@ pub struct TurboQuantDescriptor {
     pub embedding_model: Option<EmbeddingModelBinding>,
     #[serde(default)]
     pub filter_properties: BTreeSet<String>,
+    #[serde(default, skip_serializing_if = "TurboQuantEstimator::is_mse")]
+    pub estimator: TurboQuantEstimator,
     pub minimum_cursor: u64,
     pub candidate_versions: usize,
     pub packed_vector_bytes: usize,
@@ -142,6 +178,9 @@ struct StoredCandidate {
     properties: RuntimeProperties,
     original_norm: f32,
     centroid_norm: f32,
+    /// The unit residual's length, under the inner-product estimator only.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    residual_norm: Option<f32>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -185,6 +224,8 @@ pub struct TurboQuantSegment {
     payload_offset: usize,
     payload_len: usize,
     storage: TurboQuantStorage,
+    /// S for an inner-product generation, materialized on its first search.
+    projection: Arc<OnceLock<QjlProjection>>,
 }
 
 impl PartialEq for TurboQuantSegment {
@@ -209,47 +250,110 @@ impl TurboQuantSegment {
             return invalid("TurboQuant segment candidate count is outside bounds");
         }
         validate_candidate_versions(&candidates)?;
-        candidates.sort_by(|left, right| {
-            left.vector
-                .reference
-                .cmp(&right.vector.reference)
-                .then_with(|| left.source_cursor.cmp(&right.source_cursor))
-        });
-        let mut stored = Vec::with_capacity(candidates.len());
-        let mut payload = Vec::new();
-        let mut packed_bytes_per_vector = None;
+        sort_candidates(&mut candidates);
+        let projection = config.projection()?;
+        let mut versions = Vec::with_capacity(candidates.len());
         for candidate in candidates {
-            if candidate.scope != config.scope
-                || candidate.source_cursor > source_cursor
-                || candidate.vector.field != config.field
-                || candidate.vector.value.dimensions() != config.dimensions
-                || !candidate.matches_model(config.embedding_model.as_ref())
-            {
+            if candidate.source_cursor > source_cursor {
                 return invalid("TurboQuant candidate violates configuration or coverage");
             }
-            let VectorValue::Dense { values } = &candidate.vector.value else {
-                return invalid("TurboQuant artifacts currently require dense vectors");
-            };
-            let encoded = TurboQuantVector::encode(values, config.bits, config.seed)?;
+            versions.push(encode_candidate(&config, projection.as_ref(), candidate)?);
+        }
+        Self::assemble(config, generation, source_cursor, versions, projection)
+    }
+
+    /// The next generation of `previous`, from the identities that changed
+    /// since it.
+    ///
+    /// `replaced` names every identity whose history in this source changed
+    /// after `previous`. `candidates` holds what the source holds of each such
+    /// identity's complete history at the new read. Every other identity
+    /// keeps its stored versions and their codes. The codec encodes each
+    /// vector on its own, with the configuration's seed and fixed codebook, so
+    /// re-encoding a kept version would give the same bytes. `source_cursor`
+    /// is the cursor the new generation covers, as for a full build: never
+    /// less than `previous` covers or than any version it holds. The result is
+    /// byte for byte the segment `build` makes from the same versions and
+    /// cursor.
+    pub fn extend(
+        previous: &Self,
+        config: TurboQuantSegmentConfig,
+        generation: u64,
+        replaced: &BTreeSet<RuntimeRef>,
+        candidates: impl IntoIterator<Item = VectorCandidate>,
+        source_cursor: u64,
+    ) -> Result<Self> {
+        config.validate()?;
+        if config.digest()? != previous.descriptor.stamp.config_digest {
+            return invalid("a TurboQuant generation extends only one with its configuration");
+        }
+        if generation <= previous.descriptor.stamp.generation {
+            return invalid("a TurboQuant generation extends only an earlier generation");
+        }
+        if source_cursor < previous.descriptor.stamp.source_cursor {
+            return invalid("a TurboQuant generation never covers less than its base");
+        }
+        let mut candidates = candidates.into_iter().collect::<Vec<_>>();
+        validate_candidate_versions(&candidates)?;
+        if candidates
+            .iter()
+            .any(|candidate| !replaced.contains(&candidate.vector.reference))
+        {
+            return invalid("an unchanged identity keeps its stored TurboQuant versions");
+        }
+        sort_candidates(&mut candidates);
+        let payload = previous.payload();
+        let width = previous.packed_bytes_per_vector;
+        let mut versions = previous
+            .candidates
+            .iter()
+            .zip(payload.chunks_exact(width))
+            .filter(|(stored, _)| !replaced.contains(&stored.reference))
+            .map(|(stored, packed)| (stored.clone(), packed.to_vec()))
+            .collect::<Vec<_>>();
+        let projection = config.projection()?;
+        for candidate in candidates {
+            versions.push(encode_candidate(&config, projection.as_ref(), candidate)?);
+        }
+        versions.sort_by(|(left, _), (right, _)| {
+            left.reference
+                .cmp(&right.reference)
+                .then_with(|| left.source_cursor.cmp(&right.source_cursor))
+        });
+        if versions.is_empty() || versions.len() > MAX_TURBOQUANT_CANDIDATES {
+            return invalid("TurboQuant segment candidate count is outside bounds");
+        }
+        if versions
+            .iter()
+            .any(|(stored, _)| stored.source_cursor > source_cursor)
+        {
+            return invalid("TurboQuant candidate violates configuration or coverage");
+        }
+        Self::assemble(config, generation, source_cursor, versions, projection)
+    }
+
+    /// The artifact for `versions`, already in reference and cursor order,
+    /// each with its packed codes.
+    fn assemble(
+        config: TurboQuantSegmentConfig,
+        generation: u64,
+        source_cursor: u64,
+        versions: Vec<(StoredCandidate, Vec<u8>)>,
+        projection: Option<QjlProjection>,
+    ) -> Result<Self> {
+        let mut stored = Vec::with_capacity(versions.len());
+        let mut payload = Vec::new();
+        let mut packed_bytes_per_vector = None;
+        for (candidate, packed) in versions {
             match packed_bytes_per_vector {
-                Some(expected) if expected != encoded.packed_vector_bytes() => {
+                Some(expected) if expected != packed.len() => {
                     return invalid("TurboQuant vectors produced inconsistent packed lengths");
                 }
-                None => packed_bytes_per_vector = Some(encoded.packed_vector_bytes()),
+                None => packed_bytes_per_vector = Some(packed.len()),
                 _ => {}
             }
-            payload.extend_from_slice(&encoded.packed);
-            stored.push(StoredCandidate {
-                reference: candidate.vector.reference,
-                subject: candidate.vector.subject,
-                collection: candidate.vector.collection,
-                source_cursor: candidate.source_cursor,
-                valid_from: candidate.vector.valid_from,
-                valid_to: candidate.vector.valid_to,
-                properties: candidate.vector.properties,
-                original_norm: encoded.original_norm,
-                centroid_norm: encoded.centroid_norm,
-            });
+            payload.extend_from_slice(&packed);
+            stored.push(candidate);
         }
         let header = SegmentHeader {
             config,
@@ -262,7 +366,16 @@ impl TurboQuantSegment {
         let header_bytes = encode_json(&header)?;
         let artifact_digest = artifact_digest(&header_bytes, &payload);
         let bytes = encode_artifact(&header_bytes, &payload, &artifact_digest)?;
-        Self::decode(TurboQuantStorage::Owned(Arc::from(bytes)))
+        let segment = Self::decode(TurboQuantStorage::Owned(Arc::from(bytes)))?;
+        // The build already holds S; the segment keeps it for its searches.
+        if let Some(projection) = projection {
+            let _ = segment.projection.set(projection);
+        }
+        Ok(segment)
+    }
+
+    fn payload(&self) -> &[u8] {
+        &self.as_bytes()[self.payload_offset..self.payload_offset + self.payload_len]
     }
 
     pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
@@ -360,14 +473,32 @@ impl TurboQuantSegment {
         {
             return invalid("TurboQuant header coverage or payload length is invalid");
         }
+        let inner_product = header.config.estimator == TurboQuantEstimator::InnerProduct;
+        if inner_product
+            && Some(header.packed_bytes_per_vector)
+                != inner_product_packed_len(
+                    header.config.bits,
+                    inner_product_padded_dimensions(header.config.dimensions),
+                )
+        {
+            return invalid("TurboQuant inner-product code width differs from its configuration");
+        }
         let mut versions = BTreeSet::new();
         for candidate in &header.candidates {
+            let estimator_norms = if inner_product {
+                candidate.centroid_norm >= 0.0
+                    && candidate
+                        .residual_norm
+                        .is_some_and(|residual| residual.is_finite() && residual >= 0.0)
+            } else {
+                candidate.centroid_norm > 0.0 && candidate.residual_norm.is_none()
+            };
             if candidate.source_cursor == 0
                 || candidate.source_cursor > header.source_cursor
                 || !candidate.original_norm.is_finite()
                 || candidate.original_norm < 0.0
                 || !candidate.centroid_norm.is_finite()
-                || candidate.centroid_norm <= 0.0
+                || !estimator_norms
                 || !versions.insert((candidate.reference.clone(), candidate.source_cursor))
             {
                 return invalid("TurboQuant candidate metadata is invalid");
@@ -391,6 +522,7 @@ impl TurboQuantSegment {
             seed: header.config.seed,
             embedding_model: header.config.embedding_model,
             filter_properties: header.config.filter_properties,
+            estimator: header.config.estimator,
             minimum_cursor: header.minimum_cursor,
             candidate_versions: header.candidates.len(),
             packed_vector_bytes: payload_len,
@@ -408,6 +540,7 @@ impl TurboQuantSegment {
             payload_offset: HEADER_PREFIX_BYTES + header_len,
             payload_len,
             storage,
+            projection: Arc::new(OnceLock::new()),
         })
     }
 
@@ -486,6 +619,21 @@ impl TurboQuantSegment {
             }
         }
         let payload = &self.as_bytes()[self.payload_offset..self.payload_offset + self.payload_len];
+        let query = match self.descriptor.estimator {
+            TurboQuantEstimator::Mse => TurboQuantQuery::mse(
+                values,
+                request.metric,
+                self.descriptor.bits,
+                self.descriptor.seed,
+            )?,
+            TurboQuantEstimator::InnerProduct => TurboQuantQuery::inner_product(
+                values,
+                request.metric,
+                self.descriptor.bits,
+                self.descriptor.seed,
+                self.projection()?,
+            )?,
+        };
         let mut hits = Vec::new();
         for index in latest.into_values() {
             let candidate = &self.candidates[index];
@@ -500,30 +648,111 @@ impl TurboQuantSegment {
                 continue;
             }
             let start = index * self.packed_bytes_per_vector;
-            let encoded = TurboQuantVector {
-                format_version: crate::TURBOQUANT_FORMAT_VERSION,
-                bits: self.descriptor.bits,
-                seed: self.descriptor.seed,
-                dimensions: self.descriptor.dimensions,
-                padded_dimensions: self
-                    .descriptor
-                    .bits
-                    .padded_dimensions(self.descriptor.dimensions),
-                original_norm: candidate.original_norm,
-                centroid_norm: candidate.centroid_norm,
-                packed: payload[start..start + self.packed_bytes_per_vector].to_vec(),
+            let packed = &payload[start..start + self.packed_bytes_per_vector];
+            let score = match candidate.residual_norm {
+                None => query.score_mse(
+                    candidate.original_norm,
+                    candidate.centroid_norm,
+                    packed,
+                    kernel,
+                )?,
+                Some(residual_norm) => query.score_inner_product(
+                    candidate.original_norm,
+                    residual_norm,
+                    packed,
+                    kernel,
+                )?,
             };
             hits.push(SearchHit {
                 reference: candidate.reference.clone(),
                 subject: candidate.subject.clone(),
                 source_cursor: candidate.source_cursor,
-                score: encoded.score_with_kernel(values, request.metric, kernel)?,
+                score,
             });
         }
         hits.sort_by(SearchHit::compare_best_first);
         hits.truncate(candidate_limit);
         Ok(hits)
     }
+
+    /// S for this inner-product generation, materialized once and kept.
+    fn projection(&self) -> Result<&QjlProjection> {
+        if let Some(projection) = self.projection.get() {
+            return Ok(projection);
+        }
+        let projection = QjlProjection::new(
+            inner_product_padded_dimensions(self.descriptor.dimensions),
+            self.descriptor.seed,
+        )?;
+        // A concurrent search may have set it first; both drew the same S.
+        let _ = self.projection.set(projection);
+        self.projection
+            .get()
+            .map_or_else(|| invalid("the QJL projection could not be kept"), Ok)
+    }
+}
+
+fn sort_candidates(candidates: &mut [VectorCandidate]) {
+    candidates.sort_by(|left, right| {
+        left.vector
+            .reference
+            .cmp(&right.vector.reference)
+            .then_with(|| left.source_cursor.cmp(&right.source_cursor))
+    });
+}
+
+/// One version as a generation stores it, with its packed codes.
+fn encode_candidate(
+    config: &TurboQuantSegmentConfig,
+    projection: Option<&QjlProjection>,
+    candidate: VectorCandidate,
+) -> Result<(StoredCandidate, Vec<u8>)> {
+    if candidate.scope != config.scope
+        || candidate.vector.field != config.field
+        || candidate.vector.value.dimensions() != config.dimensions
+        || !candidate.matches_model(config.embedding_model.as_ref())
+    {
+        return invalid("TurboQuant candidate violates configuration or coverage");
+    }
+    let VectorValue::Dense { values } = &candidate.vector.value else {
+        return invalid("TurboQuant artifacts currently require dense vectors");
+    };
+    let (original_norm, centroid_norm, residual_norm, packed) = match projection {
+        None => {
+            let encoded = TurboQuantVector::encode(values, config.bits, config.seed)?;
+            (
+                encoded.original_norm,
+                encoded.centroid_norm,
+                None,
+                encoded.packed,
+            )
+        }
+        Some(projection) => {
+            let encoded =
+                TurboQuantInnerProductCode::encode(values, config.bits, config.seed, projection)?;
+            (
+                encoded.original_norm,
+                encoded.centroid_norm,
+                Some(encoded.residual_norm),
+                encoded.packed,
+            )
+        }
+    };
+    Ok((
+        StoredCandidate {
+            reference: candidate.vector.reference,
+            subject: candidate.vector.subject,
+            collection: candidate.vector.collection,
+            source_cursor: candidate.source_cursor,
+            valid_from: candidate.vector.valid_from,
+            valid_to: candidate.vector.valid_to,
+            properties: candidate.vector.properties,
+            original_norm,
+            centroid_norm,
+            residual_norm,
+        },
+        packed,
+    ))
 }
 
 fn runtime_error(reason: impl Into<String>) -> rrd_core::Error {
@@ -584,6 +813,7 @@ mod tests {
             seed: 91,
             embedding_model: None,
             filter_properties: BTreeSet::from(["tenant".into()]),
+            estimator: TurboQuantEstimator::Mse,
         }
     }
 
@@ -611,6 +841,261 @@ mod tests {
                 )]),
             },
         }
+    }
+
+    /// `id`'s version at `cursor`, ending at `valid_to` when it was superseded
+    /// or retired.
+    fn version(scope: &ScopeId, cursor: u64, id: &str, valid_to: Option<u64>) -> VectorCandidate {
+        let mut candidate = candidate(scope, cursor, id, "a");
+        candidate.vector.valid_to = valid_to;
+        candidate
+    }
+
+    fn refs(ids: &[&str]) -> BTreeSet<RuntimeRef> {
+        ids.iter()
+            .map(|id| RuntimeRef::new("embedding", *id).unwrap())
+            .collect()
+    }
+
+    /// MSE artifacts keep the bytes they had before the inner-product
+    /// estimator existed: these digests and scores come from the codec at
+    /// E-04c (`69c36845`), on the same versions.
+    #[test]
+    fn mse_artifacts_keep_their_bytes_and_scores() {
+        let scope = ScopeId::new("instance:probe").unwrap();
+        let candidates = (1..=40u64)
+            .map(|cursor| VectorCandidate {
+                scope: scope.clone(),
+                source_cursor: cursor,
+                vector: RuntimeVector {
+                    reference: RuntimeRef::new("embedding", format!("p{cursor}")).unwrap(),
+                    subject: RuntimeRef::new("document", format!("p{cursor}")).unwrap(),
+                    collection: VectorCollectionAddress {
+                        collection_id: "documents".into(),
+                        vector_name: "body".into(),
+                    },
+                    field: "body".into(),
+                    valid_from: 1,
+                    valid_to: None,
+                    value: VectorValue::Dense {
+                        values: (0..48)
+                            .map(|dimension| {
+                                (((cursor * 37 + dimension * 11) % 101) as f32) / 50.0 - 1.0
+                            })
+                            .collect(),
+                    },
+                    provenance: None,
+                    properties: RuntimeProperties::new(),
+                },
+            })
+            .collect::<Vec<_>>();
+        for (bits, digest, top) in [
+            (
+                TurboQuantBits::Bits4,
+                "e29b417205f42a2ee95e932201784ceb9cccfb17c003b11d8b537c7cba20cc52",
+                ("p35", 1.205_116_994_953_018_3),
+            ),
+            (
+                TurboQuantBits::Bits2,
+                "b1d05c52291448dc675e394ec7cc618b0546fcf3c3586f8033cde196733f8286",
+                ("p5", 1.626_582_098_861_267_1),
+            ),
+            (
+                TurboQuantBits::Bits1_5,
+                "e1c691b939bd8e872d20f1096a3526861d0cc013352e0a83e5cdf592ba978e1a",
+                ("p5", 1.633_507_625_007_59),
+            ),
+            (
+                TurboQuantBits::Bits1,
+                "32e3b64ef9cec42a5c4c287bfc6f939f44a615b9a545b3a846ced11cdfea9157",
+                ("p5", 1.519_326_381_657_862_8),
+            ),
+        ] {
+            let segment = TurboQuantSegment::build(
+                TurboQuantSegmentConfig {
+                    id: ProjectionId::new("probe").unwrap(),
+                    scope: scope.clone(),
+                    field: "body".into(),
+                    dimensions: 48,
+                    metric: ScoreMetric::Dot,
+                    bits,
+                    seed: 5,
+                    embedding_model: None,
+                    filter_properties: BTreeSet::new(),
+                    estimator: TurboQuantEstimator::Mse,
+                },
+                1,
+                40,
+                candidates.clone(),
+            )
+            .unwrap();
+            assert_eq!(
+                segment.descriptor().stamp.artifact_digest,
+                digest,
+                "{bits:?}"
+            );
+            let hits = segment
+                .search_candidates_at(
+                    &SearchRequest {
+                        scope: scope.clone(),
+                        read: ReadStamp::new(scope.clone(), None, 0, 40, Some("11".repeat(32)))
+                            .unwrap(),
+                        valid_at: 2,
+                        field: "body".into(),
+                        metric: ScoreMetric::Dot,
+                        embedding_model: None,
+                        query: VectorQuery::Dense {
+                            values: (0..48)
+                                .map(|dimension| dimension as f32 / 48.0 - 0.5)
+                                .collect(),
+                        },
+                        filter: None,
+                        top_k: 5,
+                        mode: SearchMode::RequireApproximate { exact_rerank: 40 },
+                    },
+                    40,
+                    40,
+                )
+                .unwrap();
+            assert_eq!(hits[0].reference.id.as_str(), top.0, "{bits:?}");
+            assert!(
+                (hits[0].score - top.1).abs() < 1e-9,
+                "{bits:?}: {}",
+                hits[0].score
+            );
+        }
+    }
+
+    #[test]
+    fn an_inner_product_configuration_refuses_what_its_estimator_cannot_serve() {
+        let scope = ScopeId::new("instance:turbo-inner-product-configuration").unwrap();
+        let inner_product = |change: &dyn Fn(&mut TurboQuantSegmentConfig)| {
+            let mut config = config(&scope);
+            config.estimator = TurboQuantEstimator::InnerProduct;
+            change(&mut config);
+            config.validate()
+        };
+        assert!(inner_product(&|_| {}).is_ok());
+        assert!(inner_product(&|config| config.bits = TurboQuantBits::Bits1_5).is_err());
+        assert!(inner_product(&|config| config.metric = ScoreMetric::Manhattan).is_err());
+        assert!(inner_product(&|config| config.dimensions = MAX_QJL_DIMENSIONS).is_ok());
+        assert!(inner_product(&|config| config.dimensions = MAX_QJL_DIMENSIONS + 1).is_err());
+        // The MSE estimator keeps every width and metric.
+        let mut mse = config(&scope);
+        mse.bits = TurboQuantBits::Bits1_5;
+        mse.metric = ScoreMetric::Manhattan;
+        assert!(mse.validate().is_ok());
+    }
+
+    #[test]
+    fn extending_a_generation_equals_a_full_build() {
+        let scope = ScopeId::new("instance:turbo-extend").unwrap();
+        let first = (1..=6)
+            .map(|cursor| version(&scope, cursor, &format!("point-{cursor}"), None))
+            .collect::<Vec<_>>();
+        let base = TurboQuantSegment::build(config(&scope), 1, 6, first.clone()).unwrap();
+
+        // Since the base: point-2 is updated, point-3 is retired, point-4
+        // leaves this source (its history here is unchanged), and point-7 is
+        // new. Each changed identity arrives with its complete history.
+        let histories = vec![
+            version(&scope, 2, "point-2", Some(7)),
+            version(&scope, 7, "point-2", None),
+            version(&scope, 3, "point-3", Some(8)),
+            version(&scope, 4, "point-4", None),
+            version(&scope, 9, "point-7", None),
+        ];
+        let replaced = refs(&["point-2", "point-3", "point-4", "point-7"]);
+        let extended =
+            TurboQuantSegment::extend(&base, config(&scope), 2, &replaced, histories.clone(), 9)
+                .unwrap();
+
+        let unchanged = first
+            .into_iter()
+            .filter(|candidate| !replaced.contains(&candidate.vector.reference));
+        let full =
+            TurboQuantSegment::build(config(&scope), 2, 9, unchanged.chain(histories)).unwrap();
+        assert_eq!(extended.descriptor(), full.descriptor());
+        assert_eq!(extended.as_bytes(), full.as_bytes());
+        assert_eq!(extended.descriptor().candidate_versions, 8);
+        assert_eq!(extended.descriptor().stamp.source_cursor, 9);
+
+        // Extending again from the extended generation stays exact.
+        let again = TurboQuantSegment::extend(
+            &extended,
+            config(&scope),
+            3,
+            &refs(&["point-1"]),
+            [
+                version(&scope, 10, "point-1", None),
+                version(&scope, 1, "point-1", Some(10)),
+            ],
+            10,
+        )
+        .unwrap();
+        let reopened = TurboQuantSegment::from_bytes(again.as_bytes()).unwrap();
+        assert_eq!(reopened.descriptor(), again.descriptor());
+        assert_eq!(again.descriptor().candidate_versions, 9);
+    }
+
+    #[test]
+    fn extending_refuses_what_a_full_build_would_not_make() {
+        let scope = ScopeId::new("instance:turbo-extend-refusals").unwrap();
+        let base = TurboQuantSegment::build(
+            config(&scope),
+            2,
+            2,
+            [version(&scope, 1, "a", None), version(&scope, 2, "b", None)],
+        )
+        .unwrap();
+        let changed = refs(&["b"]);
+        let fresh = || [version(&scope, 3, "b", None)];
+
+        let mut seeded = config(&scope);
+        seeded.seed += 1;
+        assert!(TurboQuantSegment::extend(&base, seeded, 3, &changed, fresh(), 3).is_err());
+        let mut narrower = config(&scope);
+        narrower.bits = TurboQuantBits::Bits2;
+        assert!(TurboQuantSegment::extend(&base, narrower, 3, &changed, fresh(), 3).is_err());
+        assert!(
+            TurboQuantSegment::extend(&base, config(&scope), 2, &changed, fresh(), 3).is_err(),
+            "the next generation is later than its base"
+        );
+        assert!(
+            TurboQuantSegment::extend(&base, config(&scope), 3, &changed, fresh(), 1).is_err(),
+            "the next generation never covers less than its base"
+        );
+        assert!(
+            TurboQuantSegment::extend(&base, config(&scope), 3, &changed, fresh(), 2).is_err(),
+            "the next generation covers every version it holds"
+        );
+        assert!(
+            TurboQuantSegment::extend(
+                &base,
+                config(&scope),
+                3,
+                &changed,
+                [version(&scope, 3, "a", None)],
+                3,
+            )
+            .is_err(),
+            "an unchanged identity keeps its stored versions"
+        );
+        assert!(
+            TurboQuantSegment::extend(&base, config(&scope), 3, &refs(&["a", "b"]), [], 3).is_err(),
+            "a generation holds at least one version"
+        );
+        let other = ScopeId::new("instance:turbo-extend-other").unwrap();
+        assert!(TurboQuantSegment::extend(
+            &base,
+            config(&scope),
+            3,
+            &changed,
+            [version(&other, 3, "b", None)],
+            3,
+        )
+        .is_err());
+        assert!(TurboQuantSegment::extend(&base, config(&scope), 3, &changed, fresh(), 3).is_ok());
     }
 
     #[test]

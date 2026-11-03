@@ -1,0 +1,23 @@
+test_actual_changed_executable (__main__.ActualArtifactTests.test_actual_changed_executable) ... ok
+test_actual_extra_file (__main__.ActualArtifactTests.test_actual_extra_file) ... ok
+test_actual_missing_executable (__main__.ActualArtifactTests.test_actual_missing_executable) ... ok
+test_actual_rehashed_receipt_mismatch (__main__.ActualArtifactTests.test_actual_rehashed_receipt_mismatch) ... ok
+test_actual_round_trip (__main__.ActualArtifactTests.test_actual_round_trip) ... ok
+test_actual_unsafe_path (__main__.ActualArtifactTests.test_actual_unsafe_path) ... ok
+test_case_collision (__main__.ArchiveRejectionTests.test_case_collision) ... ok
+test_changed_member (__main__.ArchiveRejectionTests.test_changed_member) ... ok
+test_duplicate_json_keys (__main__.ArchiveRejectionTests.test_duplicate_json_keys) ... ok
+test_extra_member (__main__.ArchiveRejectionTests.test_extra_member) ... ok
+test_malformed_and_oversized_records (__main__.ArchiveRejectionTests.test_malformed_and_oversized_records) ... ok
+test_missing_declared_requirement (__main__.ArchiveRejectionTests.test_missing_declared_requirement) ... ok
+test_missing_member (__main__.ArchiveRejectionTests.test_missing_member) ... ok
+test_qualified_claim_rejected (__main__.ArchiveRejectionTests.test_qualified_claim_rejected) ... ok
+test_symlink_member (__main__.ArchiveRejectionTests.test_symlink_member) ... ok
+test_unsafe_paths (__main__.ArchiveRejectionTests.test_unsafe_paths) ... ok
+test_wrong_external_digest (__main__.ArchiveRejectionTests.test_wrong_external_digest) ... ok
+test_wrong_member_digest (__main__.ArchiveRejectionTests.test_wrong_member_digest) ... ok
+
+----------------------------------------------------------------------
+Ran 18 tests in 18.940s
+
+OK

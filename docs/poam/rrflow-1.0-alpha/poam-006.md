@@ -58,6 +58,29 @@ and distribution binding and act on the instance's own catalogue and staging roo
 estate cannot yet register backups the served engine created, so a retention decision over
 such a catalogue is refused.
 
+## Nested repository setup gap
+
+At development source `5b4039fe930332895c1b24138891d39f600030c7`, a
+source-built Windows `rrflow` install preview against the actual pinned
+`connectome/` checkout failed with `inventory Git input: external or
+non-directory Git metadata requires admission`. Its `.git` is a Gitfile naming
+the superproject's module directory. The parent inventory identifies its
+tracked gitlink but records that entry as excluded and does not descend. There
+is no implemented setup choice to exclude it, install a separate instance, or
+include it as a source in one instance.
+
+A separate read-only preview on the existing RRFlow checkout failed the private
+owner/protected-DACL check. The precise rejected object was not identified; do
+not infer that changing the `.rrflow` directory alone is a repair. The
+[diagnostic journal](../../evidence/change-journals/gate-d/nested-repository-boundary-decision.md)
+records the binary and observed errors. No project state or ACL was changed.
+
+D-01/D-03 and H-06 own remediation and the real-checkout acceptance in
+[Gate D](../../roadmap/rrflow-1.0/gate-d.md#nested-repository-setup). It includes
+bounded, explicitly authorized metadata roots and source identity, user choice,
+exact-plan revalidation, both estate layouts, restart and isolation. No new
+gate or completed status follows from this decision.
+
 ## Build-plan admission gaps
 
 Verified at `337d136210ff59b2359f898e717166c087dd5bfc`:
@@ -128,6 +151,18 @@ binds subsequent effects and read/reopen times to returned job completion while
 preserving every original assertion and production enforcement. The native
 failure remains retained; local passes do not substitute for corrected
 candidate and protected qualification. No POA&M status changes.
+
+The same defect then failed protected run `41258683845` (PR190's queue entry,
+job `124707222954`) in `replan_rechecks_inputs_and_fences_the_old_worker`; a later
+queue run for that pull request, `41263871154`, passed. Earlier repairs had
+corrected one test at a time. The
+[file-wide chronology repair](../../evidence/change-journals/gate-d/attunement-test-time-chronology.md)
+audits every supplied time in the attunement tests and derives each one that
+follows a committed transition from the completion it returned, preserving every
+assertion, the call order and production enforcement. A temporary delay in every
+transition path now fails none of the 34 tests, where the prior tests failed 16;
+at 3 s two tests still fail on real lease and session budgets, recorded there.
+Protected qualification remains required, and no POA&M status changes.
 
 ### Whole-repository Inventory publication and binary replacement
 
@@ -490,3 +525,13 @@ parsed values. Explicit sorted rendering in the existing test/refresher fixes
 that representation ambiguity without changing runtime hashing or weakening
 byte assertions. Both public feature flows remain at the existing engine
 boundary; combined candidate qualification and the wider lifecycle remain open.
+
+## Linux ARM64 installed evidence gap
+
+At public main `3a72a6b4adc43c842f67a59f4fc91d725eac7580`, the candidate CI
+has Linux x86-64, Windows and macOS jobs but no Linux ARM64 native installed
+lane. The [ARM64 qualification journal](../../evidence/change-journals/gate-d/d-01-linux-arm64-candidate-ci.md)
+records the proposed required lane and its actual results. A checked-in job,
+cross-compilation or another platform's pass does not qualify Linux ARM64;
+native candidate/merge-group execution and the separate capacity, recovery,
+offline and soak evidence remain open.

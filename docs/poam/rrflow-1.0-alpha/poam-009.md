@@ -10,6 +10,12 @@ independently.
 
 ## Observed deficiency
 
+The [worker/observation reconciliation](../../evidence/change-journals/gate-g/task-worker-observation-main.md)
+composes the worker candidate with landed observation delivery and discovery.
+It retains both configuration policies and native operations; local validation,
+candidate publication and installed qualification remain distinct. It does not
+supply template project effects or close the full development journey.
+
 The [terminal-response repair](../../evidence/change-journals/gate-g/task-worker-terminal-response.md)
 addresses a reproduced completion-classification defect: a matching worker reply
 ending at its token limit was rejected but classified as still possibly running.
@@ -63,6 +69,14 @@ Reuse the task budget, authority guards and authorized context
 for a separately admitted model activity; draft text cannot become a project
 effect, correctness label or training consent. Implementation and real installed
 worker evidence remain pending.
+The [optimized Windows artifact trial](../../evidence/change-journals/repository/controller-testing-bundle-artifact.md)
+passed actual proposal/reopen and three response-fault histories, but exposed a
+real model reliability gap: after configuration invalidation, the fresh provider
+response selected the unsupported effort `observed`. The engine rejected it;
+the success-expecting case failed. Recovery retained two charged steps and
+stopped/uncertain capacity. Preserve this failure for independent review; do not
+repair the response, clear uncertainty or label it qualified routing. Model
+qualification and public uncertainty reconciliation remain open.
 
 The later [installed live histories](../../evidence/change-journals/gate-g/controller-task-proposal-installed-live.md)
 prove a real configured BF16 proposal, restart/replay and guarded completion under
