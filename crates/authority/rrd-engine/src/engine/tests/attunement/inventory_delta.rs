@@ -183,6 +183,60 @@ fn interrupted_refresh_does_not_expose_partial_facts_as_completed_snapshot() {
     );
     let partial_read = engine.storage.runtime().read_stamp(&scope).unwrap();
     assert!(partial_read.commit_cursor > first_read.commit_cursor);
+    let unrelated_at = at + 30_000;
+    let transaction = engine
+        .begin_transaction(
+            &session.session_id,
+            &session.token,
+            &rrd_contract::BeginTransaction {
+                scope: CanonicalId::new("data").unwrap(),
+                timeout_ms: 1_000,
+            },
+            &context("visibility-unrelated-begin"),
+            unrelated_at,
+        )
+        .unwrap();
+    let unrelated_mutations = vec![rrd_contract::TransactionMutation::AssertClaim {
+        subject: CanonicalId::new("visibility-subject").unwrap(),
+        predicate: CanonicalId::new("visibility-marker").unwrap(),
+        object: "unrelated-latest".into(),
+        valid_from: unrelated_at,
+        tx_time: unrelated_at,
+        producer: CanonicalId::new("visibility-fixture").unwrap(),
+        confidence: None,
+    }];
+    engine
+        .commit_transaction(
+            &session.session_id,
+            &session.token,
+            &transaction.transaction_id,
+            &id("visibility-unrelated-commit"),
+            &rrd_contract::CommitTransaction {
+                operation_sha256: rrd_contract::transaction_operation_sha256(&unrelated_mutations),
+                mutations: unrelated_mutations,
+            },
+            unrelated_at + 1,
+            "request-visibility-unrelated-commit",
+            "operation-visibility-unrelated-commit",
+        )
+        .unwrap();
+    let read_unrelated = |engine: &RrdEngine, session: &SessionLease, now: u64, suffix: &str| {
+        let result = engine.execute_query(
+            &session.session_id, &session.token,
+            &rrd_contract::ExecuteQuery {
+                scope: scope.to_string(),
+                query: format!("FROM claim:visibility-marker AT VALID {now} KNOWN HEAD PROJECT subject, object"),
+                parameters: Default::default(), budget: rrd_contract::QueryBudget::default(),
+            }, now, &format!("request-visibility-unrelated-{suffix}"),
+            &format!("operation-visibility-unrelated-{suffix}"),
+        ).unwrap();
+        assert_eq!(result.rows.len(), 1);
+        assert_eq!(
+            result.rows[0].values.get("object"),
+            Some(&rrd_contract::QueryValue::String("unrelated-latest".into()))
+        );
+    };
+    read_unrelated(&engine, &session, unrelated_at + 2, "before-reopen");
     let query = format!("FROM record:source-tree-entry AT VALID {} KNOWN HEAD WHERE id = \"{}\" PROJECT path, subtree_sha256", at + 30_000, root_record.reference.id);
     let result = engine
         .execute_query(
@@ -194,7 +248,7 @@ fn interrupted_refresh_does_not_expose_partial_facts_as_completed_snapshot() {
                 parameters: Default::default(),
                 budget: rrd_contract::QueryBudget::default(),
             },
-            at + 30_000,
+            at + 30_003,
             "request-visibility-query",
             "operation-visibility-query",
         )
@@ -214,7 +268,7 @@ fn interrupted_refresh_does_not_expose_partial_facts_as_completed_snapshot() {
                 parameters: Default::default(),
                 budget: rrd_contract::QueryBudget::default(),
             },
-            at + 30_001,
+            at + 30_004,
             "request-visibility-pinned",
             "operation-visibility-pinned",
         )
@@ -231,7 +285,7 @@ fn interrupted_refresh_does_not_expose_partial_facts_as_completed_snapshot() {
                 parameters: Default::default(),
                 budget: rrd_contract::QueryBudget::default(),
             },
-            at + 30_002,
+            at + 30_005,
             "request-visibility-traversal",
             "operation-visibility-traversal",
         )
@@ -241,8 +295,9 @@ fn interrupted_refresh_does_not_expose_partial_facts_as_completed_snapshot() {
             root_record.reference.id.to_string()
         ))));
     drop(engine);
-    let reopened = installed.reopen(at + 30_003);
-    let reopened_session = installed.session(&reopened, "visibility-reopened", at + 30_004);
+    let reopened = installed.reopen(at + 30_006);
+    let reopened_session = installed.session(&reopened, "visibility-reopened", at + 30_007);
+    read_unrelated(&reopened, &reopened_session, at + 30_008, "after-reopen");
     assert_eq!(
         reopened.storage.control().get(&head_key).unwrap().unwrap(),
         first_head
@@ -257,7 +312,7 @@ fn interrupted_refresh_does_not_expose_partial_facts_as_completed_snapshot() {
                 parameters: Default::default(),
                 budget: rrd_contract::QueryBudget::default(),
             },
-            at + 30_005,
+            at + 30_009,
             "request-visibility-reopened",
             "operation-visibility-reopened",
         )
@@ -346,6 +401,12 @@ fn interrupted_refresh_does_not_expose_partial_facts_as_completed_snapshot() {
     )
     .unwrap();
     assert!(replay.idempotent_replay);
+    read_unrelated(
+        &final_reopened,
+        &final_session,
+        final_at + 4,
+        "after-replay",
+    );
     assert_eq!(replay.status.job, completed.status.job);
     assert_eq!(
         final_reopened
