@@ -34,11 +34,14 @@ pub struct VectorArtifactCatalogEntry {
 }
 
 impl VectorArtifactCatalogEntry {
+    /// `{projection}.{generation}`: a public canonical id whenever the
+    /// projection id is one, so the public changefeed can project the record.
+    /// The generation has no `.`, so the identity stays unique.
     pub fn record_reference(descriptor: &VectorProjectionDescriptor) -> Result<RuntimeRef> {
         RuntimeRef::new(
             VECTOR_ARTIFACT_RECORD_TYPE,
             format!(
-                "{}@{}",
+                "{}.{}",
                 descriptor.stamp().id,
                 descriptor.stamp().generation
             ),

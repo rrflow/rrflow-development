@@ -284,9 +284,22 @@ where
     }
 
     let record_reference = VectorArtifactCatalogEntry::record_reference(&descriptor)?;
+    let object_id = format!("{}.{}.vector-bytes", stamp.id, stamp.generation);
+    // The public changefeed projects every identity this publication writes,
+    // and it accepts only canonical ids.
+    for id in [record_reference.id.as_str(), object_id.as_str()] {
+        if let Err(error) = rrd_contract::CanonicalId::new(id) {
+            return finish_publication_error(
+                data.engine(),
+                span,
+                "catalog_identity",
+                format!("vector artifact identity {id} is not public: {error}").into(),
+            );
+        }
+    }
     let bytes = artifact.as_bytes();
     let object = match data.stage_object(
-        format!("{}@{}:bytes", stamp.id, stamp.generation),
+        object_id,
         Some(record_reference.clone()),
         artifact.kind().media_type(),
         bytes,

@@ -53,7 +53,7 @@ fn hnsw(candidates: Vec<VectorCandidate>) -> HnswIndex {
 fn hnsw_generation(candidates: Vec<VectorCandidate>, generation: u64) -> HnswIndex {
     HnswIndex::build(
         HnswConfig {
-            id: ProjectionId::new("vector:hnsw:body").unwrap(),
+            id: ProjectionId::new("vector-hnsw-body").unwrap(),
             scope: scope(),
             field: "body".into(),
             dimensions: 2,
