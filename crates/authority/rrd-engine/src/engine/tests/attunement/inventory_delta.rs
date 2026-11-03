@@ -2,6 +2,274 @@ use super::*;
 use rrd_core::{ReadStamp, RuntimeCommit, RuntimeLogicalModel, RuntimeType};
 use rrd_store::{RuntimeReadBudget, RuntimeVersionedSource};
 
+#[test]
+fn interrupted_refresh_does_not_expose_partial_facts_as_completed_snapshot() {
+    let (installed, engine, session) =
+        Installed::with_source(InstallationTargetKind::ExistingProject, None, |root| {
+            std::fs::create_dir(root.join("src")).unwrap();
+            for index in 0..2048 {
+                std::fs::write(root.join(format!("src/file-{index:04}.txt")), b"before\n").unwrap();
+            }
+        });
+    let started = call(
+        &engine,
+        &session,
+        &installed.start(60_000),
+        "visibility-start",
+        BASE + 1_000,
+    )
+    .unwrap();
+    let connected = call(
+        &engine,
+        &session,
+        &step(&started.status.job),
+        "visibility-connect",
+        started.status.job.updated_at_unix_ms + 1,
+    )
+    .unwrap();
+    let first = call(
+        &engine,
+        &session,
+        &step(&connected.status.job),
+        "visibility-first",
+        connected.status.job.updated_at_unix_ms + 1,
+    )
+    .unwrap();
+    let first_job = first.status.job;
+    let scope = ScopeId::new(format!("instance:{}", engine.instance_id())).unwrap();
+    let first_read = engine.storage.runtime().read_stamp(&scope).unwrap();
+    let root_record = engine
+        .storage
+        .runtime()
+        .read_versioned(
+            &first_read,
+            &[RuntimeVersionedSource::Records {
+                kind: Some(RuntimeType::new("source-tree-entry").unwrap()),
+            }],
+            RuntimeReadBudget::new(100_000).unwrap(),
+        )
+        .unwrap()
+        .changes
+        .into_iter()
+        .find_map(|change| match change.mutation {
+            RuntimeMutation::Record { record }
+                if record.properties.get("path") == Some(&RuntimeValue::String(String::new())) =>
+            {
+                Some(record)
+            }
+            _ => None,
+        })
+        .unwrap();
+    let head_key = format!("server/state/{}/inventory/head", engine.instance_id());
+    let first_head = engine.storage.control().get(&head_key).unwrap().unwrap();
+    for index in 0..2048 {
+        std::fs::write(
+            installed
+                .root
+                .path()
+                .join(format!("src/file-{index:04}.txt")),
+            b"after\n",
+        )
+        .unwrap();
+    }
+    let preview = engine
+        .preview_attunement_replan(
+            &session.session_id,
+            &session.token,
+            &installed.job,
+            first_job.revision,
+            first_job.updated_at_unix_ms + 1,
+            "request-visibility-preview",
+            "operation-visibility-preview",
+        )
+        .unwrap();
+    let accepted = engine
+        .accept_attunement_replan(
+            &session.session_id,
+            &session.token,
+            &preview,
+            &preview.proposal_sha256,
+            &context("visibility-replan"),
+            first_job.updated_at_unix_ms + 2,
+        )
+        .unwrap();
+    let successor = accepted.successor.job;
+    let next_start = AttunementCommand::Start {
+        job_id: successor.id.clone(),
+        plan_sha256: successor.plan_sha256.clone(),
+        expected_revision: successor.revision,
+        lease_ms: 60_000,
+    };
+    let running = call(
+        &engine,
+        &session,
+        &next_start,
+        "visibility-next-start",
+        successor.updated_at_unix_ms + 1,
+    )
+    .unwrap();
+    let next = call(
+        &engine,
+        &session,
+        &step(&running.status.job),
+        "visibility-next-connect",
+        running.status.job.updated_at_unix_ms + 1,
+    )
+    .unwrap();
+    let at = next.status.job.updated_at_unix_ms + 1;
+    let progress_key = format!(
+        "server/state/{}/inventory/progress/{}/1",
+        engine.instance_id(),
+        successor.id
+    );
+    std::thread::scope(|scope| {
+        let (sender, receiver) = std::sync::mpsc::channel();
+        let engine = &engine;
+        let session = &session;
+        let command = step(&next.status.job);
+        let worker = scope.spawn(move || {
+            let authorized = engine
+                .begin_invocation(
+                    Invocation {
+                        context: context("visibility-interrupt"),
+                        resource: ResourcePath {
+                            segments: vec![rrd_contract::ResourceId::new(
+                                rrd_contract::ResourceKind::Instance,
+                                engine.instance_id().as_str(),
+                            )
+                            .unwrap()],
+                        },
+                        observed_at_unix_ms: at,
+                        attempt: 1,
+                        request_sha256: digest::sha256_hex(&serde_json::to_vec(&command).unwrap()),
+                    },
+                    RrdOperation::EstateAdmin,
+                    InvocationCredential::Session {
+                        session_id: &session.session_id,
+                        token: &session.token,
+                    },
+                )
+                .unwrap();
+            sender.send(authorized).unwrap();
+            call(engine, session, &command, "visibility-interrupt", at)
+        });
+        let authorized = receiver
+            .recv_timeout(std::time::Duration::from_secs(30))
+            .unwrap();
+        let deadline = std::time::Instant::now();
+        while engine
+            .storage
+            .control()
+            .get(&progress_key)
+            .unwrap()
+            .is_none()
+        {
+            assert!(
+                !worker.is_finished(),
+                "refresh completed before interruption"
+            );
+            assert!(deadline.elapsed() < std::time::Duration::from_secs(60));
+            std::thread::sleep(std::time::Duration::from_millis(2));
+        }
+        authorized.cancel_pending();
+        assert!(matches!(
+            worker.join().unwrap(),
+            Err(ServiceError::AdmissionCancelled)
+        ));
+    });
+    assert_eq!(
+        engine.storage.control().get(&head_key).unwrap().unwrap(),
+        first_head
+    );
+    let partial_read = engine.storage.runtime().read_stamp(&scope).unwrap();
+    assert!(partial_read.commit_cursor > first_read.commit_cursor);
+    let query = format!("FROM record:source-tree-entry AT VALID {} KNOWN HEAD WHERE id = \"{}\" PROJECT path, subtree_sha256", at + 30_000, root_record.reference.id);
+    let result = engine
+        .execute_query(
+            &session.session_id,
+            &session.token,
+            &rrd_contract::ExecuteQuery {
+                scope: scope.to_string(),
+                query,
+                parameters: Default::default(),
+                budget: rrd_contract::QueryBudget::default(),
+            },
+            at + 30_000,
+            "request-visibility-query",
+            "operation-visibility-query",
+        )
+        .unwrap();
+    assert_eq!(result.rows.len(), 1);
+    let expected = match root_record.properties.get("subtree_sha256").unwrap() {
+        RuntimeValue::String(value) => rrd_contract::QueryValue::String(value.clone()),
+        other => panic!("unexpected root digest: {other:?}"),
+    };
+    let pinned = engine
+        .execute_query(
+            &session.session_id,
+            &session.token,
+            &rrd_contract::ExecuteQuery {
+                scope: scope.to_string(),
+                query: format!("FROM record:source-tree-entry AT VALID {} KNOWN {} WHERE id = \"{}\" PROJECT path, subtree_sha256", at + 30_000, first_read.commit_cursor, root_record.reference.id),
+                parameters: Default::default(),
+                budget: rrd_contract::QueryBudget::default(),
+            },
+            at + 30_001,
+            "request-visibility-pinned",
+            "operation-visibility-pinned",
+        )
+        .unwrap();
+    assert_eq!(pinned.rows.len(), 1);
+    assert_eq!(pinned.rows[0].values.get("subtree_sha256"), Some(&expected));
+    let traversal = engine
+        .execute_query(
+            &session.session_id,
+            &session.token,
+            &rrd_contract::ExecuteQuery {
+                scope: scope.to_string(),
+                query: format!("FROM traverse:source-tree-contains START source-tree-snapshot:\"{}\" DIRECTION OUTGOING DEPTH 1 AT VALID {} KNOWN HEAD PROJECT node_id", first_job.checkpoints[1].output_sha256, at + 30_000),
+                parameters: Default::default(),
+                budget: rrd_contract::QueryBudget::default(),
+            },
+            at + 30_002,
+            "request-visibility-traversal",
+            "operation-visibility-traversal",
+        )
+        .unwrap();
+    assert!(traversal.rows.iter().any(|row| row.values.get("node_id")
+        == Some(&rrd_contract::QueryValue::String(
+            root_record.reference.id.to_string()
+        ))));
+    drop(engine);
+    let reopened = installed.reopen(at + 30_003);
+    let reopened_session = installed.session(&reopened, "visibility-reopened", at + 30_004);
+    assert_eq!(
+        reopened.storage.control().get(&head_key).unwrap().unwrap(),
+        first_head
+    );
+    let after_reopen = reopened
+        .execute_query(
+            &reopened_session.session_id,
+            &reopened_session.token,
+            &rrd_contract::ExecuteQuery {
+                scope: scope.to_string(),
+                query: format!("FROM record:source-tree-entry AT VALID {} KNOWN HEAD WHERE id = \"{}\" PROJECT path, subtree_sha256", at + 30_000, root_record.reference.id),
+                parameters: Default::default(),
+                budget: rrd_contract::QueryBudget::default(),
+            },
+            at + 30_005,
+            "request-visibility-reopened",
+            "operation-visibility-reopened",
+        )
+        .unwrap();
+    assert_eq!(after_reopen.rows, result.rows);
+    assert_eq!(
+        result.rows[0].values.get("subtree_sha256"),
+        Some(&expected),
+        "a completed snapshot must not expose an incomplete refresh's root"
+    );
+}
+
 fn first_inventory() -> (
     Installed,
     RrdEngine,

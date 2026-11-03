@@ -27,6 +27,21 @@ define the flow. Existing API contracts stay unchanged; an operation that cannot
 express a required action is a specific blocker to resolve, not an implied
 new endpoint. POAM-006 remains open.
 
+## Interrupted Inventory refresh can mix snapshot generations
+
+On public main `3a72a6b4adc43c842f67a59f4fc91d725eac7580`, a Windows
+real-engine regression published a complete 2,048-file Inventory, edited the
+sources, accepted a successor plan, and interrupted a later multi-batch
+refresh. The completed control head remained unchanged. Its graph still
+reached the old root identity, but a `KNOWN HEAD` query for that identity
+returned the partially refreshed root digest, including after reopen. The same
+query pinned to the completed checkpoint cursor returned the original digest.
+[Draft PR #252](https://github.com/rrflow/rrflow-development/pull/252) and its
+[evidence record](../../evidence/change-journals/gate-d/d-03-interrupted-refresh-visibility.md)
+retain the failing oracle. D-03 owns the repair; D-04 must not treat an
+unqualified head query as a complete source snapshot. This does not establish
+that a checkpoint-pinned read is broken or close any roadmap item.
+
 D-01's bounded installed foundation is now [accepted](../../roadmap/rrflow-1.0/gate-d-evidence.md#d-01-accepted-installed-foundation-2026-10-21).
 The native proof covers Linux, macOS and Windows source/outbound isolation,
 owner/permission/path/mount denial, exclusive install recovery and both actual
