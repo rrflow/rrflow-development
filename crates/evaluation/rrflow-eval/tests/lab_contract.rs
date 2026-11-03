@@ -841,6 +841,7 @@ fn the_checked_in_manifests_are_valid_and_keep_every_comparator() {
         "vector-small.json",
         "vector-100k.json",
         "vector-medium.json",
+        "vector-coco-i2i.json",
     ] {
         let path = Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../../../eval/lab")

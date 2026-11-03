@@ -87,6 +87,16 @@ Compare baseline and locally grounded arms at matched quality and account for
 initial construction and updates. A context-size reduction, provider cache hit,
 or successful storage soak alone is not proof of remote-token savings.
 
+The owner's direction of 2026-11-03 adds Lance to the systems the
+[comparison lab](../../../eval/lab/README.md) keeps beside RRFlow, asks that the newest
+outside benchmarks can be brought into it, and names the
+[REA list](https://github.com/AIshihzong/awesome-reverse-engineer-anything) as a source to
+keep in view. The same direction says that Qdrant's capabilities should eventually be
+triggered properly, so that different reasoning can be chosen dynamically. No operation does
+that yet, so the lab declares `rrflow-routed` as `unimplemented`, and it stays a visible gap
+until one exists. `eval/lab/sources.json` records each outside source and its status. None of
+this changes J-04's acceptance requirements.
+
 ## Capacity and optimization qualification
 
 The [researched design rationale](../../architecture/engine-scale-and-contracts.md)
