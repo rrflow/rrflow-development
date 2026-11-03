@@ -55,7 +55,12 @@ corpus, whose changefeed read follows an index build.
 
 The review of every engine-internal writer is in the
 [pull request's journal](../../evidence/change-journals/gate-h/h-04-vector-index-operations.md#writer-review).
-It found no other writer of a refused identity.
+It found one other writer that could write a refused identity: a distributed
+authority record in the instance scope takes its id from `ClusterId`, which
+accepts any bytes except NUL. No public operation or production caller reaches
+it. Pull request #271 refuses such an id before it prepares a commit, and the
+oracle is `a_cluster_id_the_public_changefeed_cannot_project_is_refused` in
+`rrd-engine`'s `distributed_data_plane`.
 
 The row is Verifying until Gate C and Gate H record that evidence at the merged
 revision.
