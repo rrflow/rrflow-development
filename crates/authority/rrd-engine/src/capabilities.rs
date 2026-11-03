@@ -310,12 +310,12 @@ pub fn product_capability_catalogue() -> ProductCapabilityCatalogue {
         id: "vector-payload-index-administration".into(),
         label: "Vector payload index administration".into(),
         category: "vector".into(),
-        summary: "Ensure, list, and delete typed collection payload indexes through the revisioned RRD vector catalogue.".into(),
+        summary: "List one collection's typed payload indexes directly through the engine. Clients read them from vector-collection-list, and declare and delete them through vector-payload-index-ensure and vector-payload-index-delete.".into(),
         bindings: surface_bindings(
             planned(ENGINE_SURFACE_PLAN_REASON),
             [(
                 ProductSurface::Engine,
-                available("rrd-engine:RrdEngine::ensure_vector_payload_index,list_vector_payload_indexes,delete_vector_payload_index"),
+                available("rrd-engine:RrdEngine::list_vector_payload_indexes"),
             )],
         ),
     });
