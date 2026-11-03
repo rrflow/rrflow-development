@@ -32,6 +32,189 @@ fn start(case: &str, memory: u64) -> std::io::Result<ManagedChild> {
     )
 }
 
+fn start_piped(case: &str) -> std::io::Result<(ManagedChild, std::fs::File, std::fs::File)> {
+    ManagedChild::spawn_piped(
+        &std::env::current_exe()?,
+        &[
+            OsStr::new("--ignored"),
+            OsStr::new("--exact"),
+            OsStr::new(case),
+        ],
+        256 * 1024 * 1024,
+    )
+}
+
+#[test]
+fn native_job_transports_framed_parser_request_without_unrelated_handle_inheritance() {
+    use rrd_attunement::parse::ParseLimits;
+    use rrd_attunement::worker::{read_response, write_request, WorkerRequest, WorkerResponse};
+    use std::io::{Read, Write};
+    use windows_sys::Win32::Foundation::WAIT_TIMEOUT;
+    use windows_sys::Win32::Security::SECURITY_ATTRIBUTES;
+    use windows_sys::Win32::System::Threading::{CreateEventW, WaitForSingleObject};
+
+    let security = SECURITY_ATTRIBUTES {
+        nLength: std::mem::size_of::<SECURITY_ATTRIBUTES>() as u32,
+        lpSecurityDescriptor: std::ptr::null_mut(),
+        bInheritHandle: 1,
+    };
+    // SAFETY: the initialized attributes create an unnamed inheritable event.
+    let event = unsafe { CreateEventW(&security, 1, 0, std::ptr::null()) };
+    assert!(!event.is_null());
+    let event = super::Handle(event);
+    let (mut child, mut input, mut output) =
+        start_piped("engine::attunement::windows_supervisor::tests::child_runs_framed_parser")
+            .unwrap();
+    input
+        .write_all(&(event.0 as usize as u64).to_le_bytes())
+        .unwrap();
+    let source = b"pub fn supervised_symbol() {}\n";
+    let request = WorkerRequest {
+        format_version: 1,
+        source_id: "fixture/source.rs".into(),
+        content_sha256: rrd_core::digest::sha256_hex(source),
+        language: "rust".into(),
+        source_bytes: source.len() as u64,
+        limits: ParseLimits {
+            input_bytes: 1024,
+            nodes: 512,
+            depth: 64,
+            output_bytes: 65536,
+            elapsed_micros: 5_000_000,
+        },
+    };
+    write_request(&mut input, &request, source).unwrap();
+    drop(input);
+    let status = child.wait(Duration::from_secs(15)).unwrap();
+    if status.is_none() {
+        child.terminate().unwrap();
+        let _ = child.wait(Duration::from_secs(15));
+        panic!("supervised parser child exceeded its test deadline");
+    }
+    assert_eq!(status, Some(0));
+    // libtest prints its own preamble; the child fixture writes this delimiter
+    // immediately before the actual binary protocol and exits without a footer.
+    let mut prefix = Vec::new();
+    let mut byte = [0];
+    while !prefix.ends_with(b"RR-PARSER-FRAME\n") {
+        output.read_exact(&mut byte).unwrap();
+        prefix.push(byte[0]);
+        assert!(prefix.len() <= 1024, "unexpected child test preamble");
+    }
+    let WorkerResponse::Parsed { proposal } = read_response(&mut output, &request).unwrap() else {
+        panic!("supervised child did not return parsed evidence");
+    };
+    assert!(proposal.nodes.iter().any(|node| {
+        &source[node.start_byte as usize..node.end_byte as usize] == b"supervised_symbol"
+    }));
+    // SAFETY: event is still the live parent handle. A listed child handle is
+    // not this event, so the child must not have been able to signal it.
+    let observed = unsafe { WaitForSingleObject(event.0, 0) };
+    assert_eq!(observed, WAIT_TIMEOUT, "unrelated inheritable event leaked");
+}
+
+#[test]
+fn native_job_termination_releases_writer_blocked_on_child_input() {
+    use std::io::Write;
+    let (mut child, mut input, _output) =
+        start_piped("engine::attunement::windows_supervisor::tests::child_waits").unwrap();
+    let (send, receive) = std::sync::mpsc::sync_channel(1);
+    let (started, ready) = std::sync::mpsc::sync_channel(1);
+    let writer = std::thread::spawn(move || {
+        let payload = vec![0; 16 * 1024 * 1024];
+        let _ = started.send(());
+        let result = input.write_all(&payload);
+        let _ = send.send(result);
+    });
+    ready.recv_timeout(Duration::from_secs(15)).unwrap();
+    assert!(receive.recv_timeout(Duration::from_millis(100)).is_err());
+    child.terminate().unwrap();
+    assert!(child.wait(Duration::from_secs(15)).unwrap().is_some());
+    assert!(receive
+        .recv_timeout(Duration::from_secs(15))
+        .unwrap()
+        .is_err());
+    writer.join().unwrap();
+}
+
+#[test]
+#[ignore = "subprocess fixture; run by native_job_transports_framed_parser_request_without_unrelated_handle_inheritance"]
+fn child_runs_framed_parser() {
+    use std::io::{Read, Write};
+    let mut stdin = std::io::stdin().lock();
+    let mut stdout = std::io::stdout().lock();
+    let mut raw = [0; 8];
+    stdin.read_exact(&mut raw).unwrap();
+    let event = u64::from_le_bytes(raw) as usize as windows_sys::Win32::Foundation::HANDLE;
+    // SAFETY: deliberately probe the parent's numeric handle; without
+    // inheritance Windows must reject it or it must refer to a different object.
+    unsafe { windows_sys::Win32::System::Threading::SetEvent(event) };
+    stdout.write_all(b"RR-PARSER-FRAME\n").unwrap();
+    stdout.flush().unwrap();
+    rrd_attunement::worker::run_worker(&mut stdin, &mut stdout).unwrap();
+    std::process::exit(0);
+}
+
+#[test]
+#[ignore = "requires an explicitly selected source-built rrflow executable"]
+fn native_job_runs_primary_binary_parser_worker() {
+    use rrd_attunement::parse::ParseLimits;
+    use rrd_attunement::worker::{read_response, write_request, WorkerRequest, WorkerResponse};
+    let executable = std::path::PathBuf::from(
+        std::env::var_os("RRFLOW_SUPERVISOR_TEST_EXECUTABLE")
+            .expect("select the exact source-built primary executable"),
+    );
+    let (mut child, mut input, mut output) = ManagedChild::spawn_piped(
+        &executable,
+        &[OsStr::new("--rrflow-internal-parse-worker-v1")],
+        512 * 1024 * 1024,
+    )
+    .unwrap();
+    let mut assigned = 0;
+    // SAFETY: both handles are owned and assigned is writable BOOL storage.
+    assert_ne!(
+        unsafe {
+            windows_sys::Win32::System::JobObjects::IsProcessInJob(
+                child.process.0,
+                child.job.0,
+                &mut assigned,
+            )
+        },
+        0
+    );
+    assert_ne!(assigned, 0);
+    let source = b"pub fn actual_binary_symbol() {}\n";
+    let request = WorkerRequest {
+        format_version: 1,
+        source_id: "fixture/source.rs".into(),
+        content_sha256: rrd_core::digest::sha256_hex(source),
+        language: "rust".into(),
+        source_bytes: source.len() as u64,
+        limits: ParseLimits {
+            input_bytes: 1024,
+            nodes: 512,
+            depth: 64,
+            output_bytes: 65536,
+            elapsed_micros: 5_000_000,
+        },
+    };
+    write_request(&mut input, &request, source).unwrap();
+    drop(input);
+    let status = child.wait(Duration::from_secs(15)).unwrap();
+    if status.is_none() {
+        child.terminate().unwrap();
+        let _ = child.wait(Duration::from_secs(15));
+        panic!("primary parser worker exceeded its test deadline");
+    }
+    assert_eq!(status, Some(0));
+    let WorkerResponse::Parsed { proposal } = read_response(&mut output, &request).unwrap() else {
+        panic!("primary parser worker did not return parsed evidence");
+    };
+    assert!(proposal.nodes.iter().any(|node| {
+        &source[node.start_byte as usize..node.end_byte as usize] == b"actual_binary_symbol"
+    }));
+}
+
 #[test]
 fn native_job_enforces_memory_before_child_runs() {
     let mut child = start(

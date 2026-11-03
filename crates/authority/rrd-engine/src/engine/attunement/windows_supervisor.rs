@@ -1,29 +1,46 @@
 //! Native containment foundation. This module is not a Parse executor: it has
-//! no admitted executable identity, source pipes, deadline or publication.
-//! Do not connect it to engine work until those boundaries are implemented.
+//! no admitted executable identity, deadline or publication.
+//! The explicit list restricts this child; the temporary inheritable duplicates
+//! could still leak to another concurrently launched child that inherits every
+//! handle. Do not connect this to engine work until that host-wide interaction
+//! and the other admission boundaries are resolved.
 
 use std::ffi::{c_void, OsStr};
 use std::io;
 use std::mem::{size_of, zeroed};
 use std::os::windows::ffi::OsStrExt;
+use std::os::windows::io::{AsRawHandle, FromRawHandle};
 use std::path::Path;
 use std::ptr::{null, null_mut};
 use std::time::Duration;
-use windows_sys::Win32::Foundation::{CloseHandle, HANDLE, WAIT_OBJECT_0, WAIT_TIMEOUT};
+use windows_sys::Win32::Foundation::{
+    CloseHandle, DuplicateHandle, DUPLICATE_SAME_ACCESS, HANDLE, WAIT_OBJECT_0, WAIT_TIMEOUT,
+};
+use windows_sys::Win32::Security::SECURITY_ATTRIBUTES;
 use windows_sys::Win32::System::JobObjects::{
     CreateJobObjectW, JobObjectExtendedLimitInformation, SetInformationJobObject,
     TerminateJobObject, JOBOBJECT_EXTENDED_LIMIT_INFORMATION, JOB_OBJECT_LIMIT_JOB_MEMORY,
     JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE, JOB_OBJECT_LIMIT_PROCESS_MEMORY,
 };
+use windows_sys::Win32::System::Pipes::CreatePipe;
 use windows_sys::Win32::System::Threading::{
-    CreateProcessW, DeleteProcThreadAttributeList, GetExitCodeProcess,
+    CreateProcessW, DeleteProcThreadAttributeList, GetCurrentProcess, GetExitCodeProcess,
     InitializeProcThreadAttributeList, ResumeThread, UpdateProcThreadAttribute,
     WaitForSingleObject, CREATE_NO_WINDOW, CREATE_SUSPENDED, EXTENDED_STARTUPINFO_PRESENT,
-    LPPROC_THREAD_ATTRIBUTE_LIST, PROCESS_INFORMATION, PROC_THREAD_ATTRIBUTE_JOB_LIST,
-    STARTUPINFOEXW,
+    LPPROC_THREAD_ATTRIBUTE_LIST, PROCESS_INFORMATION, PROC_THREAD_ATTRIBUTE_HANDLE_LIST,
+    PROC_THREAD_ATTRIBUTE_JOB_LIST, STARTF_USESTDHANDLES, STARTUPINFOEXW,
 };
 
 struct Handle(HANDLE);
+
+impl Handle {
+    fn into_file(self) -> std::fs::File {
+        let raw = self.0;
+        std::mem::forget(self);
+        // SAFETY: this owned, live handle is transferred exactly once to File.
+        unsafe { std::fs::File::from_raw_handle(raw) }
+    }
+}
 
 impl Drop for Handle {
     fn drop(&mut self) {
@@ -39,10 +56,10 @@ struct Attributes {
 }
 
 impl Attributes {
-    fn new() -> io::Result<Self> {
+    fn new(count: u32) -> io::Result<Self> {
         let mut size = 0usize;
         // SAFETY: the documented first call asks for the required buffer size.
-        unsafe { InitializeProcThreadAttributeList(null_mut(), 1, 0, &mut size) };
+        unsafe { InitializeProcThreadAttributeList(null_mut(), count, 0, &mut size) };
         if size == 0 {
             return Err(io::Error::last_os_error());
         }
@@ -54,7 +71,7 @@ impl Attributes {
         let list = storage.as_mut_ptr().cast::<c_void>();
         // SAFETY: the aligned buffer has at least the requested size and lives
         // until after DeleteProcThreadAttributeList in Drop.
-        if unsafe { InitializeProcThreadAttributeList(list, 1, 0, &mut size) } == 0 {
+        if unsafe { InitializeProcThreadAttributeList(list, count, 0, &mut size) } == 0 {
             return Err(io::Error::last_os_error());
         }
         Ok(Self {
@@ -71,7 +88,71 @@ impl Drop for Attributes {
     }
 }
 
-/// One owned native process and its pre-associated job. No handle is inherited.
+struct Pipes {
+    child_input: Handle,
+    parent_input: Handle,
+    parent_output: Handle,
+    child_output: Handle,
+    child_error: Handle,
+}
+
+impl Pipes {
+    fn new() -> io::Result<Self> {
+        fn pipe() -> io::Result<(Handle, Handle)> {
+            let attributes = SECURITY_ATTRIBUTES {
+                nLength: size_of::<SECURITY_ATTRIBUTES>() as u32,
+                lpSecurityDescriptor: null_mut(),
+                bInheritHandle: 0,
+            };
+            let mut read = null_mut();
+            let mut write = null_mut();
+            // SAFETY: the output pointers and attributes are valid and writable.
+            if unsafe { CreatePipe(&mut read, &mut write, &attributes, 0) } == 0 {
+                return Err(io::Error::last_os_error());
+            }
+            Ok((Handle(read), Handle(write)))
+        }
+        fn inherited_duplicate(source: HANDLE) -> io::Result<Handle> {
+            let mut duplicated = null_mut();
+            // SAFETY: both process pseudo-handles are valid, and the caller
+            // retains the source until DuplicateHandle returns.
+            if unsafe {
+                DuplicateHandle(
+                    GetCurrentProcess(),
+                    source,
+                    GetCurrentProcess(),
+                    &mut duplicated,
+                    0,
+                    1,
+                    DUPLICATE_SAME_ACCESS,
+                )
+            } == 0
+            {
+                return Err(io::Error::last_os_error());
+            }
+            Ok(Handle(duplicated))
+        }
+        let (child_input_source, parent_input) = pipe()?;
+        let (parent_output, child_output_source) = pipe()?;
+        // Create parent ends as non-inheritable from the outset. Only short-
+        // lived duplicates of the selected child ends are inheritable.
+        let child_input = inherited_duplicate(child_input_source.0)?;
+        let child_output = inherited_duplicate(child_output_source.0)?;
+        // Keep diagnostics out of the framed stdout stream. Duplicate the
+        // null sink as inheritable without changing the original handle.
+        let null_file = std::fs::OpenOptions::new().write(true).open("NUL")?;
+        let child_error = inherited_duplicate(null_file.as_raw_handle())?;
+        Ok(Self {
+            child_input,
+            parent_input,
+            parent_output,
+            child_output,
+            child_error,
+        })
+    }
+}
+
+/// One owned native process and its pre-associated job.
 #[allow(dead_code)] // Parse activation is intentionally blocked until full admission exists.
 pub(super) struct ManagedChild {
     job: Handle,
@@ -81,6 +162,30 @@ pub(super) struct ManagedChild {
 #[allow(dead_code)]
 impl ManagedChild {
     pub(super) fn spawn(executable: &Path, args: &[&OsStr], limit: u64) -> io::Result<Self> {
+        Self::spawn_inner(executable, args, limit, None)
+    }
+
+    pub(super) fn spawn_piped(
+        executable: &Path,
+        args: &[&OsStr],
+        limit: u64,
+    ) -> io::Result<(Self, std::fs::File, std::fs::File)> {
+        let pipes = Pipes::new()?;
+        let child = Self::spawn_inner(executable, args, limit, Some(&pipes))?;
+        let Pipes {
+            parent_input,
+            parent_output,
+            ..
+        } = pipes;
+        Ok((child, parent_input.into_file(), parent_output.into_file()))
+    }
+
+    fn spawn_inner(
+        executable: &Path,
+        args: &[&OsStr],
+        limit: u64,
+        pipes: Option<&Pipes>,
+    ) -> io::Result<Self> {
         let memory = usize::try_from(limit)
             .ok()
             .filter(|value| *value > 0)
@@ -129,7 +234,14 @@ impl ManagedChild {
 
         // The job handle array must outlive the attribute list and CreateProcessW.
         let jobs = [job.0];
-        let attributes = Attributes::new()?;
+        let inherited = pipes.map(|pipes| {
+            [
+                pipes.child_input.0,
+                pipes.child_output.0,
+                pipes.child_error.0,
+            ]
+        });
+        let attributes = Attributes::new(if pipes.is_some() { 2 } else { 1 })?;
         // SAFETY: the list is initialized, and jobs remains live until it is deleted.
         if unsafe {
             UpdateProcThreadAttribute(
@@ -145,21 +257,46 @@ impl ManagedChild {
         {
             return Err(io::Error::last_os_error());
         }
+        if let Some(handles) = &inherited {
+            // SAFETY: all listed handles are inheritable and the array outlives
+            // the attribute list and CreateProcessW.
+            if unsafe {
+                UpdateProcThreadAttribute(
+                    attributes.list,
+                    0,
+                    PROC_THREAD_ATTRIBUTE_HANDLE_LIST as usize,
+                    handles.as_ptr().cast(),
+                    std::mem::size_of_val(handles),
+                    null_mut(),
+                    null(),
+                )
+            } == 0
+            {
+                return Err(io::Error::last_os_error());
+            }
+        }
         // SAFETY: these native structures require zero initialization.
         let mut startup: STARTUPINFOEXW = unsafe { zeroed() };
         startup.StartupInfo.cb = size_of::<STARTUPINFOEXW>() as u32;
         startup.lpAttributeList = attributes.list;
+        if let Some(pipes) = pipes {
+            startup.StartupInfo.dwFlags |= STARTF_USESTDHANDLES;
+            startup.StartupInfo.hStdInput = pipes.child_input.0;
+            startup.StartupInfo.hStdOutput = pipes.child_output.0;
+            startup.StartupInfo.hStdError = pipes.child_error.0;
+        }
         // SAFETY: PROCESS_INFORMATION is populated only after a successful call.
         let mut info: PROCESS_INFORMATION = unsafe { zeroed() };
         // SAFETY: application and mutable command are terminated UTF-16, the
-        // attribute list and its job handle remain live, and no handles inherit.
+        // attribute list and its handles remain live. In piped mode only the
+        // explicit handle list is inherited.
         let created = unsafe {
             CreateProcessW(
                 application.as_ptr(),
                 command.as_mut_ptr(),
                 null(),
                 null(),
-                0,
+                i32::from(pipes.is_some()),
                 CREATE_SUSPENDED | CREATE_NO_WINDOW | EXTENDED_STARTUPINFO_PRESENT,
                 null(),
                 null(),
