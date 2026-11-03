@@ -118,11 +118,9 @@ Real runs on `clyffy-01`, one system at a time, on an engine with SHA-256 prefix
 - Candidate CI has not run. The SDK suites and the generated-surface check were not run
   locally, because no contract or generated surface changed.
 - Whether keeping pages helps at 8 clients is unmeasured.
-- Ingest was not compared under control. The 200,000-point run ingested 462 points per
-  second, in the same busy window, against 472 to 571 on an older revision. On a quiet host
-  this build ingests 100,000 points at 633 to 641 per second. The starting revision has not
-  been measured at that size, so there is no before-and-after. This package changes only the
-  read path.
+- Ingest did not change. Alternating on a quiet host at 100,000 points, the starting revision
+  ingested 621 and 627 points per second, and this build 611 and 625. The lower 462 at 200,000
+  points came from the busy window.
 - POAM-035, C-07 and POAM-054 stay open. Exact search and TurboQuant builds still read every
   stored vector in one read.
 
