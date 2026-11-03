@@ -40,6 +40,15 @@ are explained by the [scale rationale](../../architecture/engine-scale-and-contr
 
 ## Impact
 
+The [schemaless document query journal](../../evidence/change-journals/gate-e/e-01-schemaless-document-query.md)
+records a registered document rejected by rrflowQL and the candidate projection
+repair. Dynamic-property predicates and joins still require explicit type and
+execution semantics. Properties named like built-in fields (such as `id`) are
+currently shadowed in record query rows; arbitrary property namespace access
+still needs a defined contract. This candidate does not qualify those cases.
+Its local results cannot close this ledger or establish general document-query
+support.
+
 Context can remain slow, and a derived index can still become stale, lose exact semantics,
 or select an unbounded path until the accepted deltas have stamped materializers, exact
 fallbacks, algorithm-quality evidence, and planner evidence.

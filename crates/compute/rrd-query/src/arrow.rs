@@ -85,6 +85,7 @@ impl ArrowSnapshot {
 }
 
 pub fn rows_to_record_batch(rows: &[QueryRow], declared: &QueryFieldTypes) -> Result<RecordBatch> {
+    validate_identity_column(rows, declared)?;
     let schema = row_schema(rows, declared, HashMap::new());
     rows_to_record_batch_with_schema(rows, schema)
 }
@@ -95,6 +96,7 @@ pub fn rows_to_arrow_snapshot(
     stamp: ArrowReadStamp,
     max_batch_rows: usize,
 ) -> Result<ArrowSnapshot> {
+    validate_identity_column(rows, declared)?;
     if max_batch_rows == 0 {
         return Err(Error::Budget(
             "Arrow snapshot batch-row bound must be greater than zero".into(),
@@ -114,6 +116,15 @@ pub fn rows_to_arrow_snapshot(
     };
     snapshot.validate()?;
     Ok(snapshot)
+}
+
+fn validate_identity_column(rows: &[QueryRow], declared: &QueryFieldTypes) -> Result<()> {
+    if declared.contains_key(IDENTITY) || rows.iter().any(|row| row.values.contains_key(IDENTITY)) {
+        return Err(Error::Binding(format!(
+            "property name {IDENTITY:?} conflicts with the internal query identity"
+        )));
+    }
+    Ok(())
 }
 
 fn row_schema(
@@ -481,6 +492,26 @@ fn downcast<'a, T: 'static>(array: &'a ArrayRef, expected: &str) -> Result<&'a T
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn reserved_identity_field_is_never_interpreted_as_a_document_property() {
+        let rows = vec![QueryRow {
+            identity: "record:doc:real".into(),
+            values: BTreeMap::from([(IDENTITY.into(), RuntimeValue::String("forged".into()))]),
+        }];
+        assert!(rows_to_record_batch(&rows, &QueryFieldTypes::new()).is_err());
+        let stamp = ArrowReadStamp {
+            read_manifest: "a".repeat(64),
+            scope: "instance:test".into(),
+            valid_at: 1,
+            known_at_cursor: 1,
+            source_cursor: 1,
+            schema_revision: 1,
+        };
+        assert!(rows_to_arrow_snapshot(&rows, &QueryFieldTypes::new(), stamp.clone(), 1).is_err());
+        let declared = QueryFieldTypes::from([(IDENTITY.into(), Vec::new())]);
+        assert!(rows_to_arrow_snapshot(&[], &declared, stamp, 1).is_err());
+    }
 
     #[test]
     fn scalar_union_and_nested_values_round_trip() {
