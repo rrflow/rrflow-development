@@ -24,6 +24,13 @@ does not block implementing missing ingestion and retrieval. Full release
 requirements and every unchecked gate remain open. Preserve the existing API
 and converge the one pre-release implementation directly.
 
+First deliver a usable developer build and its real-project journey. Then use
+repeatable benchmarks to tune that build while the existing qualification work
+continues. Boundary-derived reasoning shards and associated custom KV-cache
+strategies are a later, evidence-gated direction for large projects; they do not
+block the first usable build or change the alpha exit. The [scale rationale](../architecture/engine-scale-and-contracts.md#boundary-based-reasoning-after-the-developer-build)
+records their intended scope and evaluation.
+
 ### Build-plan admission
 
 The [package readiness rules](rrflow-1.0/executable-dependency-spine.md#package-readiness-and-evidence)
@@ -31,8 +38,9 @@ apply before implementation. The [D-02 through D-05 build packages](rrflow-1.0/g
 identify the next concrete boundaries. A requirement, type or planned file is
 not an available capability. Known missing admission/configuration decisions
 are recorded in [POAM-006](../poam/rrflow-1.0-alpha/poam-006.md#build-plan-admission-gaps).
-The owner has paused runtime implementation for this planning audit; unresolved
-required decisions cannot be treated as permission or silently guessed.
+The owner has since directed runtime implementation to resume. Resolve each
+actual effect-boundary decision against the existing authorization and current
+owner instructions; an unrelated open question does not block safe work.
 
 ### Gate A — freeze authority, names, and boundaries
 

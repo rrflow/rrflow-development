@@ -44,6 +44,15 @@ separate planned behavior from executable work. Known admission/configuration
 blockers are [explicitly recorded](docs/poam/rrflow-1.0-alpha/poam-006.md#build-plan-admission-gaps);
 a roadmap is not evidence that those capabilities already work.
 
+The immediate priority is a developer build that can open and index a real
+project, serve source-grounded context, and show its work in Connectome. Once
+that build is usable, use measured baselines to tune it. The later direction is
+to derive configurable reasoning shards from project boundaries and evaluate
+custom KV-cache strategies on large projects such as platform_devpulse and
+RRFlow itself. These are targets, not implemented or competitive-performance
+claims. The [scale rationale](docs/architecture/engine-scale-and-contracts.md#boundary-based-reasoning-after-the-developer-build)
+records the intended relationship and proof.
+
 ## Engine, UI, cloud, and desktop
 
 RRFlow is the reasoning engine. **Connectome** is its operator and developer
@@ -126,7 +135,7 @@ bulk import and streaming exchange remain unqualified.
 | Configure CPU analysis, System One model selection and scoped inference caches | [LFG and SWAG target contract](docs/reference/inference/lfg-swag.md) |
 | Prepare Spark experiments, qualify SWAG candidates and govern RROFLOW improvement | [Learning reference](docs/reference/inference/learning/README.md) |
 | Discover connector requirements and build source-grounded knowledge trees | [Knowledge connectors and Parquet target contract](docs/reference/data/knowledge-connectors.md) |
-| Follow planned DuckDB analytical exchange and optional execution | [DuckDB interoperability contract](docs/reference/data/duckdb.md) — unimplemented; native rrflowDB remains authoritative |
+| Study analytical database techniques for native rrflowDB | [Native analytical database research](docs/reference/data/duckdb.md) - research input; no DuckDB or ClickHouse runtime is planned |
 | Understand project, estate, RRD instance, environment, deployment, and physical placement | [RRFlow instance topology](docs/architecture/instance-topology.md) |
 | Select and prove deployment form, storage profile, and endpoint presentation independently | [RRFlow deployment profiles](docs/reference/deployment/modes.md) |
 | Install, serve, verify, repair, restore, and remove one project estate through the shipped binary | [RRFlow installed lifecycle](docs/reference/deployment/installed-lifecycle.md) |
