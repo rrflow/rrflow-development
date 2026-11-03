@@ -263,6 +263,76 @@ fn interrupted_refresh_does_not_expose_partial_facts_as_completed_snapshot() {
         )
         .unwrap();
     assert_eq!(after_reopen.rows, result.rows);
+    // A cancelled publication must remain recoverable. Keep this part of the
+    // joined journey ahead of the known failing visibility assertion below.
+    let recovery_at = next.status.job.lease.as_ref().unwrap().expires_at_unix_ms + 1_000;
+    let recovery_session = installed.session(&reopened, "visibility-recovery", recovery_at);
+    let recovered = call(
+        &reopened,
+        &recovery_session,
+        &AttunementCommand::RecoverExpired {
+            job_id: successor.id.clone(),
+            expected_revision: next.status.job.revision,
+        },
+        "visibility-recover",
+        recovery_at + 1,
+    )
+    .unwrap();
+    let resumed_at = recovered.status.job.updated_at_unix_ms + 1;
+    let mut resume_command = resume(&recovered.status.job, resumed_at);
+    if let AttunementCommand::Resume { lease_ms, .. } = &mut resume_command {
+        *lease_ms = 60_000;
+    }
+    let resumed = call(
+        &reopened,
+        &recovery_session,
+        &resume_command,
+        "visibility-resume",
+        resumed_at,
+    )
+    .unwrap();
+    let completed = call(
+        &reopened,
+        &recovery_session,
+        &step(&resumed.status.job),
+        "visibility-complete",
+        resumed.status.job.updated_at_unix_ms + 1,
+    )
+    .unwrap();
+    assert_eq!(completed.status.job.checkpoints.len(), 2);
+    let final_head = reopened.storage.control().get(&head_key).unwrap().unwrap();
+    assert_ne!(final_head, first_head);
+    assert!(reopened
+        .storage
+        .control()
+        .get(&progress_key)
+        .unwrap()
+        .is_none());
+    let final_at = completed.status.job.updated_at_unix_ms + 1;
+    let read_root = |engine: &RrdEngine, cursor: &str, suffix: &str| {
+        engine.execute_query(
+            &recovery_session.session_id, &recovery_session.token,
+            &rrd_contract::ExecuteQuery {
+                scope: scope.to_string(),
+                query: format!("FROM record:source-tree-entry AT VALID {final_at} KNOWN {cursor} WHERE id = \"{}\" PROJECT subtree_sha256", root_record.reference.id),
+                parameters: Default::default(), budget: rrd_contract::QueryBudget::default(),
+            },
+            final_at, &format!("request-visibility-{suffix}"), &format!("operation-visibility-{suffix}"),
+        ).unwrap()
+    };
+    let final_root = read_root(&reopened, "HEAD", "complete-head");
+    assert_eq!(final_root.rows.len(), 1);
+    assert_ne!(
+        final_root.rows[0].values.get("subtree_sha256"),
+        Some(&expected)
+    );
+    let old_cursor = first_read.commit_cursor.to_string();
+    assert_eq!(
+        read_root(&reopened, &old_cursor, "complete-old").rows[0]
+            .values
+            .get("subtree_sha256"),
+        Some(&expected)
+    );
     assert_eq!(
         result.rows[0].values.get("subtree_sha256"),
         Some(&expected),
