@@ -13,10 +13,15 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 
 mod bootstrap;
+mod discovery;
 pub use bootstrap::{
     InstallationBootstrap, InstallationBootstrapPolicy, InstallationRecordKind,
     InstallationSpecialization, InstallationStorageGeneration, INSTALLATION_BOOTSTRAP_VERSION,
     MAX_BOOTSTRAP_RECORD_BYTES, MAX_BOOTSTRAP_TEXT_BYTES,
+};
+pub use discovery::{
+    AttunementJobPage, AttunementJobSummary, ListAttunementJobs, MAX_ATTUNEMENT_JOB_PAGE,
+    MAX_ATTUNEMENT_JOB_PAGE_BYTES,
 };
 
 pub const INSTALL_ATTUNEMENT_CONTRACT_VERSION: u16 = 1;
