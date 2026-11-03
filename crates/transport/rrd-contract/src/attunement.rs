@@ -713,8 +713,8 @@ impl AttunementPlan {
             if usize::from(phase.sequence) != index + 1 {
                 return invalid("attunement phase sequence must match its plan position");
             }
-            if (phase.phase == AttunementPhase::Verify) != (index + 1 == self.phases.len()) {
-                return invalid("attunement plan must end with exactly one verification step");
+            if phase.phase == AttunementPhase::Verify && index + 1 != self.phases.len() {
+                return invalid("attunement verification must be the final step when selected");
             }
         }
         if self.estimated_min_duration_ms > self.estimated_max_duration_ms {
@@ -1083,7 +1083,7 @@ impl AttunementJob {
             return invalid("only a running worker may append one committed checkpoint");
         }
         if next.state == AttunementJobState::Succeeded && !appended_checkpoint {
-            return invalid("attunement success must append the final verify checkpoint");
+            return invalid("attunement success must append the final selected checkpoint");
         }
         if self.state == AttunementJobState::Running
             && next.state == AttunementJobState::Running
@@ -1448,10 +1448,24 @@ impl AttunementReplanResult {
         self.successor.validate(&self.plan)?;
         let expected_successor =
             CanonicalId::new(format!("job-{}", &preview.plan.plan_sha256[..24]))?;
+        let predecessor_lineage = match self.predecessor.job.state {
+            AttunementJobState::CancelRequested => {
+                preview.predecessor_revision.checked_add(1) == Some(self.predecessor.job.revision)
+            }
+            AttunementJobState::Succeeded => {
+                self.predecessor.job.revision == preview.predecessor_revision
+                    && self.predecessor.job.checkpoints.iter().all(|checkpoint| {
+                        matches!(
+                            checkpoint.phase,
+                            AttunementPhase::Connect | AttunementPhase::Inventory
+                        )
+                    })
+            }
+            _ => false,
+        };
         if self.plan != preview.plan
             || self.predecessor.job.id != preview.predecessor_job_id
-            || preview.predecessor_revision.checked_add(1) != Some(self.predecessor.job.revision)
-            || self.predecessor.job.state != AttunementJobState::CancelRequested
+            || !predecessor_lineage
             || self.successor.job.id != expected_successor
             || self.successor.job.state != AttunementJobState::Pending
         {
@@ -1761,6 +1775,7 @@ impl AttunementVerification {
         match self.status {
             AttunementVerificationStatus::Passed
                 if job.state == AttunementJobState::Succeeded
+                    && last_checkpoint.phase == AttunementPhase::Verify
                     && self.checks.iter().all(|check| check.passed) => {}
             AttunementVerificationStatus::Failed
                 if job.state == AttunementJobState::Failed

@@ -158,7 +158,7 @@ impl Publication<'_> {
                 checkpoint.checkpoint_sha256 =
                     attunement_checkpoint_sha256(&checkpoint).map_err(contract)?;
                 next.checkpoints.push(checkpoint);
-                next.current_phase = next.next_phase(&self.work.plan);
+                advance_after_checkpoint(&mut next, &self.work.plan);
                 before
                     .validate_transition(&next, &self.work.plan)
                     .map_err(contract)?;

@@ -195,7 +195,8 @@ repeated kinds, with bounded descriptions and estimates. Descriptions are
 metadata bound to the plan; they do not configure Connect or activate another
 capability. Estimates are declarations, not measured work or authority to
 exceed the engine's configured budgets. The engine checks the
-version, bounds and recognized effects and requires a final Verify step. The
+version, bounds and recognized effects; Verify, when selected, must be the final
+step. The
 schema describes the proposal shape; engine validation also enforces semantic
 rules and is authoritative. The selected proposal is included in the versioned
 preview, its step descriptions and estimates are bound to the attunement and
@@ -212,6 +213,15 @@ in the selected plan and change its digest; an absent policy remains inactive.
 The engine checks policy placement and applicable Inventory and transaction
 ceilings when planning and applying installation. The policy is a declaration:
 Parse execution and enforcement of its native memory limit are not yet available.
+
+Explicitly selected plans may complete after their final selected Connect or
+Inventory checkpoint without an added Verify step. Completion records the
+selected effects; it does not assert independent verification or full project
+indexing. After a source edit, a completed plan consisting of these supported
+effects may produce a newly authorized successor while retaining its predecessor
+and receipts. Acceptance observes the source again and rejects a mismatch;
+the filesystem observation and engine commit are not an atomic snapshot, so a
+concurrent edit after observation is not excluded by this check.
 
 Without a proposal the bundled profile supplies its current eleven-step
 template; it is no longer the only allowed sequence. Connect and bounded

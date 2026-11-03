@@ -196,9 +196,6 @@ fn validate_attunement_steps(
     if steps.is_empty()
         || steps.len() > MAX_ATTUNEMENT_PHASES
         || minimum > maximum
-        || steps
-            .last()
-            .is_none_or(|step| step.phase != AttunementPhase::Verify)
         || steps[..steps.len().saturating_sub(1)]
             .iter()
             .any(|step| step.phase == AttunementPhase::Verify)

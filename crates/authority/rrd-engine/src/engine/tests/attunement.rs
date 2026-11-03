@@ -13,6 +13,7 @@ use std::sync::{Arc, Barrier};
 // time plus real elapsed work. Every time after one follows the completion it
 // returned, never a fixed later offset that assumes how long the call took.
 const BASE: u64 = 1_800_000_000_000;
+mod adaptive_selection;
 mod discovery;
 mod inventory_delta;
 mod observation_delivery;

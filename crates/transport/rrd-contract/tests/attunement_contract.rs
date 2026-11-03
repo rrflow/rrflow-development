@@ -441,7 +441,7 @@ fn bound_plan_accepts_a_project_specific_sequence() {
     let mut no_verification = plan.clone();
     no_verification.phases.pop();
     no_verification.plan_sha256 = attunement_plan_sha256(&no_verification).unwrap();
-    assert!(no_verification.validate().is_err());
+    assert!(no_verification.validate().is_ok());
     let mut foreign = plan.clone();
     foreign.source_sha256 = digest(999);
     foreign.plan_sha256 = attunement_plan_sha256(&foreign).unwrap();
@@ -450,6 +450,26 @@ fn bound_plan_accepts_a_project_specific_sequence() {
     let mut tampered = plan.clone();
     tampered.phases[2].phase = AttunementPhase::Inventory;
     assert_eq!(running.next_phase(&tampered), None);
+}
+
+#[test]
+fn completed_short_plan_does_not_forge_verification_evidence() {
+    let mut plan = attunement_plan();
+    plan.phases.truncate(1);
+    plan.plan_sha256 = attunement_plan_sha256(&plan).unwrap();
+    let completed = job(
+        &plan,
+        AttunementJobState::Succeeded,
+        1,
+        3,
+        CREATED_AT + 3_000,
+    );
+    completed.validate(&plan).unwrap();
+    assert!(
+        verification(&completed, AttunementVerificationStatus::Passed)
+            .validate_for(&completed, &plan)
+            .is_err()
+    );
 }
 
 fn bootstrap() -> InstallationBootstrap {

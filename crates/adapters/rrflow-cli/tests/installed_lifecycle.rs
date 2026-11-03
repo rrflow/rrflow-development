@@ -19,6 +19,8 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 use std::time::Duration;
 
+#[path = "support/adaptive_installed.rs"]
+mod adaptive_installed;
 #[path = "support/process.rs"]
 mod process;
 #[path = "support/storage_history.rs"]
@@ -1265,7 +1267,7 @@ fn installed_plan_accepts_selected_attunement_and_rejects_tampering() {
     );
     for invalid in [
         serde_json::json!({"format_version": 1, "steps": [step("unknown-effect", "x"), step("verify", "v")], "estimated_min_duration_ms": 0, "estimated_max_duration_ms": 1}),
-        serde_json::json!({"format_version": 1, "steps": [step("connect", "x")], "estimated_min_duration_ms": 0, "estimated_max_duration_ms": 1}),
+        serde_json::json!({"format_version": 1, "steps": [step("verify", "v"), step("connect", "x")], "estimated_min_duration_ms": 0, "estimated_max_duration_ms": 1}),
         serde_json::json!({"format_version": 99, "steps": [step("verify", "v")], "estimated_min_duration_ms": 0, "estimated_max_duration_ms": 1}),
         serde_json::json!({"format_version": 1, "steps": [step("connect", &"x".repeat(1025)), step("verify", "v")], "estimated_min_duration_ms": 0, "estimated_max_duration_ms": 1}),
         serde_json::json!({"format_version": 1, "steps": vec![step("verify", "v"); rrd_contract::MAX_ATTUNEMENT_PHASES + 1], "estimated_min_duration_ms": 0, "estimated_max_duration_ms": 1}),
