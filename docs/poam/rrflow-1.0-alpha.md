@@ -65,4 +65,4 @@
 | POAM-049 | High | Open | [an audit read's journal scan grows with the journal's length](rrflow-1.0-alpha/poam-049.md) |
 | POAM-053 | High | Open | [clients cannot build RRFlow's HNSW or payload indexes](rrflow-1.0-alpha/poam-053.md) |
 | POAM-054 | High | Open | [a default install accepts a vector corpus its search then refuses](rrflow-1.0-alpha/poam-054.md) |
-| POAM-055 | Medium | Open | [a vector search the engine will refuse first reads every vector](rrflow-1.0-alpha/poam-055.md) |
+| POAM-055 | High | Open | [a vector search the engine will refuse first reads every vector](rrflow-1.0-alpha/poam-055.md) |
