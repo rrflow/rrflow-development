@@ -6,10 +6,17 @@
 
 rrflowDB is usable through the native Rust engine and authenticated RRD client.
 This guide builds a real persistent local database, creates typed relational
-records and graph relationships in one transaction, queries them with rrflowQL,
-and reads them after restart. It uses no Turso, libSQL, SQLite, PostgreSQL server,
+records, a typed nested document, and graph relationships in one transaction,
+queries them with rrflowQL at a common read stamp, and reads them after restart.
+The example uses the local authenticated service; it does not demonstrate a
+stable daemon-free embedded library API. It uses no Turso, libSQL, SQLite, PostgreSQL server,
 cloud account, or external model. The [PostgreSQL profile](../protocol/postgresql.md)
 remains a separate unimplemented compatibility requirement.
+
+The example's document has an explicit schema. Registered schemaless documents
+are currently rejected by the record-source query binder; see
+[POAM-005](../../poam/rrflow-1.0-alpha/poam-005.md). The example does not
+establish general schemaless queries or production ACID qualification.
 
 ## How the components relate
 

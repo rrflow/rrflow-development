@@ -21,6 +21,15 @@ still do not form one planner-selected, stamped native access system. Elias-Fano
 posting compression, TurboQuant_prod, and LSM-VEC-style disk navigation are evidence-gated
 candidates, not implemented defaults.
 
+The installed document-and-graph journey exposed another query boundary:
+rrflowQL's record-source binder looks in the strict record-schema catalogue and
+rejects a registered schemaless document as unregistered. The typed-document
+journey and the failing observation are recorded in the
+[document and graph journal](../../evidence/change-journals/gate-h/h-04-document-graph-journey.md).
+Dynamic field typing, projection and execution for schemaless records require
+their own implementation and evidence; a typed-document success does not close
+that gap.
+
 An installed-project Inventory exposed a traversal syntax gap: a snapshot
 digest beginning with a digit could not be used as a start ID, and typed
 traversal queries did not round-trip that identity. The [query repair

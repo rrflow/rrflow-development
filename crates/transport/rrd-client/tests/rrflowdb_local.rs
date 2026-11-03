@@ -865,7 +865,7 @@ async fn installed_native_database_relations_atomicity_temporal_reads_and_reopen
     let created = database::initialize(&client, &session, created_at, "db-init")
         .await
         .unwrap();
-    assert_eq!(created.mutation_count, 4);
+    assert_eq!(created.mutation_count, 6);
     let installed_schema = schema(&client, &session, "db-after").await;
     for (kind, table) in &initial_schema.tables {
         assert_eq!(
@@ -906,7 +906,7 @@ async fn installed_native_database_relations_atomicity_temporal_reads_and_reopen
     initial_view.verify(&scope, "open").unwrap();
     assert!(initial_view.verify(&scope, "done").is_err());
     assert!(initial_view.verify("instance:foreign", "open").is_err());
-    for fault in 0..8 {
+    for fault in 0..15 {
         let mut invalid = initial_view.clone();
         match fault {
             0 => invalid.tasks.execution.truncated = true,
@@ -924,7 +924,32 @@ async fn installed_native_database_relations_atomicity_temporal_reads_and_reopen
                 );
             }
             6 => invalid.relationships.execution.truncated = true,
-            _ => invalid.tasks.execution.returned_rows += 1,
+            7 => invalid.tasks.execution.returned_rows += 1,
+            8 => invalid.documents.known_at_cursor += 1,
+            9 => {
+                invalid.documents.rows[0]
+                    .values
+                    .insert("metadata".into(), QueryValue::Null);
+            }
+            10 => {
+                invalid.document_relationships.rows[0]
+                    .values
+                    .insert("right.reason".into(), QueryValue::String("forged".into()));
+            }
+            11 => invalid.documents.execution.truncated = true,
+            12 => invalid.document_relationships.rows.clear(),
+            13 => {
+                invalid.document_relationships.rows[0].values.insert(
+                    "left.id".into(),
+                    QueryValue::String("wrong-document".into()),
+                );
+            }
+            _ => {
+                invalid.document_relationships.rows[0].values.insert(
+                    "right.to_id".into(),
+                    QueryValue::String("wrong-task".into()),
+                );
+            }
         }
         assert!(
             invalid.verify(&scope, "open").is_err(),
@@ -954,6 +979,7 @@ async fn installed_native_database_relations_atomicity_temporal_reads_and_reopen
         &transaction,
         vec![
             database::task_record("must not survive", "done", rejected_at),
+            database::document_record("must not survive", 2, rejected_at),
             database::project_record("duplicate-project", "local-ai", rejected_at),
         ],
         "db-invalid-commit"
@@ -1006,7 +1032,10 @@ async fn installed_native_database_relations_atomicity_temporal_reads_and_reopen
         &client,
         &session,
         &transaction,
-        vec![database::task_record("canceled", "done", rejected_at)],
+        vec![
+            database::task_record("canceled", "done", rejected_at),
+            database::document_record("canceled", 7, rejected_at),
+        ],
         "db-cancel-commit"
     )
     .await
@@ -1090,12 +1119,32 @@ async fn installed_native_database_relations_atomicity_temporal_reads_and_reopen
     let earlier_view = database::DatabaseView {
         tasks: before.clone(),
         relationships: earlier_join,
+        documents: database::documents(
+            &client,
+            &session,
+            created_at,
+            before.known_at_cursor,
+            "db-earlier-documents",
+        )
+        .await
+        .unwrap(),
+        document_relationships: database::document_relationships(
+            &client,
+            &session,
+            created_at,
+            before.known_at_cursor,
+            "db-earlier-document-join",
+        )
+        .await
+        .unwrap(),
     };
     earlier_view.verify(&scope, "open").unwrap();
     assert_eq!(earlier_view.relationships.rows, joined.rows);
     let mixed = database::DatabaseView {
         tasks: before.clone(),
-        relationships: updated_view.relationships,
+        relationships: updated_view.relationships.clone(),
+        documents: earlier_view.documents.clone(),
+        document_relationships: earlier_view.document_relationships.clone(),
     };
     assert!(mixed.verify(&scope, "open").is_err());
     assert_eq!(
