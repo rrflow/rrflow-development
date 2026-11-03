@@ -140,6 +140,31 @@
       ],
       "type": "object"
     },
+    "RequestFloor": {
+      "additionalProperties": false,
+      "description": "What a system's cheapest request costs, the one that reads its version. A search cannot\nbe faster than this, so a latency close to it measured the transport and not the system.",
+      "properties": {
+        "clients": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "p50_ms": {
+          "format": "double",
+          "type": "number"
+        },
+        "p95_ms": {
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "clients",
+        "p50_ms",
+        "p95_ms"
+      ],
+      "type": "object"
+    },
     "SystemStatus": {
       "enum": [
         "completed",
@@ -225,6 +250,16 @@
       "type": [
         "string",
         "null"
+      ]
+    },
+    "request_floor": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/RequestFloor"
+        },
+        {
+          "type": "null"
+        }
       ]
     },
     "schema_version": {

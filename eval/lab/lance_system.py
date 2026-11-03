@@ -90,7 +90,8 @@ def build():
         if Store.index["index"] != "exact":
             Store.table.create_index("vector", config=index_config(), wait_timeout=BUILD_TIMEOUT)
         Store.table.create_index("category", config=Bitmap(), wait_timeout=BUILD_TIMEOUT)
-        Store.table.optimize()
+        # No optimize here: it merges small IVF partitions, and took 336 down to 7, so the
+        # searches would no longer measure the index the manifest declares.
         Store.ready = True
     except Exception as error:  # A failed build is the result, so it reaches the harness.
         Store.build_error = str(error)
@@ -141,9 +142,11 @@ def evidence():
         .explain_plan()
     )
     used = "uses" if "ANN" in plan else "does not use"
+    details = Store.table.to_lance().stats.index_stats("vector_idx")
+    partitions = sum(len(segment["partitions"]) for segment in details["indices"])
     return {
         "evidence": f"{stats.index_type}: {stats.num_indexed_rows} rows indexed, "
-        f"{stats.num_unindexed_rows} not; the query plan {used} it"
+        f"{stats.num_unindexed_rows} not, in {partitions} partitions; the query plan {used} it"
     }
 
 
@@ -164,6 +167,8 @@ ROUTES = {
 
 class Handler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
+    # Headers and body are two writes. With Nagle on, the body waits for a delayed ACK.
+    disable_nagle_algorithm = True
 
     def reply(self, status, value):
         body = json.dumps(value).encode()

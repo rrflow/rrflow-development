@@ -24,6 +24,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 pub const RUN_SCHEMA_VERSION: u16 = 1;
 /// Stop hammering a system that has answered nothing but errors.
 const ERRORS_BEFORE_GIVING_UP: usize = 20;
+const FLOOR_REQUESTS_PER_CLIENT: usize = 32;
 const Z95: f64 = 1.96;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -191,6 +192,38 @@ fn percentile(sorted: &[u64], percent: u64) -> f64 {
     }
     let rank = (sorted.len() as u64 * percent).div_ceil(100).max(1) as usize;
     sorted[rank - 1] as f64 / 1_000_000.0
+}
+
+/// `None` if the system stops answering, which the cases have already recorded.
+fn measure_request_floor(adapter: &dyn SystemAdapter, clients: u32) -> Option<RequestFloor> {
+    let samples = Mutex::new(Vec::new());
+    std::thread::scope(|scope| {
+        for _ in 0..clients {
+            scope.spawn(|| {
+                let mut local = Vec::with_capacity(FLOOR_REQUESTS_PER_CLIENT);
+                for _ in 0..FLOOR_REQUESTS_PER_CLIENT {
+                    let started = Instant::now();
+                    if adapter.observed_version().is_err() {
+                        return;
+                    }
+                    local.push(started.elapsed().as_nanos() as u64);
+                }
+                if let Ok(mut all) = samples.lock() {
+                    all.extend(local);
+                }
+            });
+        }
+    });
+    let mut sorted = samples.into_inner().ok()?;
+    if sorted.is_empty() {
+        return None;
+    }
+    sorted.sort_unstable();
+    Some(RequestFloor {
+        clients,
+        p50_ms: percentile(&sorted, 50),
+        p95_ms: percentile(&sorted, 95),
+    })
 }
 
 struct CaseRequest<'a> {
@@ -435,6 +468,16 @@ fn run_phases(
             }
         }
     }
+    run.request_floor = measure_request_floor(
+        adapter,
+        manifest
+            .workload
+            .concurrency
+            .iter()
+            .copied()
+            .max()
+            .unwrap_or(1),
+    );
     run.index_evidence = match adapter.index_evidence() {
         Ok(evidence) => evidence,
         Err(error) => Some(format!("could not read index evidence: {error}")),
@@ -912,6 +955,15 @@ pub fn combine(
         ]);
         if let Some(evidence) = run.and_then(|run| run.index_evidence.clone()) {
             configuration.insert("index_evidence".to_string(), evidence);
+        }
+        if let Some(floor) = run.and_then(|run| run.request_floor.as_ref()) {
+            configuration.insert(
+                "request_floor".to_string(),
+                format!(
+                    "p50 {:.2} ms, p95 {:.2} ms at {} clients",
+                    floor.p50_ms, floor.p95_ms, floor.clients
+                ),
+            );
         }
         systems.push(ReportSystem {
             id: binding.id.clone(),

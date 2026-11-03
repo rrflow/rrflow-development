@@ -874,12 +874,18 @@ fn a_run_states_what_its_cheapest_request_costs_so_a_stalled_transport_shows() {
     let mut system = PerfectSystem::new();
     system.version_stall = std::time::Duration::from_millis(5);
     let run = run_with(&manifest, "good", &system, &inputs);
-    let floor = run.request_floor.clone().expect("a completed run measures it");
+    let floor = run
+        .request_floor
+        .clone()
+        .expect("a completed run measures it");
     assert_eq!(floor.clients, 2, "the busiest client count in the workload");
     assert!(floor.p50_ms >= 5.0, "{floor:?}");
     assert!(floor.p95_ms >= floor.p50_ms, "{floor:?}");
     let report = combine(&manifest, &[run], Vec::new()).unwrap();
-    let stated = report.systems[0].configuration.get("request_floor").unwrap();
+    let stated = report.systems[0]
+        .configuration
+        .get("request_floor")
+        .unwrap();
     assert!(stated.contains("at 2 clients"), "{stated}");
 }
 

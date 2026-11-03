@@ -132,6 +132,17 @@ that goes unused looks like a good result. A system with its own built-in
 adapter, like Qdrant, implements `SystemAdapter` in `crates/evaluation/rrflow-eval/src/lab/`
 and its responses are captured into `tests/lab_adapters.rs`.
 
+Two things go wrong silently in a shim, and both happened to Lance's:
+
+- **The transport can be the measurement.** Every run states `request_floor`, what the system's
+  cheapest request costs at the busiest client count. A search cannot beat it, so a latency close
+  to it measured the transport. A shim that writes headers and body separately with Nagle on stalls
+  about 40 ms a reply on Linux, so set `TCP_NODELAY` or reply in one write.
+- **The index can stop being the one declared.** Lance's `optimize()` merged 336 IVF partitions into
+  7, which made a probe count mean something else while recall still looked excellent. Have the
+  evidence state what was built, as Lance's now does, and check it against the manifest.
+  [`check_lance_shim.py`](check_lance_shim.py) checks both for Lance against a real install.
+
 If a system lacks a capability, declare that in the binding's `availability`
 with a reason. Do not leave it out, since a gap is a result. RRFlow's own HNSW
 arm is declared `unimplemented` this way, and so is `rrflow-routed`, which would choose
