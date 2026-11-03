@@ -105,6 +105,10 @@ passed all 21 tests. Candidate and merge-group CI remain required.
 The post-merge execution inventory check initially reported drift; regenerating
 the local projection and rerunning `python scripts/ci/build_execution_inventory.py --check`
 passed with 2,356 records. Documentation and navigation checks also passed.
+The post-merge generated-surface parity check passed with the same OpenAPI
+digest recorded above. An initial local merge guard incorrectly inspected
+PowerShell's `$LASTEXITCODE` after a cmdlet and stopped; checking Git's actual
+unmerged-path output found no remaining conflicts and allowed the normal merge.
 
 ## Change checklist and review boundary
 
