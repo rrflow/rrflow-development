@@ -291,10 +291,11 @@ fn interrupted_refresh_does_not_expose_partial_facts_as_completed_snapshot() {
         resumed_at,
     )
     .unwrap();
+    let completion_command = step(&resumed.status.job);
     let completed = call(
         &reopened,
         &recovery_session,
-        &step(&resumed.status.job),
+        &completion_command,
         "visibility-complete",
         resumed.status.job.updated_at_unix_ms + 1,
     )
@@ -333,6 +334,54 @@ fn interrupted_refresh_does_not_expose_partial_facts_as_completed_snapshot() {
             .get("subtree_sha256"),
         Some(&expected)
     );
+    drop(reopened);
+    let final_reopened = installed.reopen(final_at + 1);
+    let final_session = installed.session(&final_reopened, "visibility-final-reopen", final_at + 2);
+    let replay = call(
+        &final_reopened,
+        &final_session,
+        &completion_command,
+        "visibility-complete",
+        final_at + 3,
+    )
+    .unwrap();
+    assert!(replay.idempotent_replay);
+    assert_eq!(replay.status.job, completed.status.job);
+    assert_eq!(
+        final_reopened
+            .storage
+            .control()
+            .get(&head_key)
+            .unwrap()
+            .unwrap(),
+        final_head
+    );
+    for (cursor, wanted, suffix) in [
+        (
+            "HEAD",
+            final_root.rows[0].values.get("subtree_sha256"),
+            "replay-new",
+        ),
+        (old_cursor.as_str(), Some(&expected), "replay-old"),
+    ] {
+        let query = rrd_contract::ExecuteQuery {
+            scope: scope.to_string(),
+            query: format!("FROM record:source-tree-entry AT VALID {final_at} KNOWN {cursor} WHERE id = \"{}\" PROJECT subtree_sha256", root_record.reference.id),
+            parameters: Default::default(), budget: rrd_contract::QueryBudget::default(),
+        };
+        let value = final_reopened
+            .execute_query(
+                &final_session.session_id,
+                &final_session.token,
+                &query,
+                final_at + 4,
+                &format!("request-visibility-{suffix}"),
+                &format!("operation-visibility-{suffix}"),
+            )
+            .unwrap();
+        assert_eq!(value.rows.len(), 1);
+        assert_eq!(value.rows[0].values.get("subtree_sha256"), wanted);
+    }
     assert_eq!(
         result.rows[0].values.get("subtree_sha256"),
         Some(&expected),
