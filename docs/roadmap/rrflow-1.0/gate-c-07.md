@@ -599,17 +599,13 @@ a newer candidate needs rerun or explicit validated evidence applicability,
 never an unlabeled union of incompatible revisions. Only then update Gate C
 and POAM-035. Keep parent alpha, C-04 and downstream gates independently open.
 
-### DuckDB dependency boundary
+### Native analytical research boundary
 
-The owner-requested [DuckDB integration](../../reference/data/duckdb.md) follows
-C-07 under [D-06](gate-d.md#duckdb-interoperability-packages). It does not
-replace native durability or postpone c-h. DuckDB export conformance can reuse
-the already bounded Parquet endpoint; larger streaming/import/worker execution
-requires its explicit F/D dependencies. C-07d/e must make resource ownership
-usable by later adapters, but must not add speculative DuckDB configuration
-or a dormant executor. A DuckDB memory setting cannot prove an aggregate
-RRFlow process limit. DuckDB crash/SQL/extension isolation belongs to its
-adapter corpus; native WAL/manifest and buffer proof stays here.
+The earlier DuckDB integration and worker direction was withdrawn. DuckDB and
+ClickHouse may inform native query and storage implementation, but neither
+replaces C-07 durability, recovery, resource ownership or native qualification.
+Parquet exchange remains separately bounded and does not prove WAL or storage
+correctness. See the [research record](../../reference/data/duckdb.md).
 
 ## Required failure and concurrency matrix
 
