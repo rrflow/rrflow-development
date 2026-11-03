@@ -293,6 +293,7 @@ impl RrdEngine {
                 outcome_sha256: record.outcome_sha256,
                 result: record.result,
                 endpoint_proposal: record.endpoint_proposal,
+                lfg: record.lfg,
                 invalidation: record.invalidation,
             }),
         };

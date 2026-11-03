@@ -48,6 +48,8 @@ struct AttemptRecord {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     endpoint_proposal: Option<rrd_contract::EndpointSelectionProposal>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    lfg: Option<rrd_contract::LfgAdvisory>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     invalidation: Option<rrd_contract::TaskAttemptInvalidation>,
 }
 
@@ -103,6 +105,7 @@ impl TaskAttemptOutput {
                 if output.scope != budget.scope
                     || output.task_id != budget.task_id
                     || output.attempt_id != attempt.attempt_id
+                    || output.lfg != attempt.lfg
                 {
                     return Err(ServiceError::Contract(
                         "task proposal output identity mismatch".into(),
@@ -417,6 +420,7 @@ impl RrdEngine {
             outcome_sha256: None,
             result: None,
             endpoint_proposal: None,
+            lfg: None,
             invalidation: None,
         };
         self.commit_budget_controlled(
@@ -626,6 +630,74 @@ impl RrdEngine {
                 .map_err(super::inference::embedding_dispatch_error)?;
         }
         result
+    }
+
+    /// Checkpoint an observed analyzer effect before any subsequent dispatch.
+    /// The attempt remains reserved; a crash cannot make it replayable.
+    pub(super) fn checkpoint_lfg_advisory(
+        &self,
+        reservation: &mut Reservation,
+        advisory: rrd_contract::LfgAdvisory,
+        mut admit: impl FnMut(&ReadStamp) -> Result<TaskCompletionAdmission>,
+        clock: &dyn ClockSource,
+        context: &EngineControlContext<'_>,
+    ) -> Result<Option<rrd_contract::TaskAttemptInvalidation>> {
+        advisory
+            .validate()
+            .map_err(|e| ServiceError::Contract(e.to_string()))?;
+        if advisory.request_id != reservation.attempt.attempt_id
+            || reservation.attempt.lfg.is_some()
+        {
+            return Err(ServiceError::Contract(
+                "invalid LFG checkpoint identity".into(),
+            ));
+        }
+        let expected_attempt = serde_json::to_vec(&reservation.attempt).map_err(contract_json)?;
+        let mut next = reservation.attempt.clone();
+        next.lfg = Some(advisory);
+        for index in 0..3 {
+            let (expected_budget, current) =
+                self.load_task_budget(&reservation.budget.scope, &reservation.budget.task_id)?;
+            let budget = current
+                .ok_or_else(|| ServiceError::Storage("reserved budget disappeared".into()))?;
+            if budget.active_attempt.as_ref() != Some(&next.attempt_id)
+                || budget.reserved_steps != reservation.budget.reserved_steps
+                || budget.configuration_sha256 != reservation.budget.configuration_sha256
+                || budget.limits != reservation.budget.limits
+                || budget.stopped.is_some()
+            {
+                return Err(ServiceError::StorageConflict(
+                    "attempt no longer owns checkpoint".into(),
+                ));
+            }
+            let read = self
+                .storage
+                .runtime()
+                .read_stamp(&self.query_scope(&budget.scope)?)?;
+            let admission = admit(&read)?;
+            let invalidation = admission.invalidation;
+            // Recording an already completed effect is cleanup, not authority to
+            // dispatch. Preserve it even when inputs changed or time expired.
+            observe_required(clock, "lfg-checkpoint")?;
+            match self.commit_budget_controlled(
+                &read,
+                expected_budget,
+                &budget,
+                Some((Some(expected_attempt.clone()), &next)),
+                &admission,
+                context,
+            ) {
+                Err(ServiceError::StorageConflict(_)) if index < 2 => continue,
+                outcome => {
+                    outcome?;
+                    reservation.attempt = next;
+                    return Ok(invalidation);
+                }
+            }
+        }
+        Err(ServiceError::StorageConflict(
+            "LFG checkpoint retries exhausted".into(),
+        ))
     }
 }
 

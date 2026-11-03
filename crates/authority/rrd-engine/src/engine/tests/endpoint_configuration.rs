@@ -139,6 +139,7 @@ fn actual_selector_settings_follow_existing_configuration_approval_and_reopen() 
         system_prompt: request["messages"][0]["content"].as_str().unwrap().into(),
         maximum_output_tokens: request["max_tokens"].as_u64().unwrap().try_into().unwrap(),
         temperature_milli: (request["temperature"].as_f64().unwrap() * 1000.0) as u16,
+        lfg: None,
     };
     let input = EndpointProfileInput {
         contract_version: captured.contract_version,

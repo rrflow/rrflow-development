@@ -683,6 +683,26 @@ Changed authority/configuration/task inputs invalidate accepted-output publicati
 while retaining consumed effort. Ordinary repository-edit successor plans are not
 implemented by this task-text operation.
 
+An optional `selection_policy.lfg` configures a literal-loopback HTTP origin,
+assessment and rules digests, timeout, and input/request/response byte limits.
+It requires the selection policy's explicit network and unverified-identity
+permissions. Loopback and echoed digests do not authenticate the process.
+When configured, the engine reserves the existing task attempt and endpoint
+capacity before sending its bounded task projection to LFG. It checkpoints
+the validated advisory and wire digests in that attempt before sending the
+controller packet. Read `task-attempt-read` to inspect the checkpoint even
+when the controller subsequently fails. The advisory is untrusted data: it
+does not authorize a worker or establish routing quality. Input or authority
+changes detected before controller dispatch close the stale attempt without
+that call; a successor must use current inputs. The final check and network
+dispatch are not atomic, so changes after that check may still reach the
+controller and must invalidate publication at completion. A crash before
+checkpoint leaves the remote outcome uncertain and does not authorize replay.
+There is no default LFG endpoint.
+
+Local synthetic-service tests exercise the engine path; real-service and
+installed cross-platform acceptance for this composition remain pending.
+
 The [admission implementation record](../../evidence/change-journals/gate-g/controller-task-proposal-admission.md)
 separates local checks from required installed BF16 and candidate/merge-group proof.
 The [installed live histories](../../evidence/change-journals/gate-g/controller-task-proposal-installed-live.md)

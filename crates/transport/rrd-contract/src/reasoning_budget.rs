@@ -264,6 +264,8 @@ pub struct TaskAttemptSnapshot {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub endpoint_proposal: Option<crate::EndpointSelectionProposal>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lfg: Option<crate::LfgAdvisory>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub invalidation: Option<TaskAttemptInvalidation>,
 }
 
@@ -292,6 +294,12 @@ impl TaskAttemptView {
             if attempt.result.is_some() && attempt.endpoint_proposal.is_some() {
                 return invalid("an attempt cannot retain two output kinds");
             }
+            if let Some(advisory) = &attempt.lfg {
+                advisory.validate()?;
+                if advisory.request_id != attempt.attempt_id || attempt.result.is_some() {
+                    return invalid("LFG advisory must belong to its endpoint attempt");
+                }
+            }
             if let Some(result) = &attempt.result {
                 if attempt.status != TaskAttemptStatus::Accepted {
                     return invalid("only an accepted attempt can retain output");
@@ -313,6 +321,9 @@ impl TaskAttemptView {
                     return invalid("proposal must belong to its accepted attempt");
                 }
                 proposal.validate()?;
+                if proposal.lfg != attempt.lfg {
+                    return invalid("proposal advisory differs from its checkpoint");
+                }
                 let bytes = serde_json::to_vec(proposal)
                     .map_err(|e| crate::ContractError(e.to_string()))?;
                 if attempt.outcome_sha256.as_deref() != Some(crate::sha256_bytes(&bytes).as_str()) {

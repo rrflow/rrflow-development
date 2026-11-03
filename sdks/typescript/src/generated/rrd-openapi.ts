@@ -1,4 +1,4 @@
-// OpenAPI SHA-256: 1c508a4b2819d4470e6717a304f9990595da25ed09ef729d5fa0b76324bc2975
+// OpenAPI SHA-256: e9f6363967936948b3405c7ecbf9afa4f9be77eddf95d73727ae83aa51506971
 export interface paths {
     "/v1/attunement/cancel": {
         parameters: {
@@ -14467,6 +14467,20 @@ export interface operations {
                                      *     labels are separate data and may use arbitrary Unicode.
                                      */
                                     controller_binding_id: string;
+                                    /** @description Absent means no analyzer dispatch and preserves prior configuration bytes. */
+                                    lfg?: {
+                                        assessment_sha256: string;
+                                        base_url: string;
+                                        /** Format: uint64 */
+                                        maximum_input_bytes: number;
+                                        /** Format: uint64 */
+                                        maximum_request_bytes: number;
+                                        /** Format: uint64 */
+                                        maximum_response_bytes: number;
+                                        rules_sha256: string;
+                                        /** Format: uint64 */
+                                        timeout_ms: number;
+                                    } | null;
                                     /**
                                      * @description Explicit per-adapter limits. Protocol ceilings are resource bounds, not
                                      *     provider rankings or implicit defaults for a configured installation.
@@ -14765,6 +14779,20 @@ export interface operations {
                                          *     labels are separate data and may use arbitrary Unicode.
                                          */
                                         controller_binding_id: string;
+                                        /** @description Absent means no analyzer dispatch and preserves prior configuration bytes. */
+                                        lfg?: {
+                                            assessment_sha256: string;
+                                            base_url: string;
+                                            /** Format: uint64 */
+                                            maximum_input_bytes: number;
+                                            /** Format: uint64 */
+                                            maximum_request_bytes: number;
+                                            /** Format: uint64 */
+                                            maximum_response_bytes: number;
+                                            rules_sha256: string;
+                                            /** Format: uint64 */
+                                            timeout_ms: number;
+                                        } | null;
                                         /**
                                          * @description Explicit per-adapter limits. Protocol ceilings are resource bounds, not
                                          *     provider rankings or implicit defaults for a configured installation.
@@ -15065,6 +15093,20 @@ export interface operations {
                                          *     labels are separate data and may use arbitrary Unicode.
                                          */
                                         controller_binding_id: string;
+                                        /** @description Absent means no analyzer dispatch and preserves prior configuration bytes. */
+                                        lfg?: {
+                                            assessment_sha256: string;
+                                            base_url: string;
+                                            /** Format: uint64 */
+                                            maximum_input_bytes: number;
+                                            /** Format: uint64 */
+                                            maximum_request_bytes: number;
+                                            /** Format: uint64 */
+                                            maximum_response_bytes: number;
+                                            rules_sha256: string;
+                                            /** Format: uint64 */
+                                            timeout_ms: number;
+                                        } | null;
                                         /**
                                          * @description Explicit per-adapter limits. Protocol ceilings are resource bounds, not
                                          *     provider rankings or implicit defaults for a configured installation.
@@ -15343,6 +15385,20 @@ export interface operations {
                                  *     labels are separate data and may use arbitrary Unicode.
                                  */
                                 controller_binding_id: string;
+                                /** @description Absent means no analyzer dispatch and preserves prior configuration bytes. */
+                                lfg?: {
+                                    assessment_sha256: string;
+                                    base_url: string;
+                                    /** Format: uint64 */
+                                    maximum_input_bytes: number;
+                                    /** Format: uint64 */
+                                    maximum_request_bytes: number;
+                                    /** Format: uint64 */
+                                    maximum_response_bytes: number;
+                                    rules_sha256: string;
+                                    /** Format: uint64 */
+                                    timeout_ms: number;
+                                } | null;
                                 /**
                                  * @description Explicit per-adapter limits. Protocol ceilings are resource bounds, not
                                  *     provider rankings or implicit defaults for a configured installation.
@@ -15647,6 +15703,20 @@ export interface operations {
                                          *     labels are separate data and may use arbitrary Unicode.
                                          */
                                         controller_binding_id: string;
+                                        /** @description Absent means no analyzer dispatch and preserves prior configuration bytes. */
+                                        lfg?: {
+                                            assessment_sha256: string;
+                                            base_url: string;
+                                            /** Format: uint64 */
+                                            maximum_input_bytes: number;
+                                            /** Format: uint64 */
+                                            maximum_request_bytes: number;
+                                            /** Format: uint64 */
+                                            maximum_response_bytes: number;
+                                            rules_sha256: string;
+                                            /** Format: uint64 */
+                                            timeout_ms: number;
+                                        } | null;
                                         /**
                                          * @description Explicit per-adapter limits. Protocol ceilings are resource bounds, not
                                          *     provider rankings or implicit defaults for a configured installation.
@@ -15949,6 +16019,20 @@ export interface operations {
                                          *     labels are separate data and may use arbitrary Unicode.
                                          */
                                         controller_binding_id: string;
+                                        /** @description Absent means no analyzer dispatch and preserves prior configuration bytes. */
+                                        lfg?: {
+                                            assessment_sha256: string;
+                                            base_url: string;
+                                            /** Format: uint64 */
+                                            maximum_input_bytes: number;
+                                            /** Format: uint64 */
+                                            maximum_request_bytes: number;
+                                            /** Format: uint64 */
+                                            maximum_response_bytes: number;
+                                            rules_sha256: string;
+                                            /** Format: uint64 */
+                                            timeout_ms: number;
+                                        } | null;
                                         /**
                                          * @description Explicit per-adapter limits. Protocol ceilings are resource bounds, not
                                          *     provider rankings or implicit defaults for a configured installation.
@@ -16290,6 +16374,20 @@ export interface operations {
                                          *     labels are separate data and may use arbitrary Unicode.
                                          */
                                         controller_binding_id: string;
+                                        /** @description Absent means no analyzer dispatch and preserves prior configuration bytes. */
+                                        lfg?: {
+                                            assessment_sha256: string;
+                                            base_url: string;
+                                            /** Format: uint64 */
+                                            maximum_input_bytes: number;
+                                            /** Format: uint64 */
+                                            maximum_request_bytes: number;
+                                            /** Format: uint64 */
+                                            maximum_response_bytes: number;
+                                            rules_sha256: string;
+                                            /** Format: uint64 */
+                                            timeout_ms: number;
+                                        } | null;
                                         /**
                                          * @description Explicit per-adapter limits. Protocol ceilings are resource bounds, not
                                          *     provider rankings or implicit defaults for a configured installation.
@@ -16590,6 +16688,20 @@ export interface operations {
                                          *     labels are separate data and may use arbitrary Unicode.
                                          */
                                         controller_binding_id: string;
+                                        /** @description Absent means no analyzer dispatch and preserves prior configuration bytes. */
+                                        lfg?: {
+                                            assessment_sha256: string;
+                                            base_url: string;
+                                            /** Format: uint64 */
+                                            maximum_input_bytes: number;
+                                            /** Format: uint64 */
+                                            maximum_request_bytes: number;
+                                            /** Format: uint64 */
+                                            maximum_response_bytes: number;
+                                            rules_sha256: string;
+                                            /** Format: uint64 */
+                                            timeout_ms: number;
+                                        } | null;
                                         /**
                                          * @description Explicit per-adapter limits. Protocol ceilings are resource bounds, not
                                          *     provider rankings or implicit defaults for a configured installation.
@@ -32672,6 +32784,28 @@ export interface operations {
                                         elapsed_ms?: number | null;
                                         /** Format: uint16 */
                                         http_status?: number | null;
+                                        /**
+                                         * @description Bounded analyzer output and wire identities. These values are advisory;
+                                         *     they do not attest the producer, grant permission, or select a worker.
+                                         */
+                                        lfg?: {
+                                            assessment_sha256: string;
+                                            /** Format: uint64 */
+                                            elapsed_ms: number;
+                                            input_sha256: string;
+                                            intent_category: string;
+                                            intent_status: string;
+                                            reason_ids: string[];
+                                            request_id: string;
+                                            request_sha256: string;
+                                            response_sha256: string;
+                                            /** Format: uint64 */
+                                            revision: number;
+                                            rules_sha256: string;
+                                            status: string;
+                                            suggested_effort: string;
+                                            suggested_role: string;
+                                        } | null;
                                         packet_sha256: string;
                                         /**
                                          * @description A proposal can describe a choice without qualifying that choice for execution.
@@ -32708,6 +32842,28 @@ export interface operations {
                                      * @enum {string|null}
                                      */
                                     invalidation?: "inputs_changed" | "authorization_changed" | null;
+                                    /**
+                                     * @description Bounded analyzer output and wire identities. These values are advisory;
+                                     *     they do not attest the producer, grant permission, or select a worker.
+                                     */
+                                    lfg?: {
+                                        assessment_sha256: string;
+                                        /** Format: uint64 */
+                                        elapsed_ms: number;
+                                        input_sha256: string;
+                                        intent_category: string;
+                                        intent_status: string;
+                                        reason_ids: string[];
+                                        request_id: string;
+                                        request_sha256: string;
+                                        response_sha256: string;
+                                        /** Format: uint64 */
+                                        revision: number;
+                                        rules_sha256: string;
+                                        status: string;
+                                        suggested_effort: string;
+                                        suggested_role: string;
+                                    } | null;
                                     /** Format: uint64 */
                                     ordinal: number;
                                     outcome_sha256?: string | null;
@@ -32925,6 +33081,28 @@ export interface operations {
                                         elapsed_ms?: number | null;
                                         /** Format: uint16 */
                                         http_status?: number | null;
+                                        /**
+                                         * @description Bounded analyzer output and wire identities. These values are advisory;
+                                         *     they do not attest the producer, grant permission, or select a worker.
+                                         */
+                                        lfg?: {
+                                            assessment_sha256: string;
+                                            /** Format: uint64 */
+                                            elapsed_ms: number;
+                                            input_sha256: string;
+                                            intent_category: string;
+                                            intent_status: string;
+                                            reason_ids: string[];
+                                            request_id: string;
+                                            request_sha256: string;
+                                            response_sha256: string;
+                                            /** Format: uint64 */
+                                            revision: number;
+                                            rules_sha256: string;
+                                            status: string;
+                                            suggested_effort: string;
+                                            suggested_role: string;
+                                        } | null;
                                         packet_sha256: string;
                                         /**
                                          * @description A proposal can describe a choice without qualifying that choice for execution.
@@ -32961,6 +33139,28 @@ export interface operations {
                                      * @enum {string|null}
                                      */
                                     invalidation?: "inputs_changed" | "authorization_changed" | null;
+                                    /**
+                                     * @description Bounded analyzer output and wire identities. These values are advisory;
+                                     *     they do not attest the producer, grant permission, or select a worker.
+                                     */
+                                    lfg?: {
+                                        assessment_sha256: string;
+                                        /** Format: uint64 */
+                                        elapsed_ms: number;
+                                        input_sha256: string;
+                                        intent_category: string;
+                                        intent_status: string;
+                                        reason_ids: string[];
+                                        request_id: string;
+                                        request_sha256: string;
+                                        response_sha256: string;
+                                        /** Format: uint64 */
+                                        revision: number;
+                                        rules_sha256: string;
+                                        status: string;
+                                        suggested_effort: string;
+                                        suggested_role: string;
+                                    } | null;
                                     /** Format: uint64 */
                                     ordinal: number;
                                     outcome_sha256?: string | null;
@@ -34624,6 +34824,28 @@ export interface operations {
                                 elapsed_ms?: number | null;
                                 /** Format: uint16 */
                                 http_status?: number | null;
+                                /**
+                                 * @description Bounded analyzer output and wire identities. These values are advisory;
+                                 *     they do not attest the producer, grant permission, or select a worker.
+                                 */
+                                lfg?: {
+                                    assessment_sha256: string;
+                                    /** Format: uint64 */
+                                    elapsed_ms: number;
+                                    input_sha256: string;
+                                    intent_category: string;
+                                    intent_status: string;
+                                    reason_ids: string[];
+                                    request_id: string;
+                                    request_sha256: string;
+                                    response_sha256: string;
+                                    /** Format: uint64 */
+                                    revision: number;
+                                    rules_sha256: string;
+                                    status: string;
+                                    suggested_effort: string;
+                                    suggested_role: string;
+                                } | null;
                                 packet_sha256: string;
                                 /**
                                  * @description A proposal can describe a choice without qualifying that choice for execution.
@@ -34728,6 +34950,28 @@ export interface operations {
                                 elapsed_ms?: number | null;
                                 /** Format: uint16 */
                                 http_status?: number | null;
+                                /**
+                                 * @description Bounded analyzer output and wire identities. These values are advisory;
+                                 *     they do not attest the producer, grant permission, or select a worker.
+                                 */
+                                lfg?: {
+                                    assessment_sha256: string;
+                                    /** Format: uint64 */
+                                    elapsed_ms: number;
+                                    input_sha256: string;
+                                    intent_category: string;
+                                    intent_status: string;
+                                    reason_ids: string[];
+                                    request_id: string;
+                                    request_sha256: string;
+                                    response_sha256: string;
+                                    /** Format: uint64 */
+                                    revision: number;
+                                    rules_sha256: string;
+                                    status: string;
+                                    suggested_effort: string;
+                                    suggested_role: string;
+                                } | null;
                                 packet_sha256: string;
                                 /**
                                  * @description A proposal can describe a choice without qualifying that choice for execution.

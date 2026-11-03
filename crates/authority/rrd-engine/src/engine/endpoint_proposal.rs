@@ -14,6 +14,7 @@ use rrd_inference::endpoint_chat::{
     ChatMessage, ChatResponseFormat, ChatRole, EndpointChatFailure, EndpointChatRequest,
     PreparedEndpointChat,
 };
+use rrd_inference::lfg_transport::{LfgTransportConfig, PreparedLfgObservation};
 use rrd_inference::{EmbeddingCancellation, NetworkPolicy};
 pub(super) mod capacity;
 use capacity::CapacityLease;
@@ -175,7 +176,7 @@ impl RrdEngine {
             .runtime()
             .read_stamp(&self.query_scope(&request.scope)?)?;
         let task = self.read_task_record_at(&read, &task_read(request))?;
-        let packet = EndpointSelectionPacket {
+        let mut packet = EndpointSelectionPacket {
             contract_version: ENDPOINT_SELECTION_VERSION,
             purpose: policy.purpose,
             task: EndpointSelectionTask::from_task(&task)
@@ -186,6 +187,7 @@ impl RrdEngine {
             allowance: policy
                 .allowance(&configuration)
                 .map_err(|e| ServiceError::Contract(e.to_string()))?,
+            lfg: None,
         };
         if packet.task.task_sha256 != request.expected_task_sha256 {
             return Err(ServiceError::TaskAttemptInvalidated(
@@ -200,25 +202,57 @@ impl RrdEngine {
             .iter()
             .find(|binding| binding.id == policy.controller_binding_id)
             .ok_or_else(|| ServiceError::Contract("controller binding is absent".into()))?;
-        let chat = EndpointChatRequest {
-            model: binding.service_id.clone(),
-            messages: vec![
-                ChatMessage {
-                    role: ChatRole::System,
-                    content: policy.system_prompt.clone(),
-                },
-                ChatMessage {
-                    role: ChatRole::User,
-                    content: serde_json::to_string(&packet).map_err(contract_json)?,
-                },
-            ],
-            max_tokens: policy.maximum_output_tokens,
-            temperature: f64::from(policy.temperature_milli) / 1000.0,
-            response_format: ChatResponseFormat::JsonObject,
-        };
-        let prepared =
-            PreparedEndpointChat::new(&configuration, &binding.id, &packet.allowance, &chat)
-                .map_err(endpoint_failure)?;
+        // Preflight the configured controller without retaining a packet borrow.
+        drop(prepare_controller(
+            &configuration,
+            binding,
+            policy,
+            &packet,
+        )?);
+        let prepared_lfg = policy
+            .lfg
+            .as_ref()
+            .map(|lfg| {
+                let text = serde_json::to_string(&packet.task).map_err(contract_json)?;
+                let config = LfgTransportConfig {
+                    base_url: &lfg.base_url,
+                    assessment_sha256: &lfg.assessment_sha256,
+                    rules_sha256: &lfg.rules_sha256,
+                    timeout: Duration::from_millis(lfg.timeout_ms),
+                    maximum_input_bytes: usize::try_from(lfg.maximum_input_bytes).map_err(
+                        |_| {
+                            ServiceError::ConfigurationLimit(
+                                "LFG input bound exceeds platform".into(),
+                            )
+                        },
+                    )?,
+                    maximum_request_bytes: usize::try_from(lfg.maximum_request_bytes).map_err(
+                        |_| {
+                            ServiceError::ConfigurationLimit(
+                                "LFG request bound exceeds platform".into(),
+                            )
+                        },
+                    )?,
+                    maximum_response_bytes: usize::try_from(lfg.maximum_response_bytes).map_err(
+                        |_| {
+                            ServiceError::ConfigurationLimit(
+                                "LFG response bound exceeds platform".into(),
+                            )
+                        },
+                    )?,
+                };
+                PreparedLfgObservation::new(
+                    &config,
+                    request.attempt_id.as_str(),
+                    packet.task.known_at_cursor,
+                    &text,
+                )
+                .map_err(|error| ServiceError::EndpointCallFailed {
+                    reason: error.reason,
+                    execution_may_continue: error.execution_may_continue,
+                })
+            })
+            .transpose()?;
         let mut admission =
             self.proposal_completion_admission(&authority, &packet, request, &read)?;
         if let Some(reason) = admission.invalidation {
@@ -256,7 +290,7 @@ impl RrdEngine {
         };
         let request_sha256 = operation_digest(request)?;
         let key = self.budget_key(&request.scope, &request.task_id);
-        let reservation = {
+        let mut reservation = {
             let mut active = self
                 .active_task_cancellations
                 .lock()
@@ -304,6 +338,93 @@ impl RrdEngine {
             {
                 return Err(ServiceError::TaskAttemptInvalidated(reason));
             }
+            if let Some(lfg) = prepared_lfg {
+                let observed = lfg
+                    .execute(NetworkPolicy::Allow, reservation.execution_control())
+                    .map_err(|error| ServiceError::EndpointCallFailed {
+                        reason: error.reason,
+                        execution_may_continue: error.execution_may_continue,
+                    })?;
+                let value = observed.observation;
+                let advisory = rrd_contract::LfgAdvisory {
+                    request_id: request.attempt_id.clone(),
+                    revision: value.revision,
+                    input_sha256: value.input_sha256,
+                    assessment_sha256: value.assessment_sha256,
+                    rules_sha256: value.rules_sha256,
+                    request_sha256: observed.request_sha256,
+                    response_sha256: observed.response_sha256,
+                    status: value.status,
+                    intent_status: value.intent.status,
+                    intent_category: value.intent.category,
+                    suggested_role: value.suggested_role,
+                    suggested_effort: value.suggested_effort,
+                    reason_ids: value.reason_ids,
+                    elapsed_ms: observed.elapsed_ms,
+                };
+                packet.lfg = Some(advisory.clone());
+                packet
+                    .validate_for(&configuration)
+                    .map_err(|e| ServiceError::Contract(e.to_string()))?;
+                let invalidation = self
+                    .checkpoint_lfg_advisory(
+                        &mut reservation,
+                        advisory,
+                        |read| {
+                            let at = observe_required(clock, "lfg-checkpoint-authorize")?
+                                .observed_at_unix_ms;
+                            let mut admission = self.proposal_completion_admission(
+                                &authority, &packet, request, read,
+                            )?;
+                            for action in [
+                                SecurityAction::EndpointPropose,
+                                SecurityAction::TaskRead,
+                                SecurityAction::ReasoningWrite,
+                            ] {
+                                if self
+                                    .authorize(session, token, action, at, request_id, operation_id)
+                                    .is_err()
+                                {
+                                    admission.invalidation =
+                                        Some(TaskAttemptInvalidation::AuthorizationChanged);
+                                }
+                            }
+                            Ok(admission)
+                        },
+                        clock,
+                        &context,
+                    )
+                    .map_err(|_| ServiceError::EndpointCallFailed {
+                        reason: "LFG completed but its checkpoint could not be committed",
+                        execution_may_continue: true,
+                    })?;
+                if let Some(reason) = invalidation {
+                    return Err(ServiceError::TaskAttemptInvalidated(reason));
+                }
+                let at =
+                    observe_required(clock, "endpoint-controller-dispatch")?.observed_at_unix_ms;
+                for action in [
+                    SecurityAction::EndpointPropose,
+                    SecurityAction::TaskRead,
+                    SecurityAction::ReasoningWrite,
+                ] {
+                    self.authorize(session, token, action, at, request_id, operation_id)?;
+                }
+                let current = self
+                    .storage
+                    .runtime()
+                    .read_stamp(&self.query_scope(&request.scope)?)?;
+                if let Some(reason) = self
+                    .proposal_completion_admission(&authority, &packet, request, &current)?
+                    .invalidation
+                {
+                    return Err(ServiceError::TaskAttemptInvalidated(reason));
+                }
+            }
+            let final_packet_sha256 = packet
+                .sha256(&configuration)
+                .map_err(|e| ServiceError::Contract(e.to_string()))?;
+            let prepared = prepare_controller(&configuration, binding, policy, &packet)?;
             let observed = prepared
                 .execute(
                     NetworkPolicy::Allow,
@@ -324,7 +445,7 @@ impl RrdEngine {
                 task_id: request.task_id.clone(),
                 attempt_id: request.attempt_id.clone(),
                 task_sha256: packet.task.task_sha256.clone(),
-                packet_sha256: packet_sha256.clone(),
+                packet_sha256: final_packet_sha256,
                 configuration_sha256: observed.configuration_sha256,
                 allowance_sha256: observed.allowance_sha256,
                 controller_binding_id: binding.id.clone(),
@@ -337,6 +458,7 @@ impl RrdEngine {
                 usage: observed.usage,
                 elapsed_ms: observed.elapsed_ms,
                 http_status: observed.http_status,
+                lfg: packet.lfg.clone(),
             };
             proposal
                 .validate_for(request, &packet, &configuration)
@@ -436,6 +558,31 @@ fn task_read(request: &EndpointSelectionRequest) -> ReadTask {
         task_id: request.task_id.clone(),
         max_storage_keys: request.max_storage_keys,
     }
+}
+fn prepare_controller<'a>(
+    configuration: &'a rrd_contract::EndpointConfiguration,
+    binding: &rrd_contract::EndpointBinding,
+    policy: &rrd_contract::EndpointSelectionPolicy,
+    packet: &'a EndpointSelectionPacket,
+) -> Result<PreparedEndpointChat<'a>> {
+    let chat = EndpointChatRequest {
+        model: binding.service_id.clone(),
+        messages: vec![
+            ChatMessage {
+                role: ChatRole::System,
+                content: policy.system_prompt.clone(),
+            },
+            ChatMessage {
+                role: ChatRole::User,
+                content: serde_json::to_string(packet).map_err(contract_json)?,
+            },
+        ],
+        max_tokens: policy.maximum_output_tokens,
+        temperature: f64::from(policy.temperature_milli) / 1000.0,
+        response_format: ChatResponseFormat::JsonObject,
+    };
+    PreparedEndpointChat::new(configuration, &binding.id, &packet.allowance, &chat)
+        .map_err(endpoint_failure)
 }
 fn endpoint_failure(error: EndpointChatFailure) -> ServiceError {
     ServiceError::EndpointCallFailed {

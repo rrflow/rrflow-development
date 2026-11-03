@@ -8,6 +8,44 @@ use crate::{
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+/// Explicit opt-in for the local LFG advisory protocol. A loopback address is
+/// a transport restriction, not evidence of the analyzer's identity.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct LfgAnalysisPolicy {
+    pub base_url: String,
+    pub assessment_sha256: String,
+    pub rules_sha256: String,
+    pub timeout_ms: u64,
+    pub maximum_input_bytes: u64,
+    pub maximum_request_bytes: u64,
+    pub maximum_response_bytes: u64,
+}
+
+impl LfgAnalysisPolicy {
+    pub fn validate(&self) -> Result<()> {
+        let address = self
+            .base_url
+            .strip_prefix("http://")
+            .map(|value| value.strip_suffix('/').unwrap_or(value))
+            .and_then(|value| value.parse::<std::net::SocketAddr>().ok());
+        if !address.is_some_and(|value| value.ip().is_loopback() && value.port() != 0)
+            || self.timeout_ms == 0
+            || self.timeout_ms > crate::MAX_BINDING_TIMEOUT_MS
+            || self.maximum_input_bytes == 0
+            || self.maximum_request_bytes == 0
+            || self.maximum_response_bytes == 0
+            || self.maximum_input_bytes > self.maximum_request_bytes
+            || self.maximum_request_bytes > crate::MAX_ROUTE_REQUEST_BYTES
+            || self.maximum_response_bytes > crate::MAX_ROUTE_RESPONSE_BYTES
+        {
+            return invalid("invalid LFG advisory origin or resource limits");
+        }
+        crate::validate_sha256(&self.assessment_sha256, "LFG assessment digest")?;
+        crate::validate_sha256(&self.rules_sha256, "LFG rules digest")
+    }
+}
+
 /// Operator-declared settings and evidence references, bound by the same
 /// endpoint-profile preview/apply digest. Dispatch must still verify required
 /// capability evidence, intersect permission and reserve the task's budget.
@@ -29,11 +67,22 @@ pub struct EndpointSelectionPolicy {
     pub maximum_output_tokens: u32,
     /// Exact thousandths avoid floating-point configuration digest ambiguity.
     pub temperature_milli: u16,
+    /// Absent means no analyzer dispatch and preserves prior configuration bytes.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lfg: Option<LfgAnalysisPolicy>,
 }
 
 impl EndpointSelectionPolicy {
     pub fn validate_for(&self, bindings: &[EndpointBinding]) -> Result<()> {
         self.limits.validate()?;
+        if let Some(lfg) = &self.lfg {
+            lfg.validate()?;
+            if !self.allow_network || !self.allow_unverified_identity {
+                return invalid(
+                    "LFG advisory requires explicit network and unverified-identity permission",
+                );
+            }
+        }
         if self.contract_version != ENDPOINT_SELECTION_VERSION {
             return invalid("unsupported selector policy version");
         }

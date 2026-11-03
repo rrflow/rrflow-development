@@ -20,7 +20,7 @@ fn captured(file: &str) -> Vec<u8> {
     bytes
 }
 
-fn configured() -> EndpointConfiguration {
+pub(super) fn configured() -> EndpointConfiguration {
     let mut configuration: EndpointConfiguration =
         serde_json::from_slice(&captured("configuration.json")).unwrap();
     let allowance: EndpointSelectionAllowance =
@@ -46,6 +46,7 @@ fn configured() -> EndpointConfiguration {
         system_prompt: request["messages"][0]["content"].as_str().unwrap().into(),
         maximum_output_tokens: request["max_tokens"].as_u64().unwrap().try_into().unwrap(),
         temperature_milli: (request["temperature"].as_f64().unwrap() * 1000.0) as u16,
+        lfg: None,
     });
     profile.profile_sha256 = endpoint_profile_sha256(profile).unwrap();
     configuration.validate().unwrap();
@@ -85,6 +86,7 @@ fn proposal_packet_binds_actual_task_and_rejects_changed_projection() {
         read_cursor: task.read.runtime_cursor,
         controller_binding_id: policy.controller_binding_id.clone(),
         allowance: policy.allowance(&configuration).unwrap(),
+        lfg: None,
     };
     packet.validate_for(&configuration).unwrap();
     packet.validate_task(&task.task).unwrap();
@@ -177,6 +179,7 @@ pub(super) fn tuple_fixture() -> (
         read_cursor: task.read.runtime_cursor,
         controller_binding_id: policy.controller_binding_id.clone(),
         allowance: policy.allowance(&configuration).unwrap(),
+        lfg: None,
     };
     let request = EndpointSelectionRequest {
         scope: SCOPE.into(),
@@ -218,6 +221,7 @@ pub(super) fn tuple_fixture() -> (
         }),
         elapsed_ms: None,
         http_status: None,
+        lfg: None,
     };
     proposal
         .validate_for(&request, &packet, &configuration)
