@@ -42,6 +42,15 @@ still do not form one planner-selected, stamped native access system. Elias-Fano
 posting compression, TurboQuant_prod, and LSM-VEC-style disk navigation are evidence-gated
 candidates, not implemented defaults.
 
+The installed document-and-graph journey originally found that the record
+binder rejected a registered schemaless document. The
+[document and graph journal](../../evidence/change-journals/gate-h/h-04-document-graph-journey.md)
+preserves that observation at its original revision. The subsequent
+[schemaless projection repair](../../evidence/change-journals/gate-e/e-01-schemaless-document-query.md)
+admits bounded untyped projection and tests a document/relationship join and
+reopen; it does not establish dynamic-property predicates or arbitrary join
+keys. The typed-document example and this repair do not close POAM-005.
+
 An installed-project Inventory exposed a traversal syntax gap: a snapshot
 digest beginning with a digit could not be used as a start ID, and typed
 traversal queries did not round-trip that identity. The [query repair
@@ -62,11 +71,11 @@ are explained by the [scale rationale](../../architecture/engine-scale-and-contr
 ## Impact
 
 The [schemaless document query journal](../../evidence/change-journals/gate-e/e-01-schemaless-document-query.md)
-records a registered document rejected by rrflowQL and the candidate projection
-repair. Dynamic-property predicates and joins still require explicit type and
+records the original rejection and the subsequent merged projection repair.
+Dynamic-property predicates and joins still require explicit type and
 execution semantics. Properties named like built-in fields (such as `id`) are
 currently shadowed in record query rows; arbitrary property namespace access
-still needs a defined contract. This candidate does not qualify those cases.
+still needs a defined contract. The projection repair does not qualify those cases.
 Its local results cannot close this ledger or establish general document-query
 support.
 
