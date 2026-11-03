@@ -53,6 +53,7 @@ fn installed_startup_keeps_source_admission_at_the_dependent_operation() {
         BASE + 3_000,
     )
     .unwrap();
+    let started_at = started.status.job.updated_at_unix_ms;
     assert_eq!(started.status.job.state, State::Running);
     assert!(started.status.job.checkpoints.is_empty());
     drop(engine);
@@ -60,7 +61,7 @@ fn installed_startup_keeps_source_admission_at_the_dependent_operation() {
     let verified = RrdEngine::inspect_installed_with_clock(
         installed.root.path(),
         &installed.executable,
-        &FixedClock::at(BASE + 4_000),
+        &FixedClock::at(started_at + 1),
     )
     .unwrap();
     assert!(verified.attunement_source_current);
@@ -85,7 +86,7 @@ fn installed_startup_keeps_source_admission_at_the_dependent_operation() {
         RrdEngine::open_installed_with_clock(
             installed.root.path(),
             &installed.executable,
-            &FixedClock::at(BASE + 4_000),
+            &FixedClock::at(started_at + 1),
         ),
         Err(ServiceError::ProjectBindingMismatch)
     ));

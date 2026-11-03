@@ -125,9 +125,10 @@ each identity's history (`rrd_vector::source_history`). That view drops what
 a move out of the collection supersedes, and ends the version held before
 the move where the move takes effect, so a generation never proposes an
 identity that has left
-([POAM-048](../../poam/rrflow-1.0-alpha/poam-048.md)). The quantization
-catalogue a build publishes into is rebuilt by
-replaying retained changes from cursor zero
+([POAM-048](../../poam/rrflow-1.0-alpha/poam-048.md)). Quantization
+catalogue reads use authenticated, budgeted typed ranges at a read stamp
+rather than replaying the change log from cursor zero; the selected lifecycle
+records still require reconstruction
 ([POAM-028](../../poam/rrflow-1.0-alpha/poam-028.md)). The commit
 path writes each collection, named vector and field's vector deltas
 atomically, and storage reads one source's deltas at a request's stamp under
@@ -197,7 +198,7 @@ canonical full-precision vectors and the exact scorer remain authoritative.
 
 | Part | Current state | Owning gate and required behavior |
 |---|---|---|
-| Persistent vector search | The MSE codec and lifecycle above serve after explicit activation, through the generation plus the stamped delta (E-04b). A TurboQuant build extends its base with the change (E-04c); the catalogue still replays from cursor zero. | E-04 maintains TurboQuant generations incrementally and atomically with point commits. F-03 runs candidate generation and exact reranking in the stamped Arrow pipeline. Closing [POAM-028](../../poam/rrflow-1.0-alpha/poam-028.md) removes the per-search catalogue rebuild. |
+| Persistent vector search | The MSE codec and lifecycle above serve after explicit activation, through the generation plus the stamped delta (E-04b). A TurboQuant build extends its base with the change (E-04c); its catalogues use authenticated stamped direct reads. | E-04 maintains TurboQuant generations incrementally and atomically with point commits. F-03 runs candidate generation and exact reranking in the stamped Arrow pipeline. Closing [POAM-028](../../poam/rrflow-1.0-alpha/poam-028.md) proves that one search's catalogue work stays constant as unrelated history grows. |
 | Inner-product variant | `estimator: inner_product` (E-04d) builds, serves, extends and replays through the lifecycle above. Its recall, score error and empirical bias are measured beside the MSE variant and exact search on the same corpus. | J-04 qualifies its quality, memory and latency on representative corpora. Larger dimensions need a projection the paper's analysis covers. |
 | Model KV cache | Absent: RRFlow runs embedding models only, and attention caches belong to admitted model runtimes. | In Gate G, SWAG selects a TurboQuant KV-cache format only when an admitted runtime advertises it and qualification passes. The format joins the [cache identity](../inference/lfg-swag.md#cache-identity-and-sharing). This is inference acceleration, not rrflowKV compression. |
 | Sync transfer | Absent. | H-07 may offer a selected-data profile in which a device receives verified quantized artifacts instead of a family's full-precision vectors, which reduces transfer bytes. That device only proposes candidates: its returned hits are exact-reranked by a peer that holds the canonical vectors, or they are labelled approximate. Full synchronization still transfers canonical vectors. |
@@ -224,8 +225,8 @@ The retained debug-host observation is
 it is not a release SLO or Qdrant-equivalence claim.
 
 Gate C-04 provides bounded direct canonical vector reads, and C-05 leaves one
-quantization authority; the lifecycle catalogue itself is still rebuilt from
-cursor 0 by every search and lifecycle operation
+quantization authority; the lifecycle catalogue itself comes from direct
+stamped reads, and C-04's closure evidence is still open
 ([POAM-028](../../poam/rrflow-1.0-alpha/poam-028.md)). Gate E-04
 must make index deltas atomic with point commits and prove rebuild/reopen under
 failure. Gate F-03 must execute quantized candidate generation and exact

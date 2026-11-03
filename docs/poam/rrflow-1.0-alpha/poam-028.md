@@ -104,3 +104,8 @@ test's known-deficiency list is empty; physical counters show that one vector
 search's catalogue work stays constant as unrelated scope history grows, at
 retained and current stamps and after rrflowKV reopen; and C-04's acceptance
 evidence is recorded again at the closing revision.
+
+The [catalogue status correction](../../evidence/change-journals/gate-c/c-04e-vector-catalogue-status-correction.md)
+removes stale present-tense cursor-zero claims from OBJ-13 and the quantization,
+HNSW, memory-tier and search references after the direct stamped-read repair. It does not close this item:
+maintenance replay, catalogue lifecycle work and final C-04 evidence remain.
