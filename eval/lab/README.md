@@ -79,7 +79,9 @@ arm is declared `unimplemented` this way.
 The lab's report is independent of any workload. A test declares its own
 dimensions, metrics, verdicts and views in [`lab-report-v1.json`](../schemas/lab-report-v1.json),
 so a client renders it from that data, and a new test needs no new components.
-Today's only test package is the vector comparison in `vector-small.json`. Graph,
+Today's test packages are the vector comparisons in `vector-small.json` (20,000 points) and
+`vector-medium.json` (200,000 points). The medium test also runs RRFlow with raised read limits
+through `engine_settings`, because its installed defaults refuse a search at that size. Graph,
 lexical and mixed workloads should add their own manifest and driver, and write
 this same report.
 

@@ -59,4 +59,6 @@
 - [POAM-047 — a collection whose vectors all moved to another collection cannot be deleted](poam-047.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-047`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-047) — active parent-owned POA&M detail
 - [POAM-048 — an approximate generation keeps proposing a vector that moved to another collection](poam-048.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-048`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-048) — active parent-owned POA&M detail
 - [POAM-049 — an audit read's journal scan grows with the journal's length](poam-049.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-049`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-049) — active parent-owned POA&M detail
+- [POAM-053 — clients cannot build RRFlow's HNSW or payload indexes](poam-053.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-053`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-053) — active parent-owned POA&M detail
+- [POAM-054 — a default install accepts a vector corpus its search then refuses](poam-054.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-054`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-054) — active parent-owned POA&M detail
 <!-- rrflow:generated-index:end -->

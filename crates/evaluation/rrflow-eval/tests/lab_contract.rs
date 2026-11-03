@@ -42,6 +42,7 @@ fn binding(name: &str) -> SystemBinding {
         credentials: CredentialReferences::default(),
         memory_probe: None,
         disk_probe: None,
+        engine_settings: BTreeMap::new(),
     }
 }
 
@@ -354,6 +355,46 @@ fn a_failing_system_stays_visible_with_its_reason() {
     assert_eq!(system.reason.as_deref(), Some("collection refused"));
 }
 
+/// Ingests everything and then cannot become ready, as a refused index build does.
+struct NeverReady(PerfectSystem);
+
+impl SystemAdapter for NeverReady {
+    fn observed_version(&self) -> Result<String> {
+        self.0.observed_version()
+    }
+    fn prepare(&self, spec: &CollectionSpec<'_>) -> Result<()> {
+        self.0.prepare(spec)
+    }
+    fn ingest(&self, batch: &PointBatch<'_>) -> Result<()> {
+        self.0.ingest(batch)
+    }
+    fn finish_ingest(&self, _: Instant) -> Result<()> {
+        Err("index build refused".into())
+    }
+    fn search(&self, request: &SearchRequest<'_>) -> Result<Vec<u64>> {
+        self.0.search(request)
+    }
+    fn teardown(&self) -> Result<()> {
+        self.0.teardown()
+    }
+}
+
+#[test]
+fn a_system_that_cannot_become_ready_keeps_its_ingest_rate() {
+    let manifest = manifest(vec![binding("stuck")]);
+    let inputs = prepare_inputs(&manifest).unwrap();
+    let run = run_with(
+        &manifest,
+        "stuck",
+        &NeverReady(PerfectSystem::new()),
+        &inputs,
+    );
+    assert_eq!(run.status, SystemStatus::Failed);
+    assert_eq!(run.reason.as_deref(), Some("index build refused"));
+    assert_eq!(run.ingest.unwrap().points, manifest.corpus.points);
+    assert!(run.cases.is_empty());
+}
+
 #[test]
 fn search_errors_are_counted_and_block_matched_quality() {
     let manifest = manifest(vec![binding("flaky")]);
@@ -518,6 +559,19 @@ fn manifests_refuse_what_would_make_a_result_misleading_or_unsafe() {
         |m| m.systems[0].availability = Availability::Unavailable { reason: " ".into() }
     )
     .contains("say why"));
+    assert!(refused(|m| {
+        m.systems[0]
+            .engine_settings
+            .insert("projected_output_bytes".into(), 1);
+    })
+    .contains("only RRFlow"));
+    assert!(refused(|m| {
+        m.systems[0].kind = SystemKind::Rrflow;
+        m.systems[0]
+            .engine_settings
+            .insert("bad name = 1\nsecret".into(), 1);
+    })
+    .contains("invalid engine setting"));
 }
 
 #[test]

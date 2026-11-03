@@ -5,7 +5,7 @@ use super::{require, Result};
 use crate::storage::Id;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 pub const MANIFEST_SCHEMA_VERSION: u16 = 1;
 pub const MAX_LAB_POINTS: u64 = 10_000_000;
@@ -148,6 +148,10 @@ pub struct SystemBinding {
     pub memory_probe: Option<Vec<String>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub disk_probe: Option<Vec<String>>,
+    /// RRFlow `[storage]` settings the runner writes before the engine starts, so a run
+    /// away from the installed defaults says so in the manifest it is bound to.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub engine_settings: BTreeMap<String, u64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -196,6 +200,22 @@ fn validate_endpoint(binding: &SystemBinding) -> Result<()> {
 
 impl SystemBinding {
     fn validate(&self, workload: &WorkloadSpec) -> Result<()> {
+        require(
+            self.engine_settings.is_empty() || self.kind == SystemKind::Rrflow,
+            &format!(
+                "{} declares engine settings, which only RRFlow takes",
+                self.id.as_str()
+            ),
+        )?;
+        require(
+            self.engine_settings.keys().all(|name| {
+                !name.is_empty()
+                    && name.bytes().all(|byte| {
+                        byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'_'
+                    })
+            }),
+            &format!("{} has an invalid engine setting name", self.id.as_str()),
+        )?;
         let id = self.id.as_str();
         require(
             !self.label.trim().is_empty() && self.label.len() <= 128,

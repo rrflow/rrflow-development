@@ -1,7 +1,7 @@
-# POAM-050 — clients cannot build RRFlow's HNSW or payload indexes
+# POAM-053 — clients cannot build RRFlow's HNSW or payload indexes
 
 **Status:** active parent-owned POA&M detail
-**Coordinate:** `rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-050`
+**Coordinate:** `rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-053`
 **Owner:** [RRFlow 1.0 alpha POA&M](../rrflow-1.0-alpha.md)
 
 This detail record is part of the canonical RRFlow 1.0 alpha POA&M. The parent
@@ -45,3 +45,12 @@ operations generated from the one catalogue).
 
 Roadmap owners: [Gate E](../../roadmap/rrflow-1.0/gate-e.md) and
 [Gate H](../../roadmap/rrflow-1.0/gate-h.md).
+
+## Closure evidence
+
+A client of an installed engine builds an HNSW generation and declares a payload
+index through operations generated from the one catalogue, and a filtered search
+uses that generation. The lab measures the arm through the same public path, with
+its `unimplemented` declaration removed. Exposing these operations makes
+[POAM-046](poam-046.md) reachable by every client, so that record must be closed or
+its effect stated when this one closes.

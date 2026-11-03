@@ -63,4 +63,5 @@
 | POAM-047 | High | Verifying | [a collection whose vectors all moved to another collection cannot be deleted](rrflow-1.0-alpha/poam-047.md) |
 | POAM-048 | High | Verifying | [an approximate generation keeps proposing a vector that moved to another collection](rrflow-1.0-alpha/poam-048.md) |
 | POAM-049 | High | Open | [an audit read's journal scan grows with the journal's length](rrflow-1.0-alpha/poam-049.md) |
-| POAM-050 | High | Open | [clients cannot build RRFlow's HNSW or payload indexes](rrflow-1.0-alpha/poam-050.md) |
+| POAM-053 | High | Open | [clients cannot build RRFlow's HNSW or payload indexes](rrflow-1.0-alpha/poam-053.md) |
+| POAM-054 | High | Open | [a default install accepts a vector corpus its search then refuses](rrflow-1.0-alpha/poam-054.md) |

@@ -353,15 +353,17 @@ fn run_phases(
     }
     let seconds = started.elapsed().as_secs_f64();
     let ready_started = Instant::now();
-    adapter.finish_ingest(
+    let ready = adapter.finish_ingest(
         ready_started + Duration::from_millis(manifest.workload.readiness_timeout_ms),
-    )?;
+    );
+    // A system that ingested and then could not become ready still has an ingest rate.
     run.ingest = Some(IngestResult {
         points: points.len() as u64,
         seconds,
         points_per_second: points.len() as f64 / seconds.max(f64::EPSILON),
         ready_seconds: ready_started.elapsed().as_secs_f64(),
     });
+    ready?;
     for setting in &binding.search_ladder {
         for filtered in [false, true] {
             let truth = if filtered {

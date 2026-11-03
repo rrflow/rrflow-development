@@ -121,6 +121,7 @@ fn binding(endpoint: &str, kind: SystemKind, credentials: CredentialReferences) 
             ef_construction: 100,
         },
         search_ladder: Vec::new(),
+        engine_settings: Default::default(),
         credentials,
         memory_probe: None,
         disk_probe: None,

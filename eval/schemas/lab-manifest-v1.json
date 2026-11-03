@@ -313,6 +313,15 @@
         "endpoint": {
           "type": "string"
         },
+        "engine_settings": {
+          "additionalProperties": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "description": "RRFlow `[storage]` settings the runner writes before the engine starts, so a run\naway from the installed defaults says so in the manifest it is bound to.",
+          "type": "object"
+        },
         "id": {
           "$ref": "#/$defs/Id"
         },
