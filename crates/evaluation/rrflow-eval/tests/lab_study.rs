@@ -156,6 +156,8 @@ fn detail(check: &StudyCheck, requirement: &str) -> String {
         .clone()
 }
 
+type Damage = fn(&mut AgentReply);
+
 /// Replies with everything a real provider reports.
 struct Scripted(AgentReply);
 
@@ -630,7 +632,7 @@ fn what_retrieval_returned_is_kept_apart_from_what_the_agent_used() {
 #[test]
 fn a_finished_run_missing_any_required_field_fails_the_audit_and_does_not_count() {
     let plan = planned(&pilot());
-    let breaks: [(&str, fn(&mut AgentReply)); 7] = [
+    let breaks: [(&str, Damage); 7] = [
         ("the model that answered", |reply| {
             reply.model_reported = None
         }),

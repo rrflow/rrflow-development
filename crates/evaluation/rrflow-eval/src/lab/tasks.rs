@@ -566,8 +566,24 @@ impl TaskRun {
 }
 
 /// What a run took from the total. A provider that reported no cost is charged at the run's limit.
-pub fn charged_usd(run: &TaskRun, _spend: &SpendLimits) -> f64 {
-    run.cost_usd.unwrap_or(0.0)
+pub fn charged_usd(run: &TaskRun, spend: &SpendLimits) -> f64 {
+    run.cost_usd.unwrap_or(spend.max_usd_per_run)
+}
+
+/// Why an arm's MCP servers are not usable, from what the provider reported at startup.
+fn tooling_problem(arm: &TaskArm, reply: &AgentReply) -> Option<String> {
+    arm.tools
+        .iter()
+        .filter_map(|tool| tool.strip_prefix("mcp__")?.split("__").next())
+        .find_map(
+            |server| match reply.mcp_servers.as_ref().and_then(|all| all.get(server)) {
+                Some(status) if status == "connected" => None,
+                Some(status) => Some(format!("the {server} MCP server was {status}")),
+                None => Some(format!(
+                    "the provider did not report the {server} MCP server"
+                )),
+            },
+        )
 }
 
 /// Which files an MCP tool returned, read from the chunk identities in its replies. Any shape
@@ -725,8 +741,12 @@ pub fn run_task(
         }
     };
     let digest = Digest::try_from(sha256_hex(&reply.raw))?;
+    let tooling = tooling_problem(arm, &reply)
+        .filter(|_| reply.exit_code == Some(0) || reply.mcp_servers.is_some());
     let mut run = if reply.timed_out {
         blank(TaskRunOutcome::TimedOut, None, &reply)
+    } else if let Some(problem) = tooling {
+        blank(TaskRunOutcome::ToolingFailed, Some(problem), &reply)
     } else if reply.exit_code != Some(0) {
         blank(
             TaskRunOutcome::ProviderFailed,
