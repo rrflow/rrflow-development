@@ -215,9 +215,10 @@ its [durability and growth requirements](gate-c-07.md#ordered-implementation-pac
 and [staged qualification](gate-c-07.md#execution-reset-after-the-failed-desktop-corpus).
 Its historical component receipts remain valid only for their stated behavior
 and candidate. Full qualification cannot establish an absent ingestion executor.
-The [DuckDB interoperability packages](gate-d.md#duckdb-interoperability-packages)
-retain their explicit prerequisites; export does not imply import or native
-persistence. DuckDB never becomes default readiness.
+The earlier DuckDB interoperability packages were withdrawn by the owner.
+[Native analytical database research](../../reference/data/duckdb.md) informs
+rrflowDB work under its existing owners; Parquet export does not prove import,
+streaming, or database performance.
 
 D-01 has [accepted installed-foundation evidence](gate-d-evidence.md#d-01-accepted-installed-foundation-2026-10-21)
 through the actual primary executable on Linux, macOS and Windows. Accepted C-06 replaced

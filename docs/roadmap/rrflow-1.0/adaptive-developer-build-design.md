@@ -12,6 +12,10 @@ reviewable; it cannot change their status or authorize an implementation PR.
 [ADR-0002](../../decisions/0002-adaptive-reasoning-governed-effects.md) owns
 the boundary between adaptive exploration and governed effects.
 
+The [installed project-indexing implementation plan](project-indexing-execution-plan.md)
+maps the first source-to-query proof to current code, package oracles, native
+worker requirements, configurable retrieval and independent readback.
+
 ## Problem at the inspected baseline
 
 Both bundled installation profiles enumerate Connect, Inventory, Parse,

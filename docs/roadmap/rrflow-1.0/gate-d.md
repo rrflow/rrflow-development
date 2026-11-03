@@ -361,24 +361,15 @@ and bidirectional synchronization remains H-07.
 
 ## DuckDB interoperability packages
 
-The [DuckDB contract](../../reference/data/duckdb.md) refines D-06 for the
-owner-requested analytical integration. Native rrflowDB remains Rust-owned;
-DuckDB's C/C++ runtime is optional third-party capability code. No row below
-is implemented or qualified. The real-project workflow has priority in the
-[current dependency spine](executable-dependency-spine.md). Keep
-Gate F's DataFusion provider and H-08's PostgreSQL profile independent.
-
-| Package | Prerequisites and deliverable | First falsifying oracle and exit |
-|---|---|---|
-| D-06 DuckDB export conformance | C-07 acceptance; existing bounded Parquet export. Pin an actual DuckDB client and a closed supported type/profile matrix. This first bounded prerequisite may precede full Gate F streaming, as the existing bounded export does. | A real client consumes the authenticated installed engine's export and independently compares identities, values and source metadata before/after reopen. Wrong digest/profile, lossy types, truncation and cross-estate disclosure deny. External client evidence does not qualify bundled execution. |
-| D-06 DuckDB binding and containment | Accepted export profile, D-06 configuration/discovery, C-07 resource/lifetime evidence, F-04 budget integration. Pin runtime/features/license/build and optional owned worker; no new authority or default readiness requirement. | Preview has no effects; missing authorization/enforcement, changed artifact, SQL settings/extension/file escape, exhausted memory/temp/output, timeout and worker death fail without engine loss or secret exposure. Native offline tests on every declared platform enforce aggregate bounds and cleanup. |
-| D-06 DuckDB source/import | Qualified binding, D-02 checkpoints, D-03 source identity, D-05 provenance and full Parquet/F streaming where required. Read immutable export or qualified consistent read-only source; stage and validate through native engine commits. | Actual source lock/conflict, schema drift, malformed input, revoked ACL, duplicate delivery, lost response and restart preserve source bytes and publish each accepted group once. No partial groups or invented local stamp for foreign data; later valid work still succeeds. |
-| D-06 DuckDB analytical worker and delivery | Qualified containment/source contracts; F-01/F-04 stamped streaming and budgets. Implement bounded query execution and source receipts; H-04/H-06 client parity and J signed-bundle proof complete delivery. | Real aggregate/filter/join workload matches independent expected values, including cancellation and worker crash. Result carries source/query/runtime identity; default estate works without activation; offline install/update/removal and two-estate isolation pass on the exact bundle. |
-
-Each row needs its own reviewed PR, failure oracle and exact-candidate CI.
-The [POA&M](../../poam/rrflow-1.0-alpha/poam-036.md) remains sequenced until
-those prerequisites exist. No cross-database transaction or cloud sync is
-implied by any of these profiles.
+**Withdrawn by the owner:** the earlier DuckDB interoperability and optional-worker
+packages. DuckDB and ClickHouse are implementation research inputs, not
+RRFlow runtime dependencies or integration requirements. Adapt selected
+behaviors or eligible source to the existing native rrflowDB/rrflowKV and
+rrd-query boundaries with file-level provenance, compatible licensing,
+semantic and resource tests, and exact-candidate evidence. The existing D-05,
+D-06 Parquet, E/F query and C-07 durability requirements continue unchanged.
+[Research and prior direction](../../reference/data/duckdb.md) and
+[POAM-036](../../poam/rrflow-1.0-alpha/poam-036.md) preserve history.
 
 ## Exit condition
 
