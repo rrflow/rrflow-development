@@ -320,3 +320,70 @@ fn catalog_publication_is_logically_identical_across_rrflow_mx_and_rrflow_kv() {
     );
     assert_eq!(memory, rrflow_kv);
 }
+
+/// POAM-046: the public changefeed projects every identity the catalogue
+/// writes, so the writer refuses one it could not project before any bytes are
+/// stored.
+#[test]
+fn publication_refuses_an_identity_the_public_changefeed_cannot_project() {
+    let object_dir = tempdir().unwrap();
+    let data = DataRuntime::new(
+        RrflowMxStore::new(),
+        LocalObjectStore::open(object_dir.path()).unwrap(),
+    );
+    let canonical = candidates();
+    let mut runtime = VectorRuntime::new(canonical.clone()).unwrap();
+    let artifact = HnswIndex::build(
+        HnswConfig {
+            id: ProjectionId::new("vector:not:public").unwrap(),
+            scope: scope(),
+            field: "body".into(),
+            dimensions: 2,
+            metric: ScoreMetric::Dot,
+            embedding_model: None,
+            m: 2,
+            ef_construction: 4,
+            max_level: 3,
+            seed: 7,
+            filter_properties: BTreeSet::new(),
+        },
+        1,
+        3,
+        canonical,
+    )
+    .unwrap();
+
+    let error = publish_traced_vector_artifact(
+        &data,
+        &mut runtime,
+        0,
+        artifact.into(),
+        "operator:catalog-test",
+        100,
+    )
+    .unwrap_err()
+    .to_string();
+
+    assert!(error.contains("is not public"), "{error}");
+    assert!(vector_artifact_catalog_entries(data.engine(), &scope())
+        .unwrap()
+        .is_empty());
+    let stored = stored_files(object_dir.path());
+    assert!(stored.is_empty(), "bytes were stored: {stored:?}");
+}
+
+fn stored_files(root: &std::path::Path) -> Vec<std::path::PathBuf> {
+    let mut files = Vec::new();
+    let mut pending = vec![root.to_path_buf()];
+    while let Some(directory) = pending.pop() {
+        for entry in std::fs::read_dir(directory).unwrap() {
+            let path = entry.unwrap().path();
+            if path.is_dir() {
+                pending.push(path);
+            } else {
+                files.push(path);
+            }
+        }
+    }
+    files
+}

@@ -22,6 +22,7 @@ use std::collections::BTreeMap;
 mod catalogue_reads;
 mod collection_moves;
 mod incremental_generations;
+mod index_identities;
 mod point_reads;
 mod quantization_replay;
 mod turboquant_overlay;
