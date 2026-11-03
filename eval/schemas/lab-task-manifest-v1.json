@@ -117,6 +117,21 @@
         }
       ]
     },
+    "CaptureField": {
+      "description": "Data a study requires of every finished run.",
+      "enum": [
+        "model",
+        "provider_version",
+        "tokens",
+        "cache_tokens",
+        "cost",
+        "turns",
+        "tool_calls",
+        "retrieval",
+        "transcript"
+      ],
+      "type": "string"
+    },
     "Id": {
       "maxLength": 96,
       "minLength": 1,
@@ -164,6 +179,17 @@
           "format": "uint32",
           "minimum": 0,
           "type": "integer"
+        },
+        "required_captures": {
+          "description": "A finished run lacking one of these stays visible and does not count.",
+          "items": {
+            "$ref": "#/$defs/CaptureField"
+          },
+          "type": "array"
+        },
+        "stage": {
+          "$ref": "#/$defs/StudyStage",
+          "default": "confirmatory"
         }
       },
       "required": [
@@ -203,6 +229,14 @@
         "max_usd_total"
       ],
       "type": "object"
+    },
+    "StudyStage": {
+      "description": "A pilot tests the test, so its report cannot answer the question. A confirmatory study can.",
+      "enum": [
+        "pilot",
+        "confirmatory"
+      ],
+      "type": "string"
     },
     "TaskArm": {
       "additionalProperties": false,

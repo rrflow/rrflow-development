@@ -1,0 +1,141 @@
+{
+  "schema_version": 1,
+  "family": "agent-tasks",
+  "requirements": [
+    {
+      "id": "frozen-design",
+      "title": "The design is frozen before the first run",
+      "statement": "The question, thresholds, analysis and run order are fixed in one digest, and every run is bound to it.",
+      "why": "rea-lab preregistered each of its studies. Choosing a threshold after seeing results can make almost any result look good.",
+      "sources": ["rea-lab"],
+      "records": ["J-04"],
+      "pilot": "required",
+      "confirmatory": "required",
+      "check": {"check": "frozen_design"}
+    },
+    {
+      "id": "baseline-arm",
+      "title": "A baseline without the capability",
+      "statement": "A baseline arm runs the same model with read-only tools on the same repository, and without the capability under test.",
+      "why": "OBJ-11 asks for usage against a declared baseline. rea-lab compared offering a tool with not offering it, and found no significant rise in solve rates at about twice the time and cost, which only a baseline can show.",
+      "sources": ["rea-lab"],
+      "records": ["OBJ-11"],
+      "pilot": "required",
+      "confirmatory": "required",
+      "check": {"check": "baseline_arm"}
+    },
+    {
+      "id": "leak-floor",
+      "title": "A floor that shows whether the tasks leak",
+      "statement": "A floor arm sees no repository and has no tools. If it solves more than its limit, the tasks reveal their own answers.",
+      "why": "MERIT verifies a leak floor. rea-lab's third study used programs published after a model's training data, so that answers could not come from memory.",
+      "sources": ["merit", "rea-lab"],
+      "records": [],
+      "pilot": "required",
+      "confirmatory": "required",
+      "check": {"check": "floor_arm"}
+    },
+    {
+      "id": "paired-comparison",
+      "title": "Arms are compared pair by pair",
+      "statement": "At least one arm is compared with the baseline, every task runs in every arm, and pairs are tested with exact McNemar and reported with Wilson intervals.",
+      "why": "This is rea-lab's analysis. Pairing removes the difference between tasks, which is usually larger than the difference between arms.",
+      "sources": ["rea-lab"],
+      "records": ["J-04"],
+      "pilot": "required",
+      "confirmatory": "required",
+      "check": {"check": "compared_arm"}
+    },
+    {
+      "id": "graded-output",
+      "title": "Grading reads what the agent wrote",
+      "statement": "Each run is graded mechanically on the agent's own output, against an answer it never saw and that no working directory holds.",
+      "why": "MERIT found that agents acted on a correctly retrieved value only 55% of the time, so a tool returning the right thing proves nothing by itself.",
+      "sources": ["merit"],
+      "records": [],
+      "pilot": "required",
+      "confirmatory": "required",
+      "check": {"check": "mechanical_grading"}
+    },
+    {
+      "id": "pinned-model",
+      "title": "Each model is named exactly",
+      "statement": "Every model is a versioned name. A floating alias such as sonnet or latest is refused.",
+      "why": "An alias can change between runs, and the pairs would then compare two different models.",
+      "sources": [],
+      "records": ["OBJ-10"],
+      "pilot": "required",
+      "confirmatory": "required",
+      "check": {"check": "pinned_models"}
+    },
+    {
+      "id": "declared-tools",
+      "title": "Each arm declares what it offers",
+      "statement": "Every arm with repository access lists its tools, and the agent is given nothing else.",
+      "why": "leanrea measured what tool definitions alone cost in context, so what an arm offers is part of what it costs.",
+      "sources": ["leanrea"],
+      "records": [],
+      "pilot": "required",
+      "confirmatory": "required",
+      "check": {"check": "declared_tools"}
+    },
+    {
+      "id": "spend-covers-plan",
+      "title": "Spend limits cover the whole plan",
+      "statement": "A study sets limits per run, in time, and in total, and the total covers every run at its limit.",
+      "why": "The person paying decides this. A study that runs out partway leaves unpaired runs, which cannot be compared.",
+      "sources": [],
+      "records": ["OBJ-10"],
+      "pilot": "required",
+      "confirmatory": "required",
+      "check": {"check": "spend_covers_plan"}
+    },
+    {
+      "id": "credential-by-name",
+      "title": "The key stays out of the study",
+      "statement": "A study names the environment variable holding its key. It never holds the key.",
+      "why": "A study file is committed, shown on screen and bound into reports.",
+      "sources": [],
+      "records": ["Lab rule: no secret in a manifest"],
+      "pilot": "required",
+      "confirmatory": "required",
+      "check": {"check": "credential_by_name"}
+    },
+    {
+      "id": "can-reach-significance",
+      "title": "Enough tasks to answer the question",
+      "statement": "There are enough distinct tasks for exact McNemar to reach the study's alpha. Repeating a task does not add a task.",
+      "why": "rea-lab found that most pairs agree, so a small study can only detect a large effect. Below this number it cannot detect anything, and a pilot says so in its report.",
+      "sources": ["rea-lab"],
+      "records": ["J-04"],
+      "pilot": "advised",
+      "confirmatory": "required",
+      "check": {"check": "can_reach_significance"}
+    },
+    {
+      "id": "data-captured",
+      "title": "Every finished run keeps its data",
+      "statement": "A finished run records which model answered, the provider's version, tokens including cache, cost, turns, tools called, what retrieval returned and what the agent used of it, and its whole transcript. A run missing any of these stays visible and does not count.",
+      "why": "rea-lab's tool took about twice the time and cost with no significant gain, and leanrea reports similar accuracy at less cost, so quality alone hides what matters. MERIT separates retrieved from used. OBJ-11 asks for hits returned, delivered and used.",
+      "sources": ["rea-lab", "leanrea", "merit"],
+      "records": ["OBJ-11"],
+      "pilot": "required",
+      "confirmatory": "required",
+      "check": {
+        "check": "capture_fields",
+        "fields": ["model", "provider_version", "tokens", "cache_tokens", "cost", "turns", "tool_calls", "retrieval", "transcript"]
+      }
+    },
+    {
+      "id": "capture-proven",
+      "title": "Capture is proven on a real run first",
+      "statement": "Before a confirmatory study starts, a real run in each arm has passed the capture audit with the same model and tools.",
+      "why": "A parser written from documentation can be wrong. Finding missing data after a full study means paying for it twice.",
+      "sources": [],
+      "records": ["OBJ-10"],
+      "pilot": "advised",
+      "confirmatory": "required",
+      "check": {"check": "capture_proven"}
+    }
+  ]
+}

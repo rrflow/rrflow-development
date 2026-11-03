@@ -1,0 +1,278 @@
+{
+  "$defs": {
+    "CaptureField": {
+      "description": "Data a study requires of every finished run.",
+      "enum": [
+        "model",
+        "provider_version",
+        "tokens",
+        "cache_tokens",
+        "cost",
+        "turns",
+        "tool_calls",
+        "retrieval",
+        "transcript"
+      ],
+      "type": "string"
+    },
+    "Id": {
+      "maxLength": 96,
+      "minLength": 1,
+      "pattern": "^[a-z0-9][a-z0-9_.-]*$",
+      "type": "string"
+    },
+    "Requirement": {
+      "additionalProperties": false,
+      "properties": {
+        "check": {
+          "$ref": "#/$defs/RequirementCheck"
+        },
+        "confirmatory": {
+          "$ref": "#/$defs/RequirementLevel"
+        },
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "pilot": {
+          "$ref": "#/$defs/RequirementLevel"
+        },
+        "records": {
+          "description": "Owning records in this repository, such as an objective or a gate.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "sources": {
+          "description": "Entries in the lab's source list.",
+          "items": {
+            "$ref": "#/$defs/Id"
+          },
+          "type": "array"
+        },
+        "statement": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "why": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "statement",
+        "why",
+        "sources",
+        "records",
+        "pilot",
+        "confirmatory",
+        "check"
+      ],
+      "type": "object"
+    },
+    "RequirementCheck": {
+      "description": "The closed list of checks. A requirement cannot name a check that does not exist here.",
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "check": {
+              "const": "frozen_design",
+              "type": "string"
+            }
+          },
+          "required": [
+            "check"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "check": {
+              "const": "baseline_arm",
+              "type": "string"
+            }
+          },
+          "required": [
+            "check"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "check": {
+              "const": "floor_arm",
+              "type": "string"
+            }
+          },
+          "required": [
+            "check"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "check": {
+              "const": "compared_arm",
+              "type": "string"
+            }
+          },
+          "required": [
+            "check"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "check": {
+              "const": "mechanical_grading",
+              "type": "string"
+            }
+          },
+          "required": [
+            "check"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "check": {
+              "const": "pinned_models",
+              "type": "string"
+            }
+          },
+          "required": [
+            "check"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "check": {
+              "const": "declared_tools",
+              "type": "string"
+            }
+          },
+          "required": [
+            "check"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "check": {
+              "const": "spend_covers_plan",
+              "type": "string"
+            }
+          },
+          "required": [
+            "check"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "check": {
+              "const": "credential_by_name",
+              "type": "string"
+            }
+          },
+          "required": [
+            "check"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "check": {
+              "const": "can_reach_significance",
+              "type": "string"
+            }
+          },
+          "required": [
+            "check"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "check": {
+              "const": "capture_fields",
+              "type": "string"
+            },
+            "fields": {
+              "items": {
+                "$ref": "#/$defs/CaptureField"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "check",
+            "fields"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "check": {
+              "const": "capture_proven",
+              "type": "string"
+            }
+          },
+          "required": [
+            "check"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "RequirementLevel": {
+      "enum": [
+        "required",
+        "advised"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "family": {
+      "$ref": "#/$defs/Id"
+    },
+    "requirements": {
+      "items": {
+        "$ref": "#/$defs/Requirement"
+      },
+      "type": "array"
+    },
+    "schema_version": {
+      "format": "uint16",
+      "maximum": 65535,
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schema_version",
+    "family",
+    "requirements"
+  ],
+  "title": "StudyRequirements",
+  "type": "object"
+}

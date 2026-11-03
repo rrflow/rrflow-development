@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "rrflow-planning-pilot",
+  "title": "Planning pilot: does the test work?",
+  "stage": "pilot",
+  "catalog": {
+    "path": "eval/lab/tasks/rrflow-package-planning.json",
+    "sha256": "4241a4d5a690a36a5dd4bec63c17240eeddf821da2dd2203ca358db31ab75d56"
+  },
+  "tasks": {"select": "seeded", "count": 5, "seed": 20261103},
+  "arms": ["no-repository", "model-alone", "rrflow-harness-import"],
+  "baseline_arm": "model-alone",
+  "floor_arm": "no-repository",
+  "models": [],
+  "repetitions": 1
+}
