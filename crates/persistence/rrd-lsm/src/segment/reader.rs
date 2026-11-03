@@ -1118,7 +1118,7 @@ impl RunCursor {
     }
 
     fn prepare_value(
-        &self,
+        &mut self,
         entry: ProjectedEntry,
         projection: ProjectedReadProjection,
         meter: &mut ProjectedReadMeter,
@@ -1130,7 +1130,7 @@ impl RunCursor {
     }
 
     fn copy_value(
-        &self,
+        &mut self,
         row: &PreparedRow,
         output: &mut [u8],
         meter: &mut ProjectedReadMeter,
@@ -1227,8 +1227,15 @@ struct SegmentProjectedCursor {
     row_group: usize,
     row: usize,
     loaded_spine: Option<KeySpine>,
+    // A row group's rows share these pages, so like the spine each is kept and paid
+    // for once. Rows reach each kind in row-group order, so one slot per kind is enough.
+    loaded_validity: Option<LoadedValuePage>,
+    loaded_offsets: Option<LoadedValuePage>,
+    loaded_data: Option<LoadedValuePage>,
     lookahead: Option<RawSegmentRow>,
 }
+
+type LoadedValuePage = (usize, Arc<super::LoadedPage>);
 
 impl SegmentProjectedCursor {
     fn new(
@@ -1248,6 +1255,9 @@ impl SegmentProjectedCursor {
             row_group,
             row: 0,
             loaded_spine: None,
+            loaded_validity: None,
+            loaded_offsets: None,
+            loaded_data: None,
             lookahead: None,
         }
     }
@@ -1349,7 +1359,7 @@ impl SegmentProjectedCursor {
     }
 
     fn prepare_value(
-        &self,
+        &mut self,
         mut entry: ProjectedEntry,
         projection: ProjectedReadProjection,
         meter: &mut ProjectedReadMeter,
@@ -1365,7 +1375,8 @@ impl SegmentProjectedCursor {
                 "segment cursor received a memtable locator".into(),
             ));
         };
-        let validity = self.segment.load_projected_page(
+        let validity = self.segment.load_projected_value_page(
+            &mut self.loaded_validity,
             *row_group,
             PageKind::ValueValidity,
             meter,
@@ -1375,7 +1386,8 @@ impl SegmentProjectedCursor {
             return Ok(None);
         }
         let value_len = if projection == ProjectedReadProjection::KeyValue {
-            let offsets = self.segment.load_projected_page(
+            let offsets = self.segment.load_projected_value_page(
+                &mut self.loaded_offsets,
                 *row_group,
                 PageKind::ValueOffsets,
                 meter,
@@ -1403,7 +1415,7 @@ impl SegmentProjectedCursor {
     }
 
     fn copy_value(
-        &self,
+        &mut self,
         row: &PreparedRow,
         output: &mut [u8],
         meter: &mut ProjectedReadMeter,
@@ -1419,7 +1431,8 @@ impl SegmentProjectedCursor {
                 "projected segment value has no authenticated byte range".into(),
             ));
         };
-        let data = self.segment.load_projected_page(
+        let data = self.segment.load_projected_value_page(
+            &mut self.loaded_data,
             row_group,
             PageKind::ValueData,
             meter,
@@ -1462,6 +1475,23 @@ impl Segment {
                 cache_access,
             )?,
         })
+    }
+
+    fn load_projected_value_page<'page>(
+        &self,
+        loaded: &'page mut Option<LoadedValuePage>,
+        row_group: usize,
+        kind: PageKind,
+        meter: &mut ProjectedReadMeter,
+        cache_access: PageCacheAccess,
+    ) -> Result<&'page super::LoadedPage> {
+        if loaded.as_ref().is_none_or(|(group, _)| *group != row_group) {
+            // Release the last page first, so a scan never holds two of one kind.
+            *loaded = None;
+            let page = self.load_projected_page(row_group, kind, meter, cache_access)?;
+            *loaded = Some((row_group, page));
+        }
+        Ok(&loaded.as_ref().expect("the page was just loaded").1)
     }
 
     fn load_projected_page(

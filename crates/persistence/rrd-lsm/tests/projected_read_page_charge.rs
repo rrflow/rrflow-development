@@ -117,9 +117,11 @@ fn a_scan_is_charged_once_for_each_page_it_visits() {
     for physical in PHYSICAL {
         for page_cache_bytes in [0, 4 * 1024 * 1024] {
             let directory = tempfile::tempdir().unwrap();
-            let mut database =
-                Database::create_with_options(directory.path(), options(physical, page_cache_bytes))
-                    .unwrap();
+            let mut database = Database::create_with_options(
+                directory.path(),
+                options(physical, page_cache_bytes),
+            )
+            .unwrap();
             write_run(&mut database, 0..ROWS);
             for max_batch_rows in [1, ProjectedReadBudget::default().max_batch_rows] {
                 let context = format!("{physical} cache {page_cache_bytes} batch {max_batch_rows}");
@@ -129,7 +131,10 @@ fn a_scan_is_charged_once_for_each_page_it_visits() {
                     budget(max_batch_rows),
                 )
                 .unwrap();
-                assert!(rows == expected, "{context}: rows differ from those written");
+                assert!(
+                    rows == expected,
+                    "{context}: rows differ from those written"
+                );
                 assert!(evidence.selected_row_groups > 1, "{context}");
                 assert!(
                     (evidence.selected_row_groups as usize) < ROWS,
@@ -147,8 +152,7 @@ fn a_key_scan_is_charged_once_and_never_requests_value_pages() {
     let mut database =
         Database::create_with_options(directory.path(), options("bounded-raw", 0)).unwrap();
     write_run(&mut database, 0..ROWS);
-    let (rows, evidence) =
-        scan(&database, ProjectedReadProjection::Key, budget(64)).unwrap();
+    let (rows, evidence) = scan(&database, ProjectedReadProjection::Key, budget(64)).unwrap();
     assert_eq!(rows.len(), ROWS);
     let groups = evidence.selected_row_groups;
     assert!(groups > 1);
@@ -192,8 +196,7 @@ fn superseded_versions_are_not_charged_for_their_value_pages() {
         .1
         .selected_row_groups;
     write_run(&mut database, 0..ROWS);
-    let (rows, evidence) =
-        scan(&database, ProjectedReadProjection::KeyValue, budget(64)).unwrap();
+    let (rows, evidence) = scan(&database, ProjectedReadProjection::KeyValue, budget(64)).unwrap();
     assert_eq!(rows.len(), ROWS);
     assert_eq!(evidence.selected_runs, 2);
     assert!(evidence.selected_row_groups > groups_in_first_run);
@@ -252,8 +255,7 @@ fn a_scan_holds_a_few_pages_at_a_time_and_releases_them() {
     write_run(&mut database, 0..ROWS);
     let memory = database.source_page_memory();
 
-    let (_, evidence) =
-        scan(&database, ProjectedReadProjection::KeyValue, budget(64)).unwrap();
+    let (_, evidence) = scan(&database, ProjectedReadProjection::KeyValue, budget(64)).unwrap();
     let total = written_logical_bytes(ROWS, evidence.selected_row_groups);
     assert_eq!(memory.stats().reserved_bytes, 0);
     assert!(
@@ -271,7 +273,10 @@ fn a_scan_holds_a_few_pages_at_a_time_and_releases_them() {
         })
         .unwrap();
     drop(stream.next_batch().unwrap().unwrap());
-    assert!(memory.stats().reserved_bytes > 0, "the cursor keeps its page");
+    assert!(
+        memory.stats().reserved_bytes > 0,
+        "the cursor keeps its page"
+    );
     stream.cancel().unwrap();
     assert_eq!(memory.stats().reserved_bytes, 0);
 }
