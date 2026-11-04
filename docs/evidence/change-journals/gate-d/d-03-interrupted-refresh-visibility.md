@@ -47,3 +47,48 @@ The mapped existing representation is important to the replacement: `records::mu
 One candidate is an authenticated ordered history of completed selections keyed by instance, project and completion cursor. Atomically publishing a selection would commit its source proposal digest, snapshot membership root and checkpoint identity with the existing job/head/receipt transition. An authenticated predecessor-and-successor proof at a requested cursor could then establish which completed selection was current, including an empty-history proof. The commitment must be bound to a validated control-journal head captured in the same physical transaction as the query's runtime stamp; returned-event inclusion alone is insufficient. A versioned control-journal entry that carries the authenticated selection root forward on later control transitions is one possible design, but its initialization from already installed estates, historical entry verification, concurrent CAS, retention and recovery have not been proved. A physical snapshot/pin with a validated complete range is another candidate only if the rrflowKV and rrflowMX boundaries can retain and authenticate it across compaction and reopen. A full authenticated log replay can be a bounded diagnostic or initialization task, but its cost grows with history and is not an acceptable implicit per-query default.
 
 The existing whole-proposal SHA-256 does not by itself yield an efficient per-entry membership proof. If a Merkle membership root is introduced, the authorized completion must bind that root to the selected proposal and checkpoint; readers must verify the requested records and edges, including absence/removal, before exposing them. For mixed source and unrelated queries, source selection and ordinary runtime state may require distinct explicitly reported coordinates within one engine-owned plan; never relabel an older source cursor as the entire current runtime stamp. Apply selection consistently to record scans, joins, traversals, exports, live queries, indexes and retrieval, and retain exact historical semantics. Fail closed on missing proof or exhausted configurable budget, with a resumable route that does not permanently prevent ordinary edits or successor plans. Test omitted/newer/forged selection and membership entries, empty and deleted sources, stale input, concurrent completion, interruption at each atomic boundary, replay/reopen, old installations, cross-scope isolation, resource limits and 100,000-entry cost before considering the design ready. These are design conditions, not evidence that a new index or proof exists.
+
+## Current-main Linux ARM64 reproduction, 2026-11-04
+
+Draft head `f39b09c44bc6eadacbf1f7ac57cc7261f93466b5` was normally merged with
+public main `120391487a260f5395526719e9d25beafcb55ecf` as
+`e6d38d23aca50205e56fde58d56ac874239a735e`; no merge conflict occurred. The
+PR brief was updated before the merge. The resulting source tree
+`ca39b1a622599a314b466889fa14ca84affdd240` was archived with SHA-256
+`40939547a26d193e1d623527db3175b5052069bb302590f756ad5aaf7f3c177d`
+and transferred to isolated `/tmp/rrflow-d03-visibility.w3xhZpdi` on
+`clyffy-01` (Linux ARM64). With two Cargo workers, the command
+`cargo test --offline --locked -p rrd-engine --lib
+interrupted_refresh_does_not_expose_partial_facts_as_completed_snapshot --
+--nocapture` failed at the same mixed-generation assertion: the observed HEAD
+root was `a1bc33d98acd5a26f9e96b4cc2ea43028d364250063614ccefb5916e00389163`,
+while the completed root was
+`e497527b4853d911eb554de8b7605ba833c962f3a8200028556ed517bb8197c3`.
+The one test failed after 16.52 seconds, with 343 filtered out. Raw
+`regression.log` SHA-256
+`5e8051ba44e40a3d355def53f285a44c34a39639c9e8a60e3ee01c84383cd885`.
+This confirms the recorded failure on the integrated source and this native
+fixture; it does not establish a repair or platform qualification.
+
+Additional current-source inspection followed `RuntimeRepository::read_stamp`,
+`read_versioned`, and `commit_with_control_builder`, `ControlRepository::get`,
+`StorageTransaction`, `prepare_semantic_commit`, `read_stamp_with`,
+`validate_read_stamp`, and `execute_query_scoped`. Each standalone repository
+read opens a physical transaction; `commit_with_control_builder` stages runtime
+changes and the job/head/receipt controls in one physical commit, but ordinary
+query captures a runtime stamp without selecting the inventory control head.
+The current `RuntimeChange` canonical leaf authenticates a mutation and its
+predecessor; it does not carry an authenticated current inventory-selection root.
+Consequently, a proof that an older event is included cannot establish that
+there is no newer selected generation. Also, the builder computes the control
+head from the resulting runtime stamp, so any proposed metadata must avoid a
+circular dependency on that resulting stamp. These are source observations, not
+an implementation of a selection proof.
+
+The next production change must resolve how a bounded selection commitment is
+bound at the requested cursor and how selected source facts are filtered across
+all consumers. Neither a separate, unauthenticated control lookup nor replacing
+the whole estate's HEAD with the old source cursor is sufficient. The existing
+red test stays active; #241 and the installed project-to-query driver remain
+dependent work. No production code, roadmap status, or C-07 status changed in
+this reconciliation. Candidate and merge-group CI are not run on this draft.
