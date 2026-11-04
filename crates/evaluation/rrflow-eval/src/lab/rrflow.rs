@@ -9,8 +9,8 @@ use super::Result;
 use rrd_client::{ClientConfig, RequestOptions, RrdClient, Session};
 use rrd_contract::{
     transaction_operation_sha256, BeginTransaction, CanonicalId, CommitTransaction, CreateSession,
-    ReadDataSchema, SessionLimits, TransactionMutation, MAX_TRANSACTION_CLAIMS,
-    MAX_VECTOR_STORAGE_KEYS,
+    EnsureVectorIndexResult, ReadDataSchema, SessionLimits, TransactionMutation,
+    MAX_TRANSACTION_CLAIMS, MAX_VECTOR_STORAGE_KEYS,
 };
 use serde::de::DeserializeOwned;
 use serde_json::{json, Value};
@@ -21,6 +21,9 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use tokio::runtime::Runtime;
 
 const VECTOR_NAME: &str = "lab";
+const FILTER_PROPERTY: &str = "category";
+const HNSW_MAX_LEVEL: u8 = 6;
+const HNSW_SEED: u64 = 7;
 const VECTOR_FIELD: &str = "lab-embedding";
 /// Each point is a subject record plus its vector, so two mutations.
 const MUTATIONS_PER_POINT: usize = 2;
@@ -50,6 +53,7 @@ struct Lease {
 pub struct RrflowAdapter {
     runtime: Runtime,
     client: RrdClient,
+    build_client: RrdClient,
     principal: CanonicalId,
     secret: String,
     lease: RwLock<Lease>,
@@ -135,7 +139,7 @@ pub(crate) fn search_mode(
     k: u32,
 ) -> Value {
     match index {
-        IndexSpec::TurboQuant { .. } => {
+        IndexSpec::TurboQuant { .. } | IndexSpec::Hnsw { .. } => {
             let ef = ef.unwrap_or(k);
             json!({
                 "mode": "require_approximate",
@@ -147,24 +151,46 @@ pub(crate) fn search_mode(
     }
 }
 
-/// The tier a collection's generation lives in.
-pub(crate) fn memory_tier(_index: &IndexSpec) -> &'static str {
-    "cached"
+/// The tier a collection's generation lives in. A graph's artifact is JSON, and above the cached
+/// tier's bound it would be decoded on every query, so a graph is pinned, and its system says so.
+pub(crate) fn memory_tier(index: &IndexSpec) -> &'static str {
+    match index {
+        IndexSpec::Hnsw { .. } => "pinned",
+        _ => "cached",
+    }
 }
 
 /// The public request that declares the filter property a graph's generation covers.
-pub(crate) fn payload_index_request(_scope: &str, _collection: &str) -> Value {
-    Value::Null
+pub(crate) fn payload_index_request(scope: &str, collection: &str) -> Value {
+    json!({
+        "scope": scope,
+        "collection_id": collection,
+        "field": FILTER_PROPERTY,
+        "kind": "unsigned"
+    })
 }
 
 /// The public request that builds a graph over a collection's vector.
 pub(crate) fn hnsw_index_request(
-    _scope: &str,
-    _collection: &str,
-    _m: u32,
-    _ef_construction: u32,
+    scope: &str,
+    collection: &str,
+    m: u32,
+    ef_construction: u32,
 ) -> Value {
-    Value::Null
+    json!({
+        "scope": scope,
+        "collection_id": collection,
+        "vector_name": VECTOR_NAME,
+        "configuration": {
+            "kind": "hnsw",
+            "m": m,
+            "ef_construction": ef_construction,
+            "max_level": HNSW_MAX_LEVEL,
+            "seed": HNSW_SEED,
+            "filter_properties": [FILTER_PROPERTY]
+        },
+        "max_storage_keys": MAX_VECTOR_STORAGE_KEYS
+    })
 }
 
 impl RrflowAdapter {
@@ -187,7 +213,15 @@ impl RrflowAdapter {
             ..ClientConfig::default()
         };
         let client = runtime
-            .block_on(async { RrdClient::connect_local(address, instance_id, config) })
+            .block_on(async { RrdClient::connect_local(address, instance_id.clone(), config) })
+            .map_err(|error| error.to_string())?;
+        // A graph is built inside one request, so it gets the time a system has to become ready.
+        let build_config = ClientConfig {
+            request_timeout: Duration::from_millis(workload.readiness_timeout_ms),
+            ..ClientConfig::default()
+        };
+        let build_client = runtime
+            .block_on(async { RrdClient::connect_local(address, instance_id, build_config) })
             .map_err(|error| error.to_string())?;
         let started = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -206,6 +240,7 @@ impl RrflowAdapter {
         Ok(Self {
             runtime,
             client,
+            build_client,
             principal,
             secret,
             lease: RwLock::new(Lease {
@@ -357,7 +392,7 @@ impl SystemAdapter for RrflowAdapter {
                 "kind": "dense",
                 "dimensions": spec.dimensions,
                 "metric": metric,
-                "memory_tier": "cached"
+                "memory_tier": memory_tier(spec.index)
             }]
         }))?;
         self.runtime
@@ -367,6 +402,15 @@ impl SystemAdapter for RrflowAdapter {
                 self.mutation_options("collection")?,
             ))
             .map_err(|error| error.to_string())?;
+        if matches!(spec.index, IndexSpec::Hnsw { .. }) {
+            self.runtime
+                .block_on(self.client.ensure_vector_payload_index(
+                    &session,
+                    decode(payload_index_request(&self.scope, &collection))?,
+                    self.mutation_options("payload-index")?,
+                ))
+                .map_err(|error| error.to_string())?;
+        }
         self.commit(decode(
             json!([{"mutation": "put_schema", "registry": registry}]),
         )?)?;
@@ -407,12 +451,30 @@ impl SystemAdapter for RrflowAdapter {
 
     fn finish_ingest(&self, _deadline: Instant) -> Result<()> {
         let prepared = self.prepared()?;
+        if let IndexSpec::Hnsw { m, ef_construction } = &prepared.index {
+            let session = self.session()?;
+            let built: EnsureVectorIndexResult = self
+                .runtime
+                .block_on(self.build_client.ensure_vector_index(
+                    &session,
+                    decode(hnsw_index_request(
+                        &self.scope,
+                        &prepared.collection,
+                        *m,
+                        *ef_construction,
+                    ))?,
+                    self.mutation_options("graph")?,
+                ))
+                .map_err(|error| error.to_string())?;
+            eprintln!("graph built over {} vectors", built.index.indexed_vectors);
+            return Ok(());
+        }
         let IndexSpec::TurboQuant { bits, seed } = &prepared.index else {
             return Ok(());
         };
-        // No public operation declares a payload index, so a generation cannot cover
-        // filters. Filtered searches then report the engine's refusal, as any caller
-        // would see, rather than quietly falling back to an exact scan.
+        // A quantized generation declares no filter property, so it cannot cover a filter.
+        // Filtered searches then report the engine's refusal, as any caller would see, rather
+        // than quietly falling back to an exact scan.
         let session = self.session()?;
         let built = self
             .runtime

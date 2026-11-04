@@ -712,15 +712,24 @@ fn manifests_refuse_what_would_make_a_result_misleading_or_unsafe() {
         refused(|m| m.systems[0].credentials.secret_env = Some("not a name".into()))
             .contains("environment variable")
     );
+    // Clients can build RRFlow's graph through public operations, so the lab can measure it, and
+    // it still has to say how it searches.
+    let mut graph = manifest(vec![binding("a")]);
+    graph.systems[0].kind = SystemKind::Rrflow;
+    graph.systems[0].index = IndexSpec::Hnsw {
+        m: 16,
+        ef_construction: 100,
+    };
+    graph.systems[0].search_ladder[0].ef = Some(32);
+    graph.validate().unwrap();
     assert!(refused(|m| {
         m.systems[0].kind = SystemKind::Rrflow;
         m.systems[0].index = IndexSpec::Hnsw {
             m: 16,
             ef_construction: 100,
         };
-        m.systems[0].search_ladder[0].ef = Some(32);
     })
-    .contains("no public operation"));
+    .contains("needs ef"));
     assert!(refused(|m| {
         m.systems[0].index = IndexSpec::Hnsw {
             m: 16,

@@ -307,9 +307,6 @@ impl SystemBinding {
             }
         }
         match (&self.kind, &self.index) {
-            (SystemKind::Rrflow, IndexSpec::Hnsw { .. }) => Err(format!(
-                "{id}: RRFlow HNSW has no public operation; declare it unimplemented"
-            )),
             (SystemKind::Custom, IndexSpec::IvfRq { partitions }) => require(
                 *partitions > 0,
                 &format!("{id} IVF index needs at least one partition"),
