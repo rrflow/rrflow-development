@@ -1200,6 +1200,26 @@ mod tests {
         }
     }
 
+    /// A norm that overflows or underflows f32 can still give a finite score,
+    /// and that score is wrong, so being finite is not enough.
+    #[test]
+    fn a_cosine_norm_outside_the_normal_f32_range_gets_the_scalar_kernels_score() {
+        let huge = vec![1e30_f32; 33];
+        let tiny = vec![1e-30_f32; 33];
+        let (ordinary, _) = kernel_vectors(33, 11);
+        for (left, right) in [
+            (&huge, &tiny),
+            (&tiny, &huge),
+            (&tiny, &tiny),
+            (&huge, &ordinary),
+            (&ordinary, &tiny),
+        ] {
+            let (scalar, automatic) = both_kernels(left, right, ScoreMetric::Cosine);
+            assert!(scalar.is_finite(), "{scalar}");
+            assert_eq!(automatic, scalar);
+        }
+    }
+
     #[test]
     fn a_host_with_simd_uses_it() {
         #[cfg(target_arch = "aarch64")]
