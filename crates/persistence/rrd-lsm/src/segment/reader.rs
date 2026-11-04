@@ -1118,7 +1118,7 @@ impl RunCursor {
     }
 
     fn prepare_value(
-        &self,
+        &mut self,
         entry: ProjectedEntry,
         projection: ProjectedReadProjection,
         meter: &mut ProjectedReadMeter,
@@ -1130,7 +1130,7 @@ impl RunCursor {
     }
 
     fn copy_value(
-        &self,
+        &mut self,
         row: &PreparedRow,
         output: &mut [u8],
         meter: &mut ProjectedReadMeter,
@@ -1227,6 +1227,12 @@ struct SegmentProjectedCursor {
     row_group: usize,
     row: usize,
     loaded_spine: Option<KeySpine>,
+    // The row group each value page was last charged for. Rows reach each kind in
+    // row-group order, so a row group's rows pay for its page's bytes once, as the
+    // spine does. Each row still counts a request and touches the cache.
+    charged_validity: Option<usize>,
+    charged_offsets: Option<usize>,
+    charged_data: Option<usize>,
     lookahead: Option<RawSegmentRow>,
 }
 
@@ -1248,6 +1254,9 @@ impl SegmentProjectedCursor {
             row_group,
             row: 0,
             loaded_spine: None,
+            charged_validity: None,
+            charged_offsets: None,
+            charged_data: None,
             lookahead: None,
         }
     }
@@ -1349,7 +1358,7 @@ impl SegmentProjectedCursor {
     }
 
     fn prepare_value(
-        &self,
+        &mut self,
         mut entry: ProjectedEntry,
         projection: ProjectedReadProjection,
         meter: &mut ProjectedReadMeter,
@@ -1365,7 +1374,8 @@ impl SegmentProjectedCursor {
                 "segment cursor received a memtable locator".into(),
             ));
         };
-        let validity = self.segment.load_projected_page(
+        let validity = self.segment.load_projected_value_page(
+            &mut self.charged_validity,
             *row_group,
             PageKind::ValueValidity,
             meter,
@@ -1375,7 +1385,8 @@ impl SegmentProjectedCursor {
             return Ok(None);
         }
         let value_len = if projection == ProjectedReadProjection::KeyValue {
-            let offsets = self.segment.load_projected_page(
+            let offsets = self.segment.load_projected_value_page(
+                &mut self.charged_offsets,
                 *row_group,
                 PageKind::ValueOffsets,
                 meter,
@@ -1403,7 +1414,7 @@ impl SegmentProjectedCursor {
     }
 
     fn copy_value(
-        &self,
+        &mut self,
         row: &PreparedRow,
         output: &mut [u8],
         meter: &mut ProjectedReadMeter,
@@ -1419,7 +1430,8 @@ impl SegmentProjectedCursor {
                 "projected segment value has no authenticated byte range".into(),
             ));
         };
-        let data = self.segment.load_projected_page(
+        let data = self.segment.load_projected_value_page(
+            &mut self.charged_data,
             row_group,
             PageKind::ValueData,
             meter,
@@ -1464,10 +1476,34 @@ impl Segment {
         })
     }
 
+    fn load_projected_value_page(
+        &self,
+        charged: &mut Option<usize>,
+        row_group: usize,
+        kind: PageKind,
+        meter: &mut ProjectedReadMeter,
+        cache_access: PageCacheAccess,
+    ) -> Result<Arc<super::LoadedPage>> {
+        let first_visit = *charged != Some(row_group);
+        *charged = Some(row_group);
+        self.load_metered_page(row_group, kind, first_visit, meter, cache_access)
+    }
+
     fn load_projected_page(
         &self,
         row_group: usize,
         kind: PageKind,
+        meter: &mut ProjectedReadMeter,
+        cache_access: PageCacheAccess,
+    ) -> Result<Arc<super::LoadedPage>> {
+        self.load_metered_page(row_group, kind, true, meter, cache_access)
+    }
+
+    fn load_metered_page(
+        &self,
+        row_group: usize,
+        kind: PageKind,
+        charge_bytes: bool,
         meter: &mut ProjectedReadMeter,
         cache_access: PageCacheAccess,
     ) -> Result<Arc<super::LoadedPage>> {
@@ -1476,7 +1512,12 @@ impl Segment {
             .get(row_group)
             .ok_or_else(|| Error::InvalidSegment("row-group index is outside the segment".into()))?
             .page(kind);
-        meter.request_page(kind, descriptor.logical_bytes as u64)?;
+        let logical_bytes = if charge_bytes {
+            descriptor.logical_bytes as u64
+        } else {
+            0
+        };
+        meter.request_page(kind, logical_bytes)?;
         let (page, evidence) = self.load_page_with_access(row_group, kind, cache_access)?;
         meter.record_page_load(evidence)?;
         Ok(page)
