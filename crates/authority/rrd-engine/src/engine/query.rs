@@ -121,6 +121,7 @@ impl RrdEngine {
             scope: request.scope.clone(),
             read_manifest_sha256: execution.read_manifest.clone(),
             known_at_cursor: execution.known_at_cursor,
+            result_identity_version: rrd_core::result_identity::RESULT_IDENTITY_VERSION,
             schema_revision: bound.schema_revision,
             plan: QueryPlanSnapshot {
                 plan_sha256: plan.digest.clone(),
@@ -215,6 +216,7 @@ impl RrdEngine {
                 &query,
                 &parameters,
                 request.after_cursor,
+                request.result_identity_version,
                 &live_budget,
             )
             .map_err(ServiceError::from)?;
@@ -245,6 +247,7 @@ impl RrdEngine {
             timed_out,
             waited_ms,
             query_sha256: delta.query_digest,
+            result_identity_version: delta.result_identity_version,
             from_cursor: delta.from_cursor,
             through_cursor: delta.through_cursor,
             head_cursor: delta.head_cursor,
@@ -370,10 +373,7 @@ impl RrdEngine {
             }
             match existing.stamp.state {
                 ProjectionState::Building => {}
-                ProjectionState::Ready
-                    if existing.built_valid_at == Some(valid_at)
-                        && existing.stamp.source_cursor == source_cursor
-                        && existing.maintenance.is_some() => {}
+                ProjectionState::Ready if existing.is_usable_at(source_cursor, valid_at) => {}
                 ProjectionState::Ready => {
                     repository
                         .begin_rebuild(&mutation, &definition.id)
@@ -398,10 +398,7 @@ impl RrdEngine {
             .entries
             .get(&definition.id)
             .ok_or_else(|| ServiceError::Query("created index disappeared".into()))?;
-        let ready = if entry.stamp.state == ProjectionState::Ready
-            && entry.built_valid_at == Some(valid_at)
-            && entry.stamp.source_cursor == source_cursor
-        {
+        let ready = if entry.is_usable_at(source_cursor, valid_at) {
             catalogue
         } else {
             repository
@@ -693,6 +690,10 @@ pub(in crate::engine) fn public_query_index(
         source_cursor: entry.stamp.source_cursor,
         built_valid_at: entry.built_valid_at,
         artifact_rows: entry.artifact_rows,
+        result_identity_version: entry.result_identity_version,
+        identity_rebuild_required: entry.stamp.state == rrd_core::ProjectionState::Ready
+            && entry.result_identity_version
+                != Some(rrd_core::result_identity::RESULT_IDENTITY_VERSION),
         analytics_total_count: entry.analytics_total_count,
         analytics_group_count: entry.analytics_group_count,
         maintenance: entry

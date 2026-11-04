@@ -263,7 +263,7 @@ use std::fmt;
 pub const PROTOCOL: &str = "rrd";
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const OPENAPI_DOCUMENT_SHA256: &str =
-    "1d586cd72e7046890616cb7ab01dd26e544fa87d06db5d9f78d827a421092f16";
+    "02c2fb3124a157286742287e6325beb9b8d0066ccd7dd215a843426914953bc4";
 pub const MAX_ID_BYTES: usize = 128;
 pub const MAX_MESSAGE_BYTES: usize = 4_096;
 pub const MAX_CAPABILITIES: usize = 512;
@@ -584,6 +584,7 @@ pub struct QueryResult {
     pub scope: String,
     pub read_manifest_sha256: String,
     pub known_at_cursor: u64,
+    pub result_identity_version: u16,
     pub schema_revision: u64,
     pub plan: QueryPlanSnapshot,
     pub execution: QueryExecutionSnapshot,
@@ -598,6 +599,9 @@ pub struct PollLiveQuery {
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub parameters: BTreeMap<String, QueryValue>,
     pub after_cursor: u64,
+    /// Identity version of the caller's retained snapshot; required on resume.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub result_identity_version: Option<u16>,
     #[serde(default)]
     pub budget: QueryBudget,
     pub max_delta_rows: u64,
@@ -614,6 +618,9 @@ impl PollLiveQuery {
             budget: self.budget.clone(),
         }
         .validate()?;
+        if self.result_identity_version == Some(0) {
+            return invalid("live query result identity version must be nonzero");
+        }
         if self.max_delta_rows == 0 || self.max_delta_rows > MAX_LIVE_QUERY_DELTA_ROWS {
             return invalid(format!(
                 "live query max_delta_rows must be in 1..={MAX_LIVE_QUERY_DELTA_ROWS}"
@@ -641,6 +648,7 @@ pub struct LiveQueryDeltaResult {
     pub timed_out: bool,
     pub waited_ms: u64,
     pub query_sha256: String,
+    pub result_identity_version: u16,
     pub from_cursor: u64,
     pub through_cursor: u64,
     pub head_cursor: u64,
@@ -827,6 +835,12 @@ pub struct QueryIndexSnapshot {
     pub source_cursor: u64,
     pub built_valid_at: Option<u64>,
     pub artifact_rows: Option<u64>,
+    /// Identity encoding of the derived rows, absent for older artifacts.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub result_identity_version: Option<u16>,
+    /// The stored index is not eligible until rebuilt with current identities.
+    #[serde(default)]
+    pub identity_rebuild_required: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub analytics_total_count: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -2778,6 +2792,9 @@ pub enum SubscriptionStream {
         #[serde(default)]
         budget: QueryBudget,
         max_delta_rows: u64,
+        /// Version of an existing caller snapshot when opening from a cursor.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        result_identity_version: Option<u16>,
     },
 }
 
@@ -2796,11 +2813,13 @@ impl SubscriptionStream {
                 parameters,
                 budget,
                 max_delta_rows,
+                result_identity_version,
             } => PollLiveQuery {
                 scope: scope.clone(),
                 query: query.clone(),
                 parameters: parameters.clone(),
                 after_cursor,
+                result_identity_version: *result_identity_version,
                 budget: budget.clone(),
                 max_delta_rows: *max_delta_rows,
                 wait_timeout_ms: 0,
@@ -2872,6 +2891,8 @@ pub struct SubscriptionSnapshot {
     pub subscription_id: CorrelationId,
     pub stream_sha256: String,
     pub acknowledged_cursor: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub result_identity_version: Option<u16>,
     pub retention_floor_cursor: u64,
     pub head_cursor: u64,
     pub batch_size: u64,

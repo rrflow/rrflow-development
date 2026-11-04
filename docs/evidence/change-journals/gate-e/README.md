@@ -8,6 +8,7 @@ The roadmap owns Gate E acceptance. This generated index only discovers its
 linked package evidence.
 
 <!-- rrflow:generated-index:start -->
+- [E-01/E-05 canonical query and context result identity](e-01-canonical-result-identity.md) — [`rrflow://rrflow-instance/data/evidence/e-01-canonical-result-identity`](rrflow://rrflow-instance/data/evidence/e-01-canonical-result-identity) — active draft implementation evidence; no gate or release status changed
 - [E-01 graph reduction: candidate-CI oracle correction](e-01-graph-reduction-ci-correction.md) — [`rrflow://rrflow-instance/data/evidence/change-journals/gate-e/e-01-graph-reduction-ci-correction`](rrflow://rrflow-instance/data/evidence/change-journals/gate-e/e-01-graph-reduction-ci-correction) — active correction evidence; Gate E remains open
 - [E-01 prerequisite: incremental temporal graph reduction](e-01-incremental-graph-reduction.md) — [`rrflow://rrflow-instance/data/evidence/change-journals/gate-e/e-01-incremental-graph-reduction`](rrflow://rrflow-instance/data/evidence/change-journals/gate-e/e-01-incremental-graph-reduction) — active evidence for an existing-path repair; Gate E remains open
 - [Schemaless document projection through rrflowQL](e-01-schemaless-document-query.md) — [`rrflow://rrflow-instance/data/evidence/change-journal/gate-e/e-01-schemaless-document-query`](rrflow://rrflow-instance/data/evidence/change-journal/gate-e/e-01-schemaless-document-query) — active draft implementation; candidate and protected CI pending

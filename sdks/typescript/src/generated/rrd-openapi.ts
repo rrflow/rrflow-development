@@ -1,4 +1,4 @@
-// OpenAPI SHA-256: 1d586cd72e7046890616cb7ab01dd26e544fa87d06db5d9f78d827a421092f16
+// OpenAPI SHA-256: 02c2fb3124a157286742287e6325beb9b8d0066ccd7dd215a843426914953bc4
 export interface paths {
     "/v1/attunement/cancel": {
         parameters: {
@@ -1847,6 +1847,8 @@ export interface components {
                         lease_expires_at_unix_ms: number;
                         /** Format: uint16 */
                         max_in_flight: number;
+                        /** Format: uint16 */
+                        result_identity_version?: number | null;
                         /** Format: uint64 */
                         retention_floor_cursor: number;
                         /** @enum {string} */
@@ -2963,6 +2965,8 @@ export interface components {
                                     };
                                 };
                             }[];
+                            /** Format: uint16 */
+                            result_identity_version: number;
                             /** Format: uint64 */
                             through_cursor: number;
                             timed_out: boolean;
@@ -3114,6 +3118,8 @@ export interface components {
                         lease_expires_at_unix_ms: number;
                         /** Format: uint16 */
                         max_in_flight: number;
+                        /** Format: uint16 */
+                        result_identity_version?: number | null;
                         /** Format: uint64 */
                         retention_floor_cursor: number;
                         /** @enum {string} */
@@ -3164,6 +3170,8 @@ export interface components {
                         lease_expires_at_unix_ms: number;
                         /** Format: uint16 */
                         max_in_flight: number;
+                        /** Format: uint16 */
+                        result_identity_version?: number | null;
                         /** Format: uint64 */
                         retention_floor_cursor: number;
                         /** @enum {string} */
@@ -16985,6 +16993,8 @@ export interface operations {
                                     /** Format: uint64 */
                                     values_decoded: number;
                                 };
+                                /** Format: uint16 */
+                                result_identity_version: number;
                                 scope: string;
                                 /** Format: uint64 */
                                 selected_versions: number;
@@ -17196,6 +17206,8 @@ export interface operations {
                                     /** Format: uint64 */
                                     values_decoded: number;
                                 };
+                                /** Format: uint16 */
+                                result_identity_version: number;
                                 scope: string;
                                 /** Format: uint64 */
                                 selected_versions: number;
@@ -19874,6 +19886,11 @@ export interface operations {
                                         /** Format: uint64 */
                                         generation: number;
                                         /**
+                                         * @description The stored index is not eligible until rebuilt with current identities.
+                                         * @default false
+                                         */
+                                        identity_rebuild_required: boolean;
+                                        /**
                                          * @description A canonical public identifier component.
                                          *
                                          *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
@@ -19898,6 +19915,11 @@ export interface operations {
                                             /** Format: uint64 */
                                             updated_rows: number;
                                         } | null;
+                                        /**
+                                         * Format: uint16
+                                         * @description Identity encoding of the derived rows, absent for older artifacts.
+                                         */
+                                        result_identity_version?: number | null;
                                         /** Format: uint64 */
                                         source_cursor: number;
                                         /** @enum {string} */
@@ -22562,6 +22584,11 @@ export interface operations {
                                         /** Format: uint64 */
                                         generation: number;
                                         /**
+                                         * @description The stored index is not eligible until rebuilt with current identities.
+                                         * @default false
+                                         */
+                                        identity_rebuild_required: boolean;
+                                        /**
                                          * @description A canonical public identifier component.
                                          *
                                          *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
@@ -22586,6 +22613,11 @@ export interface operations {
                                             /** Format: uint64 */
                                             updated_rows: number;
                                         } | null;
+                                        /**
+                                         * Format: uint16
+                                         * @description Identity encoding of the derived rows, absent for older artifacts.
+                                         */
+                                        result_identity_version?: number | null;
                                         /** Format: uint64 */
                                         source_cursor: number;
                                         /** @enum {string} */
@@ -28971,6 +29003,8 @@ export interface operations {
                                     security_policy_revision: number;
                                 };
                                 read_manifest_sha256: string;
+                                /** Format: uint16 */
+                                result_identity_version: number;
                                 rows: {
                                     identity: string;
                                     values: {
@@ -29161,6 +29195,8 @@ export interface operations {
                                     security_policy_revision: number;
                                 };
                                 read_manifest_sha256: string;
+                                /** Format: uint16 */
+                                result_identity_version: number;
                                 rows: {
                                     identity: string;
                                     values: {
@@ -29902,6 +29938,11 @@ export interface operations {
                                     /** Format: uint64 */
                                     generation: number;
                                     /**
+                                     * @description The stored index is not eligible until rebuilt with current identities.
+                                     * @default false
+                                     */
+                                    identity_rebuild_required: boolean;
+                                    /**
                                      * @description A canonical public identifier component.
                                      *
                                      *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
@@ -29926,6 +29967,11 @@ export interface operations {
                                         /** Format: uint64 */
                                         updated_rows: number;
                                     } | null;
+                                    /**
+                                     * Format: uint16
+                                     * @description Identity encoding of the derived rows, absent for older artifacts.
+                                     */
+                                    result_identity_version?: number | null;
                                     /** Format: uint64 */
                                     source_cursor: number;
                                     /** @enum {string} */
@@ -30075,6 +30121,11 @@ export interface operations {
                                     /** Format: uint64 */
                                     generation: number;
                                     /**
+                                     * @description The stored index is not eligible until rebuilt with current identities.
+                                     * @default false
+                                     */
+                                    identity_rebuild_required: boolean;
+                                    /**
                                      * @description A canonical public identifier component.
                                      *
                                      *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
@@ -30099,6 +30150,11 @@ export interface operations {
                                         /** Format: uint64 */
                                         updated_rows: number;
                                     } | null;
+                                    /**
+                                     * Format: uint16
+                                     * @description Identity encoding of the derived rows, absent for older artifacts.
+                                     */
+                                    result_identity_version?: number | null;
                                     /** Format: uint64 */
                                     source_cursor: number;
                                     /** @enum {string} */
@@ -30293,6 +30349,11 @@ export interface operations {
                                     /** Format: uint64 */
                                     generation: number;
                                     /**
+                                     * @description The stored index is not eligible until rebuilt with current identities.
+                                     * @default false
+                                     */
+                                    identity_rebuild_required: boolean;
+                                    /**
                                      * @description A canonical public identifier component.
                                      *
                                      *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
@@ -30317,6 +30378,11 @@ export interface operations {
                                         /** Format: uint64 */
                                         updated_rows: number;
                                     } | null;
+                                    /**
+                                     * Format: uint16
+                                     * @description Identity encoding of the derived rows, absent for older artifacts.
+                                     */
+                                    result_identity_version?: number | null;
                                     /** Format: uint64 */
                                     source_cursor: number;
                                     /** @enum {string} */
@@ -30415,6 +30481,11 @@ export interface operations {
                                     /** Format: uint64 */
                                     generation: number;
                                     /**
+                                     * @description The stored index is not eligible until rebuilt with current identities.
+                                     * @default false
+                                     */
+                                    identity_rebuild_required: boolean;
+                                    /**
                                      * @description A canonical public identifier component.
                                      *
                                      *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
@@ -30439,6 +30510,11 @@ export interface operations {
                                         /** Format: uint64 */
                                         updated_rows: number;
                                     } | null;
+                                    /**
+                                     * Format: uint16
+                                     * @description Identity encoding of the derived rows, absent for older artifacts.
+                                     */
+                                    result_identity_version?: number | null;
                                     /** Format: uint64 */
                                     source_cursor: number;
                                     /** @enum {string} */
@@ -30576,6 +30652,11 @@ export interface operations {
                             };
                         };
                         query: string;
+                        /**
+                         * Format: uint16
+                         * @description Identity version of the caller's retained snapshot; required on resume.
+                         */
+                        result_identity_version?: number | null;
                         scope: string;
                         /**
                          * Format: uint64
@@ -30712,6 +30793,8 @@ export interface operations {
                                         };
                                     };
                                 }[];
+                                /** Format: uint16 */
+                                result_identity_version: number;
                                 /** Format: uint64 */
                                 through_cursor: number;
                                 timed_out: boolean;
@@ -30937,6 +31020,8 @@ export interface operations {
                                         };
                                     };
                                 }[];
+                                /** Format: uint16 */
+                                result_identity_version: number;
                                 /** Format: uint64 */
                                 through_cursor: number;
                                 timed_out: boolean;
@@ -32059,6 +32144,8 @@ export interface operations {
                                     lease_expires_at_unix_ms: number;
                                     /** Format: uint16 */
                                     max_in_flight: number;
+                                    /** Format: uint16 */
+                                    result_identity_version?: number | null;
                                     /** Format: uint64 */
                                     retention_floor_cursor: number;
                                     /** @enum {string} */
@@ -32115,6 +32202,8 @@ export interface operations {
                                     lease_expires_at_unix_ms: number;
                                     /** Format: uint16 */
                                     max_in_flight: number;
+                                    /** Format: uint16 */
+                                    result_identity_version?: number | null;
                                     /** Format: uint64 */
                                     retention_floor_cursor: number;
                                     /** @enum {string} */
@@ -32270,6 +32359,11 @@ export interface operations {
                                 };
                             };
                             query: string;
+                            /**
+                             * Format: uint16
+                             * @description Version of an existing caller snapshot when opening from a cursor.
+                             */
+                            result_identity_version?: number | null;
                             scope: string;
                             /** @constant */
                             stream: "live_query";
@@ -32326,6 +32420,8 @@ export interface operations {
                                     lease_expires_at_unix_ms: number;
                                     /** Format: uint16 */
                                     max_in_flight: number;
+                                    /** Format: uint16 */
+                                    result_identity_version?: number | null;
                                     /** Format: uint64 */
                                     retention_floor_cursor: number;
                                     /** @enum {string} */
@@ -32382,6 +32478,8 @@ export interface operations {
                                     lease_expires_at_unix_ms: number;
                                     /** Format: uint16 */
                                     max_in_flight: number;
+                                    /** Format: uint16 */
+                                    result_identity_version?: number | null;
                                     /** Format: uint64 */
                                     retention_floor_cursor: number;
                                     /** @enum {string} */

@@ -15,6 +15,26 @@ own convergence and evidence.
 
 ## Implemented source families
 
+### Result identity and typed references
+
+Record and relationship references are the typed pair `(kind, id)` within an
+engine scope. Result and context identity components escape `%` as `%25` and
+`:` as `%3A` before joining with `:`. Thus `record:a%3Ab:c` and
+`record:a:b%3Ac` remain distinct; `kind` and `id` result fields retain their
+original values. Traversal `path` entries use the same escaped pair. Series
+result identity is the sample's own `(kind, id)`, not its observation time or
+series ID. Claim results and context use the same opaque SHA-256-based claim
+identity; it is a digest, not a reversible reference or a mathematical proof
+that collisions cannot occur. IDs are scoped to their estate/read stamp.
+
+Derived query indexes record result identity version 2. An older index without
+that version is not selected for queries; the authorized `ensure` operation
+rebuilds it from authoritative rows. The public index snapshot reports
+`identity_rebuild_required`, and unique constraint enforcement stays active.
+Native references permit more characters than the public `DataReference`
+contract and query source-kind grammar currently accept; see
+[POAM-005](../../poam/rrflow-1.0-alpha/poam-005.md).
+
 rrflowQL is the relational query surface over rrflowDB records and their
 relationships. A record identity is its table/kind and ID within its estate.
 Graph-shaped views and adjacency access paths are derived from relationships;
