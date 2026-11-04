@@ -92,9 +92,11 @@ Three concurrent fresh builds exhausted the host's available memory and were
 interrupted before completion. Later, after the engine overlay passed with two
 Cargo workers, the sequential installed build was interrupted when the host
 became unresponsive; an OS query returned 636 KiB available from 66,516,344
-KiB visible. Other compiler/linker processes were present; the exact memory
-attribution was not measured. None of the interrupted builds is passing
-evidence. No other user processes were intentionally stopped.
+KiB visible. A later retry with one Cargo worker was also interrupted during
+compilation after available memory fell from about 9 GiB to 915,900 KiB. Other
+compiler/linker processes were present; the exact memory attribution was not
+measured. Neither installed attempt reached the test. None of the interrupted
+builds is passing evidence. No other user processes were intentionally stopped.
 
 The last installed TurboQuant test on the earlier candidate
 `864c03e387ee6044516a19ed976762fa184b88a0` passed with three manually supplied
