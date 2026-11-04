@@ -1547,6 +1547,58 @@ mod tests {
     }
 
     #[test]
+    fn repair_does_not_repeat_a_link_the_orphan_already_has() {
+        let scope = ScopeId::new("instance:hnsw").unwrap();
+        let node = |id: usize, values: Vec<f32>, neighbors: Vec<usize>| HnswNode {
+            candidate: candidate(&scope, id as u64 + 1, id, values),
+            level: 0,
+            neighbors: vec![neighbors],
+        };
+        // Pruning is one-way, so the orphan can still point at its closest reachable node after
+        // that node dropped it. The validator refuses a repeated link.
+        let mut nodes = vec![
+            node(0, vec![1.0, 0.0], Vec::new()),
+            node(1, vec![0.9, 0.1], vec![0]),
+        ];
+        let settings = clustered_config(&scope, 2, 2, 8);
+        repair_reachability(&settings, &mut nodes, Some(0)).unwrap();
+        assert_eq!(nodes[0].neighbors[0], vec![1]);
+        assert_eq!(nodes[1].neighbors[0], vec![0]);
+    }
+
+    /// The lab's own shape of data at the lab's own size. It takes a minute in a release build, so
+    /// it runs by hand: `cargo test --release -p rrd-vector --lib hnsw -- --ignored --nocapture`.
+    #[test]
+    #[ignore = "a minute in a release build"]
+    fn the_labs_mixture_at_its_full_size_builds_and_answers() {
+        let scope = ScopeId::new("instance:hnsw").unwrap();
+        let corpus = clustered(&scope, 0, 20_000, 64, 384, 0.35, 20_261_103);
+        let started = std::time::Instant::now();
+        let index = HnswIndex::build(
+            HnswConfig {
+                filter_properties: BTreeSet::from(["category".into()]),
+                ..clustered_config(&scope, 384, 16, 100)
+            },
+            1,
+            corpus.len() as u64,
+            corpus.clone(),
+        )
+        .unwrap();
+        eprintln!(
+            "built in {:?}, {} bytes",
+            started.elapsed(),
+            index.as_bytes().len()
+        );
+        assert_eq!(reachable_nodes(&index), corpus.len());
+        for ef in [16, 32, 64, 128] {
+            let found = recall(&index, &corpus, ef);
+            eprintln!("ef {ef}: recall {found}");
+        }
+        let found = recall(&index, &corpus, 128);
+        assert!(found >= 0.95, "recall was {found}");
+    }
+
+    #[test]
     fn repair_stays_within_the_degree_limit_and_leaves_a_full_graph_to_the_validator() {
         let scope = ScopeId::new("instance:hnsw").unwrap();
         let node = |id: usize, values: Vec<f32>, neighbors: Vec<usize>| HnswNode {
