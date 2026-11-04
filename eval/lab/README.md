@@ -282,8 +282,10 @@ So [`references/`](references) holds one file per source, and it travels in the 
   reread within 60 days is flagged.
 
 No test here uses a dataset that has published results, so today every row is context only.
-Importing one of those datasets, such as `glove-100-angular`, would change that: name it in a
-test's `reference_dataset`.
+Importing one, such as `glove-100-angular`, and naming it in a test's `reference_dataset`
+would leave fewer differences, though that row ran on one core, so its hardware would still
+differ. Published rows will rarely match on everything. The strongest comparison is the one the
+lab makes itself: every system on one host, on the same data, under the same rules.
 
 [`check_references.py`](check_references.py) downloads each source and reports any quoted number
 no longer found there. Finding a number shows it is there, and not that a row attributes it
