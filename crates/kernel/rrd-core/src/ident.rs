@@ -6,6 +6,7 @@
 //! deliberately namespaced form such as `instance:{id}`.
 
 use crate::error::{Error, Result};
+
 const FORBIDDEN_NUL: u8 = 0x00;
 
 /// The longest canonical identifier, in bytes.
