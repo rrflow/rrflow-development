@@ -99,6 +99,34 @@ impl RuntimeRef {
             id: RuntimeId::new(id)?,
         })
     }
+
+    pub fn event(kind: RuntimeType, cursor: u64) -> Self {
+        Self {
+            kind,
+            id: RuntimeId::event(cursor),
+        }
+    }
+
+    pub fn parse(kind: impl Into<String>, id: impl Into<String>) -> Result<Self> {
+        Ok(Self {
+            kind: RuntimeType::new(kind)?,
+            id: RuntimeId::parse(id)?,
+        })
+    }
+}
+
+impl RuntimeId {
+    pub fn event(cursor: u64) -> Self {
+        Self(format!("cursor:{cursor}"))
+    }
+
+    pub fn event_cursor(&self) -> Option<u64> {
+        self.0.strip_prefix("cursor:")?.parse().ok()
+    }
+
+    pub fn parse(value: impl Into<String>) -> Result<Self> {
+        Self::new(value)
+    }
 }
 
 /// Dependency-free property values. Decimal values are strings deliberately:
