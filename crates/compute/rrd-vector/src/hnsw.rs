@@ -218,6 +218,8 @@ pub struct HnswIndex {
     entrypoint: Option<usize>,
     nodes: Vec<HnswNode>,
     versions: BTreeMap<rrd_core::RuntimeRef, Vec<usize>>,
+    /// The collections its nodes belong to, derived when it is read and never stored.
+    collections: Vec<rrd_core::VectorCollectionAddress>,
     bytes: Vec<u8>,
 }
 
@@ -424,14 +426,38 @@ impl HnswIndex {
         for ids in versions.values_mut() {
             ids.sort_by_key(|id| envelope.body.nodes[*id].candidate.source_cursor);
         }
+        let mut collections = Vec::new();
+        for node in &envelope.body.nodes {
+            if !collections.contains(&node.candidate.vector.collection) {
+                collections.push(node.candidate.vector.collection.clone());
+            }
+        }
         Ok(Self {
             descriptor,
             config: envelope.body.config,
             entrypoint: envelope.body.entrypoint,
             nodes: envelope.body.nodes,
             versions,
+            collections,
             bytes,
         })
+    }
+
+    /// The candidates this generation proposes for an approximate request, for a caller that
+    /// reads their canonical versions before reranking them exactly.
+    pub fn search_candidates(
+        &self,
+        request: &SearchRequest,
+        ef_search: usize,
+    ) -> Result<Vec<VectorCandidate>> {
+        self.search_candidates_with_kernel(request, ef_search, HnswKernel::Auto)
+    }
+
+    /// Whether this generation stores versions of `collection`. A descriptor names a field and
+    /// not a collection, and two collections may share a field, so only the graph can say. An
+    /// empty graph holds nothing to get wrong, and an overlay serves all of its source.
+    pub fn serves_collection(&self, collection: &rrd_core::VectorCollectionAddress) -> bool {
+        self.nodes.is_empty() || self.collections.contains(collection)
     }
 
     /// The identity and source cursor of every version this generation

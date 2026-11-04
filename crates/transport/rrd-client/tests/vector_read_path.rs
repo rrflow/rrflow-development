@@ -424,6 +424,59 @@ async fn measure(points: usize) -> Measured {
         );
     }
 
+    // With a rerank narrower than the graph can fill exactly, this is the real oracle: the same
+    // graph, read two ways, proposes the same identities and reranks them to the same answer.
+    for query in 0..20 {
+        let question = |mode| {
+            let mut request = search(None, mode, 1_000_000);
+            request.query = VectorSearchQuery::Dense {
+                values: values(points + 100 + query),
+            };
+            request
+        };
+        let generation = client
+            .search_vectors(
+                &session,
+                question(VectorSearchMode::RequireApproximate {
+                    exact_rerank: 8,
+                    ef_search: 8,
+                }),
+                read(&format!("narrow-generation-{query}")),
+            )
+            .await
+            .unwrap();
+        let general = client
+            .search_vectors(
+                &session,
+                question(VectorSearchMode::AllowApproximate {
+                    exact_rerank: 8,
+                    ef_search: 8,
+                }),
+                read(&format!("narrow-general-{query}")),
+            )
+            .await
+            .unwrap();
+        assert_eq!(general.access_path, canonical("hnsw"), "{points} {query}");
+        assert!(
+            generation.selected_versions < general.selected_versions,
+            "{points} {query}"
+        );
+        assert_eq!(
+            neighbors(&generation),
+            neighbors(&general),
+            "{points} {query}"
+        );
+        assert_eq!(
+            generation
+                .hits
+                .iter()
+                .map(|hit| hit.score)
+                .collect::<Vec<_>>(),
+            general.hits.iter().map(|hit| hit.score).collect::<Vec<_>>(),
+            "{points} {query}"
+        );
+    }
+
     // No generation covers this property, so nothing can satisfy the request. It is told so, under
     // a budget far below what reading the corpus would take.
     let refused = client

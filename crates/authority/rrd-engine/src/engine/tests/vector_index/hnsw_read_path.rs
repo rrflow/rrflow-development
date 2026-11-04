@@ -604,10 +604,7 @@ fn no_generation_at_all_is_refused_without_reading_vectors() {
     assert_refused_without_reading(&engine, &lease, &search(1, 1, None, APPROXIMATE, 64));
 }
 
-#[test]
-fn an_uncovered_filter_on_turboquant_is_refused_without_reading_vectors() {
-    // POAM-055's own case: an active TurboQuant generation that cannot cover the filter.
-    let (_root, engine, lease) = estate(400, VectorMemoryTier::Cached);
+fn activate_turboquant(engine: &RrdEngine, lease: &SessionLease, filter_properties: &[&str]) {
     let built = engine
         .build_vector_quantization_artifact(
             &lease.session_id,
@@ -621,7 +618,10 @@ fn an_uncovered_filter_on_turboquant_is_refused_without_reading_vectors() {
                     seed: 29,
                     estimator: rrd_contract::VectorQuantizationEstimator::Mse,
                 },
-                filter_properties: Vec::new(),
+                filter_properties: filter_properties
+                    .iter()
+                    .map(|property| CanonicalId::new(*property).unwrap())
+                    .collect(),
                 max_storage_keys: 100_000,
             },
             &mutation_context(
@@ -649,6 +649,13 @@ fn an_uncovered_filter_on_turboquant_is_refused_without_reading_vectors() {
             410,
         )
         .unwrap();
+}
+
+#[test]
+fn an_uncovered_filter_on_turboquant_is_refused_without_reading_vectors() {
+    // POAM-055's own case: an active TurboQuant generation that cannot cover the filter.
+    let (_root, engine, lease) = estate(400, VectorMemoryTier::Cached);
+    activate_turboquant(&engine, &lease, &[]);
     assert_refused_without_reading(
         &engine,
         &lease,
@@ -656,10 +663,10 @@ fn an_uncovered_filter_on_turboquant_is_refused_without_reading_vectors() {
     );
 }
 
-#[test]
-fn a_generation_of_another_collection_does_not_answer_for_this_one() {
+/// `mirror` names the same field as `documents` and holds other vectors, all older than a
+/// generation `publish` builds for `documents`, so no overlay can answer for them either.
+fn assert_serves_only_its_own_collection(path: &str, publish: impl Fn(&RrdEngine, &SessionLease)) {
     let (_root, engine, lease) = estate(4, VectorMemoryTier::Cached);
-    // `mirror` names the same field as `documents`, and it holds other vectors.
     ensure_collection(
         &engine,
         &lease,
@@ -674,8 +681,6 @@ fn a_generation_of_another_collection_does_not_answer_for_this_one() {
         mutations.push(put(&id, "mirror", "body-embedding", 0, 200 + row, 1));
     }
     commit_vectors(&engine, &lease, 350, mutations);
-    // A later write to `documents` puts the generation past every `mirror` version, so no overlay
-    // can answer for them either.
     commit_vectors(
         &engine,
         &lease,
@@ -685,7 +690,7 @@ fn a_generation_of_another_collection_does_not_answer_for_this_one() {
             put("d20", "documents", "body-embedding", 0, 20, 1),
         ],
     );
-    build(&engine, &lease, "documents-only", &["bucket"]);
+    publish(&engine, &lease);
 
     let in_mirror = |mode| {
         let mut request = search(201, 1, None, mode, 100_000);
@@ -696,7 +701,7 @@ fn a_generation_of_another_collection_does_not_answer_for_this_one() {
     match try_run(&engine, &lease, &in_mirror(APPROXIMATE), 0) {
         Err(error) => assert!(
             matches!(&error, ServiceError::Vector(reason) if reason.contains("no vector access path")),
-            "{error:?}"
+            "{path}: {error:?}"
         ),
         Ok(result) => panic!(
             "{} answered {:?} from a generation that holds none of this collection",
@@ -719,7 +724,7 @@ fn a_generation_of_another_collection_does_not_answer_for_this_one() {
     assert_eq!(
         hit_ids(&allowed),
         hit_ids(&exact),
-        "{}",
+        "{path}: {}",
         allowed.access_path
     );
     // The collection the generation was built for still uses it.
@@ -729,7 +734,21 @@ fn a_generation_of_another_collection_does_not_answer_for_this_one() {
         &search(3, 1, None, APPROXIMATE, 100_000),
         3,
     );
-    assert_eq!(documents.access_path.as_str(), "hnsw");
+    assert_eq!(documents.access_path.as_str(), path);
+}
+
+#[test]
+fn an_hnsw_generation_of_another_collection_does_not_answer_for_this_one() {
+    assert_serves_only_its_own_collection("hnsw", |engine, lease| {
+        build(engine, lease, "documents-only", &["bucket"]);
+    });
+}
+
+#[test]
+fn a_turboquant_generation_of_another_collection_does_not_answer_for_this_one() {
+    assert_serves_only_its_own_collection("turboquant", |engine, lease| {
+        activate_turboquant(engine, lease, &[]);
+    });
 }
 
 #[test]
