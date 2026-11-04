@@ -7,6 +7,7 @@ pub mod adapter;
 pub mod catalog;
 pub mod corpus;
 pub mod custom;
+pub mod definitions;
 pub mod driver;
 pub mod import;
 pub mod manifest;

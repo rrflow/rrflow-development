@@ -177,6 +177,41 @@ this same report.
 Change a test deliberately: changing its corpus, workload or quality target changes its
 digest, and runs from before and after cannot be combined.
 
+## Definition packs
+
+Tests, systems and sources can travel as a definition pack, the way an antivirus
+update does: one signed text file, sent and installed apart from the app.
+
+```sh
+rrflow-lab definitions keygen --private ~/keys/lab.key --trust trust.json
+rrflow-lab definitions build --lab eval/lab --key ~/keys/lab.key --sequence 1 --days 90 --out first.pack.json
+rrflow-lab definitions install --pack first.pack.json --trust trust.json --store ~/lab-definitions
+
+# Change a test, then send only what changed.
+rrflow-lab definitions patch --lab eval/lab --key ~/keys/lab.key --sequence 2 --days 90 \\n  --out second.pack.json --base first.pack.json --trust trust.json
+rrflow-lab definitions install --pack second.pack.json --trust trust.json --store ~/lab-definitions
+
+rrflow-lab definitions status --trust trust.json --store ~/lab-definitions
+```
+
+- **Signed.** A pack's manifest is read only after its Ed25519 signature checks
+  against a trusted key, and it names every file by size and SHA-256.
+- **It only moves forward.** A lower sequence is refused, and so is the same
+  sequence with different content. `definitions revert` steps back locally, states
+  its reason, and keeps that floor. To undo a bad pack for everyone, publish a
+  higher sequence with the old content.
+- **It expires.** An expired pack cannot be installed. One that expires after
+  install keeps working, and `status` says it is stale.
+- **It holds data.** Only JSON at confined paths, with no code and no datasets.
+- **A patch has no language.** It carries the changed files and reuses the rest by
+  digest. If the store lacks one, install asks for a full pack. A failed install
+  changes nothing.
+- **Installing runs nothing.** A pack can change which container a system starts,
+  so install lists every changed launch for a person to read.
+
+Keep the private key out of every repository. Packs arrive as local files, and
+nothing here fetches one. The lab does not run from an installed pack yet.
+
 ## Reading a result
 
 The first measured results and their limits are in the
