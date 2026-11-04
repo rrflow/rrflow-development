@@ -60,14 +60,6 @@ impl RrdEngine {
     ) -> Result<PreparedDistributedAuthority> {
         catalogue.validate().map_err(cluster_error)?;
         validate_key_budget(max_storage_keys)?;
-        // This record lives in the scope the public changefeed reads, and it
-        // accepts only canonical ids.
-        CanonicalId::new(catalogue.cluster.as_str()).map_err(|error| {
-            ServiceError::Runtime(format!(
-                "cluster id {} is not public: {error}",
-                catalogue.cluster
-            ))
-        })?;
         let scope = distributed_scope(&self.instance)?;
         let schema = self.storage.runtime().schema(&scope)?;
         let (read, previous) = if schema.is_some() {

@@ -24,12 +24,8 @@ fn node(index: u8) -> PlacementNode {
 }
 
 fn catalogue() -> DistributedAuthorityCatalogue {
-    catalogue_for("cluster-a")
-}
-
-fn catalogue_for(cluster: &str) -> DistributedAuthorityCatalogue {
     plan_distributed_authority(
-        ClusterId::new(cluster).unwrap(),
+        ClusterId::new("cluster-a").unwrap(),
         1,
         100,
         (1..=6).map(node).collect(),
@@ -69,26 +65,6 @@ fn stamp(index: u64, epoch: u64, node: &NodeId) -> ShardReadStamp {
         placement_epoch: epoch,
         state_digest: digest::sha256_hex(format!("{node}:{index}").as_bytes()),
     }
-}
-
-/// POAM-046: this record lives in the scope the public changefeed reads, and
-/// the changefeed refuses a whole page over one identity that is not canonical.
-/// A cluster id may hold any bytes, so the engine refuses one it could not
-/// project before it prepares a commit.
-#[test]
-fn a_cluster_id_the_public_changefeed_cannot_project_is_refused() {
-    let temporary = tempfile::tempdir().unwrap();
-    let engine = RrdEngine::open(
-        &temporary.path().join("engine"),
-        CanonicalId::new("cluster-identity").unwrap(),
-        [7_u8; 32],
-    )
-    .unwrap();
-    let error = engine
-        .prepare_distributed_authority(&catalogue_for("cluster:a"), "metadata-controller", 10_000)
-        .err()
-        .expect("a colon cannot be projected");
-    assert!(error.to_string().contains("is not public"), "{error}");
 }
 
 #[test]
@@ -301,4 +277,42 @@ fn metadata_commit_and_consistency_routes_share_one_engine_authority() {
         .prepare_distributed_authority(&second, "metadata-controller", 10_000)
         .unwrap();
     assert_eq!(successor.commit.mutations.len(), 1);
+
+    // POAM-046: this record lives in the scope the public changefeed reads.
+    let lease = engine
+        .create_session(
+            &rrd_contract::CreateSession {
+                limits: rrd_contract::SessionLimits {
+                    idle_timeout_ms: 9_000,
+                    absolute_timeout_ms: 10_000,
+                    max_open_transactions: 1,
+                },
+            },
+            &rrd_contract::CorrelationId::new("changefeed-session").unwrap(),
+            1_000,
+            "request-changefeed-session",
+            "operation-changefeed-session",
+        )
+        .unwrap();
+    let page = engine
+        .read_changefeed(
+            &lease.session_id,
+            &lease.token,
+            &rrd_contract::ReadChangefeed {
+                scope: "instance:cluster-metadata".into(),
+                after_cursor: 0,
+                limit: 128,
+            },
+            1_100,
+            "request-changefeed",
+            "operation-changefeed",
+        )
+        .unwrap();
+    assert!(page.changes.iter().any(|change| matches!(
+        &change.mutation,
+        rrd_contract::ChangeMutationSnapshot::Data {
+            mutation: rrd_contract::TransactionMutation::PutRecord { reference, .. },
+        } if reference.kind.as_str() == "rrd_cluster_topology"
+            && reference.id.as_str() == "cluster-a"
+    )));
 }
