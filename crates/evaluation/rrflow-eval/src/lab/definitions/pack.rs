@@ -46,6 +46,15 @@ pub struct TrustedKey {
     pub public_key: String,
 }
 
+impl TrustedKey {
+    /// The id this public key must have, so a key cannot go by another key's name.
+    pub fn checked_id(&self) -> Result<String> {
+        let public = VerifyingKey::from_bytes(&unhex::<32>(&self.public_key, "a trusted key")?)
+            .map_err(|error| format!("a trusted key is invalid: {error}"))?;
+        Ok(key_id(&public))
+    }
+}
+
 /// The publisher keys a store accepts.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -92,6 +101,16 @@ pub fn generate_key() -> Result<GeneratedKey> {
         key_id: key_id(&public),
         public_hex: hex(public.as_bytes()),
         private_hex: hex(&seed),
+    })
+}
+
+/// The public half of a private key.
+pub fn key_from_private(private_hex: &str) -> Result<TrustedKey> {
+    let signing = SigningKey::from_bytes(&unhex::<32>(private_hex, "the signing key")?);
+    let public = signing.verifying_key();
+    Ok(TrustedKey {
+        id: key_id(&public),
+        public_key: hex(public.as_bytes()),
     })
 }
 
@@ -164,6 +183,16 @@ impl PackManifest {
 
     fn file(&self, path: &str) -> Option<&PackFile> {
         self.files.iter().find(|file| file.path == path)
+    }
+
+    /// Whether this manifest lists exactly these files.
+    pub fn same_files_as(&self, files: &BTreeMap<String, String>) -> bool {
+        self.files.len() == files.len()
+            && self.files.iter().all(|file| {
+                files
+                    .get(&file.path)
+                    .is_some_and(|text| check_text(file, text).is_ok())
+            })
     }
 }
 
@@ -372,10 +401,6 @@ pub struct PackStore {
 
 impl PackStore {
     pub fn open(root: PathBuf, product: &str) -> Result<Self> {
-        for directory in ["objects", "manifests"] {
-            std::fs::create_dir_all(root.join(directory))
-                .map_err(|error| format!("{}: {error}", root.display()))?;
-        }
         let store = Self {
             root,
             product: product.to_owned(),
@@ -458,6 +483,16 @@ impl PackStore {
             files.insert(file.path.clone(), text);
         }
         Ok(files)
+    }
+
+    /// The newest pack this store has seen, which a revert does not change.
+    pub fn highest_manifest(&self, keys: &TrustedKeys) -> Result<Option<PackManifest>> {
+        let state = self.load_state()?;
+        if state.highest_sequence == 0 {
+            return Ok(None);
+        }
+        let (manifest, _) = self.load_manifest(state.highest_sequence, keys)?;
+        Ok(Some(manifest))
     }
 
     /// The current definitions, each checked against the signed manifest as it is read.
@@ -545,6 +580,10 @@ impl PackStore {
         let notable = content.notable_changes(&before, &files)?;
         let (added, changed, removed) = differences(&before, &files);
 
+        for directory in ["objects", "manifests"] {
+            std::fs::create_dir_all(self.root.join(directory))
+                .map_err(|error| format!("{}: {error}", self.root.display()))?;
+        }
         for file in &manifest.files {
             let path = self.object_path(&file.sha256);
             if !path.exists() {
@@ -661,7 +700,7 @@ fn differences(
 }
 
 /// Replaces `path` whole or not at all.
-fn write_atomically(path: &Path, bytes: &[u8]) -> Result<()> {
+pub(crate) fn write_atomically(path: &Path, bytes: &[u8]) -> Result<()> {
     let parent = path.parent().ok_or("a store path has no parent")?;
     let name = path
         .file_name()

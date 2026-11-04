@@ -1,0 +1,151 @@
+{
+  "$defs": {
+    "Id": {
+      "maxLength": 96,
+      "minLength": 1,
+      "pattern": "^[a-z0-9][a-z0-9_.-]*$",
+      "type": "string"
+    },
+    "PlannedSystem": {
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "label": {
+          "type": "string"
+        },
+        "needs": {
+          "description": "Environment variables a run needs for this system to start.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "starts": {
+          "description": "What approving would allow to start.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "state": {
+          "$ref": "#/$defs/SystemState"
+        },
+        "tuned": {
+          "description": "What this machine tuned, as `name=value`.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "state",
+        "tuned",
+        "needs"
+      ],
+      "type": "object"
+    },
+    "PlannedTest": {
+      "properties": {
+        "dimensions": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "k": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "needs": {
+          "description": "Environment variables a run needs for this test's data.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "on": {
+          "type": "boolean"
+        },
+        "points": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "problem": {
+          "description": "Why this test cannot run as configured, such as tuning it refuses.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "queries": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "recall_target": {
+          "format": "double",
+          "type": "number"
+        },
+        "systems": {
+          "items": {
+            "$ref": "#/$defs/PlannedSystem"
+          },
+          "type": "array"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "on",
+        "points",
+        "dimensions",
+        "queries",
+        "k",
+        "recall_target",
+        "needs",
+        "systems"
+      ],
+      "type": "object"
+    },
+    "SystemState": {
+      "enum": [
+        "will_run",
+        "turned_off",
+        "needs_approval",
+        "not_available"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "tests": {
+      "items": {
+        "$ref": "#/$defs/PlannedTest"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "tests"
+  ],
+  "title": "LabPlan",
+  "type": "object"
+}

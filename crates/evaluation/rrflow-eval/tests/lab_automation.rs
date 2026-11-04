@@ -350,6 +350,18 @@ fn a_folder_cannot_bring_its_own_trust() {
 }
 
 #[test]
+fn a_key_cannot_go_by_another_keys_name() {
+    let root = tempfile::tempdir().unwrap();
+    let publisher = home(root.path(), "publisher");
+    let machine = home(root.path(), "machine");
+    publish(&publisher, &original(), NOW);
+    let mut keys = publisher.trusted_keys(&nobody()).unwrap();
+    keys.keys[0].id = "0000000000000000".to_owned();
+    let error = machine.add_trusted_keys(&keys).unwrap_err();
+    assert!(error.contains("different public key"), "{error}");
+}
+
+#[test]
 fn a_key_pinned_in_the_build_is_trusted_with_no_file() {
     let root = tempfile::tempdir().unwrap();
     let publisher = home(root.path(), "publisher");
@@ -858,6 +870,13 @@ fn a_new_pack_keeps_this_machines_choices_and_only_a_changed_launch_is_held() {
 #[test]
 fn rrflows_pinned_keys_are_valid() {
     let pinned = pinned_keys().unwrap();
+    for key in &pinned.keys {
+        assert_eq!(
+            key.checked_id().unwrap(),
+            key.id,
+            "a pinned key is named for itself"
+        );
+    }
     let root = tempfile::tempdir().unwrap();
     let machine = DefinitionHome::at(root.path().join("machine"), RRFLOW_PRODUCT);
     assert_eq!(machine.trusted_keys(&pinned).unwrap(), pinned);
@@ -953,6 +972,74 @@ fn publish_finds_the_lab_from_anywhere_in_a_checkout_and_says_what_happened() {
 }
 
 #[test]
+fn an_update_says_only_what_would_really_start_and_in_words() {
+    let root = tempfile::tempdir().unwrap();
+    let repository = checkout(root.path());
+    let publisher = Machine::new(root.path(), "publisher");
+    let out = publisher.ok(&repository, &["definitions", "publish"]);
+    assert!(
+        out.contains("new system qdrant would start container qdrant/qdrant@sha256:"),
+        "{out}"
+    );
+    assert!(
+        !out.contains("rrflow-hnsw"),
+        "a declared gap starts nothing: {out}"
+    );
+    assert!(
+        !out.contains("rrflow-exact"),
+        "the binary under test is not new: {out}"
+    );
+    assert!(
+        !out.contains("\"kind\""),
+        "a person should not read raw JSON: {out}"
+    );
+    assert!(out.contains("90 days"), "{out}");
+    let again = publisher.ok(&repository, &["definitions", "publish"]);
+    assert!(again.contains("more days"), "{again}");
+    assert!(!again.contains("days more"), "{again}");
+
+    // A launch that changes shows every detail, since any of them may be the difference.
+    let path = repository.join("eval/lab/systems/qdrant.json");
+    let text = std::fs::read_to_string(&path).unwrap();
+    std::fs::write(
+        &path,
+        text.replacen("\"seconds\": 60", "\"seconds\": 61", 1),
+    )
+    .unwrap();
+    let out = publisher.ok(&repository, &["definitions", "publish"]);
+    assert!(
+        out.contains("qdrant now starts something different"),
+        "{out}"
+    );
+    assert!(out.contains("\"seconds\":61"), "{out}");
+}
+
+#[test]
+fn a_plan_says_what_a_run_still_needs() {
+    let root = tempfile::tempdir().unwrap();
+    let repository = checkout(root.path());
+    let publisher = Machine::new(root.path(), "publisher");
+    publisher.ok(&repository, &["definitions", "publish"]);
+    let plan: serde_json::Value = serde_json::from_str(&publisher.ok(
+        root.path(),
+        &["plan", "--test", "vector-coco-i2i", "--json"],
+    ))
+    .unwrap();
+    assert_eq!(plan["tests"][0]["needs"][0], "RRFLOW_LAB_CORPUS_DIR");
+    let needs = |name: &str| {
+        plan["tests"][0]["systems"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|entry| entry["id"] == name)
+            .unwrap()["needs"][0]
+            .clone()
+    };
+    assert_eq!(needs("lance-hnsw-sq"), "RRFLOW_LAB_LANCE_PYTHON");
+    assert_eq!(needs("rrflow-exact"), "RRFLOW_BIN");
+}
+
+#[test]
 fn publish_outside_a_checkout_says_what_to_do() {
     let root = tempfile::tempdir().unwrap();
     let publisher = Machine::new(root.path(), "publisher");
@@ -972,6 +1059,9 @@ fn status_on_a_new_machine_says_what_to_do_next() {
     let (ok, _, error) = machine.run_in(root.path(), &["plan"]);
     assert!(!ok);
     assert!(error.contains("definitions update"), "{error}");
+    let out = machine.ok(root.path(), &["settings", "--json"]);
+    assert!(out.contains("schema_version"), "{out}");
+    assert!(!machine.home.exists(), "reading must leave nothing behind");
 }
 
 #[test]
@@ -1061,6 +1151,23 @@ fn toggles_and_tuning_work_with_no_file_to_edit() {
     let shown = publisher.ok(at, &["settings"]);
     assert!(shown.contains("milvus"), "{shown}");
     assert!(shown.contains("m=32"), "{shown}");
+    let line = |name: &str| {
+        shown
+            .lines()
+            .find(|line| line.split_whitespace().nth(1) == Some(name))
+            .unwrap()
+            .split_whitespace()
+            .next()
+            .unwrap()
+            .to_owned()
+    };
+    assert_eq!(
+        line("custom-reference"),
+        "on",
+        "tests run it, as a plan says"
+    );
+    assert_eq!(line("rrflow-hnsw"), "n/a");
+    assert_eq!(line("milvus"), "off");
 
     let plan = publisher.ok(at, &["plan", "--test", "vector-small"]);
     assert!(plan.contains("Turned off"), "{plan}");

@@ -81,6 +81,41 @@ pub enum LaunchSpec {
     None,
 }
 
+impl LaunchSpec {
+    /// What this starts that the machine was not already running, in words a person can check.
+    pub fn summary(&self) -> Option<String> {
+        match self {
+            Self::Container { image, .. } => Some(format!("container {image}")),
+            Self::Process { command, .. } => Some(format!("program {}", command.join(" "))),
+            Self::RrflowEngine { .. } | Self::None => None,
+        }
+    }
+
+    /// The environment variables a run needs for this to start.
+    pub fn needed_variables(&self) -> Vec<String> {
+        let mut names = Vec::new();
+        match self {
+            Self::Process { command, .. } => {
+                for word in command {
+                    let mut rest = word.as_str();
+                    while let Some((_, after)) = rest.split_once("{env:") {
+                        let Some((name, tail)) = after.split_once('}') else {
+                            break;
+                        };
+                        if !names.iter().any(|known| known == name) {
+                            names.push(name.to_owned());
+                        }
+                        rest = tail;
+                    }
+                }
+            }
+            Self::RrflowEngine { .. } => names.push("RRFLOW_BIN".to_owned()),
+            Self::Container { .. } | Self::None => {}
+        }
+        names
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct SystemDefinition {

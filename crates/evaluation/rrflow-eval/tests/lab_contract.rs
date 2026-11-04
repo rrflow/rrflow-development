@@ -11,6 +11,7 @@ use rrflow_eval::lab::manifest::{
     VectorComparisonManifest, WorkloadSpec,
 };
 use rrflow_eval::lab::report::{LabReport, SystemStatus, TestIdentity, VerdictOutcome};
+use rrflow_eval::lab::settings::{LabPlan, LabSettings};
 use rrflow_eval::lab::sources::SourceList;
 use rrflow_eval::lab::{canonical_json, sha256_hex, Result};
 use rrflow_eval::storage::{schema, Id};
@@ -830,6 +831,8 @@ fn generated_schemas_match_the_checked_in_projections() {
         ("lab-sources-v1.json", schema::<SourceList>()),
         ("lab-system-v1.json", schema::<SystemDefinition>()),
         ("lab-test-v1.json", schema::<TestDefinition>()),
+        ("lab-settings-v1.json", schema::<LabSettings>()),
+        ("lab-plan-v1.json", schema::<LabPlan>()),
     ] {
         let expected = canonical_json(&generated).unwrap();
         let actual = std::fs::read(directory.join(name))
