@@ -350,6 +350,38 @@ installed trace, performance benchmark, full provider-backed flight, or CI.
 
 `cargo clippy --offline --locked -p rrd-engine --lib --tests -- -D warnings`
 passed on Windows with the diagnostic code. The live LFG test also passed
-again after instrumentation. The current installed proof above predates these
-new trace events; an installed JSON trace on the new revision remains to be
-captured and must be reported separately.
+again after instrumentation. The installed proof above predates these events; the later installed trace
+proof below exercises the instrumented revision.
+
+
+## Installed trace readback on the instrumented revision
+
+Rebuilt the unqualified developer executable from clean source revision
+`2657d40ec635547eba6b1eca53f6e4490a4d374a` with
+`python scripts/build_rrflow.py --profile dev --target-dir
+D:/localdev/devlabs/rrflow/target/lfg-main-contract-build --output
+D:/localdev/devlabs/rrflow/target/lfg-trace-dev-build-receipt-20261104.json`.
+The executable SHA-256 is
+`2b270340c052914e32e063a900b5ea7dd9651b0cf89c633984a3f1eb00dbdbe3`.
+With `RRFLOW_TRACE=rrd_engine::lfg=debug` and `RRFLOW_TRACE_FORMAT=json`,
+the isolated installed-process driver using a live local LFG and controlled
+HTTP selector exited successfully. Independent readback asserted the two
+diagnostic field allowlists, matching operation digest, analyzer request and
+response digests matching the admitted proposal, one matching controller
+packet, unchanged task-attempt outcome after restart, replay HTTP 412, and
+absence of the synthetic secret, task title and endpoint in those events.
+The [sanitized trace evidence](lfg-installed-trace-20261104.json) retains
+the observed events and scope; raw local files stay in ignored `target/`.
+This is one debug-build sample, not a benchmark, actual SWAG router invocation,
+model flight, source-change test, CI result or release qualification. A
+blocking stderr sink remains a known diagnostics limitation.
+
+Verification note: an initial `python scripts/knowledge/check_docs.py`
+failed because that path does not exist; the repository documentation checker
+is `python scripts/ci/check_documentation.py`, which passed. Navigation check
+and execution inventory generation passed.
+
+The first staged whitespace check exposed CRLF conversion in the new evidence
+files and the inventory check observed a stale generation after a later edit.
+Normalized them to LF, staged them again, regenerated the inventory and reran
+both checks successfully.
