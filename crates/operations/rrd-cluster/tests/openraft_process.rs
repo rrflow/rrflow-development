@@ -207,7 +207,7 @@ fn independent_processes_recover_fail_over_snapshot_and_reject_corruption() {
     }
     let stored = source_receipt.unwrap();
     let artifact = ObjectReference::for_bytes(
-        "vector:hnsw:process-fixture@1:bytes",
+        "vector-hnsw-process-fixture.1.vector-bytes",
         None,
         "application/vnd.rrflow.vector-hnsw+json",
         &artifact_bytes,

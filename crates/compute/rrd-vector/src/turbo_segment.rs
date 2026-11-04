@@ -804,7 +804,7 @@ mod tests {
 
     fn config(scope: &ScopeId) -> TurboQuantSegmentConfig {
         TurboQuantSegmentConfig {
-            id: ProjectionId::new("vector:turbo-body").unwrap(),
+            id: ProjectionId::new("vector-turbo-body").unwrap(),
             scope: scope.clone(),
             field: "body".into(),
             dimensions: 64,

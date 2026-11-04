@@ -26,7 +26,7 @@ fn distinct_typed_records_remain_distinct_in_context_after_reopen() {
 
     let (root, engine) = isolated_engine();
     let mut registry = RuntimeSchemaRegistry::empty(1, "identity fixture");
-    for kind in ["a:b", "a"] {
+    for kind in ["a-b", "a"] {
         registry.tables.insert(
             RuntimeType::new(kind).unwrap(),
             RuntimeTableSchema::schemaless(RuntimeLogicalModel::Relational),
@@ -34,7 +34,7 @@ fn distinct_typed_records_remain_distinct_in_context_after_reopen() {
     }
     let record = |kind, value, text: &str| RuntimeMutation::Record {
         record: RuntimeRecord {
-            reference: RuntimeRef::new(kind, value).unwrap(),
+            reference: RuntimeRef::parse(kind, value).unwrap(),
             valid_from: 10,
             valid_to: None,
             properties: BTreeMap::from([("body".into(), RuntimeValue::String(text.into()))]),
@@ -50,8 +50,9 @@ fn distinct_typed_records_remain_distinct_in_context_after_reopen() {
             expected_cursor: 0,
             mutations: vec![
                 RuntimeMutation::Schema { registry },
-                record("a:b", "c", "needle first"),
-                record("a", "b:c", "needle second"),
+                record("a-b", "c", "needle first"),
+                // An event identity holds the one colon an identifier can.
+                record("a", "cursor:9", "needle second"),
             ],
         })
         .unwrap();
@@ -93,7 +94,7 @@ fn distinct_typed_records_remain_distinct_in_context_after_reopen() {
         .collect::<std::collections::BTreeSet<_>>();
     assert_eq!(
         identities,
-        std::collections::BTreeSet::from(["record:a%3Ab:c", "record:a:b%3Ac"])
+        std::collections::BTreeSet::from(["record:a-b:c", "record:a:cursor%3A9"])
     );
 }
 

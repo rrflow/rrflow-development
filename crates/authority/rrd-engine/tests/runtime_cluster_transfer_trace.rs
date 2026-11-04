@@ -87,7 +87,7 @@ fn exercise<E: StorageEngine>(
     let data = DataRuntime::new(engine, source);
     let object = data
         .stage_object(
-            "vector:body@1:bytes",
+            "vector-body.1.vector-bytes",
             None,
             "application/vnd.rrflow.vector-hnsw+json",
             b"bounded vector artifact",
@@ -167,7 +167,7 @@ fn transport_observations_persist_as_one_causal_project_trace() {
     let runtime = DataRuntime::new(RrflowMxStore::new(), source);
     let object = runtime
         .stage_object(
-            "vector:observed@1:bytes",
+            "vector-observed.1.vector-bytes",
             None,
             "application/vnd.rrflow.vector-hnsw+json",
             b"operator-generated vector index bytes",

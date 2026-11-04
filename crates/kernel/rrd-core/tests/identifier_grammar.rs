@@ -8,8 +8,26 @@ use rrd_core::{
 
 fn candidates() -> Vec<String> {
     let mut values: Vec<String> = [
-        "", "0", "a", "alpha", "a-b_c.d", "a1", "-a", "_a", ".a", "A", "aB", "a:b", "a/b", "a b",
-        "a@b", "a\0b", "é", "cursor:7", "cursor.7", "vector:body",
+        "",
+        "0",
+        "a",
+        "alpha",
+        "a-b_c.d",
+        "a1",
+        "-a",
+        "_a",
+        ".a",
+        "A",
+        "aB",
+        "a:b",
+        "a/b",
+        "a b",
+        "a@b",
+        "a\0b",
+        "é",
+        "cursor:7",
+        "cursor.7",
+        "vector:body",
     ]
     .iter()
     .map(|value| (*value).to_owned())

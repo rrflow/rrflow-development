@@ -1906,7 +1906,7 @@ mod tests {
                     },
                     RuntimeMutation::Claim {
                         claim: Claim::new(
-                            Subject::new("item:one").unwrap(),
+                            Subject::new("item-one").unwrap(),
                             Predicate::new("status").unwrap(),
                             "ready",
                             100,
@@ -2250,8 +2250,8 @@ mod tests {
             )
             .unwrap()
         };
-        let first = object("first:bytes", b"first");
-        let second = object("second:bytes", b"second");
+        let first = object("first-bytes", b"first");
+        let second = object("second-bytes", b"second");
         database
             .write_owned(
                 WriteBatch::new(vec![

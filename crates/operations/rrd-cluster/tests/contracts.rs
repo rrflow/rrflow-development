@@ -127,7 +127,7 @@ fn artifact_manifest_binds_project_read_plan_objects_and_receipt() {
     let bytes = b"artifact";
     let sha256 = rrd_core::digest::sha256_hex(bytes);
     let object = ObjectReference::for_bytes(
-        "artifact:one",
+        "artifact-one",
         Some(RuntimeRef::new("document", "one").unwrap()),
         "application/octet-stream",
         bytes,

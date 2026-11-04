@@ -978,7 +978,7 @@ fn estate_recovery_prune_and_restore_are_one_fenced_engine_workflow() {
     divergent
         .claims()
         .append_batch(&[Claim::new(
-            Subject::new("restore:divergent").unwrap(),
+            Subject::new("restore-divergent").unwrap(),
             Predicate::new("status").unwrap(),
             "different",
             4_350,
