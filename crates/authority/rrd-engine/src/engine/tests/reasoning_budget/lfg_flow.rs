@@ -7,6 +7,20 @@ use rrd_contract::{
 use std::io::{Read, Write};
 use std::net::TcpListener;
 
+#[derive(Clone)]
+struct DiagnosticWriter(Arc<std::sync::Mutex<Vec<u8>>>);
+
+impl Write for DiagnosticWriter {
+    fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+        self.0.lock().unwrap().extend_from_slice(bytes);
+        Ok(bytes.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
 fn serve_once(listener: TcpListener, respond: impl FnOnce(serde_json::Value) -> serde_json::Value) {
     listener.set_nonblocking(true).unwrap();
     let deadline = Instant::now() + Duration::from_secs(15);
@@ -59,37 +73,112 @@ fn serve_once(listener: TcpListener, respond: impl FnOnce(serde_json::Value) -> 
 
 #[test]
 fn real_engine_composes_bounded_lfg_then_controller_and_reopens_receipt() {
-    run_flow(false, false, false, None);
+    run_flow(Scenario::Normal, None);
 }
 
 #[test]
 fn changed_configuration_during_lfg_records_result_without_controller_dispatch() {
-    run_flow(true, false, false, None);
+    run_flow(Scenario::ConfigurationChanged, None);
 }
 
 #[test]
 fn task_closed_during_lfg_records_result_without_controller_dispatch() {
-    run_flow(false, true, false, None);
+    run_flow(Scenario::TaskClosed, None);
+}
+
+fn captured_diagnostics(scenario: Scenario) -> Vec<serde_json::Value> {
+    let bytes = Arc::new(std::sync::Mutex::new(Vec::new()));
+    let writer = DiagnosticWriter(Arc::clone(&bytes));
+    let subscriber = tracing_subscriber::fmt()
+        .json()
+        .without_time()
+        .with_ansi(false)
+        .with_max_level(tracing::Level::DEBUG)
+        .with_writer(move || writer.clone())
+        .finish();
+    tracing::subscriber::with_default(subscriber, || run_flow(scenario, None));
+
+    let bytes = bytes.lock().unwrap();
+    bytes
+        .split(|byte| *byte == b'\n')
+        .filter(|line| !line.is_empty())
+        .map(|line| serde_json::from_slice(line).unwrap())
+        .filter(|event: &serde_json::Value| event["target"] == "rrd_engine::lfg")
+        .collect()
+}
+
+#[test]
+fn lfg_diagnostics_are_bounded_and_report_invalidated_checkpoint() {
+    let events = captured_diagnostics(Scenario::TaskClosed);
+    assert_eq!(events.len(), 2);
+    let transport = events[0]["fields"].as_object().unwrap();
+    let checkpoint = events[1]["fields"].as_object().unwrap();
+    assert_eq!(transport["outcome"], "transport_completed");
+    assert!(transport["elapsed_ms"].is_u64());
+    assert_eq!(checkpoint["outcome"], "checkpoint_committed");
+    assert_eq!(checkpoint["invalidated"], true);
+    assert_eq!(
+        transport["operation_sha256"],
+        checkpoint["operation_sha256"]
+    );
+    for fields in [transport, checkpoint] {
+        for key in fields.keys() {
+            assert!(matches!(
+                key.as_str(),
+                "message"
+                    | "operation_sha256"
+                    | "outcome"
+                    | "elapsed_ms"
+                    | "analyzer_request_sha256"
+                    | "analyzer_response_sha256"
+                    | "invalidated"
+            ));
+        }
+    }
+}
+
+#[test]
+fn lfg_diagnostics_report_uncertain_transport_failure_without_payload() {
+    let events = captured_diagnostics(Scenario::InvalidLfg);
+    assert_eq!(events.len(), 1);
+    let fields = events[0]["fields"].as_object().unwrap();
+    assert_eq!(fields["outcome"], "transport_failed");
+    assert_eq!(fields["execution_may_continue"], true);
+    assert!(fields["elapsed_ms"].is_u64());
+    for key in fields.keys() {
+        assert!(matches!(
+            key.as_str(),
+            "message" | "operation_sha256" | "outcome" | "elapsed_ms" | "execution_may_continue"
+        ));
+    }
 }
 
 #[test]
 fn controller_response_failure_keeps_lfg_checkpoint_and_uncertain_capacity() {
-    run_flow(false, false, true, None);
+    run_flow(Scenario::InvalidController, None);
 }
 
 #[test]
 #[ignore = "requires an explicitly configured local LFG service with the fixture policy"]
 fn real_lfg_service_flows_through_engine_controller_and_reopen() {
     let url = std::env::var("RRFLOW_TEST_LFG_URL").expect("configure the local LFG service origin");
-    run_flow(false, false, false, Some(url));
+    run_flow(Scenario::Normal, Some(url));
 }
 
-fn run_flow(
-    change_configuration: bool,
-    close_task: bool,
-    reject_controller: bool,
-    real_lfg: Option<String>,
-) {
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Scenario {
+    Normal,
+    ConfigurationChanged,
+    TaskClosed,
+    InvalidLfg,
+    InvalidController,
+}
+
+fn run_flow(scenario: Scenario, real_lfg: Option<String>) {
+    let change_configuration = scenario == Scenario::ConfigurationChanged;
+    let close_task = scenario == Scenario::TaskClosed;
+    let reject_lfg = scenario == Scenario::InvalidLfg;
+    let reject_controller = scenario == Scenario::InvalidController;
     let (root, mut engine, bootstrap, mut configuration, mut request, _, _) =
         proposal::tuple_fixture();
     let fixture_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -297,6 +386,9 @@ fn run_flow(
                 }
                 output["assessmentSha256"] = input["expectedAssessmentSha256"].clone();
                 output["rulesSha256"] = input["expectedRulesSha256"].clone();
+                if reject_lfg {
+                    output["inputSha256"] = serde_json::Value::String("0".repeat(64));
+                }
                 output
             })
         })
@@ -309,7 +401,7 @@ fn run_flow(
         response = serde_json::json!({"synthetic": "invalid controller response"});
     }
     let (tx, rx) = mpsc::channel();
-    let (controller_thread, idle_controller) = if change_configuration || close_task {
+    let (controller_thread, idle_controller) = if change_configuration || close_task || reject_lfg {
         controller.set_nonblocking(true).unwrap();
         (None, Some(controller))
     } else {
@@ -337,7 +429,19 @@ fn run_flow(
     if let Some(analyzer_thread) = analyzer_thread {
         analyzer_thread.join().unwrap();
     }
-    let proposal = if change_configuration || close_task {
+    let proposal = if reject_lfg {
+        assert!(matches!(
+            proposal,
+            Err(ServiceError::EndpointCallFailed {
+                execution_may_continue: true,
+                ..
+            })
+        ));
+        assert!(
+            matches!(idle_controller.unwrap().accept(), Err(error) if error.kind() == std::io::ErrorKind::WouldBlock)
+        );
+        None
+    } else if change_configuration || close_task {
         assert!(matches!(
             proposal,
             Err(ServiceError::TaskAttemptInvalidated(
@@ -385,7 +489,7 @@ fn run_flow(
             "read",
         )
         .unwrap();
-    assert!(before.attempt.as_ref().unwrap().lfg.is_some());
+    assert_eq!(before.attempt.as_ref().unwrap().lfg.is_some(), !reject_lfg);
     assert_eq!(before.attempt.as_ref().unwrap().endpoint_proposal, proposal);
     if change_configuration || close_task {
         assert_eq!(
@@ -395,7 +499,7 @@ fn run_flow(
         let budget = state(&engine, &lease, &request.task_id);
         assert!(budget.active_attempt.is_none() && budget.stopped.is_none());
     }
-    if reject_controller {
+    if reject_controller || reject_lfg {
         assert_eq!(
             before.attempt.as_ref().unwrap().status,
             rrd_contract::TaskAttemptStatus::Stopped

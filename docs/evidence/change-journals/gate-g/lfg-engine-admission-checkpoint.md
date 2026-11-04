@@ -315,3 +315,41 @@ remain under ignored `target/lfg-installed-controlled-proof-20261104`.
 This installed proof does not implement provider-backed prompt flights, bind
 project-source edits, prove worker execution, establish full C-07/native soak,
 or replace #246/#249 candidate and merge-group CI. No roadmap status changes.
+
+## Opt-in engine LFG diagnostics
+
+The [PR brief](https://github.com/rrflow/rrflow-development/pull/249) was
+expanded before this code change. `RrdEngine` now emits debug events at
+`rrd_engine::lfg` for completed or failed analyzer transport and committed or
+failed advisory checkpoint. Fields are bounded outcomes, elapsed milliseconds,
+operation/analyzer wire digests, and invalidation or uncertain-execution flags.
+No task text, prompt, provider URL, credential, raw response or private model
+reasoning is emitted by these events. They are transient observations, not the
+engine's durable attempt/audit authority. This does not complete H-05.
+
+For an installed binary built with this change, opt in before starting the
+process with `RRFLOW_TRACE=rrd_engine::lfg=debug` and
+`RRFLOW_TRACE_FORMAT=json`; the current CLI writes traces to stderr. A slow or
+unconsumed stderr sink may affect the process, so collect it with explicit size
+and retention limits. A nonblocking exporter, full prompt timeline and measured
+telemetry overhead remain open work. Diagnostic level and resource claims are
+not inferred from the existence of these events.
+
+A test-only workspace `tracing-subscriber` dependency captures actual JSON
+output. `lfg_diagnostics_are_bounded_and_report_invalidated_checkpoint`
+checks the transport/checkpoint outcomes, matching operation digest and exact
+field allowlist on task closure. `lfg_diagnostics_report_uncertain_transport_failure_without_payload`
+checks an invalid analyzer response, uncertainty and the failure-field
+allowlist; the controller receives no call. The LFG flow group passed six cases
+with one separately run live-service case; the live LFG in-process case passed.
+A full engine suite passed 348 tests, 5 ignored with the same production change
+before the final test-only failure scenario was added. The first `--locked`
+run correctly refused the new dev dependency until `Cargo.lock` was updated
+offline; subsequent checks use `--offline --locked`. These tests are not an
+installed trace, performance benchmark, full provider-backed flight, or CI.
+
+`cargo clippy --offline --locked -p rrd-engine --lib --tests -- -D warnings`
+passed on Windows with the diagnostic code. The live LFG test also passed
+again after instrumentation. The current installed proof above predates these
+new trace events; an installed JSON trace on the new revision remains to be
+captured and must be reported separately.

@@ -339,12 +339,41 @@ impl RrdEngine {
                 return Err(ServiceError::TaskAttemptInvalidated(reason));
             }
             if let Some(lfg) = prepared_lfg {
-                let observed = lfg
+                let started =
+                    tracing::event_enabled!(target: "rrd_engine::lfg", tracing::Level::DEBUG)
+                        .then(Instant::now);
+                let observed = match lfg
                     .execute(NetworkPolicy::Allow, reservation.execution_control())
-                    .map_err(|error| ServiceError::EndpointCallFailed {
-                        reason: error.reason,
-                        execution_may_continue: error.execution_may_continue,
-                    })?;
+                {
+                    Ok(observed) => {
+                        tracing::debug!(
+                            target: "rrd_engine::lfg",
+                            operation_sha256 = %request_sha256,
+                            outcome = "transport_completed",
+                            elapsed_ms = observed.elapsed_ms,
+                            analyzer_request_sha256 = %observed.request_sha256,
+                            analyzer_response_sha256 = %observed.response_sha256,
+                            "LFG transport completed"
+                        );
+                        observed
+                    }
+                    Err(error) => {
+                        if let Some(started) = started {
+                            tracing::debug!(
+                                target: "rrd_engine::lfg",
+                                operation_sha256 = %request_sha256,
+                                outcome = "transport_failed",
+                                elapsed_ms = u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX),
+                                execution_may_continue = error.execution_may_continue,
+                                "LFG transport failed"
+                            );
+                        }
+                        return Err(ServiceError::EndpointCallFailed {
+                            reason: error.reason,
+                            execution_may_continue: error.execution_may_continue,
+                        });
+                    }
+                };
                 let value = observed.observation;
                 let advisory = rrd_contract::LfgAdvisory {
                     request_id: request.attempt_id.clone(),
@@ -394,10 +423,26 @@ impl RrdEngine {
                         clock,
                         &context,
                     )
-                    .map_err(|_| ServiceError::EndpointCallFailed {
-                        reason: "LFG completed but its checkpoint could not be committed",
-                        execution_may_continue: true,
+                    .map_err(|_| {
+                        tracing::debug!(
+                            target: "rrd_engine::lfg",
+                            operation_sha256 = %request_sha256,
+                            outcome = "checkpoint_failed",
+                            execution_may_continue = true,
+                            "LFG checkpoint failed"
+                        );
+                        ServiceError::EndpointCallFailed {
+                            reason: "LFG completed but its checkpoint could not be committed",
+                            execution_may_continue: true,
+                        }
                     })?;
+                tracing::debug!(
+                    target: "rrd_engine::lfg",
+                    operation_sha256 = %request_sha256,
+                    outcome = "checkpoint_committed",
+                    invalidated = invalidation.is_some(),
+                    "LFG checkpoint committed"
+                );
                 if let Some(reason) = invalidation {
                     return Err(ServiceError::TaskAttemptInvalidated(reason));
                 }
