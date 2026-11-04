@@ -248,3 +248,34 @@ The combined candidate's real-service command `cargo test --offline --locked
 retains the controlled controller and in-process engine limitations above; it
 is not the installed or independent SWAG path. The candidate has not yet
 incorporated PR #246. It remains a local integration, not accepted CI.
+
+## Joined PR #246 and #249 candidate
+
+An isolated joined candidate merged the exact reconciled prerequisite
+`fede01b5cdbd39ea30aab4a6b3269d92b00cdc10` into #249 head
+`0f22101f017042c00fa9e938a248b91cf91a7903`. Semantic endpoint-proposal
+source merged automatically. The seven authored digest citations, twelve
+replaceable projections and one journal navigation index were reconciled by
+exporting the combined contract and regenerating the declared outputs. The
+combined OpenAPI SHA-256 is
+`b86dc6d7ebbf00be1b73e1d519df176358d41033d2a8e38f662533a520a28155`;
+generated parity verified 78 HTTP operations and seven signal projections.
+Navigation was regenerated from both evidence records. TypeScript typecheck
+and six client tests, Go tests, documentation/navigation checks, formatting,
+and the regenerated 2,377-record execution inventory passed.
+
+The real-service engine test passed again on the joined candidate. A new
+controlled-service `task_closed_during_lfg_records_result_without_controller_dispatch`
+test closes the task before returning the LFG response: the engine checkpoints
+its advisory, invalidates the attempt, makes no controller connection, reads
+the checkpoint back after reopen and rejects a duplicate attempt. This is a
+task-state change, not the still-required project source-edit test. The
+`reasoning_budget::lfg_flow::` group passed four cases with the real-service
+case intentionally ignored; that real case passed separately. The joined
+`cargo test --offline --locked -p rrd-engine --lib -- --test-threads=4`
+completed **347 passed, 5 ignored, 0 failed**. The joined contract
+`endpoint_selection` test passed all nine cases, including the #246 unknown
+field semantics. No standalone SWAG, model generation, provider-backed flight,
+installed-product or CI claim follows. PR #246's exact candidate CI was queued
+at run 41863731525 when checked; it must land through protected checks before
+#249 is ready.

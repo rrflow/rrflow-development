@@ -59,27 +59,37 @@ fn serve_once(listener: TcpListener, respond: impl FnOnce(serde_json::Value) -> 
 
 #[test]
 fn real_engine_composes_bounded_lfg_then_controller_and_reopens_receipt() {
-    run_flow(false, false, None);
+    run_flow(false, false, false, None);
 }
 
 #[test]
 fn changed_configuration_during_lfg_records_result_without_controller_dispatch() {
-    run_flow(true, false, None);
+    run_flow(true, false, false, None);
+}
+
+#[test]
+fn task_closed_during_lfg_records_result_without_controller_dispatch() {
+    run_flow(false, true, false, None);
 }
 
 #[test]
 fn controller_response_failure_keeps_lfg_checkpoint_and_uncertain_capacity() {
-    run_flow(false, true, None);
+    run_flow(false, false, true, None);
 }
 
 #[test]
 #[ignore = "requires an explicitly configured local LFG service with the fixture policy"]
 fn real_lfg_service_flows_through_engine_controller_and_reopen() {
     let url = std::env::var("RRFLOW_TEST_LFG_URL").expect("configure the local LFG service origin");
-    run_flow(false, false, Some(url));
+    run_flow(false, false, false, Some(url));
 }
 
-fn run_flow(change_configuration: bool, reject_controller: bool, real_lfg: Option<String>) {
+fn run_flow(
+    change_configuration: bool,
+    close_task: bool,
+    reject_controller: bool,
+    real_lfg: Option<String>,
+) {
     let (root, mut engine, bootstrap, mut configuration, mut request, _, _) =
         proposal::tuple_fixture();
     let fixture_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -184,6 +194,7 @@ fn run_flow(change_configuration: bool, reject_controller: bool, real_lfg: Optio
             SecurityAction::SessionCreate,
             SecurityAction::EndpointPropose,
             SecurityAction::TaskRead,
+            SecurityAction::TaskWrite,
             SecurityAction::ReasoningWrite,
             SecurityAction::ReasoningRead,
             SecurityAction::EstateAdmin,
@@ -226,6 +237,12 @@ fn run_flow(change_configuration: bool, reject_controller: bool, real_lfg: Optio
         )
         .unwrap();
     let edit_lease = lease.clone();
+    let task_to_close = rrd_contract::CloseTask {
+        scope: request.scope.clone(),
+        task_id: request.task_id.clone(),
+        status: rrd_contract::TaskStatus::Abandoned,
+        outcome: None,
+    };
 
     let analyzer_thread = analyzer.map(|analyzer| {
         std::thread::spawn(move || {
@@ -262,6 +279,18 @@ fn run_flow(change_configuration: bool, reject_controller: bool, real_lfg: Optio
                         )
                         .unwrap();
                 }
+                if close_task {
+                    edit_engine
+                        .close_task(
+                            &edit_lease.session_id,
+                            &edit_lease.token,
+                            &task_to_close,
+                            902,
+                            "task-close",
+                            "task-close",
+                        )
+                        .unwrap();
+                }
                 let mut output = fixture["observation"].clone();
                 for field in ["requestId", "revision", "inputSha256"] {
                     output[field] = input[field].clone();
@@ -280,7 +309,7 @@ fn run_flow(change_configuration: bool, reject_controller: bool, real_lfg: Optio
         response = serde_json::json!({"synthetic": "invalid controller response"});
     }
     let (tx, rx) = mpsc::channel();
-    let (controller_thread, idle_controller) = if change_configuration {
+    let (controller_thread, idle_controller) = if change_configuration || close_task {
         controller.set_nonblocking(true).unwrap();
         (None, Some(controller))
     } else {
@@ -308,7 +337,7 @@ fn run_flow(change_configuration: bool, reject_controller: bool, real_lfg: Optio
     if let Some(analyzer_thread) = analyzer_thread {
         analyzer_thread.join().unwrap();
     }
-    let proposal = if change_configuration {
+    let proposal = if change_configuration || close_task {
         assert!(matches!(
             proposal,
             Err(ServiceError::TaskAttemptInvalidated(
@@ -358,7 +387,7 @@ fn run_flow(change_configuration: bool, reject_controller: bool, real_lfg: Optio
         .unwrap();
     assert!(before.attempt.as_ref().unwrap().lfg.is_some());
     assert_eq!(before.attempt.as_ref().unwrap().endpoint_proposal, proposal);
-    if change_configuration {
+    if change_configuration || close_task {
         assert_eq!(
             before.attempt.as_ref().unwrap().status,
             rrd_contract::TaskAttemptStatus::Invalidated

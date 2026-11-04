@@ -1,6 +1,6 @@
 # LFG analysis and SWAG controller
 
-**Status:** active target contract; configuration, choice validation and optional chat transport exist; engine-admitted LFG/SWAG execution is unimplemented
+**Status:** active target contract; an experimental task-bound endpoint proposal operation exists; LFG observation admission and the full LFG/SWAG execution path remain unimplemented
 **Coordinate:** `rrflow://rrflow-instance/data/reference/inference/lfg-swag`
 **Owner:** configurable CPU prompt analysis, System One selection, model dispatch, and inference-cache identity
 
@@ -56,20 +56,17 @@ router execution port to the SWAG path.
 
 ## Endpoint-selection capability decision
 
-This is G-01b contract preparation, not a registered public operation or an
-implemented adapter. The current public endpoint operations read, preview and
-apply configuration. They do not invoke a selector or its selected provider.
-Embedding execution and `RouteStepDecision` cannot be overloaded to fill that
-gap. Keep the three recipe/branch/context decisions unchanged.
+PR206 implemented the experimental engine-owned `TaskEndpointPropose` operation
+and PR222 added its native client binding. The operation proposes an endpoint;
+it does not establish LFG observation admission, selected-worker dispatch, or
+model quality. Embedding execution and `RouteStepDecision` remain separate;
+the three recipe/branch/context decisions are unchanged.
 
-The next public capability is **propose endpoint selection**, owned by
-`RrdEngine` and exposed through the executable operation catalogue when its
-handler and authorization are implemented together. Its proposed semantic
-types are `EndpointSelectionRequest`, `EndpointSelectionPacket` and
-`EndpointSelectionProposal`. Their Rust validators are implemented; the proposal
-schema is now exposed by existing task-attempt readback. No public operation
-creates a controller proposal yet. A separate admitted external activity executes
-a selected provider.
+The **propose endpoint selection** capability is owned by `RrdEngine` and
+exposed through the executable operation catalogue. Its semantic types are
+`EndpointSelectionRequest`, `EndpointSelectionPacket` and
+`EndpointSelectionProposal`; task-attempt readback exposes the proposal.
+A separate admitted external activity is needed to execute a selected provider.
 Generating the proposal itself may invoke the configured controller, so it
 requires model-call authorization, egress admission and budget reservation;
 it must never masquerade as a free configuration read.
@@ -88,9 +85,9 @@ Unknown effort support cannot silently become permission to omit effort.
 unknown fields, foreign bindings, changed configuration, unsupported effort and
 contradictory no-candidate abstention. Supplied capability evidence digests are
 identifiers, not verified attestations. These pure types perform no network call
-and grant no authority. Engine-derived eligibility, task/source binding,
-authenticated admission, descriptor verification and dispatch remain missing.
-The existing three reasoning-tree decisions and public catalogue are unchanged.
+and grant no authority. The experimental engine operation supplies task binding
+and authenticated admission; it does not establish descriptor verification or
+selected-worker dispatch.
 
 The offline `endpoint_selection` example provides `schema`,
 `configuration-sha256 CONFIGURATION` and
@@ -104,11 +101,18 @@ human review, provider-quality evidence or completion of G-01b.
 ### Task-bound proposal semantics in progress
 
 `EndpointSelectionRequest` names an existing task and stable attempt, expected
-task/configuration digests and a bounded task-read allowance. It accepts no URL,
-credential, prompt or caller-authored candidate catalogue. The task-text packet
+task/configuration digests and a bounded task-read allowance. It uses no
+caller-supplied URL, credential, prompt or candidate catalogue. The task-text packet
 omits the task creation replay key, binds an open task version/read coordinate
 and requires the exact configured selector and allowance. Task projection checks
 do not authorize repository context or establish source-edit freshness.
+
+Unknown request fields are accepted and ignored for forward compatibility; they
+do not enter the typed request, its operation identity, or controller packet.
+Adding an LFG observation as an unknown field does not mean it was read,
+validated or used. That needs a separately implemented, authorized engine path.
+The [request extension journal](../../evidence/change-journals/gate-g/lfg-endpoint-request-extensions.md)
+records the compatibility oracle and its limits.
 
 `EndpointSelectionProposal` binds request, task, attempt, packet, configuration,
 allowance, service alias and observed request/response/content identities. Its
@@ -120,9 +124,9 @@ tolerating unrelated provider envelope metadata.
 
 These types alone are consistency checks, not an engine dispatcher.
 Constructing a valid tuple does not prove that a model produced it for that packet.
-Authenticated packet construction, explicit experimental policy admission,
-credential setup and installed execution still require implementation in the
-same [draft package](https://github.com/rrflow/rrflow-development/pull/206).
+Authenticated packet construction, experimental policy admission and installed
+controller proposal execution were implemented in
+[PR206](https://github.com/rrflow/rrflow-development/pull/206).
 The [semantics-stage journal](../../evidence/change-journals/gate-g/controller-task-proposal-semantics.md)
 records actual-task projection and retained-provider validation checks. No new
 provider execution or model-quality claim follows from those checks.
@@ -133,7 +137,8 @@ The existing task-attempt ledger can now retain a bounded typed proposal or
 embedding output, with an exclusive kind and exact outcome digest. Its public
 readback validates scope/task/attempt identity. Reopening the estate preserves
 the output and original consumed budget; replay cannot reserve the same attempt
-again. This is internal completion support, not a public proposal dispatcher.
+again. The experimental public proposal operation uses this completion support;
+it does not itself execute the selected worker.
 
 Completion rechecks its supplied authority at the current runtime read stamp.
 Engine-owned control guards compare exact authority bytes atomically with the

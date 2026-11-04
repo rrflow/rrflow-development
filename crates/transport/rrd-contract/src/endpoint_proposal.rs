@@ -16,9 +16,11 @@ pub enum EndpointSelectionPurpose {
     ExperimentalProposal,
 }
 
-/// No endpoint, credential, prompt or client-authored candidate facts enter this request.
+/// Unknown fields are accepted and ignored for forward compatibility. No
+/// endpoint, credential, prompt or client-authored candidate facts are used by
+/// this request; an extension needs explicit engine admission to matter.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
-#[serde(deny_unknown_fields)]
+#[schemars(extend("additionalProperties" = true))]
 pub struct EndpointSelectionRequest {
     pub scope: String,
     pub task_id: CanonicalId,

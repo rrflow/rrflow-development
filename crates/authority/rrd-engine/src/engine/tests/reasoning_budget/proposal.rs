@@ -265,8 +265,12 @@ fn proposal_tuple_rejects_cross_attempt_config_and_usage_substitution() {
     changed.http_status = Some(503);
     assert!(changed.validate().is_err());
     let mut unknown = serde_json::to_value(&request).unwrap();
-    unknown["endpoint"] = serde_json::Value::String(String::new());
-    assert!(serde_json::from_value::<EndpointSelectionRequest>(unknown).is_err());
+    unknown["endpoint"] = serde_json::Value::String("https://not-authorized.example".into());
+    let decoded = serde_json::from_value::<EndpointSelectionRequest>(unknown).unwrap();
+    assert_eq!(decoded, request);
+    proposal
+        .validate_for(&decoded, &packet, &configuration)
+        .unwrap();
     let mut exhausted = request;
     exhausted.max_storage_keys = 0;
     assert!(exhausted.validate().is_err());
