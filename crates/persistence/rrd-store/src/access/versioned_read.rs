@@ -606,10 +606,11 @@ fn authenticated_steps<R: AccessRead + ?Sized>(
             )
         });
         reader.preserve_budget_error(authentication)?;
-        for change in selected.values() {
-            insert_version(&mut changes, change.clone())?;
+        let selected = selected.into_values().collect::<Vec<_>>();
+        let next = expand(&selected);
+        for change in selected {
+            insert_version(&mut changes, change)?;
         }
-        let next = expand(&selected.into_values().collect::<Vec<_>>());
         step = ranges.admit(&next, &read.scope)?;
     }
     Ok(changes)
@@ -722,19 +723,37 @@ fn scan_source(
     scan_in_batches(reader, start, &end, visit)
 }
 
-/// Rows one versioned scan asks storage for at a time.
+/// Rows one versioned scan asks storage for at a time. `projected_output_bytes`
+/// bounds what a scan holds, so this is what lets a read outgrow that limit.
+/// A smaller batch costs more seeks, and a larger one refuses rows it could read.
 const VERSIONED_SCAN_BATCH_ROWS: usize = 1024;
 
+/// Visits `[start, end)` in key order, holding one batch of stored rows at a
+/// time. Every batch reads the same snapshot, because the reader does.
 fn scan_in_batches(
     reader: &(impl AccessRead + ?Sized),
-    start: Vec<u8>,
+    mut start: Vec<u8>,
     end: &[u8],
     visit: &mut dyn FnMut(Vec<u8>, Vec<u8>) -> Result<()>,
 ) -> Result<()> {
-    for (key, value) in reader.scan_range(&start, end, usize::MAX)? {
-        visit(key, value)?;
+    loop {
+        let rows = reader.scan_range(&start, end, VERSIONED_SCAN_BATCH_ROWS)?;
+        let complete = rows.len() < VERSIONED_SCAN_BATCH_ROWS;
+        let Some((last, _)) = rows.last() else {
+            return Ok(());
+        };
+        // The smallest key after the last one, which is the next batch's start.
+        let mut next = Vec::with_capacity(last.len() + 1);
+        next.extend_from_slice(last);
+        next.push(0);
+        for (key, value) in rows {
+            visit(key, value)?;
+        }
+        if complete || next.as_slice() >= end {
+            return Ok(());
+        }
+        start = next;
     }
-    Ok(())
 }
 
 fn source_interval(

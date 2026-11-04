@@ -292,38 +292,79 @@ fn a_batch_that_cannot_fit_is_still_refused() {
     );
 }
 
-#[test]
-fn a_changed_row_in_a_later_batch_is_refused() {
-    let engine = RrflowMxStore::new();
-    corpus(&engine);
-    read_vectors(&engine, BUDGET).unwrap();
-    let (key, stored) = stored_vector_rows(&engine)[BATCH + 1].clone();
+/// The row a later batch reads, in a store where it can be rewritten.
+fn row_in_a_later_batch(engine: &RrflowMxStore) -> (Vec<u8>, RuntimeChange) {
+    corpus(engine);
+    read_vectors(engine, BUDGET).unwrap();
+    let (key, stored) = stored_vector_rows(engine)[BATCH + 1].clone();
+    // Writing the same bytes back is not what a read objects to.
+    rewrite(engine, &key, stored.clone());
+    read_vectors(engine, BUDGET).unwrap();
+    (key, serde_json::from_slice(&stored).unwrap())
+}
 
-    let rewrite = |value: Vec<u8>| {
-        let mut transaction = engine.begin_transaction().unwrap();
-        transaction.put(key.clone(), value).unwrap();
-        transaction
-            .commit(crate::Durability::Authoritative)
-            .unwrap();
-    };
-    // Writing the same bytes back is not what the read objects to.
-    rewrite(stored.clone());
-    read_vectors(&engine, BUDGET).unwrap();
+fn rewrite(engine: &RrflowMxStore, key: &[u8], value: Vec<u8>) {
+    let mut transaction = engine.begin_transaction().unwrap();
+    transaction.put(key.to_vec(), value).unwrap();
+    transaction
+        .commit(crate::Durability::Authoritative)
+        .unwrap();
+}
 
-    let mut forged: RuntimeChange = serde_json::from_slice(&stored).unwrap();
-    let RuntimeMutation::Vector { vector } = &mut forged.mutation else {
+fn with_changed_vector(mutation: &RuntimeMutation) -> RuntimeMutation {
+    let mut changed = mutation.clone();
+    let RuntimeMutation::Vector { vector } = &mut changed else {
         panic!("the row at this position is a vector");
     };
     let VectorValue::Dense { values } = &mut vector.value else {
         panic!("the corpus is dense");
     };
     values[0] += 1.0;
-    rewrite(serde_json::to_vec(&forged).unwrap());
+    changed
+}
+
+#[test]
+fn a_changed_row_in_a_later_batch_fails_its_digest() {
+    let engine = RrflowMxStore::new();
+    let (key, mut forged) = row_in_a_later_batch(&engine);
+    forged.mutation = with_changed_vector(&forged.mutation);
+    rewrite(&engine, &key, serde_json::to_vec(&forged).unwrap());
     let refused = read_vectors(&engine, BUDGET).map(|_| ()).unwrap_err();
     assert!(
-        refused.to_string().contains("proof")
-            || refused.to_string().contains("accumulator")
-            || refused.to_string().contains("digest"),
+        refused.to_string().contains("failed digest verification"),
+        "{refused:?}"
+    );
+}
+
+/// Only the proof can catch this one, because the forged row's own digest is
+/// right. It is what a batched read must not let through.
+#[test]
+fn a_changed_row_with_a_recomputed_digest_in_a_later_batch_fails_its_proof() {
+    let engine = RrflowMxStore::new();
+    let (key, stored) = row_in_a_later_batch(&engine);
+    let commit = RuntimeCommit {
+        scope: stored.scope.clone(),
+        at: stored.at,
+        actor: stored.actor.clone(),
+        expected_cursor: 0,
+        mutations: Vec::new(),
+    };
+    let forged = RuntimeChange::committed(
+        stored.cursor,
+        &commit,
+        &stored.commit_id,
+        stored.commit_ordinal,
+        with_changed_vector(&stored.mutation),
+        stored.previous_digest.clone(),
+    );
+    assert!(forged.verify_digest());
+    assert_ne!(forged.digest, stored.digest);
+    rewrite(&engine, &key, serde_json::to_vec(&forged).unwrap());
+    let refused = read_vectors(&engine, BUDGET).map(|_| ()).unwrap_err();
+    assert!(
+        refused
+            .to_string()
+            .contains("inclusion proof does not match its accumulator root"),
         "{refused:?}"
     );
 }
