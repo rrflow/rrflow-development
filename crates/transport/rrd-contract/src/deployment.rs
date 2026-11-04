@@ -290,7 +290,7 @@ impl Default for StorageLimits {
             mutable_versions: 1_048_576,
             projected_output_bytes: 128 * 1024 * 1024,
             source_page_bytes: 256 * 1024 * 1024,
-            page_cache_bytes: 4 * 1024 * 1024,
+            page_cache_bytes: 64 * 1024 * 1024,
             segment_open_files: None,
             wal_flush_target_bytes: 64 * 1024 * 1024,
             memtable_flush_target_versions: 524_288,
