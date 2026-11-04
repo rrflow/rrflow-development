@@ -625,6 +625,8 @@ impl HnswIndex {
     }
 
     fn is_visible(&self, request: &SearchRequest, id: usize) -> bool {
+        #[cfg(test)]
+        IDENTITIES_VISITED.with(|visited| visited.set(visited.get() + 1));
         let candidate = &self.nodes[id].candidate;
         let latest = self
             .versions
@@ -649,6 +651,12 @@ impl HnswIndex {
             .as_ref()
             .is_none_or(|filter| filter.matches(candidate.filter_properties()))
     }
+}
+
+#[cfg(test)]
+thread_local! {
+    /// How many identities were checked for visibility, for a test of how much one estimate reads.
+    static IDENTITIES_VISITED: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -1679,6 +1687,109 @@ mod tests {
         };
         let error = error.to_string();
         assert!(error.contains("not reachable"), "{error}");
+    }
+
+    /// A graph over `points` two-dimensional vectors, where `selected` says who carries the flag.
+    fn flagged_index(points: usize, selected: impl Fn(usize) -> bool) -> (HnswIndex, ScopeId) {
+        let scope = ScopeId::new("instance:hnsw-cost").unwrap();
+        let values = (0..points).map(|index| {
+            let angle = index as f32 * std::f32::consts::TAU / points as f32;
+            let mut value = candidate(
+                &scope,
+                index as u64 + 1,
+                index,
+                vec![angle.cos(), angle.sin()],
+            );
+            value
+                .vector
+                .properties
+                .insert("selected".into(), RuntimeValue::Bool(selected(index)));
+            value
+        });
+        let mut build = config(&scope);
+        build.filter_properties.insert("selected".into());
+        let index = HnswIndex::build(build, 1, points as u64, values).unwrap();
+        (index, scope)
+    }
+
+    /// A read past the generation's own cursor, as every read is once it has been published.
+    fn cost_request(scope: &ScopeId, cursor: u64, filtered: bool) -> SearchRequest {
+        SearchRequest {
+            scope: scope.clone(),
+            read: ReadStamp::new(scope.clone(), None, 0, cursor, Some("11".repeat(32))).unwrap(),
+            valid_at: 2,
+            field: "body".into(),
+            query: VectorQuery::Dense {
+                values: vec![1.0, 0.0],
+            },
+            metric: ScoreMetric::Cosine,
+            embedding_model: None,
+            top_k: 1,
+            mode: SearchMode::RequireApproximate { exact_rerank: 10 },
+            filter: filtered.then(|| FilterExpression::Condition {
+                condition: FilterCondition {
+                    property: "selected".into(),
+                    operator: FilterOperator::Equals {
+                        value: RuntimeValue::Bool(true),
+                    },
+                },
+            }),
+        }
+    }
+
+    #[test]
+    fn an_estimate_does_not_visit_the_whole_corpus() {
+        let (index, scope) = flagged_index(4_000, |id| id % 2 == 0);
+        for filtered in [false, true] {
+            let request = cost_request(&scope, 4_001, filtered);
+            IDENTITIES_VISITED.with(|visited| visited.set(0));
+            index.estimated_search_cost(&request, 32).unwrap();
+            let visited = IDENTITIES_VISITED.with(std::cell::Cell::get);
+            assert!(visited <= 512, "one estimate visited {visited} identities");
+        }
+    }
+
+    #[test]
+    fn a_common_filter_estimates_close_to_the_exact_count() {
+        // One in ten carry the flag, so a search needs about ten times the candidates.
+        let (index, scope) = flagged_index(4_000, |id| (id * 7) % 10 == 0);
+        let cost = index
+            .estimated_search_cost(&cost_request(&scope, 4_001, true), 32)
+            .unwrap();
+        let exact = 32 * 10 * HNSW_NAVIGATION_COST_MULTIPLIER as u64;
+        assert!(
+            cost >= exact / 2 && cost <= exact * 2,
+            "estimated {cost} against {exact}"
+        );
+    }
+
+    #[test]
+    fn no_filter_costs_about_what_ef_asks_for() {
+        let (index, scope) = flagged_index(4_000, |_| true);
+        let cost = index
+            .estimated_search_cost(&cost_request(&scope, 4_001, false), 32)
+            .unwrap();
+        assert_eq!(cost, 32 * HNSW_NAVIGATION_COST_MULTIPLIER as u64);
+    }
+
+    #[test]
+    fn a_rare_filter_the_sample_misses_is_still_seen() {
+        // Exactly one identity carries the flag, at a position an even stride skips.
+        let (index, scope) = flagged_index(4_000, |id| id == 1_233);
+        let cost = index
+            .estimated_search_cost(&cost_request(&scope, 4_001, true), 10)
+            .unwrap();
+        // The same answer an exact count gives: one match, so the whole graph is worth walking.
+        assert_eq!(cost, 4_000 * HNSW_NAVIGATION_COST_MULTIPLIER as u64);
+    }
+
+    #[test]
+    fn a_filter_nothing_matches_gives_the_cost_of_the_whole_graph() {
+        let (index, scope) = flagged_index(1_000, |_| false);
+        let cost = index
+            .estimated_search_cost(&cost_request(&scope, 1_001, true), 10)
+            .unwrap();
+        assert_eq!(cost, 1_000 * HNSW_NAVIGATION_COST_MULTIPLIER as u64);
     }
 
     #[test]
