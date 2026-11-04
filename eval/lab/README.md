@@ -256,6 +256,41 @@ key file that others can read is refused.
 `rrflow-lab definitions` also has `keygen`, `build`, `patch`, `verify` and `install` for
 scripting and recovery, such as choosing a sequence by hand after losing a home folder.
 
+## Published results
+
+`rrflow-lab compare --report runs/x/report.json` shows a run's seek time and answer
+quality beside what others have published, and `run_all.sh` prints it at the end. Without
+`--report` it lists what is published. Add `--details` for each source's address, its notes,
+and what differs.
+
+A published number is a claim someone else made, and much of what is easy to find misleads.
+So [`references/`](references) holds one file per source, and it travels in the signed pack:
+
+- **Every row names its source.** Each has an address, the exact words or data row it came
+  from, who measured it and what kind of source that is: independent, peer reviewed, a
+  vendor's own, a competitor's, or the authors' own.
+- **Nothing is ranked unless every condition matches.** A row sits beside a test only if its
+  dataset, top-k, recall and hardware class all match, and whatever a source leaves unstated
+  counts as a difference. Everything else is shown for context, with what differs. The output
+  has no winner and no ranking, and it never sorts by speed.
+- **Speed counts only at matched quality.** It comes from the report's speed at the recall
+  target, so a system that missed the target has none, and says why.
+- **Answer quality is not invented.** The lab has not measured it, because that takes a reader
+  and a judge model, and none has been approved. Published scores list their reader and judge
+  where known, and a contested one is marked. No ranking is accepted across these benchmarks.
+- **A stale source says so.** Each records the day it was last read at its origin, and one not
+  reread within 60 days is flagged.
+
+No test here uses a dataset that has published results, so today every row is context only.
+Importing one, such as `glove-100-angular`, and naming it in a test's `reference_dataset`
+would leave fewer differences, though that row ran on one core, so its hardware would still
+differ. Published rows will rarely match on everything. The strongest comparison is the one the
+lab makes itself: every system on one host, on the same data, under the same rules.
+
+[`check_references.py`](check_references.py) downloads each source and reports any quoted number
+no longer found there. Finding a number shows it is there, and not that a row attributes it
+correctly, so read a source before changing its row.
+
 ## Reading a result
 
 The first measured results and their limits are in the

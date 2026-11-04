@@ -28,6 +28,8 @@ done < "$definitions/run-list.txt"
 "$RRFLOW_LAB_BIN" combine --manifest "$RRFLOW_LAB_MANIFEST" --in "$run_directory" \
   --out "$run_directory/report.json"
 echo "Report: $run_directory/report.json"
+echo
+"$RRFLOW_LAB_BIN" compare --report "$run_directory/report.json" | tee "$run_directory/comparison.txt"
 if [ "${#failed[@]}" -gt 0 ]; then
   echo "These did not finish, and the report says why: ${failed[*]}" >&2
   exit 3

@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "source": {
+    "id": "vectorbench",
+    "title": "VectorBench",
+    "url": "https://github.com/serenedb/vectorbench",
+    "checked_on": "2026-11-03"
+  },
+  "seek": [
+    {
+      "system": "SereneDB 26.11.1",
+      "queries_per_second": 365.43199921102564,
+      "recall": 0.9501901140684412,
+      "dataset": "cohere-wikipedia-2023-11-247m-1024",
+      "dimensions": 1024,
+      "k": 10,
+      "hardware": "AWS c7i.24xlarge, 96 vCPU and 185 GB RAM, vectors on EBS, 32 clients",
+      "hardware_class": "multi_core_server",
+      "origin": {
+        "url": "https://raw.githubusercontent.com/serenedb/vectorbench/main/serenedb-hnsw-quant/results/serenedb-hnsw-quant_wslice_wiki-v3-1024-247m.json",
+        "quote": "group none/10, clients 32: recall 0.9501901140684412 qps 365.43199921102564",
+        "measured_by": "SereneDB (serenedb/vectorbench)",
+        "provenance": "vendor_own",
+        "published": "2026-11-03"
+      },
+      "limits": [
+        "SereneDB publishes this benchmark and sells one of the two products. It replaced its own results of a day earlier, because that run had timed the same queries at every point, so later points read vectors earlier ones had cached.",
+        "This is the measured point nearest the target, and not the interpolated figure its results page shows."
+      ]
+    },
+    {
+      "system": "Qdrant 1.20.0",
+      "queries_per_second": 184.9671864695047,
+      "recall": 0.9505703422053232,
+      "dataset": "cohere-wikipedia-2023-11-247m-1024",
+      "dimensions": 1024,
+      "k": 10,
+      "hardware": "AWS c7i.24xlarge, 96 vCPU and 185 GB RAM, vectors on EBS, 32 clients",
+      "hardware_class": "multi_core_server",
+      "origin": {
+        "url": "https://raw.githubusercontent.com/serenedb/vectorbench/main/qdrant-hnsw-quant/results/qdrant-hnsw-quant_wslice_wiki-v3-1024-247m.json",
+        "quote": "group none/10, clients 32: recall 0.9505703422053232 qps 184.9671864695047",
+        "measured_by": "SereneDB (serenedb/vectorbench)",
+        "provenance": "competitor",
+        "published": "2026-11-03"
+      },
+      "limits": [
+        "SereneDB publishes this benchmark and sells one of the two products. It replaced its own results of a day earlier, because that run had timed the same queries at every point, so later points read vectors earlier ones had cached.",
+        "This is the measured point nearest the target, and not the interpolated figure its results page shows."
+      ]
+    }
+  ]
+}

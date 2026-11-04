@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "source": {
+    "id": "beam",
+    "title": "BEAM, as Mem0 reports it",
+    "url": "https://arxiv.org/abs/2510.27246",
+    "checked_on": "2026-11-03"
+  },
+  "answers": [
+    {
+      "system": "Mem0 Platform v3, 1M",
+      "score": 64.1,
+      "score_name": "average nugget score x 100",
+      "benchmark": "BEAM",
+      "origin": {
+        "url": "https://raw.githubusercontent.com/mem0ai/memory-benchmarks/main/results/platform/beam_1m_results.json",
+        "quote": "\"top_200\": {\"overall\": {\"total\": 700, \"correct\": 491, \"errors\": 0, \"accuracy\": 70.14285714285714, \"avg_score\": 0.6408655714285715",
+        "measured_by": "Mem0",
+        "provenance": "vendor_own",
+        "published": "2026-04-09"
+      },
+      "reader_model": "gpt-5",
+      "judge_model": "gpt-5",
+      "limits": [
+        "Mem0 measured its own product, and no independent reproduction was found. Its 70.1% figure is a pass rate, which is a different measure."
+      ]
+    },
+    {
+      "system": "Mem0 Platform v3, 10M",
+      "score": 48.6,
+      "score_name": "average nugget score x 100",
+      "benchmark": "BEAM",
+      "origin": {
+        "url": "https://github.com/mem0ai/memory-benchmarks/blob/main/README.md",
+        "quote": "| **BEAM 10M** (200 questions) | **50.5%** (101/200) | 0.486 | **45.5%** (91/200) | 0.413 |",
+        "measured_by": "Mem0",
+        "provenance": "vendor_own",
+        "published": "2026-04-09"
+      },
+      "reader_model": "gpt-5",
+      "judge_model": "gpt-5",
+      "limits": [
+        "Mem0 measured its own product, and no independent reproduction was found."
+      ]
+    }
+  ]
+}

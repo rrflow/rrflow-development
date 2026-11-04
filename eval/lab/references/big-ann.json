@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "source": {
+    "id": "big-ann",
+    "title": "Big-ANN Benchmarks, NeurIPS 2023",
+    "url": "https://big-ann-benchmarks.com/neurips23.html",
+    "checked_on": "2026-11-03"
+  },
+  "seek": [
+    {
+      "system": "ParlayANN IVF2",
+      "queries_per_second": 37670.703774,
+      "recall": 0.9,
+      "dataset": "yfcc-10m",
+      "hardware": "Azure Standard D8lds v5, 8 vCPU and 16 GiB",
+      "hardware_class": "multi_core_server",
+      "origin": {
+        "url": "https://arxiv.org/pdf/2409.17424",
+        "quote": "Algorithm parlay ... QPS (pub) 37902 ... QPS (priv) 37671; Table 2: Highest QPS achieved by any algorithm in the filtered track",
+        "measured_by": "Big-ANN NeurIPS'23 organisers",
+        "provenance": "independent",
+        "published": "2024-09-25"
+      },
+      "dimensions": 192,
+      "k": 10,
+      "filtered": true,
+      "limits": [
+        "The competition's result on hidden queries, in late 2023. Its recall is stated as at least 0.9."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "source": {
+    "id": "vibe",
+    "title": "VIBE vector index benchmark",
+    "url": "https://vector-index-bench.github.io/",
+    "checked_on": "2026-11-03"
+  },
+  "seek": [
+    {
+      "system": "SymphonyQG",
+      "queries_per_second": 4199.92675,
+      "recall": 0.97091,
+      "dataset": "arxiv-nomic-768-normalized",
+      "hardware": "Intel Xeon Gold 6230, one core",
+      "hardware_class": "single_core",
+      "origin": {
+        "url": "https://raw.githubusercontent.com/vector-index-bench/vector-index-bench.github.io/main/results/summary.parquet",
+        "quote": "SymphonyQG(degree_bound=32, EF=400, num_iter=3, beam_size=300)|300  qps 4199.926750  recall 0.97091  k 100  arxiv-nomic-768-normalized",
+        "measured_by": "VIBE maintainers (Jaasaari, Ceccarello, Aumuller); paper in DMLR 2026",
+        "provenance": "independent",
+        "published": "2026-07-31"
+      },
+      "dimensions": 768,
+      "k": 100,
+      "limits": [
+        "An index library and not a database, so it pays for no storage, network or transactions."
+      ]
+    },
+    {
+      "system": "cuvs-cagra",
+      "queries_per_second": 105035.78307,
+      "recall": 0.95189,
+      "dataset": "arxiv-nomic-768-normalized",
+      "hardware": "NVIDIA V100 GPU",
+      "hardware_class": "gpu",
+      "origin": {
+        "url": "https://raw.githubusercontent.com/vector-index-bench/vector-index-bench.github.io/main/results/summary.parquet",
+        "quote": "cuVSCAGRA(graph_deg=16, i_graph_deg=16, itopk=128, search_width=8)|128_8  qps 105035.783070  recall 0.95189  k 100  arxiv-nomic-768-normalized",
+        "measured_by": "VIBE maintainers (Jaasaari, Ceccarello, Aumuller); paper in DMLR 2026",
+        "provenance": "independent",
+        "published": "2026-07-31"
+      },
+      "dimensions": 768,
+      "k": 100,
+      "limits": [
+        "An index library running on a GPU, and not a database."
+      ]
+    }
+  ]
+}
