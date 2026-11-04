@@ -253,6 +253,8 @@ fn seed_security(
         SecurityAction::QueryExecute,
         SecurityAction::VectorCollectionEnsure,
         SecurityAction::VectorCollectionList,
+        SecurityAction::VectorPayloadIndexEnsure,
+        SecurityAction::VectorPayloadIndexDelete,
         SecurityAction::VectorSearch,
         SecurityAction::ChangefeedRead,
         SecurityAction::ChangefeedFollow,

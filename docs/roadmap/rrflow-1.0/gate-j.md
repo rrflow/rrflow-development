@@ -226,6 +226,17 @@ supports revisiting them. Threshold regressions, changed output quality,
 unbounded resources or incomplete failure accounting block an optimization
 claim even when headline throughput rises.
 
+For the owner's native LSM comparison, pin the current RRFlow revision and an
+explicit Fjall version and run the same independently checked hot-write,
+point/range-read, mixed-load, flush/compaction and recovery workloads on the
+same hardware. Match acknowledged durability, batching, data, concurrency and
+cache conditions; retain p50/p95/p99 tails, throughput, storage amplification,
+memory, failures and restart results for both. The retained historical wins and
+failures in the [comparison record](../../history/rrd-lsm-promotion-benchmark.md)
+describe their original runs and are not evidence for current source or a
+universal superiority claim. The Parquet cold path additionally reports
+compaction cost, read amplification and hot/cold correctness at the same stamp.
+
 ## Release condition
 
 ### rrflowDB compatibility and independent-release evidence
@@ -249,6 +260,10 @@ separate release authority or version train:
   retained reproducible source inputs, provenance, signatures, independent
   logical export/native recovery documentation, and a verified rebuild without
   a vendor account. A Cargo licence expression alone does not qualify packaging.
+- H-12 requires a pinned SQLite reference and an explicit tested profile for
+  each promised SQL, application API/ABI and file surface; one surface cannot
+  be inferred from another. F-06 requires the cold Parquet publication,
+  recovery and hot/cold query evidence in addition to existing export tests.
 
 RRFlow 1.0 is releasable only when every Gate J item and every prerequisite is
 checked. Until then the repository may describe implemented and measured

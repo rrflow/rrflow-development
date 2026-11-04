@@ -4,6 +4,31 @@
 **Coordinate:** `rrflow://rrflow-instance/data/roadmap/rrflow-1.0`
 **Owner:** release planning; linked from the repository root `README.md`
 
+## Product delivery path
+
+Build one configurable engine that opens a real project, constructs and
+maintains source-grounded knowledge, answers a prompt, and makes its actions
+inspectable. The milestones below name engineering outcomes and evidence; they
+are not a fixed number of runtime reasoning steps.
+
+| Requested outcome | Owning work | Required demonstration |
+|---|---|---|
+| Select an existing project with minimal required input | D-01 through D-04, H-06 | Preview actual effects and preserve inherited project access; create/discover the project map, index permitted data in bounded background work and report exclusions, progress and restart. |
+| One AI-oriented relational and document database | C, E, F, H-08, H-12 | Tables, document records identified by table/kind and ID, relationships and indexes share one transaction/read authority. rrflowQL provides relational SQL-like operations; PostgreSQL and SQLite compatibility are separately defined and tested. |
+| Persistent hot state and cold analytics | C-07, F-01/F-02/F-04/F-06 | A durable native WAL and bounded memtable recover acknowledged writes; configurable background Parquet publication and hot/cold reads survive interruption without mixing snapshots or losing data. Prompt-local state has an explicit shorter lifetime. |
+| Dynamic reasoning, relationships and handoff | D-02/D-05, G, H-01/H-09, I-03 | Each request selects available configured capabilities and effort; the engine exposes selected/skipped reasons, source identity and effect-bound plan/receipts. Relevant edits cause a successor plan, while unrelated work continues. Generated schemas describe mediated effects, not private reasoning. |
+| Knowledge paths and AI integrations | D-06, G, H-04/H-06, I-04 | Explicitly admitted local folders and supported services provide provenance and freshness; LFG/SWAG and provider adapters are configured and authorized. UI and SDKs expose the same engine state; no integration is silently activated. |
+| Tune and compete on measured results | C-07, H-05, J-04 | Retain current-revision correctness, latency, throughput, resource and failure data on named hardware. Compare like-for-like with pinned Fjall and relevant database/retrieval/agent baselines; do not treat old wins, labels or export as current proof. |
+
+The immediate developer-build proof remains the joined real-project cycle in
+the dependency spine. Parquet, SQL compatibility, native qualification and
+full comparative evidence stay open until their own named cases pass; their
+research and safe implementation can progress without inventing runtime phases.
+The current bundled attunement defaults still list the same eleven phases;
+automatic project- or prompt-tailored selection has not been established.
+Replace that fixed default and its linear assumptions through the D-02/D-05
+owners while preserving existing committed effects and safe replan behavior.
+
 ## Current alpha objective and remediation
 
 [Open the current alpha objective and remediation chapter](rrflow-1.0/current-alpha-objective-and-remediation.md)
@@ -24,6 +49,13 @@ does not block implementing missing ingestion and retrieval. Full release
 requirements and every unchecked gate remain open. Preserve the existing API
 and converge the one pre-release implementation directly.
 
+First deliver a usable developer build and its real-project journey. Then use
+repeatable benchmarks to tune that build while the existing qualification work
+continues. Boundary-derived reasoning shards and associated custom KV-cache
+strategies are a later, evidence-gated direction for large projects; they do not
+block the first usable build or change the alpha exit. The [scale rationale](../architecture/engine-scale-and-contracts.md#boundary-based-reasoning-after-the-developer-build)
+records their intended scope and evaluation.
+
 ### Build-plan admission
 
 The [package readiness rules](rrflow-1.0/executable-dependency-spine.md#package-readiness-and-evidence)
@@ -31,8 +63,9 @@ apply before implementation. The [D-02 through D-05 build packages](rrflow-1.0/g
 identify the next concrete boundaries. A requirement, type or planned file is
 not an available capability. Known missing admission/configuration decisions
 are recorded in [POAM-006](../poam/rrflow-1.0-alpha/poam-006.md#build-plan-admission-gaps).
-The owner has paused runtime implementation for this planning audit; unresolved
-required decisions cannot be treated as permission or silently guessed.
+The owner has since directed runtime implementation to resume. Resolve each
+actual effect-boundary decision against the existing authorization and current
+owner instructions; an unrelated open question does not block safe work.
 
 ### Gate A — freeze authority, names, and boundaries
 
@@ -159,6 +192,7 @@ define the native rrflowDB SQL/client and data-portability work.
 | [ ] | F-03 | [Gate F](rrflow-1.0/gate-f.md) |
 | [ ] | F-04 | [Gate F](rrflow-1.0/gate-f.md) |
 | [ ] | F-05 | [Gate F](rrflow-1.0/gate-f.md) |
+| [ ] | F-06 | [Gate F](rrflow-1.0/gate-f.md) |
 | [ ] | G-01 | [Gate G](rrflow-1.0/gate-g.md) |
 | [ ] | G-02 | [Gate G](rrflow-1.0/gate-g.md) |
 | [ ] | G-03 | [Gate G](rrflow-1.0/gate-g.md) |
@@ -175,6 +209,8 @@ define the native rrflowDB SQL/client and data-portability work.
 | [ ] | H-08 | [Gate H](rrflow-1.0/gate-h.md#h-08-postgresql-compatibility-packages) |
 | [ ] | H-09 | [Gate H](rrflow-1.0/gate-h.md) |
 | [ ] | H-10 | [Gate H](rrflow-1.0/gate-h.md) |
+| [ ] | H-11 | [Gate H](rrflow-1.0/gate-h.md) |
+| [ ] | H-12 | [Gate H](rrflow-1.0/gate-h.md#h-12-sqlite-compatibility-target) |
 | [ ] | I-01 | [Gate I](rrflow-1.0/gate-i.md) |
 | [ ] | I-02 | [Gate I](rrflow-1.0/gate-i.md) |
 | [ ] | I-03 | [Gate I](rrflow-1.0/gate-i.md) |

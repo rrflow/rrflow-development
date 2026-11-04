@@ -4,7 +4,7 @@ use rrd_core::{ProjectionId, ProjectionStamp, ProjectionState, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 
-pub const EXACT_SCAN_PROJECTION_ID: &str = "vector:exact-scan";
+pub const EXACT_SCAN_PROJECTION_ID: &str = "vector-exact-scan";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -304,7 +304,7 @@ mod tests {
         CandidatePath {
             stamp: ProjectionStamp {
                 contract_version: rrd_core::DATA_RUNTIME_CONTRACT_VERSION,
-                id: ProjectionId::new(format!("vector:hnsw:{cursor}")).unwrap(),
+                id: ProjectionId::new(format!("vector-hnsw-{cursor}")).unwrap(),
                 generation: 1,
                 source_cursor: cursor,
                 config_digest: "22".repeat(32),

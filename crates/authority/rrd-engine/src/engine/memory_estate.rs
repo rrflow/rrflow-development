@@ -83,7 +83,10 @@ impl RrdEngine {
             },
             authorization.as_ref(),
         )?;
-        let expected = format!("record:{}:{}", warp.target.kind, warp.target.id);
+        let expected = rrd_core::result_identity::typed(
+            rrd_core::result_identity::ResultIdentityFamily::Record,
+            &runtime_ref(&warp.target)?,
+        );
         if !context.items.iter().any(|item| item.identity == expected) {
             return Err(ServiceError::MemoryTargetNotFound);
         }
