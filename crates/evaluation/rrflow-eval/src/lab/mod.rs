@@ -13,6 +13,7 @@ pub mod import;
 pub mod manifest;
 pub mod milvus;
 pub mod qdrant;
+pub mod references;
 pub mod report;
 pub mod rrflow;
 pub mod settings;

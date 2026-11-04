@@ -50,6 +50,7 @@ const USAGE: &str = "usage:
   rrflow-lab sources --file FILE
   rrflow-lab schemas --out DIR
   rrflow-lab plan [--test ID] [--out NEW_DIR] [--json]
+  rrflow-lab compare [--report FILE] [--json]
   rrflow-lab settings [--json]
   rrflow-lab settings on|off ID
   rrflow-lab settings tune SYSTEM NAME=VALUE...
@@ -1291,6 +1292,7 @@ fn dispatch(arguments: &[String]) -> Result<ExitCode> {
         )?),
         "schemas" => write_schemas(&parsed),
         "plan" => show_plan(&parsed),
+        "compare" => Err("not built yet".into()),
         _ => Err(USAGE.into()),
     }
 }
