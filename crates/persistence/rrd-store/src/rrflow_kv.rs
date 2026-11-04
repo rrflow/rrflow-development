@@ -27,7 +27,7 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::collections::BTreeSet;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Mutex, MutexGuard};
+use std::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::time::Instant;
 
 mod inspection_cursor;
@@ -102,7 +102,10 @@ pub struct RrflowKvOpenEvidence {
 
 pub struct RrflowKvStore {
     path: AnchoredPath,
-    database: Mutex<Database>,
+    /// Reads take the shared side, because they need only `&Database`. Anything that needs
+    /// `&mut Database` takes the exclusive side. On Linux a waiting writer blocks new readers, so a
+    /// stream of reads cannot starve a commit.
+    database: RwLock<Database>,
     open_evidence: RrflowKvOpenEvidence,
     native_write_path_diagnostics_enabled: AtomicBool,
 }
@@ -134,12 +137,12 @@ impl StorageTransaction for RrflowKvTransaction<'_> {
     }
 
     fn get(&self, key: &[u8]) -> Result<Option<Vec<u8>>> {
-        let database = self.store.lock()?;
+        let database = self.store.read_lock()?;
         self.transaction.get(&database, key).map_err(Error::from)
     }
 
     fn scan(&self, start: &[u8], end: &[u8], limit: usize) -> Result<Vec<(Vec<u8>, Vec<u8>)>> {
-        let database = self.store.lock()?;
+        let database = self.store.read_lock()?;
         self.transaction
             .scan(&database, start, end, limit)
             .map_err(Error::from)
@@ -334,7 +337,7 @@ impl RrflowKvStore {
                 segment_validation: database.segment_open_evidence().clone(),
                 reconciliation: RrflowKvReconciliationEvidence::default(),
             },
-            database: Mutex::new(database),
+            database: RwLock::new(database),
             native_write_path_diagnostics_enabled: AtomicBool::new(false),
         })
     }
@@ -448,7 +451,7 @@ impl RrflowKvStore {
         let path = database.anchored_root().clone();
         Ok(Self {
             path,
-            database: Mutex::new(database),
+            database: RwLock::new(database),
             open_evidence,
             native_write_path_diagnostics_enabled: AtomicBool::new(false),
         })
@@ -490,7 +493,7 @@ impl RrflowKvStore {
     /// Offer one physical maintenance quantum without queuing behind a reader
     /// or writer. Busy is a skipped offer, not a second worker or a retry loop.
     pub fn try_maintenance_step(&self) -> Result<bool> {
-        match self.database.try_lock() {
+        match self.database.try_write() {
             // The private database never exposes an untracked Snapshot.
             // Transactions own registered leases; inspection streams and
             // runtime checkpoints retain physical generations independently.
@@ -506,7 +509,7 @@ impl RrflowKvStore {
     }
 
     pub fn manifest(&self) -> Result<Manifest> {
-        Ok(self.lock()?.manifest().clone())
+        Ok(self.read_lock()?.manifest().clone())
     }
 
     /// Compacts rrflowKV state after reconciling physical manifest pins with the
@@ -537,14 +540,16 @@ impl RrflowKvStore {
         self.runtime().restore_commit(commit, audit)
     }
 
-    fn lock(&self) -> Result<MutexGuard<'_, Database>> {
+    fn lock(&self) -> Result<RwLockWriteGuard<'_, Database>> {
         self.database
-            .lock()
-            .map_err(|_| Error::Substrate("rrflowKV database mutex poisoned".into()))
+            .write()
+            .map_err(|_| Error::Substrate("rrflowKV database lock poisoned".into()))
     }
 
-    fn read_lock(&self) -> Result<MutexGuard<'_, Database>> {
-        self.lock()
+    fn read_lock(&self) -> Result<RwLockReadGuard<'_, Database>> {
+        self.database
+            .read()
+            .map_err(|_| Error::Substrate("rrflowKV database lock poisoned".into()))
     }
 }
 
@@ -820,7 +825,7 @@ impl StorageEngine for RrflowKvStore {
             .native_write_path_diagnostics_enabled
             .load(Ordering::Acquire);
         let begin_lock_started = diagnostics_enabled.then(Instant::now);
-        let database = self.lock()?;
+        let database = self.read_lock()?;
         let begin_mutex_wait_ns = begin_lock_started.map_or(0, |started| {
             u64::try_from(started.elapsed().as_nanos()).unwrap_or(u64::MAX)
         });
@@ -873,7 +878,7 @@ impl StorageEngine for RrflowKvStore {
             memtable_keys, memtable_versions, segment_count, message
         );
         let wait_start = timed.then(Instant::now);
-        let database = self.lock()?;
+        let database = self.read_lock()?;
         let acquired = timed.then(Instant::now);
         let manifest = database.manifest();
         let cache = database.page_cache_stats();
@@ -1520,7 +1525,7 @@ mod tests {
             fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
                 let store = self.store.upgrade().unwrap();
                 self.lock_available
-                    .store(store.database.try_lock().is_ok(), Ordering::SeqCst);
+                    .store(store.database.try_write().is_ok(), Ordering::SeqCst);
                 self.bytes.lock().unwrap().extend_from_slice(bytes);
                 Ok(bytes.len())
             }
