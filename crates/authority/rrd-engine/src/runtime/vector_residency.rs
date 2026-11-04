@@ -439,6 +439,14 @@ impl Default for VectorResidencyManager {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// What the lab measured. Changing either should be a deliberate act with a new measurement.
+    #[test]
+    fn the_default_budgets_are_what_search_was_measured_with() {
+        let limits = VectorResidencyLimits::default();
+        assert_eq!(limits.pinned_bytes, 1024 * 1024 * 1024, "pinned tier");
+        assert_eq!(limits.cached_bytes, 64 * 1024 * 1024, "cached tier");
+    }
     use rrd_core::{
         ObjectReference, ProjectionId, RuntimeProperties, RuntimeRef, RuntimeVector, ScopeId,
         VectorCollectionAddress, VectorValue,
