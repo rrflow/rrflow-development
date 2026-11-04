@@ -7,6 +7,8 @@ publish.workspace = true
 description = "controlled, paired frontier-runtime evaluation harness"
 
 [dependencies]
+ed25519-dalek = "=3.0.0"
+getrandom = "0.4"
 serde = { workspace = true }
 serde_json = { workspace = true }
 rrd-contract = { path = "../../transport/rrd-contract" }

@@ -491,6 +491,36 @@
       },
       "status": "not_used",
       "purpose": "Left out. Its license is non-commercial, its result keys vary by model, and a competitor's published audit reports wrong answers and a judge accepting wrong ones."
+    },
+    {
+      "id": "clamav-definitions",
+      "title": "ClamAV CVD and cdiff",
+      "kind": "study",
+      "url": "https://github.com/Cisco-Talos/clamav",
+      "license": "GPL-2.0",
+      "pinned": "clamav-1.5.4",
+      "checked_on": "2026-11-03",
+      "track": {
+        "from": "github_release",
+        "repository": "Cisco-Talos/clamav"
+      },
+      "status": "watching",
+      "purpose": "How antivirus definitions travel: a signed, versioned container and incremental patches, tried in order with a full download as the fallback. Definition packs take the idea and none of its code. They leave out its line-patch commands."
+    },
+    {
+      "id": "the-update-framework",
+      "title": "The Update Framework specification",
+      "kind": "study",
+      "url": "https://github.com/theupdateframework/specification",
+      "license": "See its repository",
+      "pinned": "v1.0.37",
+      "checked_on": "2026-11-03",
+      "track": {
+        "from": "github_release",
+        "repository": "theupdateframework/specification"
+      },
+      "status": "watching",
+      "purpose": "What an update system must refuse. Definition packs keep its rollback and freeze protection through a sequence floor and an expiry, and one signed manifest stops files being mixed across versions. They leave out delegations, thresholds and an online timestamp, which suit many publishers. It calls single keys insecure, so one signing key is a stated limit here."
     }
   ]
 }

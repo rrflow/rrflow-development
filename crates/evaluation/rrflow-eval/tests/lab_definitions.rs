@@ -542,10 +542,140 @@ fn rrflows_check_names_a_system_whose_launch_changed() {
     assert!(notable[0].contains("qdrant"), "{notable:?}");
 
     let mut added = before.clone();
-    added.insert("systems/brand-new.json".into(), text);
+    let mut brand_new: serde_json::Value =
+        serde_json::from_str(&before["systems/custom-reference.json"]).unwrap();
+    brand_new["binding"]["id"] = serde_json::json!("brand-new");
+    added.insert(
+        "systems/brand-new.json".into(),
+        serde_json::to_string(&brand_new).unwrap(),
+    );
     let notable = RrflowContent.notable_changes(&before, &added).unwrap();
     assert!(
         notable.iter().any(|line| line.contains("brand-new")),
         "{notable:?}"
     );
+}
+
+/// The real binary, end to end, on a copy of the lab's real definitions.
+#[test]
+fn the_command_line_builds_installs_patches_and_refuses_a_changed_pack() {
+    let root = tempfile::tempdir().unwrap();
+    let path = |name: &str| root.path().join(name).to_str().unwrap().to_owned();
+    let lab = root.path().join("lab");
+    for (relative, text) in lab_files(&real_lab()).unwrap() {
+        let target = lab.join(relative);
+        std::fs::create_dir_all(target.parent().unwrap()).unwrap();
+        std::fs::write(target, text).unwrap();
+    }
+    let run = |arguments: &[&str]| {
+        let output = std::process::Command::new(env!("CARGO_BIN_EXE_rrflow-lab"))
+            .arg("definitions")
+            .args(arguments)
+            .output()
+            .unwrap();
+        (
+            output.status.success(),
+            String::from_utf8_lossy(&output.stdout).into_owned(),
+            String::from_utf8_lossy(&output.stderr).into_owned(),
+        )
+    };
+    let (private, trust, store) = (path("private.key"), path("trust.json"), path("store"));
+    let lab_path = lab.to_str().unwrap().to_owned();
+
+    let (ok, out, error) = run(&["keygen", "--private", &private, "--trust", &trust]);
+    assert!(ok, "{error}");
+    let secret = std::fs::read_to_string(&private).unwrap();
+    assert!(!out.contains(secret.trim()), "the private key was printed");
+    let (ok, _, error) = run(&[
+        "keygen",
+        "--private",
+        &private,
+        "--trust",
+        &path("other.json"),
+    ]);
+    assert!(!ok, "a key must not be overwritten");
+    assert!(error.contains("private.key"), "{error}");
+
+    let first = path("first.pack.json");
+    let (ok, _, error) = run(&[
+        "build",
+        "--lab",
+        &lab_path,
+        "--key",
+        &private,
+        "--sequence",
+        "1",
+        "--days",
+        "90",
+        "--out",
+        &first,
+    ]);
+    assert!(ok, "{error}");
+    let (ok, out, error) = run(&[
+        "install", "--pack", &first, "--trust", &trust, "--store", &store,
+    ]);
+    assert!(ok, "{error}");
+    assert!(out.contains("new system qdrant would start"), "{out}");
+
+    let small = lab.join("tests/vector-small.json");
+    let changed =
+        std::fs::read_to_string(&small)
+            .unwrap()
+            .replacen("\"revision\": 1", "\"revision\": 2", 1);
+    std::fs::write(&small, changed).unwrap();
+    let second = path("second.pack.json");
+    let (ok, out, error) = run(&[
+        "patch",
+        "--lab",
+        &lab_path,
+        "--key",
+        &private,
+        "--sequence",
+        "2",
+        "--days",
+        "90",
+        "--out",
+        &second,
+        "--base",
+        &first,
+        "--trust",
+        &trust,
+    ]);
+    assert!(ok, "{error}");
+    assert!(out.contains("tests/vector-small.json"), "{out}");
+    assert!(out.contains(": 1 of "), "{out}");
+    assert!(
+        std::fs::metadata(&second).unwrap().len() * 2 < std::fs::metadata(&first).unwrap().len(),
+        "a patch is much smaller than the full pack"
+    );
+
+    let tampered = path("tampered.pack.json");
+    let text = std::fs::read_to_string(&second).unwrap();
+    std::fs::write(
+        &tampered,
+        text.replacen("\\\"sequence\\\": 2", "\\\"sequence\\\": 3", 1),
+    )
+    .unwrap();
+    let (ok, _, error) = run(&[
+        "install", "--pack", &tampered, "--trust", &trust, "--store", &store,
+    ]);
+    assert!(!ok, "a changed pack must be refused");
+    assert!(error.contains("signature"), "{error}");
+
+    let (ok, out, error) = run(&[
+        "install", "--pack", &second, "--trust", &trust, "--store", &store,
+    ]);
+    assert!(ok, "{error}");
+    assert!(out.contains("tests/vector-small.json"), "{out}");
+    let (ok, out, error) = run(&["status", "--trust", &trust, "--store", &store]);
+    assert!(ok, "{error}");
+    let status: serde_json::Value = serde_json::from_str(&out).unwrap();
+    assert_eq!(status["current_sequence"], 2);
+    assert_eq!(status["expired"], false);
+
+    let (ok, _, error) = run(&[
+        "install", "--pack", &first, "--trust", &trust, "--store", &store,
+    ]);
+    assert!(!ok, "an old pack must be refused");
+    assert!(error.contains("older"), "{error}");
 }
