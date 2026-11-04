@@ -631,7 +631,7 @@ fn compare_with_no_report_lists_what_is_published_and_who_measured_it() {
     assert!(ok, "{error}");
     assert!(out.contains("Seek time"), "{out}");
     assert!(out.contains("Answer quality"), "{out}");
-    assert!(out.contains("not measured"), "{out}");
+    assert!(out.contains("has not measured answer quality"), "{out}");
     assert!(out.contains("the vendor's own"), "{out}");
     assert!(out.contains("independent"), "{out}");
     assert!(out.contains("Disputed"), "{out}");

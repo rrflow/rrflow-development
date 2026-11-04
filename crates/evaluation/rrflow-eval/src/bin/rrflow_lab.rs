@@ -1140,15 +1140,15 @@ fn print_seek_row(row: &ComparedSeek, details: bool, ranked_beside_a_test: bool)
         result.system,
     );
     println!(
-        "              {}, top {}, {}{}. {}: {}.",
+        "              {}, top {}, {}{}. {} ({}).",
         result.dataset,
         result
             .k
             .map_or("k not stated".to_owned(), |k| k.to_string()),
         result.hardware_class.words(),
         if result.filtered { ", filtered" } else { "" },
-        result.origin.provenance.words(),
         row.source_title,
+        result.origin.provenance.words(),
     );
     if row.stale {
         println!(
@@ -1185,7 +1185,7 @@ fn print_answer_row(row: &ListedAnswer, details: bool) {
         result.score, result.system, result.score_name
     );
     println!(
-        "           Reader {}, judge {}. {}.{}",
+        "           Reader {}, judge {} ({}).{}",
         result.reader_model.as_deref().unwrap_or("not stated"),
         result.judge_model.as_deref().unwrap_or("not stated"),
         result.origin.provenance.words(),
@@ -1291,7 +1291,7 @@ fn print_comparison(comparison: &Comparison, report: Option<(&str, &LabReport)>,
     println!();
     println!("Answer quality");
     println!(
-        "Not measured here. {} No ranking is accepted across these benchmarks, because each has its own data, reader and judge, so read a score only beside others from the same benchmark with the same reader and judge.",
+        "{} No ranking is accepted across these benchmarks, because each has its own data, reader and judge, so read a score only beside others from the same benchmark with the same reader and judge.",
         comparison.answers_note
     );
     let mut benchmarks: BTreeMap<&str, Vec<&ListedAnswer>> = BTreeMap::new();
