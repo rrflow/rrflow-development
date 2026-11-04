@@ -129,3 +129,82 @@ boundary identified; bounded trace/resource decisions and research recorded;
 focused/owning tests and failures recorded; the full pipeline remains pending.
 This record is evidence, not an
 independent lifecycle or status authority.
+
+## Real LFG engine flow and profiler preflight, 2026-11-04
+
+On draft head `f8be2ab375e817ef7c460a60ac79fe8c7ee3b8e2`, the Windows
+checkout was clean before this follow-up. Public main was
+`746a0a462e512563b6d3aaa89520f8ab5cde9051`; this result has not been tested
+on a candidate integrating that main. The already-running local LFG service
+answered `/health` as `lfg-server` on `127.0.0.1:54330`. Its reported process
+executable path was `D:\projects\lfg\target\worktrees\lfg-devtools\target\debug\lfg-server.exe`;
+the file at that path hashed SHA-256
+`91f79f04ea56b360654f0c5071925e648a8f0918ec84baa09c2b6145c003e7b0`.
+Its source worktree HEAD was `fb6e7508203da6e5fddd4287cb4f24526fc5a715`.
+These observations are not build attestation and do not prove that the file
+on disk was the exact executable image loaded by the running process.
+
+- `cargo test --offline --locked -p rrd-inference --features endpoint-chat
+  --test lfg_transport real_lfg_service_returns_bound_advisory_data --
+  --ignored --exact --nocapture`, with `RRFLOW_TEST_LFG_URL` set to the
+  service above: **1 passed**, exercising the actual transport and synthetic
+  prompt against the live service.
+- Extended `crates/authority/rrd-engine/src/engine/tests/reasoning_budget/lfg_flow.rs`
+  with an explicitly ignored, opt-in real-service lane that shares the
+  existing engine and controller-fixture assertions. It derives assessment
+  and rules digests from the existing fixture; it does not set a production
+  endpoint or alter engine behavior.
+- `cargo test --offline --locked -p rrd-engine --lib
+  real_lfg_service_flows_through_engine_controller_and_reopen -- --ignored
+  --nocapture` with the same URL: **1 passed**. The test admits the configured
+  LFG call, checks that the observation enters the controlled HTTP controller
+  packet, checks digest binding and durable task-attempt readback, reopens the
+  engine and refuses a duplicate proposal. The controller was a synthetic
+  fixture: this is **not** standalone SWAG, model-output, installed-binary,
+  source-edit, or native CI evidence. The test's in-process engine is real.
+- `cargo test --offline --locked -p rrd-engine --lib
+  'reasoning_budget::lfg_flow::' -- --nocapture`: **3 passed; 1 ignored**.
+  The opt-in real-service case was separately run above. `git diff --check`
+  passed. `cargo fmt --all --check` initially failed on the new test; after
+  `rustfmt --edition 2021` formatted the affected file, it requires a final
+  check for this exact candidate.
+
+For diagnostic research, [OpenTelemetry's Rust SDK status](https://opentelemetry.io/docs/languages/rust/)
+reports traces beta and metrics/logs stable; the [GenAI conventions](https://opentelemetry.io/docs/specs/semconv/registry/attributes/gen-ai/)
+identify optional content fields as potentially sensitive. This supports
+bounded, redacted optional diagnostics, not automatic prompt capture or a
+claim that RRFlow emits the complete standard. [Samply](https://github.com/mstange/samply)
+was installed locally with `cargo install --locked samply --root
+D:\localdev\devlabs\rrflow\target\rrflow-devtools`, version 0.13.1,
+executable SHA-256
+`256c6c5ec24a570b21287d52d8c4c600f4dca6c27832537a231d5329ad6f6f7d`.
+The locked install warned that two transitive packages were yanked; no runtime
+or distribution dependency was added. A save-only capture of the engine test
+failed: `samply requires Administrator privileges for profiling on Windows`.
+No profile or performance result was produced. Linux ARM host `clyffy-01`
+reported `perf version 7.0.14` and `perf_event_paranoid=4`; no privilege or
+system setting was changed and no Linux capture was attempted.
+
+Remaining: reconcile the actual draft against current main, source-edit and
+revocation histories, actual SWAG controller, installed executable and SDK
+flow, native qualification and candidate/merge-group CI. The prompt-flight
+provider remains observe-only: endpoint-selection is not a general model
+provider invocation. This evidence does not change a roadmap/POA&M status.
+
+Follow-up verification: `cargo fmt --all --check` passed after formatting. An
+initial full engine suite was interrupted by the operator while running; its
+partial output is not a suite pass. A separately launched full-binary rerun
+is pending. On `clyffy-01`, `perf stat -- true` exited successfully but
+reported CPU cycle events as `<not supported>`; `perf stat -e task-clock --
+true` exited 1 with access limited under `perf_event_paranoid=4`. The first
+command measured only the `true` process; neither is an RRFlow performance
+profile. No system permissions were modified.
+
+Documentation/navigation checks for this follow-up: `python -X utf8
+scripts/knowledge/render_navigation.py --check` passed (18 indexes; no
+updates); `python -X utf8 scripts/ci/check_documentation.py` passed. A
+merge-tree preview against public main `746a0a462e512563b6d3aaa89520f8ab5cde9051`
+identified 19 conflicting paths: contract source and generated SDK/reference
+projections. Resolve from the combined owner, not by accepting one generated
+side. PR #246 remains open; PR #235 is merged. These are integration findings,
+not evidence that a combined candidate builds.

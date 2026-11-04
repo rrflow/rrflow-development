@@ -59,23 +59,38 @@ fn serve_once(listener: TcpListener, respond: impl FnOnce(serde_json::Value) -> 
 
 #[test]
 fn real_engine_composes_bounded_lfg_then_controller_and_reopens_receipt() {
-    run_flow(false, false);
+    run_flow(false, false, None);
 }
 
 #[test]
 fn changed_configuration_during_lfg_records_result_without_controller_dispatch() {
-    run_flow(true, false);
+    run_flow(true, false, None);
 }
 
 #[test]
 fn controller_response_failure_keeps_lfg_checkpoint_and_uncertain_capacity() {
-    run_flow(false, true);
+    run_flow(false, true, None);
 }
 
-fn run_flow(change_configuration: bool, reject_controller: bool) {
+#[test]
+#[ignore = "requires an explicitly configured local LFG service with the fixture policy"]
+fn real_lfg_service_flows_through_engine_controller_and_reopen() {
+    let url = std::env::var("RRFLOW_TEST_LFG_URL").expect("configure the local LFG service origin");
+    run_flow(false, false, Some(url));
+}
+
+fn run_flow(change_configuration: bool, reject_controller: bool, real_lfg: Option<String>) {
     let (root, mut engine, bootstrap, mut configuration, mut request, _, _) =
         proposal::tuple_fixture();
-    let analyzer = TcpListener::bind("127.0.0.1:0").unwrap();
+    let fixture_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../compute/rrd-inference/tests/fixtures/lfg-synthetic-observation.json");
+    let fixture: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(fixture_path).unwrap()).unwrap();
+    let analyzer = if real_lfg.is_none() {
+        Some(TcpListener::bind("127.0.0.1:0").unwrap())
+    } else {
+        None
+    };
     let controller = TcpListener::bind("127.0.0.1:0").unwrap();
     engine.installed_estate = Some(InstalledEstateIdentity {
         project_id: CanonicalId::new("lfg-flow-project").unwrap(),
@@ -85,9 +100,20 @@ fn run_flow(change_configuration: bool, reject_controller: bool) {
     let profile = configuration.profile.as_mut().unwrap();
     let policy = profile.selection_policy.as_mut().unwrap();
     policy.lfg = Some(LfgAnalysisPolicy {
-        base_url: format!("http://{}", analyzer.local_addr().unwrap()),
-        assessment_sha256: "a".repeat(64),
-        rules_sha256: "b".repeat(64),
+        base_url: real_lfg.unwrap_or_else(|| {
+            format!(
+                "http://{}",
+                analyzer.as_ref().unwrap().local_addr().unwrap()
+            )
+        }),
+        assessment_sha256: fixture["request"]["expectedAssessmentSha256"]
+            .as_str()
+            .unwrap()
+            .into(),
+        rules_sha256: fixture["request"]["expectedRulesSha256"]
+            .as_str()
+            .unwrap()
+            .into(),
         timeout_ms: 3_000,
         maximum_input_bytes: 65_536,
         maximum_request_bytes: 131_072,
@@ -201,51 +227,49 @@ fn run_flow(change_configuration: bool, reject_controller: bool) {
         .unwrap();
     let edit_lease = lease.clone();
 
-    let fixture_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../compute/rrd-inference/tests/fixtures/lfg-synthetic-observation.json");
-    let fixture: serde_json::Value =
-        serde_json::from_slice(&std::fs::read(fixture_path).unwrap()).unwrap();
-    let analyzer_thread = std::thread::spawn(move || {
-        serve_once(analyzer, |input| {
-            assert_eq!(
-                digest::sha256_hex(input["text"].as_str().unwrap().as_bytes()),
-                input["inputSha256"]
-            );
-            if change_configuration {
-                let plan = edit_engine
-                    .preview_endpoint_configuration(
-                        &edit_lease.session_id,
-                        &edit_lease.token,
-                        &PreviewEndpointConfiguration {
-                            expected_revision: 1,
-                            profile: Some(next_input),
-                        },
-                        900,
-                        "change-preview",
-                        "change-preview",
-                    )
-                    .unwrap();
-                edit_engine
-                    .apply_endpoint_configuration(
-                        &edit_lease.session_id,
-                        &edit_lease.token,
-                        &ApplyEndpointConfiguration {
-                            approved_plan_sha256: plan.plan_sha256.clone(),
-                            plan,
-                        },
-                        901,
-                        "change-apply",
-                        "change-apply",
-                    )
-                    .unwrap();
-            }
-            let mut output = fixture["observation"].clone();
-            for field in ["requestId", "revision", "inputSha256"] {
-                output[field] = input[field].clone();
-            }
-            output["assessmentSha256"] = input["expectedAssessmentSha256"].clone();
-            output["rulesSha256"] = input["expectedRulesSha256"].clone();
-            output
+    let analyzer_thread = analyzer.map(|analyzer| {
+        std::thread::spawn(move || {
+            serve_once(analyzer, |input| {
+                assert_eq!(
+                    digest::sha256_hex(input["text"].as_str().unwrap().as_bytes()),
+                    input["inputSha256"]
+                );
+                if change_configuration {
+                    let plan = edit_engine
+                        .preview_endpoint_configuration(
+                            &edit_lease.session_id,
+                            &edit_lease.token,
+                            &PreviewEndpointConfiguration {
+                                expected_revision: 1,
+                                profile: Some(next_input),
+                            },
+                            900,
+                            "change-preview",
+                            "change-preview",
+                        )
+                        .unwrap();
+                    edit_engine
+                        .apply_endpoint_configuration(
+                            &edit_lease.session_id,
+                            &edit_lease.token,
+                            &ApplyEndpointConfiguration {
+                                approved_plan_sha256: plan.plan_sha256.clone(),
+                                plan,
+                            },
+                            901,
+                            "change-apply",
+                            "change-apply",
+                        )
+                        .unwrap();
+                }
+                let mut output = fixture["observation"].clone();
+                for field in ["requestId", "revision", "inputSha256"] {
+                    output[field] = input[field].clone();
+                }
+                output["assessmentSha256"] = input["expectedAssessmentSha256"].clone();
+                output["rulesSha256"] = input["expectedRulesSha256"].clone();
+                output
+            })
         })
     });
     let response_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -281,7 +305,9 @@ fn run_flow(change_configuration: bool, reject_controller: bool) {
         "lfg-flow",
         &FixedClock::at(1_000),
     );
-    analyzer_thread.join().unwrap();
+    if let Some(analyzer_thread) = analyzer_thread {
+        analyzer_thread.join().unwrap();
+    }
     let proposal = if change_configuration {
         assert!(matches!(
             proposal,
