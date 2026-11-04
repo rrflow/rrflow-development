@@ -35,7 +35,7 @@
   "candidate": {
     "clean": true,
     "commit": "1111111111111111111111111111111111111111",
-    "configuration_sha256": "2d382dbde4b923db65fb5ebbf841d12b45ec0e278c7cab41635dbff782072d55",
+    "configuration_sha256": "d2013902bcc7c9efe4840170d35a35aae22e5fcffd0f1f23eca6e9c0e7fcfbf2",
     "executable_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
     "public_catalogue_sha256": "62c260f7389197e2d9c425ec28405eabb24c8f63d0d437ce1c0c08514b5eaa42",
     "tree": "2222222222222222222222222222222222222222"
@@ -59,7 +59,7 @@
     "clock": {
       "maximum_rollback_ms": 0
     },
-    "configuration_sha256": "2d382dbde4b923db65fb5ebbf841d12b45ec0e278c7cab41635dbff782072d55",
+    "configuration_sha256": "d2013902bcc7c9efe4840170d35a35aae22e5fcffd0f1f23eca6e9c0e7fcfbf2",
     "format_version": 3,
     "query": {
       "max_batch_rows": 256,
@@ -96,7 +96,7 @@
       "mutable_versions": 1048576,
       "native_transaction_bytes": 67108864,
       "native_transactions": 64,
-      "page_cache_bytes": 4194304,
+      "page_cache_bytes": 67108864,
       "pinned_read_bytes": 4294967296,
       "projected_output_bytes": 134217728,
       "reclamation_delete_bytes": 1073741824,

@@ -13,7 +13,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::sync::Arc;
 
-pub const DEFAULT_VECTOR_PINNED_BYTES: u64 = 256 * 1024 * 1024;
+pub const DEFAULT_VECTOR_PINNED_BYTES: u64 = 1024 * 1024 * 1024;
 pub const DEFAULT_VECTOR_CACHED_BYTES: u64 = 64 * 1024 * 1024;
 const MAX_VECTOR_RESIDENCY_BYTES: u64 = 1024 * 1024 * 1024 * 1024;
 
