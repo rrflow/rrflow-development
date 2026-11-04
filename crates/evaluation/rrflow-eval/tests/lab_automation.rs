@@ -617,6 +617,47 @@ fn a_launch_is_held_until_approved_and_held_again_when_it_changes() {
 }
 
 #[test]
+fn rrflows_graph_arm_runs_like_any_other_and_says_what_it_needs() {
+    let definitions = real_definitions();
+    let system = &definitions.systems[&id("rrflow-hnsw")];
+    assert!(
+        !needs_approval(system),
+        "it starts only the binary under test"
+    );
+    let plan = build_plan(&definitions, &LabSettings::default()).unwrap();
+    assert_eq!(
+        state_of(&plan, "vector-small", "rrflow-hnsw"),
+        SystemState::WillRun
+    );
+    let binding = manifest_of(&plan, "vector-small")
+        .binding("rrflow-hnsw")
+        .unwrap();
+    let qdrant = definitions.systems[&id("qdrant")].binding.clone();
+    assert_eq!(
+        binding.index, qdrant.index,
+        "a graph measured beside Qdrant's is built with the same settings"
+    );
+    assert_eq!(
+        binding
+            .search_ladder
+            .iter()
+            .map(|setting| setting.ef)
+            .collect::<Vec<_>>(),
+        qdrant
+            .search_ladder
+            .iter()
+            .map(|setting| setting.ef)
+            .collect::<Vec<_>>(),
+        "it searches at the same settings"
+    );
+    assert!(
+        binding.limits.iter().any(|limit| limit.contains("pinned")),
+        "a report must say it used the pinned tier: {:?}",
+        binding.limits
+    );
+}
+
+#[test]
 fn rrflows_own_engine_needs_no_approval() {
     let definitions = real_definitions();
     assert!(!needs_approval(&definitions.systems[&id("rrflow-exact")]));
@@ -631,25 +672,21 @@ fn rrflows_own_engine_needs_no_approval() {
 fn a_declared_gap_stays_a_gap_whatever_this_machine_says() {
     let definitions = real_definitions();
     let mut settings = approved(&definitions);
-    settings.off.remove(&id("rrflow-hnsw"));
+    settings.off.remove(&id("rrflow-routed"));
     settings
         .tuning
-        .insert(id("rrflow-hnsw"), tuned(&[("ef", "64")]));
+        .insert(id("rrflow-routed"), tuned(&[("ef", "64")]));
     let plan = build_plan(&definitions, &settings).unwrap();
     assert_eq!(
-        state_of(&plan, "vector-small", "rrflow-hnsw"),
+        state_of(&plan, "vector-small", "rrflow-routed"),
         SystemState::NotAvailable
     );
     let entry = test_named(&plan, "vector-small")
         .systems
         .iter()
-        .find(|entry| entry.id.as_str() == "rrflow-hnsw")
+        .find(|entry| entry.id.as_str() == "rrflow-routed")
         .unwrap();
-    assert!(entry
-        .reason
-        .as_deref()
-        .unwrap()
-        .contains("public operation"));
+    assert!(entry.reason.as_deref().unwrap().contains("No operation"));
 }
 
 #[test]
@@ -982,7 +1019,7 @@ fn an_update_says_only_what_would_really_start_and_in_words() {
         "{out}"
     );
     assert!(
-        !out.contains("rrflow-hnsw"),
+        !out.contains("rrflow-routed"),
         "a declared gap starts nothing: {out}"
     );
     assert!(
@@ -1166,7 +1203,7 @@ fn toggles_and_tuning_work_with_no_file_to_edit() {
         "on",
         "tests run it, as a plan says"
     );
-    assert_eq!(line("rrflow-hnsw"), "n/a");
+    assert_eq!(line("rrflow-routed"), "n/a");
     assert_eq!(line("milvus"), "off");
 
     let plan = publisher.ok(at, &["plan", "--test", "vector-small"]);
@@ -1237,7 +1274,7 @@ fn a_planned_folder_holds_what_a_run_reads_and_names_its_pack() {
     let list = std::fs::read_to_string(out.join("run-list.txt")).unwrap();
     assert!(list.lines().any(|line| line == "qdrant"), "{list}");
     assert!(!list.lines().any(|line| line == "milvus"), "{list}");
-    assert!(!list.lines().any(|line| line == "rrflow-hnsw"), "{list}");
+    assert!(!list.lines().any(|line| line == "rrflow-routed"), "{list}");
 
     let identity = std::fs::read_to_string(out.join("definitions.env")).unwrap();
     assert!(identity.contains("sequence=1"), "{identity}");

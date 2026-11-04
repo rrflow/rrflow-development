@@ -147,6 +147,26 @@ pub(crate) fn search_mode(
     }
 }
 
+/// The tier a collection's generation lives in.
+pub(crate) fn memory_tier(_index: &IndexSpec) -> &'static str {
+    "cached"
+}
+
+/// The public request that declares the filter property a graph's generation covers.
+pub(crate) fn payload_index_request(_scope: &str, _collection: &str) -> Value {
+    Value::Null
+}
+
+/// The public request that builds a graph over a collection's vector.
+pub(crate) fn hnsw_index_request(
+    _scope: &str,
+    _collection: &str,
+    _m: u32,
+    _ef_construction: u32,
+) -> Value {
+    Value::Null
+}
+
 impl RrflowAdapter {
     pub fn connect(binding: &SystemBinding, workload: &WorkloadSpec) -> Result<Self> {
         let (principal, secret) = required_credentials(binding)?;
@@ -486,6 +506,10 @@ impl SystemAdapter for RrflowAdapter {
 mod tests {
     use super::*;
     use rrd_contract::SearchVectors;
+    use rrd_contract::{
+        CanonicalId, EnsureVectorIndex, EnsureVectorPayloadIndex, VectorIndexConfiguration,
+        VectorPayloadIndexKind,
+    };
 
     #[test]
     fn a_replaced_session_outlasts_the_slowest_request_still_using_it() {
@@ -531,6 +555,13 @@ mod tests {
                 },
                 "require_approximate",
             ),
+            (
+                IndexSpec::Hnsw {
+                    m: 16,
+                    ef_construction: 100,
+                },
+                "require_approximate",
+            ),
         ] {
             let mode = search_mode(&index, Some(60), Some(40), 10);
             assert_eq!(mode["mode"], expected);
@@ -554,5 +585,54 @@ mod tests {
             .unwrap();
             request.validate().unwrap();
         }
+    }
+
+    #[test]
+    fn an_hnsw_build_and_its_payload_index_decode_as_public_requests() {
+        let declared: EnsureVectorPayloadIndex =
+            decode(payload_index_request("instance:lab", "lab")).unwrap();
+        declared.validate().unwrap();
+        assert_eq!(declared.field.as_str(), "category");
+        assert_eq!(declared.kind, VectorPayloadIndexKind::Unsigned);
+
+        let built: EnsureVectorIndex =
+            decode(hnsw_index_request("instance:lab", "lab", 16, 100)).unwrap();
+        built.validate().unwrap();
+        assert_eq!(built.vector_name.as_str(), VECTOR_NAME);
+        assert_eq!(built.max_storage_keys, MAX_VECTOR_STORAGE_KEYS);
+        let VectorIndexConfiguration::Hnsw {
+            m,
+            ef_construction,
+            filter_properties,
+            ..
+        } = built.configuration;
+        assert_eq!((m, ef_construction), (16, 100));
+        assert_eq!(
+            filter_properties
+                .iter()
+                .map(CanonicalId::as_str)
+                .collect::<Vec<_>>(),
+            vec!["category"],
+            "the graph must cover the filter the payload index declares"
+        );
+    }
+
+    #[test]
+    fn only_a_graph_is_pinned() {
+        assert_eq!(
+            memory_tier(&IndexSpec::Hnsw {
+                m: 16,
+                ef_construction: 100
+            }),
+            "pinned"
+        );
+        assert_eq!(memory_tier(&IndexSpec::Exact), "cached");
+        assert_eq!(
+            memory_tier(&IndexSpec::TurboQuant {
+                bits: "bits4".into(),
+                seed: 7
+            }),
+            "cached"
+        );
     }
 }
