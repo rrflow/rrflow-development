@@ -6,7 +6,9 @@
 # Set RRFLOW_LAB_CPUSET to give every system the same cores, RRFLOW_LAB_CLIENT_CPUSET to
 # keep the harness off them, and RRFLOW_LAB_MANIFEST to choose another test. Set
 # RRFLOW_LAB_VDBBENCH to the vectordbbench command to drive qdrant, milvus or lance-hnsw-sq
-# with that harness instead, as a cross-check on this one. No value here is a secret:
+# with that harness instead, as a cross-check on this one. Set RRFLOW_LAB_DEFINITIONS to a folder
+# from `rrflow-lab plan --out` to read systems from it, as run_all.sh does, and each run then
+# records which pack it came from. No value here is a secret:
 # SurrealDB's password is generated per run and exists only in this process's environment.
 set -euo pipefail
 system=$1
@@ -91,7 +93,14 @@ start_rrflow() {
   eval "$(python3 "$here/rrflow_credentials.py" "$work/project")"
 }
 
-definition=$here/systems/$system.json
+definitions=${RRFLOW_LAB_DEFINITIONS:-$here}
+definition=$definitions/systems/$system.json
+pack_notes=()
+if [ -f "$definitions/definitions.env" ]; then
+  while IFS='=' read -r key value; do
+    pack_notes+=(--note "definitions_$key=$value")
+  done < "$definitions/definitions.env"
+fi
 if [ ! -f "$definition" ]; then
   echo "no $definition: a new system is one file there, plus a shim if it needs one" >&2
   exit 2
@@ -192,7 +201,7 @@ if [ -n "${RRFLOW_LAB_VDBBENCH:-}" ]; then
 else
   (cd "$repository" && "${client[@]}" "$RRFLOW_LAB_BIN" run --manifest "$manifest" --system "$system" \
     --out "$run_directory" --note "server_cpuset=${cpuset:-unpinned}" \
-    --note "client_cpuset=${client_cpuset:-unpinned}") || status=$?
+    --note "client_cpuset=${client_cpuset:-unpinned}" "${pack_notes[@]}") || status=$?
 fi
 # Another workload can slow a run without touching its cores, so a busy GPU is reported.
 awk -F, 'NR > 1 && $4 != "" {

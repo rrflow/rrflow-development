@@ -28,6 +28,9 @@ measurements, declared questions and their answers, and its limits.
 
 ## Run a comparison
 
+[`run_all.sh`](run_all.sh) does the steps below from the installed definitions, using
+whatever is turned on. See [Definition packs](#definition-packs). This is the same thing by hand.
+
 Build in release mode, because a debug build would misrepresent RRFlow:
 
 ```bash
@@ -179,23 +182,62 @@ digest, and runs from before and after cannot be combined.
 
 ## Definition packs
 
-Tests, systems and sources can travel as a definition pack, the way an antivirus
-update does: one signed text file, sent and installed apart from the app.
+Tests, systems and sources travel as a definition pack, the way an antivirus update
+does: one signed text file, sent and installed apart from the app. The lab runs from
+what is installed.
 
-```sh
-rrflow-lab definitions keygen --private ~/keys/lab.key --trust trust.json
-rrflow-lab definitions build --lab eval/lab --key ~/keys/lab.key --sequence 1 --days 90 --out first.pack.json
-rrflow-lab definitions install --pack first.pack.json --trust trust.json --store ~/lab-definitions
+### Use it
 
-# Change a test, then send only what changed.
-rrflow-lab definitions patch --lab eval/lab --key ~/keys/lab.key --sequence 2 --days 90 \\n  --out second.pack.json --base first.pack.json --trust trust.json
-rrflow-lab definitions install --pack second.pack.json --trust trust.json --store ~/lab-definitions
+| To | Run |
+|---|---|
+| Sign what changed in `eval/lab` and install it here | `rrflow-lab definitions publish` |
+| Get the newest pack on another machine | `rrflow-lab definitions update --from FOLDER` |
+| See what is installed and what needs attention | `rrflow-lab definitions status` |
+| See what would run, and why anything would not | `rrflow-lab plan` |
+| Run one test and get its report | `eval/lab/run_all.sh TEST_ID RUN_FOLDER` |
 
-rrflow-lab definitions status --trust trust.json --store ~/lab-definitions
-```
+`publish` makes the signing key the first time, picks the next number, writes a full
+pack and a patch to an outbox, and says what changed. With nothing changed it publishes
+nothing, unless the pack has under 30 days left. Copy the outbox to another machine, or
+share it. `update` then takes the newest pack that checks, by patch if it applies and in
+full otherwise, and remembers the folder. `run_all.sh` updates on its own before it runs.
+
+Everything lives in this user's data folder: `%LOCALAPPDATA%\rrflow\definitions` on
+Windows and `~/.local/share/rrflow/definitions` elsewhere. Set `RRFLOW_LAB_HOME` to use
+another. Add `--json` to `status`, `plan` or `settings` to give the same facts to a program.
+
+### Change what runs
+
+| To | Run |
+|---|---|
+| See every toggle | `rrflow-lab settings` |
+| Turn a system or test off or on | `rrflow-lab settings off qdrant`, `settings on qdrant` |
+| Tune a system | `rrflow-lab settings tune qdrant m=32 ef=24,48` |
+| Allow a system's launch on this machine | `rrflow-lab settings approve qdrant`, or `--all` |
+| Go back to what was published | `rrflow-lab settings reset`, or `reset qdrant` |
+
+Tuning accepts `m`, `ef_construction`, `ef`, `bits`, `seed`, `partitions`, `nprobes` and
+`engine.NAME`, where the system's index has that setting. Settings stay on this machine,
+and a new pack keeps them. None of them can flatter a result:
+
+- **A system turned off stays visible.** The report lists it as unavailable, with why.
+- **A tuned run cannot pass as the baseline.** Its binding digest differs, so it cannot
+  join an untuned run's report, and its limits state what was changed.
+- **A launch is held until approved.** A pack can change which container or program
+  starts, so nothing new starts until a person approves that exact launch on that machine.
+  A later change holds it again. Publishing approves what it signed, on that machine only.
+  RRFlow's own engine needs no approval, because it is the binary being tested.
+- **A declared gap stays a gap.** No setting can turn it on.
+
+A report's runs record the pack's number and manifest digest, and whether it had expired.
+
+### What keeps a pack safe
 
 - **Signed.** A pack's manifest is read only after its Ed25519 signature checks
   against a trusted key, and it names every file by size and SHA-256.
+- **Trust does not come from a folder.** A build pins its publisher's public keys in
+  [`lab-trusted-keys.json`](../../crates/evaluation/rrflow-eval/assets/lab-trusted-keys.json).
+  Another publisher is trusted only by `rrflow-lab definitions trust --file FILE`.
 - **It only moves forward.** A lower sequence is refused, and so is the same
   sequence with different content. `definitions revert` steps back locally, states
   its reason, and keeps that floor. To undo a bad pack for everyone, publish a
@@ -204,13 +246,15 @@ rrflow-lab definitions status --trust trust.json --store ~/lab-definitions
   install keeps working, and `status` says it is stale.
 - **It holds data.** Only JSON at confined paths, with no code and no datasets.
 - **A patch has no language.** It carries the changed files and reuses the rest by
-  digest. If the store lacks one, install asks for a full pack. A failed install
-  changes nothing.
-- **Installing runs nothing.** A pack can change which container a system starts,
-  so install lists every changed launch for a person to read.
+  digest. If the store lacks one, a full pack is used. A failed install changes nothing.
+- **Nothing here fetches.** A pack arrives as a local file, and installing runs nothing.
 
-Keep the private key out of every repository. Packs arrive as local files, and
-nothing here fetches one. The lab does not run from an installed pack yet.
+Keep the signing key private and backed up. Anyone holding it can publish tests your
+machines will trust. If it is lost, a new key has to be pinned in a new build. On Unix a
+key file that others can read is refused.
+
+`rrflow-lab definitions` also has `keygen`, `build`, `patch`, `verify` and `install` for
+scripting and recovery, such as choosing a sequence by hand after losing a home folder.
 
 ## Reading a result
 

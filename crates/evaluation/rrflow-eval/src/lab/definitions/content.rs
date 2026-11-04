@@ -1,6 +1,6 @@
 //! What RRFlow's lab carries in a definition pack: its systems, its tests and its list of outside
 //! sources, each checked the way the lab itself would read it.
-use super::pack::PackContent;
+use super::pack::{PackContent, TrustedKeys};
 use crate::lab::catalog::{resolve_test, SystemDefinition, TestDefinition};
 use crate::lab::sources::SourceList;
 use crate::lab::Result;
@@ -14,7 +14,13 @@ const SOURCES: &str = "sources.json";
 
 pub struct RrflowContent;
 
-fn stem<'a>(path: &'a str, folder: &str) -> Option<&'a str> {
+/// The publisher keys this build trusts with nothing else set up.
+pub fn pinned_keys() -> Result<TrustedKeys> {
+    serde_json::from_str(include_str!("../../../assets/lab-trusted-keys.json"))
+        .map_err(|error| format!("the pinned keys: {error}"))
+}
+
+pub(crate) fn stem<'a>(path: &'a str, folder: &str) -> Option<&'a str> {
     path.strip_prefix(folder)?
         .strip_prefix('/')?
         .strip_suffix(".json")
@@ -30,7 +36,9 @@ fn parse_system(path: &str, text: &str) -> Result<SystemDefinition> {
     Ok(system)
 }
 
-fn systems_of(files: &BTreeMap<String, String>) -> Result<BTreeMap<Id, SystemDefinition>> {
+pub(crate) fn systems_of(
+    files: &BTreeMap<String, String>,
+) -> Result<BTreeMap<Id, SystemDefinition>> {
     let mut systems = BTreeMap::new();
     for (path, text) in files {
         if let Some(name) = stem(path, "systems") {
@@ -67,9 +75,15 @@ impl PackContent for RrflowContent {
                     serde_json::from_str(text).map_err(|error| format!("{path}: {error}"))?;
                 list.validate()
                     .map_err(|error| format!("{path}: {error}"))?;
-            } else if stem(path, "tests").is_some() {
+            } else if let Some(name) = stem(path, "tests") {
                 let test: TestDefinition =
                     serde_json::from_str(text).map_err(|error| format!("{path}: {error}"))?;
+                if test.test.id.as_str() != name {
+                    return Err(format!(
+                        "{path} names itself {}, and a test's file is named for it",
+                        test.test.id.as_str()
+                    ));
+                }
                 resolve_test(&test, &systems).map_err(|error| format!("{path}: {error}"))?;
             } else {
                 return Err(format!("{path} is not a definition file"));
@@ -87,14 +101,21 @@ impl PackContent for RrflowContent {
         let old = systems_of(before)?;
         let mut notable = Vec::new();
         for (id, system) in systems_of(after)? {
-            let launch =
-                serde_json::to_string(&system.launch).map_err(|error| error.to_string())?;
             match old.get(&id) {
-                None => notable.push(format!("new system {} would start: {launch}", id.as_str())),
-                Some(previous) if previous.launch != system.launch => notable.push(format!(
-                    "system {} now starts something different: {launch}",
-                    id.as_str()
-                )),
+                None => {
+                    if let Some(summary) = system.launch.summary() {
+                        notable.push(format!("new system {} would start {summary}", id.as_str()));
+                    }
+                }
+                // A change gets every detail, since it may be the one thing that differs.
+                Some(previous) if previous.launch != system.launch => {
+                    let launch =
+                        serde_json::to_string(&system.launch).map_err(|error| error.to_string())?;
+                    notable.push(format!(
+                        "system {} now starts something different: {launch}",
+                        id.as_str()
+                    ));
+                }
                 Some(_) => {}
             }
         }

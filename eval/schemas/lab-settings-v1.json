@@ -1,0 +1,137 @@
+{
+  "$defs": {
+    "Id": {
+      "maxLength": 96,
+      "minLength": 1,
+      "pattern": "^[a-z0-9][a-z0-9_.-]*$",
+      "type": "string"
+    },
+    "SystemTuning": {
+      "additionalProperties": false,
+      "description": "Only what a person may change without changing what a pack means. Each value replaces the\npack's own, and a run made with one says so in its report.",
+      "properties": {
+        "bits": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ef": {
+          "description": "The search ladder's rungs, for an index searched by `ef`.",
+          "items": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "ef_construction": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "engine_settings": {
+          "additionalProperties": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "description": "RRFlow `[storage]` settings, added to the system's own.",
+          "type": "object"
+        },
+        "m": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "nprobes": {
+          "description": "The search ladder's rungs, for an index searched by partitions.",
+          "items": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "partitions": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "seed": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "approved_launches": {
+      "additionalProperties": false,
+      "description": "The launch digest a person approved for each system.",
+      "patternProperties": {
+        "^[a-z0-9][a-z0-9_.-]*$": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "off": {
+      "description": "Systems and tests turned off.",
+      "items": {
+        "$ref": "#/$defs/Id"
+      },
+      "type": "array",
+      "uniqueItems": true
+    },
+    "schema_version": {
+      "format": "uint16",
+      "maximum": 65535,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "tuning": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^[a-z0-9][a-z0-9_.-]*$": {
+          "$ref": "#/$defs/SystemTuning"
+        }
+      },
+      "type": "object"
+    },
+    "update_from": {
+      "description": "The folder `run_all.sh` updates from. Without one, this machine's own outbox.",
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "schema_version"
+  ],
+  "title": "LabSettings",
+  "type": "object"
+}

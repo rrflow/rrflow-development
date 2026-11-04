@@ -5,25 +5,38 @@ use rrflow_eval::lab::catalog::{
     TestDefinition,
 };
 use rrflow_eval::lab::custom::CustomProtocol;
-use rrflow_eval::lab::definitions::content::{lab_files, RrflowContent, RRFLOW_PRODUCT};
+use rrflow_eval::lab::definitions::content::{
+    lab_files, pinned_keys, RrflowContent, RRFLOW_PRODUCT,
+};
+use rrflow_eval::lab::definitions::home::{DefinitionHome, PublishKind, PublishOptions};
 use rrflow_eval::lab::definitions::pack::{
-    build_pack, generate_key, read_pack, PackContent as _, PackRequest, PackStore, TrustedKey,
-    TrustedKeys, VerifiedPack, MAX_PACK_BYTES,
+    build_pack, generate_key, read_pack, InstallOutcome, PackContent as _, PackRequest, PackStore,
+    StoreStatus, TrustedKey, TrustedKeys, VerifiedPack, MAX_PACK_BYTES,
 };
 use rrflow_eval::lab::driver::{combine, empty_run, prepare_inputs, run_system, SystemRun};
 use rrflow_eval::lab::import::{import_vectordbbench, MAX_IMPORT_BYTES};
 use rrflow_eval::lab::manifest::{Availability, VectorComparisonManifest};
 use rrflow_eval::lab::report::{ArtifactReference, LabReport, SystemStatus};
+use rrflow_eval::lab::settings::{
+    approve_all, build_plan, launch_digest, needs_approval, planned_files, runs_somewhere,
+    waiting_for_approval, Definitions, LabPlan, LabSettings, PlannedTest, SystemState,
+};
 use rrflow_eval::lab::sources::SourceList;
 use rrflow_eval::lab::{canonical_json, sha256_hex, Result};
-use rrflow_eval::storage::{schema, Digest};
-use std::collections::BTreeMap;
+use rrflow_eval::storage::{schema, Digest, Id};
+use std::collections::{BTreeMap, BTreeSet};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const MAX_MANIFEST_BYTES: u64 = 8 * 1024 * 1024;
+const HOME_VARIABLE: &str = "RRFLOW_LAB_HOME";
+const SETTINGS_FILE: &str = "settings.json";
+const DEFAULT_PACK_DAYS: u64 = 90;
+const DAY_SECONDS: u64 = 86_400;
+/// Flags that take no value.
+const SWITCHES: [&str; 2] = ["json", "all"];
 const USAGE: &str = "usage:
   rrflow-lab validate --manifest FILE
   rrflow-lab resolve-all --tests DIR --systems DIR --out DIR
@@ -36,27 +49,44 @@ const USAGE: &str = "usage:
   rrflow-lab import --from vectordbbench --result FILE --harness-version VERSION --recall-target NUMBER --out FILE
   rrflow-lab sources --file FILE
   rrflow-lab schemas --out DIR
+  rrflow-lab plan [--test ID] [--out NEW_DIR] [--json]
+  rrflow-lab settings [--json]
+  rrflow-lab settings on|off ID
+  rrflow-lab settings tune SYSTEM NAME=VALUE...
+  rrflow-lab settings approve SYSTEM | --all
+  rrflow-lab settings reset [ID]
+  rrflow-lab definitions publish [--lab DIR] [--days N]
+  rrflow-lab definitions update [--from FOLDER]
+  rrflow-lab definitions status [--json] [--trust FILE] [--store DIR]
+  rrflow-lab definitions trust --file FILE
   rrflow-lab definitions keygen --private NEW_FILE --trust NEW_FILE
   rrflow-lab definitions build --lab DIR --key FILE --sequence N --days N --out FILE
-  rrflow-lab definitions patch --lab DIR --key FILE --sequence N --days N --out FILE --base PACK --trust FILE
-  rrflow-lab definitions verify --pack FILE --trust FILE
-  rrflow-lab definitions install --pack FILE --trust FILE --store DIR
-  rrflow-lab definitions status --trust FILE --store DIR
-  rrflow-lab definitions revert --to N --reason TEXT --trust FILE --store DIR";
+  rrflow-lab definitions patch --lab DIR --key FILE --sequence N --days N --out FILE --base PACK [--trust FILE]
+  rrflow-lab definitions verify --pack FILE [--trust FILE]
+  rrflow-lab definitions install --pack FILE [--trust FILE] [--store DIR]
+  rrflow-lab definitions revert --to N --reason TEXT [--trust FILE] [--store DIR]
+
+Definitions, settings and any signing key live in this user's data folder. Set RRFLOW_LAB_HOME to use another.";
 
 struct Arguments {
     values: BTreeMap<String, String>,
     notes: BTreeMap<String, String>,
+    switches: BTreeSet<String>,
 }
 
 fn parse(arguments: &[String]) -> Result<Arguments> {
     let mut values = BTreeMap::new();
     let mut notes = BTreeMap::new();
+    let mut switches = BTreeSet::new();
     let mut iter = arguments.iter();
     while let Some(flag) = iter.next() {
         let name = flag
             .strip_prefix("--")
             .ok_or_else(|| format!("unexpected argument {flag}"))?;
+        if SWITCHES.contains(&name) {
+            switches.insert(name.to_owned());
+            continue;
+        }
         let value = iter
             .next()
             .ok_or_else(|| format!("--{name} needs a value"))?;
@@ -67,7 +97,11 @@ fn parse(arguments: &[String]) -> Result<Arguments> {
             return Err(format!("--{name} was given twice"));
         }
     }
-    Ok(Arguments { values, notes })
+    Ok(Arguments {
+        values,
+        notes,
+        switches,
+    })
 }
 
 impl Arguments {
@@ -76,6 +110,10 @@ impl Arguments {
             .get(name)
             .map(String::as_str)
             .ok_or_else(|| format!("--{name} is required"))
+    }
+
+    fn json(&self) -> bool {
+        self.switches.contains("json")
     }
 }
 
@@ -312,6 +350,8 @@ fn write_schemas(arguments: &Arguments) -> Result<ExitCode> {
         ("lab-sources-v1.json", schema::<SourceList>()),
         ("lab-system-v1.json", schema::<SystemDefinition>()),
         ("lab-test-v1.json", schema::<TestDefinition>()),
+        ("lab-settings-v1.json", schema::<LabSettings>()),
+        ("lab-plan-v1.json", schema::<LabPlan>()),
     ] {
         std::fs::write(directory.join(name), canonical_json(&value)?)
             .map_err(|error| error.to_string())?;
@@ -332,10 +372,724 @@ fn number(arguments: &Arguments, name: &str) -> Result<u64> {
         .map_err(|_| format!("--{name} must be a whole number, not {text}"))
 }
 
+fn lab_home() -> Result<DefinitionHome> {
+    DefinitionHome::resolve(
+        std::env::var_os(HOME_VARIABLE).map(PathBuf::from),
+        RRFLOW_PRODUCT,
+        &|name| std::env::var(name).ok(),
+    )
+    .map_err(|error| format!("{error}: set {HOME_VARIABLE}"))
+}
+
+/// A named file if given. Otherwise the keys pinned in this build and this machine's own.
 fn trusted_keys(arguments: &Arguments) -> Result<TrustedKeys> {
-    let path = arguments.required("trust")?;
+    match arguments.values.get("trust") {
+        Some(path) => {
+            let bytes = std::fs::read(path).map_err(|error| format!("{path}: {error}"))?;
+            serde_json::from_slice(&bytes).map_err(|error| format!("{path}: {error}"))
+        }
+        None => lab_home()?.trusted_keys(&pinned_keys()?),
+    }
+}
+
+fn open_store(arguments: &Arguments) -> Result<PackStore> {
+    match arguments.values.get("store") {
+        Some(path) => PackStore::open(PathBuf::from(path), RRFLOW_PRODUCT),
+        None => lab_home()?.store(),
+    }
+}
+
+fn settings_path(home: &DefinitionHome) -> PathBuf {
+    home.root().join(SETTINGS_FILE)
+}
+
+fn load_settings(home: &DefinitionHome) -> Result<LabSettings> {
+    LabSettings::load(&settings_path(home))
+}
+
+/// What a person sees in place of "not found", wherever nothing is installed yet.
+const NOTHING_INSTALLED: &str = "No test definitions are installed yet.
+In a checkout of this repository, run: rrflow-lab definitions publish
+Otherwise, run: rrflow-lab definitions update --from FOLDER";
+
+fn installed_definitions(store: &PackStore, keys: &TrustedKeys) -> Result<Definitions> {
+    Definitions::read(&store.current_files(keys)?)
+}
+
+fn days_word(days: u64) -> String {
+    if days == 1 {
+        "1 day".to_owned()
+    } else {
+        format!("{days} days")
+    }
+}
+
+fn more_days(days: u64) -> String {
+    if days == 1 {
+        "1 more day".to_owned()
+    } else {
+        format!("{days} more days")
+    }
+}
+
+fn grouped(number: u64) -> String {
+    let digits = number.to_string();
+    let mut text = String::new();
+    for (index, digit) in digits.chars().enumerate() {
+        if index > 0 && (digits.len() - index).is_multiple_of(3) {
+            text.push(',');
+        }
+        text.push(digit);
+    }
+    text
+}
+
+fn listed(ids: &[Id]) -> String {
+    ids.iter().map(Id::as_str).collect::<Vec<_>>().join(", ")
+}
+
+/// Why a pack's life is as it is, in one line.
+fn pack_line(status: &StoreStatus, now: u64) -> String {
+    let sequence = status.current_sequence.unwrap_or(0);
+    let published = status.published_at_unix_s.unwrap_or(now);
+    let expires = status.expires_at_unix_s.unwrap_or(now);
+    let age = now.saturating_sub(published) / DAY_SECONDS;
+    let published = match age {
+        0 => "today".to_owned(),
+        _ => format!("{} ago", days_word(age)),
+    };
+    if status.expired {
+        format!(
+            "Test definitions: pack {sequence}, published {published}. It has expired. It still \
+             works and results made with it say so, but get a newer one."
+        )
+    } else {
+        format!(
+            "Test definitions: pack {sequence}, published {published}, good for {}.",
+            more_days(expires.saturating_sub(now) / DAY_SECONDS)
+        )
+    }
+}
+
+fn approval_hint(waiting: &[Id]) -> Option<String> {
+    (!waiting.is_empty()).then(|| {
+        format!(
+            "{} waiting for your approval: {}.\nSee what each would start: rrflow-lab plan\n\
+             Then approve them: rrflow-lab settings approve --all",
+            if waiting.len() == 1 {
+                "1 system is".to_owned()
+            } else {
+                format!("{} systems are", waiting.len())
+            },
+            listed(waiting)
+        )
+    })
+}
+
+fn print_changes(outcome: &InstallOutcome) {
+    for (word, paths) in [
+        ("Added", &outcome.added),
+        ("Changed", &outcome.changed),
+        ("Removed", &outcome.removed),
+    ] {
+        match paths.len() {
+            0 => {}
+            1..=12 => println!("{word}: {}", paths.join(", ")),
+            count => println!("{word}: {count} files"),
+        }
+    }
+    for line in &outcome.notable {
+        println!("Look at this: {line}");
+    }
+}
+
+/// The lab folder of the checkout this is run in.
+fn find_lab(arguments: &Arguments) -> Result<PathBuf> {
+    if let Some(lab) = arguments.values.get("lab") {
+        return Ok(PathBuf::from(lab));
+    }
+    let here = std::env::current_dir().map_err(|error| error.to_string())?;
+    here.ancestors()
+        .map(|folder| folder.join("eval").join("lab"))
+        .find(|lab| lab.join("sources.json").is_file())
+        .ok_or_else(|| {
+            "no eval/lab was found from this folder. Run this inside a checkout, or name the \
+             folder with --lab DIR"
+                .to_owned()
+        })
+}
+
+fn publish_definitions(arguments: &Arguments) -> Result<ExitCode> {
+    let files = lab_files(&find_lab(arguments)?)?;
+    let home = lab_home()?;
+    let pinned = pinned_keys()?;
+    let days = match arguments.values.get("days") {
+        Some(_) => number(arguments, "days")?,
+        None => DEFAULT_PACK_DAYS,
+    };
+    let outcome = home.publish(
+        &files,
+        &RrflowContent,
+        &pinned,
+        &PublishOptions {
+            days,
+            now_unix_s: now_unix_s()?,
+        },
+    )?;
+    if outcome.created_key {
+        println!(
+            "Created your signing key: {}\nBack this file up and keep it private. Anyone holding \
+             it can publish tests your machines will trust.\n",
+            home.signing_key_path().display()
+        );
+    }
+    if outcome.kind == PublishKind::Unchanged {
+        println!(
+            "Nothing changed since pack {}, so nothing was published. It is good for {}.",
+            outcome.sequence,
+            more_days(outcome.days_left)
+        );
+        return Ok(ExitCode::SUCCESS);
+    }
+    println!(
+        "Published test definitions pack {}, good for {}.",
+        outcome.sequence,
+        days_word(outcome.days_left)
+    );
+    if let Some(install) = &outcome.install {
+        print_changes(install);
+    }
+    match (outcome.patch_bytes, outcome.full_bytes) {
+        (Some(patch), Some(full)) => println!(
+            "Size: {} bytes as a patch, {} bytes in full.",
+            grouped(patch),
+            grouped(full)
+        ),
+        (None, Some(full)) => println!("Size: {} bytes.", grouped(full)),
+        _ => {}
+    }
+    // Whoever publishes a launch has read it, on this machine only.
+    let mut settings = load_settings(&home)?;
+    approve_all(&mut settings, &Definitions::read(&files)?)?;
+    settings.save(&settings_path(&home))?;
+    let outbox = home.outbox();
+    println!("Installed here, and what it starts is approved on this machine.");
+    println!("To send it, copy this folder: {}", outbox.display());
+    if !outcome.key_pinned {
+        println!(
+            "Other machines do not trust this key yet. On each one, run:\n  rrflow-lab definitions \
+             trust --file {}",
+            outbox
+                .join(format!("{RRFLOW_PRODUCT}-trusted-keys.json"))
+                .display()
+        );
+    }
+    println!("Then, on each machine: rrflow-lab definitions update --from FOLDER");
+    Ok(ExitCode::SUCCESS)
+}
+
+fn update_definitions(arguments: &Arguments) -> Result<ExitCode> {
+    let home = lab_home()?;
+    let pinned = pinned_keys()?;
+    let mut settings = load_settings(&home)?;
+    let named = arguments.values.get("from").map(PathBuf::from);
+    let folder = named
+        .clone()
+        .or_else(|| settings.update_from.as_ref().map(PathBuf::from))
+        .unwrap_or_else(|| home.outbox());
+    if named.is_none() && settings.update_from.is_none() && !folder.exists() {
+        println!("No update folder is set yet. Name one with: rrflow-lab definitions update --from FOLDER");
+        return Ok(ExitCode::SUCCESS);
+    }
+    let now = now_unix_s()?;
+    let outcome = match home.update(&folder, &RrflowContent, &pinned, now) {
+        Ok(outcome) => outcome,
+        // A folder given just now is a mistake. A remembered one may simply be unreachable, and
+        // the pack already here still works.
+        Err(error) if named.is_some() => return Err(error),
+        Err(error) => {
+            println!("Could not check for updates: {error}");
+            return Ok(ExitCode::SUCCESS);
+        }
+    };
+    if let Some(from) = named {
+        let text = from.to_string_lossy().into_owned();
+        if settings.update_from.as_deref() != Some(text.as_str()) {
+            settings.update_from = Some(text);
+            settings.save(&settings_path(&home))?;
+        }
+    }
+    let ignored_untrusted = outcome
+        .ignored
+        .iter()
+        .any(|pack| pack.reason.contains("not trusted"));
+    for pack in &outcome.ignored {
+        println!("Did not use {}: {}", pack.file, pack.reason);
+    }
+    if ignored_untrusted {
+        println!(
+            "If you trust this publisher, run: rrflow-lab definitions trust --file {}",
+            folder
+                .join(format!("{RRFLOW_PRODUCT}-trusted-keys.json"))
+                .display()
+        );
+    }
+    match (&outcome.installed, outcome.current_sequence) {
+        (Some(install), _) => {
+            println!("Updated to test definitions pack {}.", install.sequence);
+            print_changes(install);
+            let keys = home.trusted_keys(&pinned)?;
+            let definitions = installed_definitions(&home.store()?, &keys)?;
+            if let Some(hint) = approval_hint(&waiting_for_approval(&definitions, &settings)?) {
+                println!("{hint}");
+            }
+        }
+        (None, Some(sequence)) => println!("Already up to date with pack {sequence}."),
+        (None, None) => println!(
+            "No test definitions could be installed from {}.",
+            folder.display()
+        ),
+    }
+    Ok(ExitCode::SUCCESS)
+}
+
+fn show_status(arguments: &Arguments) -> Result<ExitCode> {
+    let store = open_store(arguments)?;
+    let keys = trusted_keys(arguments)?;
+    let now = now_unix_s()?;
+    let status = store.status(&keys, now)?;
+    let settings = if arguments.values.contains_key("store") {
+        LabSettings::default()
+    } else {
+        load_settings(&lab_home()?)?
+    };
+    let definitions = status
+        .current_sequence
+        .map(|_| installed_definitions(&store, &keys))
+        .transpose()?;
+    let waiting = match &definitions {
+        Some(definitions) => waiting_for_approval(definitions, &settings)?,
+        None => Vec::new(),
+    };
+    if arguments.json() {
+        let mut facts = serde_json::to_value(&status).map_err(|error| error.to_string())?;
+        facts["systems"] = definitions.as_ref().map(|d| d.systems.len()).into();
+        facts["tests"] = definitions.as_ref().map(|d| d.tests.len()).into();
+        facts["waiting_for_approval"] =
+            serde_json::to_value(&waiting).map_err(|error| error.to_string())?;
+        facts["turned_off"] =
+            serde_json::to_value(&settings.off).map_err(|error| error.to_string())?;
+        facts["tuned"] = serde_json::to_value(settings.tuning.keys().collect::<Vec<_>>())
+            .map_err(|error| error.to_string())?;
+        facts["update_from"] = settings.update_from.clone().into();
+        return print_json(&facts);
+    }
+    let Some(definitions) = definitions else {
+        println!("{NOTHING_INSTALLED}");
+        return Ok(ExitCode::SUCCESS);
+    };
+    println!("{}", pack_line(&status, now));
+    println!(
+        "{} systems and {} tests, checked against their signature.",
+        definitions.systems.len(),
+        definitions.tests.len()
+    );
+    if let Some(reason) = &status.reverted_because {
+        println!(
+            "Stepped back from pack {}: {reason}",
+            status.highest_sequence
+        );
+    }
+    if !settings.off.is_empty() {
+        let off: Vec<Id> = settings.off.iter().cloned().collect();
+        println!("Turned off: {}.", listed(&off));
+    }
+    for (id, tuning) in &settings.tuning {
+        println!("Tuned: {} ({}).", id.as_str(), tuning.describe().join(", "));
+    }
+    if let Some(hint) = approval_hint(&waiting) {
+        println!("{hint}");
+    }
+    Ok(ExitCode::SUCCESS)
+}
+
+fn trust_keys(arguments: &Arguments) -> Result<ExitCode> {
+    let path = arguments.required("file")?;
     let bytes = std::fs::read(path).map_err(|error| format!("{path}: {error}"))?;
-    serde_json::from_slice(&bytes).map_err(|error| format!("{path}: {error}"))
+    let keys: TrustedKeys =
+        serde_json::from_slice(&bytes).map_err(|error| format!("{path}: {error}"))?;
+    let added = lab_home()?.add_trusted_keys(&keys)?;
+    if added.is_empty() {
+        println!("Those keys were already trusted here.");
+    }
+    for key in added {
+        println!("Now trusting publisher key {key} on this machine.");
+    }
+    Ok(ExitCode::SUCCESS)
+}
+
+fn print_planned_test(test: &PlannedTest) {
+    println!("{} ({})", test.title, test.id.as_str());
+    if !test.on {
+        println!(
+            "  Turned off. Turn it on with: rrflow-lab settings on {}",
+            test.id.as_str()
+        );
+        return;
+    }
+    println!(
+        "  {} points, {} dimensions, {} queries, top {}, recall target {}",
+        grouped(test.points),
+        grouped(u64::from(test.dimensions)),
+        grouped(u64::from(test.queries)),
+        test.k,
+        test.recall_target
+    );
+    if let Some(problem) = &test.problem {
+        println!("  Cannot run as configured: {problem}");
+        return;
+    }
+    let named = |state: SystemState| -> Vec<&str> {
+        test.systems
+            .iter()
+            .filter(|system| system.state == state)
+            .map(|system| system.id.as_str())
+            .collect()
+    };
+    let will_run = named(SystemState::WillRun);
+    if !will_run.is_empty() {
+        println!("  Will run: {}", will_run.join(", "));
+    }
+    let unset = |name: &String| std::env::var_os(name).is_none();
+    for name in test.needs.iter().filter(|name| unset(name)) {
+        println!("  Before it runs, set {name} to the folder holding this test's data");
+    }
+    let mut missing: BTreeMap<&str, Vec<&str>> = BTreeMap::new();
+    for system in &test.systems {
+        if system.state == SystemState::WillRun {
+            for name in system.needs.iter().filter(|name| unset(name)) {
+                missing.entry(name).or_default().push(system.id.as_str());
+            }
+        }
+    }
+    for (name, systems) in missing {
+        println!("  Before it runs, set {name} (for {})", systems.join(", "));
+    }
+    for system in test
+        .systems
+        .iter()
+        .filter(|system| !system.tuned.is_empty())
+    {
+        println!(
+            "  Tuned: {} ({})",
+            system.id.as_str(),
+            system.tuned.join(", ")
+        );
+    }
+    let off = named(SystemState::TurnedOff);
+    if !off.is_empty() {
+        println!("  Turned off: {}", off.join(", "));
+    }
+    let held: Vec<_> = test
+        .systems
+        .iter()
+        .filter(|system| system.state == SystemState::NeedsApproval)
+        .collect();
+    if !held.is_empty() {
+        println!("  Waiting for approval:");
+        for system in held {
+            println!(
+                "    {} would start {}",
+                system.id.as_str(),
+                system.starts.as_deref().unwrap_or("something")
+            );
+        }
+        println!("    Approve one with: rrflow-lab settings approve NAME");
+    }
+    let gaps: Vec<_> = test
+        .systems
+        .iter()
+        .filter(|system| system.state == SystemState::NotAvailable)
+        .collect();
+    if !gaps.is_empty() {
+        println!("  Not available:");
+        for system in gaps {
+            println!(
+                "    {}: {}",
+                system.id.as_str(),
+                system.reason.as_deref().unwrap_or("no reason given")
+            );
+        }
+    }
+}
+
+/// Which pack a plan came from, and so which pack a run's report names.
+fn pack_identity(status: &StoreStatus) -> serde_json::Value {
+    serde_json::json!({
+        "sequence": status.current_sequence,
+        "manifest_sha256": status.manifest_sha256,
+        "stale": status.expired,
+    })
+}
+
+fn write_planned(
+    directory: &Path,
+    files: &BTreeMap<String, String>,
+    plan: &LabPlan,
+    status: &StoreStatus,
+) -> Result<()> {
+    if directory.exists() {
+        return Err(format!("{} already exists", directory.display()));
+    }
+    let write = |relative: &str, text: &str| -> Result<()> {
+        let path = directory.join(relative);
+        let parent = path.parent().ok_or("a planned file has no parent")?;
+        std::fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+        std::fs::write(&path, text).map_err(|error| format!("{}: {error}", path.display()))
+    };
+    for (relative, text) in files {
+        write(relative, text)?;
+    }
+    let plan = serde_json::to_string_pretty(plan).map_err(|error| error.to_string())?;
+    write("plan.json", &plan)?;
+    write(
+        "definitions.env",
+        &format!(
+            "sequence={}\nmanifest_sha256={}\nstale={}\n",
+            status.current_sequence.unwrap_or(0),
+            status.manifest_sha256.as_deref().unwrap_or_default(),
+            status.expired
+        ),
+    )
+}
+
+fn show_plan(arguments: &Arguments) -> Result<ExitCode> {
+    let home = lab_home()?;
+    let keys = home.trusted_keys(&pinned_keys()?)?;
+    let store = home.store()?;
+    let now = now_unix_s()?;
+    let status = store.status(&keys, now)?;
+    if status.current_sequence.is_none() {
+        return Err(NOTHING_INSTALLED.into());
+    }
+    let definitions = installed_definitions(&store, &keys)?;
+    let settings = load_settings(&home)?;
+    let mut plan = build_plan(&definitions, &settings)?;
+    if let Some(wanted) = arguments.values.get("test") {
+        if !plan.tests.iter().any(|test| test.id.as_str() == wanted) {
+            let known: Vec<&str> = plan.tests.iter().map(|test| test.id.as_str()).collect();
+            return Err(format!(
+                "no test is named {wanted}. These are installed: {}",
+                known.join(", ")
+            ));
+        }
+        if let Some(out) = arguments.values.get("out") {
+            let files = planned_files(&definitions, &settings, &plan, wanted)?;
+            plan.tests.retain(|test| test.id.as_str() == wanted);
+            write_planned(Path::new(out), &files, &plan, &status)?;
+        } else {
+            plan.tests.retain(|test| test.id.as_str() == wanted);
+        }
+    } else if arguments.values.contains_key("out") {
+        return Err("--out needs one test: name it with --test ID".into());
+    }
+    if arguments.json() {
+        return print_json(&serde_json::json!({
+            "definitions": pack_identity(&status),
+            "tests": plan.tests,
+        }));
+    }
+    println!("{}", pack_line(&status, now));
+    for test in &plan.tests {
+        println!();
+        print_planned_test(test);
+    }
+    println!();
+    println!("Nothing has started. To run a test on a Linux host with Docker:");
+    println!("  eval/lab/run_all.sh TEST_ID RUN_FOLDER");
+    Ok(ExitCode::SUCCESS)
+}
+
+fn show_settings(json: bool) -> Result<ExitCode> {
+    let home = lab_home()?;
+    let settings = load_settings(&home)?;
+    if json {
+        return print_json(&settings);
+    }
+    let keys = home.trusted_keys(&pinned_keys()?)?;
+    let store = home.store()?;
+    if store
+        .status(&keys, now_unix_s()?)?
+        .current_sequence
+        .is_none()
+    {
+        return Err(NOTHING_INSTALLED.into());
+    }
+    let definitions = installed_definitions(&store, &keys)?;
+    let waiting = waiting_for_approval(&definitions, &settings)?;
+    println!("Systems");
+    for (id, system) in &definitions.systems {
+        let state = if !runs_somewhere(&definitions, id, system) {
+            "n/a"
+        } else if settings.off.contains(id) {
+            "off"
+        } else if waiting.contains(id) {
+            "wait"
+        } else {
+            "on"
+        };
+        let tuned = settings
+            .tuning
+            .get(id)
+            .map(|tuning| format!("  tuned: {}", tuning.describe().join(", ")))
+            .unwrap_or_default();
+        println!(
+            "  {state:<5}{:<28}{}{tuned}",
+            id.as_str(),
+            system.binding.label
+        );
+    }
+    println!("Tests");
+    for (id, test) in &definitions.tests {
+        let state = if settings.off.contains(id) {
+            "off"
+        } else {
+            "on"
+        };
+        println!("  {state:<5}{:<28}{}", id.as_str(), test.test.title);
+    }
+    println!("on = runs, off = you turned it off, wait = needs your approval, n/a = not available");
+    Ok(ExitCode::SUCCESS)
+}
+
+/// One system's name from the installed pack, or a message that lists what there is.
+fn known_system<'a>(
+    definitions: &'a Definitions,
+    name: &str,
+) -> Result<(Id, &'a rrflow_eval::lab::catalog::SystemDefinition)> {
+    definitions
+        .systems
+        .iter()
+        .find(|(id, _)| id.as_str() == name)
+        .map(|(id, system)| (id.clone(), system))
+        .ok_or_else(|| {
+            let known: Vec<&str> = definitions.systems.keys().map(Id::as_str).collect();
+            format!(
+                "no system is named {name}. These are installed: {}",
+                known.join(", ")
+            )
+        })
+}
+
+fn change_settings(verb: &str, rest: &[String]) -> Result<ExitCode> {
+    let home = lab_home()?;
+    let keys = home.trusted_keys(&pinned_keys()?)?;
+    let store = home.store()?;
+    if store
+        .status(&keys, now_unix_s()?)?
+        .current_sequence
+        .is_none()
+    {
+        return Err(NOTHING_INSTALLED.into());
+    }
+    let definitions = installed_definitions(&store, &keys)?;
+    let mut settings = load_settings(&home)?;
+    match (verb, rest) {
+        ("on" | "off", [name]) => {
+            let is_system = definitions.systems.keys().any(|id| id.as_str() == name);
+            let is_test = definitions.tests.keys().any(|id| id.as_str() == name);
+            if is_system == is_test {
+                return Err(if is_system {
+                    format!("{name} names both a system and a test")
+                } else {
+                    format!("no system or test is named {name}")
+                });
+            }
+            let id = Id::try_from(name.clone())?;
+            if verb == "off" {
+                settings.off.insert(id);
+                println!("{name} is off. It will still appear in reports, marked as turned off.");
+            } else {
+                settings.off.remove(&id);
+                println!("{name} is on.");
+            }
+        }
+        ("tune", [name, pairs @ ..]) if !pairs.is_empty() => {
+            let (id, system) = known_system(&definitions, name)?;
+            let mut tuning = settings.tuning.get(&id).cloned().unwrap_or_default();
+            for pair in pairs {
+                let (setting, value) = pair
+                    .split_once('=')
+                    .ok_or_else(|| format!("{pair} needs the form NAME=VALUE"))?;
+                tuning.set(setting, value)?;
+            }
+            settings.tuning.insert(id.clone(), tuning.clone());
+            // Checked now, on every test it reaches, so a bad value is refused while it is typed.
+            let mut check = settings.clone();
+            check.off.remove(&id);
+            check
+                .approved_launches
+                .insert(id.clone(), launch_digest(system)?);
+            for test in build_plan(&definitions, &check)?.tests {
+                if let Some(problem) = test.problem {
+                    return Err(format!(
+                        "That was not saved, because {} could not run with it: {problem}",
+                        test.id.as_str()
+                    ));
+                }
+            }
+            println!(
+                "{name} is tuned: {}. Its reports will say so.",
+                tuning.describe().join(", ")
+            );
+        }
+        ("approve", [all]) if all == "--all" => {
+            let changed = approve_all(&mut settings, &definitions)?;
+            for id in &changed {
+                let summary = definitions.systems[id].launch.summary().unwrap_or_default();
+                println!("Approved {}: {summary}", id.as_str());
+            }
+            if changed.is_empty() {
+                println!("Everything was already approved.");
+            }
+        }
+        ("approve", [name]) => {
+            let (id, system) = known_system(&definitions, name)?;
+            if needs_approval(system) {
+                settings
+                    .approved_launches
+                    .insert(id, launch_digest(system)?);
+                println!(
+                    "Approved {name}: {}",
+                    system.launch.summary().unwrap_or_default()
+                );
+            } else {
+                println!("{name} starts nothing new, so it needs no approval.");
+            }
+        }
+        ("reset", []) => {
+            settings.off.clear();
+            settings.tuning.clear();
+            println!("Everything is on and at its published settings. Approvals are kept.");
+        }
+        ("reset", [name]) => {
+            let id = Id::try_from(name.clone())?;
+            settings.off.remove(&id);
+            settings.tuning.remove(&id);
+            println!("{name} is on and at its published settings.");
+        }
+        _ => return Err(USAGE.into()),
+    }
+    settings.save(&settings_path(&home))?;
+    Ok(ExitCode::SUCCESS)
+}
+
+fn settings_command(arguments: &[String]) -> Result<ExitCode> {
+    match arguments.split_first() {
+        None => show_settings(false),
+        Some((flag, [])) if flag == "--json" => show_settings(true),
+        Some((verb, rest)) => change_settings(verb, rest),
+    }
 }
 
 fn pack_bytes(path: &str) -> Result<Vec<u8>> {
@@ -434,8 +1188,10 @@ fn definitions(arguments: &[String]) -> Result<ExitCode> {
         return Err(USAGE.into());
     };
     let parsed = parse(rest)?;
-    let store = || PackStore::open(PathBuf::from(parsed.required("store")?), RRFLOW_PRODUCT);
     match verb.as_str() {
+        "publish" => publish_definitions(&parsed),
+        "update" => update_definitions(&parsed),
+        "trust" => trust_keys(&parsed),
         "keygen" => keygen(&parsed),
         "build" => build_definitions(&parsed, None),
         "patch" => {
@@ -460,7 +1216,7 @@ fn definitions(arguments: &[String]) -> Result<ExitCode> {
         }
         "install" => {
             let bytes = pack_bytes(parsed.required("pack")?)?;
-            let outcome = store()?.install(
+            let outcome = open_store(&parsed)?.install(
                 &bytes,
                 &trusted_keys(&parsed)?,
                 &RrflowContent,
@@ -468,10 +1224,10 @@ fn definitions(arguments: &[String]) -> Result<ExitCode> {
             )?;
             print_json(&outcome)
         }
-        "status" => print_json(&store()?.status(&trusted_keys(&parsed)?, now_unix_s()?)?),
+        "status" => show_status(&parsed),
         "revert" => {
             let sequence = number(&parsed, "to")?;
-            store()?.revert(
+            open_store(&parsed)?.revert(
                 sequence,
                 parsed.required("reason")?,
                 &trusted_keys(&parsed)?,
@@ -490,6 +1246,9 @@ fn dispatch(arguments: &[String]) -> Result<ExitCode> {
     };
     if command == "definitions" {
         return definitions(rest);
+    }
+    if command == "settings" {
+        return settings_command(rest);
     }
     let parsed = parse(rest)?;
     match command.as_str() {
@@ -531,6 +1290,7 @@ fn dispatch(arguments: &[String]) -> Result<ExitCode> {
             parsed.required("ef")?,
         )?),
         "schemas" => write_schemas(&parsed),
+        "plan" => show_plan(&parsed),
         _ => Err(USAGE.into()),
     }
 }

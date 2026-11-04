@@ -667,7 +667,7 @@ fn the_command_line_builds_installs_patches_and_refuses_a_changed_pack() {
     ]);
     assert!(ok, "{error}");
     assert!(out.contains("tests/vector-small.json"), "{out}");
-    let (ok, out, error) = run(&["status", "--trust", &trust, "--store", &store]);
+    let (ok, out, error) = run(&["status", "--trust", &trust, "--store", &store, "--json"]);
     assert!(ok, "{error}");
     let status: serde_json::Value = serde_json::from_str(&out).unwrap();
     assert_eq!(status["current_sequence"], 2);
