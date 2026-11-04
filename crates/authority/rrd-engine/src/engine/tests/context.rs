@@ -17,6 +17,116 @@ fn reference(kind: &str, id: &str) -> DataReference {
     }
 }
 
+/// A client decodes a packet and checks its count and digest, so what the engine sent has to
+/// be what the client reads, whatever scores real text happens to produce.
+#[test]
+fn a_packet_over_varied_text_validates_after_crossing_the_wire() {
+    let (root, engine) = isolated_engine();
+    let lease = engine
+        .create_session(
+            &session_request(5_000, 2),
+            &id("wire-session"),
+            1_000,
+            "request-wire-session",
+            "operation-wire-session",
+        )
+        .unwrap();
+    let kind = CanonicalId::new("note").unwrap();
+    let mut mutations = vec![TransactionMutation::PutSchema {
+        registry: DataSchemaRegistry {
+            revision: 1,
+            migration: "install varied text fixture".into(),
+            organisation: DataEstateOrganisation::default(),
+            tables: BTreeMap::from([(
+                kind,
+                DataTableSchema {
+                    model: DataLogicalModel::GraphNode,
+                    mode: DataSchemaMode::Schemaless,
+                    properties: BTreeMap::new(),
+                    allow_additional_properties: false,
+                },
+            )]),
+            records: BTreeMap::new(),
+            relations: BTreeMap::new(),
+            events: BTreeMap::new(),
+        },
+    }];
+    let words = [
+        "session", "recovery", "token", "durable", "rotate", "search", "vector", "render",
+    ];
+    for number in 0..64_usize {
+        let body = (0..=number % 23)
+            .map(|position| words[(number * 7 + position * position) % words.len()])
+            .collect::<Vec<_>>()
+            .join(" ");
+        mutations.push(TransactionMutation::PutRecord {
+            reference: reference("note", &format!("n{number}")),
+            valid_from: 1_100,
+            valid_to: None,
+            properties: BTreeMap::from([("body".into(), QueryValue::String(body))]),
+        });
+    }
+    let transaction = engine
+        .begin_transaction(
+            &lease.session_id,
+            &lease.token,
+            &BeginTransaction {
+                scope: CanonicalId::new("data").unwrap(),
+                timeout_ms: 1_000,
+            },
+            &mutation_context(
+                &id("wire-begin"),
+                "request-wire-begin",
+                "operation-wire-begin",
+            ),
+            1_050,
+        )
+        .unwrap();
+    engine
+        .commit_transaction(
+            &lease.session_id,
+            &lease.token,
+            &transaction.transaction_id,
+            &id("wire-commit"),
+            &CommitTransaction {
+                operation_sha256: rrd_contract::transaction_operation_sha256(&mutations),
+                mutations,
+            },
+            1_100,
+            "request-wire-commit",
+            "operation-wire-commit",
+        )
+        .unwrap();
+    let packet = engine
+        .assemble_context(
+            &lease.session_id,
+            &lease.token,
+            &AssembleContext {
+                scope: "instance:test-instance".into(),
+                query: "durable session recovery".into(),
+                valid_at: 1_200,
+                seeds: Vec::new(),
+                max_graph_depth: 1,
+                max_items: 64,
+                max_output_bytes: 256 * 1024,
+                max_storage_keys: 4_096,
+            },
+            1_200,
+            "request-wire",
+            "operation-wire",
+        )
+        .unwrap();
+    assert!(packet.items.len() > 8, "a real answer holds many scores");
+    packet.validate().unwrap();
+
+    let wire = serde_json::to_vec(&packet).unwrap();
+    let received: rrd_contract::ContextPacket = serde_json::from_slice(&wire).unwrap();
+    received.validate().unwrap();
+    assert_eq!(received, packet);
+    drop(engine);
+    drop(root);
+}
+
 #[test]
 fn distinct_typed_records_remain_distinct_in_context_after_reopen() {
     use rrd_core::{

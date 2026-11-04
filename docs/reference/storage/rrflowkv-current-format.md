@@ -373,6 +373,9 @@ ranges/runs/row groups, pinned bytes, examined versions, page-family requests,
 cache hits/misses/loads, actual mmap/io_uring/bounded reads, physical/logical
 bytes, borrowed/decoded/decompressed/allocated/copied bytes, output and batch
 peaks, and `creating`, `running`, `completed`, `cancelled`, or `failed` outcome.
+Each row counts a page request and touches the cache, but one row group's rows
+charge each page's logical bytes once, so that ceiling tracks the bytes a read
+covers rather than page size times rows.
 A typed ceiling failure is not successful truncation. Completion, explicit
 cancellation, failure, and drop fuse the stream and release its lease once.
 
