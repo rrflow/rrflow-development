@@ -935,16 +935,26 @@ fn score_dense_values(
     match kernel {
         HnswKernel::Scalar => score_dense(query, candidate, metric),
         HnswKernel::Auto => {
-            #[cfg(target_arch = "x86_64")]
-            if std::arch::is_x86_feature_detected!("avx2") {
-                // SAFETY: AVX2 was detected at runtime and both slices have the
-                // same proven length; the kernel performs only unaligned
-                // in-bounds loads.
-                return Ok(unsafe { score_dense_avx2(query, candidate, metric) });
+            if let Some(simd) = simd_score() {
+                // SAFETY: simd_score only returns a kernel this host can run,
+                // and both slices have the same proven length; a kernel
+                // performs only unaligned in-bounds loads.
+                return Ok(unsafe { simd(query, candidate, metric) });
             }
             score_dense(query, candidate, metric)
         }
     }
+}
+
+type SimdScore = unsafe fn(&[f32], &[f32], ScoreMetric) -> f64;
+
+/// The SIMD kernel this host can run, if it has one.
+fn simd_score() -> Option<SimdScore> {
+    #[cfg(target_arch = "x86_64")]
+    if std::arch::is_x86_feature_detected!("avx2") {
+        return Some(score_dense_avx2);
+    }
+    None
 }
 
 #[cfg(target_arch = "x86_64")]
@@ -1110,6 +1120,99 @@ mod tests {
         ReadStamp, RuntimeProperties, RuntimeRef, RuntimeValue, RuntimeVector,
         VectorCollectionAddress,
     };
+
+    const KERNEL_METRICS: [ScoreMetric; 4] = [
+        ScoreMetric::Dot,
+        ScoreMetric::Cosine,
+        ScoreMetric::Euclidean,
+        ScoreMetric::Manhattan,
+    ];
+
+    fn kernel_vectors(length: usize, seed: u32) -> (Vec<f32>, Vec<f32>) {
+        let mut state = seed;
+        let mut next = move || {
+            state = state
+                .wrapping_mul(2_654_435_761)
+                .wrapping_add(1_013_904_223);
+            (state >> 8) as f32 / (1_u32 << 24) as f32 * 2.0 - 1.0
+        };
+        let left = (0..length).map(|_| next()).collect();
+        let right = (0..length).map(|_| next()).collect();
+        (left, right)
+    }
+
+    fn both_kernels(left: &[f32], right: &[f32], metric: ScoreMetric) -> (f64, f64) {
+        (
+            score_dense_values(left, right, metric, HnswKernel::Scalar).unwrap(),
+            score_dense_values(left, right, metric, HnswKernel::Auto).unwrap(),
+        )
+    }
+
+    /// A lost lane or tail element moves a score far more than this rounding
+    /// allowance at the short lengths, where each element is a large share.
+    #[test]
+    fn the_automatic_kernel_agrees_with_the_scalar_kernel_at_every_length() {
+        for length in (0..=67).chain([128, 384, 512, 1024]) {
+            let (left, right) = kernel_vectors(length, length as u32 + 1);
+            let allowance = 1e-5 * length.max(1) as f64;
+            for metric in KERNEL_METRICS {
+                let (scalar, automatic) = both_kernels(&left, &right, metric);
+                assert!(
+                    (scalar - automatic).abs() <= allowance,
+                    "{metric:?} at {length}: {scalar} and {automatic}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn a_zero_vector_scores_as_the_scalar_kernel_scores_it() {
+        let zero = vec![0.0_f32; 33];
+        let (other, _) = kernel_vectors(33, 7);
+        for metric in KERNEL_METRICS {
+            for (left, right) in [(&zero, &other), (&other, &zero), (&zero, &zero)] {
+                let (scalar, automatic) = both_kernels(left, right, metric);
+                assert!(
+                    (scalar.is_nan() && automatic.is_nan()) || (scalar - automatic).abs() <= 1e-3,
+                    "{metric:?}: {scalar} and {automatic}"
+                );
+            }
+        }
+    }
+
+    /// Lanes are f32 and the scalar kernel is f64. A product can overflow the
+    /// first where the second is finite, and that must not change a score.
+    #[test]
+    fn a_lane_that_overflows_gets_the_scalar_kernels_score() {
+        let same = vec![1e30_f32; 33];
+        let opposite = same.iter().map(|value| -value).collect::<Vec<_>>();
+        let alternating = same
+            .iter()
+            .enumerate()
+            .map(|(index, value)| if index % 2 == 0 { *value } else { -value })
+            .collect::<Vec<_>>();
+        for metric in KERNEL_METRICS {
+            for other in [&same, &opposite, &alternating] {
+                let (scalar, automatic) = both_kernels(&same, other, metric);
+                assert!(scalar.is_finite(), "{metric:?}: {scalar}");
+                assert_eq!(automatic, scalar, "{metric:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn a_host_with_simd_uses_it() {
+        #[cfg(target_arch = "aarch64")]
+        assert!(
+            simd_score().is_some(),
+            "NEON is part of the aarch64 baseline"
+        );
+        #[cfg(target_arch = "x86_64")]
+        assert_eq!(
+            simd_score().is_some(),
+            std::arch::is_x86_feature_detected!("avx2")
+        );
+    }
 
     fn candidate(scope: &ScopeId, cursor: u64, id: usize, values: Vec<f32>) -> VectorCandidate {
         VectorCandidate {
