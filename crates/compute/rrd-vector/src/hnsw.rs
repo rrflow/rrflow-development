@@ -1148,6 +1148,280 @@ mod tests {
         }
     }
 
+    /// A fixed stream of normal values, so a corpus is the same on every run and every machine.
+    struct Stream(u64);
+
+    impl Stream {
+        fn uniform(&mut self) -> f64 {
+            // xorshift64*, whose whole output is fixed by the seed.
+            self.0 ^= self.0 >> 12;
+            self.0 ^= self.0 << 25;
+            self.0 ^= self.0 >> 27;
+            let value = self.0.wrapping_mul(0x9E37_79B9_7F4A_7C15);
+            ((value >> 11) as f64 + 0.5) / (1_u64 << 53) as f64
+        }
+
+        fn normal(&mut self) -> f32 {
+            let radius = (-2.0 * self.uniform().ln()).sqrt();
+            (radius * (std::f64::consts::TAU * self.uniform()).cos()) as f32
+        }
+    }
+
+    /// Points around cluster centres, drawn as the lab's mixture draws them: real embeddings
+    /// cluster, and uniform data cannot show what clustering does to a graph.
+    fn clustered(
+        scope: &ScopeId,
+        first_id: usize,
+        points: usize,
+        clusters: usize,
+        dimensions: usize,
+        spread: f32,
+        seed: u64,
+    ) -> Vec<VectorCandidate> {
+        let mut stream = Stream(seed);
+        let centres = (0..clusters)
+            .map(|_| {
+                (0..dimensions)
+                    .map(|_| stream.normal())
+                    .collect::<Vec<f32>>()
+            })
+            .collect::<Vec<_>>();
+        (0..points)
+            .map(|index| {
+                let centre = &centres[index % clusters];
+                let values = centre
+                    .iter()
+                    .map(|value| value + spread * stream.normal())
+                    .collect();
+                let id = first_id + index;
+                candidate(scope, id as u64 + 1, id, values)
+            })
+            .collect()
+    }
+
+    fn clustered_config(scope: &ScopeId, dimensions: usize, m: usize, ef: usize) -> HnswConfig {
+        HnswConfig {
+            dimensions,
+            m,
+            ef_construction: ef,
+            max_level: 6,
+            ..config(scope)
+        }
+    }
+
+    fn reachable_nodes(index: &HnswIndex) -> usize {
+        let Some(entrypoint) = index.entrypoint else {
+            return 0;
+        };
+        let mut seen = vec![false; index.nodes.len()];
+        seen[entrypoint] = true;
+        let mut pending = vec![entrypoint];
+        while let Some(node) = pending.pop() {
+            for neighbor in &index.nodes[node].neighbors[0] {
+                if !seen[*neighbor] {
+                    seen[*neighbor] = true;
+                    pending.push(*neighbor);
+                }
+            }
+        }
+        seen.iter().filter(|seen| **seen).count()
+    }
+
+    /// The share of the true top ten a search finds, over queries drawn from the corpus's clusters.
+    fn recall(index: &HnswIndex, corpus: &[VectorCandidate], ef_search: usize) -> f64 {
+        let scope = &index.config.scope;
+        let cursor = index.descriptor.stamp.source_cursor;
+        let mut stream = Stream(0xC0FF_EE00_D15E_A5E5);
+        let mut found = 0;
+        let mut wanted = 0;
+        for query in corpus.iter().step_by(corpus.len() / 50) {
+            let values = dense_candidate(query)
+                .unwrap()
+                .iter()
+                .map(|value| value + 0.05 * stream.normal())
+                .collect::<Vec<f32>>();
+            let mut exact = corpus
+                .iter()
+                .map(|candidate| {
+                    (
+                        score_dense_query(
+                            &values,
+                            candidate,
+                            ScoreMetric::Cosine,
+                            HnswKernel::Scalar,
+                        )
+                        .unwrap(),
+                        candidate.vector.reference.clone(),
+                    )
+                })
+                .collect::<Vec<_>>();
+            exact.sort_by(|left, right| right.0.total_cmp(&left.0));
+            let truth = exact
+                .into_iter()
+                .take(10)
+                .map(|(_, reference)| reference)
+                .collect::<BTreeSet<_>>();
+            let request = SearchRequest {
+                scope: scope.clone(),
+                read: ReadStamp::new(scope.clone(), None, 0, cursor, Some("11".repeat(32)))
+                    .unwrap(),
+                valid_at: 2,
+                field: "body".into(),
+                query: VectorQuery::Dense { values },
+                metric: ScoreMetric::Cosine,
+                embedding_model: None,
+                top_k: 10,
+                mode: SearchMode::RequireApproximate {
+                    exact_rerank: ef_search,
+                },
+                filter: None,
+            };
+            let hits = index.search(&request, ef_search).unwrap();
+            found += hits
+                .iter()
+                .filter(|hit| truth.contains(&hit.reference))
+                .count();
+            wanted += truth.len();
+        }
+        found as f64 / wanted as f64
+    }
+
+    #[test]
+    fn a_clustered_corpus_builds_with_every_node_reachable_and_answers() {
+        let scope = ScopeId::new("instance:hnsw").unwrap();
+        let corpus = clustered(&scope, 0, 3_000, 32, 24, 0.35, 0x5EED_0001);
+        let index = HnswIndex::build(
+            clustered_config(&scope, 24, 16, 100),
+            1,
+            corpus.len() as u64,
+            corpus.clone(),
+        )
+        .unwrap();
+        assert_eq!(reachable_nodes(&index), corpus.len());
+        for node in &index.nodes {
+            for (layer, neighbors) in node.neighbors.iter().enumerate() {
+                assert!(neighbors.len() <= layer_limit(16, layer));
+            }
+        }
+        let found = recall(&index, &corpus, 128);
+        assert!(found >= 0.95, "recall was {found}");
+    }
+
+    #[test]
+    fn two_tight_clusters_far_apart_stay_connected() {
+        let scope = ScopeId::new("instance:hnsw").unwrap();
+        let corpus = (0..400)
+            .map(|index| {
+                let side = if index % 2 == 0 { 1.0 } else { -1.0 };
+                let wobble = index as f32 * 1e-4;
+                candidate(
+                    &scope,
+                    index as u64 + 1,
+                    index,
+                    vec![side, wobble, side * wobble],
+                )
+            })
+            .collect::<Vec<_>>();
+        let index = HnswIndex::build(
+            clustered_config(&scope, 3, 4, 32),
+            1,
+            corpus.len() as u64,
+            corpus.clone(),
+        )
+        .unwrap();
+        assert_eq!(reachable_nodes(&index), corpus.len());
+    }
+
+    #[test]
+    fn many_small_clusters_stay_connected() {
+        let scope = ScopeId::new("instance:hnsw").unwrap();
+        let corpus = clustered(&scope, 0, 1_200, 120, 16, 0.02, 0x5EED_0002);
+        let index = HnswIndex::build(
+            clustered_config(&scope, 16, 4, 32),
+            1,
+            corpus.len() as u64,
+            corpus.clone(),
+        )
+        .unwrap();
+        assert_eq!(reachable_nodes(&index), corpus.len());
+    }
+
+    #[test]
+    fn identical_vectors_stay_connected() {
+        let scope = ScopeId::new("instance:hnsw").unwrap();
+        let corpus = (0..300)
+            .map(|index| candidate(&scope, index as u64 + 1, index, vec![0.6, 0.8]))
+            .collect::<Vec<_>>();
+        let index = HnswIndex::build(
+            clustered_config(&scope, 2, 4, 32),
+            1,
+            corpus.len() as u64,
+            corpus.clone(),
+        )
+        .unwrap();
+        assert_eq!(reachable_nodes(&index), corpus.len());
+    }
+
+    #[test]
+    fn an_advance_into_new_clusters_stays_connected() {
+        let scope = ScopeId::new("instance:hnsw").unwrap();
+        let first = clustered(&scope, 0, 1_000, 8, 16, 0.2, 0x5EED_0003);
+        let index = HnswIndex::build(
+            clustered_config(&scope, 16, 8, 64),
+            1,
+            first.len() as u64,
+            first.clone(),
+        )
+        .unwrap();
+        let second = clustered(&scope, 1_000, 500, 8, 16, 0.2, 0x5EED_0004);
+        let advanced = index.advance(2, 1_500, second.clone()).unwrap();
+        assert_eq!(reachable_nodes(&advanced), first.len() + second.len());
+        let mut whole = first;
+        whole.extend(second);
+        let found = recall(&advanced, &whole, 128);
+        assert!(found >= 0.95, "recall was {found}");
+    }
+
+    #[test]
+    fn a_clustered_build_is_deterministic() {
+        let scope = ScopeId::new("instance:hnsw").unwrap();
+        let corpus = clustered(&scope, 0, 600, 16, 16, 0.2, 0x5EED_0005);
+        let build = || {
+            HnswIndex::build(
+                clustered_config(&scope, 16, 8, 64),
+                1,
+                corpus.len() as u64,
+                corpus.clone(),
+            )
+            .unwrap()
+        };
+        assert_eq!(build().as_bytes(), build().as_bytes());
+    }
+
+    #[test]
+    fn a_graph_that_leaves_a_node_unreachable_is_still_refused() {
+        let scope = ScopeId::new("instance:hnsw").unwrap();
+        let node = |id: usize, values: Vec<f32>| HnswNode {
+            candidate: candidate(&scope, id as u64 + 1, id, values),
+            level: 0,
+            neighbors: vec![Vec::new()],
+        };
+        let error = HnswIndex::from_body(HnswBody {
+            config: config(&scope),
+            generation: 1,
+            source_cursor: 2,
+            entrypoint: Some(0),
+            indexed_delta_vectors: 2,
+            nodes: vec![node(0, vec![1.0, 0.0]), node(1, vec![0.0, 1.0])],
+            maintenance: HnswMaintenanceKind::FullBuild,
+            previous_generation: None,
+        })
+        .err()
+        .expect("an unreachable node must be refused")
+        .to_string();
+        assert!(error.contains("not reachable"), "{error}");
+    }
+
     #[test]
     fn hnsw_round_trip_is_deterministic_and_exact_reranks_candidates() {
         let scope = ScopeId::new("instance:hnsw").unwrap();
