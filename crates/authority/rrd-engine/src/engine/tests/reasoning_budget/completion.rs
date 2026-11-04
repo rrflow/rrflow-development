@@ -63,6 +63,150 @@ fn read(
         .unwrap()
 }
 
+// Synthetic data tests the durable ledger only; it is not an LFG service result.
+fn lfg_advisory(request: &rrd_contract::EndpointSelectionRequest) -> rrd_contract::LfgAdvisory {
+    rrd_contract::LfgAdvisory {
+        request_id: request.attempt_id.clone(),
+        revision: 1,
+        input_sha256: "a".repeat(64),
+        assessment_sha256: "b".repeat(64),
+        rules_sha256: "c".repeat(64),
+        request_sha256: "d".repeat(64),
+        response_sha256: "e".repeat(64),
+        status: "available".into(),
+        intent_status: "inconclusive".into(),
+        intent_category: "unknown".into(),
+        suggested_role: "general".into(),
+        suggested_effort: "normal".into(),
+        reason_ids: vec!["synthetic".into()],
+        elapsed_ms: 1,
+    }
+}
+
+#[test]
+fn lfg_checkpoint_survives_interruption_and_refuses_replay() {
+    let (root, engine, lease, _, request, _, _) = proposal::tuple_fixture();
+    let cancellation = EmbeddingCancellation::default();
+    let mut reservation = reserve(&engine, &lease, &request, &cancellation, 1_000).unwrap();
+    let advisory = lfg_advisory(&request);
+    engine
+        .checkpoint_lfg_advisory(
+            &mut reservation,
+            advisory.clone(),
+            |_| Ok(TaskCompletionAdmission::default()),
+            &FixedClock::at(1_001),
+            &context(&lease),
+        )
+        .unwrap();
+    let before = read(&engine, &lease, &request);
+    assert_eq!(
+        before.attempt.as_ref().unwrap().status,
+        TaskAttemptStatus::Reserved
+    );
+    assert_eq!(before.attempt.as_ref().unwrap().lfg, Some(advisory));
+    drop(reservation);
+    drop(engine);
+    let mut reopened = RrdEngine::open_existing(root.path(), instance(), TOKEN_KEY).unwrap();
+    configure(&mut reopened, 3);
+    assert_eq!(read(&reopened, &lease, &request), before);
+    assert!(reserve(&reopened, &lease, &request, &cancellation, 1_100).is_err());
+}
+
+#[test]
+fn lfg_checkpoint_guard_conflict_cannot_publish_and_failure_preserves_prior_checkpoint() {
+    let (_root, engine, lease, _, request, _, _) = proposal::tuple_fixture();
+    let cancellation = EmbeddingCancellation::default();
+    let mut reservation = reserve(&engine, &lease, &request, &cancellation, 1_000).unwrap();
+    let advisory = lfg_advisory(&request);
+    let key = crate::engine::session::session_key(&engine.instance, &lease.session_id);
+    assert!(engine
+        .checkpoint_lfg_advisory(
+            &mut reservation,
+            advisory.clone(),
+            |_| Ok(TaskCompletionAdmission {
+                guards: vec![AttemptAuthorityGuard {
+                    key: key.clone(),
+                    expected: b"stale".to_vec()
+                }],
+                ..Default::default()
+            }),
+            &FixedClock::at(1_001),
+            &context(&lease)
+        )
+        .is_err());
+    assert!(read(&engine, &lease, &request)
+        .attempt
+        .unwrap()
+        .lfg
+        .is_none());
+    engine
+        .checkpoint_lfg_advisory(
+            &mut reservation,
+            advisory.clone(),
+            |_| Ok(TaskCompletionAdmission::default()),
+            &FixedClock::at(1_002),
+            &context(&lease),
+        )
+        .unwrap();
+    assert!(engine
+        .finish_controlled_task_attempt(
+            reservation,
+            Err(ServiceError::EndpointCallFailed {
+                reason: "synthetic controller failure",
+                execution_may_continue: false,
+            }),
+            |_| Ok(TaskCompletionAdmission::default()),
+            &FixedClock::at(1_003),
+            &context(&lease)
+        )
+        .is_err());
+    let stopped = read(&engine, &lease, &request).attempt.unwrap();
+    assert_eq!(stopped.status, TaskAttemptStatus::Stopped);
+    assert_eq!(stopped.lfg, Some(advisory));
+    assert!(stopped.endpoint_proposal.is_none());
+}
+
+#[test]
+fn stale_lfg_observation_is_recorded_then_successor_can_be_admitted() {
+    let (_root, engine, lease, _, request, _, _) = proposal::tuple_fixture();
+    let cancellation = EmbeddingCancellation::default();
+    let mut reservation = reserve(&engine, &lease, &request, &cancellation, 1_000).unwrap();
+    let advisory = lfg_advisory(&request);
+    let invalidation = engine
+        .checkpoint_lfg_advisory(
+            &mut reservation,
+            advisory.clone(),
+            |_| {
+                Ok(TaskCompletionAdmission {
+                    invalidation: Some(TaskAttemptInvalidation::InputsChanged),
+                    ..Default::default()
+                })
+            },
+            &FixedClock::at(1_001),
+            &context(&lease),
+        )
+        .unwrap();
+    assert_eq!(invalidation, Some(TaskAttemptInvalidation::InputsChanged));
+    assert!(matches!(
+        engine.finish_controlled_task_attempt(
+            reservation,
+            Err(ServiceError::TaskAttemptInvalidated(invalidation.unwrap())),
+            |_| Ok(TaskCompletionAdmission::default()),
+            &FixedClock::at(1_002),
+            &context(&lease)
+        ),
+        Err(ServiceError::TaskAttemptInvalidated(
+            TaskAttemptInvalidation::InputsChanged
+        ))
+    ));
+    let prior = read(&engine, &lease, &request).attempt.unwrap();
+    assert_eq!(prior.status, TaskAttemptStatus::Invalidated);
+    assert_eq!(prior.lfg, Some(advisory));
+    let mut successor = request.clone();
+    successor.attempt_id = id("lfg-stale-successor");
+    assert!(reserve(&engine, &lease, &successor, &cancellation, 1_003).is_ok());
+}
+
 #[test]
 fn supplied_proposal_output_is_atomic_readable_after_reopen_and_never_reexecuted() {
     let (root, engine, lease, _, request, _, proposal) = proposal::tuple_fixture();

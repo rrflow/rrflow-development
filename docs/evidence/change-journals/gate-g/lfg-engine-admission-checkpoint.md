@@ -1,0 +1,387 @@
+# Engine-owned LFG advisory checkpoint
+
+**Status:** active implementation-stage evidence; draft and qualification pending
+**Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/gate-g/lfg-engine-admission-checkpoint`
+**Owner:** OBJ-12 / G-01a, G-01b and G-02 prerequisites / POAM-009
+**Pull request:** [249](https://github.com/rrflow/rrflow-development/pull/249)
+
+## Brief and baseline
+
+The public draft began at `90042a3e7e5d412a2da529b6a4a0db609e9bc0c5`.
+Current public main `ed3027b79e41dfcdf5b27e57f07346f11f6da347` was merged
+without rewriting history, yielding local starting commit
+`a37d6d3f34a82e8435cdc29255ccdffc099e903c` and tree
+`cb6b3cdb0d4ad3c19854aaed020f9fc899de7edc`. The PR brief was updated before
+implementation and again when the checkpoint and public projection became
+necessary. The separate forward-compatibility PR 246 remains a dependency.
+
+Before this change the LFG transport existed but engine selection did not
+invoke it. The target is an explicitly configured, bounded, optional LFG call
+inside the existing task reservation, followed by an engine-owned durable
+advisory checkpoint and controller proposal. No worker execution, new engine,
+automatic model ranking, trusted producer identity, default endpoint, or
+external runtime dependency is introduced. Stop for unbounded I/O, unresolved
+effect replay, bypassed guards, source-dependent project trapping, or a second
+lifecycle authority. The PR remains draft until its dependencies, generated
+projections, complete review, tests and candidate/merge-group checks pass.
+
+## Changed behavior and evidence boundaries
+
+`EndpointSelectionPolicy` accepts an optional loopback LFG configuration with
+explicit network and unverified-identity permission, pinned assessment/rules
+digests and limits. Absence preserves the prior serialized representation.
+The existing engine reserves task effort and controller capacity before the
+call, validates analyzer identity and bounds, checkpoints its advisory through
+the task ledger, then constructs the controller packet. A stale task or
+authority returns an invalidated attempt after recording the completed
+observation when the change is detected before controller dispatch. Its
+successor uses current inputs. The pre-dispatch check is not atomic with the
+network call; a later change can reach the controller but cannot publish an
+accepted result if completion detects it. An uncommitted or uncertain
+external effect cannot be silently replayed; capacity remains held when the
+checkpoint cannot be established. `task-attempt-read` exposes the checkpoint.
+No remote identity attestation, remote cancellation guarantee, or quality claim
+follows from matching digests. A crash after remote dispatch but before the
+checkpoint can leave an unresolved attempt without an observation.
+
+Implementation paths: `rrd-contract` endpoint policy/proposal, reasoning budget,
+export and tests; `rrd-engine` endpoint proposal, reasoning budget persistence
+composition and tests; generated SDK and signal projections and current
+reference digest citations; inference reference; this journal and navigation.
+No existing implementation was removed or relocated. The change does not
+implement Parquet compaction, predicate pushdown, PostgreSQL compatibility,
+multi-day reasoning, C-07 native capacity or the installed project journey.
+
+Files read in full include the LFG advisory decoder and the macOS capacity
+metadata and APFS helpers. Targeted reads covered the README and owner chain,
+the change-authoring procedure, endpoint policy/proposal, LFG transport,
+engine endpoint composition, budget reservation/completion/public persistence,
+security authorization, existing tests, generated-surface owner and SDK
+generators. These are not a whole-codebase or every-line review.
+
+Research: [PostgreSQL WAL](https://www.postgresql.org/docs/current/wal-intro.html)
+requires durable WAL ordering for crash recovery; an in-memory-only log is not
+durable. [Arrow's Parquet row filter](https://arrow.apache.org/rust/parquet/arrow/arrow_reader/filter/struct.RowFilter.html)
+documents late materialization and its workload-dependent tradeoff.
+[pgrust](https://github.com/malisper/pgrust/blob/main/README.md) calls its
+embedded variant future work and advises against production use; no upstream
+code was copied. The adapter's configured deadlines, limits and retained wire
+digests provide bounded diagnostics, not a benchmark. Existing control events
+carry the attempt digest; raw task text and service responses are not logged.
+
+## Local verification and remaining evidence
+
+The first policy test failed to compile because the opt-in contract did not
+exist; after implementation its five focused cases passed. The four focused
+engine LFG tests passed: synthetic two-service HTTP composition and readback,
+checkpoint persistence across reopen and replay denial, stale guard conflict,
+and invalidation with a successor attempt. The invalidation/successor test
+injects the invalidation. A subsequent engine HTTP test actually changed the
+configuration while the analyzer response was held, then verified checkpoint
+readback, invalidation, no controller connection and a released task budget.
+A malformed controller response test verified that the LFG observation remains
+readable and the uncertain capacity is retained. The synthetic HTTP servers do
+not establish actual LFG/SWAG model behavior or performance.
+
+The first complete Windows engine library suite exposed an inherited
+nonblocking-socket mode in the new test; the test now explicitly sets the
+accepted socket to blocking. The final `cargo test --offline --locked -p
+rrd-engine --lib` passed 338 tests with four ignored. The first contract suite rejected the expected OpenAPI digest drift;
+the generated digest and current reference citations were updated before the
+suite was rerun. The Windows pnpm shim failed to launch; invoking
+the pinned pnpm module and an offline cache succeeded. The Python generator
+initially lacked Ruff on PATH; the pinned cached Ruff 0.17.1 was used instead.
+
+After regenerating the TypeScript, Python, Go, Java and .NET endpoint
+projections and seven signal projections, `cargo test --offline --locked -p
+rrd-contract` passed all its active tests; `python
+scripts/ci/check_generated_surfaces.py` passed with 75 operations and OpenAPI
+SHA-256 `e9f6363967936948b3405c7ecbf9afa4f9be77eddf95d73727ae83aa51506971`.
+`cargo clippy --offline --locked -p rrd-contract -p rrd-engine --all-targets
+-- -D warnings` passed. These validate the current code and generated
+metadata, not deployed cross-language behavior.
+TypeScript `pnpm typecheck` (using the pinned module), `go test ./...`,
+documentation policy and navigation check passed.
+The LFG decoder and transport focused suites passed five tests; the real LFG
+service test was ignored because no explicitly launched service was supplied.
+Execution inventory generation produced 2,356 path records.
+
+The earlier PR 256 merge-group [run 41600990700](https://github.com/rrflow/rrflow-development/actions/runs/41600990700)
+failed on macOS at `capacity_metadata.rs:20`: 758 filler files, 892 creates,
+139 barriers and 25 seconds elapsed before native pressure/recovery proof.
+PR 256 candidate CI was green but does not erase that merge-group failure. An
+accidental new queue entry was removed after inspecting it. POAM-035 owns the
+existing native-capacity gap; neither this package nor a rerun closes it.
+
+Review: changed production and test hunks and the new integration test were
+reviewed; generated projections were checked against the contract exporter.
+Every changed file's complete bytes were reread for the path/hash inventory;
+this is not a semantic line-by-line review of all unchanged content in those
+files or of the rest of the repository.
+
+Pending: a source-edit-during-call integration test, actual
+LFG/SWAG processes with identity evidence, installed/native qualification,
+candidate and merge-group CI, and C-07 capacity/soak. No alpha, roadmap gate,
+POA&M item, or merge completion is claimed. No release or promotion occurred.
+
+Checklist: PR brief and owner/baseline recorded; first failure and changed
+boundary identified; bounded trace/resource decisions and research recorded;
+focused/owning tests and failures recorded; the full pipeline remains pending.
+This record is evidence, not an
+independent lifecycle or status authority.
+
+## Real LFG engine flow and profiler preflight, 2026-11-04
+
+On draft head `f8be2ab375e817ef7c460a60ac79fe8c7ee3b8e2`, the Windows
+checkout was clean before this follow-up. Public main was
+`746a0a462e512563b6d3aaa89520f8ab5cde9051`; this result has not been tested
+on a candidate integrating that main. The already-running local LFG service
+answered `/health` as `lfg-server` on `127.0.0.1:54330`. Its reported process
+executable path was `D:\projects\lfg\target\worktrees\lfg-devtools\target\debug\lfg-server.exe`;
+the file at that path hashed SHA-256
+`91f79f04ea56b360654f0c5071925e648a8f0918ec84baa09c2b6145c003e7b0`.
+Its source worktree HEAD was `fb6e7508203da6e5fddd4287cb4f24526fc5a715`.
+These observations are not build attestation and do not prove that the file
+on disk was the exact executable image loaded by the running process.
+
+- `cargo test --offline --locked -p rrd-inference --features endpoint-chat
+  --test lfg_transport real_lfg_service_returns_bound_advisory_data --
+  --ignored --exact --nocapture`, with `RRFLOW_TEST_LFG_URL` set to the
+  service above: **1 passed**, exercising the actual transport and synthetic
+  prompt against the live service.
+- Extended `crates/authority/rrd-engine/src/engine/tests/reasoning_budget/lfg_flow.rs`
+  with an explicitly ignored, opt-in real-service lane that shares the
+  existing engine and controller-fixture assertions. It derives assessment
+  and rules digests from the existing fixture; it does not set a production
+  endpoint or alter engine behavior.
+- `cargo test --offline --locked -p rrd-engine --lib
+  real_lfg_service_flows_through_engine_controller_and_reopen -- --ignored
+  --nocapture` with the same URL: **1 passed**. The test admits the configured
+  LFG call, checks that the observation enters the controlled HTTP controller
+  packet, checks digest binding and durable task-attempt readback, reopens the
+  engine and refuses a duplicate proposal. The controller was a synthetic
+  fixture: this is **not** standalone SWAG, model-output, installed-binary,
+  source-edit, or native CI evidence. The test's in-process engine is real.
+- `cargo test --offline --locked -p rrd-engine --lib
+  'reasoning_budget::lfg_flow::' -- --nocapture`: **3 passed; 1 ignored**.
+  The opt-in real-service case was separately run above. `git diff --check`
+  passed. `cargo fmt --all --check` initially failed on the new test; after
+  `rustfmt --edition 2021` formatted the affected file, it requires a final
+  check for this exact candidate.
+
+For diagnostic research, [OpenTelemetry's Rust SDK status](https://opentelemetry.io/docs/languages/rust/)
+reports traces beta and metrics/logs stable; the [GenAI conventions](https://opentelemetry.io/docs/specs/semconv/registry/attributes/gen-ai/)
+identify optional content fields as potentially sensitive. This supports
+bounded, redacted optional diagnostics, not automatic prompt capture or a
+claim that RRFlow emits the complete standard. [Samply](https://github.com/mstange/samply)
+was installed locally with `cargo install --locked samply --root
+D:\localdev\devlabs\rrflow\target\rrflow-devtools`, version 0.13.1,
+executable SHA-256
+`256c6c5ec24a570b21287d52d8c4c600f4dca6c27832537a231d5329ad6f6f7d`.
+The locked install warned that two transitive packages were yanked; no runtime
+or distribution dependency was added. A save-only capture of the engine test
+failed: `samply requires Administrator privileges for profiling on Windows`.
+No profile or performance result was produced. Linux ARM host `clyffy-01`
+reported `perf version 7.0.14` and `perf_event_paranoid=4`; no privilege or
+system setting was changed and no Linux capture was attempted.
+
+Remaining: reconcile the actual draft against current main, source-edit and
+revocation histories, actual SWAG controller, installed executable and SDK
+flow, native qualification and candidate/merge-group CI. The prompt-flight
+provider remains observe-only: endpoint-selection is not a general model
+provider invocation. This evidence does not change a roadmap/POA&M status.
+
+Follow-up verification: `cargo fmt --all --check` passed after formatting. An
+initial full engine suite was interrupted by the operator while running; its
+partial output is not a suite pass. A separately launched full-binary rerun
+is pending. On `clyffy-01`, `perf stat -- true` exited successfully but
+reported CPU cycle events as `<not supported>`; `perf stat -e task-clock --
+true` exited 1 with access limited under `perf_event_paranoid=4`. The first
+command measured only the `true` process; neither is an RRFlow performance
+profile. No system permissions were modified.
+
+Documentation/navigation checks for this follow-up: `python -X utf8
+scripts/knowledge/render_navigation.py --check` passed (18 indexes; no
+updates); `python -X utf8 scripts/ci/check_documentation.py` passed. A
+merge-tree preview against public main `746a0a462e512563b6d3aaa89520f8ab5cde9051`
+identified 19 conflicting paths: contract source and generated SDK/reference
+projections. Resolve from the combined owner, not by accepting one generated
+side. PR #246 remains open; PR #235 is merged. These are integration findings,
+not evidence that a combined candidate builds.
+
+The separately launched full engine test binary
+`target\debug\deps\rrd_engine-856ce392343f8306.exe --quiet --test-threads=2`
+finished with **338 passed; 5 ignored; 0 failed**. This is the exact local
+binary produced for the real-service test above, on draft base `f8be2ab3`
+plus the follow-up test edit; it is not the integrated-main candidate or CI.
+The real-service test was run separately because it is deliberately ignored by
+the offline default suite.
+
+## Isolated public-main reconciliation
+
+A separate `agent/lfg-main-integration` worktree merged public main
+`746a0a462e512563b6d3aaa89520f8ab5cde9051` into the local follow-up
+`241a5a3b`. The 19 merge conflicts were inspected: the authored contract and
+six authored reference citations conflicted at the OpenAPI digest, while the
+other conflicts were generated SDK/signal projections. After preserving both
+sets of source changes, the combined contract exporter produced OpenAPI digest
+`3f48f498ffb4357cae1f979e12b9707e1eeb21bc6ce671c472095abc9e769262`.
+The five SDK endpoint/schema generators and signal renderer were run from that
+combined source. Generated parity passed with 78 HTTP operations, preserving
+both the LFG fields and current-main vector operations. TypeScript typecheck,
+Go `go test ./...`, the `rrd-contract` suite, navigation and documentation
+policy passed on the combined working tree. The execution-inventory check
+initially reported drift; regeneration wrote 2,376 records and its recheck
+passed. The Windows pnpm shim failed before generation; invoking the pinned
+pnpm module and an offline dependency store succeeded. The Python generator
+initially lacked `ruff` on PATH; the locally cached 0.17.1 binary was used.
+No external package fetch was used for the candidate's TypeScript install.
+
+The combined engine real-service test is running. PR #246 remains open and
+has its own current-main conflicts, so this reconciliation does not make #249
+ready or claim the dependency is integrated. Candidate and merge-group CI,
+actual SWAG and installed/native qualification remain required.
+
+The combined candidate's real-service command `cargo test --offline --locked
+-p rrd-engine --lib real_lfg_service_flows_through_engine_controller_and_reopen
+-- --ignored --nocapture`, with the same local LFG URL, passed one test. This
+retains the controlled controller and in-process engine limitations above; it
+is not the installed or independent SWAG path. The candidate has not yet
+incorporated PR #246. It remains a local integration, not accepted CI.
+
+## Joined PR #246 and #249 candidate
+
+An isolated joined candidate merged the exact reconciled prerequisite
+`fede01b5cdbd39ea30aab4a6b3269d92b00cdc10` into #249 head
+`0f22101f017042c00fa9e938a248b91cf91a7903`. Semantic endpoint-proposal
+source merged automatically. The seven authored digest citations, twelve
+replaceable projections and one journal navigation index were reconciled by
+exporting the combined contract and regenerating the declared outputs. The
+combined OpenAPI SHA-256 is
+`b86dc6d7ebbf00be1b73e1d519df176358d41033d2a8e38f662533a520a28155`;
+generated parity verified 78 HTTP operations and seven signal projections.
+Navigation was regenerated from both evidence records. TypeScript typecheck
+and six client tests, Go tests, documentation/navigation checks, formatting,
+and the regenerated 2,377-record execution inventory passed.
+
+The real-service engine test passed again on the joined candidate. A new
+controlled-service `task_closed_during_lfg_records_result_without_controller_dispatch`
+test closes the task before returning the LFG response: the engine checkpoints
+its advisory, invalidates the attempt, makes no controller connection, reads
+the checkpoint back after reopen and rejects a duplicate attempt. This is a
+task-state change, not the still-required project source-edit test. The
+`reasoning_budget::lfg_flow::` group passed four cases with the real-service
+case intentionally ignored; that real case passed separately. The joined
+`cargo test --offline --locked -p rrd-engine --lib -- --test-threads=4`
+completed **347 passed, 5 ignored, 0 failed**. The joined contract
+`endpoint_selection` test passed all nine cases, including the #246 unknown
+field semantics. No standalone SWAG, model generation, provider-backed flight,
+installed-product or CI claim follows. PR #246's exact candidate CI was queued
+at run 41863731525 when checked; it must land through protected checks before
+#249 is ready.
+
+## Installed controlled-controller and live LFG proof
+
+Built `rrflow.exe` from clean joined head
+`9b0a3b415e3c10d56315062a8b9ceb430705382e` using
+`python scripts/build_rrflow.py --profile dev --target-dir
+D:/localdev/devlabs/rrflow/target/lfg-main-contract-build --output
+D:/localdev/devlabs/rrflow/target/lfg-joined-dev-build-receipt-20261104.json`.
+The two-pass build produced an unqualified provenance receipt; executable
+SHA-256 was `003c45907470f1834a3e2134a35fb5bf615c645a2ba0135f083f523f545593bb`.
+
+An isolated installed-process proof used the existing
+`scripts/inference/installed_controller_proof.py` with a synthetic task,
+explicit local LFG policy, and an owned local HTTP controller fixture. It
+installed a fresh project, verified missing-credential denial, admitted the
+configured request, called the real LFG service, sent the validated advisory
+to exactly one controlled controller call, and reopened the installed engine.
+An independent readback compared the engine proposal and LFG hashes with the
+controller's captured packet, compared the task-attempt before/after restart,
+verified HTTP 412 on replay and confirmed usage remained unknown. The local
+controller returned a deterministic fixture response: no model executed, no
+standalone SWAG routing happened, and no quality or performance claim follows.
+
+A separate SWAG checkout at `c60ae40a42c0928636cf925a4949bf9743a61821` ran
+its existing `swag_lfg.assess` bridge against the same local LFG service for
+a synthetic prompt. The bridge verified the input digest and returned an
+available advisory with inconclusive intent. Two content-free SWAG traces
+recorded successful capability and observation calls. This is an independent
+SWAG-to-LFG link, not SWAG consuming RRFlow's controller packet. The loaded
+LFG process was not independently attested. The [sanitized evidence](lfg-installed-controlled-20261104.json) retains the build identity, both
+engine readbacks, packet digests and SWAG trace records; raw local proof files
+remain under ignored `target/lfg-installed-controlled-proof-20261104`.
+
+This installed proof does not implement provider-backed prompt flights, bind
+project-source edits, prove worker execution, establish full C-07/native soak,
+or replace #246/#249 candidate and merge-group CI. No roadmap status changes.
+
+## Opt-in engine LFG diagnostics
+
+The [PR brief](https://github.com/rrflow/rrflow-development/pull/249) was
+expanded before this code change. `RrdEngine` now emits debug events at
+`rrd_engine::lfg` for completed or failed analyzer transport and committed or
+failed advisory checkpoint. Fields are bounded outcomes, elapsed milliseconds,
+operation/analyzer wire digests, and invalidation or uncertain-execution flags.
+No task text, prompt, provider URL, credential, raw response or private model
+reasoning is emitted by these events. They are transient observations, not the
+engine's durable attempt/audit authority. This does not complete H-05.
+
+For an installed binary built with this change, opt in before starting the
+process with `RRFLOW_TRACE=rrd_engine::lfg=debug` and
+`RRFLOW_TRACE_FORMAT=json`; the current CLI writes traces to stderr. A slow or
+unconsumed stderr sink may affect the process, so collect it with explicit size
+and retention limits. A nonblocking exporter, full prompt timeline and measured
+telemetry overhead remain open work. Diagnostic level and resource claims are
+not inferred from the existence of these events.
+
+A test-only workspace `tracing-subscriber` dependency captures actual JSON
+output. `lfg_diagnostics_are_bounded_and_report_invalidated_checkpoint`
+checks the transport/checkpoint outcomes, matching operation digest and exact
+field allowlist on task closure. `lfg_diagnostics_report_uncertain_transport_failure_without_payload`
+checks an invalid analyzer response, uncertainty and the failure-field
+allowlist; the controller receives no call. The LFG flow group passed six cases
+with one separately run live-service case; the live LFG in-process case passed.
+A full engine suite passed 348 tests, 5 ignored with the same production change
+before the final test-only failure scenario was added. The first `--locked`
+run correctly refused the new dev dependency until `Cargo.lock` was updated
+offline; subsequent checks use `--offline --locked`. These tests are not an
+installed trace, performance benchmark, full provider-backed flight, or CI.
+
+`cargo clippy --offline --locked -p rrd-engine --lib --tests -- -D warnings`
+passed on Windows with the diagnostic code. The live LFG test also passed
+again after instrumentation. The installed proof above predates these events; the later installed trace
+proof below exercises the instrumented revision.
+
+
+## Installed trace readback on the instrumented revision
+
+Rebuilt the unqualified developer executable from clean source revision
+`2657d40ec635547eba6b1eca53f6e4490a4d374a` with
+`python scripts/build_rrflow.py --profile dev --target-dir
+D:/localdev/devlabs/rrflow/target/lfg-main-contract-build --output
+D:/localdev/devlabs/rrflow/target/lfg-trace-dev-build-receipt-20261104.json`.
+The executable SHA-256 is
+`2b270340c052914e32e063a900b5ea7dd9651b0cf89c633984a3f1eb00dbdbe3`.
+With `RRFLOW_TRACE=rrd_engine::lfg=debug` and `RRFLOW_TRACE_FORMAT=json`,
+the isolated installed-process driver using a live local LFG and controlled
+HTTP selector exited successfully. Independent readback asserted the two
+diagnostic field allowlists, matching operation digest, analyzer request and
+response digests matching the admitted proposal, one matching controller
+packet, unchanged task-attempt outcome after restart, replay HTTP 412, and
+absence of the synthetic secret, task title and endpoint in those events.
+The [sanitized trace evidence](lfg-installed-trace-20261104.json) retains
+the observed events and scope; raw local files stay in ignored `target/`.
+This is one debug-build sample, not a benchmark, actual SWAG router invocation,
+model flight, source-change test, CI result or release qualification. A
+blocking stderr sink remains a known diagnostics limitation.
+
+Verification note: an initial `python scripts/knowledge/check_docs.py`
+failed because that path does not exist; the repository documentation checker
+is `python scripts/ci/check_documentation.py`, which passed. Navigation check
+and execution inventory generation passed.
+
+The first staged whitespace check exposed CRLF conversion in the new evidence
+files and the inventory check observed a stale generation after a later edit.
+Normalized them to LF, staged them again, regenerated the inventory and reran
+both checks successfully.

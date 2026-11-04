@@ -16,9 +16,11 @@ pub enum EndpointSelectionPurpose {
     ExperimentalProposal,
 }
 
-/// No endpoint, credential, prompt or client-authored candidate facts enter this request.
+/// Unknown fields are accepted and ignored for forward compatibility. No
+/// endpoint, credential, prompt or client-authored candidate facts are used by
+/// this request; an extension needs explicit engine admission to matter.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
-#[serde(deny_unknown_fields)]
+#[schemars(extend("additionalProperties" = true))]
 pub struct EndpointSelectionRequest {
     pub scope: String,
     pub task_id: CanonicalId,
@@ -55,6 +57,60 @@ pub struct EndpointSelectionTask {
     pub goal: String,
     pub task_sha256: String,
     pub known_at_cursor: u64,
+}
+
+/// Bounded analyzer output and wire identities. These values are advisory;
+/// they do not attest the producer, grant permission, or select a worker.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct LfgAdvisory {
+    pub request_id: CorrelationId,
+    pub revision: u64,
+    pub input_sha256: String,
+    pub assessment_sha256: String,
+    pub rules_sha256: String,
+    pub request_sha256: String,
+    pub response_sha256: String,
+    pub status: String,
+    pub intent_status: String,
+    pub intent_category: String,
+    pub suggested_role: String,
+    pub suggested_effort: String,
+    pub reason_ids: Vec<String>,
+    pub elapsed_ms: u64,
+}
+
+impl LfgAdvisory {
+    pub fn validate(&self) -> Result<()> {
+        for (value, field) in [
+            (&self.input_sha256, "LFG input digest"),
+            (&self.assessment_sha256, "LFG assessment digest"),
+            (&self.rules_sha256, "LFG rules digest"),
+            (&self.request_sha256, "LFG request digest"),
+            (&self.response_sha256, "LFG response digest"),
+        ] {
+            validate_sha256(value, field)?;
+        }
+        let label = |value: &str| {
+            !value.is_empty() && value.len() <= 256 && !value.chars().any(char::is_control)
+        };
+        if self.revision == 0
+            || !matches!(self.status.as_str(), "available" | "partial")
+            || !matches!(self.intent_status.as_str(), "available" | "inconclusive")
+            || ![
+                &self.intent_category,
+                &self.suggested_role,
+                &self.suggested_effort,
+            ]
+            .into_iter()
+            .all(|value| label(value))
+            || self.reason_ids.len() > crate::MAX_ROUTE_SIGNALS as usize
+            || !self.reason_ids.iter().all(|value| label(value))
+        {
+            return invalid("invalid bounded LFG advisory");
+        }
+        bounded(self, MAX_ROUTE_RESPONSE_BYTES)
+    }
 }
 
 impl EndpointSelectionTask {
@@ -100,6 +156,8 @@ pub struct EndpointSelectionPacket {
     pub read_cursor: u64,
     pub controller_binding_id: CanonicalId,
     pub allowance: EndpointSelectionAllowance,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lfg: Option<LfgAdvisory>,
 }
 
 impl EndpointSelectionPacket {
@@ -126,6 +184,22 @@ impl EndpointSelectionPacket {
             || self.allowance != policy.allowance(configuration)?
         {
             return invalid("selection packet differs from the configured policy");
+        }
+        if let Some(advisory) = &self.lfg {
+            advisory.validate()?;
+            let configured = policy
+                .lfg
+                .as_ref()
+                .ok_or_else(|| crate::ContractError("LFG advisory was not configured".into()))?;
+            let task_bytes =
+                serde_json::to_vec(&self.task).map_err(|e| crate::ContractError(e.to_string()))?;
+            if advisory.input_sha256 != sha256_bytes(&task_bytes)
+                || advisory.revision != self.task.known_at_cursor
+                || advisory.assessment_sha256 != configured.assessment_sha256
+                || advisory.rules_sha256 != configured.rules_sha256
+            {
+                return invalid("LFG advisory differs from the bound task or analyzer policy");
+            }
         }
         let controller = profile
             .bindings
@@ -209,6 +283,8 @@ pub struct EndpointSelectionProposal {
     pub usage: Option<EndpointTokenUsage>,
     pub elapsed_ms: Option<u64>,
     pub http_status: Option<u16>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lfg: Option<LfgAdvisory>,
 }
 
 impl EndpointSelectionProposal {
@@ -237,6 +313,12 @@ impl EndpointSelectionProposal {
         if let Some(usage) = &self.usage {
             usage.validate()?;
         }
+        if let Some(advisory) = &self.lfg {
+            advisory.validate()?;
+            if advisory.request_id != self.attempt_id {
+                return invalid("LFG advisory belongs to a different attempt");
+            }
+        }
         bounded(self, MAX_ROUTE_RESPONSE_BYTES)
     }
 
@@ -264,6 +346,14 @@ impl EndpointSelectionProposal {
     ) -> Result<()> {
         self.validate_request_identity(request)?;
         packet.validate_for(configuration)?;
+        let configured = configuration
+            .profile
+            .as_ref()
+            .and_then(|profile| profile.selection_policy.as_ref())
+            .and_then(|policy| policy.lfg.as_ref());
+        if configured.is_some() != packet.lfg.is_some() || self.lfg != packet.lfg {
+            return invalid("proposal lacks its configured LFG advisory");
+        }
         if self.scope != packet.task.scope
             || self.task_id != packet.task.task_id
             || self.task_sha256 != packet.task.task_sha256

@@ -21,6 +21,11 @@ pub use registry::{EmbeddingBackendRegistry, EmbeddingDispatchError, EmbeddingEx
 mod execution_control;
 pub use execution_control::{EmbeddingCancellation, EmbeddingExecutionControl};
 
+pub mod lfg_observation;
+
+#[cfg(feature = "endpoint-chat")]
+pub mod lfg_transport;
+
 #[cfg(feature = "endpoint-chat")]
 pub mod endpoint_chat;
 

@@ -1,6 +1,6 @@
 # LFG analysis and SWAG controller
 
-**Status:** active target contract; experimental engine-admitted selection and worker drafts exist; full LFG/SWAG journey remains incomplete
+**Status:** active target contract; experimental LFG-admitted selection and selected-worker drafts exist in an unmerged integration candidate; the full LFG/SWAG journey remains incomplete
 **Coordinate:** `rrflow://rrflow-instance/data/reference/inference/lfg-swag`
 **Owner:** configurable CPU prompt analysis, System One selection, model dispatch, and inference-cache identity
 
@@ -133,11 +133,18 @@ human review, provider-quality evidence or completion of G-01b.
 ### Task-bound proposal semantics in progress
 
 `EndpointSelectionRequest` names an existing task and stable attempt, expected
-task/configuration digests and a bounded task-read allowance. It accepts no URL,
-credential, prompt or caller-authored candidate catalogue. The task-text packet
+task/configuration digests and a bounded task-read allowance. It uses no
+caller-supplied URL, credential, prompt or candidate catalogue. The task-text packet
 omits the task creation replay key, binds an open task version/read coordinate
 and requires the exact configured selector and allowance. Task projection checks
 do not authorize repository context or establish source-edit freshness.
+
+Unknown request fields are accepted and ignored for forward compatibility; they
+do not enter the typed request, its operation identity, or controller packet.
+Adding an LFG observation as an unknown field does not mean it was read,
+validated or used. That needs a separately implemented, authorized engine path.
+The [request extension journal](../../evidence/change-journals/gate-g/lfg-endpoint-request-extensions.md)
+records the compatibility oracle and its limits.
 
 `EndpointSelectionProposal` binds request, task, attempt, packet, configuration,
 allowance, service alias and observed request/response/content identities. Its
@@ -149,9 +156,9 @@ tolerating unrelated provider envelope metadata.
 
 These types alone are consistency checks, not an engine dispatcher.
 Constructing a valid tuple does not prove that a model produced it for that packet.
-Authenticated packet construction, explicit experimental policy admission,
-credential setup and installed execution still require implementation in the
-same [draft package](https://github.com/rrflow/rrflow-development/pull/206).
+Authenticated packet construction, experimental policy admission and installed
+controller proposal execution were implemented in
+[PR206](https://github.com/rrflow/rrflow-development/pull/206).
 The [semantics-stage journal](../../evidence/change-journals/gate-g/controller-task-proposal-semantics.md)
 records actual-task projection and retained-provider validation checks. No new
 provider execution or model-quality claim follows from those checks.
@@ -718,6 +725,26 @@ Read `task-attempt-read` to recover a receipt without calling the provider again
 Changed authority/configuration/task inputs invalidate accepted-output publication
 while retaining consumed effort. Ordinary repository-edit successor plans are not
 implemented by this task-text operation.
+
+An optional `selection_policy.lfg` configures a literal-loopback HTTP origin,
+assessment and rules digests, timeout, and input/request/response byte limits.
+It requires the selection policy's explicit network and unverified-identity
+permissions. Loopback and echoed digests do not authenticate the process.
+When configured, the engine reserves the existing task attempt and endpoint
+capacity before sending its bounded task projection to LFG. It checkpoints
+the validated advisory and wire digests in that attempt before sending the
+controller packet. Read `task-attempt-read` to inspect the checkpoint even
+when the controller subsequently fails. The advisory is untrusted data: it
+does not authorize a worker or establish routing quality. Input or authority
+changes detected before controller dispatch close the stale attempt without
+that call; a successor must use current inputs. The final check and network
+dispatch are not atomic, so changes after that check may still reach the
+controller and must invalidate publication at completion. A crash before
+checkpoint leaves the remote outcome uncertain and does not authorize replay.
+There is no default LFG endpoint.
+
+Local synthetic-service tests exercise the engine path; real-service and
+installed cross-platform acceptance for this composition remain pending.
 
 The [admission implementation record](../../evidence/change-journals/gate-g/controller-task-proposal-admission.md)
 separates local checks from required installed BF16 and candidate/merge-group proof.

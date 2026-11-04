@@ -25,7 +25,7 @@ pub use endpoint_worker::{
 mod endpoint_policy;
 mod endpoint_proposal;
 mod endpoint_selection;
-pub use endpoint_policy::EndpointSelectionPolicy;
+pub use endpoint_policy::{EndpointSelectionPolicy, LfgAnalysisPolicy};
 pub use endpoint_proposal::*;
 pub use endpoint_selection::{
     EndpointAbstentionReason, EndpointEffortSupport, EndpointSelectionAllowance,
@@ -272,7 +272,7 @@ use std::fmt;
 pub const PROTOCOL: &str = "rrd";
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const OPENAPI_DOCUMENT_SHA256: &str =
-    "f14071c71318062cd2b1a9fca491a16d91b4481e98c3e0bcefeeaf98359ed580";
+    "7ff11cd88d5fa1e5c1f4b4810b7daeb5f90037de3c801522ce625725a3e79d40";
 pub const MAX_ID_BYTES: usize = 128;
 pub const MAX_MESSAGE_BYTES: usize = 4_096;
 pub const MAX_CAPABILITIES: usize = 512;
