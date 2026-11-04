@@ -167,3 +167,32 @@ transactional durable updates and source membership, followed by all affected
 query paths and the unchanged red regression. If those cannot be made coherent
 without a second authority or loss of existing stamps, keep the path disabled
 and the PR draft; do not substitute a full-estate cursor rewind.
+
+### Configurable proof limits
+
+Starting candidate `629cdf5c3fc93fa75cef95202efaa0c49bcea5b5`, the PR brief
+was amended before replacing the provisional fixed identity limit. The history
+builder, restore and verifier now require an explicit `SourceGenerationProofBudget`
+for identity bytes and proof-path nodes. A zero budget, exceeded identity
+bound, over-budget proof, or path budget above 64 fails closed. The 64-node
+ceiling follows the maximum depth of an RFC 9162 tree addressed by `u64`;
+the caller can choose lower limits. There is no fixed 256-byte production
+default in this component. The effective installed configuration and its
+authorized budget are still not wired to it.
+
+On Linux ARM64, the updated Rust file SHA-256 is
+`4fb84ff606887ff7722bb1041bd8812559b5ba9f29e649d3657059315a72c276`.
+The full `cargo test --offline --locked -p rrd-core` suite passed (69 unit
+tests, one ignored, plus integration and documentation tests), and strict
+`cargo clippy --offline --locked -p rrd-core --all-targets -- -D warnings`
+passed. Log SHA-256s are
+`0c8d247b8ccacb85a823c0537e6651d86a8f5ae1cc0ba1a586c471c924a32200`
+and `3a988282eb2c2b26acd3ac555822120272f2f1b79b6cf8ad14a27b36a4d0b38b`.
+After adding a test that an otherwise-valid proof exceeding a smaller configured
+path limit is denied, the final file SHA-256 became
+`4823391ad068e66969089efaeb962a54852f15c23975881e91cfbb65e569fb13`.
+The full core suite and strict core Clippy passed again; their respective logs
+have SHA-256 `8b0a0fdb3ddde8bb2db3204defc874fb87d78cfb080bd12ac5d7689b4c0f77c4`
+and `935e80ae58fac03eb93089fec33491b601b152ce5d2404acb558cf318465d626`.
+The central engine regression has not been repaired; changing the proof budget
+does not connect the component to publication or queries.

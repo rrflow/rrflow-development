@@ -11,6 +11,23 @@ use serde::{Deserialize, Serialize};
 
 pub const RUNTIME_LOG_ACCUMULATOR_VERSION: u16 = 1;
 
+/// Caller-admitted limits for source-generation proof processing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SourceGenerationProofBudget {
+    pub max_identity_bytes: usize,
+    pub max_path_nodes: usize,
+}
+
+impl SourceGenerationProofBudget {
+    fn validate(self) -> Result<()> {
+        // A u64-sized RFC 9162 tree has at most 64 proof levels.
+        if self.max_identity_bytes == 0 || self.max_path_nodes == 0 || self.max_path_nodes > 64 {
+            return invalid("invalid source generation proof budget");
+        }
+        Ok(())
+    }
+}
+
 /// One completed source generation in an authority-ordered history. The
 /// generation digest names its committed manifest; it is not itself proof
 /// that any source entry belongs to that manifest.
@@ -23,13 +40,16 @@ pub struct SourceGenerationSelection {
 }
 
 impl SourceGenerationSelection {
-    fn authenticated_bytes(&self) -> Result<Vec<u8>> {
+    fn authenticated_bytes(&self, budget: SourceGenerationProofBudget) -> Result<Vec<u8>> {
+        budget.validate()?;
         if self.completed_cursor == 0 {
             return invalid("a source generation must have a nonzero completion cursor");
         }
         // Identifiers in the broader runtime have no fixed byte bound. Bound
         // this proof input explicitly before allocating its canonical encoding.
-        if self.scope.as_str().len() > 256 || self.project.as_str().len() > 256 {
+        if self.scope.as_str().len() > budget.max_identity_bytes
+            || self.project.as_str().len() > budget.max_identity_bytes
+        {
             return invalid("source generation scope or project exceeds its proof bound");
         }
         parse_digest("source generation digest", &self.generation_sha256)?;
@@ -52,16 +72,28 @@ pub struct SourceGenerationHistory {
     project: RuntimeId,
     last_cursor: Option<u64>,
     accumulator: RuntimeLogAccumulator,
+    budget: SourceGenerationProofBudget,
 }
 
 impl SourceGenerationHistory {
-    pub fn new(scope: ScopeId, project: RuntimeId) -> Self {
-        Self {
+    pub fn new(
+        scope: ScopeId,
+        project: RuntimeId,
+        budget: SourceGenerationProofBudget,
+    ) -> Result<Self> {
+        budget.validate()?;
+        if scope.as_str().len() > budget.max_identity_bytes
+            || project.as_str().len() > budget.max_identity_bytes
+        {
+            return invalid("source generation scope or project exceeds its proof bound");
+        }
+        Ok(Self {
             scope,
             project,
             last_cursor: None,
             accumulator: RuntimeLogAccumulator::new(),
-        }
+            budget,
+        })
     }
 
     /// Restores the ordered writer from an externally authenticated accumulator
@@ -73,7 +105,14 @@ impl SourceGenerationHistory {
         project: RuntimeId,
         accumulator: RuntimeLogAccumulator,
         last: Option<&SourceGenerationNeighbor>,
+        budget: SourceGenerationProofBudget,
     ) -> Result<Self> {
+        budget.validate()?;
+        if scope.as_str().len() > budget.max_identity_bytes
+            || project.as_str().len() > budget.max_identity_bytes
+        {
+            return invalid("source generation scope or project exceeds its proof bound");
+        }
         accumulator.validate()?;
         let last_cursor = match (accumulator.tree_size, last) {
             (0, None) => None,
@@ -82,12 +121,12 @@ impl SourceGenerationHistory {
                     || neighbor.selection.project != project
                     || neighbor.inclusion.tree_size != size
                     || neighbor.inclusion.leaf_index != size - 1
-                    || neighbor.inclusion.path.len() > 64
+                    || neighbor.inclusion.path.len() > budget.max_path_nodes
                 {
                     return invalid("source generation history tail identity mismatch");
                 }
                 neighbor.inclusion.verify(
-                    &neighbor.selection.authenticated_bytes()?,
+                    &neighbor.selection.authenticated_bytes(budget)?,
                     &accumulator.root,
                 )?;
                 Some(neighbor.selection.completed_cursor)
@@ -99,6 +138,7 @@ impl SourceGenerationHistory {
             project,
             last_cursor,
             accumulator,
+            budget,
         })
     }
 
@@ -115,7 +155,7 @@ impl SourceGenerationHistory {
         {
             return invalid("source generation completion cursors must strictly increase");
         }
-        let bytes = selection.authenticated_bytes()?;
+        let bytes = selection.authenticated_bytes(self.budget)?;
         let nodes = self.accumulator.append(&bytes)?;
         self.last_cursor = Some(selection.completed_cursor);
         Ok(nodes)
@@ -140,6 +180,7 @@ pub struct SourceGenerationNeighbor {
 /// and its tree size for the requested runtime stamp, and must establish the
 /// writer's ordering invariant. An inclusion proof or an untrusted root alone
 /// does not establish freshness. No current engine path is wired to this yet.
+#[allow(clippy::too_many_arguments)]
 pub fn verify_source_generation_at<'a>(
     scope: &ScopeId,
     project: &RuntimeId,
@@ -148,7 +189,14 @@ pub fn verify_source_generation_at<'a>(
     tree_size: u64,
     predecessor: Option<&'a SourceGenerationNeighbor>,
     successor: Option<&SourceGenerationNeighbor>,
+    budget: SourceGenerationProofBudget,
 ) -> Result<Option<&'a SourceGenerationSelection>> {
+    budget.validate()?;
+    if scope.as_str().len() > budget.max_identity_bytes
+        || project.as_str().len() > budget.max_identity_bytes
+    {
+        return invalid("source generation scope or project exceeds its proof bound");
+    }
     if tree_size == 0 {
         if predecessor.is_some()
             || successor.is_some()
@@ -162,13 +210,14 @@ pub fn verify_source_generation_at<'a>(
         if &neighbor.selection.scope != scope
             || &neighbor.selection.project != project
             || neighbor.inclusion.tree_size != tree_size
-            || neighbor.inclusion.path.len() > 64
+            || neighbor.inclusion.path.len() > budget.max_path_nodes
         {
             return invalid("source generation proof identity or bound mismatch");
         }
-        neighbor
-            .inclusion
-            .verify(&neighbor.selection.authenticated_bytes()?, trusted_root)
+        neighbor.inclusion.verify(
+            &neighbor.selection.authenticated_bytes(budget)?,
+            trusted_root,
+        )
     };
     if let Some(left) = predecessor {
         verify(left)?;
@@ -578,11 +627,41 @@ mod tests {
     use serde::Deserialize;
     use std::collections::BTreeMap;
 
+    fn generation_budget() -> SourceGenerationProofBudget {
+        SourceGenerationProofBudget {
+            max_identity_bytes: 256,
+            max_path_nodes: 64,
+        }
+    }
+
+    fn verify_source_generation_at<'a>(
+        scope: &ScopeId,
+        project: &RuntimeId,
+        cursor: u64,
+        root: &str,
+        size: u64,
+        left: Option<&'a SourceGenerationNeighbor>,
+        right: Option<&SourceGenerationNeighbor>,
+    ) -> Result<Option<&'a SourceGenerationSelection>> {
+        super::verify_source_generation_at(
+            scope,
+            project,
+            cursor,
+            root,
+            size,
+            left,
+            right,
+            generation_budget(),
+        )
+    }
+
     #[test]
     fn ordered_generation_neighbors_prove_the_selection_and_reject_omissions() {
         let scope = ScopeId::new("instance:test").unwrap();
         let project = RuntimeId::new("project:test").unwrap();
-        let mut history = SourceGenerationHistory::new(scope.clone(), project.clone());
+        let mut history =
+            SourceGenerationHistory::new(scope.clone(), project.clone(), generation_budget())
+                .unwrap();
         let mut nodes = BTreeMap::new();
         let selections = [5_u64, 10, 30, 40].map(|cursor| SourceGenerationSelection {
             scope: scope.clone(),
@@ -610,6 +689,21 @@ mod tests {
         let second = neighbor(1);
         let third = neighbor(2);
         let last = neighbor(3);
+        let small_path_budget = SourceGenerationProofBudget {
+            max_identity_bytes: 256,
+            max_path_nodes: 1,
+        };
+        assert!(super::verify_source_generation_at(
+            &scope,
+            &project,
+            40,
+            &root,
+            size,
+            Some(&last),
+            None,
+            small_path_budget
+        )
+        .is_err());
         assert_eq!(
             verify_source_generation_at(&scope, &project, 4, &root, size, None, Some(&first))
                 .unwrap(),
@@ -733,7 +827,9 @@ mod tests {
     fn generation_history_rejects_unordered_or_foreign_appends_without_mutation() {
         let scope = ScopeId::new("instance:test").unwrap();
         let project = RuntimeId::new("project:test").unwrap();
-        let mut history = SourceGenerationHistory::new(scope.clone(), project.clone());
+        let mut history =
+            SourceGenerationHistory::new(scope.clone(), project.clone(), generation_budget())
+                .unwrap();
         let selection = SourceGenerationSelection {
             scope,
             project,
@@ -758,10 +854,58 @@ mod tests {
     }
 
     #[test]
+    fn generation_proof_budgets_are_explicit_and_fail_closed() {
+        let scope = ScopeId::new("instance:test").unwrap();
+        let project = RuntimeId::new("project:test").unwrap();
+        let none = SourceGenerationProofBudget {
+            max_identity_bytes: 0,
+            max_path_nodes: 64,
+        };
+        assert!(SourceGenerationHistory::new(scope.clone(), project.clone(), none).is_err());
+        let too_many = SourceGenerationProofBudget {
+            max_identity_bytes: 256,
+            max_path_nodes: 65,
+        };
+        assert!(SourceGenerationHistory::new(scope.clone(), project.clone(), too_many).is_err());
+        let tight = SourceGenerationProofBudget {
+            max_identity_bytes: 3,
+            max_path_nodes: 1,
+        };
+        assert!(SourceGenerationHistory::new(scope.clone(), project.clone(), tight).is_err());
+        let history =
+            SourceGenerationHistory::new(scope.clone(), project.clone(), generation_budget())
+                .unwrap();
+        assert!(super::verify_source_generation_at(
+            &scope,
+            &project,
+            0,
+            &history.accumulator().root,
+            0,
+            None,
+            None,
+            none
+        )
+        .is_err());
+        assert!(super::verify_source_generation_at(
+            &scope,
+            &project,
+            0,
+            &history.accumulator().root,
+            0,
+            None,
+            None,
+            tight
+        )
+        .is_err());
+    }
+
+    #[test]
     fn generation_writer_reopens_from_authenticated_tail_and_preserves_order() {
         let scope = ScopeId::new("instance:test").unwrap();
         let project = RuntimeId::new("project:test").unwrap();
-        let mut original = SourceGenerationHistory::new(scope.clone(), project.clone());
+        let mut original =
+            SourceGenerationHistory::new(scope.clone(), project.clone(), generation_budget())
+                .unwrap();
         let mut nodes = BTreeMap::new();
         let selection = |cursor| SourceGenerationSelection {
             scope: scope.clone(),
@@ -785,7 +929,8 @@ mod tests {
             scope.clone(),
             project.clone(),
             retained.clone(),
-            None
+            None,
+            generation_budget()
         )
         .is_err());
         let mut forged = tail.clone();
@@ -794,7 +939,8 @@ mod tests {
             scope.clone(),
             project.clone(),
             retained.clone(),
-            Some(&forged)
+            Some(&forged),
+            generation_budget()
         )
         .is_err());
         let mut reopened = SourceGenerationHistory::from_trusted_accumulator(
@@ -802,6 +948,7 @@ mod tests {
             project.clone(),
             retained,
             Some(&tail),
+            generation_budget(),
         )
         .unwrap();
         assert!(reopened.append(&selection(11)).is_err());
@@ -814,7 +961,9 @@ mod tests {
     fn generation_neighbor_proofs_match_linear_history_for_every_cursor() {
         let scope = ScopeId::new("instance:oracle").unwrap();
         let project = RuntimeId::new("project:oracle").unwrap();
-        let mut history = SourceGenerationHistory::new(scope.clone(), project.clone());
+        let mut history =
+            SourceGenerationHistory::new(scope.clone(), project.clone(), generation_budget())
+                .unwrap();
         let mut nodes = BTreeMap::new();
         let mut entries = Vec::new();
         for index in 0_u64..17 {
