@@ -1,5 +1,5 @@
 // Generated from rrd-contract; do not edit.
-// OpenAPI SHA-256: e9f6363967936948b3405c7ecbf9afa4f9be77eddf95d73727ae83aa51506971
+// OpenAPI SHA-256: 3f48f498ffb4357cae1f979e12b9707e1eeb21bc6ce671c472095abc9e769262
 package io.rrflow.rrd;
 
 public enum OperationId {
@@ -71,6 +71,9 @@ public enum OperationId {
     TRANSACTION_PREVIEW("transaction-preview", "POST", "/v1/transactions/{transaction}/preview", Authentication.SESSION_BEARER, true),
     VECTOR_COLLECTION_ENSURE("vector-collection-ensure", "POST", "/v1/vector/collections/ensure", Authentication.SESSION_BEARER, true),
     VECTOR_COLLECTION_LIST("vector-collection-list", "POST", "/v1/vector/collections/list", Authentication.SESSION_BEARER, false),
+    VECTOR_INDEX_ENSURE("vector-index-ensure", "POST", "/v1/vector/indexes/ensure", Authentication.SESSION_BEARER, true),
+    VECTOR_PAYLOAD_INDEX_DELETE("vector-payload-index-delete", "POST", "/v1/vector/payload-indexes/delete", Authentication.SESSION_BEARER, true),
+    VECTOR_PAYLOAD_INDEX_ENSURE("vector-payload-index-ensure", "POST", "/v1/vector/payload-indexes/ensure", Authentication.SESSION_BEARER, true),
     VECTOR_POINT_RETRIEVE("vector-point-retrieve", "POST", "/v1/vector/points/retrieve", Authentication.SESSION_BEARER, false),
     VECTOR_POINT_SCROLL("vector-point-scroll", "POST", "/v1/vector/points/scroll", Authentication.SESSION_BEARER, false),
     VECTOR_QUANTIZATION_ACTIVATE("vector-quantization-activate", "POST", "/v1/vector/quantizations/activate", Authentication.SESSION_BEARER, true),
@@ -79,7 +82,7 @@ public enum OperationId {
     VECTOR_QUANTIZATION_RETIRE("vector-quantization-retire", "POST", "/v1/vector/quantizations/retire", Authentication.SESSION_BEARER, true),
     VECTOR_SEARCH("vector-search", "POST", "/v1/vector/search", Authentication.SESSION_BEARER, false);
 
-    static final String OPENAPI_DOCUMENT_SHA256 = "e9f6363967936948b3405c7ecbf9afa4f9be77eddf95d73727ae83aa51506971";
+    static final String OPENAPI_DOCUMENT_SHA256 = "3f48f498ffb4357cae1f979e12b9707e1eeb21bc6ce671c472095abc9e769262";
 
     public enum Authentication { PUBLIC, API_KEY, SESSION_BEARER }
 

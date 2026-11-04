@@ -208,3 +208,43 @@ identified 19 conflicting paths: contract source and generated SDK/reference
 projections. Resolve from the combined owner, not by accepting one generated
 side. PR #246 remains open; PR #235 is merged. These are integration findings,
 not evidence that a combined candidate builds.
+
+The separately launched full engine test binary
+`target\debug\deps\rrd_engine-856ce392343f8306.exe --quiet --test-threads=2`
+finished with **338 passed; 5 ignored; 0 failed**. This is the exact local
+binary produced for the real-service test above, on draft base `f8be2ab3`
+plus the follow-up test edit; it is not the integrated-main candidate or CI.
+The real-service test was run separately because it is deliberately ignored by
+the offline default suite.
+
+## Isolated public-main reconciliation
+
+A separate `agent/lfg-main-integration` worktree merged public main
+`746a0a462e512563b6d3aaa89520f8ab5cde9051` into the local follow-up
+`241a5a3b`. The 19 merge conflicts were inspected: the authored contract and
+six authored reference citations conflicted at the OpenAPI digest, while the
+other conflicts were generated SDK/signal projections. After preserving both
+sets of source changes, the combined contract exporter produced OpenAPI digest
+`3f48f498ffb4357cae1f979e12b9707e1eeb21bc6ce671c472095abc9e769262`.
+The five SDK endpoint/schema generators and signal renderer were run from that
+combined source. Generated parity passed with 78 HTTP operations, preserving
+both the LFG fields and current-main vector operations. TypeScript typecheck,
+Go `go test ./...`, the `rrd-contract` suite, navigation and documentation
+policy passed on the combined working tree. The execution-inventory check
+initially reported drift; regeneration wrote 2,376 records and its recheck
+passed. The Windows pnpm shim failed before generation; invoking the pinned
+pnpm module and an offline dependency store succeeded. The Python generator
+initially lacked `ruff` on PATH; the locally cached 0.17.1 binary was used.
+No external package fetch was used for the candidate's TypeScript install.
+
+The combined engine real-service test is running. PR #246 remains open and
+has its own current-main conflicts, so this reconciliation does not make #249
+ready or claim the dependency is integrated. Candidate and merge-group CI,
+actual SWAG and installed/native qualification remain required.
+
+The combined candidate's real-service command `cargo test --offline --locked
+-p rrd-engine --lib real_lfg_service_flows_through_engine_controller_and_reopen
+-- --ignored --nocapture`, with the same local LFG URL, passed one test. This
+retains the controlled controller and in-process engine limitations above; it
+is not the installed or independent SWAG path. The candidate has not yet
+incorporated PR #246. It remains a local integration, not accepted CI.

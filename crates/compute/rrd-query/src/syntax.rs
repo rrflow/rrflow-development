@@ -698,6 +698,14 @@ struct Parser {
 
 impl Parser {
     fn query(&mut self) -> Result<Query, ParseError> {
+        // SELECT is a second spelling of the existing relational projection,
+        // not a separate binder, executor, or PostgreSQL compatibility claim.
+        let selected_projection = if self.peek().is_some_and(|token| token.is_keyword("SELECT")) {
+            self.cursor += 1;
+            Some(self.projection()?)
+        } else {
+            None
+        };
         self.keyword("FROM")?;
         let source = self.source()?;
         let join = if self.peek().is_some_and(|token| token.is_keyword("JOIN")) {
@@ -717,6 +725,17 @@ impl Parser {
         } else {
             None
         };
+        if selected_projection.is_some()
+            && (matches!(source, Source::Traversal { .. })
+                || join
+                    .as_ref()
+                    .is_some_and(|join| matches!(join.source, Source::Traversal { .. })))
+        {
+            return Err(ParseError::new(
+                0,
+                "SELECT requires relational sources; traversal is not a table source",
+            ));
+        }
         self.keyword("AT")?;
         self.keyword("VALID")?;
         let valid_at = self.time_expr()?;
@@ -725,7 +744,10 @@ impl Parser {
         let mut query = Query::new(source, TemporalSelector { valid_at, known_at });
         query.join = join;
         let mut saw_where = false;
-        let mut saw_project = false;
+        let mut saw_project = selected_projection.is_some();
+        if let Some(projection) = selected_projection {
+            query.projection = projection;
+        }
         let mut saw_limit = false;
         let mut saw_explain = false;
         while let Some(token) = self.peek() {

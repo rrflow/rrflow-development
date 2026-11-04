@@ -1,9 +1,9 @@
 # Generated from rrd-contract; do not edit.
-# OpenAPI SHA-256: e9f6363967936948b3405c7ecbf9afa4f9be77eddf95d73727ae83aa51506971
+# OpenAPI SHA-256: 3f48f498ffb4357cae1f979e12b9707e1eeb21bc6ce671c472095abc9e769262
 from typing import Final, Literal, TypedDict
 
 ENDPOINT_OPENAPI_DOCUMENT_SHA256: Final[str] = (
-    "e9f6363967936948b3405c7ecbf9afa4f9be77eddf95d73727ae83aa51506971"
+    "3f48f498ffb4357cae1f979e12b9707e1eeb21bc6ce671c472095abc9e769262"
 )
 
 OperationId = Literal[
@@ -75,6 +75,9 @@ OperationId = Literal[
     "transaction-preview",
     "vector-collection-ensure",
     "vector-collection-list",
+    "vector-index-ensure",
+    "vector-payload-index-delete",
+    "vector-payload-index-ensure",
     "vector-point-retrieve",
     "vector-point-scroll",
     "vector-quantization-activate",
@@ -500,6 +503,24 @@ ENDPOINTS: Final[dict[OperationId, Endpoint]] = {
         "method": "POST",
         "mutation": False,
         "path": "/v1/vector/collections/list",
+    },
+    "vector-index-ensure": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": True,
+        "path": "/v1/vector/indexes/ensure",
+    },
+    "vector-payload-index-delete": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": True,
+        "path": "/v1/vector/payload-indexes/delete",
+    },
+    "vector-payload-index-ensure": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": True,
+        "path": "/v1/vector/payload-indexes/ensure",
     },
     "vector-point-retrieve": {
         "authentication": "session_bearer",

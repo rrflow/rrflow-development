@@ -106,7 +106,7 @@ The audited projection contains:
   `7efde511a5ba3b1cad630d2c63c473a966fb871182c8bd3a5fb85c3673924a11`.
 
 That audit describes an earlier projection. The current generated OpenAPI
-SHA-256 is `e9f6363967936948b3405c7ecbf9afa4f9be77eddf95d73727ae83aa51506971`.
+SHA-256 is `3f48f498ffb4357cae1f979e12b9707e1eeb21bc6ce671c472095abc9e769262`.
 
 The generated `rrd-openapi.ts` is a compile-time projection of roughly 1.6
 MiB. Its `paths`, `components`, and `operations` types are valuable compile-time

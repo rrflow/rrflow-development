@@ -323,3 +323,46 @@ fn allowed_routes_require_explicitly_active_selected_replicas() {
         .insert(node("a"), ReplicaHealth::Suspect);
     assert!(route.validate().is_err());
 }
+
+/// Every cluster identifier can reach a public projection, a SPIFFE identity or
+/// a certificate, so a value outside the canonical grammar cannot exist, however
+/// it arrives.
+#[test]
+fn cluster_identifiers_accept_only_the_canonical_grammar() {
+    fn check<T: serde::de::DeserializeOwned>(new: impl Fn(String) -> rrd_cluster::Result<T>) {
+        for accepted in ["a", "0", "cluster-a", "node.1_x"] {
+            assert!(
+                new(accepted.to_owned()).is_ok(),
+                "{accepted} must be accepted"
+            );
+        }
+        let too_long = "a".repeat(129);
+        for refused in [
+            "",
+            "a:b",
+            "a@b",
+            "A",
+            "a b",
+            "a/b",
+            "-a",
+            ".a",
+            "_a",
+            too_long.as_str(),
+        ] {
+            assert!(
+                new(refused.to_owned()).is_err(),
+                "{refused:?} must be refused"
+            );
+            assert!(
+                serde_json::from_value::<T>(serde_json::json!(refused)).is_err(),
+                "{refused:?} must not deserialize"
+            );
+        }
+    }
+    check(rrd_cluster::ClusterId::new);
+    check(rrd_cluster::NodeId::new);
+    check(rrd_cluster::ZoneId::new);
+    check(rrd_cluster::RegionId::new);
+    check(rrd_cluster::TenantId::new);
+    check(rrd_cluster::LogicalTableId::new);
+}
