@@ -92,3 +92,78 @@ the whole estate's HEAD with the old source cursor is sufficient. The existing
 red test stays active; #241 and the installed project-to-query driver remain
 dependent work. No production code, roadmap status, or C-07 status changed in
 this reconciliation. Candidate and merge-group CI are not run on this draft.
+
+## Ordered selection proof component, 2026-11-04
+
+Starting draft head `15dc39ee0fab9529bf5245ea11e2e308e6af5a85`, the PR brief
+was amended before the code change. The complete existing
+`crates/kernel/rrd-core/src/authenticated_log.rs` was read. It authenticates
+individual RFC 9162 leaves, but its inclusion proof does not prove that an
+index returned the latest matching selection. In the same existing kernel
+module, this candidate adds a domain-separated source-generation selection,
+an in-memory history builder that rejects out-of-order/foreign appends, and a
+predecessor/successor verifier. The verifier requires valid inclusion proofs,
+matching scope/project and tree size, adjacent positions or the actual tree
+endpoints, and cursor inequalities. It checks an empty history against the
+empty root. A resumed builder checks an authenticated last leaf and rejects a
+missing, foreign or forged tail.
+
+This only proves a selection **relative to an already trusted root and a
+writer-enforced ordering invariant**. It does not authenticate the root at a
+runtime stamp, persist the history, prove a source-entry membership, select a
+generation in a query, or change inventory publication. A root provided by an
+untrusted caller is not sufficient. Storage transaction, source visibility,
+legacy recovery, query consumers and the actual installed driver remain open.
+The code is not wired into the engine and the interrupted-refresh regression
+remains failing; do not mark #252 ready or claim a fix from this component.
+
+Tests cover empty/before/exact/between/after cases, omitted and nonadjacent
+neighbors, altered root/value, wrong project or size, foreign and non-monotonic
+appends, resuming with a valid or forged tail, and 17 ordered histories against
+an independent linear latest-selection oracle. RFC 9162 specifies inclusion
+proofs and FoundationDB's documented subspace indirection informs the desired
+atomic switch; neither proves RRFlow's root binding or storage implementation.
+No upstream code was copied. References:
+<https://datatracker.ietf.org/doc/html/rfc9162> and
+<https://apple.github.io/foundationdb/subspace-indirection.html>.
+
+During this work, a new test demonstrated that the shared digest parser could
+panic on a 64-byte non-ASCII string, because it sliced before checking byte
+boundaries. On ARM64 the red test
+`cargo test --offline --locked -p rrd-core
+digest_parser_rejects_multibyte_text_without_panicking -- --nocapture` failed
+with `end byte index 2 is not a char boundary`; log `digest-red.log` SHA-256
+`54eea0cf09282b6c30d29e6c42f774d78fe400a7c6115880db15ad86cc4435b6`.
+The parser now validates lowercase ASCII hex before slicing, preserving the
+existing canonical digest rule. The actual final Rust file has SHA-256
+`93c3eed8a93d1b945e5a41fe9df65be985d0e4ea928fa714e9072f2f5d01ee65`.
+
+On `clyffy-01`, with two Cargo workers and the merged source tree above plus
+that exact file, `cargo test --offline --locked -p rrd-core` passed with one
+existing ignored unit test; `cargo clippy --offline --locked -p rrd-core
+--all-targets -- -D warnings` passed. Logs `core-tests-final2.log` and
+`core-clippy-final2.log` have SHA-256
+`d6005631216db95bf6994f17fcc04ae9ee24611478d70d70e391f4462d13705f`
+and `652278900feca816c697c18413aa54c027e4994e5bf10079080242f600e1b13b`.
+The installed-engine interrupted-refresh regression was rerun after an earlier
+version of the component (before the additional linear-oracle test) and still
+failed the original assertion; `regression-after-proof.log` SHA-256
+`17b09202133506995747bd294ede14d3c0ff5b57848732a393ae5c3d662737a6`.
+This is expected because no production inventory reader or publisher uses the
+new proof. The subsequent change added only the linear-oracle test; no engine
+integration occurred. Native Windows/macOS, full candidate CI, merge-group CI,
+capacity, soak and the installed project-to-query driver were not run.
+
+The component changes only `authenticated_log.rs` and this existing journal;
+there are no moved or deleted paths or new runtime trace events. Its bounds
+are limited proof paths and selection identity bytes, not a measured total
+resource or performance guarantee. The proof's 256-byte scope/project bound
+limits untrusted proof allocation; the existing `ScopeId` and `RuntimeId`
+types do not impose that bound. Existing installed identities must be checked
+and the compatibility and configuration decision resolved before integration;
+this test does not prove all admitted estates fit. No objective, roadmap or POA&M status has
+changed. The next required work is a stamp-bound authenticated selection root,
+transactional durable updates and source membership, followed by all affected
+query paths and the unchanged red regression. If those cannot be made coherent
+without a second authority or loss of existing stamps, keep the path disabled
+and the PR draft; do not substitute a full-estate cursor rewind.
