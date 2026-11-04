@@ -1,4 +1,4 @@
-// OpenAPI SHA-256: 02c2fb3124a157286742287e6325beb9b8d0066ccd7dd215a843426914953bc4
+// OpenAPI SHA-256: c4375b035939ca40618f6e56eb1d52ea11347b742d003508f40df5d73c441d38
 export interface paths {
     "/v1/attunement/cancel": {
         parameters: {
@@ -34690,7 +34690,11 @@ export interface operations {
                         operation_id: string;
                         request_id: string;
                     };
-                    /** @description No endpoint, credential, prompt or client-authored candidate facts enter this request. */
+                    /**
+                     * @description Unknown fields are accepted and ignored for forward compatibility. No
+                     *     endpoint, credential, prompt or client-authored candidate facts are used by
+                     *     this request; an extension needs explicit engine admission to matter.
+                     */
                     payload: {
                         attempt_id: string;
                         expected_configuration_sha256: string;
@@ -34705,6 +34709,8 @@ export interface operations {
                          *     labels are separate data and may use arbitrary Unicode.
                          */
                         task_id: string;
+                    } & {
+                        [key: string]: unknown;
                     };
                     protocol: string;
                     /** Format: uint16 */
