@@ -257,6 +257,7 @@ impl HnswIndex {
             }
             insert_node(&config, &mut nodes, &mut entrypoint, candidate)?;
         }
+        repair_reachability(&config, &mut nodes, entrypoint)?;
         let body = HnswBody {
             config: config.clone(),
             generation,
@@ -333,6 +334,7 @@ impl HnswIndex {
         for candidate in candidates {
             insert_node(&self.config, &mut nodes, &mut entrypoint, candidate)?;
         }
+        repair_reachability(&self.config, &mut nodes, entrypoint)?;
         Self::from_body(HnswBody {
             config: self.config.clone(),
             generation,
@@ -720,7 +722,7 @@ fn insert_node(
                 eligible: None,
             },
         )?;
-        let selected = select_neighbors(found, layer_limit(config.m, layer as usize));
+        let selected = select_neighbors(nodes, found, config.m, config.metric)?;
         if let Some(best) = selected.first() {
             current = best.id;
         }
@@ -740,13 +742,15 @@ fn insert_node(
             if !nodes[scored.id].neighbors[layer].contains(&new_id) {
                 nodes[scored.id].neighbors[layer].push(new_id);
             }
-            prune_neighbors(
-                nodes,
-                scored.id,
-                layer,
-                layer_limit(config.m, layer),
-                config.metric,
-            )?;
+            if nodes[scored.id].neighbors[layer].len() > layer_limit(config.m, layer) {
+                prune_neighbors(
+                    nodes,
+                    scored.id,
+                    layer,
+                    layer_limit(config.m, layer),
+                    config.metric,
+                )?;
+            }
         }
     }
     if level > entry_level {
@@ -773,17 +777,137 @@ fn prune_neighbors(
             })
         })
         .collect::<Result<Vec<_>>>()?;
-    nodes[node].neighbors[layer] = select_neighbors(scored, m)
+    nodes[node].neighbors[layer] = select_neighbors(nodes, scored, m, metric)?
         .into_iter()
         .map(|value| value.id)
         .collect();
     Ok(())
 }
 
-fn select_neighbors(mut candidates: Vec<ScoredNode>, limit: usize) -> Vec<ScoredNode> {
+/// Chooses a node's neighbors from `candidates`, each scored against that node, by the heuristic
+/// of Malkov and Yashunin's Algorithm 4. A candidate is kept only if it is closer to the node than
+/// to any neighbor already kept, since otherwise that neighbor already leads to it. Keeping only
+/// the closest would fill a node's list from its own cluster and cut the links between clusters.
+fn select_neighbors(
+    nodes: &[HnswNode],
+    mut candidates: Vec<ScoredNode>,
+    limit: usize,
+    metric: ScoreMetric,
+) -> Result<Vec<ScoredNode>> {
     sort_scored(&mut candidates);
-    candidates.truncate(limit);
-    candidates
+    if candidates.len() <= limit {
+        return Ok(candidates);
+    }
+    let mut selected: Vec<ScoredNode> = Vec::with_capacity(limit);
+    for candidate in candidates {
+        if selected.len() == limit {
+            break;
+        }
+        let values = dense_candidate(&nodes[candidate.id].candidate)?;
+        let mut closer_to_the_node = true;
+        for kept in &selected {
+            let to_kept = score_dense_query(
+                values,
+                &nodes[kept.id].candidate,
+                metric,
+                HnswKernel::Scalar,
+            )?;
+            if to_kept > candidate.score {
+                closer_to_the_node = false;
+                break;
+            }
+        }
+        if closer_to_the_node {
+            selected.push(candidate);
+        }
+    }
+    Ok(selected)
+}
+
+/// Marks everything reachable on layer zero from `start`, on top of what is already marked.
+fn mark_reachable(nodes: &[HnswNode], reachable: &mut [bool], start: usize) {
+    reachable[start] = true;
+    let mut pending = vec![start];
+    while let Some(node) = pending.pop() {
+        for neighbor in &nodes[node].neighbors[0] {
+            if !reachable[*neighbor] {
+                reachable[*neighbor] = true;
+                pending.push(*neighbor);
+            }
+        }
+    }
+}
+
+/// The heuristic makes a connected graph likely and does not promise one, and a node no search can
+/// reach is a wrong answer waiting to happen. So anything left unreachable on layer zero is linked
+/// from its closest reachable node with room for it, in a fixed order, so a build stays
+/// deterministic. Pruning never runs here, so no link that already reaches a node is lost.
+fn repair_reachability(
+    config: &HnswConfig,
+    nodes: &mut [HnswNode],
+    entrypoint: Option<usize>,
+) -> Result<()> {
+    let Some(entrypoint) = entrypoint else {
+        return Ok(());
+    };
+    let limit = layer_limit(config.m, 0);
+    let mut reachable = vec![false; nodes.len()];
+    mark_reachable(nodes, &mut reachable, entrypoint);
+    for orphan in 0..nodes.len() {
+        if reachable[orphan] {
+            continue;
+        }
+        let query = dense_candidate(&nodes[orphan].candidate)?.to_vec();
+        let mut found = search_layer(
+            nodes,
+            &query,
+            &[entrypoint],
+            SearchLayerOptions {
+                ef: config.ef_construction,
+                layer: 0,
+                metric: config.metric,
+                kernel: HnswKernel::Scalar,
+                eligible: None,
+            },
+        )?;
+        sort_scored(&mut found);
+        let nearby = found
+            .iter()
+            .find(|scored| nodes[scored.id].neighbors[0].len() < limit)
+            .map(|scored| scored.id);
+        let host = match nearby {
+            Some(host) => Some(host),
+            // Everything the search reached is full, so look at every reachable node.
+            None => {
+                let mut best: Option<ScoredNode> = None;
+                for (id, node) in nodes.iter().enumerate() {
+                    if reachable[id] && node.neighbors[0].len() < limit {
+                        let score = score_dense_query(
+                            &query,
+                            &node.candidate,
+                            config.metric,
+                            HnswKernel::Scalar,
+                        )?;
+                        let scored = ScoredNode { id, score };
+                        if best.is_none_or(|current| scored > current) {
+                            best = Some(scored);
+                        }
+                    }
+                }
+                best.map(|scored| scored.id)
+            }
+        };
+        // With no room anywhere, the validator refuses the graph, as it would have before.
+        let Some(host) = host else {
+            return Ok(());
+        };
+        nodes[host].neighbors[0].push(orphan);
+        if nodes[orphan].neighbors[0].len() < limit {
+            nodes[orphan].neighbors[0].push(host);
+        }
+        mark_reachable(nodes, &mut reachable, orphan);
+    }
+    Ok(())
 }
 
 fn layer_limit(m: usize, layer: usize) -> usize {
@@ -1399,6 +1523,88 @@ mod tests {
     }
 
     #[test]
+    fn repair_links_each_orphan_from_its_closest_reachable_node_with_room() {
+        let scope = ScopeId::new("instance:hnsw").unwrap();
+        let node = |id: usize, values: Vec<f32>, neighbors: Vec<usize>| HnswNode {
+            candidate: candidate(&scope, id as u64 + 1, id, values),
+            level: 0,
+            neighbors: vec![neighbors],
+        };
+        // Node 1 is closest to the orphan, node 2, and has room. Node 0 is farther. Node 3 is
+        // reached through the orphan, so it must come along without a link of its own.
+        let mut nodes = vec![
+            node(0, vec![1.0, 0.0], vec![1]),
+            node(1, vec![0.7, 0.7], vec![0]),
+            node(2, vec![0.5, 0.9], vec![3]),
+            node(3, vec![0.0, 1.0], Vec::new()),
+        ];
+        let settings = clustered_config(&scope, 2, 2, 8);
+        repair_reachability(&settings, &mut nodes, Some(0)).unwrap();
+        assert_eq!(nodes[1].neighbors[0], vec![0, 2]);
+        assert_eq!(nodes[0].neighbors[0], vec![1]);
+        assert_eq!(nodes[2].neighbors[0], vec![3, 1]);
+        assert_eq!(nodes[3].neighbors[0], Vec::<usize>::new());
+    }
+
+    #[test]
+    fn repair_stays_within_the_degree_limit_and_leaves_a_full_graph_to_the_validator() {
+        let scope = ScopeId::new("instance:hnsw").unwrap();
+        let node = |id: usize, values: Vec<f32>, neighbors: Vec<usize>| HnswNode {
+            candidate: candidate(&scope, id as u64 + 1, id, values),
+            level: 0,
+            neighbors: vec![neighbors],
+        };
+        // A limit of two at layer zero, with both reachable nodes already full of each other and
+        // of a third, leaves nowhere to attach the orphan.
+        let mut nodes = vec![
+            node(0, vec![1.0, 0.0], vec![1, 2]),
+            node(1, vec![0.9, 0.1], vec![0, 2]),
+            node(2, vec![0.8, 0.2], vec![0, 1]),
+            node(3, vec![0.0, 1.0], Vec::new()),
+        ];
+        let settings = clustered_config(&scope, 2, 1, 8);
+        repair_reachability(&settings, &mut nodes, Some(0)).unwrap();
+        assert!(nodes.iter().all(|node| node.neighbors[0].len() <= 2));
+        assert!(nodes[3].neighbors[0].is_empty());
+    }
+
+    #[test]
+    fn selection_keeps_a_link_across_clusters_that_closeness_alone_would_drop() {
+        let scope = ScopeId::new("instance:hnsw").unwrap();
+        let node = |id: usize, values: Vec<f32>| HnswNode {
+            candidate: candidate(&scope, id as u64 + 1, id, values),
+            level: 0,
+            neighbors: vec![Vec::new()],
+        };
+        // Three neighbors crowd one direction and one lies in another, with the query between
+        // them. Closeness alone keeps two of the crowd, and node 3 would lose its link.
+        let nodes = vec![
+            node(0, vec![1.0, 0.00]),
+            node(1, vec![1.0, 0.01]),
+            node(2, vec![1.0, 0.02]),
+            node(3, vec![0.0, 1.00]),
+        ];
+        let query = [0.7_f32, 0.7];
+        let scored = (0..4)
+            .map(|id| ScoredNode {
+                id,
+                score: score_dense_query(
+                    &query,
+                    &nodes[id].candidate,
+                    ScoreMetric::Cosine,
+                    HnswKernel::Scalar,
+                )
+                .unwrap(),
+            })
+            .collect::<Vec<_>>();
+        let selected = select_neighbors(&nodes, scored, 2, ScoreMetric::Cosine).unwrap();
+        assert_eq!(
+            selected.iter().map(|scored| scored.id).collect::<Vec<_>>(),
+            vec![2, 3]
+        );
+    }
+
+    #[test]
     fn a_graph_that_leaves_a_node_unreachable_is_still_refused() {
         let scope = ScopeId::new("instance:hnsw").unwrap();
         let node = |id: usize, values: Vec<f32>| HnswNode {
@@ -1406,7 +1612,7 @@ mod tests {
             level: 0,
             neighbors: vec![Vec::new()],
         };
-        let error = HnswIndex::from_body(HnswBody {
+        let Err(error) = HnswIndex::from_body(HnswBody {
             config: config(&scope),
             generation: 1,
             source_cursor: 2,
@@ -1415,10 +1621,10 @@ mod tests {
             nodes: vec![node(0, vec![1.0, 0.0]), node(1, vec![0.0, 1.0])],
             maintenance: HnswMaintenanceKind::FullBuild,
             previous_generation: None,
-        })
-        .err()
-        .expect("an unreachable node must be refused")
-        .to_string();
+        }) else {
+            panic!("an unreachable node must be refused");
+        };
+        let error = error.to_string();
         assert!(error.contains("not reachable"), "{error}");
     }
 

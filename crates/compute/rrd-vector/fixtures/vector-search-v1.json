@@ -192,7 +192,7 @@
     "nodes": 4,
     "scope": "instance:vector-golden",
     "stamp": {
-      "artifact_digest": "ca292103f9cfc9efb3e57989fc4c87dcc3d5a9b9f2ba06df209dda0d8c1a6dd3",
+      "artifact_digest": "6fa001049110ddcf248f54eea2b3ba94c7a4814ad283c2746f79eb9fc5a285c2",
       "config_digest": "229d146576a37ed2a6268dc9a523d1d49fc69f1380d70624ee353a3a3deabf96",
       "contract_version": 1,
       "generation": 1,
