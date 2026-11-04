@@ -1,6 +1,6 @@
 //! What RRFlow's lab carries in a definition pack: its systems, its tests and its list of outside
 //! sources, each checked the way the lab itself would read it.
-use super::pack::PackContent;
+use super::pack::{PackContent, TrustedKeys};
 use crate::lab::catalog::{resolve_test, SystemDefinition, TestDefinition};
 use crate::lab::sources::SourceList;
 use crate::lab::Result;
@@ -13,6 +13,12 @@ pub const RRFLOW_CONTENT_SCHEMA: u16 = 1;
 const SOURCES: &str = "sources.json";
 
 pub struct RrflowContent;
+
+/// The publisher keys this build trusts with nothing else set up.
+pub fn pinned_keys() -> Result<TrustedKeys> {
+    serde_json::from_str(include_str!("../../../assets/lab-trusted-keys.json"))
+        .map_err(|error| format!("the pinned keys: {error}"))
+}
 
 fn stem<'a>(path: &'a str, folder: &str) -> Option<&'a str> {
     path.strip_prefix(folder)?

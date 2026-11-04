@@ -36,6 +36,16 @@ const USAGE: &str = "usage:
   rrflow-lab import --from vectordbbench --result FILE --harness-version VERSION --recall-target NUMBER --out FILE
   rrflow-lab sources --file FILE
   rrflow-lab schemas --out DIR
+  rrflow-lab plan [--test ID] [--out NEW_DIR] [--json]
+  rrflow-lab settings [--json]
+  rrflow-lab settings on|off ID
+  rrflow-lab settings tune SYSTEM NAME=VALUE...
+  rrflow-lab settings approve SYSTEM | --all
+  rrflow-lab settings reset [ID]
+  rrflow-lab definitions publish [--lab DIR] [--days N]
+  rrflow-lab definitions update [--from FOLDER]
+  rrflow-lab definitions status [--json]
+  rrflow-lab definitions trust --file FILE
   rrflow-lab definitions keygen --private NEW_FILE --trust NEW_FILE
   rrflow-lab definitions build --lab DIR --key FILE --sequence N --days N --out FILE
   rrflow-lab definitions patch --lab DIR --key FILE --sequence N --days N --out FILE --base PACK --trust FILE
@@ -436,6 +446,7 @@ fn definitions(arguments: &[String]) -> Result<ExitCode> {
     let parsed = parse(rest)?;
     let store = || PackStore::open(PathBuf::from(parsed.required("store")?), RRFLOW_PRODUCT);
     match verb.as_str() {
+        "publish" | "update" | "trust" => Err("not built yet".into()),
         "keygen" => keygen(&parsed),
         "build" => build_definitions(&parsed, None),
         "patch" => {
@@ -490,6 +501,9 @@ fn dispatch(arguments: &[String]) -> Result<ExitCode> {
     };
     if command == "definitions" {
         return definitions(rest);
+    }
+    if command == "settings" || command == "plan" {
+        return Err("not built yet".into());
     }
     let parsed = parse(rest)?;
     match command.as_str() {

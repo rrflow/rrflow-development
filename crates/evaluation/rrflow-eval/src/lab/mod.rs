@@ -15,6 +15,7 @@ pub mod milvus;
 pub mod qdrant;
 pub mod report;
 pub mod rrflow;
+pub mod settings;
 pub mod sources;
 pub mod surrealdb;
 
