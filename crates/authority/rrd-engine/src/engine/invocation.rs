@@ -486,6 +486,10 @@ impl RrdEngine {
         status_code: u16,
         response_sha256: String,
     ) -> Result<()> {
+        // Measure only: what the two audit commits on each search cost. Never ship this.
+        if operation == RrdOperation::VectorSearch {
+            return Ok(());
+        }
         self.append_audit(AuditEvent {
             at_unix_ms: invocation.observed_at_unix_ms,
             attempt: invocation.attempt,
