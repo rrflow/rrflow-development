@@ -84,6 +84,147 @@ fn ensure(
 }
 
 #[test]
+fn public_ensure_rebuilds_legacy_identities_without_disabling_uniqueness() {
+    let (_root, engine) = isolated_engine();
+    let lease = engine
+        .create_session(
+            &session_request(9_000, 4),
+            &id("identity-index-session"),
+            10,
+            "identity-index-session",
+            "identity-index-session",
+        )
+        .unwrap();
+    commit(
+        &engine,
+        &lease,
+        vec![
+            TransactionMutation::PutSchema {
+                registry: DataSchemaRegistry {
+                    revision: 1,
+                    migration: "identity index fixture".into(),
+                    organisation: DataEstateOrganisation::default(),
+                    tables: BTreeMap::from([(
+                        CanonicalId::new("document").unwrap(),
+                        DataTableSchema {
+                            model: DataLogicalModel::Relational,
+                            mode: DataSchemaMode::Strict,
+                            properties: BTreeMap::new(),
+                            allow_additional_properties: false,
+                        },
+                    )]),
+                    records: BTreeMap::from([(
+                        CanonicalId::new("document").unwrap(),
+                        DataRecordSchema {
+                            properties: BTreeMap::from([(
+                                "category".into(),
+                                DataPropertySchema {
+                                    value_type: DataValueType::String,
+                                    required: true,
+                                },
+                            )]),
+                            ..DataRecordSchema::default()
+                        },
+                    )]),
+                    relations: BTreeMap::new(),
+                    events: BTreeMap::new(),
+                },
+            },
+            TransactionMutation::PutRecord {
+                reference: reference("document", "one"),
+                valid_from: 1,
+                valid_to: None,
+                properties: BTreeMap::from([(
+                    "category".into(),
+                    QueryValue::String("unique".into()),
+                )]),
+            },
+        ],
+        20,
+        "identity-seed",
+    )
+    .unwrap();
+    let definition = "FROM record:document AT VALID 1 KNOWN HEAD PROJECT category";
+    let first = ensure(
+        &engine,
+        &lease,
+        30,
+        "identity-unique",
+        definition,
+        true,
+        QueryIndexKind::Scalar,
+        None,
+    );
+    assert!(!first.index.identity_rebuild_required);
+    let key = "server/state/index-catalogue/instance:test-instance".to_string();
+    let old = engine.storage.control().get(&key).unwrap().unwrap();
+    let mut legacy: serde_json::Value = serde_json::from_slice(&old).unwrap();
+    legacy["entries"]["identity-unique"]
+        .as_object_mut()
+        .unwrap()
+        .remove("result_identity_version");
+    engine
+        .storage
+        .control()
+        .commit_batch(&[ControlTransition {
+            key,
+            expected: Some(old),
+            replacement: Some(serde_json::to_vec(&legacy).unwrap()),
+            at: 31,
+            actor: "test".into(),
+            action: "test.legacy_catalogue".into(),
+            request_id: "legacy".into(),
+            operation_id: "legacy".into(),
+        }])
+        .unwrap();
+    let snapshot = engine
+        .list_query_indexes(
+            &lease.session_id,
+            &lease.token,
+            &rrd_contract::ListQueryIndexes {
+                scope: "instance:test-instance".into(),
+            },
+            32,
+            "identity-list",
+            "identity-list",
+        )
+        .unwrap();
+    assert!(snapshot.indexes[0].identity_rebuild_required);
+    let duplicate = commit(
+        &engine,
+        &lease,
+        vec![TransactionMutation::PutRecord {
+            reference: reference("document", "two"),
+            valid_from: 1,
+            valid_to: None,
+            properties: BTreeMap::from([("category".into(), QueryValue::String("unique".into()))]),
+        }],
+        35,
+        "identity-duplicate",
+    );
+    assert!(
+        duplicate.is_err(),
+        "unique constraint must remain active while the index is ineligible"
+    );
+    let rebuilt = ensure(
+        &engine,
+        &lease,
+        40,
+        "identity-unique",
+        definition,
+        true,
+        QueryIndexKind::Scalar,
+        None,
+    );
+    assert!(!rebuilt.index.identity_rebuild_required);
+    assert_eq!(
+        rebuilt.index.result_identity_version,
+        Some(rrd_core::result_identity::RESULT_IDENTITY_VERSION)
+    );
+    assert_eq!(rebuilt.index.maintenance.unwrap().mode, "full_build");
+}
+
+#[test]
 fn public_engine_owns_every_index_family_and_enforces_unique_commits() {
     let (_root, engine) = isolated_engine();
     let lease = engine
