@@ -166,6 +166,33 @@ On `clyffy-01`, isolated source and build directories under
 `/tmp/rrflow-273-merge.bXi8OBD5` execute the vector package, engine overlay and
 installed primary-binary TurboQuant test on that source. The first test launch
 failed before compilation because noninteractive SSH lacked Cargo on PATH;
-the subsequent run supplies its explicit Rust toolchain path. Record the actual
-results below before marking this PR ready. This is not C-07 qualification,
+the subsequent run supplied its explicit Rust toolchain path. Results follow.
+This is not C-07 qualification,
 full project indexing, or candidate/merge-group CI for this PR.
+
+The resolved source ran on Linux ARM64 with the workspace lockfile and
+`CARGO_BUILD_JOBS=2`, in a private copied build directory:
+
+- `cargo test --offline --locked -p rrd-vector` passed the complete package
+  suite, including 55 library tests and its integration/recall tests. Log
+  `vector-tests.log` SHA-256
+  `5cbb6c668596108d6738a3d932fb9d16c75f92b7243230c483b1a074142146a4`.
+- `cargo test --offline --locked -p rrd-engine --lib turboquant_overlay`
+  passed five tests, including catalogue-only unsupported-filter refusal.
+  Log `overlay-tests.log` SHA-256
+  `b3e01c342d86bce101e8d9fd5ef9d2ec93e679fa22384f852e37a843b4d56991`.
+- `cargo test --offline --locked -p rrflow-cli --test installed_quantization
+  installed_engine_builds_activates_and_searches_turboquant -- --nocapture`
+  passed one real installed-engine test. Log `installed-tests.log` SHA-256
+  `a02016050a0ef0d4b3de87a3097950df0e779100fd38dd543d48ee42f6714724`.
+- `cargo clippy --offline --locked -p rrd-vector --all-targets -- -D warnings`
+  passed. Log `clippy.log` SHA-256
+  `5448aa367b8af6d8102cdbfebd249bc0dae13bd4aefcca89818d2fcda4421faa`.
+
+The commands used identical source tree `2846ce00cca0c89106d1a439c00822648a911044`;
+only this evidence journal changed afterward. Local `cargo fmt --all -- --check`,
+`python -X utf8 scripts/knowledge/render_navigation.py --check`, and
+`python -X utf8 scripts/ci/check_documentation.py` passed on the integrated
+source. The tests use three manually supplied installed vectors; they do not
+prove automatic project indexing or filtered approximate retrieval. Exact PR
+candidate and protected merge-group checks remain required.

@@ -115,8 +115,10 @@ after free physical memory recovered to roughly 17.5 GiB. Next experiment:
 wait for a stable optimizer state, repeat across independent collections and
 real embedding corpora, capture actual query-path instrumentation, and compare
 with the authorized RRFlow path.
-The installed RRFlow quantization test on PR #273 remains interrupted, candidate
-CI and merge unverified, and C-07 and alpha remain open.
+At the time of these observations, the installed RRFlow quantization test on
+PR #273 was interrupted. The subsequent ARM64 installed test and its limits are
+recorded in the [bounded candidate journal](e-04-bounded-turboquant-selection.md).
+Candidate CI and merge remain unverified here; C-07 and alpha remain open.
 
 ## Evidence maintenance
 
