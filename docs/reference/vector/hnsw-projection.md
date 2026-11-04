@@ -88,8 +88,10 @@ they are not yet an incrementally maintained persistent bitmap/payload index.
 ## Kernels, evidence, and remaining gates
 
 Construction uses the scalar scorer so artifact bytes remain portable.
-Traversal uses runtime-dispatched AVX2 on supported x86_64 hosts and scalar
-otherwise; final exact reranking remains authoritative. Focused tests prove
+Traversal uses runtime-dispatched AVX2 on supported x86_64 hosts, NEON on
+aarch64, and scalar otherwise. A lane that overflows, or a cosine norm outside
+the normal `f32` range, gets the scalar score, and final exact reranking remains
+authoritative. Focused tests prove
 deterministic bytes and reopen, corrupt/stale denial, filtered traversal,
 incremental generations, immediate insert/retirement overlay, scalar/automatic
 identity, and mean Recall@10 of at least 0.95 in the fixed 512-vector,
