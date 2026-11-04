@@ -902,7 +902,8 @@ fn repair_reachability(
             return Ok(());
         };
         nodes[host].neighbors[0].push(orphan);
-        if nodes[orphan].neighbors[0].len() < limit {
+        // Pruning is one-way, so the orphan may already point at its host.
+        if nodes[orphan].neighbors[0].len() < limit && !nodes[orphan].neighbors[0].contains(&host) {
             nodes[orphan].neighbors[0].push(host);
         }
         mark_reachable(nodes, &mut reachable, orphan);
