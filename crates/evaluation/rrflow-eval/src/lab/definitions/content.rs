@@ -2,6 +2,7 @@
 //! sources, each checked the way the lab itself would read it.
 use super::pack::{PackContent, TrustedKeys};
 use crate::lab::catalog::{resolve_test, SystemDefinition, TestDefinition};
+use crate::lab::references::ReferenceFile;
 use crate::lab::sources::SourceList;
 use crate::lab::Result;
 use crate::storage::Id;
@@ -9,7 +10,7 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 pub const RRFLOW_PRODUCT: &str = "rrflow";
-pub const RRFLOW_CONTENT_SCHEMA: u16 = 1;
+pub const RRFLOW_CONTENT_SCHEMA: u16 = 2;
 const SOURCES: &str = "sources.json";
 
 pub struct RrflowContent;
@@ -85,6 +86,14 @@ impl PackContent for RrflowContent {
                     ));
                 }
                 resolve_test(&test, &systems).map_err(|error| format!("{path}: {error}"))?;
+            } else if let Some(name) = stem(path, "references") {
+                let reference = read_reference(path, text)?;
+                if reference.source.id.as_str() != name {
+                    return Err(format!(
+                        "{path} names its source {}, and a source's file is named for it",
+                        reference.source.id.as_str()
+                    ));
+                }
             } else {
                 return Err(format!("{path} is not a definition file"));
             }
@@ -123,6 +132,24 @@ impl PackContent for RrflowContent {
     }
 }
 
+fn read_reference(path: &str, text: &str) -> Result<ReferenceFile> {
+    let reference: ReferenceFile =
+        serde_json::from_str(text).map_err(|error| format!("{path}: {error}"))?;
+    reference
+        .validate()
+        .map_err(|error| format!("{path}: {error}"))?;
+    Ok(reference)
+}
+
+/// The published results a pack carries, each source checked as it is read.
+pub fn references_of(files: &BTreeMap<String, String>) -> Result<Vec<ReferenceFile>> {
+    files
+        .iter()
+        .filter(|(path, _)| stem(path, "references").is_some())
+        .map(|(path, text)| read_reference(path, text))
+        .collect()
+}
+
 /// The definition files in a lab folder, by the path a pack carries them under.
 pub fn lab_files(lab: &Path) -> Result<BTreeMap<String, String>> {
     let read = |path: &Path| {
@@ -130,8 +157,11 @@ pub fn lab_files(lab: &Path) -> Result<BTreeMap<String, String>> {
     };
     let mut files = BTreeMap::new();
     files.insert(SOURCES.to_owned(), read(&lab.join(SOURCES))?);
-    for folder in ["systems", "tests"] {
+    for folder in ["systems", "tests", "references"] {
         let directory = lab.join(folder);
+        if folder == "references" && !directory.exists() {
+            continue;
+        }
         let entries = std::fs::read_dir(&directory)
             .map_err(|error| format!("{}: {error}", directory.display()))?;
         for entry in entries {

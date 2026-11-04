@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "source": {
+    "id": "qdrant-benchmarks",
+    "title": "Qdrant vector database benchmarks",
+    "url": "https://qdrant.tech/benchmarks/",
+    "checked_on": "2026-11-03"
+  },
+  "seek": [
+    {
+      "system": "Qdrant, scalar quantization, m=64, ef=512",
+      "queries_per_second": 1238.0016347972962,
+      "recall": 0.9915200000000001,
+      "dataset": "dbpedia-openai-1m-1536-angular",
+      "hardware": "Azure Standard D8s v3, 8 vCPU and 32 GiB, with 100 parallel clients",
+      "hardware_class": "multi_core_server",
+      "origin": {
+        "url": "https://qdrant.tech/benchmarks/results-1-100-thread-2024-06-15.json",
+        "quote": "\"setup_name\": \"qdrant-sq-rps-m-64-ef-512\", \"p95_time\": 0.0049595953045354696, \"rps\": 1238.0016347972962, \"parallel\": 100, \"p99_time\": 0.008626417246123319, \"mean_time\": 0.00354270715782186, \"mean_precisions\": 0.9915200000000001",
+        "measured_by": "Qdrant",
+        "provenance": "vendor_own",
+        "published": "2024-06-15"
+      },
+      "latency_p99_ms": 8.626417246123319,
+      "dimensions": 1536,
+      "limits": [
+        "Qdrant measured its own product, in June 2024. Its version and top-k are not stated, and it calls this figure precision."
+      ]
+    }
+  ]
+}

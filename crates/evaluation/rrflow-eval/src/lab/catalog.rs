@@ -146,6 +146,10 @@ pub struct TestSystem {
 pub struct TestDefinition {
     pub schema_version: u16,
     pub test: TestIdentity,
+    /// The name others publish this data under, so a published result can be matched to it.
+    /// Generated data has none. It is outside every digest, because it changes no measurement.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reference_dataset: Option<String>,
     pub corpus: CorpusSpec,
     pub workload: WorkloadSpec,
     pub quality: QualitySpec,

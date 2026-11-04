@@ -474,6 +474,13 @@
     "quality": {
       "$ref": "#/$defs/QualitySpec"
     },
+    "reference_dataset": {
+      "description": "The name others publish this data under, so a published result can be matched to it.\nGenerated data has none. It is outside every digest, because it changes no measurement.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "schema_version": {
       "format": "uint16",
       "maximum": 65535,

@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "source": {
+    "id": "ann-benchmarks",
+    "title": "ANN-Benchmarks",
+    "url": "https://ann-benchmarks.com/",
+    "checked_on": "2026-11-03"
+  },
+  "seek": [
+    {
+      "system": "QSG-NGT",
+      "queries_per_second": 3984.441475276452,
+      "recall": 0.95057,
+      "dataset": "glove-100-angular",
+      "hardware": "AWS r6i.16xlarge, one CPU per query",
+      "hardware_class": "single_core",
+      "origin": {
+        "url": "https://ann-benchmarks.com/glove-100-angular_10_angular.html",
+        "quote": "Recall/Queries per second plot: x 0.9505699999999999, y 3984.441475276452. Recall/Percentile 99 plot, same label: y 0.497581958770752. QSG-NGT(100, 64, 120, 96, 100, 60, 300, 400, 0, 1.04, 3.000)",
+        "measured_by": "ANN-Benchmarks maintainers",
+        "provenance": "independent"
+      },
+      "latency_p99_ms": 0.497581958770752,
+      "dimensions": 100,
+      "k": 10,
+      "limits": [
+        "Published as of April 2025 with no day. The project says it is no longer actively maintained.",
+        "An index library and not a database."
+      ]
+    }
+  ]
+}

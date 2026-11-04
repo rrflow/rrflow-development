@@ -6,6 +6,7 @@
     "family": "vector-search",
     "revision": 1
   },
+  "reference_dataset": "coco-i2i-512-angular",
   "corpus": {
     "source": {
       "generator": "imported",

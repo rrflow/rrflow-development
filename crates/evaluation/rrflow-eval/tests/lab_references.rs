@@ -59,6 +59,7 @@ fn answer() -> AnswerResult {
         benchmark: "Some benchmark".to_owned(),
         reader_model: Some("reader-1".to_owned()),
         judge_model: None,
+        disputed: true,
         origin: origin(),
         limits: vec!["Its answer key is disputed.".to_owned()],
     }
@@ -633,7 +634,22 @@ fn compare_with_no_report_lists_what_is_published_and_who_measured_it() {
     assert!(out.contains("not measured"), "{out}");
     assert!(out.contains("the vendor's own"), "{out}");
     assert!(out.contains("independent"), "{out}");
-    assert!(out.contains("https://"), "{out}");
+    assert!(out.contains("Disputed"), "{out}");
+    assert!(
+        out.lines().count() < 110,
+        "the default must stay readable: {}",
+        out.lines().count()
+    );
+    assert!(
+        !out.contains("0.9501901140684412"),
+        "sixteen digits are noise: {out}"
+    );
+    assert!(!out.contains("no test was named"), "{out}");
+    assert!(out.contains("--details"), "{out}");
+    let (ok, full, error) = run(&home, root.path(), &["compare", "--details"]);
+    assert!(ok, "{error}");
+    assert!(full.contains("https://"), "{full}");
+    assert!(full.contains("Note:"), "{full}");
     assert_eq!(snapshot(&home), before, "reading must change nothing");
 
     let (ok, out, error) = run(&home, root.path(), &["compare", "--json"]);
@@ -663,6 +679,13 @@ fn compare_reads_a_real_report_and_refuses_to_rank_what_differs() {
     assert!(out.contains("did not start"), "{out}");
     assert!(out.contains("context only"), "{out}");
     assert!(out.contains("pack 4"), "the pack the run came from: {out}");
+    let (ok, full, error) = run(
+        &home,
+        root.path(),
+        &["compare", "--report", path.to_str().unwrap(), "--details"],
+    );
+    assert!(ok, "{error}");
+    assert!(full.contains("Differs:"), "it says what differs: {full}");
     assert!(!out.to_lowercase().contains("winner"), "{out}");
     assert!(
         !out.contains("99,999"),
