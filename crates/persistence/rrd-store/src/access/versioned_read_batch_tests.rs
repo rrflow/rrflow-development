@@ -56,7 +56,7 @@ impl AccessRead for CountingRows {
 fn rows(count: usize) -> BTreeMap<Vec<u8>, Vec<u8>> {
     (0..count)
         .map(|row| {
-            let mut key = format!("k{:07}", (row + 1) / 2).into_bytes();
+            let mut key = format!("k{:07}", row.div_ceil(2)).into_bytes();
             if (row + 1) % 2 == 1 {
                 key.push(0);
             }
