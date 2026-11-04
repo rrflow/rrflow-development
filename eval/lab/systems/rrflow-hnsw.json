@@ -20,27 +20,27 @@
       {
         "id": "ef-16",
         "ef": 16,
-        "exact_rerank": 16
+        "exact_rerank": 10
       },
       {
         "id": "ef-32",
         "ef": 32,
-        "exact_rerank": 32
+        "exact_rerank": 10
       },
       {
         "id": "ef-64",
         "ef": 64,
-        "exact_rerank": 64
+        "exact_rerank": 10
       },
       {
         "id": "ef-128",
         "ef": 128,
-        "exact_rerank": 128
+        "exact_rerank": 10
       },
       {
         "id": "ef-256",
         "ef": 256,
-        "exact_rerank": 256
+        "exact_rerank": 10
       }
     ],
     "credentials": {
@@ -61,7 +61,8 @@
     "limits": [
       "Its collection uses the pinned memory tier, because the cached tier decodes this JSON artifact on every query above 64 MiB.",
       "Its artifact is refused above the pinned tier's 256 MiB, about 65,000 points at 384 dimensions by one measured artifact's size, so larger tests fail until the artifact is compact.",
-      "A graph is built inside one request, on the first request after ingest."
+      "A graph is built inside one request, on the first request after ingest.",
+      "It reads and reranks only the top 10 candidates. The graph already ranks with exact vectors, and on 20,000 points recall measured the same as reranking every candidate."
     ]
   },
   "launch": {
