@@ -144,3 +144,28 @@ capacity/soak and merge-group evidence are not yet present. The joined
 project-to-context/reopen driver, adaptive policy selection, LFG/SWAG dispatch,
 full Arrow execution and resource qualification remain open. No roadmap,
 POA&M, C-07, E-04, or alpha status changes are claimed.
+
+## Reconciliation with merged catalogue admission
+
+PR #276 merged through the required queue as public main
+`120391487a260f5395526719e9d25beafcb55ecf`. Its candidate run
+`41770171188` succeeded on its second attempt and merge-group run
+`41778397207` succeeded. The first candidate attempt failed macOS APFS image
+creation; a later successful run does not establish the cause of that failure.
+The merged branch was deleted by repository automation.
+
+An ordinary merge of that main into this draft produced one conflict, the
+generated Gate E journal index. `python -X utf8 scripts/knowledge/render_navigation.py`
+regenerated it with the catalogue-refusal, bounded-selection and external
+observation journals all present. No source conflict occurred. Before this
+journal update, the resolved integrated Git tree was
+`2846ce00cca0c89106d1a439c00822648a911044`; its source archive SHA-256 was
+`c44d830000ce81cb040646123d918cfdb42219c22f5659aef78af134fbf015f5`.
+
+On `clyffy-01`, isolated source and build directories under
+`/tmp/rrflow-273-merge.bXi8OBD5` execute the vector package, engine overlay and
+installed primary-binary TurboQuant test on that source. The first test launch
+failed before compilation because noninteractive SSH lacked Cargo on PATH;
+the subsequent run supplies its explicit Rust toolchain path. Record the actual
+results below before marking this PR ready. This is not C-07 qualification,
+full project indexing, or candidate/merge-group CI for this PR.
