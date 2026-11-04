@@ -770,7 +770,7 @@ struct ProcessFixture {
 impl ProcessFixture {
     fn new() -> Self {
         let directory = tempfile::tempdir().unwrap();
-        let cluster = ClusterId::new("cluster:process-evidence").unwrap();
+        let cluster = ClusterId::new("cluster-process-evidence").unwrap();
         let trust_domain = "process.rrflow.test";
         let reservations = (1..=4)
             .map(|_| TcpListener::bind("127.0.0.1:0").unwrap())

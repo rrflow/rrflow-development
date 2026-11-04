@@ -1,6 +1,6 @@
 // Generated from rrd-contract; do not edit.
-// OpenAPI SHA-256: 7bd0c7d7be778546369ed203633ccbfba0672442e4f24e952d48a38ef04aa3cc
-export const ENDPOINT_OPENAPI_DOCUMENT_SHA256 = "7bd0c7d7be778546369ed203633ccbfba0672442e4f24e952d48a38ef04aa3cc" as const;
+// OpenAPI SHA-256: f14071c71318062cd2b1a9fca491a16d91b4481e98c3e0bcefeeaf98359ed580
+export const ENDPOINT_OPENAPI_DOCUMENT_SHA256 = "f14071c71318062cd2b1a9fca491a16d91b4481e98c3e0bcefeeaf98359ed580" as const;
 
 export const endpoints = {
   "attunement-cancel": {
@@ -416,6 +416,24 @@ export const endpoints = {
     "path": "/v1/vector/collections/list",
     "authentication": "session_bearer",
     "mutation": false
+  },
+  "vector-index-ensure": {
+    "method": "POST",
+    "path": "/v1/vector/indexes/ensure",
+    "authentication": "session_bearer",
+    "mutation": true
+  },
+  "vector-payload-index-delete": {
+    "method": "POST",
+    "path": "/v1/vector/payload-indexes/delete",
+    "authentication": "session_bearer",
+    "mutation": true
+  },
+  "vector-payload-index-ensure": {
+    "method": "POST",
+    "path": "/v1/vector/payload-indexes/ensure",
+    "authentication": "session_bearer",
+    "mutation": true
   },
   "vector-point-retrieve": {
     "method": "POST",

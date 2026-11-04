@@ -35,9 +35,45 @@ E-04 stack above development/main `81fce08e`:
 
 ## Impact
 
-No public operation ensures a vector index today, so only embedded engine
-callers reach this. When one does, every changefeed read and follow of that
-scope fails, and a subscriber such as Connectome sees no further changes.
+Until pull request #271 no public operation ensured a vector index, so only
+embedded engine callers reached this. Once one did, every changefeed read and
+follow of that scope would have failed, and a subscriber such as Connectome
+would have seen no further changes.
+
+## Remediation
+
+Pull request #271 writes the record as `{projection}.{generation}` and the
+object as `{projection}.{generation}.vector-bytes`, and it refuses any other
+non-canonical identity before it stages bytes. No migration is needed, because
+no public operation could create these artifacts before that change.
+
+The oracles are
+`engine::tests::vector_index::index_identities::a_scope_with_index_generations_keeps_its_public_changefeed`,
+`publication_refuses_an_identity_the_public_changefeed_cannot_project` in
+`rrd-engine`'s `runtime_vector_artifact_catalog`, and the shared SDK conformance
+corpus, whose changefeed read follows an index build.
+
+The review of every engine-internal writer is in the
+[pull request's journal](../../evidence/change-journals/gate-h/h-04-vector-index-operations.md#writer-review).
+It found one other writer that could write a refused identity: a distributed
+authority record in the instance scope takes its id from `ClusterId`, which
+accepted any bytes except NUL. No public operation or production caller reached
+it. On the repository owner's direction of 2026-11-03, pull request #271 does not
+refuse such an id at that one writer. Every `rrd-cluster` identifier now has the
+canonical grammar in its type, so no path can construct one, and
+`RrdRaftNode::validate` checks a peer's id where it is still configuration text.
+The kernel owns the grammar (`rrd_core::ident::canonical_id_problem`), and
+`canonical_id_agrees_with_the_kernel_grammar` proves `CanonicalId` matches it. The
+oracles are `cluster_identifiers_accept_only_the_canonical_grammar` in
+`rrd-cluster`'s `contracts`, and the changefeed read in `rrd-engine`'s
+`distributed_data_plane`.
+
+`ProjectionId`, `RuntimeId` and `RuntimeType` still accept any bytes except NUL,
+so the vector and quantization catalogues keep a check at the writer. Giving those
+types the grammar is the next package, and it removes those checks.
+
+The row is Verifying until Gate C and Gate H record that evidence at the merged
+revision.
 
 ## Owning gates
 

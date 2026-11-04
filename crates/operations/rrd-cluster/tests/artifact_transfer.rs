@@ -25,8 +25,8 @@ fn transfer_plan() -> ReplicaTransferPlan {
         contract_version: CLUSTER_CONTRACT_VERSION,
         shard: ShardId(7),
         placement_epoch: 3,
-        source: NodeId::new("node:a").unwrap(),
-        target: NodeId::new("node:b").unwrap(),
+        source: NodeId::new("node-a").unwrap(),
+        target: NodeId::new("node-b").unwrap(),
         grounded_snapshot: ShardReadStamp {
             term: 4,
             commit_index: 12,
@@ -154,8 +154,8 @@ fn receiver_telemetry_rejects_prestart_observation_and_counts_invalid_requests()
     };
     assert!(receiver
         .handle_at(
-            &NodeId::new("node:a").unwrap(),
-            &NodeId::new("node:b").unwrap(),
+            &NodeId::new("node-a").unwrap(),
+            &NodeId::new("node-b").unwrap(),
             invalid,
             100,
         )
@@ -370,7 +370,7 @@ fn chunk_sessions_bind_authenticated_peers_and_discard_corrupt_completed_parts()
     let target_node = manifest.plan.target.clone();
     assert!(receiver
         .handle(
-            &NodeId::new("node:impostor").unwrap(),
+            &NodeId::new("node-impostor").unwrap(),
             &target_node,
             ArtifactTransferRpc::begin(manifest.clone()).unwrap(),
         )
