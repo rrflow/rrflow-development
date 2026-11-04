@@ -1,8 +1,49 @@
-# DuckDB interoperability with rrflowDB
+# Native rrflowDB analytical research and historical DuckDB proposal
 
-**Status:** active target contract; DuckDB support is unimplemented and unqualified
+**Status:** active research record; earlier DuckDB interoperability proposal withdrawn
 **Coordinate:** `rrflow://rrflow-instance/data/reference/data/duckdb`
-**Owner:** optional DuckDB analytical exchange and execution boundary
+**Owner:** native rrflowDB analytical research under the existing roadmap gates
+
+## Current owner direction
+
+The owner withdrew the DuckDB interoperability and optional worker proposal on
+2026-11-02. DuckDB and ClickHouse are reference implementations for native
+rrflowDB; neither is an execution service, bundled runtime or planned connector
+profile. The text below the research section is preserved historical design,
+not current requirements or proof. Existing native Parquet work and all native
+durability, semantic, resource and quality gates remain open.
+
+DuckDB's [MIT license](https://github.com/duckdb/duckdb/blob/main/LICENSE) and
+ClickHouse's [Apache-2.0 license](https://github.com/ClickHouse/ClickHouse/blob/master/LICENSE)
+permit reuse subject to their terms, but verify the exact revision, files and
+third-party notices before copying or porting code. Both projects have large
+C++ implementations; a Rust client or renaming code does not make a Rust-native
+engine. A faithful Rust port requires explicit semantic and failure-model mapping,
+provenance and license notices, and differential and native recovery tests.
+Do not copy an upstream crate/tree or add its hidden runtime as a second owner.
+
+| Research input | Native destination and evidence before adoption |
+|---|---|
+| DuckDB [vectorized execution](https://duckdb.org/internals/vector): column vectors and bounded data chunks | `rrd-query` / Arrow DataFusion execution over RRFlow-stamped reads; compare nulls, types, filtering, cancellation, batch memory and exact output. Do not copy DuckDB's default batch size as an RRFlow performance claim. |
+| ClickHouse [sparse index](https://clickhouse.com/docs/concepts/core-concepts/primary-indexes) and immutable sorted parts | `rrd-store` / rrflowKV derived index and `rrd-query` pruning; prove snapshot/ACL correctness, tombstones, compaction/recovery, no false-negative pruning and scan/write/memory tradeoffs against an exact full scan. |
+| Both: analytical execution and Parquet | Existing `rrd-query` Arrow/Parquet and D-06/F budgets; compare real typed results, streaming/resource bounds and source/read provenance, not vendor benchmark figures. |
+
+Source review on 2026-11-02 used DuckDB revision
+[`4d77d9c103baca29a62af61cba9ebdc40e5d2023`](https://github.com/duckdb/duckdb/blob/4d77d9c103baca29a62af61cba9ebdc40e5d2023/src/common/types/data_chunk.cpp)
+and ClickHouse revision
+[`230ae8eec3e07e218fcb179f6689c234ca2fed3c`](https://github.com/ClickHouse/ClickHouse/blob/230ae8eec3e07e218fcb179f6689c234ca2fed3c/src/Storages/MergeTree/IndexReadRangesRefiner.cpp).
+The reviewed DuckDB chunk-initialization excerpt ties typed vector setup to
+its allocator and capacity; it is not a standalone Rust algorithm. The reviewed
+ClickHouse refiner returns the original ranges when a usable index result is
+absent, including cancellation, instead of pruning on missing evidence. The
+corresponding RRFlow invariant is conservative pruning at the authorized read
+stamp, independently checked against a full scan. These excerpt reviews do not
+establish complete upstream behavior or approve copying a particular file.
+
+### Historical proposal - withdrawn
+
+The remaining text records the earlier proposal and must not be used to schedule
+a DuckDB adapter, runtime or interoperability gate.
 
 rrflowDB remains the Rust-native semantic database over rrflowKV. DuckDB is
 an optional analytical consumer or source, never the estate's transaction,

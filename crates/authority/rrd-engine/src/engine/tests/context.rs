@@ -18,6 +18,87 @@ fn reference(kind: &str, id: &str) -> DataReference {
 }
 
 #[test]
+fn distinct_typed_records_remain_distinct_in_context_after_reopen() {
+    use rrd_core::{
+        RuntimeCommit, RuntimeLogicalModel, RuntimeMutation, RuntimeRecord, RuntimeRef,
+        RuntimeSchemaRegistry, RuntimeTableSchema, RuntimeType, RuntimeValue, ScopeId,
+    };
+
+    let (root, engine) = isolated_engine();
+    let mut registry = RuntimeSchemaRegistry::empty(1, "identity fixture");
+    for kind in ["a-b", "a"] {
+        registry.tables.insert(
+            RuntimeType::new(kind).unwrap(),
+            RuntimeTableSchema::schemaless(RuntimeLogicalModel::Relational),
+        );
+    }
+    let record = |kind, value, text: &str| RuntimeMutation::Record {
+        record: RuntimeRecord {
+            reference: RuntimeRef::parse(kind, value).unwrap(),
+            valid_from: 10,
+            valid_to: None,
+            properties: BTreeMap::from([("body".into(), RuntimeValue::String(text.into()))]),
+        },
+    };
+    engine
+        .storage
+        .runtime()
+        .commit(&RuntimeCommit {
+            scope: ScopeId::new("instance:test-instance").unwrap(),
+            at: 100,
+            actor: "identity-test".into(),
+            expected_cursor: 0,
+            mutations: vec![
+                RuntimeMutation::Schema { registry },
+                record("a-b", "c", "needle first"),
+                // An event identity holds the one colon an identifier can.
+                record("a", "cursor:9", "needle second"),
+            ],
+        })
+        .unwrap();
+    drop(engine);
+    let engine = RrdEngine::open(root.path(), instance(), TOKEN_KEY).unwrap();
+    let lease = engine
+        .create_session(
+            &session_request(5_000, 2),
+            &id("identity-context-session"),
+            1_000,
+            "identity-context-session",
+            "identity-context-session",
+        )
+        .unwrap();
+    let packet = engine
+        .assemble_context(
+            &lease.session_id,
+            &lease.token,
+            &AssembleContext {
+                scope: "instance:test-instance".into(),
+                query: "needle".into(),
+                valid_at: 1_200,
+                seeds: Vec::new(),
+                max_graph_depth: 0,
+                max_items: 8,
+                max_output_bytes: 64 * 1024,
+                max_storage_keys: 128,
+            },
+            1_200,
+            "identity-context-read",
+            "identity-context-read",
+        )
+        .unwrap();
+    packet.validate().unwrap();
+    let identities = packet
+        .items
+        .iter()
+        .map(|item| item.identity.as_str())
+        .collect::<std::collections::BTreeSet<_>>();
+    assert_eq!(
+        identities,
+        std::collections::BTreeSet::from(["record:a-b:c", "record:a:cursor%3A9"])
+    );
+}
+
+#[test]
 fn context_flows_through_one_engine_stamp_and_survives_reopen() {
     let (root, engine) = isolated_engine();
     let lease = engine

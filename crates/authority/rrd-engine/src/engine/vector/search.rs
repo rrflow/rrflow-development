@@ -105,8 +105,9 @@ impl RrdEngine {
                 .transpose()?,
         };
         // A request that requires an approximate path on a named dense vector
-        // reads the stamped catalogue first, so an active TurboQuant
-        // generation can serve it without reading every vector version.
+        // reads the stamped catalogue first, so an active generation can serve
+        // it without reading every vector version, and a request nothing can
+        // serve is refused before reading any.
         let catalogue = match (&collection_address, &search.mode, &search.query) {
             (
                 Some(_),
@@ -126,7 +127,7 @@ impl RrdEngine {
         if let (Some(catalogue), Some((collection_id, vector_name))) =
             (&catalogue, &collection_address)
         {
-            if let Some(result) = self.search_turboquant_generation(
+            if let Some(result) = self.search_active_generation(
                 request,
                 &read,
                 &search,
@@ -201,6 +202,12 @@ impl RrdEngine {
             .values()
             .map(crate::VectorArtifactBinding::key)
             .collect::<std::collections::BTreeSet<_>>();
+        let lifecycle =
+            crate::runtime::vector_catalog::quantization_artifact_catalogue_from_changes(
+                &direct.changes,
+                &scope,
+            )
+            .map_err(|error| ServiceError::Vector(error.to_string()))?;
         let mut first_pressure = None;
         {
             let mut residency = self
@@ -213,9 +220,22 @@ impl RrdEngine {
                 .filter(|binding| vector_artifact_relevant(&binding.descriptor, &search))
             {
                 match residency.acquire(memory_tier, binding, &self.objects) {
-                    Ok(acquisition) => runtime
-                        .install_loaded_artifact(acquisition.artifact)
-                        .map_err(core_vector)?,
+                    Ok(acquisition) => {
+                        if collection_address.as_ref().is_some_and(|(id, name)| {
+                            !generation_serves(
+                                &lifecycle,
+                                binding,
+                                &acquisition.artifact,
+                                (id, name),
+                            )
+                        }) {
+                            runtime.suppress_projection(&binding.descriptor.stamp().id);
+                            continue;
+                        }
+                        runtime
+                            .install_loaded_artifact(acquisition.artifact)
+                            .map_err(core_vector)?;
+                    }
                     Err(error) if error.is_pressure() => {
                         first_pressure.get_or_insert_with(|| error.to_string());
                         runtime.suppress_projection(&binding.descriptor.stamp().id);
@@ -262,14 +282,15 @@ impl RrdEngine {
     }
 
     /// Serves a request that requires an approximate path on a named dense
-    /// vector from that vector's active TurboQuant generation and the stamped
-    /// source delta since it, when that generation is the request's only
-    /// eligible approximate path. It reads only the identities the delta
-    /// names and the generation's own candidates, and reranks every one
-    /// exactly through the same planner and execution as every search.
-    /// `None` leaves the request to the general path.
+    /// vector from that vector's active generation and the stamped source
+    /// delta since it, when that generation is the request's only eligible
+    /// approximate path. It reads only the identities the delta names and the
+    /// generation's own candidates, and reranks every one exactly through the
+    /// same planner and execution as every search. A request no active
+    /// generation can serve is refused here, having read no vector. `None`
+    /// leaves the request to the general path.
     #[allow(clippy::too_many_arguments)]
-    fn search_turboquant_generation(
+    fn search_active_generation(
         &self,
         request: &SearchVectors,
         read: &ReadStamp,
@@ -283,33 +304,34 @@ impl RrdEngine {
             return Ok(None);
         };
         let scope = &read.scope;
+        let address = (collection_id, vector_name);
         let manifest = crate::runtime::vector_catalog::vector_runtime_metadata_from_changes(
             &catalogue.changes,
             scope,
             Vec::new(),
         )
         .map_err(|error| ServiceError::Vector(error.to_string()))?;
+        let refuse = |runtime: &rrd_vector::VectorRuntime| {
+            // The planner's own refusal, from the same descriptors. A path it would still accept
+            // is left to the general path, so this can only ever refuse what that would.
+            runtime
+                .prepare_search_at(search, 0, ef_search)
+                .map(|_| None)
+                .map_err(core_vector)
+        };
         let mut eligible = manifest
             .bindings
             .values()
             .filter(|binding| vector_artifact_relevant(&binding.descriptor, search));
-        let (Some(binding), None) = (eligible.next(), eligible.next()) else {
-            return Ok(None);
+        let binding = match (eligible.next(), eligible.next()) {
+            (None, _) => return refuse(&manifest.runtime),
+            (Some(binding), None) => binding,
+            (Some(_), Some(_)) => return Ok(None),
         };
-        if binding.kind != rrd_vector::VectorArtifactKind::TurboQuant {
-            return Ok(None);
-        }
-        let lifecycle =
-            crate::runtime::vector_catalog::quantization_artifact_catalogue_from_changes(
-                &catalogue.changes,
-                scope,
-            )
-            .map_err(|error| ServiceError::Vector(error.to_string()))?;
-        if !lifecycle.active_entries().any(|entry| {
-            entry.descriptor == binding.descriptor
-                && entry.collection_id.as_str() == collection_id.as_str()
-                && entry.vector_name.as_str() == vector_name.as_str()
-        }) {
+        if !matches!(
+            binding.kind,
+            rrd_vector::VectorArtifactKind::TurboQuant | rrd_vector::VectorArtifactKind::Hnsw
+        ) {
             return Ok(None);
         }
         let artifact = {
@@ -332,12 +354,18 @@ impl RrdEngine {
                 Err(error) => return Err(ServiceError::Vector(error.to_string())),
             }
         };
-        let rrd_vector::VectorArtifact::TurboQuant(segment) = artifact.as_ref() else {
-            return Err(ServiceError::Vector(
-                "the active TurboQuant binding loaded another artifact".into(),
-            ));
-        };
-        let generation = segment.descriptor().stamp.source_cursor;
+        let lifecycle =
+            crate::runtime::vector_catalog::quantization_artifact_catalogue_from_changes(
+                &catalogue.changes,
+                scope,
+            )
+            .map_err(|error| ServiceError::Vector(error.to_string()))?;
+        if !generation_serves(&lifecycle, binding, &artifact, address) {
+            let mut runtime = manifest.runtime;
+            runtime.suppress_projection(&binding.descriptor.stamp().id);
+            return refuse(&runtime);
+        }
+        let generation = binding.descriptor.stamp().source_cursor;
 
         // Every identity whose version in this source changed after the
         // generation, with its complete authenticated history.
@@ -368,11 +396,27 @@ impl RrdEngine {
             .collect::<std::collections::BTreeSet<_>>();
         // The generation's own candidates at its cursor, with the planner's
         // rerank width; those unchanged since it are read by identity.
-        let unchanged = segment
-            .search_candidates_at(search, exact_rerank, generation)
-            .map_err(core_vector)?
+        let proposed = match artifact.as_ref() {
+            rrd_vector::VectorArtifact::TurboQuant(segment) => segment
+                .search_candidates_at(search, exact_rerank, generation)
+                .map_err(core_vector)?
+                .into_iter()
+                .map(|hit| hit.reference)
+                .collect::<Vec<_>>(),
+            rrd_vector::VectorArtifact::Hnsw(index) => index
+                .search_candidates(search, ef_search)
+                .map_err(core_vector)?
+                .into_iter()
+                .map(|candidate| candidate.vector.reference)
+                .collect(),
+            _ => {
+                return Err(ServiceError::Vector(
+                    "the active generation's binding loaded another artifact".into(),
+                ))
+            }
+        };
+        let unchanged = proposed
             .into_iter()
-            .map(|hit| hit.reference)
             .filter(|reference| !changed.contains(reference))
             .collect::<std::collections::BTreeSet<_>>();
         let rerank = if unchanged.is_empty() {
@@ -418,21 +462,36 @@ impl RrdEngine {
             .max()
             .unwrap_or(0);
 
-        let mut runtime = rrd_vector::VectorRuntime::new(canonical).map_err(core_vector)?;
-        runtime
-            .restore_quantization_lifecycle_active_descriptor(binding.descriptor.clone())
-            .map_err(core_vector)?;
+        let mut runtime = match binding.kind {
+            rrd_vector::VectorArtifactKind::TurboQuant => {
+                let mut runtime = rrd_vector::VectorRuntime::new(canonical).map_err(core_vector)?;
+                runtime
+                    .restore_quantization_lifecycle_active_descriptor(binding.descriptor.clone())
+                    .map_err(core_vector)?;
+                runtime
+            }
+            // The same catalogue the general path replays, so a plan names the same revision.
+            _ => {
+                crate::runtime::vector_catalog::vector_runtime_metadata_from_changes(
+                    &catalogue.changes,
+                    scope,
+                    canonical,
+                )
+                .map_err(|error| ServiceError::Vector(error.to_string()))?
+                .runtime
+            }
+        };
         runtime
             .install_loaded_artifact(artifact.clone())
             .map_err(core_vector)?;
         let prepared = runtime
             .prepare_search_at(search, source_cursor, ef_search)
             .map_err(core_vector)?;
-        if prepared.plan().selected.kind != rrd_vector::AccessPathKind::TurboQuant
+        if prepared.plan().selected.id != binding.descriptor.stamp().id
             || prepared.plan().selected.exact_rerank != exact_rerank
         {
             return Err(ServiceError::Vector(
-                "the TurboQuant plan differs from the candidates it was given".into(),
+                "the generation's plan differs from the candidates it was given".into(),
             ));
         }
         let execution = runtime
@@ -462,6 +521,36 @@ impl RrdEngine {
             execution,
         )
         .map(Some)
+    }
+}
+
+/// Whether an active generation can answer for this collection. A descriptor names a field, which
+/// two collections may share, so a generation built for one must not answer for the other: it
+/// would propose only identities the other does not hold, and an empty answer would read as a real
+/// one. A quantized generation's lifecycle names its collection, and a graph's nodes do. An exact
+/// segment confirms what it finds against the canonical versions, so it needs neither.
+fn generation_serves(
+    lifecycle: &rrd_vector::QuantizationArtifactCatalogue,
+    binding: &crate::VectorArtifactBinding,
+    artifact: &rrd_vector::VectorArtifact,
+    (collection_id, vector_name): (&CanonicalId, &CanonicalId),
+) -> bool {
+    match artifact {
+        rrd_vector::VectorArtifact::Hnsw(index) => {
+            index.serves_collection(&rrd_core::VectorCollectionAddress {
+                collection_id: collection_id.as_str().into(),
+                vector_name: vector_name.as_str().into(),
+            })
+        }
+        rrd_vector::VectorArtifact::TurboQuant(_) | rrd_vector::VectorArtifact::Quantized(_) => {
+            lifecycle.active_entries().any(|entry| {
+                entry.descriptor == binding.descriptor
+                    && entry.collection_id.as_str() == collection_id.as_str()
+                    && entry.vector_name.as_str() == vector_name.as_str()
+            })
+        }
+        rrd_vector::VectorArtifact::ExactSegment(_)
+        | rrd_vector::VectorArtifact::CompactDense(_) => true,
     }
 }
 

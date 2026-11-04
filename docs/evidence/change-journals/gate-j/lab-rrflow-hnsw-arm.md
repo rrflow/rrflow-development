@@ -1,0 +1,33 @@
+# RRFlow's graph arm in the lab
+
+**Status:** active immutable change-journal evidence; POAM-053, Gate J and OBJ-10 remain open
+**Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/gate-j/lab-rrflow-hnsw-arm`
+**Owner:** evidence for measuring RRFlow's graph index through public operations
+
+## Evidence record
+
+```text
+gate/package and alpha outcome or prerequisite advanced: OBJ-10 and POAM-053, whose closure requires that the lab measures the arm through the same public path with its unimplemented declaration removed. Owner direction of 2026-11-04: "how do we get this moving forward we are dog shit".
+starting revision/tree and pull request: 8aaba46c (#277) merged with ff662d90 (#278); pull request #279.
+change brief (current -> target behavior, owner, exact scope, unchanged behavior, stop conditions): the description of pull request #279. rrflow-hnsw was declared unimplemented. It now declares a payload index, builds a graph with the settings Qdrant's arm uses, and searches with require_approximate. Only that system's binding digest changes, and test digests stay the same, so existing comparator runs stay usable.
+files and symbols read in full: lab/rrflow.rs, lab/manifest.rs validation, crates/transport/rrd-client/tests/vector_indexes.rs, eval/lab/systems/rrflow-turboquant.json and qdrant.json.
+implementation/evidence paths created, changed, moved, or deleted: changed lab/rrflow.rs (search_mode, memory_tier, payload_index_request, hnsw_index_request, prepare, finish_ingest, build_client), lab/manifest.rs (removes the refusal), tests/lab_automation.rs (a gap's stand-in becomes rrflow-routed), tests/lab_contract.rs, eval/lab/systems/rrflow-hnsw.json, the generated eval/lab/vector-*.json and eval/lab/README.md. Created this journal and generated the gate-j index.
+research decision and primary-source/adaptation record: none new.
+trace/resource/debug decision (add/preserve/not applicable, with reason): preserved. A run's index_evidence reports the access path the engine named, and every number below reported hnsw.
+first-failure or characterization oracle and result: 1c51248b committed four tests, and all four failed against stubs. One existing assertion, that the lab refuses an RRFlow HNSW arm because no public operation exists, stopped being true with #271. It now asserts that such a manifest validates and is still refused without ef. Every other refusal in that test stands.
+acceptance commands and exact results: cargo test --locked -p rrflow-eval --no-fail-fast on Windows, 205 passed. Clippy with -D warnings and fmt, clean. On clyffy-01, aarch64 Linux, a tree holding this package, 206 passed. Real runs follow, on vector-small, 20,000 generated points, and each adds one change, in order. Each is one run on one host, and none was repeated. Speeds are at the fastest setting reaching recall 0.95, in queries per second with one client and with eight. At fc2ce346, the first attempt was refused: "HNSW layer zero is not reachable from the entrypoint", which #280 fixes. At cd171544's predecessors: with #280, ef-32 at rerank 32, 50.6 and 88.7, p50 18.55 ms. With #281, 49.4 and 166.9. With #282, 71.9 and 190.5, p50 12.11 ms. With a 1 GiB page cache as a setting, 92.4 and 223.0, p50 8.99 ms. Then with exact_rerank 10 in place of 32 at cd171544: 140.3 and 322.9, p50 6.44 ms, with recall unchanged at 0.9782, and recall stayed unchanged at each ef tried: 0.9550 at 24, 0.9985 at 64, 0.9999 at 128. Filtered at ef-16, recall 0.9998: 147.7 and 247.2. A sweep of the page cache at ef-32 and rerank 10, at 62aa760d: 4 MiB 144.9 and 259.5, 64 MiB 152.2 and 312.0, 256 MiB 161.2 and 318.5, 1 GiB 166.1 and 325.2. On real embeddings, vector-coco-i2i, 113,287 points of 512 dimensions, at 62aa760d: ef-64, rerank 10, recall 0.9903: 118.2 and 284.0, p50 7.87 ms, p99 11.70 ms. Filtered at ef-16, recall 0.9902: 98.6 and 244.8. Ingest 491.6 points per second, with 141.9 seconds to readiness. The GPU was idle in all 61 samples. Comparators on that test on that host, from an earlier run whose GPU was busy for part of it, so provisional: Qdrant 776 and 9,420, Milvus 400 and 5,638, SurrealDB 4.0.0 73 and 497, Lance IVF 40 and 153. RRFlow's own earlier figure there was TurboQuant with raised limits: 1.45 and 3.81, p99 714 ms, filtered refused.
+surfaced failures and corrections: the COCO run is an experiment and not this package's default. In that throwaway tree I raised DEFAULT_VECTOR_PINNED_BYTES to 4 GiB in code, because the JSON artifact would otherwise be refused, and set page_cache_bytes to 1 GiB, projected_output_bytes and source_page_bytes to 16 GiB, and ladder entries by editing a planned manifest. The tree also holds #257, #259, #263, #278, #280, #281 and #282, none of them landed. So a default install does not reach this number today. My first two real runs failed, the second on a repair bug of mine in #280. One run began on the wrong tree after a merge conflict, and I stopped it before it produced a result. A first COCO re-run for #277's evidence was stopped on purpose to free the host, having only re-measured known numbers. Its comparators did not finish.
+checks not run and reason: candidate CI, because it skips drafts. A repeat of any run. check_documentation.py alone, for the stack reason #272 records. Answer quality, because no models are approved. run_all.sh end to end with this arm, since these runs used run_system.sh directly so comparators could be reused.
+remaining known errors and owner: the arm fails at sizes above the pinned tier's 256 MiB, as its limits say, including COCO, until the artifact is compact. On a default install a build at this size is also refused by projected_output_bytes, POAM-054. The next engine packages are a compact artifact and that build. Comparators are from an earlier run, so the same-environment verdict correctly says they differ. Authenticated reads are the largest remaining cost, and whether a read must commit an audit record before returning is the owner's decision.
+full-file reread and diff review: complete for the changed code, the system definition and this record.
+change checklist: complete. Brief before implementation; failing tests committed first; public operations only; no engine change here; no runtime fetch; no provider state; no model call.
+roadmap/POA&M status change, or explicit none: none. POAM-053 stays open until #271, #278 and this package land.
+pull request, CI run, and merge evidence: recorded on pull request #279.
+```
+
+## Links
+
+- [Pull request #279](https://github.com/rrflow/rrflow-development/pull/279)
+- [Connected graphs](../gate-e/e-04-connected-hnsw-graphs.md)
+- [Comparison lab](../../../../eval/lab/README.md)
+- [Gate J](../../../roadmap/rrflow-1.0/gate-j.md)

@@ -54,7 +54,12 @@ fn expected_values(name: &str) -> BTreeMap<String, String> {
     (0..2)
         .map(|index| {
             (
-                format!("claim:history-{name}-{index}:history"),
+                format!(
+                    "claim:{}",
+                    rrd_core::digest::sha256_hex(
+                        format!("rrd-context-claim-v1\0history-{name}-{index}\0history").as_bytes()
+                    )
+                ),
                 format!("requested-{name}-{index}"),
             )
         })
@@ -242,8 +247,8 @@ pub(super) fn run(
             assert_eq!(observed, all_expected, "recovered atomic effects differ from predeclared values");
             ledger.readback.clear();
             for (name, request) in [("a", &requests[0]), ("b", &requests[1]), ("d", &requests[3])] {
-                let values = observed.iter().filter(|(key, _)| key.starts_with(&format!("claim:history-{name}-")))
-                    .map(|(key, value)| (key.clone(), value.clone())).collect::<BTreeMap<_, _>>();
+                let values = expected_values(name).keys().filter_map(|key| observed.get(key)
+                    .map(|value| (key.clone(), value.clone()))).collect::<BTreeMap<_, _>>();
                 ledger.readback.push(Readback::Present {
                     logical_id: id(name), request_sha256: digest("c07c.request", request).unwrap(),
                     effect_sha256: digest("c07c.effect", &values).unwrap(), receipt_sha256: stable_receipts[name].clone(),

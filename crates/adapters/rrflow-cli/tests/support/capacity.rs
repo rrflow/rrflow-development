@@ -1267,7 +1267,15 @@ fn requested_values(request: &CommitTransaction) -> BTreeMap<String, String> {
             else {
                 panic!("claim corpus")
             };
-            (format!("claim:{subject}:{predicate}"), object.clone())
+            (
+                format!(
+                    "claim:{}",
+                    rrd_core::digest::sha256_hex(
+                        format!("rrd-context-claim-v1\0{subject}\0{predicate}").as_bytes()
+                    )
+                ),
+                object.clone(),
+            )
         })
         .collect()
 }
