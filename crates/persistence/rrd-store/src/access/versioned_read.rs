@@ -579,15 +579,16 @@ fn authenticated_steps<R: AccessRead + ?Sized>(
         let mut selected = BTreeMap::<u64, RuntimeChange>::new();
         for source in &step {
             let path = source.path()?;
-            let encoded = reader.with_path(path, || scan_source(reader, read, source))?;
-            for (stored_key, bytes) in encoded {
-                let change: RuntimeChange = serde_json::from_slice(&bytes)?;
-                if change.cursor > read.commit_cursor {
-                    continue;
-                }
-                validate_version_entry(source, read, &stored_key, &change)?;
-                insert_version(&mut selected, change)?;
-            }
+            reader.with_path(path, || {
+                scan_source(reader, read, source, &mut |stored_key, bytes| {
+                    let change: RuntimeChange = serde_json::from_slice(&bytes)?;
+                    if change.cursor > read.commit_cursor {
+                        return Ok(());
+                    }
+                    validate_version_entry(source, read, &stored_key, &change)?;
+                    insert_version(&mut selected, change)
+                })
+            })?;
         }
         let authentication = reader.with_path(RuntimeReadAccessPath::AccumulatorProof, || {
             let accumulator = match &mut accumulator {
@@ -715,9 +716,25 @@ fn scan_source(
     reader: &(impl AccessRead + ?Sized),
     read: &ReadStamp,
     source: &RuntimeVersionedSource,
-) -> Result<Vec<(Vec<u8>, Vec<u8>)>> {
+    visit: &mut dyn FnMut(Vec<u8>, Vec<u8>) -> Result<()>,
+) -> Result<()> {
     let (_, start, end) = source_interval(source, &read.scope)?;
-    reader.scan_range(&start, &end, usize::MAX)
+    scan_in_batches(reader, start, &end, visit)
+}
+
+/// Rows one versioned scan asks storage for at a time.
+const VERSIONED_SCAN_BATCH_ROWS: usize = 1024;
+
+fn scan_in_batches(
+    reader: &(impl AccessRead + ?Sized),
+    start: Vec<u8>,
+    end: &[u8],
+    visit: &mut dyn FnMut(Vec<u8>, Vec<u8>) -> Result<()>,
+) -> Result<()> {
+    for (key, value) in reader.scan_range(&start, end, usize::MAX)? {
+        visit(key, value)?;
+    }
+    Ok(())
 }
 
 fn source_interval(
@@ -1367,6 +1384,10 @@ mod identity_range_tests;
 #[cfg(test)]
 #[path = "vector_delta_read_tests.rs"]
 mod vector_delta_read_tests;
+
+#[cfg(test)]
+#[path = "versioned_read_batch_tests.rs"]
+mod versioned_read_batch_tests;
 
 #[cfg(test)]
 mod tests {
