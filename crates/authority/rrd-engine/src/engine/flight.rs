@@ -681,20 +681,9 @@ fn context_uses(packet: &ContextPacket) -> Result<Vec<(RuntimeRef, PromptFlightU
         let Some(rest) = item.identity.strip_prefix("record:") else {
             continue;
         };
-        let (kind, id) = rest.split_once(':').ok_or_else(|| {
-            ServiceError::Storage(format!(
-                "context item identity {} is not record:<kind>:<id>",
-                item.identity
-            ))
-        })?;
-        let canonical = |value: &str| {
-            CanonicalId::new(value).map_err(|error| ServiceError::Storage(error.to_string()))
-        };
+        let (target, reference) = context_record_reference(rest)?;
         let used = PromptFlightUse {
-            reference: DataReference {
-                kind: canonical(kind)?,
-                id: canonical(id)?,
-            },
+            reference,
             rank: u64::try_from(position + 1)
                 .map_err(|_| ServiceError::Contract("context rank exceeds u64".into()))?,
             score: item.score,
@@ -708,9 +697,28 @@ fn context_uses(packet: &ContextPacket) -> Result<Vec<(RuntimeRef, PromptFlightU
         };
         used.validate()
             .map_err(|error| ServiceError::Contract(error.to_string()))?;
-        uses.push((runtime_ref(&used.reference)?, used));
+        uses.push((target, used));
     }
     Ok(uses)
+}
+
+fn context_record_reference(value: &str) -> Result<(RuntimeRef, DataReference)> {
+    let target = rrd_core::result_identity::parse_reference(value).ok_or_else(|| {
+        ServiceError::Storage("context record identity is malformed or noncanonical".into())
+    })?;
+    let canonical = |value: &str| {
+        CanonicalId::new(value).map_err(|_| {
+            ServiceError::Storage(
+                "context record reference is not representable by the public flight contract"
+                    .into(),
+            )
+        })
+    };
+    let reference = DataReference {
+        kind: canonical(target.kind.as_str())?,
+        id: canonical(target.id.as_str())?,
+    };
+    Ok((target, reference))
 }
 
 fn use_properties(used: &PromptFlightUse) -> RuntimeProperties {
@@ -1531,5 +1539,27 @@ fn canonical_entry(entry: &BTreeMap<String, RuntimeValue>, name: &str) -> Result
         _ => Err(flight_storage(&format!(
             "context seed {name} is missing or not text"
         ))),
+    }
+}
+
+#[cfg(test)]
+mod context_reference_tests {
+    use super::context_record_reference;
+
+    #[test]
+    fn flight_context_uses_the_shared_canonical_reference_decoder() {
+        let (target, public) = context_record_reference("note:alpha").unwrap();
+        assert_eq!(target.kind.as_str(), "note");
+        assert_eq!(target.id.as_str(), "alpha");
+        assert_eq!(public.kind.as_str(), "note");
+        assert_eq!(public.id.as_str(), "alpha");
+
+        for invalid in ["note:alpha:other", "note:%3a", "note:%41", "note:%"] {
+            assert!(context_record_reference(invalid).is_err(), "{invalid}");
+        }
+        for unsupported in ["a%3Ab:c", "a:b%3Ac", "note:percent%25"] {
+            let error = context_record_reference(unsupported).unwrap_err();
+            assert!(error.to_string().contains("not representable"), "{error}");
+        }
     }
 }

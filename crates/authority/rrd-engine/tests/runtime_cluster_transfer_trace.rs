@@ -21,8 +21,8 @@ fn plan() -> ReplicaTransferPlan {
         contract_version: CLUSTER_CONTRACT_VERSION,
         shard: ShardId(11),
         placement_epoch: 2,
-        source: NodeId::new("node:source").unwrap(),
-        target: NodeId::new("node:target").unwrap(),
+        source: NodeId::new("node-source").unwrap(),
+        target: NodeId::new("node-target").unwrap(),
         grounded_snapshot: ShardReadStamp {
             term: 3,
             commit_index: 19,

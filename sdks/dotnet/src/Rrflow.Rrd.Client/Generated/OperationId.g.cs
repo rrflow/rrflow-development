@@ -1,5 +1,5 @@
 // Generated from rrd-contract; do not edit.
-// OpenAPI SHA-256: 978e20e8128dea9d17367f66492200d675372d53c3cef92b381ff0b001bcbbc2
+// OpenAPI SHA-256: c4375b035939ca40618f6e56eb1d52ea11347b742d003508f40df5d73c441d38
 namespace Rrflow.Rrd;
 
 public enum OperationId
@@ -72,6 +72,9 @@ public enum OperationId
     TransactionPreview,
     VectorCollectionEnsure,
     VectorCollectionList,
+    VectorIndexEnsure,
+    VectorPayloadIndexDelete,
+    VectorPayloadIndexEnsure,
     VectorPointRetrieve,
     VectorPointScroll,
     VectorQuantizationActivate,
@@ -97,8 +100,8 @@ public sealed record Endpoint(
 
 public static class EndpointCatalog
 {
-    public const string OpenApiDocumentSha256 = "978e20e8128dea9d17367f66492200d675372d53c3cef92b381ff0b001bcbbc2";
-    public const int Count = 75;
+    public const string OpenApiDocumentSha256 = "c4375b035939ca40618f6e56eb1d52ea11347b742d003508f40df5d73c441d38";
+    public const int Count = 78;
 
     public static Endpoint Get(OperationId operation) => operation switch
     {
@@ -170,6 +173,9 @@ public static class EndpointCatalog
         OperationId.TransactionPreview => new("transaction-preview", "POST", "/v1/transactions/{transaction}/preview", Authentication.SessionBearer, true),
         OperationId.VectorCollectionEnsure => new("vector-collection-ensure", "POST", "/v1/vector/collections/ensure", Authentication.SessionBearer, true),
         OperationId.VectorCollectionList => new("vector-collection-list", "POST", "/v1/vector/collections/list", Authentication.SessionBearer, false),
+        OperationId.VectorIndexEnsure => new("vector-index-ensure", "POST", "/v1/vector/indexes/ensure", Authentication.SessionBearer, true),
+        OperationId.VectorPayloadIndexDelete => new("vector-payload-index-delete", "POST", "/v1/vector/payload-indexes/delete", Authentication.SessionBearer, true),
+        OperationId.VectorPayloadIndexEnsure => new("vector-payload-index-ensure", "POST", "/v1/vector/payload-indexes/ensure", Authentication.SessionBearer, true),
         OperationId.VectorPointRetrieve => new("vector-point-retrieve", "POST", "/v1/vector/points/retrieve", Authentication.SessionBearer, false),
         OperationId.VectorPointScroll => new("vector-point-scroll", "POST", "/v1/vector/points/scroll", Authentication.SessionBearer, false),
         OperationId.VectorQuantizationActivate => new("vector-quantization-activate", "POST", "/v1/vector/quantizations/activate", Authentication.SessionBearer, true),

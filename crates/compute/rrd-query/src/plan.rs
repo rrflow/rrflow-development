@@ -95,6 +95,7 @@ pub enum LogicalOperator {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LogicalPlan {
     pub contract_version: u16,
+    pub result_identity_version: u16,
     pub read: ReadStamp,
     pub schema_revision: u64,
     pub source_cursor: u64,
@@ -212,7 +213,7 @@ pub(crate) fn prepare_binding(
         ))
     })?;
     let source_fields = fields_for_source(&query.source, schema)?;
-    let fields = if let Some(join) = &query.join {
+    let mut fields = if let Some(join) = &query.join {
         let right_fields = fields_for_source(&join.source, schema)?;
         let left_types = ensure_field(&join.left_field, &source_fields)?;
         let right_types = ensure_field(&join.right_field, &right_fields)?;
@@ -232,11 +233,6 @@ pub(crate) fn prepare_binding(
         let accepted = ensure_field(&filter.field, &fields)?;
         if let ValueExpr::Literal(value) = &filter.value {
             ensure_value_type(&filter.field, value, accepted)?;
-        }
-    }
-    if let Projection::Fields(projected) = &query.projection {
-        for field in projected {
-            let _ = ensure_field(field, &fields)?;
         }
     }
     let filters = query
@@ -265,6 +261,19 @@ pub(crate) fn prepare_binding(
             })
         })
         .collect::<Result<Vec<_>>>()?;
+    // Dynamic projections have no durable declared type. Admit them only
+    // after filter binding so projection cannot authorize an untyped predicate.
+    // Arrow materialization derives a lossless representation from this
+    // request's bounded rows, without changing the authoritative schema.
+    if let Projection::Fields(projected) = &query.projection {
+        for field in projected {
+            if !fields.contains_key(field) && is_schemaless_record_projection(field, query, schema)
+            {
+                fields.insert(field.clone(), Vec::new());
+            }
+            let _ = ensure_field(field, &fields)?;
+        }
+    }
     if query.join.is_some()
         && query
             .filters
@@ -287,6 +296,10 @@ pub(crate) fn prepare_binding(
             .values()
             .filter(|entry| entry.definition.source == query.source)
             .filter(|entry| entry.maintenance.is_some())
+            .filter(|entry| {
+                entry.result_identity_version
+                    == Some(rrd_core::result_identity::RESULT_IDENTITY_VERSION)
+            })
             .filter_map(|entry| {
                 let matched_prefix = entry
                     .definition
@@ -414,6 +427,7 @@ pub fn plan(bound: &BoundQuery) -> Result<PhysicalPlan> {
     }
     let logical = LogicalPlan {
         contract_version: bound.contract_version,
+        result_identity_version: rrd_core::result_identity::RESULT_IDENTITY_VERSION,
         read: bound.read.clone(),
         schema_revision: bound.schema_revision,
         source_cursor: bound.source_cursor,
@@ -909,6 +923,13 @@ impl PhysicalPlan {
                 self.logical.contract_version
             )));
         }
+        if self.logical.result_identity_version
+            != rrd_core::result_identity::RESULT_IDENTITY_VERSION
+        {
+            return Err(Error::Integrity(
+                "physical plan has an unsupported result identity version".into(),
+            ));
+        }
         self.logical
             .read
             .validate()
@@ -973,6 +994,30 @@ fn joined_field_catalog(left: &FieldCatalog, right: &FieldCatalog) -> FieldCatal
         .collect()
 }
 
+fn is_schemaless_record_projection(
+    field: &str,
+    query: &Query,
+    schema: &RuntimeSchemaRegistry,
+) -> bool {
+    let (source, property) = match &query.join {
+        Some(join) => match field.split_once('.') {
+            Some(("left", property)) => (&query.source, property),
+            Some(("right", property)) => (&join.source, property),
+            _ => return false,
+        },
+        None => (&query.source, field),
+    };
+    if property.is_empty() || property.contains('.') {
+        return false;
+    }
+    let Source::Record { kind } = source else {
+        return false;
+    };
+    schema.tables.get(kind).is_some_and(|table| {
+        table.model.is_record_like() && table.mode == rrd_core::RuntimeSchemaMode::Schemaless
+    })
+}
+
 fn ensure_value_type(
     field: &str,
     value: &RuntimeValue,
@@ -1030,11 +1075,22 @@ pub(crate) fn fields_for_source(
 ) -> Result<FieldCatalog> {
     let (builtins, properties): (BuiltinFields, Vec<(String, RuntimeValueType)>) = match source {
         Source::Record { kind } => {
-            let definition = schema.records.get(kind).ok_or_else(|| {
-                Error::Binding(format!(
+            let properties = if let Some(definition) = schema.records.get(kind) {
+                definition
+                    .properties
+                    .iter()
+                    .map(|(name, rule)| (name.clone(), rule.value_type))
+                    .collect()
+            } else if schema.tables.get(kind).is_some_and(|table| {
+                table.model.is_record_like()
+                    && table.mode == rrd_core::RuntimeSchemaMode::Schemaless
+            }) {
+                Vec::new()
+            } else {
+                return Err(Error::Binding(format!(
                     "record type {kind} is not registered at this cursor"
-                ))
-            })?;
+                )));
+            };
             (
                 &[
                     ("id", &[RuntimeValueType::String]),
@@ -1045,11 +1101,7 @@ pub(crate) fn fields_for_source(
                         &[RuntimeValueType::Null, RuntimeValueType::Unsigned],
                     ),
                 ],
-                definition
-                    .properties
-                    .iter()
-                    .map(|(name, rule)| (name.clone(), rule.value_type))
-                    .collect(),
+                properties,
             )
         }
         Source::Relation { kind } => {

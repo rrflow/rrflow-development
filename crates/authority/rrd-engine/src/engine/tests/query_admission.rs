@@ -113,6 +113,34 @@ fn public_query_uses_one_key_budget_after_unrelated_growth_and_native_reopen() {
             assert_eq!(result.rows.len(), expected);
             let used = result.execution.read_evidence.keys_examined;
             assert!(used < 128);
+            request.query = format!(
+                "SELECT id, ordinal FROM record:document AT VALID 1200 KNOWN HEAD WHERE {filter}"
+            );
+            let selected = engine
+                .execute_query(
+                    &lease.session_id,
+                    &lease.token,
+                    &request,
+                    1300,
+                    "query-select-read",
+                    "query-select-read",
+                )
+                .unwrap();
+            assert_eq!(selected.rows, result.rows);
+            assert_eq!(selected.known_at_cursor, result.known_at_cursor);
+            assert_eq!(selected.schema_revision, result.schema_revision);
+            assert_eq!(selected.execution.read_evidence.keys_examined, used);
+            assert!(matches!(
+                engine.execute_query(
+                    &lease.session_id,
+                    &id("wrong-query-token"),
+                    &request,
+                    1300,
+                    "query-select-denied",
+                    "query-select-denied",
+                ),
+                Err(ServiceError::Unauthenticated)
+            ));
             request.budget.max_storage_keys = used;
             assert!(engine
                 .execute_query(
