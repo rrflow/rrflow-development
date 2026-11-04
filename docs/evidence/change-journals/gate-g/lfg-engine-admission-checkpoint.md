@@ -279,3 +279,39 @@ field semantics. No standalone SWAG, model generation, provider-backed flight,
 installed-product or CI claim follows. PR #246's exact candidate CI was queued
 at run 41863731525 when checked; it must land through protected checks before
 #249 is ready.
+
+## Installed controlled-controller and live LFG proof
+
+Built `rrflow.exe` from clean joined head
+`9b0a3b415e3c10d56315062a8b9ceb430705382e` using
+`python scripts/build_rrflow.py --profile dev --target-dir
+D:/localdev/devlabs/rrflow/target/lfg-main-contract-build --output
+D:/localdev/devlabs/rrflow/target/lfg-joined-dev-build-receipt-20261104.json`.
+The two-pass build produced an unqualified provenance receipt; executable
+SHA-256 was `003c45907470f1834a3e2134a35fb5bf615c645a2ba0135f083f523f545593bb`.
+
+An isolated installed-process proof used the existing
+`scripts/inference/installed_controller_proof.py` with a synthetic task,
+explicit local LFG policy, and an owned local HTTP controller fixture. It
+installed a fresh project, verified missing-credential denial, admitted the
+configured request, called the real LFG service, sent the validated advisory
+to exactly one controlled controller call, and reopened the installed engine.
+An independent readback compared the engine proposal and LFG hashes with the
+controller's captured packet, compared the task-attempt before/after restart,
+verified HTTP 412 on replay and confirmed usage remained unknown. The local
+controller returned a deterministic fixture response: no model executed, no
+standalone SWAG routing happened, and no quality or performance claim follows.
+
+A separate SWAG checkout at `c60ae40a42c0928636cf925a4949bf9743a61821` ran
+its existing `swag_lfg.assess` bridge against the same local LFG service for
+a synthetic prompt. The bridge verified the input digest and returned an
+available advisory with inconclusive intent. Two content-free SWAG traces
+recorded successful capability and observation calls. This is an independent
+SWAG-to-LFG link, not SWAG consuming RRFlow's controller packet. The loaded
+LFG process was not independently attested. The [sanitized evidence](lfg-installed-controlled-20261104.json) retains the build identity, both
+engine readbacks, packet digests and SWAG trace records; raw local proof files
+remain under ignored `target/lfg-installed-controlled-proof-20261104`.
+
+This installed proof does not implement provider-backed prompt flights, bind
+project-source edits, prove worker execution, establish full C-07/native soak,
+or replace #246/#249 candidate and merge-group CI. No roadmap status changes.
