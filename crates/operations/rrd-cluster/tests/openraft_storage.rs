@@ -439,8 +439,8 @@ fn canonical_runtime_commit_is_atomic_idempotent_durable_and_transferable() {
                 .artifact_manifest_for_cached_snapshot(
                     &snapshot_meta,
                     &ScopeId::new("cluster:atomic").map_err(test_storage_error)?,
-                    NodeId::new("node:source").map_err(test_storage_error)?,
-                    NodeId::new("node:target").map_err(test_storage_error)?,
+                    NodeId::new("node-source").map_err(test_storage_error)?,
+                    NodeId::new("node-target").map_err(test_storage_error)?,
                 )?
                 .expect("artifact-bearing snapshot must produce a transfer manifest");
             drop(builder);
@@ -454,8 +454,8 @@ fn canonical_runtime_commit_is_atomic_idempotent_durable_and_transferable() {
                     contract_version: CLUSTER_CONTRACT_VERSION,
                     shard: ShardId(12),
                     placement_epoch: 1,
-                    source: NodeId::new("node:source").map_err(test_storage_error)?,
-                    target: NodeId::new("node:target").map_err(test_storage_error)?,
+                    source: NodeId::new("node-source").map_err(test_storage_error)?,
+                    target: NodeId::new("node-target").map_err(test_storage_error)?,
                     grounded_snapshot: ShardReadStamp {
                         term: retry_log.leader_id.term,
                         commit_index: retry_log.index,
@@ -880,7 +880,7 @@ fn test_membership_entry_with_first_zone(
 fn test_placement(shard: ShardId, epoch: u64) -> ShardPlacement {
     ShardPlacement {
         contract_version: CLUSTER_CONTRACT_VERSION,
-        cluster: ClusterId::new("cluster:storage-test").unwrap(),
+        cluster: ClusterId::new("cluster-storage-test").unwrap(),
         shard,
         epoch,
         policy: PlacementPolicy {

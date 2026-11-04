@@ -9,6 +9,29 @@ use std::fmt;
 
 const FORBIDDEN_NUL: u8 = 0x00;
 
+/// The longest canonical identifier, in bytes.
+pub const MAX_CANONICAL_ID_BYTES: usize = 128;
+
+/// Why `value` is not a canonical identifier, or `None` when it is.
+///
+/// This is the one grammar for an identifier that can reach a public projection,
+/// a SPIFFE identity or a certificate. `rrd-contract` has no workspace
+/// dependencies, so its `CanonicalId` keeps its own copy, and a test there proves
+/// the two agree.
+pub fn canonical_id_problem(value: &str) -> Option<&'static str> {
+    if value.is_empty() || value.len() > MAX_CANONICAL_ID_BYTES {
+        return Some("canonical id length must be in 1..=128 bytes");
+    }
+    let canonical = value.bytes().enumerate().all(|(index, byte)| {
+        byte.is_ascii_lowercase()
+            || byte.is_ascii_digit()
+            || (index > 0 && matches!(byte, b'-' | b'_' | b'.'))
+    });
+    (!canonical).then_some(
+        "canonical id must start with lowercase ASCII or a digit and contain only lowercase ASCII, digits, '-', '_', or '.'",
+    )
+}
+
 macro_rules! ident_type {
     ($name:ident, $label:literal) => {
         #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
