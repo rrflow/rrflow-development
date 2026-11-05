@@ -13,7 +13,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::sync::Arc;
 
-pub const DEFAULT_VECTOR_PINNED_BYTES: u64 = 256 * 1024 * 1024;
+pub const DEFAULT_VECTOR_PINNED_BYTES: u64 = 1024 * 1024 * 1024;
 pub const DEFAULT_VECTOR_CACHED_BYTES: u64 = 64 * 1024 * 1024;
 const MAX_VECTOR_RESIDENCY_BYTES: u64 = 1024 * 1024 * 1024 * 1024;
 
@@ -439,6 +439,14 @@ impl Default for VectorResidencyManager {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// What the lab measured. Changing either should be a deliberate act with a new measurement.
+    #[test]
+    fn the_default_budgets_are_what_search_was_measured_with() {
+        let limits = VectorResidencyLimits::default();
+        assert_eq!(limits.pinned_bytes, 1024 * 1024 * 1024, "pinned tier");
+        assert_eq!(limits.cached_bytes, 64 * 1024 * 1024, "cached tier");
+    }
     use rrd_core::{
         ObjectReference, ProjectionId, RuntimeProperties, RuntimeRef, RuntimeVector, ScopeId,
         VectorCollectionAddress, VectorValue,
