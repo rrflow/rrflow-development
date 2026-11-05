@@ -73,7 +73,7 @@ fn exact_scans_filter_and_artifacts_reject_incompatible_embedding_spaces() {
 
     assert!(CompactDenseSegment::build(
         VectorSegmentConfig {
-            id: ProjectionId::new("vector:model-bound").unwrap(),
+            id: ProjectionId::new("vector-model-bound").unwrap(),
             scope,
             field: "body".into(),
             dimensions: 2,

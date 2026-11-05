@@ -263,7 +263,7 @@ fn projection_publication_and_approximate_selection_remain_fresh_across_trace_ev
     let mut runtime = VectorRuntime::new(candidates.clone()).unwrap();
     let hnsw = HnswIndex::build(
         HnswConfig {
-            id: rrd_core::ProjectionId::new("vector:hnsw:body").unwrap(),
+            id: rrd_core::ProjectionId::new("vector-hnsw-body").unwrap(),
             scope: scope(),
             field: "body".into(),
             dimensions: 3,

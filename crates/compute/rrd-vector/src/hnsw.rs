@@ -1293,7 +1293,7 @@ mod tests {
 
     fn config(scope: &ScopeId) -> HnswConfig {
         HnswConfig {
-            id: ProjectionId::new("vector:hnsw:body").unwrap(),
+            id: ProjectionId::new("vector-hnsw-body").unwrap(),
             scope: scope.clone(),
             field: "body".into(),
             dimensions: 2,

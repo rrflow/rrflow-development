@@ -506,11 +506,7 @@ impl RrdEngine {
         for offset in 0..record.event_count {
             sources.push(RuntimeVersionedSource::Identity {
                 model: RuntimeLogicalModel::LifecycleEvent,
-                reference: RuntimeRef::new(
-                    PROMPT_FLIGHT_EVENT_KIND,
-                    format!("cursor:{}", first_event_cursor + offset),
-                )
-                .map_err(core_contract)?,
+                reference: RuntimeRef::event(event_kind()?, first_event_cursor + offset),
             });
         }
         let remaining = max_storage_keys.saturating_sub(read_evidence.keys_examined);
@@ -1554,12 +1550,20 @@ mod context_reference_tests {
         assert_eq!(public.kind.as_str(), "note");
         assert_eq!(public.id.as_str(), "alpha");
 
-        for invalid in ["note:alpha:other", "note:%3a", "note:%41", "note:%"] {
+        // These decode to what no reference can hold, so the decoder refuses them too.
+        for invalid in [
+            "note:alpha:other",
+            "note:%3a",
+            "note:%41",
+            "note:%",
+            "a%3Ab:c",
+            "a:b%3Ac",
+            "note:percent%25",
+        ] {
             assert!(context_record_reference(invalid).is_err(), "{invalid}");
         }
-        for unsupported in ["a%3Ab:c", "a:b%3Ac", "note:percent%25"] {
-            let error = context_record_reference(unsupported).unwrap_err();
-            assert!(error.to_string().contains("not representable"), "{error}");
-        }
+        // An event's identity decodes, and the public flight contract cannot carry it.
+        let error = context_record_reference("note:cursor%3A7").unwrap_err();
+        assert!(error.to_string().contains("not representable"), "{error}");
     }
 }

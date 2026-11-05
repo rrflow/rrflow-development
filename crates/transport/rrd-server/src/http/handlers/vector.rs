@@ -135,6 +135,78 @@ impl AppState {
         )
     }
 
+    pub(in crate::http) fn ensure_vector_index(
+        &self,
+        headers: &HeaderMap,
+        body: &[u8],
+        now: u64,
+    ) -> HttpResponse {
+        self.with_authenticated_envelope::<EnsureVectorIndex, _, _>(
+            headers,
+            body,
+            now,
+            RrdOperation::VectorCollectionEnsure,
+            None,
+            |envelope, session, token| {
+                self.service
+                    .ensure_vector_index(session, token, &envelope.payload, &envelope.context, now)
+                    .map_err(api_error)
+            },
+        )
+    }
+
+    pub(in crate::http) fn ensure_vector_payload_index(
+        &self,
+        headers: &HeaderMap,
+        body: &[u8],
+        now: u64,
+    ) -> HttpResponse {
+        self.with_authenticated_envelope::<EnsureVectorPayloadIndex, _, _>(
+            headers,
+            body,
+            now,
+            RrdOperation::VectorPayloadIndexEnsure,
+            None,
+            |envelope, session, token| {
+                self.service
+                    .ensure_vector_payload_index(
+                        session,
+                        token,
+                        &envelope.payload,
+                        &envelope.context,
+                        now,
+                    )
+                    .map_err(api_error)
+            },
+        )
+    }
+
+    pub(in crate::http) fn delete_vector_payload_index(
+        &self,
+        headers: &HeaderMap,
+        body: &[u8],
+        now: u64,
+    ) -> HttpResponse {
+        self.with_authenticated_envelope::<DeleteVectorPayloadIndex, _, _>(
+            headers,
+            body,
+            now,
+            RrdOperation::VectorPayloadIndexDelete,
+            None,
+            |envelope, session, token| {
+                self.service
+                    .delete_vector_payload_index(
+                        session,
+                        token,
+                        &envelope.payload,
+                        &envelope.context,
+                        now,
+                    )
+                    .map_err(api_error)
+            },
+        )
+    }
+
     pub(in crate::http) fn build_vector_quantization(
         &self,
         headers: &HeaderMap,

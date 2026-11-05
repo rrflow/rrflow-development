@@ -118,6 +118,18 @@ http_dispatch_catalogue! {
         RrdOperation::VectorCollectionEnsure
     ),
     VectorCollectionList => ("vector-collection-list", RrdOperation::VectorCollectionList),
+    VectorIndexEnsure => (
+        "vector-index-ensure",
+        RrdOperation::VectorCollectionEnsure
+    ),
+    VectorPayloadIndexDelete => (
+        "vector-payload-index-delete",
+        RrdOperation::VectorPayloadIndexDelete
+    ),
+    VectorPayloadIndexEnsure => (
+        "vector-payload-index-ensure",
+        RrdOperation::VectorPayloadIndexEnsure
+    ),
     VectorPointRetrieve => ("vector-point-retrieve", RrdOperation::VectorPointRetrieve),
     VectorPointScroll => ("vector-point-scroll", RrdOperation::VectorPointScroll),
     VectorQuantizationActivate => (
@@ -361,6 +373,13 @@ impl AppState {
             }
             Some(HttpDispatch::VectorPointRetrieve) => {
                 self.retrieve_vector_points(&headers, &body, now)
+            }
+            Some(HttpDispatch::VectorIndexEnsure) => self.ensure_vector_index(&headers, &body, now),
+            Some(HttpDispatch::VectorPayloadIndexEnsure) => {
+                self.ensure_vector_payload_index(&headers, &body, now)
+            }
+            Some(HttpDispatch::VectorPayloadIndexDelete) => {
+                self.delete_vector_payload_index(&headers, &body, now)
             }
             Some(HttpDispatch::VectorQuantizationBuild) => {
                 self.build_vector_quantization(&headers, &body, now)

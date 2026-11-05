@@ -69,6 +69,25 @@ a node. So when that view no longer holds a version the active graph stores,
 it, and it never replays such a graph
 ([POAM-048](../../poam/rrflow-1.0-alpha/poam-048.md)).
 
+Clients reach this path through `vector-index-ensure`
+(`POST /v1/vector/indexes/ensure`), under the `vector_collection_ensure` grant.
+They declare the payload indexes a generation filters on through
+`vector-payload-index-ensure` and remove them through
+`vector-payload-index-delete`, each under its own grant, and they read them from
+`vector-collection-list`. A catalogue entry records the idempotency key and
+request digest in the commit that publishes its generation. So a retry returns
+that generation even after the source has moved on, and another request under
+the key is a conflict. An ensure that found the index already current published
+nothing, so its key binds nothing. The build runs inside the request, and the
+Rust client's default request timeout is five seconds, so a client building a
+large index sets a longer one.
+
+A generation's catalogue record is `{projection}.{generation}` and its object is
+`{projection}.{generation}.vector-bytes`. The public changefeed projects both,
+and publication refuses a projection id that would make either non-canonical
+before it stores any bytes
+([POAM-046](../../poam/rrflow-1.0-alpha/poam-046.md)).
+
 `RrdEngine::ensure_vector_index` currently obtains canonical candidates by
 reading every vector version in the scope at one read stamp
 (`read_vector_versions`, a whole-family read rather than a cursor-zero replay),

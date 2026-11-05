@@ -13,6 +13,11 @@ pub enum Error {
         kind: &'static str,
         value: String,
     },
+    NonCanonicalIdentifier {
+        kind: &'static str,
+        value: String,
+        problem: &'static str,
+    },
     /// A claim's validity window is empty or inverted.
     InvalidValidityWindow {
         valid_from: u64,
@@ -38,6 +43,11 @@ impl fmt::Display for Error {
             Error::SeparatorInIdentifier { kind, value } => {
                 write!(f, "{kind} must not contain the NUL control byte: {value:?}")
             }
+            Error::NonCanonicalIdentifier {
+                kind,
+                value,
+                problem,
+            } => write!(f, "{kind} {value:?} is refused: {problem}"),
             Error::InvalidValidityWindow {
                 valid_from,
                 valid_to,

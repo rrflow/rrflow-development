@@ -1515,7 +1515,7 @@ mod tests {
 
     #[test]
     fn envelope_binds_tls_identity_route_digest_and_raft_vote_source() {
-        let cluster = ClusterId::new("cluster:transport-unit").unwrap();
+        let cluster = ClusterId::new("cluster-transport-unit").unwrap();
         let source = binding(&cluster, 1);
         let target = binding(&cluster, 2);
         let target_node = RrdRaftNode {
@@ -1553,7 +1553,7 @@ mod tests {
         );
         assert!(RrdTlsEndpoint::parse("http://127.0.0.1:9443").is_err());
         assert!(RrdTlsEndpoint::parse("rrd+tls://127.0.0.1:9443").is_err());
-        let mut invalid = binding(&ClusterId::new("cluster:unit").unwrap(), 1);
+        let mut invalid = binding(&ClusterId::new("cluster-unit").unwrap(), 1);
         invalid.trust_domain = "Uppercase.invalid".into();
         assert!(invalid.validate().is_err());
         invalid.trust_domain = "empty..label".into();

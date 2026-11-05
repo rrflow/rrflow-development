@@ -207,7 +207,7 @@ fn independent_processes_recover_fail_over_snapshot_and_reject_corruption() {
     }
     let stored = source_receipt.unwrap();
     let artifact = ObjectReference::for_bytes(
-        "vector:hnsw:process-fixture@1:bytes",
+        "vector-hnsw-process-fixture.1.vector-bytes",
         None,
         "application/vnd.rrflow.vector-hnsw+json",
         &artifact_bytes,
@@ -770,7 +770,7 @@ struct ProcessFixture {
 impl ProcessFixture {
     fn new() -> Self {
         let directory = tempfile::tempdir().unwrap();
-        let cluster = ClusterId::new("cluster:process-evidence").unwrap();
+        let cluster = ClusterId::new("cluster-process-evidence").unwrap();
         let trust_domain = "process.rrflow.test";
         let reservations = (1..=4)
             .map(|_| TcpListener::bind("127.0.0.1:0").unwrap())
