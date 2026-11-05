@@ -1003,7 +1003,7 @@ fn version_address(change: &RuntimeChange) -> Result<VersionAddress> {
         ),
         RuntimeMutation::Event { event } => (
             keyspaces::RUNTIME_EVENT_VERSIONS,
-            keyspaces::runtime_event_reference(event, change.cursor)?,
+            keyspaces::runtime_event_reference(event, change.cursor),
             change.at,
         ),
         RuntimeMutation::Vector { vector } => (

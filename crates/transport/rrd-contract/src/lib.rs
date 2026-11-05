@@ -263,7 +263,7 @@ use std::fmt;
 pub const PROTOCOL: &str = "rrd";
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const OPENAPI_DOCUMENT_SHA256: &str =
-    "12e52bb72a3be1c220d1badf3af0124be7d5c08c9f2c875249a9c3ab43eb7e3d";
+    "c4375b035939ca40618f6e56eb1d52ea11347b742d003508f40df5d73c441d38";
 pub const MAX_ID_BYTES: usize = 128;
 pub const MAX_MESSAGE_BYTES: usize = 4_096;
 pub const MAX_CAPABILITIES: usize = 512;
@@ -4304,6 +4304,36 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             "VectorCollectionCatalogueSnapshot",
         ),
         endpoint(
+            "vector-index-ensure",
+            HttpMethod::Post,
+            "/v1/vector/indexes/ensure",
+            EndpointAuthentication::SessionBearer,
+            true,
+            SecurityAction::VectorCollectionEnsure,
+            "EnsureVectorIndex",
+            "EnsureVectorIndexResult",
+        ),
+        endpoint(
+            "vector-payload-index-delete",
+            HttpMethod::Post,
+            "/v1/vector/payload-indexes/delete",
+            EndpointAuthentication::SessionBearer,
+            true,
+            SecurityAction::VectorPayloadIndexDelete,
+            "DeleteVectorPayloadIndex",
+            "DeleteVectorPayloadIndexResult",
+        ),
+        endpoint(
+            "vector-payload-index-ensure",
+            HttpMethod::Post,
+            "/v1/vector/payload-indexes/ensure",
+            EndpointAuthentication::SessionBearer,
+            true,
+            SecurityAction::VectorPayloadIndexEnsure,
+            "EnsureVectorPayloadIndex",
+            "EnsureVectorPayloadIndexResult",
+        ),
+        endpoint(
             "vector-point-retrieve",
             HttpMethod::Post,
             "/v1/vector/points/retrieve",
@@ -4766,6 +4796,9 @@ fn request_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "RetrieveVectorPoints" => schema_json::<RequestEnvelope<RetrieveVectorPoints>>(),
         "ScrollVectorPoints" => schema_json::<RequestEnvelope<ScrollVectorPoints>>(),
         "SearchVectors" => schema_json::<RequestEnvelope<SearchVectors>>(),
+        "EnsureVectorIndex" => schema_json::<RequestEnvelope<EnsureVectorIndex>>(),
+        "EnsureVectorPayloadIndex" => schema_json::<RequestEnvelope<EnsureVectorPayloadIndex>>(),
+        "DeleteVectorPayloadIndex" => schema_json::<RequestEnvelope<DeleteVectorPayloadIndex>>(),
         "BuildVectorQuantizationArtifact" => {
             schema_json::<RequestEnvelope<BuildVectorQuantizationArtifact>>()
         }
@@ -4868,6 +4901,13 @@ fn response_envelope_schema(name: &str) -> Result<serde_json::Value> {
             schema_json::<ResponseEnvelope<VectorCollectionCatalogueSnapshot>>()
         }
         "VectorSearchResult" => schema_json::<ResponseEnvelope<VectorSearchResult>>(),
+        "EnsureVectorIndexResult" => schema_json::<ResponseEnvelope<EnsureVectorIndexResult>>(),
+        "EnsureVectorPayloadIndexResult" => {
+            schema_json::<ResponseEnvelope<EnsureVectorPayloadIndexResult>>()
+        }
+        "DeleteVectorPayloadIndexResult" => {
+            schema_json::<ResponseEnvelope<DeleteVectorPayloadIndexResult>>()
+        }
         "BuildVectorQuantizationArtifactResult" => {
             schema_json::<ResponseEnvelope<BuildVectorQuantizationArtifactResult>>()
         }

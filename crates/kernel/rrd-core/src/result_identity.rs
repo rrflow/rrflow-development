@@ -82,7 +82,7 @@ pub fn parse_reference(value: &str) -> Option<RuntimeRef> {
         Some(out)
     }
     let (kind, id) = value.split_once(':')?;
-    RuntimeRef::new(component(kind)?, component(id)?).ok()
+    RuntimeRef::parse(component(kind)?, component(id)?).ok()
 }
 
 /// Encode one typed reference in the given result family.
@@ -107,10 +107,10 @@ mod tests {
     #[test]
     fn typed_references_are_unambiguous_and_strictly_round_trip() {
         let references = [
-            RuntimeRef::new("a:b", "c").unwrap(),
-            RuntimeRef::new("a", "b:c").unwrap(),
-            RuntimeRef::new("a%3Ab", "c").unwrap(),
-            RuntimeRef::new("α:β", "space % : 雪").unwrap(),
+            RuntimeRef::new("a", "b").unwrap(),
+            RuntimeRef::new("a-b", "c").unwrap(),
+            RuntimeRef::new("a", "b-c").unwrap(),
+            RuntimeRef::event(crate::RuntimeType::new("observed").unwrap(), 7),
         ];
         let mut encoded = std::collections::BTreeSet::new();
         for value in &references {
@@ -118,8 +118,22 @@ mod tests {
             assert_eq!(parse_reference(&path), Some(value.clone()));
             assert!(encoded.insert(typed(ResultIdentityFamily::Record, value)));
         }
+        assert_eq!(reference(&references[3]), "observed:cursor%3A7");
         for invalid in ["a:b:c", "a:%", "a:%3a", "a:%41", ":a", "a:"] {
             assert!(parse_reference(invalid).is_none(), "{invalid}");
+        }
+        // The encoding itself stays unambiguous for any text, even what no reference can hold.
+        let mut components = std::collections::BTreeSet::new();
+        for parts in [
+            ["a:b", "c"],
+            ["a", "b:c"],
+            ["a%3Ab", "c"],
+            ["α:β", "space % : 雪"],
+        ] {
+            let encoded = encode(ResultIdentityFamily::Record, &parts);
+            assert!(components.insert(encoded.clone()), "{encoded}");
+            let path = encoded.strip_prefix("record:").unwrap();
+            assert_eq!(parse_reference(path), None, "{path}");
         }
     }
 }
