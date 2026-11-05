@@ -134,15 +134,19 @@ human review, provider-quality evidence or completion of G-01b.
 
 `EndpointSelectionRequest` names an existing task and stable attempt, expected
 task/configuration digests and a bounded task-read allowance. It accepts no URL,
-credential, prompt or caller-authored candidate catalogue. The task-text packet
+credential, prompt or caller-authored candidate catalogue. It may carry one
+exact prompt-flight identity (`flight_id`, prompt cohort digest and optional
+context-request digest), which must match the named task and the retained
+flight record exactly before the proposal is admitted. The task-text packet
 omits the task creation replay key, binds an open task version/read coordinate
 and requires the exact configured selector and allowance. Task projection checks
 do not authorize repository context or establish source-edit freshness.
 
 `EndpointSelectionProposal` binds request, task, attempt, packet, configuration,
-allowance, service alias and observed request/response/content identities. Its
-only purpose is an experimental proposal. That purpose is not runtime permission,
-capability verification, loaded-weight attestation or worker-effect authority.
+allowance, service alias, observed request/response/content identities, and the
+optional retained flight identity carried by the request. Its only purpose is an
+experimental proposal. That purpose is not runtime permission, capability
+verification, loaded-weight attestation or worker-effect authority.
 `EndpointTokenUsage` retains missing counts as unknown and rejects overflow or
 contradictory partial totals; the native adapter uses this same validator while
 tolerating unrelated provider envelope metadata.

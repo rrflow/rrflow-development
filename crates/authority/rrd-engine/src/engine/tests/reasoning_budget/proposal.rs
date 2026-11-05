@@ -185,6 +185,7 @@ pub(super) fn tuple_fixture() -> (
         max_storage_keys: MAX_TASK_STORAGE_KEYS,
         expected_task_sha256: packet.task.task_sha256.clone(),
         expected_configuration_sha256: configuration.sha256().unwrap(),
+        flight: None,
     };
     let provider: serde_json::Value =
         serde_json::from_slice(&captured("choice-response.json")).unwrap();
@@ -205,6 +206,7 @@ pub(super) fn tuple_fixture() -> (
         request_sha256: digest::sha256_hex(&captured("choice-request.json")),
         response_sha256: digest::sha256_hex(&captured("choice-response.json")),
         content_sha256: digest::sha256_hex(&captured("choice-content.json")),
+        flight: None,
         choice: EndpointSelectionChoice::decode(
             &captured("choice-content.json"),
             &packet.allowance,

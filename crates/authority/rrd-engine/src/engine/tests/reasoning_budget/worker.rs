@@ -162,6 +162,7 @@ fn admitted_fixture(
             .unwrap()
             .task_sha256,
         expected_configuration_sha256: configuration.sha256().unwrap(),
+        flight: None,
     };
     (root, engine, lease, request)
 }

@@ -47,6 +47,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 max_storage_keys: rrd_contract::MAX_TASK_STORAGE_KEYS,
                 expected_task_sha256: projected.task_sha256,
                 expected_configuration_sha256: configuration.sha256()?,
+                flight: None,
             };
             request.validate()?;
             println!("{}", serde_json::to_string(&request)?);

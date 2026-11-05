@@ -16,9 +16,11 @@ pub enum EndpointSelectionPurpose {
     ExperimentalProposal,
 }
 
-/// No endpoint, credential, prompt or client-authored candidate facts enter this request.
+/// Unknown fields are accepted and ignored for forward compatibility. No
+/// endpoint, credential, prompt or client-authored candidate facts are used by
+/// this request; an extension needs explicit engine admission to matter.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
-#[serde(deny_unknown_fields)]
+#[schemars(extend("additionalProperties" = true))]
 pub struct EndpointSelectionRequest {
     pub scope: String,
     pub task_id: CanonicalId,
@@ -26,6 +28,8 @@ pub struct EndpointSelectionRequest {
     pub max_storage_keys: u64,
     pub expected_task_sha256: String,
     pub expected_configuration_sha256: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub flight: Option<EndpointSelectionFlightIdentity>,
 }
 
 impl EndpointSelectionRequest {
@@ -40,7 +44,32 @@ impl EndpointSelectionRequest {
         validate_sha256(
             &self.expected_configuration_sha256,
             "expected endpoint configuration digest",
-        )
+        )?;
+        if let Some(flight) = &self.flight {
+            flight.validate()?;
+        }
+        Ok(())
+    }
+}
+
+/// Exact prompt and context identity expected by selection input admission.
+/// This identifies one governed prompt flight; it does not authorize dispatch.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct EndpointSelectionFlightIdentity {
+    pub flight_id: CanonicalId,
+    pub prompt_cohort_sha256: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub context_request_sha256: Option<String>,
+}
+
+impl EndpointSelectionFlightIdentity {
+    pub fn validate(&self) -> Result<()> {
+        validate_sha256(&self.prompt_cohort_sha256, "selection prompt cohort digest")?;
+        if let Some(context_request_sha256) = &self.context_request_sha256 {
+            validate_sha256(context_request_sha256, "selection context request digest")?;
+        }
+        Ok(())
     }
 }
 
@@ -205,6 +234,8 @@ pub struct EndpointSelectionProposal {
     pub request_sha256: String,
     pub response_sha256: String,
     pub content_sha256: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub flight: Option<EndpointSelectionFlightIdentity>,
     pub choice: EndpointSelectionChoice,
     pub usage: Option<EndpointTokenUsage>,
     pub elapsed_ms: Option<u64>,
@@ -228,6 +259,9 @@ impl EndpointSelectionProposal {
         ] {
             validate_sha256(value, field)?;
         }
+        if let Some(flight) = &self.flight {
+            flight.validate()?;
+        }
         if self
             .http_status
             .is_some_and(|status| !(200..300).contains(&status))
@@ -250,6 +284,7 @@ impl EndpointSelectionProposal {
             || self.attempt_id != request.attempt_id
             || self.task_sha256 != request.expected_task_sha256
             || self.configuration_sha256 != request.expected_configuration_sha256
+            || self.flight != request.flight
         {
             return invalid("endpoint proposal request identity mismatch");
         }

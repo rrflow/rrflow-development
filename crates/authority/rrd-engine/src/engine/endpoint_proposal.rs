@@ -6,9 +6,9 @@ use super::reasoning_budget::{
 };
 use super::*;
 use rrd_contract::{
-    CredentialReference, EndpointSelectionPacket, EndpointSelectionProposal,
-    EndpointSelectionRequest, EndpointSelectionTask, ReadTask, TaskAttemptInvalidation,
-    ENDPOINT_SELECTION_VERSION,
+    CredentialReference, EndpointSelectionFlightIdentity, EndpointSelectionPacket,
+    EndpointSelectionProposal, EndpointSelectionRequest, EndpointSelectionTask, ReadPromptFlight,
+    ReadTask, TaskAttemptInvalidation, ENDPOINT_SELECTION_VERSION,
 };
 use rrd_inference::endpoint_chat::{
     ChatMessage, ChatResponseFormat, ChatRole, EndpointChatFailure, EndpointChatRequest,
@@ -175,6 +175,23 @@ impl RrdEngine {
             .runtime()
             .read_stamp(&self.query_scope(&request.scope)?)?;
         let task = self.read_task_record_at(&read, &task_read(request))?;
+        if let Some(flight) = request.flight.as_ref() {
+            let observed_flight = self
+                .read_prompt_flight(
+                    session,
+                    token,
+                    &ReadPromptFlight {
+                        scope: request.scope.clone(),
+                        flight_id: flight.flight_id.clone(),
+                        max_storage_keys: request.max_storage_keys,
+                    },
+                    now,
+                    request_id,
+                    operation_id,
+                )?
+                .flight;
+            validate_flight_identity(request, flight, &observed_flight.record)?;
+        }
         let packet = EndpointSelectionPacket {
             contract_version: ENDPOINT_SELECTION_VERSION,
             purpose: policy.purpose,
@@ -333,6 +350,7 @@ impl RrdEngine {
                 request_sha256: observed.request_sha256,
                 response_sha256: observed.response_sha256,
                 content_sha256: observed.content_sha256,
+                flight: request.flight.clone(),
                 choice: observed.choice,
                 usage: observed.usage,
                 elapsed_ms: observed.elapsed_ms,
@@ -436,6 +454,32 @@ fn task_read(request: &EndpointSelectionRequest) -> ReadTask {
         task_id: request.task_id.clone(),
         max_storage_keys: request.max_storage_keys,
     }
+}
+
+fn validate_flight_identity(
+    request: &EndpointSelectionRequest,
+    expected: &EndpointSelectionFlightIdentity,
+    observed: &rrd_contract::PromptFlightRecord,
+) -> Result<()> {
+    if observed.scope != request.scope
+        || observed.task_id.as_ref() != Some(&request.task_id)
+        || observed.cohort_sha256 != expected.prompt_cohort_sha256
+    {
+        return Err(ServiceError::TaskAttemptInvalidated(
+            TaskAttemptInvalidation::InputsChanged,
+        ));
+    }
+    let observed_context_request = observed
+        .context
+        .as_ref()
+        .map(|context| context.request_sha256.as_str());
+    let expected_context_request = expected.context_request_sha256.as_deref();
+    if observed_context_request != expected_context_request {
+        return Err(ServiceError::TaskAttemptInvalidated(
+            TaskAttemptInvalidation::InputsChanged,
+        ));
+    }
+    Ok(())
 }
 pub(super) fn endpoint_failure(error: EndpointChatFailure) -> ServiceError {
     ServiceError::EndpointCallFailed {
