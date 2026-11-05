@@ -230,7 +230,7 @@
       "delete_payload_index": {
         "collection_id": "documents",
         "field": "spare",
-        "scope": "instance:instance-e94433b2dad856172e39d9e9"
+        "scope": "instance:instance-f2eea4f6d99d650af1df423d"
       },
       "ensure": {
         "build_policy": {
@@ -248,14 +248,14 @@
           "seed": 7
         },
         "max_storage_keys": 1000,
-        "scope": "instance:instance-e94433b2dad856172e39d9e9",
+        "scope": "instance:instance-f2eea4f6d99d650af1df423d",
         "vector_name": "body"
       },
       "payload_index": {
         "collection_id": "documents",
         "field": "bucket",
         "kind": "unsigned",
-        "scope": "instance:instance-e94433b2dad856172e39d9e9"
+        "scope": "instance:instance-f2eea4f6d99d650af1df423d"
       },
       "search": {
         "collection_id": "documents",
@@ -285,7 +285,7 @@
             0.0
           ]
         },
-        "scope": "instance:instance-e94433b2dad856172e39d9e9",
+        "scope": "instance:instance-f2eea4f6d99d650af1df423d",
         "top_k": 1,
         "valid_at": 100,
         "vector_name": "body"
@@ -294,7 +294,7 @@
         "collection_id": "documents",
         "field": "spare",
         "kind": "unsigned",
-        "scope": "instance:instance-e94433b2dad856172e39d9e9"
+        "scope": "instance:instance-f2eea4f6d99d650af1df423d"
       }
     }
   },
