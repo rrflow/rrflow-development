@@ -1,0 +1,34 @@
+{
+  "sourceCommit": "30d2304c3b45904c5e468f94c03eb23e74d02c26",
+  "binarySha256": "57bbcf3353c371107b931582b789edd74914d1a5a38f639c9146c2fa8e39b489",
+  "scope": "isolated installed process; synthetic selector and worker responses; no actual model or SWAG router",
+  "controllerCalls": [
+    {
+      "kind": "selector",
+      "packetSha256": "b618e7a122d3a169a7f788f76d723caecb00c5664e9cc48d7e638cb01fb21106"
+    },
+    {
+      "kind": "worker",
+      "packetSha256": "bcf8c2ed58a6739a499b556efb0b5fdf7ee4651af0a0716e9df2ad31d3a74b68"
+    }
+  ],
+  "selectionOutcomeSha256": "4ab106f9ed263db43d8e1ec45cf700b3a219dbac5e91b39d6e3e9e258257d25f",
+  "taskSha256": "b2e81713d096f9958b1da07ee420e546d069206a776a64cabdde433d980a2b02",
+  "configurationSha256": "4579406cd7fb6347effd80d7ae53689b2e43410c9f0e868c65bdcb6b4fb4e249",
+  "workerRequestSha256": "e15b1564b26b8d43860b55de2c508b31fbf05be3be9e5ae05b49823b938b3641",
+  "workerResponseSha256": "e512699ed221daf2143ed7469f922dbb1e9908f42188f4d02dfd515c549d4ecf",
+  "verification": {
+    "selectionPacketDigestMatched": true,
+    "workerPacketDigestMatched": true,
+    "workerBoundToRetainedSelectionAndInputs": true,
+    "selectionReadbackEqualAfterRestart": true,
+    "workerReadbackEqualAfterRestart": true,
+    "selectionReplayStatus": 412,
+    "workerReplayStatus": 412,
+    "binaryHashMatched": true
+  },
+  "limits": [
+    "Synthetic task and controlled responses, not provider or model quality evidence.",
+    "Does not include LFG or real SWAG, prompt-flight execution, project-source changes, candidate CI or release qualification."
+  ]
+}

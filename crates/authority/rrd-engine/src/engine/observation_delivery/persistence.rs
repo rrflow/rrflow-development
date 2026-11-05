@@ -141,9 +141,16 @@ fn source_references(
             references.operation = operation("ReadTaskAttempt")?;
             references.task_id = Some(request.task_id.to_string());
             references.attempt_id = Some(request.attempt_id.as_str().into());
+            // Bind the configuration that produced the retained result, not
+            // the later configuration authorizing this observation export.
             references.configuration_sha256 = attempt
                 .endpoint_proposal
-                .map(|proposal| proposal.configuration_sha256);
+                .map(|proposal| proposal.configuration_sha256)
+                .or_else(|| {
+                    attempt
+                        .worker_output
+                        .map(|worker| worker.configuration_sha256)
+                });
         }
         ObservationSource::AttunementJob {
             request,
