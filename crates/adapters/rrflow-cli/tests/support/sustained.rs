@@ -357,12 +357,22 @@ impl PointRun<'_> {
         Ok(value)
     }
     fn start_sample(&self, task: &mut sample_task::SampleTask<ResourceSample>) -> DriverResult<()> {
+        self.start_sample_at(task, None)
+    }
+    fn start_sample_at(
+        &self,
+        task: &mut sample_task::SampleTask<ResourceSample>,
+        not_before: Option<Instant>,
+    ) -> DriverResult<()> {
         let work = self.workload.clone();
         let pid = self.pid;
         let clock = self.clock;
         let allocation = self.allocation.clone();
         let gate = self.sample_gate.clone();
         task.start(async move {
+            if let Some(not_before) = not_before {
+                tokio::time::sleep_until(not_before.into()).await;
+            }
             if let Some(gate) = gate {
                 gate.wait().await;
             }
@@ -598,7 +608,19 @@ impl PointRun<'_> {
                 sample: Box::new(value.clone()),
             })?;
         }
-        resources.push(self.sample(writer).await?);
+        let mut sample_task = sample_task::SampleTask::new();
+        let mut initial_sample_pending = !(phase == LoadPhase::Warmup && first == 0);
+        if !initial_sample_pending {
+            // The evaluator requires this real ownership baseline before any
+            // initial warmup effect; later segment samples need no such fence.
+            resources.push(self.sample(writer).await?);
+        } else {
+            let not_before = self
+                .clock
+                .checked_add(Duration::from_nanos(started))
+                .ok_or("initial sample deadline overflow")?;
+            self.start_sample_at(&mut sample_task, Some(not_before))?;
+        }
         let held_reader = if phase == LoadPhase::Measured
             && campaign
                 .required_lanes
@@ -624,15 +646,9 @@ impl PointRun<'_> {
         let deadline = Duration::from_millis(campaign.schedule.operation_deadline_ms.get());
         let period = Duration::from_millis(campaign.schedule.sample_ms.get());
         let last_observed = self.clock
-            + Duration::from_nanos(
-                resources
-                    .last()
-                    .ok_or("missing first resource sample")?
-                    .elapsed_ns,
-            );
+            + Duration::from_nanos(resources.last().map_or(started, |value| value.elapsed_ns));
         let mut next_sample =
             resource_window::next_sample_deadline(last_observed, period, Instant::now())?;
-        let mut sample_task = sample_task::SampleTask::new();
         for (offset, operation) in prepared.iter().enumerate() {
             let sequence = first + offset as u64;
             let due = self.clock + Duration::from_nanos(scheduled(sequence));
@@ -645,8 +661,11 @@ impl PointRun<'_> {
                     }
                     _=tokio::time::sleep_until(due.into()) => break,
                     value=sample_task.finish(), if sample_pending => {
-                        resources.push(Self::record_sample(writer, value?.ok_or("missing resource sample")?)?);
-                        next_sample=resource_window::next_sample_deadline(next_sample,period,Instant::now())?;
+                        let value=value?.ok_or("missing resource sample")?;
+                        let observed=self.clock.checked_add(Duration::from_nanos(value.elapsed_ns)).ok_or("sample timestamp overflow")?;
+                        resources.push(Self::record_sample(writer,value)?);
+                        next_sample=resource_window::after_sample_deadline(next_sample,period,observed,Instant::now(),initial_sample_pending)?;
+                        initial_sample_pending=false;
                     }
                     _=tokio::time::sleep_until(next_sample.into()), if !sample_pending => {
                         if resources.len() as u64>=campaign.evidence.samples_per_segment.get() {return Err("resource sample cap exhausted".into());}
@@ -736,8 +755,11 @@ impl PointRun<'_> {
             tokio::select! {
                 result=joins.join_next() => collect(result.ok_or("missing scheduled task")?.map_err(|_|"scheduled task panicked")?,started,&mut attempts,&mut ledger,&mut failure,writer)?,
                 value=sample_task.finish(), if sample_pending => {
-                    resources.push(Self::record_sample(writer, value?.ok_or("missing resource sample")?)?);
-                    next_sample=resource_window::next_sample_deadline(next_sample,period,Instant::now())?;
+                    let value=value?.ok_or("missing resource sample")?;
+                    let observed=self.clock.checked_add(Duration::from_nanos(value.elapsed_ns)).ok_or("sample timestamp overflow")?;
+                    resources.push(Self::record_sample(writer,value)?);
+                    next_sample=resource_window::after_sample_deadline(next_sample,period,observed,Instant::now(),initial_sample_pending)?;
+                    initial_sample_pending=false;
                 }
                 _=tokio::time::sleep_until(next_sample.into()), if !sample_pending => {
                     if resources.len() as u64>=campaign.evidence.samples_per_segment.get(){return Err("resource sample cap exhausted".into());}
@@ -752,9 +774,18 @@ impl PointRun<'_> {
                 .finish()
                 .await?
                 .ok_or("missing resource sample")?;
+            let observed = self
+                .clock
+                .checked_add(Duration::from_nanos(value.elapsed_ns))
+                .ok_or("sample timestamp overflow")?;
             resources.push(Self::record_sample(writer, value)?);
-            next_sample =
-                resource_window::next_sample_deadline(next_sample, period, Instant::now())?;
+            next_sample = resource_window::after_sample_deadline(
+                next_sample,
+                period,
+                observed,
+                Instant::now(),
+                initial_sample_pending,
+            )?;
         }
         let reader_receipt = match held_reader {
             Some(reader) => Some(reader.finish(&self.workload, self.clock).await?),
@@ -1494,6 +1525,207 @@ fn installed_sampler_trace_during_write_load() {
 }
 
 #[test]
+#[ignore = "explicit installed controlled conflict oracle"]
+fn installed_disjoint_writes_from_one_stamp_conflict_without_partial_effect() {
+    use rrd_contract::{
+        AbortTransaction, BeginTransaction, CanonicalId, ErrorCode, TransactionState,
+    };
+
+    fn mutation_options(id: &str) -> RequestOptions {
+        RequestOptions::new(id, id, Some(id), Some(u64::MAX)).unwrap()
+    }
+
+    let estate = Estate::install("fresh");
+    let clock = Instant::now();
+    let (child, client, _) = estate.start_for(clock, Duration::from_secs(300));
+    let credential = rrd_engine::RrdEngine::read_installed_api_key(&estate.project).unwrap();
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+    runtime.block_on(async {
+        let session = client
+            .create_session(
+                credential.principal_id.clone(),
+                credential.credential(),
+                CreateSession {
+                    limits: SessionLimits {
+                        idle_timeout_ms: 300_000,
+                        absolute_timeout_ms: 600_000,
+                        max_open_transactions: 4,
+                    },
+                },
+                mutation_options("conflict-oracle-session"),
+            )
+            .await
+            .unwrap();
+        let mut work = Workload {
+            native_worker: Default::default(),
+            client,
+            session,
+            valid_at: estate.at,
+            dimensions: 16,
+            seed: 73,
+            records: 8,
+            read_distribution: ReadKeyDistribution::Uniform {},
+            edges_per_record: 3,
+            vectors_per_record: 2,
+            payload_bytes: 1024,
+            query_budget: serde_json::from_value(estate.plan["configuration"]["query"].clone())
+                .unwrap(),
+        };
+        work.initialize().await.unwrap();
+        let first = work.seed_record(0).unwrap();
+        let second = work.seed_record(1).unwrap();
+        let begin = || BeginTransaction {
+            scope: CanonicalId::new("data").unwrap(),
+            timeout_ms: 60_000,
+        };
+        let left = work
+            .client
+            .begin_transaction(
+                &work.session,
+                begin(),
+                mutation_options("conflict-left-begin"),
+            )
+            .await
+            .unwrap();
+        let right = work
+            .client
+            .begin_transaction(
+                &work.session,
+                begin(),
+                mutation_options("conflict-right-begin"),
+            )
+            .await
+            .unwrap();
+        assert_eq!(left.read_cursor, right.read_cursor);
+        let accepted = work
+            .client
+            .commit_transaction(
+                &work.session,
+                &left.transaction_id,
+                first.mutation.clone().unwrap(),
+                mutation_options("conflict-left-commit"),
+            )
+            .await
+            .unwrap();
+        let published_cursor = accepted.last_runtime_cursor.unwrap();
+        assert!(published_cursor > left.read_cursor);
+        let rejected = work
+            .client
+            .commit_transaction(
+                &work.session,
+                &right.transaction_id,
+                second.mutation.clone().unwrap(),
+                mutation_options("conflict-right-stale-commit"),
+            )
+            .await
+            .unwrap_err();
+        match rejected {
+            rrd_client::Error::Api { status, error } => {
+                assert_eq!(error.code, ErrorCode::Conflict);
+                assert!(
+                    !error.retryable,
+                    "a stale commit cannot be retried as the same transaction"
+                );
+                assert_eq!(
+                    error
+                        .details
+                        .get(&CanonicalId::new("reason").unwrap())
+                        .map(String::as_str),
+                    Some("transaction-snapshot-stale")
+                );
+                assert_eq!(
+                    error
+                        .details
+                        .get(&CanonicalId::new("next-action").unwrap())
+                        .map(String::as_str),
+                    Some("abort-and-reexecute-transaction")
+                );
+                assert_eq!(
+                    error
+                        .details
+                        .get(&CanonicalId::new("expected-cursor").unwrap()),
+                    Some(&right.read_cursor.to_string())
+                );
+                assert_eq!(
+                    error
+                        .details
+                        .get(&CanonicalId::new("actual-cursor").unwrap()),
+                    Some(&published_cursor.to_string())
+                );
+                let api = rrd_client::Error::Api { status, error };
+                let trace = workload::runtime_conflict_trace(
+                    &api,
+                    "synthetic-conflict-key",
+                    right.read_cursor,
+                    &std::sync::atomic::AtomicUsize::new(0),
+                )
+                .expect("real stale response must retain bounded cursor diagnostics");
+                assert!(trace.contains(&format!(
+                    "read_cursor={} expected_cursor={} actual_cursor={}",
+                    right.read_cursor, right.read_cursor, published_cursor
+                )));
+                assert!(!trace.contains("synthetic-conflict-key"));
+                assert!(workload::client_error(api)
+                    .starts_with("api-conflict-storage-runtime-conflict:"));
+            }
+            other => panic!("unexpected typed error: {other:?}"),
+        }
+        let repeated = work
+            .client
+            .commit_transaction(
+                &work.session,
+                &right.transaction_id,
+                second.mutation.clone().unwrap(),
+                mutation_options("conflict-right-stale-commit"),
+            )
+            .await
+            .unwrap_err();
+        match repeated {
+            rrd_client::Error::Api { error, .. } => {
+                assert_eq!(error.code, ErrorCode::Conflict);
+                assert!(!error.retryable);
+                assert_eq!(
+                    error
+                        .details
+                        .get(&CanonicalId::new("reason").unwrap())
+                        .map(String::as_str),
+                    Some("transaction-snapshot-stale")
+                );
+            }
+            other => panic!("unexpected repeated error: {other:?}"),
+        }
+        let aborted = work
+            .client
+            .abort_transaction(
+                &work.session,
+                &right.transaction_id,
+                AbortTransaction {},
+                mutation_options("conflict-right-abort"),
+            )
+            .await
+            .unwrap();
+        assert_eq!(aborted.state, TransactionState::Aborted);
+        work.verify(&first).await.unwrap();
+        work.verify_absent(&second.key).await.unwrap();
+        let fresh = work.execute(&second).await.unwrap();
+        assert!(!fresh.idempotent_replay);
+        work.verify(&second).await.unwrap();
+        super::kill(child, clock);
+        let (reopened, client, _) = estate.start_for(clock, Duration::from_secs(300));
+        work.client = client;
+        work.verify(&first).await.unwrap();
+        work.verify(&second).await.unwrap();
+        let replay = work.execute(&second).await.unwrap();
+        assert!(replay.idempotent_replay);
+        assert_eq!(replay.receipt_sha256, fresh.receipt_sha256);
+        super::kill(reopened, clock);
+    });
+}
+
+#[test]
 #[ignore = "explicit native capacity-driver smoke; candidate portability job"]
 fn installed_capacity_workload_smoke() {
     let estate = Estate::install("fresh");
@@ -1657,6 +1889,80 @@ fn installed_capacity_workload_smoke() {
         }).collect();
         outcomes.sort_by_key(|attempt| attempt.sequence);
         assert_eq!(serde_json::to_value(outcomes).unwrap(), serde_json::to_value(&segment.attempts).unwrap());
+        // A later segment's initial sample must not hold scheduled offers.
+        // No carried samples are supplied, making the first Resource event a
+        // deterministic distinction from the old synchronous initial sample.
+        let mut initial_campaign = smoke_campaign();
+        initial_campaign.schedule.sample_ms = 1_000u64.try_into().unwrap();
+        let mut host = sysinfo::System::new();
+        host.refresh_memory();
+        let host_bytes = host.total_memory();
+        assert!(host_bytes > 0, "real host memory is required for this installed fixture");
+        initial_campaign.storage.budgets.host_bytes = host_bytes.try_into().unwrap();
+        initial_campaign.allocation.host_bytes = host_bytes.try_into().unwrap();
+        initial_campaign.storage.budgets.retained_bytes = (16 * 1024 * 1024u64).try_into().unwrap();
+        initial_campaign.required_lanes.push(CapacityLane::ReaderPinInterference);
+        initial_campaign.reader_selection = Some(ReaderSelection::WorkloadRecords {});
+        let initial_evidence = evidence_root.path().join("initial-sample-segment");
+        let initial_writer = CampaignWriter::create(&initial_evidence, initial_campaign.clone()).unwrap();
+        initial_writer.admit_next().unwrap();
+        let initial_gate = std::sync::Arc::new(sample_task::SampleGate::default());
+        let initial_clock = Instant::now() - Duration::from_secs(10);
+        let mut initial_run = PointRun {
+            campaign: &initial_campaign, point: &initial_campaign.points[0],
+            workload: work.clone(), pid: child.id(), clock: initial_clock, allocation: None,
+            generations: vec![0; 5], previous_resources: Vec::new(),
+            backup: management::ManagementTask::new(), sample_gate: Some(initial_gate.clone()),
+        };
+        // Sequences 15-18 are real writes; avoid sequence 14's backup lane.
+        let origin = ns(initial_clock).checked_sub(3_000_000_000).unwrap();
+        let mut initial_segment = Box::pin(initial_run.segment(&initial_writer, LoadPhase::Measured, origin, 15, 5, true));
+        tokio::time::timeout(Duration::from_secs(20), async {
+            tokio::select! {
+                _ = initial_gate.entered.notified() => {}
+                result = &mut initial_segment => panic!("segment ended before initial sample gate: {result:?}"),
+            }
+        }).await.unwrap();
+        initial_writer.checkpoint_progress().unwrap();
+        let progress = std::fs::read_to_string(initial_evidence.join("progress.jsonl")).unwrap();
+        assert!(!progress.lines().map(|line| serde_json::from_str::<ProgressEvent>(line).unwrap())
+            .any(|event| matches!(event, ProgressEvent::Resource { .. })), "initial sample completed before its gate");
+        let acknowledged = tokio::time::timeout(Duration::from_secs(20), async {
+            loop {
+                tokio::select! {
+                    result = &mut initial_segment => panic!("segment ended while initial sample held: {result:?}"),
+                    _ = tokio::time::sleep(Duration::from_millis(50)) => {
+                        initial_writer.checkpoint_progress().unwrap();
+                        let raw = std::fs::read_to_string(initial_evidence.join("progress.jsonl")).unwrap();
+                        let events: Vec<ProgressEvent> = raw.lines().map(|line| serde_json::from_str(line).unwrap()).collect();
+                        if let Some(attempt) = events.iter().find_map(|event| match event {
+                            ProgressEvent::LoadOutcome { attempt, .. }
+                                if attempt.outcome == LoadOutcome::Acknowledged
+                                    && events.iter().any(|other| matches!(other,
+                                        ProgressEvent::Readback { observation: Readback::Present { logical_id, .. }, .. }
+                                            if logical_id == &attempt.logical_id)) => Some(attempt.clone()),
+                            _ => None,
+                        }) { break attempt; }
+                    }
+                }
+            }
+        }).await.unwrap();
+        assert!(!initial_gate.dropped.load(std::sync::atomic::Ordering::SeqCst));
+        initial_gate.open();
+        let initial_segment = tokio::time::timeout(Duration::from_secs(30), initial_segment).await.unwrap().unwrap();
+        assert!(initial_segment.attempts.iter().any(|attempt| attempt.sequence == acknowledged.sequence));
+        assert!(!initial_segment.resources.is_empty());
+        let reader = initial_segment.reader.as_ref().expect("reader remains mandatory");
+        reader.validate().unwrap();
+        assert!(reader.opened_ns <= acknowledged.started_ns && acknowledged.finished_ns <= reader.observed_ns);
+        validate_segment(&initial_campaign, &initial_segment).unwrap_or_else(|error| {
+            let retained: Vec<_> = initial_segment.resources.iter().map(|sample| &sample.retained_bytes).collect();
+            panic!("segment validation failed: {error}; retained samples: {retained:?}")
+        });
+        let mut missing_samples = initial_segment.clone();
+        missing_samples.resources.clear();
+        assert_eq!(validate_segment(&initial_campaign, &missing_samples).unwrap_err(),
+            "segment evidence missing or exceeds bound");
         // Hold a harness-only asynchronous sample in the actual scheduled
         // segment. A later real ACK must be journaled before the gate opens;
         // the completed segment must contain that exact acknowledged attempt.

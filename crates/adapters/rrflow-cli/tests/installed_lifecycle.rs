@@ -898,8 +898,15 @@ fn assert_restarted_status(
             .await
             .unwrap();
         assert_eq!(result.rows.len(), 1);
-        assert_eq!(result.rows[0].identity, "claim:installed-walking-product:status");
+        assert_eq!(result.rows[0].identity, "claim:f2f88858872febdd0b233f7aa5c42f01b042d67faa6afd244d35e69feded14e7");
         assert_eq!(result.rows[0].values.get("object"), Some(&QueryValue::String(expected.into())));
+        let context = client.assemble_context(&session, rrd_contract::AssembleContext {
+            scope: format!("instance:{}", client.instance_id()), query: expected.into(), valid_at,
+            seeds: Vec::new(), max_graph_depth: 0, max_items: 8, max_output_bytes: 32_768,
+            max_storage_keys: 75_000,
+        }, RequestOptions::read("restart-context-request", "restart-context-operation").unwrap()).await.unwrap();
+        assert_eq!(context.result_identity_version, result.result_identity_version);
+        assert!(context.items.iter().any(|item| item.identity == result.rows[0].identity));
         verify_parquet_export(&client, &session, &result).await;
         let cursor_request = |action| rrd_contract::InspectStorageCursor {
             scope: format!("instance:{}", client.instance_id()),
@@ -1781,12 +1788,19 @@ max_elapsed_ms = 20000
             assert_eq!(query.rows.len(), 1);
             assert_eq!(
                 query.rows[0].identity,
-                "claim:installed-walking-product:status"
+                "claim:f2f88858872febdd0b233f7aa5c42f01b042d67faa6afd244d35e69feded14e7"
             );
             assert_eq!(
                 query.rows[0].values.get("object"),
                 Some(&QueryValue::String("ui-queryable".into()))
             );
+            let context = client.assemble_context(&session, rrd_contract::AssembleContext {
+                scope: format!("instance:{}", client.instance_id()), query: "ui-queryable".into(),
+                valid_at: installed_at, seeds: Vec::new(), max_graph_depth: 0, max_items: 8,
+                max_output_bytes: 32_768, max_storage_keys: 75_000,
+            }, RequestOptions::read("installed-test-context-request", "installed-test-context-operation").unwrap()).await.unwrap();
+            assert_eq!(context.result_identity_version, query.result_identity_version);
+            assert!(context.items.iter().any(|item| item.identity == query.rows[0].identity));
             verify_parquet_export(&client, &session, &query).await;
 
             // A backup at runtime cursor 3, a later commit the backup does not

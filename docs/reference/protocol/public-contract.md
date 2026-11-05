@@ -53,6 +53,26 @@ authority. The
 [generation-boundary design](../../roadmap/rrflow-1.0-execution/generated-surfaces.md)
 defines the common maintenance flow.
 
+## Installed job discovery
+
+`attunement-job-list` (`POST /v1/attunement/jobs/list`) requires an authenticated
+session and the existing instance `estate_read` grant. `ListAttunementJobs`
+accepts a page limit from 1 through 64 and an optional `after_job_id`. An absent
+cursor discovers the installed initial job; subsequent pages follow committed
+successor links. Clients use returned identities, never derive job IDs or read
+engine storage. `AttunementJobPage` returns validated plan/source digests,
+generation, state, revision and a continuation cursor, with a 256 KiB encoded
+response ceiling. It does not create, resume or replan work.
+
+Each page rejects control-state changes during collection; retry by explicitly
+requesting a fresh page. Separate pages are separate observations, not a retained
+snapshot. Unknown/foreign cursors and corrupt successor bindings fail without
+partial results. Concurrent authorization auditing can also advance the control
+sequence; this conflict does not establish a change to project source.
+`source_verification: not_checked` means the stored source
+digest has not been compared with the current project tree. Use the existing
+engine replan preview/accept operations to bind and authorize an ordinary edit.
+
 ## Protocol identity and version domains
 
 The wire identity is exactly `rrd` and its current protocol version is `1`.
@@ -63,7 +83,7 @@ version, which remains frozen at `1.0.0` by the
 [version policy](../release/version-policy.md).
 
 The deterministic OpenAPI projection is currently bound to SHA-256
-`f1856602eb3b5ba419f600b3be0e9626d62ad533032fe220a2728795bd28048a`.
+`02c2fb3124a157286742287e6325beb9b8d0066ccd7dd215a843426914953bc4`.
 Changing its bytes requires an explicit protocol/schema review and regeneration
 of every checked-in SDK surface; `scripts/ci/check_generated_surfaces.py`
 verifies the SDK projections, the signal reference, and this citation against
@@ -98,6 +118,14 @@ deadlines, cancellation, unavailability, corruption, unsupported versions, and
 internal failures. Error messages and detail values are bounded. Credentials,
 secrets, arbitrary headers, and private storage types are not public contract
 payloads.
+
+A transaction commit whose exact outcome is absent and whose runtime cursor has
+advanced past the lease's read cursor returns `conflict` with `retryable=false`.
+Its details identify `transaction-snapshot-stale`, the bounded expected and
+actual cursors, and `abort-and-reexecute-transaction`. The caller must abort the
+old transaction and redo its reads, decisions and writes on a fresh snapshot.
+The engine does not silently rebase or replay the stale commit. A generic
+conflict or uncertain outcome does not carry this conclusion.
 
 ## Deployment and capability discovery
 

@@ -285,17 +285,26 @@ fn audit_read_rejects_a_substituted_durable_head() {
     ));
 }
 
-/// Characterizes POAM-030. `audit_since` marks the control tail as reached
-/// whenever the last journal page it read was partial, even when it stopped
-/// inside that page because the record limit was met. When the limit-th audit
-/// record lies in the final, partial page and is not the head, a valid read of
-/// a valid chain fails. When POAM-030 is fixed, the five-record read must
-/// return the first five records through sequence 11, and this test inverts.
+/// A limit reached inside a final partial control page is not the journal tail.
 #[test]
-fn a_record_limit_met_inside_the_final_partial_journal_page_fails_the_audit_read() {
-    let engine = RrflowMxStore::new();
+fn a_record_limit_inside_the_final_partial_page_returns_a_valid_prefix() {
+    let memory = RrflowMxStore::new();
+    exercise_partial_page(&memory);
+
+    let temporary = tempfile::tempdir().unwrap();
+    let root = temporary.path().join("audit-page-reopen");
+    let persistent = RrflowKvStore::open(&root).unwrap();
+    let original = exercise_partial_page(&persistent);
+    drop(persistent);
+    let reopened = RrflowKvStore::open(&root).unwrap();
+    let repository = SecurityRepository::new(&reopened, CanonicalId::new("alpha").unwrap());
+    assert_eq!(repository.audit_since(0, 5).unwrap().records, original[..5]);
+    assert_eq!(repository.audit_since(0, 6).unwrap().records, original);
+}
+
+fn exercise_partial_page<E: StorageEngine>(engine: &E) -> Vec<(u64, rrd_security::AuditRecord)> {
     let instance = CanonicalId::new("alpha").unwrap();
-    let repository = SecurityRepository::new(&engine, instance.clone());
+    let repository = SecurityRepository::new(engine, instance.clone());
     repository
         .initialize(
             state(b"partial-page-secret"),
@@ -362,13 +371,31 @@ fn a_record_limit_met_inside_the_final_partial_journal_page_fails_the_audit_read
     assert_eq!(six.records.len(), 6);
     assert_eq!(six.through_sequence, 13);
 
-    assert!(
-        matches!(
-            repository.audit_since(0, 5),
-            Err(Error::Invalid(message)) if message == "audit chain does not reach its durable head"
-        ),
-        "POAM-030: a five-record read of this valid chain must still fail until it is fixed"
-    );
+    let five = repository.audit_since(0, 5).unwrap();
+    assert_eq!(five.records, six.records[..5]);
+    assert_eq!(five.through_sequence, 11);
+
+    // Reconstruct the same chain for every supported page size in this
+    // fixture, including pages ending amid non-audit control entries.
+    for limit in 1..=actions.len() {
+        let mut after = 0;
+        let mut assembled = Vec::new();
+        let mut previous_head = None;
+        for _ in 0..=actions.len() {
+            let page = repository.audit_since(after, limit).unwrap();
+            if page.records.is_empty() {
+                break;
+            }
+            assert_eq!(page.chain_anchor_sha256, previous_head, "limit {limit}");
+            assert!(page.through_sequence > after, "limit {limit}");
+            previous_head = page.chain_head_sha256;
+            after = page.through_sequence;
+            assembled.extend(page.records);
+        }
+        assert_eq!(assembled, six.records, "limit {limit}");
+        assert_eq!(previous_head, six.chain_head_sha256, "limit {limit}");
+    }
+    six.records
 }
 
 #[test]

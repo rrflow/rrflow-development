@@ -112,8 +112,58 @@ def job_blocks(workflow: str) -> dict[str, str]:
     }
 
 
+def verify_linux_arm64_ci(caller: str, reusable: str) -> None:
+    """Require a native ARM64 result without routing fork code to private hosts."""
+    routing = (
+        "      linux-arm64-runner: >-\n"
+        "        ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)\n"
+        "            && vars.CI_SELF_HOSTED_ENABLED == 'true'\n"
+        "            && (vars.CI_LINUX_ARM64_RUNNER || '[\"ubuntu-24.04-arm\"]')\n"
+        "            || '[\"ubuntu-24.04-arm\"]' }}\n"
+    )
+    require(caller.count(routing) == 1, "native ARM64 routing or fork isolation is missing")
+    require("      linux-arm64-runner:\n" in reusable,
+            "reusable CI must require its ARM64 runner input")
+    jobs = job_blocks(reusable)
+    require("native-arm64" in jobs, "native ARM64 qualification job is missing")
+    arm = jobs["native-arm64"]
+    for required in [
+        "runs-on: ${{ fromJSON(inputs.linux-arm64-runner) }}",
+        'test "$RUNNER_OS" = Linux',
+        'test "$RUNNER_ARCH" = ARM64',
+        'test "$(uname -m)" = aarch64',
+        "host: aarch64-unknown-linux-gnu",
+        "cargo test -p rrd-lsm --test filesystem --test manifest --locked",
+        "cargo test -p rrd-store --test installed_lifecycle --test semantic_commit_atomicity --locked",
+        "cargo test -p rrd-attunement --locked",
+        "cargo test -p rrflow-cli --test installed_lifecycle --locked -- --nocapture",
+    ]:
+        require(arm.count(required) == 1, f"native ARM64 qualification missing: {required}")
+    require("continue-on-error:" not in arm and not re.search(r"(?m)^\s+if:", arm),
+            "native ARM64 qualification cannot be skipped or ignored")
+    gate = jobs.get("ci-gate", "")
+    require("      - native-arm64\n" in gate
+            and "ARM64_RESULT: ${{ needs.native-arm64.result }}" in gate
+            and 'test "$ARM64_RESULT" = success' in gate,
+            "candidate gate must require the native ARM64 result")
+    require(reusable.count("python3 scripts/ci/test_linux_arm64_policy.py") == 1,
+            "native ARM64 policy regressions must run exactly once")
+
+
 def verify_native_sample_worker_ci(reopen: str, verify: str) -> None:
     """Keep bounded failure, Windows lifecycle and Linux image oracles required."""
+    marker = "      - name: Require installed stale-snapshot conflict safety\n"
+    require(reopen.count(marker) == 1, "installed conflict safety CI step must occur once")
+    block = reopen.split(marker, 1)[1].split("      - name:", 1)[0]
+    required = (
+        "        timeout-minutes: 5\n"
+        "        shell: bash\n"
+        "        run: |\n"
+        "          set -euo pipefail\n"
+        "          cargo test -p rrflow-cli --test installed_reopen --release --locked -- --ignored --list | grep -Fx 'sustained::installed_disjoint_writes_from_one_stamp_conflict_without_partial_effect: test'\n"
+        "          cargo test -p rrflow-cli --test installed_reopen --release --locked -- sustained::installed_disjoint_writes_from_one_stamp_conflict_without_partial_effect --exact --ignored --nocapture\n"
+    )
+    require(block == required, "installed conflict safety step must retain its exact matrix-wide list check, timeout and command")
     marker = "      - name: Require bounded native sampler failure\n"
     require(reopen.count(marker) == 1, "bounded native sampler failure CI step must occur once")
     block = reopen.split(marker, 1)[1].split("      - name:", 1)[0]
@@ -234,10 +284,25 @@ def verify_macos_reopen_cache_warm(workflow: str, reopen: str) -> None:
             "shared-key: installed-reopen-${{ matrix.os }}" in reopen and
             "cache-on-failure: false" in job and "cache-on-failure: false" in reopen,
             "cache warmer key or failure behavior differs from reopen")
+    isolation = """      - name: Isolate macOS reopen toolchain
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          toolchain_home="${RUNNER_TEMP}/rrflow-reopen-rustup"
+          test ! -e "$toolchain_home"
+          printf 'RUSTUP_HOME=%s\\n' "$toolchain_home" >> "$GITHUB_ENV"
+"""
+    for surface in (job, reopen):
+        require(surface.count(isolation) == 1,
+                "macOS reopen toolchain isolation must match exactly")
+        require(surface.index(isolation) < surface.index("- uses: dtolnay/rust-toolchain@") <
+                surface.index("- uses: Swatinem/rust-cache@"),
+                "toolchain isolation must precede installation and cache lookup")
     actions = lambda text: re.findall(r"(?m)^\s*- uses: ([^\s#]+)", text)
     require(actions(job) == actions(reopen)[:3], "cache warmer actions differ from reopen")
     expected = "cargo test -p rrflow-cli --test installed_reopen --release --locked --no-run"
-    require(re.findall(r"(?m)^\s*(?:-\s*)?run: (.+)$", job) == [expected] and
+    require(re.findall(r"(?m)^\s*(?:-\s*)?run: (.+)$", job) == ["|", expected] and
             f"run: {expected}" in reopen, "cache warmer build differs from reopen")
     for _, body in checkout_steps(workflow):
         require(not any(re.match(r"(?:ref|repository|path)\s*:", item) for item in body),
@@ -260,8 +325,11 @@ def verify_execution_inventory_ci(verify: str) -> None:
         "git rev-parse --verify HEAD > target/rrflow-inventory-revision.txt",
         'test "$(cat target/rrflow-inventory-revision.txt)" = "$GITHUB_SHA"',
         "python3 scripts/ci/build_execution_inventory.py --check",
+        "          python3 scripts/ci/test_analyze_sustained_conflicts.py\n",
     ):
         require(block.count(required) == 1, f"CI inventory generation missing: {required.strip()}")
+    require("continue-on-error:" not in block and "    if:" not in block,
+            "CI inventory and conflict analysis cannot be bypassed")
     order = (
         "set -euo pipefail",
         "git diff --exit-code",
@@ -746,6 +814,7 @@ def main() -> None:
     reusable = workflows[REUSABLE]
     jobs = job_blocks(reusable)
     verify_candidate_admission(caller)
+    verify_linux_arm64_ci(caller, reusable)
     warmer = workflows.get(WORKFLOW_DIRECTORY / "ci-cache-warm.yml")
     require(warmer is not None, "trusted macOS reopen cache warmer is absent")
     verify_macos_reopen_cache_warm(warmer, jobs["installed-reopen"])
@@ -798,11 +867,13 @@ def main() -> None:
         reusable.count("python3 scripts/knowledge/render_capacity_profiles.py --check") == 1
         and reusable.count("python3 scripts/knowledge/test_capacity_profiles.py") == 1
         and reusable.count("python3 scripts/ci/test_collect_storage_acceptance.py") == 1
-        and reusable.count("python3 scripts/ci/test_sustained_launch.py") == 1,
+        and reusable.count("python3 scripts/ci/test_sustained_launch.py") == 1
+        and reusable.count("python3 scripts/ci/test_analyze_sustained_conflicts.py") == 1,
         "the owning J-04 capacity projection must be checked exactly once",
     )
 
     expected_jobs = {
+        "native-arm64",
         "installed-reopen",
         "installed-crash",
         "topology-smoke",

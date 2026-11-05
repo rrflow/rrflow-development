@@ -2,14 +2,15 @@
 
 package rrd
 
-// OpenAPI SHA-256: f1856602eb3b5ba419f600b3be0e9626d62ad533032fe220a2728795bd28048a
+// OpenAPI SHA-256: 02c2fb3124a157286742287e6325beb9b8d0066ccd7dd215a843426914953bc4
 
-const EndpointOpenAPIDocumentSHA256 = "f1856602eb3b5ba419f600b3be0e9626d62ad533032fe220a2728795bd28048a"
+const EndpointOpenAPIDocumentSHA256 = "02c2fb3124a157286742287e6325beb9b8d0066ccd7dd215a843426914953bc4"
 
 type OperationID string
 
 const (
 	OperationAttunementCancel             OperationID = "attunement-cancel"
+	OperationAttunementJobList            OperationID = "attunement-job-list"
 	OperationAttunementPause              OperationID = "attunement-pause"
 	OperationAttunementRead               OperationID = "attunement-read"
 	OperationAttunementReceiptRead        OperationID = "attunement-receipt-read"
@@ -45,6 +46,9 @@ const (
 	OperationHealthReady                  OperationID = "health-ready"
 	OperationKnowledgeTreeList            OperationID = "knowledge-tree-list"
 	OperationKnowledgeTreeReplace         OperationID = "knowledge-tree-replace"
+	OperationObservationDeliver           OperationID = "observation-deliver"
+	OperationObservationPrepare           OperationID = "observation-prepare"
+	OperationObservationRead              OperationID = "observation-read"
 	OperationOpenapiRead                  OperationID = "openapi-read"
 	OperationQueryExecute                 OperationID = "query-execute"
 	OperationQueryExport                  OperationID = "query-export"
@@ -73,6 +77,9 @@ const (
 	OperationTransactionPreview           OperationID = "transaction-preview"
 	OperationVectorCollectionEnsure       OperationID = "vector-collection-ensure"
 	OperationVectorCollectionList         OperationID = "vector-collection-list"
+	OperationVectorIndexEnsure            OperationID = "vector-index-ensure"
+	OperationVectorPayloadIndexDelete     OperationID = "vector-payload-index-delete"
+	OperationVectorPayloadIndexEnsure     OperationID = "vector-payload-index-ensure"
 	OperationVectorPointRetrieve          OperationID = "vector-point-retrieve"
 	OperationVectorPointScroll            OperationID = "vector-point-scroll"
 	OperationVectorQuantizationActivate   OperationID = "vector-quantization-activate"
@@ -84,6 +91,7 @@ const (
 
 var endpoints = map[OperationID]Endpoint{
 	OperationAttunementCancel:             {Method: "POST", Path: "/v1/attunement/cancel", Authentication: "session_bearer", Mutation: true},
+	OperationAttunementJobList:            {Method: "POST", Path: "/v1/attunement/jobs/list", Authentication: "session_bearer", Mutation: false},
 	OperationAttunementPause:              {Method: "POST", Path: "/v1/attunement/pause", Authentication: "session_bearer", Mutation: true},
 	OperationAttunementRead:               {Method: "POST", Path: "/v1/attunement/read", Authentication: "session_bearer", Mutation: false},
 	OperationAttunementReceiptRead:        {Method: "POST", Path: "/v1/attunement/receipt/read", Authentication: "session_bearer", Mutation: false},
@@ -119,6 +127,9 @@ var endpoints = map[OperationID]Endpoint{
 	OperationHealthReady:                  {Method: "GET", Path: "/v1/health/ready", Authentication: "public", Mutation: false},
 	OperationKnowledgeTreeList:            {Method: "POST", Path: "/v1/knowledge/trees/list", Authentication: "session_bearer", Mutation: false},
 	OperationKnowledgeTreeReplace:         {Method: "POST", Path: "/v1/knowledge/trees/replace", Authentication: "session_bearer", Mutation: true},
+	OperationObservationDeliver:           {Method: "POST", Path: "/v1/observations/deliver", Authentication: "session_bearer", Mutation: true},
+	OperationObservationPrepare:           {Method: "POST", Path: "/v1/observations/prepare", Authentication: "session_bearer", Mutation: true},
+	OperationObservationRead:              {Method: "POST", Path: "/v1/observations/read", Authentication: "session_bearer", Mutation: false},
 	OperationOpenapiRead:                  {Method: "GET", Path: "/v1/schema/openapi", Authentication: "public", Mutation: false},
 	OperationQueryExecute:                 {Method: "POST", Path: "/v1/query", Authentication: "session_bearer", Mutation: false},
 	OperationQueryExport:                  {Method: "POST", Path: "/v1/query/export", Authentication: "session_bearer", Mutation: false},
@@ -147,6 +158,9 @@ var endpoints = map[OperationID]Endpoint{
 	OperationTransactionPreview:           {Method: "POST", Path: "/v1/transactions/{transaction}/preview", Authentication: "session_bearer", Mutation: true},
 	OperationVectorCollectionEnsure:       {Method: "POST", Path: "/v1/vector/collections/ensure", Authentication: "session_bearer", Mutation: true},
 	OperationVectorCollectionList:         {Method: "POST", Path: "/v1/vector/collections/list", Authentication: "session_bearer", Mutation: false},
+	OperationVectorIndexEnsure:            {Method: "POST", Path: "/v1/vector/indexes/ensure", Authentication: "session_bearer", Mutation: true},
+	OperationVectorPayloadIndexDelete:     {Method: "POST", Path: "/v1/vector/payload-indexes/delete", Authentication: "session_bearer", Mutation: true},
+	OperationVectorPayloadIndexEnsure:     {Method: "POST", Path: "/v1/vector/payload-indexes/ensure", Authentication: "session_bearer", Mutation: true},
 	OperationVectorPointRetrieve:          {Method: "POST", Path: "/v1/vector/points/retrieve", Authentication: "session_bearer", Mutation: false},
 	OperationVectorPointScroll:            {Method: "POST", Path: "/v1/vector/points/scroll", Authentication: "session_bearer", Mutation: false},
 	OperationVectorQuantizationActivate:   {Method: "POST", Path: "/v1/vector/quantizations/activate", Authentication: "session_bearer", Mutation: true},

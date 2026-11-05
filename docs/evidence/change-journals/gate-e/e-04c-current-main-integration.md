@@ -1,0 +1,31 @@
+# E-04c integration with current main
+
+**Status:** active immutable integration evidence; E-04, POAM-028, POAM-045 and OBJ-13 remain open.
+**Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/gate-e/e-04c-current-main-integration`
+**Owner:** PR #190 integration and conflict-resolution evidence.
+
+## Evidence record
+
+```text
+gate/package and alpha outcome: E-04c / OBJ-13 / POAM-028 prerequisite; no gate closure.
+starting revision/tree and pull request: PR #190 head f3f8921e9001a1004c1f2e7ac717b6a3a97135dd / e5eec5e96a0d4b4e04d50a10552fac871e57efd2, integrating public main 6fe8b7590d913beda9b009551e5d2d2644e406d9 / 3bd842a6132a2815fab0133988898ec2483b6293. Prerequisites #184-#187 and #174 were verified merged through GitHub.
+change brief: reconcile main and the existing incremental TurboQuant implementation, retain both contracts and all tests, regenerate projections and preserve the retired inventory descriptor; correct the overbroad scaling claim. No product version, engine authority, CI gate, C-07 status or release status changes. Stop on lost semantics or failed equivalence.
+files and symbols reviewed: README product identity/status and owner map; docs/roadmap/rrflow-1.0-execution/change-authoring.md; docs/operations/ci.md inventory section; docs/reference/vector/quantization-lifecycle.md changed section; prior E-04c journal and PR brief; complete semantic diffs of engine/vector/quantization.rs and rrd-vector/turbo_segment.rs; complete incremental_generations.rs; rrd-contract lib.rs conflict and result fields; rrd-store repository/runtime.rs read_vector_deltas boundary; scripts/ci/check_generated_surfaces.py generation and validation boundaries; SDK generators and all conflict-marker sections. Generated files are checked against their generators.
+implementation/evidence paths: PR #190 keeps the engine/vector and turbo_segment implementation and tests, contract result fields, E-04c journal, and vector lifecycle reference; this integration regenerates the five SDK endpoint/schema projections and seven signal projections, updates authored OpenAPI digest citations, preserves the main inventory retirement descriptor, corrects the reference and test comments, and adds this journal plus its generated index.
+conflict analysis and traceability: 20 conflicting paths: one authored contract digest, six authored digest citations, one retired inventory descriptor, and twelve generated SDK/signal paths (including the signal reference). The generated OpenAPI is rebuilt from the merged contract, retaining main operations and E-04c result fields. The stable inventory descriptor is retained from main; live inventory is generated under target. Original E-04c implementation and tests remain in their canonical engine/vector boundaries, and existing main functionality is retained. No implementation was deleted or moved.
+research/trace/resource decision: existing RRFlow contracts and E-04c evidence; no upstream source adapted. Existing byte-equality, source-read counters, reopen and bounded-budget tests are the trace and correctness oracles. The implementation copies retained packed codes and serializes an entire generation; no total-work, memory or latency qualification is claimed.
+first oracle: cargo test --offline --locked -p rrd-engine --lib incremental_generations: 7 passed. This included byte equality with a full build, interruption, concurrent build and reopen tests.
+acceptance commands: cargo test --offline --locked -p rrd-vector -p rrd-contract: passed. cargo test --offline --locked -p rrd-engine --lib: 253 passed, 3 ignored. cargo clippy --offline --locked -p rrd-vector -p rrd-contract -p rrd-engine --all-targets -- -D warnings: passed. cargo fmt --all -- --check: passed before comment-only clarification. All five SDK generators and their check modes passed; TypeScript used fnm Node 24.22.0, Python used uv locked offline. TypeScript tsc --noEmit and 6 tests passed. python scripts/ci/check_generated_surfaces.py --write and --check: passed, 62 HTTP operations, OpenAPI 897fb573b894751ea075ec5acf9c2e1ad5a0a634ad1c23b525d2376be21f8252. CI workflow policy and documentation policy passed before this journal; regenerate and recheck below.
+surfaced failures and corrections: initial documentation-policy check rejected this journal because its status did not start with active or historical; corrected the declared status and rechecked. pnpm wrapper failed to launch its installed binary; used the already installed locked TypeScript tool directly under the required Node version. No dependency version or tracked tool configuration changed. Review found that the draft's wording could imply total build work follows only the change; the reference and test commentary now distinguish measured source-version reads/encoding from full-generation copying. The generator's digest citations were reconciled from the combined exported document, not taken from either parent.
+checks not run: native macOS/Windows installed crash/capacity and 100,000-record/soak qualification; full candidate and protected merge-group CI. Component tests do not replace these. CI run and final merge evidence will be recorded by GitHub.
+remaining known errors and owner: POAM-045 moved-vector visibility; POAM-028 catalogue replay and E-04/J-04 resource qualification remain open. PR #208 has unresolved native CI failures. PR #190 has not been merged.
+review: the complete changed semantic patches and E-04c test module were reviewed; generated projections are compared with their owning generators. No generated output was treated as contract authority.
+change checklist: brief recorded on PR before merge; owner and invariant mapped; parent identities checked; conflict content and replacement generation reviewed; focused then package suites run; journal linked via generated navigation; candidate and protected CI still required.
+roadmap/POAM status change: none.
+pull request, CI and merge evidence: https://github.com/rrflow/rrflow-development/pull/190; exact integrated head and CI pending.
+```
+
+## Links
+
+- [Original E-04c journal](e-04c-incremental-turboquant-generations.md)
+- [TurboQuant lifecycle](../../../reference/vector/quantization-lifecycle.md)

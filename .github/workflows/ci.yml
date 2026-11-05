@@ -31,3 +31,8 @@ jobs:
             && vars.CI_SELF_HOSTED_ENABLED == 'true'
             && (vars.CI_LINUX_HEAVY_RUNNER || '["ubuntu-latest"]')
             || '["ubuntu-latest"]' }}
+      linux-arm64-runner: >-
+        ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+            && vars.CI_SELF_HOSTED_ENABLED == 'true'
+            && (vars.CI_LINUX_ARM64_RUNNER || '["ubuntu-24.04-arm"]')
+            || '["ubuntu-24.04-arm"]' }}

@@ -110,14 +110,29 @@ async fn installed_typed_attunement_controls_replan_and_reopen() {
     )
     .unwrap();
     let plan = preview.attunement;
-    let job_id =
-        rrd_contract::CanonicalId::new(format!("job-{}", &plan.plan_sha256[..24])).unwrap();
+    let (client, shutdown, server) = start(&project).await;
+    let session = login(&client, &project, "typed-session").await;
+    let discovery = rrd_contract::ListAttunementJobs {
+        contract_version: VERSION,
+        after_job_id: None,
+        limit: 1,
+    };
+    let initial = client
+        .list_attunement_jobs(
+            &session,
+            discovery.clone(),
+            read_options("typed-discover").unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(initial.jobs.len(), 1);
+    assert_eq!(initial.jobs[0].plan_sha256, plan.plan_sha256);
+    assert_eq!(initial.next_after_job_id, None);
+    let job_id = initial.jobs[0].job_id.clone();
     let read = ReadAttunement {
         contract_version: VERSION,
         job_id: job_id.clone(),
     };
-    let (client, shutdown, server) = start(&project).await;
-    let session = login(&client, &project, "typed-session").await;
     let start_request = StartAttunement {
         contract_version: VERSION,
         job_id: job_id.clone(),
@@ -339,6 +354,30 @@ async fn installed_typed_attunement_controls_replan_and_reopen() {
         .await
         .unwrap();
     assert!(!accepted.idempotent_replay);
+    let predecessor_page = client
+        .list_attunement_jobs(
+            &session,
+            discovery.clone(),
+            read_options("typed-discover-predecessor").unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(predecessor_page.next_after_job_id, Some(job_id.clone()));
+    let continuation = rrd_contract::ListAttunementJobs {
+        after_job_id: predecessor_page.next_after_job_id,
+        ..discovery
+    };
+    let successor_page = client
+        .list_attunement_jobs(
+            &session,
+            continuation.clone(),
+            read_options("typed-discover-successor").unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(successor_page.jobs[0].job_id, accepted.successor.job.id);
+    assert_eq!(successor_page.jobs[0].generation, 1);
+    assert_eq!(successor_page.next_after_job_id, None);
     let receipt_request = ReadAttunementReceipt {
         contract_version: VERSION,
         job_id: job_id.clone(),
@@ -369,6 +408,19 @@ async fn installed_typed_attunement_controls_replan_and_reopen() {
     server.await.unwrap().unwrap();
     let (reopened, shutdown, server) = start(&project).await;
     let session = login(&reopened, &project, "typed-reopen-session").await;
+    let recovered_page = reopened
+        .list_attunement_jobs(
+            &session,
+            continuation,
+            read_options("typed-discover-reopen").unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(recovered_page.jobs, successor_page.jobs);
+    assert_eq!(
+        recovered_page.source_verification,
+        rrd_contract::AttunementSourceVerification::NotChecked
+    );
     let resume_replay = reopened
         .resume_attunement(
             &session,
@@ -865,7 +917,7 @@ async fn installed_native_database_relations_atomicity_temporal_reads_and_reopen
     let created = database::initialize(&client, &session, created_at, "db-init")
         .await
         .unwrap();
-    assert_eq!(created.mutation_count, 4);
+    assert_eq!(created.mutation_count, 6);
     let installed_schema = schema(&client, &session, "db-after").await;
     for (kind, table) in &initial_schema.tables {
         assert_eq!(
@@ -906,7 +958,7 @@ async fn installed_native_database_relations_atomicity_temporal_reads_and_reopen
     initial_view.verify(&scope, "open").unwrap();
     assert!(initial_view.verify(&scope, "done").is_err());
     assert!(initial_view.verify("instance:foreign", "open").is_err());
-    for fault in 0..8 {
+    for fault in 0..15 {
         let mut invalid = initial_view.clone();
         match fault {
             0 => invalid.tasks.execution.truncated = true,
@@ -924,7 +976,32 @@ async fn installed_native_database_relations_atomicity_temporal_reads_and_reopen
                 );
             }
             6 => invalid.relationships.execution.truncated = true,
-            _ => invalid.tasks.execution.returned_rows += 1,
+            7 => invalid.tasks.execution.returned_rows += 1,
+            8 => invalid.documents.known_at_cursor += 1,
+            9 => {
+                invalid.documents.rows[0]
+                    .values
+                    .insert("metadata".into(), QueryValue::Null);
+            }
+            10 => {
+                invalid.document_relationships.rows[0]
+                    .values
+                    .insert("right.reason".into(), QueryValue::String("forged".into()));
+            }
+            11 => invalid.documents.execution.truncated = true,
+            12 => invalid.document_relationships.rows.clear(),
+            13 => {
+                invalid.document_relationships.rows[0].values.insert(
+                    "left.id".into(),
+                    QueryValue::String("wrong-document".into()),
+                );
+            }
+            _ => {
+                invalid.document_relationships.rows[0].values.insert(
+                    "right.to_id".into(),
+                    QueryValue::String("wrong-task".into()),
+                );
+            }
         }
         assert!(
             invalid.verify(&scope, "open").is_err(),
@@ -954,6 +1031,7 @@ async fn installed_native_database_relations_atomicity_temporal_reads_and_reopen
         &transaction,
         vec![
             database::task_record("must not survive", "done", rejected_at),
+            database::document_record("must not survive", 2, rejected_at),
             database::project_record("duplicate-project", "local-ai", rejected_at),
         ],
         "db-invalid-commit"
@@ -1006,7 +1084,10 @@ async fn installed_native_database_relations_atomicity_temporal_reads_and_reopen
         &client,
         &session,
         &transaction,
-        vec![database::task_record("canceled", "done", rejected_at)],
+        vec![
+            database::task_record("canceled", "done", rejected_at),
+            database::document_record("canceled", 7, rejected_at),
+        ],
         "db-cancel-commit"
     )
     .await
@@ -1090,12 +1171,32 @@ async fn installed_native_database_relations_atomicity_temporal_reads_and_reopen
     let earlier_view = database::DatabaseView {
         tasks: before.clone(),
         relationships: earlier_join,
+        documents: database::documents(
+            &client,
+            &session,
+            created_at,
+            before.known_at_cursor,
+            "db-earlier-documents",
+        )
+        .await
+        .unwrap(),
+        document_relationships: database::document_relationships(
+            &client,
+            &session,
+            created_at,
+            before.known_at_cursor,
+            "db-earlier-document-join",
+        )
+        .await
+        .unwrap(),
     };
     earlier_view.verify(&scope, "open").unwrap();
     assert_eq!(earlier_view.relationships.rows, joined.rows);
     let mixed = database::DatabaseView {
         tasks: before.clone(),
-        relationships: updated_view.relationships,
+        relationships: updated_view.relationships.clone(),
+        documents: earlier_view.documents.clone(),
+        document_relationships: earlier_view.document_relationships.clone(),
     };
     assert!(mixed.verify(&scope, "open").is_err());
     assert_eq!(

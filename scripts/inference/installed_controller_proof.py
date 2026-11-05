@@ -77,6 +77,8 @@ def main():
              'sourceCommit': build['provenance']['source_commit'], 'providerDispatchAllowed': False})
     else:
         source_binary = Path(receipt['binary'])
+        if not source_binary.is_absolute():
+            source_binary = receipt_path.resolve().parent / source_binary
         assert hashlib.sha256(source_binary.read_bytes()).hexdigest() == build['executable_sha256']
         binary = out / source_binary.name
         shutil.copyfile(source_binary, binary)

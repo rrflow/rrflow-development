@@ -91,7 +91,7 @@ impl ArtifactTransferObserver for RecordingArtifactObserver {
 #[test]
 fn mutual_tls_transport_replicates_and_denies_identity_confusion() {
     tokio::runtime::Runtime::new().unwrap().block_on(async {
-        let cluster = ClusterId::new("cluster:tls-transport").unwrap();
+        let cluster = ClusterId::new("cluster-tls-transport").unwrap();
         let project_scope = ScopeId::new("instance:tls-artifact-transfer").unwrap();
         let trust_domain = "rrd.test";
         let (ca, issuer) = test_ca();

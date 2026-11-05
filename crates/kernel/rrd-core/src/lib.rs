@@ -38,6 +38,7 @@ pub mod error;
 pub mod ident;
 pub mod reasoning_tree;
 pub mod reference;
+pub mod result_identity;
 pub mod runtime;
 pub mod schema;
 pub mod telemetry;

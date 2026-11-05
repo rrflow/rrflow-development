@@ -173,16 +173,13 @@ impl RrdEngine {
                 }
             }
         };
-        let candidates = rrd_vector::candidates_from_changes(&direct.changes, &scope)
-            .into_iter()
-            .filter(|candidate| {
-                collection_address
-                    .as_ref()
-                    .is_none_or(|(collection, vector)| {
-                        vector_matches_collection(&candidate.vector, collection, vector)
-                    })
-            })
-            .collect::<Vec<_>>();
+        let candidates = rrd_vector::candidates_from_changes(&direct.changes, &scope);
+        let candidates = match &collection_address {
+            Some((collection, vector)) => {
+                collection_versions(&search_visibility(&search), candidates, collection, vector)?
+            }
+            None => candidates,
+        };
         let canonical_candidates = u64::try_from(candidates.len())
             .map_err(|_| ServiceError::Vector("vector candidate count exceeds u64".into()))?;
         let source_cursor = candidates
@@ -296,7 +293,21 @@ impl RrdEngine {
             .bindings
             .values()
             .filter(|binding| vector_artifact_relevant(&binding.descriptor, search));
-        let (Some(binding), None) = (eligible.next(), eligible.next()) else {
+        let first = eligible.next();
+        let second = eligible.next();
+        if first.is_none() {
+            // The stamped catalogue has no compatible loaded binding. Ask
+            // the existing planner whether any descriptor can serve even at
+            // source cursor zero, before reading canonical vector versions.
+            // A successful plan falls through: only a definitive planner
+            // refusal is safe to return without inspecting the source.
+            manifest
+                .runtime
+                .prepare_search_at(search, 0, ef_search)
+                .map_err(core_vector)?;
+            return Ok(None);
+        }
+        let (Some(binding), None) = (first, second) else {
             return Ok(None);
         };
         if binding.kind != rrd_vector::VectorArtifactKind::TurboQuant {
@@ -398,17 +409,20 @@ impl RrdEngine {
                     .map_err(crate::engine::error::storage_read_error)?,
             )
         };
-        let canonical = rrd_vector::candidates_from_changes(&deltas.changes, scope)
-            .into_iter()
-            .chain(
-                rerank
-                    .iter()
-                    .flat_map(|rerank| rrd_vector::candidates_from_changes(&rerank.changes, scope)),
-            )
-            .filter(|candidate| {
-                vector_matches_collection(&candidate.vector, collection_id, vector_name)
-            })
-            .collect::<Vec<_>>();
+        // Both reads hold each identity's complete history, so a moved
+        // identity resolves to the collection it moved to.
+        let canonical =
+            collection_versions(
+                &search_visibility(search),
+                rrd_vector::candidates_from_changes(&deltas.changes, scope)
+                    .into_iter()
+                    .chain(rerank.iter().flat_map(|rerank| {
+                        rrd_vector::candidates_from_changes(&rerank.changes, scope)
+                    }))
+                    .collect(),
+                collection_id,
+                vector_name,
+            )?;
         let canonical_candidates = u64::try_from(canonical.len())
             .map_err(|_| ServiceError::Vector("vector candidate count exceeds u64".into()))?;
         let source_cursor = canonical
@@ -532,6 +546,19 @@ fn search_result(
             })
             .collect::<Result<_>>()?,
     })
+}
+
+/// The visibility a search resolves its candidates at. The payload filter
+/// is left to the runtime, which applies it to the version that resolves.
+fn search_visibility(search: &rrd_vector::SearchRequest) -> rrd_vector::VectorVisibilityRequest {
+    rrd_vector::VectorVisibilityRequest {
+        scope: search.scope.clone(),
+        read: search.read.clone(),
+        valid_at: search.valid_at,
+        field: search.field.clone(),
+        embedding_model: search.embedding_model.clone(),
+        filter: None,
+    }
 }
 
 /// What remains of one request's key budget after `examined` keys. An

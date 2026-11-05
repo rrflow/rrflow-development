@@ -116,6 +116,7 @@ mod flight;
 mod function;
 mod inference;
 mod installation;
+mod observation_delivery;
 mod observation_source;
 mod project_map;
 pub use attunement::{

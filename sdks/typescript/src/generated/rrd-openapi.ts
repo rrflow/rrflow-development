@@ -1,4 +1,4 @@
-// OpenAPI SHA-256: f1856602eb3b5ba419f600b3be0e9626d62ad533032fe220a2728795bd28048a
+// OpenAPI SHA-256: 02c2fb3124a157286742287e6325beb9b8d0066ccd7dd215a843426914953bc4
 export interface paths {
     "/v1/attunement/cancel": {
         parameters: {
@@ -14,6 +14,26 @@ export interface paths {
          * @description Requires EstateAdmin, the exact job revision and plan digest, and an idempotency key. Returns the durable cancel_requested transition or its original receipt on replay. Cancellation is not proof that a worker or external resource has terminated.
          */
         post: operations["attunement-cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/attunement/jobs/list": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Discover installed attunement jobs
+         * @description Requires EstateRead. Follows the installed initial job and committed successor links within the requested page bound. Returns stored identities and state at an unchanged control sequence; each later page is a new read. Does not inspect current source, start work, or accept a plan.
+         */
+        post: operations["attunement-job-list"];
         delete?: never;
         options?: never;
         head?: never;
@@ -700,6 +720,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/observations/deliver": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Deliver one prepared engine observation
+         * @description Checks current owner, source-read permission, configuration and payload digests before one fenced HTTP attempt. Only the configured devspace and exact event acknowledgement count as delivered. Lost acknowledgements remain uncertain; authorized retries reuse the same payload and event ID. An acknowledged record never dispatches again. Delivery grants neither task success nor training approval.
+         */
+        post: operations["observation-deliver"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/observations/prepare": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Prepare an authorized engine observation
+         * @description Reads a terminal task attempt or installed job at the requested identity. Freezes its public response locally and prepares metadata-only export under an approved endpoint profile, source scope and finite limits. Requires initialized authority and current source-read permission. A repeated delivery ID replays its retained record; conflicting reuse fails. Preparation does not execute or complete its source task.
+         */
+        post: operations["observation-prepare"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/observations/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Read an engine observation delivery receipt
+         * @description Returns only the current principal's retained delivery and exact locally captured source response, with current source-read authorization. Source content is never exported to the sink. An expired in-flight fence is projected as uncertain without repeating the source task or contacting the sink. Absent or explicitly retired records return null. A transport receipt is historical evidence, not current project-source verification.
+         */
+        post: operations["observation-read"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/query": {
         parameters: {
             query?: never;
@@ -1280,6 +1360,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/vector/indexes/ensure": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Build or advance the graph index of a named dense vector
+         * @description Builds the HNSW index of one collection and dense named vector, or advances it to the current source, within max_storage_keys. An index already covering the source is returned without a new generation. filter_properties name active payload indexes a filtered search can use. The build runs inside this request. An idempotency key is required: a key that published a generation returns it even after the source moves on, and another request under the key is a conflict. The response carries the build evidence. Requires a session bearer with vector_collection_ensure.
+         */
+        post: operations["vector-index-ensure"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/vector/payload-indexes/delete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Delete a payload index
+         * @description Removes one payload index from a collection, refused while an active index generation filters on it. An idempotency key is required: the same key and request replay the recorded deletion, and another request under the key is a conflict. Requires a session bearer with vector_payload_index_delete.
+         */
+        post: operations["vector-payload-index-delete"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/vector/payload-indexes/ensure": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Declare a typed payload index on a collection
+         * @description Declares one typed payload index on a collection, so filters and index generations can use that property, and returns the index and the catalogue revision. An idempotency key is required: the same key and request replay the recorded index, and another request under the key is a conflict. Requires a session bearer with vector_payload_index_ensure.
+         */
+        post: operations["vector-payload-index-ensure"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/vector/points/retrieve": {
         parameters: {
             query?: never;
@@ -1707,6 +1847,8 @@ export interface components {
                         lease_expires_at_unix_ms: number;
                         /** Format: uint16 */
                         max_in_flight: number;
+                        /** Format: uint16 */
+                        result_identity_version?: number | null;
                         /** Format: uint64 */
                         retention_floor_cursor: number;
                         /** @enum {string} */
@@ -2823,6 +2965,8 @@ export interface components {
                                     };
                                 };
                             }[];
+                            /** Format: uint16 */
+                            result_identity_version: number;
                             /** Format: uint64 */
                             through_cursor: number;
                             timed_out: boolean;
@@ -2974,6 +3118,8 @@ export interface components {
                         lease_expires_at_unix_ms: number;
                         /** Format: uint16 */
                         max_in_flight: number;
+                        /** Format: uint16 */
+                        result_identity_version?: number | null;
                         /** Format: uint64 */
                         retention_floor_cursor: number;
                         /** @enum {string} */
@@ -3024,6 +3170,8 @@ export interface components {
                         lease_expires_at_unix_ms: number;
                         /** Format: uint16 */
                         max_in_flight: number;
+                        /** Format: uint16 */
+                        result_identity_version?: number | null;
                         /** Format: uint64 */
                         retention_floor_cursor: number;
                         /** @enum {string} */
@@ -3462,6 +3610,319 @@ export interface operations {
                                     };
                                     /** Format: uint64 */
                                     observed_at_unix_ms: number;
+                                };
+                            };
+                            /** @constant */
+                            status: "ok";
+                        } | {
+                            error: {
+                                /** @enum {string} */
+                                code: "invalid_argument" | "not_found" | "already_exists" | "conflict" | "failed_precondition" | "unauthenticated" | "permission_denied" | "resource_exhausted" | "deadline_exceeded" | "cancelled" | "unavailable" | "corruption" | "unsupported_version" | "internal";
+                                details?: {
+                                    [key: string]: string;
+                                };
+                                message: string;
+                                retryable: boolean;
+                            };
+                            /** @constant */
+                            status: "error";
+                        };
+                        protocol: string;
+                        /** Format: uint16 */
+                        protocol_version: number;
+                        request_id: string;
+                    };
+                };
+            };
+        };
+    };
+    "attunement-job-list": {
+        parameters: {
+            query?: never;
+            header: {
+                "X-RRD-Session": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    context: {
+                        /** Format: uint64 */
+                        deadline_unix_ms?: number | null;
+                        idempotency_key?: string | null;
+                        operation_id: string;
+                        request_id: string;
+                    };
+                    payload: {
+                        /**
+                         * @description A canonical public identifier component.
+                         *
+                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                         *     labels are separate data and may use arbitrary Unicode.
+                         */
+                        after_job_id?: string | null;
+                        /** @constant */
+                        contract_version: 2;
+                        limit: number;
+                    };
+                    protocol: string;
+                    /** Format: uint16 */
+                    protocol_version: number;
+                    /**
+                     * @description A fully explicit hierarchical identity. No field is inferred from process
+                     *     cwd, connection state, or a human label.
+                     */
+                    resource: {
+                        segments: {
+                            /**
+                             * @description A canonical public identifier component.
+                             *
+                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                             *     labels are separate data and may use arbitrary Unicode.
+                             */
+                            id: string;
+                            /** @enum {string} */
+                            kind: "organization" | "estate" | "project" | "instance" | "tenant" | "namespace" | "database" | "table" | "collection" | "record" | "point" | "relation" | "alias" | "cluster" | "node" | "shard" | "replica" | "segment" | "transaction" | "snapshot" | "backup" | "operation";
+                        }[];
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description Typed RRD response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        operation_id: string;
+                        outcome: {
+                            payload: {
+                                /**
+                                 * @description A canonical public identifier component.
+                                 *
+                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                 *     labels are separate data and may use arbitrary Unicode.
+                                 */
+                                after_job_id?: string | null;
+                                /** @constant */
+                                contract_version: 2;
+                                /**
+                                 * Format: uint64
+                                 * @description The control sequence was unchanged throughout this page's collection.
+                                 *     Later pages are new reads, not one retained cross-page snapshot.
+                                 */
+                                control_sequence: number;
+                                jobs: {
+                                    /** Format: uint16 */
+                                    checkpoint_count: number;
+                                    /** Format: uint64 */
+                                    created_at_unix_ms: number;
+                                    /** Format: uint64 */
+                                    generation: number;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    job_id: string;
+                                    /** @enum {string|null} */
+                                    next_phase?: "connect" | "inventory" | "parse" | "normalize" | "entity_link" | "lexical_index" | "embed" | "vector_index" | "graph" | "ground" | "verify" | null;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    plan_id: string;
+                                    plan_sha256: string;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    predecessor_job_id?: string | null;
+                                    /** Format: uint64 */
+                                    revision: number;
+                                    source_sha256: string;
+                                    /** @enum {string} */
+                                    state: "pending" | "running" | "paused" | "cancel_requested" | "cancelled" | "failed" | "succeeded";
+                                    /** Format: uint64 */
+                                    updated_at_unix_ms: number;
+                                }[];
+                                /**
+                                 * @description A canonical public identifier component.
+                                 *
+                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                 *     labels are separate data and may use arbitrary Unicode.
+                                 */
+                                next_after_job_id?: string | null;
+                                /** Format: uint64 */
+                                observed_at_unix_ms: number;
+                                /**
+                                 * @description This operation does not inspect the project's current source tree.
+                                 * @enum {string}
+                                 */
+                                source_verification: "not_checked";
+                                /**
+                                 * @description Stable project-local identity. Organization is deliberately absent: a
+                                 *     local installation must not fabricate a tenant merely to address itself.
+                                 */
+                                target: {
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    estate_id: string;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    instance_id: string;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    project_id: string;
+                                };
+                            };
+                            /** @constant */
+                            status: "ok";
+                        } | {
+                            error: {
+                                /** @enum {string} */
+                                code: "invalid_argument" | "not_found" | "already_exists" | "conflict" | "failed_precondition" | "unauthenticated" | "permission_denied" | "resource_exhausted" | "deadline_exceeded" | "cancelled" | "unavailable" | "corruption" | "unsupported_version" | "internal";
+                                details?: {
+                                    [key: string]: string;
+                                };
+                                message: string;
+                                retryable: boolean;
+                            };
+                            /** @constant */
+                            status: "error";
+                        };
+                        protocol: string;
+                        /** Format: uint16 */
+                        protocol_version: number;
+                        request_id: string;
+                    };
+                };
+            };
+            /** @description Typed RRD error response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        operation_id: string;
+                        outcome: {
+                            payload: {
+                                /**
+                                 * @description A canonical public identifier component.
+                                 *
+                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                 *     labels are separate data and may use arbitrary Unicode.
+                                 */
+                                after_job_id?: string | null;
+                                /** @constant */
+                                contract_version: 2;
+                                /**
+                                 * Format: uint64
+                                 * @description The control sequence was unchanged throughout this page's collection.
+                                 *     Later pages are new reads, not one retained cross-page snapshot.
+                                 */
+                                control_sequence: number;
+                                jobs: {
+                                    /** Format: uint16 */
+                                    checkpoint_count: number;
+                                    /** Format: uint64 */
+                                    created_at_unix_ms: number;
+                                    /** Format: uint64 */
+                                    generation: number;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    job_id: string;
+                                    /** @enum {string|null} */
+                                    next_phase?: "connect" | "inventory" | "parse" | "normalize" | "entity_link" | "lexical_index" | "embed" | "vector_index" | "graph" | "ground" | "verify" | null;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    plan_id: string;
+                                    plan_sha256: string;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    predecessor_job_id?: string | null;
+                                    /** Format: uint64 */
+                                    revision: number;
+                                    source_sha256: string;
+                                    /** @enum {string} */
+                                    state: "pending" | "running" | "paused" | "cancel_requested" | "cancelled" | "failed" | "succeeded";
+                                    /** Format: uint64 */
+                                    updated_at_unix_ms: number;
+                                }[];
+                                /**
+                                 * @description A canonical public identifier component.
+                                 *
+                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                 *     labels are separate data and may use arbitrary Unicode.
+                                 */
+                                next_after_job_id?: string | null;
+                                /** Format: uint64 */
+                                observed_at_unix_ms: number;
+                                /**
+                                 * @description This operation does not inspect the project's current source tree.
+                                 * @enum {string}
+                                 */
+                                source_verification: "not_checked";
+                                /**
+                                 * @description Stable project-local identity. Organization is deliberately absent: a
+                                 *     local installation must not fabricate a tenant merely to address itself.
+                                 */
+                                target: {
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    estate_id: string;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    instance_id: string;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    project_id: string;
                                 };
                             };
                             /** @constant */
@@ -8353,7 +8814,7 @@ export interface operations {
                                 chain_head_sha256?: string | null;
                                 records: {
                                     /** @enum {string} */
-                                    action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "knowledge_tree_read" | "knowledge_tree_write";
+                                    action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "observation_prepare" | "observation_deliver" | "observation_read" | "knowledge_tree_read" | "knowledge_tree_write";
                                     /** Format: uint64 */
                                     at_unix_ms: number;
                                     /**
@@ -8443,7 +8904,7 @@ export interface operations {
                                 chain_head_sha256?: string | null;
                                 records: {
                                     /** @enum {string} */
-                                    action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "knowledge_tree_read" | "knowledge_tree_write";
+                                    action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "observation_prepare" | "observation_deliver" | "observation_read" | "knowledge_tree_read" | "knowledge_tree_write";
                                     /** Format: uint64 */
                                     at_unix_ms: number;
                                     /**
@@ -13989,6 +14450,39 @@ export interface operations {
                                  *     labels are separate data and may use arbitrary Unicode.
                                  */
                                 name: string;
+                                observation_policy?: {
+                                    allow_metadata_export: boolean;
+                                    allow_network: boolean;
+                                    /** @description Explicit scopes; absence is not an all-project grant. */
+                                    allowed_scopes: string[];
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    binding_id: string;
+                                    /** Format: uint16 */
+                                    contract_version: number;
+                                    expected_devspace: string;
+                                    /** Format: uint32 */
+                                    max_attempts: number;
+                                    /** Format: uint64 */
+                                    max_response_bytes: number;
+                                    /** Format: uint32 */
+                                    max_retained_deliveries: number;
+                                    protocol_evidence_sha256: string;
+                                    /** Format: uint64 */
+                                    retention_ms: number;
+                                    /**
+                                     * @description Explicitly permit retiring unresolved records after their original expiry.
+                                     *     Retirement is audited and never means delivery or task success.
+                                     * @default false
+                                     */
+                                    retire_expired_uncertain?: boolean;
+                                    /** Format: uint64 */
+                                    retry_delay_ms: number;
+                                } | null;
                                 profile_sha256: string;
                                 /** Format: uint64 */
                                 revision: number;
@@ -14254,6 +14748,39 @@ export interface operations {
                                      *     labels are separate data and may use arbitrary Unicode.
                                      */
                                     name: string;
+                                    observation_policy?: {
+                                        allow_metadata_export: boolean;
+                                        allow_network: boolean;
+                                        /** @description Explicit scopes; absence is not an all-project grant. */
+                                        allowed_scopes: string[];
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        binding_id: string;
+                                        /** Format: uint16 */
+                                        contract_version: number;
+                                        expected_devspace: string;
+                                        /** Format: uint32 */
+                                        max_attempts: number;
+                                        /** Format: uint64 */
+                                        max_response_bytes: number;
+                                        /** Format: uint32 */
+                                        max_retained_deliveries: number;
+                                        protocol_evidence_sha256: string;
+                                        /** Format: uint64 */
+                                        retention_ms: number;
+                                        /**
+                                         * @description Explicitly permit retiring unresolved records after their original expiry.
+                                         *     Retirement is audited and never means delivery or task success.
+                                         * @default false
+                                         */
+                                        retire_expired_uncertain: boolean;
+                                        /** Format: uint64 */
+                                        retry_delay_ms: number;
+                                    } | null;
                                     profile_sha256: string;
                                     /** Format: uint64 */
                                     revision: number;
@@ -14521,6 +15048,39 @@ export interface operations {
                                      *     labels are separate data and may use arbitrary Unicode.
                                      */
                                     name: string;
+                                    observation_policy?: {
+                                        allow_metadata_export: boolean;
+                                        allow_network: boolean;
+                                        /** @description Explicit scopes; absence is not an all-project grant. */
+                                        allowed_scopes: string[];
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        binding_id: string;
+                                        /** Format: uint16 */
+                                        contract_version: number;
+                                        expected_devspace: string;
+                                        /** Format: uint32 */
+                                        max_attempts: number;
+                                        /** Format: uint64 */
+                                        max_response_bytes: number;
+                                        /** Format: uint32 */
+                                        max_retained_deliveries: number;
+                                        protocol_evidence_sha256: string;
+                                        /** Format: uint64 */
+                                        retention_ms: number;
+                                        /**
+                                         * @description Explicitly permit retiring unresolved records after their original expiry.
+                                         *     Retirement is audited and never means delivery or task success.
+                                         * @default false
+                                         */
+                                        retire_expired_uncertain: boolean;
+                                        /** Format: uint64 */
+                                        retry_delay_ms: number;
+                                    } | null;
                                     profile_sha256: string;
                                     /** Format: uint64 */
                                     revision: number;
@@ -14773,6 +15333,39 @@ export interface operations {
                              *     labels are separate data and may use arbitrary Unicode.
                              */
                             name: string;
+                            observation_policy?: {
+                                allow_metadata_export: boolean;
+                                allow_network: boolean;
+                                /** @description Explicit scopes; absence is not an all-project grant. */
+                                allowed_scopes: string[];
+                                /**
+                                 * @description A canonical public identifier component.
+                                 *
+                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                 *     labels are separate data and may use arbitrary Unicode.
+                                 */
+                                binding_id: string;
+                                /** Format: uint16 */
+                                contract_version: number;
+                                expected_devspace: string;
+                                /** Format: uint32 */
+                                max_attempts: number;
+                                /** Format: uint64 */
+                                max_response_bytes: number;
+                                /** Format: uint32 */
+                                max_retained_deliveries: number;
+                                protocol_evidence_sha256: string;
+                                /** Format: uint64 */
+                                retention_ms: number;
+                                /**
+                                 * @description Explicitly permit retiring unresolved records after their original expiry.
+                                 *     Retirement is audited and never means delivery or task success.
+                                 * @default false
+                                 */
+                                retire_expired_uncertain?: boolean;
+                                /** Format: uint64 */
+                                retry_delay_ms: number;
+                            } | null;
                             /** @description Absent means no configured selector; never synthesize routing defaults. */
                             selection_policy?: {
                                 allow_network: boolean;
@@ -15037,6 +15630,39 @@ export interface operations {
                                      *     labels are separate data and may use arbitrary Unicode.
                                      */
                                     name: string;
+                                    observation_policy?: {
+                                        allow_metadata_export: boolean;
+                                        allow_network: boolean;
+                                        /** @description Explicit scopes; absence is not an all-project grant. */
+                                        allowed_scopes: string[];
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        binding_id: string;
+                                        /** Format: uint16 */
+                                        contract_version: number;
+                                        expected_devspace: string;
+                                        /** Format: uint32 */
+                                        max_attempts: number;
+                                        /** Format: uint64 */
+                                        max_response_bytes: number;
+                                        /** Format: uint32 */
+                                        max_retained_deliveries: number;
+                                        protocol_evidence_sha256: string;
+                                        /** Format: uint64 */
+                                        retention_ms: number;
+                                        /**
+                                         * @description Explicitly permit retiring unresolved records after their original expiry.
+                                         *     Retirement is audited and never means delivery or task success.
+                                         * @default false
+                                         */
+                                        retire_expired_uncertain: boolean;
+                                        /** Format: uint64 */
+                                        retry_delay_ms: number;
+                                    } | null;
                                     profile_sha256: string;
                                     /** Format: uint64 */
                                     revision: number;
@@ -15306,6 +15932,39 @@ export interface operations {
                                      *     labels are separate data and may use arbitrary Unicode.
                                      */
                                     name: string;
+                                    observation_policy?: {
+                                        allow_metadata_export: boolean;
+                                        allow_network: boolean;
+                                        /** @description Explicit scopes; absence is not an all-project grant. */
+                                        allowed_scopes: string[];
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        binding_id: string;
+                                        /** Format: uint16 */
+                                        contract_version: number;
+                                        expected_devspace: string;
+                                        /** Format: uint32 */
+                                        max_attempts: number;
+                                        /** Format: uint64 */
+                                        max_response_bytes: number;
+                                        /** Format: uint32 */
+                                        max_retained_deliveries: number;
+                                        protocol_evidence_sha256: string;
+                                        /** Format: uint64 */
+                                        retention_ms: number;
+                                        /**
+                                         * @description Explicitly permit retiring unresolved records after their original expiry.
+                                         *     Retirement is audited and never means delivery or task success.
+                                         * @default false
+                                         */
+                                        retire_expired_uncertain: boolean;
+                                        /** Format: uint64 */
+                                        retry_delay_ms: number;
+                                    } | null;
                                     profile_sha256: string;
                                     /** Format: uint64 */
                                     revision: number;
@@ -15614,6 +16273,39 @@ export interface operations {
                                      *     labels are separate data and may use arbitrary Unicode.
                                      */
                                     name: string;
+                                    observation_policy?: {
+                                        allow_metadata_export: boolean;
+                                        allow_network: boolean;
+                                        /** @description Explicit scopes; absence is not an all-project grant. */
+                                        allowed_scopes: string[];
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        binding_id: string;
+                                        /** Format: uint16 */
+                                        contract_version: number;
+                                        expected_devspace: string;
+                                        /** Format: uint32 */
+                                        max_attempts: number;
+                                        /** Format: uint64 */
+                                        max_response_bytes: number;
+                                        /** Format: uint32 */
+                                        max_retained_deliveries: number;
+                                        protocol_evidence_sha256: string;
+                                        /** Format: uint64 */
+                                        retention_ms: number;
+                                        /**
+                                         * @description Explicitly permit retiring unresolved records after their original expiry.
+                                         *     Retirement is audited and never means delivery or task success.
+                                         * @default false
+                                         */
+                                        retire_expired_uncertain: boolean;
+                                        /** Format: uint64 */
+                                        retry_delay_ms: number;
+                                    } | null;
                                     profile_sha256: string;
                                     /** Format: uint64 */
                                     revision: number;
@@ -15881,6 +16573,39 @@ export interface operations {
                                      *     labels are separate data and may use arbitrary Unicode.
                                      */
                                     name: string;
+                                    observation_policy?: {
+                                        allow_metadata_export: boolean;
+                                        allow_network: boolean;
+                                        /** @description Explicit scopes; absence is not an all-project grant. */
+                                        allowed_scopes: string[];
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        binding_id: string;
+                                        /** Format: uint16 */
+                                        contract_version: number;
+                                        expected_devspace: string;
+                                        /** Format: uint32 */
+                                        max_attempts: number;
+                                        /** Format: uint64 */
+                                        max_response_bytes: number;
+                                        /** Format: uint32 */
+                                        max_retained_deliveries: number;
+                                        protocol_evidence_sha256: string;
+                                        /** Format: uint64 */
+                                        retention_ms: number;
+                                        /**
+                                         * @description Explicitly permit retiring unresolved records after their original expiry.
+                                         *     Retirement is audited and never means delivery or task success.
+                                         * @default false
+                                         */
+                                        retire_expired_uncertain: boolean;
+                                        /** Format: uint64 */
+                                        retry_delay_ms: number;
+                                    } | null;
                                     profile_sha256: string;
                                     /** Format: uint64 */
                                     revision: number;
@@ -16268,6 +16993,8 @@ export interface operations {
                                     /** Format: uint64 */
                                     values_decoded: number;
                                 };
+                                /** Format: uint16 */
+                                result_identity_version: number;
                                 scope: string;
                                 /** Format: uint64 */
                                 selected_versions: number;
@@ -16479,6 +17206,8 @@ export interface operations {
                                     /** Format: uint64 */
                                     values_decoded: number;
                                 };
+                                /** Format: uint16 */
+                                result_identity_version: number;
                                 scope: string;
                                 /** Format: uint64 */
                                 selected_versions: number;
@@ -17112,7 +17841,7 @@ export interface operations {
                                     chain_head_sha256?: string | null;
                                     records: {
                                         /** @enum {string} */
-                                        action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "knowledge_tree_read" | "knowledge_tree_write";
+                                        action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "observation_prepare" | "observation_deliver" | "observation_read" | "knowledge_tree_read" | "knowledge_tree_write";
                                         /** Format: uint64 */
                                         at_unix_ms: number;
                                         /**
@@ -19157,6 +19886,11 @@ export interface operations {
                                         /** Format: uint64 */
                                         generation: number;
                                         /**
+                                         * @description The stored index is not eligible until rebuilt with current identities.
+                                         * @default false
+                                         */
+                                        identity_rebuild_required: boolean;
+                                        /**
                                          * @description A canonical public identifier component.
                                          *
                                          *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
@@ -19181,6 +19915,11 @@ export interface operations {
                                             /** Format: uint64 */
                                             updated_rows: number;
                                         } | null;
+                                        /**
+                                         * Format: uint16
+                                         * @description Identity encoding of the derived rows, absent for older artifacts.
+                                         */
+                                        result_identity_version?: number | null;
                                         /** Format: uint64 */
                                         source_cursor: number;
                                         /** @enum {string} */
@@ -19800,7 +20539,7 @@ export interface operations {
                                     chain_head_sha256?: string | null;
                                     records: {
                                         /** @enum {string} */
-                                        action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "knowledge_tree_read" | "knowledge_tree_write";
+                                        action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "observation_prepare" | "observation_deliver" | "observation_read" | "knowledge_tree_read" | "knowledge_tree_write";
                                         /** Format: uint64 */
                                         at_unix_ms: number;
                                         /**
@@ -21845,6 +22584,11 @@ export interface operations {
                                         /** Format: uint64 */
                                         generation: number;
                                         /**
+                                         * @description The stored index is not eligible until rebuilt with current identities.
+                                         * @default false
+                                         */
+                                        identity_rebuild_required: boolean;
+                                        /**
                                          * @description A canonical public identifier component.
                                          *
                                          *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
@@ -21869,6 +22613,11 @@ export interface operations {
                                             /** Format: uint64 */
                                             updated_rows: number;
                                         } | null;
+                                        /**
+                                         * Format: uint16
+                                         * @description Identity encoding of the derived rows, absent for older artifacts.
+                                         */
+                                        result_identity_version?: number | null;
                                         /** Format: uint64 */
                                         source_cursor: number;
                                         /** @enum {string} */
@@ -27217,6 +27966,799 @@ export interface operations {
             };
         };
     };
+    "observation-deliver": {
+        parameters: {
+            query?: never;
+            header: {
+                "X-RRD-Session": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    context: {
+                        /** Format: uint64 */
+                        deadline_unix_ms?: number | null;
+                        idempotency_key?: string | null;
+                        operation_id: string;
+                        request_id: string;
+                    };
+                    payload: {
+                        /** Format: uint16 */
+                        contract_version: number;
+                        delivery_id: string;
+                        expected_configuration_sha256: string;
+                        expected_payload_sha256: string;
+                    };
+                    protocol: string;
+                    /** Format: uint16 */
+                    protocol_version: number;
+                    /**
+                     * @description A fully explicit hierarchical identity. No field is inferred from process
+                     *     cwd, connection state, or a human label.
+                     */
+                    resource: {
+                        segments: {
+                            /**
+                             * @description A canonical public identifier component.
+                             *
+                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                             *     labels are separate data and may use arbitrary Unicode.
+                             */
+                            id: string;
+                            /** @enum {string} */
+                            kind: "organization" | "estate" | "project" | "instance" | "tenant" | "namespace" | "database" | "table" | "collection" | "record" | "point" | "relation" | "alias" | "cluster" | "node" | "shard" | "replica" | "segment" | "transaction" | "snapshot" | "backup" | "operation";
+                        }[];
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description Typed RRD response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        operation_id: string;
+                        outcome: {
+                            payload: {
+                                /** @description Digest of the bounded actual sink reply, not a task outcome. */
+                                acknowledgement_sha256?: string | null;
+                                /** Format: uint32 */
+                                attempts: number;
+                                configuration_sha256: string;
+                                /** Format: uint16 */
+                                contract_version: number;
+                                delivery_id: string;
+                                /**
+                                 * @description Public bounded classification only; never transport error text or secrets.
+                                 * @enum {string|null}
+                                 */
+                                disposition?: "credential_unavailable" | "transport_unavailable" | "reply_rejected" | "reply_too_large" | "deadline_exceeded" | "acknowledged" | null;
+                                event_id: string;
+                                /** Format: uint64 */
+                                expires_at_unix_ms: number;
+                                /** Format: uint16 */
+                                http_status?: number | null;
+                                /** Format: uint64 */
+                                lease_expires_at_unix_ms?: number | null;
+                                /** Format: uint64 */
+                                next_attempt_at_unix_ms: number;
+                                payload_sha256: string;
+                                /** Format: uint64 */
+                                prepared_at_unix_ms: number;
+                                scope: string;
+                                source: {
+                                    expected_outcome_sha256?: string | null;
+                                    /** @enum {string} */
+                                    expected_status: "reserved" | "accepted" | "stopped" | "invalidated";
+                                    /** @constant */
+                                    kind: "task_attempt";
+                                    request: {
+                                        attempt_id: string;
+                                        scope: string;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        task_id: string;
+                                    };
+                                } | {
+                                    expected_plan_sha256: string;
+                                    /** Format: uint64 */
+                                    expected_revision: number;
+                                    /** @constant */
+                                    kind: "attunement_job";
+                                    /** @description Read one engine-owned installed job by its durable identity. */
+                                    request: {
+                                        /** @constant */
+                                        contract_version: 2;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        job_id: string;
+                                    };
+                                };
+                                source_response_sha256: string;
+                                /** @enum {string} */
+                                state: "prepared" | "in_flight" | "uncertain" | "acknowledged" | "not_dispatched";
+                            };
+                            /** @constant */
+                            status: "ok";
+                        } | {
+                            error: {
+                                /** @enum {string} */
+                                code: "invalid_argument" | "not_found" | "already_exists" | "conflict" | "failed_precondition" | "unauthenticated" | "permission_denied" | "resource_exhausted" | "deadline_exceeded" | "cancelled" | "unavailable" | "corruption" | "unsupported_version" | "internal";
+                                details?: {
+                                    [key: string]: string;
+                                };
+                                message: string;
+                                retryable: boolean;
+                            };
+                            /** @constant */
+                            status: "error";
+                        };
+                        protocol: string;
+                        /** Format: uint16 */
+                        protocol_version: number;
+                        request_id: string;
+                    };
+                };
+            };
+            /** @description Typed RRD error response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        operation_id: string;
+                        outcome: {
+                            payload: {
+                                /** @description Digest of the bounded actual sink reply, not a task outcome. */
+                                acknowledgement_sha256?: string | null;
+                                /** Format: uint32 */
+                                attempts: number;
+                                configuration_sha256: string;
+                                /** Format: uint16 */
+                                contract_version: number;
+                                delivery_id: string;
+                                /**
+                                 * @description Public bounded classification only; never transport error text or secrets.
+                                 * @enum {string|null}
+                                 */
+                                disposition?: "credential_unavailable" | "transport_unavailable" | "reply_rejected" | "reply_too_large" | "deadline_exceeded" | "acknowledged" | null;
+                                event_id: string;
+                                /** Format: uint64 */
+                                expires_at_unix_ms: number;
+                                /** Format: uint16 */
+                                http_status?: number | null;
+                                /** Format: uint64 */
+                                lease_expires_at_unix_ms?: number | null;
+                                /** Format: uint64 */
+                                next_attempt_at_unix_ms: number;
+                                payload_sha256: string;
+                                /** Format: uint64 */
+                                prepared_at_unix_ms: number;
+                                scope: string;
+                                source: {
+                                    expected_outcome_sha256?: string | null;
+                                    /** @enum {string} */
+                                    expected_status: "reserved" | "accepted" | "stopped" | "invalidated";
+                                    /** @constant */
+                                    kind: "task_attempt";
+                                    request: {
+                                        attempt_id: string;
+                                        scope: string;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        task_id: string;
+                                    };
+                                } | {
+                                    expected_plan_sha256: string;
+                                    /** Format: uint64 */
+                                    expected_revision: number;
+                                    /** @constant */
+                                    kind: "attunement_job";
+                                    /** @description Read one engine-owned installed job by its durable identity. */
+                                    request: {
+                                        /** @constant */
+                                        contract_version: 2;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        job_id: string;
+                                    };
+                                };
+                                source_response_sha256: string;
+                                /** @enum {string} */
+                                state: "prepared" | "in_flight" | "uncertain" | "acknowledged" | "not_dispatched";
+                            };
+                            /** @constant */
+                            status: "ok";
+                        } | {
+                            error: {
+                                /** @enum {string} */
+                                code: "invalid_argument" | "not_found" | "already_exists" | "conflict" | "failed_precondition" | "unauthenticated" | "permission_denied" | "resource_exhausted" | "deadline_exceeded" | "cancelled" | "unavailable" | "corruption" | "unsupported_version" | "internal";
+                                details?: {
+                                    [key: string]: string;
+                                };
+                                message: string;
+                                retryable: boolean;
+                            };
+                            /** @constant */
+                            status: "error";
+                        };
+                        protocol: string;
+                        /** Format: uint16 */
+                        protocol_version: number;
+                        request_id: string;
+                    };
+                };
+            };
+        };
+    };
+    "observation-prepare": {
+        parameters: {
+            query?: never;
+            header: {
+                "X-RRD-Session": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    context: {
+                        /** Format: uint64 */
+                        deadline_unix_ms?: number | null;
+                        idempotency_key?: string | null;
+                        operation_id: string;
+                        request_id: string;
+                    };
+                    payload: {
+                        /** Format: uint16 */
+                        contract_version: number;
+                        delivery_id: string;
+                        expected_configuration_sha256: string;
+                        source: {
+                            expected_outcome_sha256?: string | null;
+                            /** @enum {string} */
+                            expected_status: "reserved" | "accepted" | "stopped" | "invalidated";
+                            /** @constant */
+                            kind: "task_attempt";
+                            request: {
+                                attempt_id: string;
+                                scope: string;
+                                /**
+                                 * @description A canonical public identifier component.
+                                 *
+                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                 *     labels are separate data and may use arbitrary Unicode.
+                                 */
+                                task_id: string;
+                            };
+                        } | {
+                            expected_plan_sha256: string;
+                            /** Format: uint64 */
+                            expected_revision: number;
+                            /** @constant */
+                            kind: "attunement_job";
+                            /** @description Read one engine-owned installed job by its durable identity. */
+                            request: {
+                                /** @constant */
+                                contract_version: 2;
+                                /**
+                                 * @description A canonical public identifier component.
+                                 *
+                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                 *     labels are separate data and may use arbitrary Unicode.
+                                 */
+                                job_id: string;
+                            };
+                        };
+                    };
+                    protocol: string;
+                    /** Format: uint16 */
+                    protocol_version: number;
+                    /**
+                     * @description A fully explicit hierarchical identity. No field is inferred from process
+                     *     cwd, connection state, or a human label.
+                     */
+                    resource: {
+                        segments: {
+                            /**
+                             * @description A canonical public identifier component.
+                             *
+                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                             *     labels are separate data and may use arbitrary Unicode.
+                             */
+                            id: string;
+                            /** @enum {string} */
+                            kind: "organization" | "estate" | "project" | "instance" | "tenant" | "namespace" | "database" | "table" | "collection" | "record" | "point" | "relation" | "alias" | "cluster" | "node" | "shard" | "replica" | "segment" | "transaction" | "snapshot" | "backup" | "operation";
+                        }[];
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description Typed RRD response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        operation_id: string;
+                        outcome: {
+                            payload: {
+                                /** @description Digest of the bounded actual sink reply, not a task outcome. */
+                                acknowledgement_sha256?: string | null;
+                                /** Format: uint32 */
+                                attempts: number;
+                                configuration_sha256: string;
+                                /** Format: uint16 */
+                                contract_version: number;
+                                delivery_id: string;
+                                /**
+                                 * @description Public bounded classification only; never transport error text or secrets.
+                                 * @enum {string|null}
+                                 */
+                                disposition?: "credential_unavailable" | "transport_unavailable" | "reply_rejected" | "reply_too_large" | "deadline_exceeded" | "acknowledged" | null;
+                                event_id: string;
+                                /** Format: uint64 */
+                                expires_at_unix_ms: number;
+                                /** Format: uint16 */
+                                http_status?: number | null;
+                                /** Format: uint64 */
+                                lease_expires_at_unix_ms?: number | null;
+                                /** Format: uint64 */
+                                next_attempt_at_unix_ms: number;
+                                payload_sha256: string;
+                                /** Format: uint64 */
+                                prepared_at_unix_ms: number;
+                                scope: string;
+                                source: {
+                                    expected_outcome_sha256?: string | null;
+                                    /** @enum {string} */
+                                    expected_status: "reserved" | "accepted" | "stopped" | "invalidated";
+                                    /** @constant */
+                                    kind: "task_attempt";
+                                    request: {
+                                        attempt_id: string;
+                                        scope: string;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        task_id: string;
+                                    };
+                                } | {
+                                    expected_plan_sha256: string;
+                                    /** Format: uint64 */
+                                    expected_revision: number;
+                                    /** @constant */
+                                    kind: "attunement_job";
+                                    /** @description Read one engine-owned installed job by its durable identity. */
+                                    request: {
+                                        /** @constant */
+                                        contract_version: 2;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        job_id: string;
+                                    };
+                                };
+                                source_response_sha256: string;
+                                /** @enum {string} */
+                                state: "prepared" | "in_flight" | "uncertain" | "acknowledged" | "not_dispatched";
+                            };
+                            /** @constant */
+                            status: "ok";
+                        } | {
+                            error: {
+                                /** @enum {string} */
+                                code: "invalid_argument" | "not_found" | "already_exists" | "conflict" | "failed_precondition" | "unauthenticated" | "permission_denied" | "resource_exhausted" | "deadline_exceeded" | "cancelled" | "unavailable" | "corruption" | "unsupported_version" | "internal";
+                                details?: {
+                                    [key: string]: string;
+                                };
+                                message: string;
+                                retryable: boolean;
+                            };
+                            /** @constant */
+                            status: "error";
+                        };
+                        protocol: string;
+                        /** Format: uint16 */
+                        protocol_version: number;
+                        request_id: string;
+                    };
+                };
+            };
+            /** @description Typed RRD error response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        operation_id: string;
+                        outcome: {
+                            payload: {
+                                /** @description Digest of the bounded actual sink reply, not a task outcome. */
+                                acknowledgement_sha256?: string | null;
+                                /** Format: uint32 */
+                                attempts: number;
+                                configuration_sha256: string;
+                                /** Format: uint16 */
+                                contract_version: number;
+                                delivery_id: string;
+                                /**
+                                 * @description Public bounded classification only; never transport error text or secrets.
+                                 * @enum {string|null}
+                                 */
+                                disposition?: "credential_unavailable" | "transport_unavailable" | "reply_rejected" | "reply_too_large" | "deadline_exceeded" | "acknowledged" | null;
+                                event_id: string;
+                                /** Format: uint64 */
+                                expires_at_unix_ms: number;
+                                /** Format: uint16 */
+                                http_status?: number | null;
+                                /** Format: uint64 */
+                                lease_expires_at_unix_ms?: number | null;
+                                /** Format: uint64 */
+                                next_attempt_at_unix_ms: number;
+                                payload_sha256: string;
+                                /** Format: uint64 */
+                                prepared_at_unix_ms: number;
+                                scope: string;
+                                source: {
+                                    expected_outcome_sha256?: string | null;
+                                    /** @enum {string} */
+                                    expected_status: "reserved" | "accepted" | "stopped" | "invalidated";
+                                    /** @constant */
+                                    kind: "task_attempt";
+                                    request: {
+                                        attempt_id: string;
+                                        scope: string;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        task_id: string;
+                                    };
+                                } | {
+                                    expected_plan_sha256: string;
+                                    /** Format: uint64 */
+                                    expected_revision: number;
+                                    /** @constant */
+                                    kind: "attunement_job";
+                                    /** @description Read one engine-owned installed job by its durable identity. */
+                                    request: {
+                                        /** @constant */
+                                        contract_version: 2;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        job_id: string;
+                                    };
+                                };
+                                source_response_sha256: string;
+                                /** @enum {string} */
+                                state: "prepared" | "in_flight" | "uncertain" | "acknowledged" | "not_dispatched";
+                            };
+                            /** @constant */
+                            status: "ok";
+                        } | {
+                            error: {
+                                /** @enum {string} */
+                                code: "invalid_argument" | "not_found" | "already_exists" | "conflict" | "failed_precondition" | "unauthenticated" | "permission_denied" | "resource_exhausted" | "deadline_exceeded" | "cancelled" | "unavailable" | "corruption" | "unsupported_version" | "internal";
+                                details?: {
+                                    [key: string]: string;
+                                };
+                                message: string;
+                                retryable: boolean;
+                            };
+                            /** @constant */
+                            status: "error";
+                        };
+                        protocol: string;
+                        /** Format: uint16 */
+                        protocol_version: number;
+                        request_id: string;
+                    };
+                };
+            };
+        };
+    };
+    "observation-read": {
+        parameters: {
+            query?: never;
+            header: {
+                "X-RRD-Session": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    context: {
+                        /** Format: uint64 */
+                        deadline_unix_ms?: number | null;
+                        idempotency_key?: string | null;
+                        operation_id: string;
+                        request_id: string;
+                    };
+                    payload: {
+                        /** Format: uint16 */
+                        contract_version: number;
+                        delivery_id: string;
+                    };
+                    protocol: string;
+                    /** Format: uint16 */
+                    protocol_version: number;
+                    /**
+                     * @description A fully explicit hierarchical identity. No field is inferred from process
+                     *     cwd, connection state, or a human label.
+                     */
+                    resource: {
+                        segments: {
+                            /**
+                             * @description A canonical public identifier component.
+                             *
+                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                             *     labels are separate data and may use arbitrary Unicode.
+                             */
+                            id: string;
+                            /** @enum {string} */
+                            kind: "organization" | "estate" | "project" | "instance" | "tenant" | "namespace" | "database" | "table" | "collection" | "record" | "point" | "relation" | "alias" | "cluster" | "node" | "shard" | "replica" | "segment" | "transaction" | "snapshot" | "backup" | "operation";
+                        }[];
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description Typed RRD response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        operation_id: string;
+                        outcome: {
+                            payload: {
+                                /** @description None means absent or outside retained history, never successful delivery. */
+                                delivery?: {
+                                    /** @description Digest of the bounded actual sink reply, not a task outcome. */
+                                    acknowledgement_sha256?: string | null;
+                                    /** Format: uint32 */
+                                    attempts: number;
+                                    configuration_sha256: string;
+                                    /** Format: uint16 */
+                                    contract_version: number;
+                                    delivery_id: string;
+                                    /**
+                                     * @description Public bounded classification only; never transport error text or secrets.
+                                     * @enum {string|null}
+                                     */
+                                    disposition?: "credential_unavailable" | "transport_unavailable" | "reply_rejected" | "reply_too_large" | "deadline_exceeded" | "acknowledged" | null;
+                                    event_id: string;
+                                    /** Format: uint64 */
+                                    expires_at_unix_ms: number;
+                                    /** Format: uint16 */
+                                    http_status?: number | null;
+                                    /** Format: uint64 */
+                                    lease_expires_at_unix_ms?: number | null;
+                                    /** Format: uint64 */
+                                    next_attempt_at_unix_ms: number;
+                                    payload_sha256: string;
+                                    /** Format: uint64 */
+                                    prepared_at_unix_ms: number;
+                                    scope: string;
+                                    source: {
+                                        expected_outcome_sha256?: string | null;
+                                        /** @enum {string} */
+                                        expected_status: "reserved" | "accepted" | "stopped" | "invalidated";
+                                        /** @constant */
+                                        kind: "task_attempt";
+                                        request: {
+                                            attempt_id: string;
+                                            scope: string;
+                                            /**
+                                             * @description A canonical public identifier component.
+                                             *
+                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                             *     labels are separate data and may use arbitrary Unicode.
+                                             */
+                                            task_id: string;
+                                        };
+                                    } | {
+                                        expected_plan_sha256: string;
+                                        /** Format: uint64 */
+                                        expected_revision: number;
+                                        /** @constant */
+                                        kind: "attunement_job";
+                                        /** @description Read one engine-owned installed job by its durable identity. */
+                                        request: {
+                                            /** @constant */
+                                            contract_version: 2;
+                                            /**
+                                             * @description A canonical public identifier component.
+                                             *
+                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                             *     labels are separate data and may use arbitrary Unicode.
+                                             */
+                                            job_id: string;
+                                        };
+                                    };
+                                    source_response_sha256: string;
+                                    /** @enum {string} */
+                                    state: "prepared" | "in_flight" | "uncertain" | "acknowledged" | "not_dispatched";
+                                } | null;
+                                /**
+                                 * @description Exact local public source response captured at preparation. Returned only
+                                 *     after current source-read authorization; never included in sink exports.
+                                 */
+                                source_response_json?: string | null;
+                            };
+                            /** @constant */
+                            status: "ok";
+                        } | {
+                            error: {
+                                /** @enum {string} */
+                                code: "invalid_argument" | "not_found" | "already_exists" | "conflict" | "failed_precondition" | "unauthenticated" | "permission_denied" | "resource_exhausted" | "deadline_exceeded" | "cancelled" | "unavailable" | "corruption" | "unsupported_version" | "internal";
+                                details?: {
+                                    [key: string]: string;
+                                };
+                                message: string;
+                                retryable: boolean;
+                            };
+                            /** @constant */
+                            status: "error";
+                        };
+                        protocol: string;
+                        /** Format: uint16 */
+                        protocol_version: number;
+                        request_id: string;
+                    };
+                };
+            };
+            /** @description Typed RRD error response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        operation_id: string;
+                        outcome: {
+                            payload: {
+                                /** @description None means absent or outside retained history, never successful delivery. */
+                                delivery?: {
+                                    /** @description Digest of the bounded actual sink reply, not a task outcome. */
+                                    acknowledgement_sha256?: string | null;
+                                    /** Format: uint32 */
+                                    attempts: number;
+                                    configuration_sha256: string;
+                                    /** Format: uint16 */
+                                    contract_version: number;
+                                    delivery_id: string;
+                                    /**
+                                     * @description Public bounded classification only; never transport error text or secrets.
+                                     * @enum {string|null}
+                                     */
+                                    disposition?: "credential_unavailable" | "transport_unavailable" | "reply_rejected" | "reply_too_large" | "deadline_exceeded" | "acknowledged" | null;
+                                    event_id: string;
+                                    /** Format: uint64 */
+                                    expires_at_unix_ms: number;
+                                    /** Format: uint16 */
+                                    http_status?: number | null;
+                                    /** Format: uint64 */
+                                    lease_expires_at_unix_ms?: number | null;
+                                    /** Format: uint64 */
+                                    next_attempt_at_unix_ms: number;
+                                    payload_sha256: string;
+                                    /** Format: uint64 */
+                                    prepared_at_unix_ms: number;
+                                    scope: string;
+                                    source: {
+                                        expected_outcome_sha256?: string | null;
+                                        /** @enum {string} */
+                                        expected_status: "reserved" | "accepted" | "stopped" | "invalidated";
+                                        /** @constant */
+                                        kind: "task_attempt";
+                                        request: {
+                                            attempt_id: string;
+                                            scope: string;
+                                            /**
+                                             * @description A canonical public identifier component.
+                                             *
+                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                             *     labels are separate data and may use arbitrary Unicode.
+                                             */
+                                            task_id: string;
+                                        };
+                                    } | {
+                                        expected_plan_sha256: string;
+                                        /** Format: uint64 */
+                                        expected_revision: number;
+                                        /** @constant */
+                                        kind: "attunement_job";
+                                        /** @description Read one engine-owned installed job by its durable identity. */
+                                        request: {
+                                            /** @constant */
+                                            contract_version: 2;
+                                            /**
+                                             * @description A canonical public identifier component.
+                                             *
+                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                             *     labels are separate data and may use arbitrary Unicode.
+                                             */
+                                            job_id: string;
+                                        };
+                                    };
+                                    source_response_sha256: string;
+                                    /** @enum {string} */
+                                    state: "prepared" | "in_flight" | "uncertain" | "acknowledged" | "not_dispatched";
+                                } | null;
+                                /**
+                                 * @description Exact local public source response captured at preparation. Returned only
+                                 *     after current source-read authorization; never included in sink exports.
+                                 */
+                                source_response_json?: string | null;
+                            };
+                            /** @constant */
+                            status: "ok";
+                        } | {
+                            error: {
+                                /** @enum {string} */
+                                code: "invalid_argument" | "not_found" | "already_exists" | "conflict" | "failed_precondition" | "unauthenticated" | "permission_denied" | "resource_exhausted" | "deadline_exceeded" | "cancelled" | "unavailable" | "corruption" | "unsupported_version" | "internal";
+                                details?: {
+                                    [key: string]: string;
+                                };
+                                message: string;
+                                retryable: boolean;
+                            };
+                            /** @constant */
+                            status: "error";
+                        };
+                        protocol: string;
+                        /** Format: uint16 */
+                        protocol_version: number;
+                        request_id: string;
+                    };
+                };
+            };
+        };
+    };
     "query-execute": {
         parameters: {
             query?: never;
@@ -27461,6 +29003,8 @@ export interface operations {
                                     security_policy_revision: number;
                                 };
                                 read_manifest_sha256: string;
+                                /** Format: uint16 */
+                                result_identity_version: number;
                                 rows: {
                                     identity: string;
                                     values: {
@@ -27651,6 +29195,8 @@ export interface operations {
                                     security_policy_revision: number;
                                 };
                                 read_manifest_sha256: string;
+                                /** Format: uint16 */
+                                result_identity_version: number;
                                 rows: {
                                     identity: string;
                                     values: {
@@ -28392,6 +29938,11 @@ export interface operations {
                                     /** Format: uint64 */
                                     generation: number;
                                     /**
+                                     * @description The stored index is not eligible until rebuilt with current identities.
+                                     * @default false
+                                     */
+                                    identity_rebuild_required: boolean;
+                                    /**
                                      * @description A canonical public identifier component.
                                      *
                                      *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
@@ -28416,6 +29967,11 @@ export interface operations {
                                         /** Format: uint64 */
                                         updated_rows: number;
                                     } | null;
+                                    /**
+                                     * Format: uint16
+                                     * @description Identity encoding of the derived rows, absent for older artifacts.
+                                     */
+                                    result_identity_version?: number | null;
                                     /** Format: uint64 */
                                     source_cursor: number;
                                     /** @enum {string} */
@@ -28565,6 +30121,11 @@ export interface operations {
                                     /** Format: uint64 */
                                     generation: number;
                                     /**
+                                     * @description The stored index is not eligible until rebuilt with current identities.
+                                     * @default false
+                                     */
+                                    identity_rebuild_required: boolean;
+                                    /**
                                      * @description A canonical public identifier component.
                                      *
                                      *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
@@ -28589,6 +30150,11 @@ export interface operations {
                                         /** Format: uint64 */
                                         updated_rows: number;
                                     } | null;
+                                    /**
+                                     * Format: uint16
+                                     * @description Identity encoding of the derived rows, absent for older artifacts.
+                                     */
+                                    result_identity_version?: number | null;
                                     /** Format: uint64 */
                                     source_cursor: number;
                                     /** @enum {string} */
@@ -28783,6 +30349,11 @@ export interface operations {
                                     /** Format: uint64 */
                                     generation: number;
                                     /**
+                                     * @description The stored index is not eligible until rebuilt with current identities.
+                                     * @default false
+                                     */
+                                    identity_rebuild_required: boolean;
+                                    /**
                                      * @description A canonical public identifier component.
                                      *
                                      *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
@@ -28807,6 +30378,11 @@ export interface operations {
                                         /** Format: uint64 */
                                         updated_rows: number;
                                     } | null;
+                                    /**
+                                     * Format: uint16
+                                     * @description Identity encoding of the derived rows, absent for older artifacts.
+                                     */
+                                    result_identity_version?: number | null;
                                     /** Format: uint64 */
                                     source_cursor: number;
                                     /** @enum {string} */
@@ -28905,6 +30481,11 @@ export interface operations {
                                     /** Format: uint64 */
                                     generation: number;
                                     /**
+                                     * @description The stored index is not eligible until rebuilt with current identities.
+                                     * @default false
+                                     */
+                                    identity_rebuild_required: boolean;
+                                    /**
                                      * @description A canonical public identifier component.
                                      *
                                      *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
@@ -28929,6 +30510,11 @@ export interface operations {
                                         /** Format: uint64 */
                                         updated_rows: number;
                                     } | null;
+                                    /**
+                                     * Format: uint16
+                                     * @description Identity encoding of the derived rows, absent for older artifacts.
+                                     */
+                                    result_identity_version?: number | null;
                                     /** Format: uint64 */
                                     source_cursor: number;
                                     /** @enum {string} */
@@ -29066,6 +30652,11 @@ export interface operations {
                             };
                         };
                         query: string;
+                        /**
+                         * Format: uint16
+                         * @description Identity version of the caller's retained snapshot; required on resume.
+                         */
+                        result_identity_version?: number | null;
                         scope: string;
                         /**
                          * Format: uint64
@@ -29202,6 +30793,8 @@ export interface operations {
                                         };
                                     };
                                 }[];
+                                /** Format: uint16 */
+                                result_identity_version: number;
                                 /** Format: uint64 */
                                 through_cursor: number;
                                 timed_out: boolean;
@@ -29427,6 +31020,8 @@ export interface operations {
                                         };
                                     };
                                 }[];
+                                /** Format: uint16 */
+                                result_identity_version: number;
                                 /** Format: uint64 */
                                 through_cursor: number;
                                 timed_out: boolean;
@@ -29758,7 +31353,7 @@ export interface operations {
                                 endpoints: {
                                     action: {
                                         /** @enum {string} */
-                                        action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "knowledge_tree_read" | "knowledge_tree_write";
+                                        action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "observation_prepare" | "observation_deliver" | "observation_read" | "knowledge_tree_read" | "knowledge_tree_write";
                                         /** @constant */
                                         source: "fixed";
                                     };
@@ -29807,7 +31402,7 @@ export interface operations {
                                     /** @enum {string} */
                                     authentication: "public" | "api_key" | "session_bearer";
                                     /** @enum {string} */
-                                    connect_action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "knowledge_tree_read" | "knowledge_tree_write";
+                                    connect_action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "observation_prepare" | "observation_deliver" | "observation_read" | "knowledge_tree_read" | "knowledge_tree_write";
                                     description: string;
                                     /**
                                      * @description The reference group an operation belongs to.
@@ -29861,7 +31456,7 @@ export interface operations {
                                 endpoints: {
                                     action: {
                                         /** @enum {string} */
-                                        action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "knowledge_tree_read" | "knowledge_tree_write";
+                                        action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "observation_prepare" | "observation_deliver" | "observation_read" | "knowledge_tree_read" | "knowledge_tree_write";
                                         /** @constant */
                                         source: "fixed";
                                     };
@@ -29910,7 +31505,7 @@ export interface operations {
                                     /** @enum {string} */
                                     authentication: "public" | "api_key" | "session_bearer";
                                     /** @enum {string} */
-                                    connect_action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "knowledge_tree_read" | "knowledge_tree_write";
+                                    connect_action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "observation_prepare" | "observation_deliver" | "observation_read" | "knowledge_tree_read" | "knowledge_tree_write";
                                     description: string;
                                     /**
                                      * @description The reference group an operation belongs to.
@@ -30549,6 +32144,8 @@ export interface operations {
                                     lease_expires_at_unix_ms: number;
                                     /** Format: uint16 */
                                     max_in_flight: number;
+                                    /** Format: uint16 */
+                                    result_identity_version?: number | null;
                                     /** Format: uint64 */
                                     retention_floor_cursor: number;
                                     /** @enum {string} */
@@ -30605,6 +32202,8 @@ export interface operations {
                                     lease_expires_at_unix_ms: number;
                                     /** Format: uint16 */
                                     max_in_flight: number;
+                                    /** Format: uint16 */
+                                    result_identity_version?: number | null;
                                     /** Format: uint64 */
                                     retention_floor_cursor: number;
                                     /** @enum {string} */
@@ -30760,6 +32359,11 @@ export interface operations {
                                 };
                             };
                             query: string;
+                            /**
+                             * Format: uint16
+                             * @description Version of an existing caller snapshot when opening from a cursor.
+                             */
+                            result_identity_version?: number | null;
                             scope: string;
                             /** @constant */
                             stream: "live_query";
@@ -30816,6 +32420,8 @@ export interface operations {
                                     lease_expires_at_unix_ms: number;
                                     /** Format: uint16 */
                                     max_in_flight: number;
+                                    /** Format: uint16 */
+                                    result_identity_version?: number | null;
                                     /** Format: uint64 */
                                     retention_floor_cursor: number;
                                     /** @enum {string} */
@@ -30872,6 +32478,8 @@ export interface operations {
                                     lease_expires_at_unix_ms: number;
                                     /** Format: uint16 */
                                     max_in_flight: number;
+                                    /** Format: uint16 */
+                                    result_identity_version?: number | null;
                                     /** Format: uint64 */
                                     retention_floor_cursor: number;
                                     /** @enum {string} */
@@ -40946,6 +42554,1062 @@ export interface operations {
             };
         };
     };
+    "vector-index-ensure": {
+        parameters: {
+            query?: never;
+            header: {
+                "X-RRD-Session": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    context: {
+                        /** Format: uint64 */
+                        deadline_unix_ms?: number | null;
+                        idempotency_key?: string | null;
+                        operation_id: string;
+                        request_id: string;
+                    };
+                    payload: {
+                        /**
+                         * @default {
+                         *       "kind": "cpu"
+                         *     }
+                         */
+                        build_policy?: {
+                            /** @constant */
+                            kind: "cpu";
+                        } | {
+                            allow_cpu_fallback: boolean;
+                            /**
+                             * @description A canonical public identifier component.
+                             *
+                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                             *     labels are separate data and may use arbitrary Unicode.
+                             */
+                            backend_id: string;
+                            /** @constant */
+                            kind: "prefer_gpu";
+                        } | {
+                            /**
+                             * @description A canonical public identifier component.
+                             *
+                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                             *     labels are separate data and may use arbitrary Unicode.
+                             */
+                            backend_id: string;
+                            /** @constant */
+                            kind: "require_gpu";
+                        };
+                        /**
+                         * @description A canonical public identifier component.
+                         *
+                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                         *     labels are separate data and may use arbitrary Unicode.
+                         */
+                        collection_id: string;
+                        configuration: {
+                            /** Format: uint64 */
+                            ef_construction: number;
+                            /** @default [] */
+                            filter_properties?: string[];
+                            /** @constant */
+                            kind: "hnsw";
+                            /** Format: uint32 */
+                            m: number;
+                            /** Format: uint8 */
+                            max_level: number;
+                            /** Format: uint64 */
+                            seed: number;
+                        };
+                        /** Format: uint64 */
+                        max_storage_keys: number;
+                        scope: string;
+                        /**
+                         * @description A canonical public identifier component.
+                         *
+                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                         *     labels are separate data and may use arbitrary Unicode.
+                         */
+                        vector_name: string;
+                    };
+                    protocol: string;
+                    /** Format: uint16 */
+                    protocol_version: number;
+                    /**
+                     * @description A fully explicit hierarchical identity. No field is inferred from process
+                     *     cwd, connection state, or a human label.
+                     */
+                    resource: {
+                        segments: {
+                            /**
+                             * @description A canonical public identifier component.
+                             *
+                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                             *     labels are separate data and may use arbitrary Unicode.
+                             */
+                            id: string;
+                            /** @enum {string} */
+                            kind: "organization" | "estate" | "project" | "instance" | "tenant" | "namespace" | "database" | "table" | "collection" | "record" | "point" | "relation" | "alias" | "cluster" | "node" | "shard" | "replica" | "segment" | "transaction" | "snapshot" | "backup" | "operation";
+                        }[];
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description Typed RRD response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        operation_id: string;
+                        outcome: {
+                            payload: {
+                                idempotent_replay: boolean;
+                                index: {
+                                    artifact_sha256: string;
+                                    build_evidence?: {
+                                        /** @enum {string} */
+                                        byte_differential: "not_run" | "passed" | "failed";
+                                        fallback_reason?: string | null;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        requested_backend_id?: string | null;
+                                        resources: {
+                                            /** Format: uint64 */
+                                            accelerator_artifact_bytes?: number | null;
+                                            /** Format: uint64 */
+                                            cpu_artifact_bytes: number;
+                                            /** Format: uint64 */
+                                            dimensions: number;
+                                            /** Format: uint64 */
+                                            input_values: number;
+                                            /** Format: uint64 */
+                                            input_vectors: number;
+                                            /** Format: uint64 */
+                                            semantic_probe_queries: number;
+                                        };
+                                        selected_backend_id: string;
+                                        selected_target: {
+                                            /** @constant */
+                                            kind: "cpu";
+                                        } | {
+                                            device: string;
+                                            /** @constant */
+                                            kind: "gpu";
+                                            platform: string;
+                                        };
+                                        /** @enum {string} */
+                                        semantic_differential: "not_run" | "passed" | "failed";
+                                        used_fallback: boolean;
+                                    } | null;
+                                    /** Format: uint64 */
+                                    catalogue_revision: number;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    collection_id: string;
+                                    configuration_sha256: string;
+                                    /** Format: uint64 */
+                                    full_precision_vector_bytes?: number | null;
+                                    /** Format: uint64 */
+                                    generation: number;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    index_id: string;
+                                    /** Format: uint64 */
+                                    indexed_vectors: number;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    kind: string;
+                                    maintenance: {
+                                        /** Format: uint64 */
+                                        indexed_delta_vectors: number;
+                                        /** @enum {string} */
+                                        mode: "full_build" | "incremental";
+                                        /** Format: uint64 */
+                                        previous_generation?: number | null;
+                                    };
+                                    object_sha256: string;
+                                    /** Format: uint64 */
+                                    packed_vector_bytes?: number | null;
+                                    /** Format: uint64 */
+                                    source_cursor: number;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    vector_name: string;
+                                };
+                                /** @description Complete logical I/O evidence for normal semantic reads at one stamp. */
+                                read_evidence: {
+                                    /** Format: uint16 */
+                                    contract_version: number;
+                                    /** Format: uint64 */
+                                    decoded_bytes: number;
+                                    /** Format: uint64 */
+                                    key_budget: number;
+                                    /** Format: uint64 */
+                                    keys_examined: number;
+                                    paths: {
+                                        /** Format: uint64 */
+                                        decoded_bytes: number;
+                                        /** Format: uint64 */
+                                        keys_examined: number;
+                                        /**
+                                         * @description The semantic physical path charged during a normal state read.
+                                         * @enum {string}
+                                         */
+                                        path: "read_stamp" | "schema_versions" | "claim_versions" | "record_versions" | "relation_versions" | "adjacency_versions" | "event_versions" | "vector_versions" | "vector_source_deltas" | "series_versions" | "geo_versions" | "object_versions" | "accumulator_proof";
+                                        /** Format: uint64 */
+                                        point_reads: number;
+                                        /** Format: uint64 */
+                                        range_scans: number;
+                                        /** Format: uint64 */
+                                        values_decoded: number;
+                                    }[];
+                                    /** Format: uint64 */
+                                    point_reads: number;
+                                    /** Format: uint64 */
+                                    range_scans: number;
+                                    stamp_validation: {
+                                        /**
+                                         * Format: uint64
+                                         * @description Authenticated log-head/schema changes needed only to prove a retained
+                                         *     historical stamp. This is not the source of normal query rows.
+                                         */
+                                        change_reads: number;
+                                        /**
+                                         * @description The authentication strategy applied to the requested read stamp.
+                                         * @enum {string}
+                                         */
+                                        method: "authenticated_current_head" | "rfc9162_direct_versions";
+                                        /** Format: uint16 */
+                                        proof_nodes: number;
+                                    };
+                                    /** Format: uint64 */
+                                    values_decoded: number;
+                                };
+                                /** Format: uint64 */
+                                selected_versions: number;
+                            };
+                            /** @constant */
+                            status: "ok";
+                        } | {
+                            error: {
+                                /** @enum {string} */
+                                code: "invalid_argument" | "not_found" | "already_exists" | "conflict" | "failed_precondition" | "unauthenticated" | "permission_denied" | "resource_exhausted" | "deadline_exceeded" | "cancelled" | "unavailable" | "corruption" | "unsupported_version" | "internal";
+                                details?: {
+                                    [key: string]: string;
+                                };
+                                message: string;
+                                retryable: boolean;
+                            };
+                            /** @constant */
+                            status: "error";
+                        };
+                        protocol: string;
+                        /** Format: uint16 */
+                        protocol_version: number;
+                        request_id: string;
+                    };
+                };
+            };
+            /** @description Typed RRD error response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        operation_id: string;
+                        outcome: {
+                            payload: {
+                                idempotent_replay: boolean;
+                                index: {
+                                    artifact_sha256: string;
+                                    build_evidence?: {
+                                        /** @enum {string} */
+                                        byte_differential: "not_run" | "passed" | "failed";
+                                        fallback_reason?: string | null;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        requested_backend_id?: string | null;
+                                        resources: {
+                                            /** Format: uint64 */
+                                            accelerator_artifact_bytes?: number | null;
+                                            /** Format: uint64 */
+                                            cpu_artifact_bytes: number;
+                                            /** Format: uint64 */
+                                            dimensions: number;
+                                            /** Format: uint64 */
+                                            input_values: number;
+                                            /** Format: uint64 */
+                                            input_vectors: number;
+                                            /** Format: uint64 */
+                                            semantic_probe_queries: number;
+                                        };
+                                        selected_backend_id: string;
+                                        selected_target: {
+                                            /** @constant */
+                                            kind: "cpu";
+                                        } | {
+                                            device: string;
+                                            /** @constant */
+                                            kind: "gpu";
+                                            platform: string;
+                                        };
+                                        /** @enum {string} */
+                                        semantic_differential: "not_run" | "passed" | "failed";
+                                        used_fallback: boolean;
+                                    } | null;
+                                    /** Format: uint64 */
+                                    catalogue_revision: number;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    collection_id: string;
+                                    configuration_sha256: string;
+                                    /** Format: uint64 */
+                                    full_precision_vector_bytes?: number | null;
+                                    /** Format: uint64 */
+                                    generation: number;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    index_id: string;
+                                    /** Format: uint64 */
+                                    indexed_vectors: number;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    kind: string;
+                                    maintenance: {
+                                        /** Format: uint64 */
+                                        indexed_delta_vectors: number;
+                                        /** @enum {string} */
+                                        mode: "full_build" | "incremental";
+                                        /** Format: uint64 */
+                                        previous_generation?: number | null;
+                                    };
+                                    object_sha256: string;
+                                    /** Format: uint64 */
+                                    packed_vector_bytes?: number | null;
+                                    /** Format: uint64 */
+                                    source_cursor: number;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    vector_name: string;
+                                };
+                                /** @description Complete logical I/O evidence for normal semantic reads at one stamp. */
+                                read_evidence: {
+                                    /** Format: uint16 */
+                                    contract_version: number;
+                                    /** Format: uint64 */
+                                    decoded_bytes: number;
+                                    /** Format: uint64 */
+                                    key_budget: number;
+                                    /** Format: uint64 */
+                                    keys_examined: number;
+                                    paths: {
+                                        /** Format: uint64 */
+                                        decoded_bytes: number;
+                                        /** Format: uint64 */
+                                        keys_examined: number;
+                                        /**
+                                         * @description The semantic physical path charged during a normal state read.
+                                         * @enum {string}
+                                         */
+                                        path: "read_stamp" | "schema_versions" | "claim_versions" | "record_versions" | "relation_versions" | "adjacency_versions" | "event_versions" | "vector_versions" | "vector_source_deltas" | "series_versions" | "geo_versions" | "object_versions" | "accumulator_proof";
+                                        /** Format: uint64 */
+                                        point_reads: number;
+                                        /** Format: uint64 */
+                                        range_scans: number;
+                                        /** Format: uint64 */
+                                        values_decoded: number;
+                                    }[];
+                                    /** Format: uint64 */
+                                    point_reads: number;
+                                    /** Format: uint64 */
+                                    range_scans: number;
+                                    stamp_validation: {
+                                        /**
+                                         * Format: uint64
+                                         * @description Authenticated log-head/schema changes needed only to prove a retained
+                                         *     historical stamp. This is not the source of normal query rows.
+                                         */
+                                        change_reads: number;
+                                        /**
+                                         * @description The authentication strategy applied to the requested read stamp.
+                                         * @enum {string}
+                                         */
+                                        method: "authenticated_current_head" | "rfc9162_direct_versions";
+                                        /** Format: uint16 */
+                                        proof_nodes: number;
+                                    };
+                                    /** Format: uint64 */
+                                    values_decoded: number;
+                                };
+                                /** Format: uint64 */
+                                selected_versions: number;
+                            };
+                            /** @constant */
+                            status: "ok";
+                        } | {
+                            error: {
+                                /** @enum {string} */
+                                code: "invalid_argument" | "not_found" | "already_exists" | "conflict" | "failed_precondition" | "unauthenticated" | "permission_denied" | "resource_exhausted" | "deadline_exceeded" | "cancelled" | "unavailable" | "corruption" | "unsupported_version" | "internal";
+                                details?: {
+                                    [key: string]: string;
+                                };
+                                message: string;
+                                retryable: boolean;
+                            };
+                            /** @constant */
+                            status: "error";
+                        };
+                        protocol: string;
+                        /** Format: uint16 */
+                        protocol_version: number;
+                        request_id: string;
+                    };
+                };
+            };
+        };
+    };
+    "vector-payload-index-delete": {
+        parameters: {
+            query?: never;
+            header: {
+                "X-RRD-Session": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    context: {
+                        /** Format: uint64 */
+                        deadline_unix_ms?: number | null;
+                        idempotency_key?: string | null;
+                        operation_id: string;
+                        request_id: string;
+                    };
+                    payload: {
+                        /**
+                         * @description A canonical public identifier component.
+                         *
+                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                         *     labels are separate data and may use arbitrary Unicode.
+                         */
+                        collection_id: string;
+                        /**
+                         * @description A canonical public identifier component.
+                         *
+                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                         *     labels are separate data and may use arbitrary Unicode.
+                         */
+                        field: string;
+                        scope: string;
+                    };
+                    protocol: string;
+                    /** Format: uint16 */
+                    protocol_version: number;
+                    /**
+                     * @description A fully explicit hierarchical identity. No field is inferred from process
+                     *     cwd, connection state, or a human label.
+                     */
+                    resource: {
+                        segments: {
+                            /**
+                             * @description A canonical public identifier component.
+                             *
+                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                             *     labels are separate data and may use arbitrary Unicode.
+                             */
+                            id: string;
+                            /** @enum {string} */
+                            kind: "organization" | "estate" | "project" | "instance" | "tenant" | "namespace" | "database" | "table" | "collection" | "record" | "point" | "relation" | "alias" | "cluster" | "node" | "shard" | "replica" | "segment" | "transaction" | "snapshot" | "backup" | "operation";
+                        }[];
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description Typed RRD response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        operation_id: string;
+                        outcome: {
+                            payload: {
+                                /** Format: uint64 */
+                                catalogue_revision: number;
+                                collection: {
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    collection_id: string;
+                                    configuration_sha256: string;
+                                    /** Format: uint64 */
+                                    created_at_unix_ms: number;
+                                    /** Format: uint64 */
+                                    generation: number;
+                                    /** @default [] */
+                                    payload_indexes: {
+                                        configuration_sha256: string;
+                                        /** Format: uint64 */
+                                        created_at_unix_ms: number;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        field: string;
+                                        /** Format: uint64 */
+                                        generation: number;
+                                        /** @enum {string} */
+                                        kind: "boolean" | "integer" | "unsigned" | "decimal" | "keyword" | "digest";
+                                        /** Format: uint64 */
+                                        updated_at_unix_ms: number;
+                                    }[];
+                                    /** Format: uint64 */
+                                    updated_at_unix_ms: number;
+                                    vectors: {
+                                        /** Format: uint32 */
+                                        dimensions: number;
+                                        embedding_model?: {
+                                            digest: string;
+                                            name: string;
+                                        } | null;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        field: string;
+                                        /** @enum {string} */
+                                        kind: "dense" | "sparse" | "multi_dense";
+                                        /** @enum {string} */
+                                        memory_tier: "pinned" | "cached" | "cold";
+                                        /** @enum {string} */
+                                        metric: "cosine" | "dot" | "euclidean" | "manhattan";
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        name: string;
+                                    }[];
+                                };
+                                deleted_index: {
+                                    configuration_sha256: string;
+                                    /** Format: uint64 */
+                                    created_at_unix_ms: number;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    field: string;
+                                    /** Format: uint64 */
+                                    generation: number;
+                                    /** @enum {string} */
+                                    kind: "boolean" | "integer" | "unsigned" | "decimal" | "keyword" | "digest";
+                                    /** Format: uint64 */
+                                    updated_at_unix_ms: number;
+                                };
+                                idempotent_replay: boolean;
+                            };
+                            /** @constant */
+                            status: "ok";
+                        } | {
+                            error: {
+                                /** @enum {string} */
+                                code: "invalid_argument" | "not_found" | "already_exists" | "conflict" | "failed_precondition" | "unauthenticated" | "permission_denied" | "resource_exhausted" | "deadline_exceeded" | "cancelled" | "unavailable" | "corruption" | "unsupported_version" | "internal";
+                                details?: {
+                                    [key: string]: string;
+                                };
+                                message: string;
+                                retryable: boolean;
+                            };
+                            /** @constant */
+                            status: "error";
+                        };
+                        protocol: string;
+                        /** Format: uint16 */
+                        protocol_version: number;
+                        request_id: string;
+                    };
+                };
+            };
+            /** @description Typed RRD error response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        operation_id: string;
+                        outcome: {
+                            payload: {
+                                /** Format: uint64 */
+                                catalogue_revision: number;
+                                collection: {
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    collection_id: string;
+                                    configuration_sha256: string;
+                                    /** Format: uint64 */
+                                    created_at_unix_ms: number;
+                                    /** Format: uint64 */
+                                    generation: number;
+                                    /** @default [] */
+                                    payload_indexes: {
+                                        configuration_sha256: string;
+                                        /** Format: uint64 */
+                                        created_at_unix_ms: number;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        field: string;
+                                        /** Format: uint64 */
+                                        generation: number;
+                                        /** @enum {string} */
+                                        kind: "boolean" | "integer" | "unsigned" | "decimal" | "keyword" | "digest";
+                                        /** Format: uint64 */
+                                        updated_at_unix_ms: number;
+                                    }[];
+                                    /** Format: uint64 */
+                                    updated_at_unix_ms: number;
+                                    vectors: {
+                                        /** Format: uint32 */
+                                        dimensions: number;
+                                        embedding_model?: {
+                                            digest: string;
+                                            name: string;
+                                        } | null;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        field: string;
+                                        /** @enum {string} */
+                                        kind: "dense" | "sparse" | "multi_dense";
+                                        /** @enum {string} */
+                                        memory_tier: "pinned" | "cached" | "cold";
+                                        /** @enum {string} */
+                                        metric: "cosine" | "dot" | "euclidean" | "manhattan";
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        name: string;
+                                    }[];
+                                };
+                                deleted_index: {
+                                    configuration_sha256: string;
+                                    /** Format: uint64 */
+                                    created_at_unix_ms: number;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    field: string;
+                                    /** Format: uint64 */
+                                    generation: number;
+                                    /** @enum {string} */
+                                    kind: "boolean" | "integer" | "unsigned" | "decimal" | "keyword" | "digest";
+                                    /** Format: uint64 */
+                                    updated_at_unix_ms: number;
+                                };
+                                idempotent_replay: boolean;
+                            };
+                            /** @constant */
+                            status: "ok";
+                        } | {
+                            error: {
+                                /** @enum {string} */
+                                code: "invalid_argument" | "not_found" | "already_exists" | "conflict" | "failed_precondition" | "unauthenticated" | "permission_denied" | "resource_exhausted" | "deadline_exceeded" | "cancelled" | "unavailable" | "corruption" | "unsupported_version" | "internal";
+                                details?: {
+                                    [key: string]: string;
+                                };
+                                message: string;
+                                retryable: boolean;
+                            };
+                            /** @constant */
+                            status: "error";
+                        };
+                        protocol: string;
+                        /** Format: uint16 */
+                        protocol_version: number;
+                        request_id: string;
+                    };
+                };
+            };
+        };
+    };
+    "vector-payload-index-ensure": {
+        parameters: {
+            query?: never;
+            header: {
+                "X-RRD-Session": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    context: {
+                        /** Format: uint64 */
+                        deadline_unix_ms?: number | null;
+                        idempotency_key?: string | null;
+                        operation_id: string;
+                        request_id: string;
+                    };
+                    payload: {
+                        /**
+                         * @description A canonical public identifier component.
+                         *
+                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                         *     labels are separate data and may use arbitrary Unicode.
+                         */
+                        collection_id: string;
+                        /**
+                         * @description A canonical public identifier component.
+                         *
+                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                         *     labels are separate data and may use arbitrary Unicode.
+                         */
+                        field: string;
+                        /** @enum {string} */
+                        kind: "boolean" | "integer" | "unsigned" | "decimal" | "keyword" | "digest";
+                        scope: string;
+                    };
+                    protocol: string;
+                    /** Format: uint16 */
+                    protocol_version: number;
+                    /**
+                     * @description A fully explicit hierarchical identity. No field is inferred from process
+                     *     cwd, connection state, or a human label.
+                     */
+                    resource: {
+                        segments: {
+                            /**
+                             * @description A canonical public identifier component.
+                             *
+                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                             *     labels are separate data and may use arbitrary Unicode.
+                             */
+                            id: string;
+                            /** @enum {string} */
+                            kind: "organization" | "estate" | "project" | "instance" | "tenant" | "namespace" | "database" | "table" | "collection" | "record" | "point" | "relation" | "alias" | "cluster" | "node" | "shard" | "replica" | "segment" | "transaction" | "snapshot" | "backup" | "operation";
+                        }[];
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description Typed RRD response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        operation_id: string;
+                        outcome: {
+                            payload: {
+                                /** Format: uint64 */
+                                catalogue_revision: number;
+                                collection: {
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    collection_id: string;
+                                    configuration_sha256: string;
+                                    /** Format: uint64 */
+                                    created_at_unix_ms: number;
+                                    /** Format: uint64 */
+                                    generation: number;
+                                    /** @default [] */
+                                    payload_indexes: {
+                                        configuration_sha256: string;
+                                        /** Format: uint64 */
+                                        created_at_unix_ms: number;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        field: string;
+                                        /** Format: uint64 */
+                                        generation: number;
+                                        /** @enum {string} */
+                                        kind: "boolean" | "integer" | "unsigned" | "decimal" | "keyword" | "digest";
+                                        /** Format: uint64 */
+                                        updated_at_unix_ms: number;
+                                    }[];
+                                    /** Format: uint64 */
+                                    updated_at_unix_ms: number;
+                                    vectors: {
+                                        /** Format: uint32 */
+                                        dimensions: number;
+                                        embedding_model?: {
+                                            digest: string;
+                                            name: string;
+                                        } | null;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        field: string;
+                                        /** @enum {string} */
+                                        kind: "dense" | "sparse" | "multi_dense";
+                                        /** @enum {string} */
+                                        memory_tier: "pinned" | "cached" | "cold";
+                                        /** @enum {string} */
+                                        metric: "cosine" | "dot" | "euclidean" | "manhattan";
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        name: string;
+                                    }[];
+                                };
+                                idempotent_replay: boolean;
+                                index: {
+                                    configuration_sha256: string;
+                                    /** Format: uint64 */
+                                    created_at_unix_ms: number;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    field: string;
+                                    /** Format: uint64 */
+                                    generation: number;
+                                    /** @enum {string} */
+                                    kind: "boolean" | "integer" | "unsigned" | "decimal" | "keyword" | "digest";
+                                    /** Format: uint64 */
+                                    updated_at_unix_ms: number;
+                                };
+                            };
+                            /** @constant */
+                            status: "ok";
+                        } | {
+                            error: {
+                                /** @enum {string} */
+                                code: "invalid_argument" | "not_found" | "already_exists" | "conflict" | "failed_precondition" | "unauthenticated" | "permission_denied" | "resource_exhausted" | "deadline_exceeded" | "cancelled" | "unavailable" | "corruption" | "unsupported_version" | "internal";
+                                details?: {
+                                    [key: string]: string;
+                                };
+                                message: string;
+                                retryable: boolean;
+                            };
+                            /** @constant */
+                            status: "error";
+                        };
+                        protocol: string;
+                        /** Format: uint16 */
+                        protocol_version: number;
+                        request_id: string;
+                    };
+                };
+            };
+            /** @description Typed RRD error response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        operation_id: string;
+                        outcome: {
+                            payload: {
+                                /** Format: uint64 */
+                                catalogue_revision: number;
+                                collection: {
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    collection_id: string;
+                                    configuration_sha256: string;
+                                    /** Format: uint64 */
+                                    created_at_unix_ms: number;
+                                    /** Format: uint64 */
+                                    generation: number;
+                                    /** @default [] */
+                                    payload_indexes: {
+                                        configuration_sha256: string;
+                                        /** Format: uint64 */
+                                        created_at_unix_ms: number;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        field: string;
+                                        /** Format: uint64 */
+                                        generation: number;
+                                        /** @enum {string} */
+                                        kind: "boolean" | "integer" | "unsigned" | "decimal" | "keyword" | "digest";
+                                        /** Format: uint64 */
+                                        updated_at_unix_ms: number;
+                                    }[];
+                                    /** Format: uint64 */
+                                    updated_at_unix_ms: number;
+                                    vectors: {
+                                        /** Format: uint32 */
+                                        dimensions: number;
+                                        embedding_model?: {
+                                            digest: string;
+                                            name: string;
+                                        } | null;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        field: string;
+                                        /** @enum {string} */
+                                        kind: "dense" | "sparse" | "multi_dense";
+                                        /** @enum {string} */
+                                        memory_tier: "pinned" | "cached" | "cold";
+                                        /** @enum {string} */
+                                        metric: "cosine" | "dot" | "euclidean" | "manhattan";
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        name: string;
+                                    }[];
+                                };
+                                idempotent_replay: boolean;
+                                index: {
+                                    configuration_sha256: string;
+                                    /** Format: uint64 */
+                                    created_at_unix_ms: number;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    field: string;
+                                    /** Format: uint64 */
+                                    generation: number;
+                                    /** @enum {string} */
+                                    kind: "boolean" | "integer" | "unsigned" | "decimal" | "keyword" | "digest";
+                                    /** Format: uint64 */
+                                    updated_at_unix_ms: number;
+                                };
+                            };
+                            /** @constant */
+                            status: "ok";
+                        } | {
+                            error: {
+                                /** @enum {string} */
+                                code: "invalid_argument" | "not_found" | "already_exists" | "conflict" | "failed_precondition" | "unauthenticated" | "permission_denied" | "resource_exhausted" | "deadline_exceeded" | "cancelled" | "unavailable" | "corruption" | "unsupported_version" | "internal";
+                                details?: {
+                                    [key: string]: string;
+                                };
+                                message: string;
+                                retryable: boolean;
+                            };
+                            /** @constant */
+                            status: "error";
+                        };
+                        protocol: string;
+                        /** Format: uint16 */
+                        protocol_version: number;
+                        request_id: string;
+                    };
+                };
+            };
+        };
+    };
     "vector-point-retrieve": {
         parameters: {
             query?: never;
@@ -42610,6 +45274,8 @@ export interface operations {
                                     } | {
                                         /** @enum {string} */
                                         bits: "bits4" | "bits2" | "bits1_5" | "bits1";
+                                        /** @description Absent means `mse`, as before the inner-product estimator existed. */
+                                        estimator?: "mse" | "inner_product";
                                         /** @constant */
                                         method: "turbo_quant";
                                         /** Format: uint64 */
@@ -42711,6 +45377,8 @@ export interface operations {
                                     } | {
                                         /** @enum {string} */
                                         bits: "bits4" | "bits2" | "bits1_5" | "bits1";
+                                        /** @description Absent means `mse`, as before the inner-product estimator existed. */
+                                        estimator?: "mse" | "inner_product";
                                         /** @constant */
                                         method: "turbo_quant";
                                         /** Format: uint64 */
@@ -42804,6 +45472,8 @@ export interface operations {
                         } | {
                             /** @enum {string} */
                             bits: "bits4" | "bits2" | "bits1_5" | "bits1";
+                            /** @description Absent means `mse`, as before the inner-product estimator existed. */
+                            estimator?: "mse" | "inner_product";
                             /** @constant */
                             method: "turbo_quant";
                             /** Format: uint64 */
@@ -42897,6 +45567,8 @@ export interface operations {
                                     } | {
                                         /** @enum {string} */
                                         bits: "bits4" | "bits2" | "bits1_5" | "bits1";
+                                        /** @description Absent means `mse`, as before the inner-product estimator existed. */
+                                        estimator?: "mse" | "inner_product";
                                         /** @constant */
                                         method: "turbo_quant";
                                         /** Format: uint64 */
@@ -42919,6 +45591,18 @@ export interface operations {
                                      */
                                     vector_name: string;
                                 };
+                                /**
+                                 * Format: uint64
+                                 * @description The generation this build extended with the vectors changed since it;
+                                 *     absent when the build encoded every version.
+                                 */
+                                base_generation?: number | null;
+                                /**
+                                 * Format: uint64
+                                 * @description Vector versions this build encoded. An extended generation carries the
+                                 *     rest from its base; a replay encodes none.
+                                 */
+                                encoded_versions: number;
                                 idempotent_replay: boolean;
                                 /** @description Complete logical I/O evidence for normal semantic reads at one stamp. */
                                 read_evidence: {
@@ -43049,6 +45733,8 @@ export interface operations {
                                     } | {
                                         /** @enum {string} */
                                         bits: "bits4" | "bits2" | "bits1_5" | "bits1";
+                                        /** @description Absent means `mse`, as before the inner-product estimator existed. */
+                                        estimator?: "mse" | "inner_product";
                                         /** @constant */
                                         method: "turbo_quant";
                                         /** Format: uint64 */
@@ -43071,6 +45757,18 @@ export interface operations {
                                      */
                                     vector_name: string;
                                 };
+                                /**
+                                 * Format: uint64
+                                 * @description The generation this build extended with the vectors changed since it;
+                                 *     absent when the build encoded every version.
+                                 */
+                                base_generation?: number | null;
+                                /**
+                                 * Format: uint64
+                                 * @description Vector versions this build encoded. An extended generation carries the
+                                 *     rest from its base; a replay encodes none.
+                                 */
+                                encoded_versions: number;
                                 idempotent_replay: boolean;
                                 /** @description Complete logical I/O evidence for normal semantic reads at one stamp. */
                                 read_evidence: {
@@ -43265,6 +45963,8 @@ export interface operations {
                                     } | {
                                         /** @enum {string} */
                                         bits: "bits4" | "bits2" | "bits1_5" | "bits1";
+                                        /** @description Absent means `mse`, as before the inner-product estimator existed. */
+                                        estimator?: "mse" | "inner_product";
                                         /** @constant */
                                         method: "turbo_quant";
                                         /** Format: uint64 */
@@ -43368,6 +46068,8 @@ export interface operations {
                                     } | {
                                         /** @enum {string} */
                                         bits: "bits4" | "bits2" | "bits1_5" | "bits1";
+                                        /** @description Absent means `mse`, as before the inner-product estimator existed. */
+                                        estimator?: "mse" | "inner_product";
                                         /** @constant */
                                         method: "turbo_quant";
                                         /** Format: uint64 */
@@ -43528,6 +46230,8 @@ export interface operations {
                                     } | {
                                         /** @enum {string} */
                                         bits: "bits4" | "bits2" | "bits1_5" | "bits1";
+                                        /** @description Absent means `mse`, as before the inner-product estimator existed. */
+                                        estimator?: "mse" | "inner_product";
                                         /** @constant */
                                         method: "turbo_quant";
                                         /** Format: uint64 */
@@ -43629,6 +46333,8 @@ export interface operations {
                                     } | {
                                         /** @enum {string} */
                                         bits: "bits4" | "bits2" | "bits1_5" | "bits1";
+                                        /** @description Absent means `mse`, as before the inner-product estimator existed. */
+                                        estimator?: "mse" | "inner_product";
                                         /** @constant */
                                         method: "turbo_quant";
                                         /** Format: uint64 */

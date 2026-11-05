@@ -1,9 +1,10 @@
 // Generated from rrd-contract; do not edit.
-// OpenAPI SHA-256: f1856602eb3b5ba419f600b3be0e9626d62ad533032fe220a2728795bd28048a
+// OpenAPI SHA-256: 02c2fb3124a157286742287e6325beb9b8d0066ccd7dd215a843426914953bc4
 package io.rrflow.rrd;
 
 public enum OperationId {
     ATTUNEMENT_CANCEL("attunement-cancel", "POST", "/v1/attunement/cancel", Authentication.SESSION_BEARER, true),
+    ATTUNEMENT_JOB_LIST("attunement-job-list", "POST", "/v1/attunement/jobs/list", Authentication.SESSION_BEARER, false),
     ATTUNEMENT_PAUSE("attunement-pause", "POST", "/v1/attunement/pause", Authentication.SESSION_BEARER, true),
     ATTUNEMENT_READ("attunement-read", "POST", "/v1/attunement/read", Authentication.SESSION_BEARER, false),
     ATTUNEMENT_RECEIPT_READ("attunement-receipt-read", "POST", "/v1/attunement/receipt/read", Authentication.SESSION_BEARER, false),
@@ -39,6 +40,9 @@ public enum OperationId {
     HEALTH_READY("health-ready", "GET", "/v1/health/ready", Authentication.PUBLIC, false),
     KNOWLEDGE_TREE_LIST("knowledge-tree-list", "POST", "/v1/knowledge/trees/list", Authentication.SESSION_BEARER, false),
     KNOWLEDGE_TREE_REPLACE("knowledge-tree-replace", "POST", "/v1/knowledge/trees/replace", Authentication.SESSION_BEARER, true),
+    OBSERVATION_DELIVER("observation-deliver", "POST", "/v1/observations/deliver", Authentication.SESSION_BEARER, true),
+    OBSERVATION_PREPARE("observation-prepare", "POST", "/v1/observations/prepare", Authentication.SESSION_BEARER, true),
+    OBSERVATION_READ("observation-read", "POST", "/v1/observations/read", Authentication.SESSION_BEARER, false),
     OPENAPI_READ("openapi-read", "GET", "/v1/schema/openapi", Authentication.PUBLIC, false),
     QUERY_EXECUTE("query-execute", "POST", "/v1/query", Authentication.SESSION_BEARER, false),
     QUERY_EXPORT("query-export", "POST", "/v1/query/export", Authentication.SESSION_BEARER, false),
@@ -67,6 +71,9 @@ public enum OperationId {
     TRANSACTION_PREVIEW("transaction-preview", "POST", "/v1/transactions/{transaction}/preview", Authentication.SESSION_BEARER, true),
     VECTOR_COLLECTION_ENSURE("vector-collection-ensure", "POST", "/v1/vector/collections/ensure", Authentication.SESSION_BEARER, true),
     VECTOR_COLLECTION_LIST("vector-collection-list", "POST", "/v1/vector/collections/list", Authentication.SESSION_BEARER, false),
+    VECTOR_INDEX_ENSURE("vector-index-ensure", "POST", "/v1/vector/indexes/ensure", Authentication.SESSION_BEARER, true),
+    VECTOR_PAYLOAD_INDEX_DELETE("vector-payload-index-delete", "POST", "/v1/vector/payload-indexes/delete", Authentication.SESSION_BEARER, true),
+    VECTOR_PAYLOAD_INDEX_ENSURE("vector-payload-index-ensure", "POST", "/v1/vector/payload-indexes/ensure", Authentication.SESSION_BEARER, true),
     VECTOR_POINT_RETRIEVE("vector-point-retrieve", "POST", "/v1/vector/points/retrieve", Authentication.SESSION_BEARER, false),
     VECTOR_POINT_SCROLL("vector-point-scroll", "POST", "/v1/vector/points/scroll", Authentication.SESSION_BEARER, false),
     VECTOR_QUANTIZATION_ACTIVATE("vector-quantization-activate", "POST", "/v1/vector/quantizations/activate", Authentication.SESSION_BEARER, true),
@@ -75,7 +82,7 @@ public enum OperationId {
     VECTOR_QUANTIZATION_RETIRE("vector-quantization-retire", "POST", "/v1/vector/quantizations/retire", Authentication.SESSION_BEARER, true),
     VECTOR_SEARCH("vector-search", "POST", "/v1/vector/search", Authentication.SESSION_BEARER, false);
 
-    static final String OPENAPI_DOCUMENT_SHA256 = "f1856602eb3b5ba419f600b3be0e9626d62ad533032fe220a2728795bd28048a";
+    static final String OPENAPI_DOCUMENT_SHA256 = "02c2fb3124a157286742287e6325beb9b8d0066ccd7dd215a843426914953bc4";
 
     public enum Authentication { PUBLIC, API_KEY, SESSION_BEARER }
 

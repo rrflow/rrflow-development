@@ -12,11 +12,13 @@ mod exact;
 mod filter;
 mod hnsw;
 mod plan;
+mod qjl;
 mod quantization;
 mod quantization_catalog;
 mod quantized_segment;
 mod runtime;
 mod segment;
+mod source;
 mod turbo_segment;
 mod turboquant;
 
@@ -30,8 +32,8 @@ pub use accelerator::{
 };
 
 pub use catalog::{
-    VectorArtifactCatalogEntry, VectorCatalog, VectorProjectionDescriptor,
-    VECTOR_ARTIFACT_CATALOG_VERSION, VECTOR_ARTIFACT_RECORD_TYPE,
+    VectorArtifactCatalogEntry, VectorArtifactOperationReceipt, VectorCatalog,
+    VectorProjectionDescriptor, VECTOR_ARTIFACT_CATALOG_VERSION, VECTOR_ARTIFACT_RECORD_TYPE,
 };
 pub use collection::{
     CollectionCatalogue, CollectionDeletionReceipt, CollectionEntry, CollectionError,
@@ -48,8 +50,8 @@ pub use contract::{
     SearchRequest, VectorCandidate, VectorQuery, VectorVisibilityRequest,
 };
 pub use exact::{
-    candidates_from_changes, materialize_visible, score_query, search_changes_exact, search_exact,
-    search_exact_ref,
+    candidates_from_changes, latest_versions, materialize_visible, score_query,
+    search_changes_exact, search_exact, search_exact_ref,
 };
 pub use filter::{FilterCondition, FilterExpression, FilterOperator};
 pub use hnsw::{
@@ -59,6 +61,7 @@ pub use plan::{
     AccessPathKind, CandidatePath, PlanDecision, RejectedPath, SearchPlan, VectorPlanner,
     EXACT_SCAN_PROJECTION_ID,
 };
+pub use qjl::{QjlProjection, MAX_QJL_DIMENSIONS};
 pub use quantization::ScalarQuantizedVector;
 pub use quantization_catalog::{
     QuantizationArtifactCatalogue, QuantizationArtifactEntry, QuantizationArtifactSnapshot,
@@ -77,8 +80,12 @@ pub use runtime::{
 pub use segment::{
     ImmutableVectorSegment, SegmentDescriptor, VectorSegmentConfig, VECTOR_SEGMENT_FORMAT_VERSION,
 };
+pub use source::{source_history, SourceHistory};
 pub use turbo_segment::{
     TurboQuantDescriptor, TurboQuantSegment, TurboQuantSegmentConfig,
     TURBOQUANT_SEGMENT_FORMAT_VERSION,
 };
-pub use turboquant::{TurboQuantBits, TurboQuantVector, TURBOQUANT_FORMAT_VERSION};
+pub use turboquant::{
+    TurboQuantBits, TurboQuantEstimator, TurboQuantInnerProductCode, TurboQuantQuery,
+    TurboQuantVector, TURBOQUANT_FORMAT_VERSION,
+};

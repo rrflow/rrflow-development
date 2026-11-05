@@ -10,6 +10,15 @@ independently.
 
 ## Observed deficiency
 
+The [optimized Windows artifact trial](../../evidence/change-journals/repository/controller-testing-bundle-artifact.md)
+passed actual proposal/reopen and three response-fault histories, but exposed a
+real model reliability gap: after configuration invalidation, the fresh provider
+response selected the unsupported effort `observed`. The engine rejected it;
+the success-expecting case failed. Recovery retained two charged steps and
+stopped/uncertain capacity. Preserve this failure for independent review; do not
+repair the response, clear uncertainty or label it qualified routing. Model
+qualification and public uncertainty reconciliation remain open.
+
 The later [installed live histories](../../evidence/change-journals/gate-g/controller-task-proposal-installed-live.md)
 prove a real configured BF16 proposal, restart/replay and guarded completion under
 configuration replacement, session closure, Stop and response loss. A fresh
