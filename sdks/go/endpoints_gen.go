@@ -2,9 +2,9 @@
 
 package rrd
 
-// OpenAPI SHA-256: 12e52bb72a3be1c220d1badf3af0124be7d5c08c9f2c875249a9c3ab43eb7e3d
+// OpenAPI SHA-256: c4375b035939ca40618f6e56eb1d52ea11347b742d003508f40df5d73c441d38
 
-const EndpointOpenAPIDocumentSHA256 = "12e52bb72a3be1c220d1badf3af0124be7d5c08c9f2c875249a9c3ab43eb7e3d"
+const EndpointOpenAPIDocumentSHA256 = "c4375b035939ca40618f6e56eb1d52ea11347b742d003508f40df5d73c441d38"
 
 type OperationID string
 
@@ -77,6 +77,9 @@ const (
 	OperationTransactionPreview           OperationID = "transaction-preview"
 	OperationVectorCollectionEnsure       OperationID = "vector-collection-ensure"
 	OperationVectorCollectionList         OperationID = "vector-collection-list"
+	OperationVectorIndexEnsure            OperationID = "vector-index-ensure"
+	OperationVectorPayloadIndexDelete     OperationID = "vector-payload-index-delete"
+	OperationVectorPayloadIndexEnsure     OperationID = "vector-payload-index-ensure"
 	OperationVectorPointRetrieve          OperationID = "vector-point-retrieve"
 	OperationVectorPointScroll            OperationID = "vector-point-scroll"
 	OperationVectorQuantizationActivate   OperationID = "vector-quantization-activate"
@@ -155,6 +158,9 @@ var endpoints = map[OperationID]Endpoint{
 	OperationTransactionPreview:           {Method: "POST", Path: "/v1/transactions/{transaction}/preview", Authentication: "session_bearer", Mutation: true},
 	OperationVectorCollectionEnsure:       {Method: "POST", Path: "/v1/vector/collections/ensure", Authentication: "session_bearer", Mutation: true},
 	OperationVectorCollectionList:         {Method: "POST", Path: "/v1/vector/collections/list", Authentication: "session_bearer", Mutation: false},
+	OperationVectorIndexEnsure:            {Method: "POST", Path: "/v1/vector/indexes/ensure", Authentication: "session_bearer", Mutation: true},
+	OperationVectorPayloadIndexDelete:     {Method: "POST", Path: "/v1/vector/payload-indexes/delete", Authentication: "session_bearer", Mutation: true},
+	OperationVectorPayloadIndexEnsure:     {Method: "POST", Path: "/v1/vector/payload-indexes/ensure", Authentication: "session_bearer", Mutation: true},
 	OperationVectorPointRetrieve:          {Method: "POST", Path: "/v1/vector/points/retrieve", Authentication: "session_bearer", Mutation: false},
 	OperationVectorPointScroll:            {Method: "POST", Path: "/v1/vector/points/scroll", Authentication: "session_bearer", Mutation: false},
 	OperationVectorQuantizationActivate:   {Method: "POST", Path: "/v1/vector/quantizations/activate", Authentication: "session_bearer", Mutation: true},

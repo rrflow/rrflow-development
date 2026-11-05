@@ -46,6 +46,13 @@ interface Corpus {
       activate: JsonObject & { artifact_id: string };
       search: JsonObject;
     };
+    index: {
+      payload_index: JsonObject;
+      ensure: JsonObject;
+      search: JsonObject;
+      spare_payload_index: JsonObject;
+      delete_payload_index: JsonObject;
+    };
   };
   changefeed: {
     read: JsonObject & { after_cursor: number; limit: number; scope: string };
@@ -60,6 +67,8 @@ interface Corpus {
     query_identity: string;
     vector_reference: string;
     quantized_access_path: string;
+    indexed_access_path: string;
+    indexed_reference: string;
     estate_revision: number;
     typed_error: string;
     retry_attempts: number;
@@ -237,6 +246,42 @@ assert.ok(
   quantized.hits.some(
     (hit) => `${hit.reference.kind}:${hit.reference.id}` === corpus.expected.vector_reference,
   ),
+);
+
+// The graph index and its payload index. The changefeed read below proves the
+// scope stays readable with an index in it.
+const index = corpus.vector.index;
+await client.call(
+  "vector-payload-index-ensure",
+  index.payload_index as RequestPayload<"vector-payload-index-ensure">,
+  mutation("payload-index-ensure", session),
+);
+const builtIndex = await client.call(
+  "vector-index-ensure",
+  index.ensure as RequestPayload<"vector-index-ensure">,
+  mutation("index-ensure", session),
+);
+assert.equal(builtIndex.index.kind, corpus.expected.indexed_access_path);
+const indexed = await client.call(
+  "vector-search",
+  index.search as RequestPayload<"vector-search">,
+  read("indexed-search", session),
+);
+assert.equal(indexed.access_path, corpus.expected.indexed_access_path);
+assert.ok(
+  indexed.hits.some(
+    (hit) => `${hit.reference.kind}:${hit.reference.id}` === corpus.expected.indexed_reference,
+  ),
+);
+await client.call(
+  "vector-payload-index-ensure",
+  index.spare_payload_index as RequestPayload<"vector-payload-index-ensure">,
+  mutation("payload-index-spare", session),
+);
+await client.call(
+  "vector-payload-index-delete",
+  index.delete_payload_index as RequestPayload<"vector-payload-index-delete">,
+  mutation("payload-index-delete", session),
 );
 
 const changes = await client.call(
