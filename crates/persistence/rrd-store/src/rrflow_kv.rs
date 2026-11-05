@@ -27,7 +27,7 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::collections::BTreeSet;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Mutex, MutexGuard};
+use std::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::time::Instant;
 
 mod inspection_cursor;
@@ -102,7 +102,10 @@ pub struct RrflowKvOpenEvidence {
 
 pub struct RrflowKvStore {
     path: AnchoredPath,
-    database: Mutex<Database>,
+    /// Reads take the shared side, because they need only `&Database`. Anything that needs
+    /// `&mut Database` takes the exclusive side. On Linux a waiting writer blocks new readers, so a
+    /// stream of reads cannot starve a commit.
+    database: RwLock<Database>,
     open_evidence: RrflowKvOpenEvidence,
     native_write_path_diagnostics_enabled: AtomicBool,
 }
@@ -134,12 +137,12 @@ impl StorageTransaction for RrflowKvTransaction<'_> {
     }
 
     fn get(&self, key: &[u8]) -> Result<Option<Vec<u8>>> {
-        let database = self.store.lock()?;
+        let database = self.store.read_lock()?;
         self.transaction.get(&database, key).map_err(Error::from)
     }
 
     fn scan(&self, start: &[u8], end: &[u8], limit: usize) -> Result<Vec<(Vec<u8>, Vec<u8>)>> {
-        let database = self.store.lock()?;
+        let database = self.store.read_lock()?;
         self.transaction
             .scan(&database, start, end, limit)
             .map_err(Error::from)
@@ -334,7 +337,7 @@ impl RrflowKvStore {
                 segment_validation: database.segment_open_evidence().clone(),
                 reconciliation: RrflowKvReconciliationEvidence::default(),
             },
-            database: Mutex::new(database),
+            database: RwLock::new(database),
             native_write_path_diagnostics_enabled: AtomicBool::new(false),
         })
     }
@@ -448,7 +451,7 @@ impl RrflowKvStore {
         let path = database.anchored_root().clone();
         Ok(Self {
             path,
-            database: Mutex::new(database),
+            database: RwLock::new(database),
             open_evidence,
             native_write_path_diagnostics_enabled: AtomicBool::new(false),
         })
@@ -490,7 +493,7 @@ impl RrflowKvStore {
     /// Offer one physical maintenance quantum without queuing behind a reader
     /// or writer. Busy is a skipped offer, not a second worker or a retry loop.
     pub fn try_maintenance_step(&self) -> Result<bool> {
-        match self.database.try_lock() {
+        match self.database.try_write() {
             // The private database never exposes an untracked Snapshot.
             // Transactions own registered leases; inspection streams and
             // runtime checkpoints retain physical generations independently.
@@ -506,7 +509,7 @@ impl RrflowKvStore {
     }
 
     pub fn manifest(&self) -> Result<Manifest> {
-        Ok(self.lock()?.manifest().clone())
+        Ok(self.read_lock()?.manifest().clone())
     }
 
     /// Compacts rrflowKV state after reconciling physical manifest pins with the
@@ -537,10 +540,16 @@ impl RrflowKvStore {
         self.runtime().restore_commit(commit, audit)
     }
 
-    fn lock(&self) -> Result<MutexGuard<'_, Database>> {
+    fn lock(&self) -> Result<RwLockWriteGuard<'_, Database>> {
         self.database
-            .lock()
-            .map_err(|_| Error::Substrate("rrflowKV database mutex poisoned".into()))
+            .write()
+            .map_err(|_| Error::Substrate("rrflowKV database lock poisoned".into()))
+    }
+
+    fn read_lock(&self) -> Result<RwLockReadGuard<'_, Database>> {
+        self.database
+            .read()
+            .map_err(|_| Error::Substrate("rrflowKV database lock poisoned".into()))
     }
 }
 
@@ -816,7 +825,7 @@ impl StorageEngine for RrflowKvStore {
             .native_write_path_diagnostics_enabled
             .load(Ordering::Acquire);
         let begin_lock_started = diagnostics_enabled.then(Instant::now);
-        let database = self.lock()?;
+        let database = self.read_lock()?;
         let begin_mutex_wait_ns = begin_lock_started.map_or(0, |started| {
             u64::try_from(started.elapsed().as_nanos()).unwrap_or(u64::MAX)
         });
@@ -869,7 +878,7 @@ impl StorageEngine for RrflowKvStore {
             memtable_keys, memtable_versions, segment_count, message
         );
         let wait_start = timed.then(Instant::now);
-        let database = self.lock()?;
+        let database = self.read_lock()?;
         let acquired = timed.then(Instant::now);
         let manifest = database.manifest();
         let cache = database.page_cache_stats();
@@ -1516,7 +1525,7 @@ mod tests {
             fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
                 let store = self.store.upgrade().unwrap();
                 self.lock_available
-                    .store(store.database.try_lock().is_ok(), Ordering::SeqCst);
+                    .store(store.database.try_write().is_ok(), Ordering::SeqCst);
                 self.bytes.lock().unwrap().extend_from_slice(bytes);
                 Ok(bytes.len())
             }
@@ -1619,6 +1628,136 @@ mod tests {
                 assert_eq!(evidence.segment_count, Some(0));
             }
         });
+    }
+
+    /// Runs `read` while another reader is inside the database, and says whether it finished.
+    fn finishes_beside_another_reader(store: &RrflowKvStore, read: impl FnOnce() + Send) -> bool {
+        let held = store.read_lock().unwrap();
+        let (done_tx, done_rx) = std::sync::mpsc::channel();
+        std::thread::scope(|scope| {
+            scope.spawn(move || {
+                read();
+                let _ = done_tx.send(());
+            });
+            let finished = done_rx
+                .recv_timeout(std::time::Duration::from_secs(10))
+                .is_ok();
+            drop(held);
+            finished
+        })
+    }
+
+    fn store_with_a_key(directory: &tempfile::TempDir) -> RrflowKvStore {
+        let store = RrflowKvStore::open(&directory.path().join("reads")).unwrap();
+        let mut tx = store.begin_transaction().unwrap();
+        tx.put(b"present".to_vec(), b"value".to_vec()).unwrap();
+        tx.commit(Durability::Authoritative).unwrap();
+        store
+    }
+
+    /// A transaction on its own thread that reads when told, and says when it has.
+    fn reader_on_its_own_thread<'scope>(
+        scope: &'scope std::thread::Scope<'scope, '_>,
+        store: &'scope RrflowKvStore,
+    ) -> (std::sync::mpsc::Sender<()>, std::sync::mpsc::Receiver<()>) {
+        let (ready_tx, ready_rx) = std::sync::mpsc::channel();
+        let (go_tx, go_rx) = std::sync::mpsc::channel::<()>();
+        let (done_tx, done_rx) = std::sync::mpsc::channel();
+        scope.spawn(move || {
+            let tx = store.begin_transaction().unwrap();
+            ready_tx.send(()).unwrap();
+            go_rx.recv().unwrap();
+            assert_eq!(tx.get(b"present").unwrap(), Some(b"value".to_vec()));
+            assert_eq!(tx.scan(b"p", b"q", 8).unwrap().len(), 1);
+            done_tx.send(()).unwrap();
+        });
+        ready_rx.recv().unwrap();
+        (go_tx, done_rx)
+    }
+
+    #[test]
+    fn a_read_does_not_wait_for_another_read() {
+        let directory = tempfile::tempdir().unwrap();
+        let store = store_with_a_key(&directory);
+        std::thread::scope(|scope| {
+            let (go, done) = reader_on_its_own_thread(scope, &store);
+            let held = store.read_lock().unwrap();
+            go.send(()).unwrap();
+            let finished = done
+                .recv_timeout(std::time::Duration::from_secs(10))
+                .is_ok();
+            drop(held);
+            assert!(finished, "a read queued behind another read");
+        });
+    }
+
+    #[test]
+    fn a_new_transaction_does_not_wait_for_a_read() {
+        let directory = tempfile::tempdir().unwrap();
+        let store = store_with_a_key(&directory);
+        let finished = finishes_beside_another_reader(&store, || {
+            drop(store.begin_transaction().unwrap());
+        });
+        assert!(finished, "beginning a transaction queued behind a read");
+    }
+
+    #[test]
+    fn a_commit_still_excludes_reads() {
+        let directory = tempfile::tempdir().unwrap();
+        let store = store_with_a_key(&directory);
+        std::thread::scope(|scope| {
+            let (go, done) = reader_on_its_own_thread(scope, &store);
+            let owner = store.lock().unwrap();
+            go.send(()).unwrap();
+            assert!(
+                done.recv_timeout(std::time::Duration::from_millis(300))
+                    .is_err(),
+                "a read ran while the database's owner held it"
+            );
+            drop(owner);
+            done.recv_timeout(std::time::Duration::from_secs(10))
+                .expect("the read ran once the owner let go");
+        });
+    }
+
+    #[test]
+    fn overlapping_reads_never_see_half_of_a_commit() {
+        let directory = tempfile::tempdir().unwrap();
+        let store = RrflowKvStore::open(&directory.path().join("overlap")).unwrap();
+        let write_pair = |value: u64| {
+            let mut tx = store.begin_transaction().unwrap();
+            tx.put(b"left".to_vec(), value.to_le_bytes().to_vec())
+                .unwrap();
+            tx.put(b"right".to_vec(), value.to_le_bytes().to_vec())
+                .unwrap();
+            tx.commit(Durability::Authoritative).unwrap();
+        };
+        write_pair(0);
+        let finished = AtomicBool::new(false);
+        std::thread::scope(|scope| {
+            for _ in 0..4 {
+                scope.spawn(|| {
+                    let mut reads = 0_u64;
+                    while !finished.load(Ordering::Acquire) || reads == 0 {
+                        let tx = store.begin_transaction().unwrap();
+                        let left = tx.get(b"left").unwrap();
+                        let right = tx.get(b"right").unwrap();
+                        assert_eq!(left, right, "a snapshot saw half of a commit");
+                        assert!(left.is_some());
+                        reads += 1;
+                    }
+                });
+            }
+            for value in 1..=200 {
+                write_pair(value);
+            }
+            finished.store(true, Ordering::Release);
+        });
+        let tx = store.begin_transaction().unwrap();
+        assert_eq!(
+            tx.get(b"left").unwrap(),
+            Some(200_u64.to_le_bytes().to_vec())
+        );
     }
 
     #[test]

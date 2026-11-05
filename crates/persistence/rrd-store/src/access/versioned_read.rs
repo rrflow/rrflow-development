@@ -579,15 +579,16 @@ fn authenticated_steps<R: AccessRead + ?Sized>(
         let mut selected = BTreeMap::<u64, RuntimeChange>::new();
         for source in &step {
             let path = source.path()?;
-            let encoded = reader.with_path(path, || scan_source(reader, read, source))?;
-            for (stored_key, bytes) in encoded {
-                let change: RuntimeChange = serde_json::from_slice(&bytes)?;
-                if change.cursor > read.commit_cursor {
-                    continue;
-                }
-                validate_version_entry(source, read, &stored_key, &change)?;
-                insert_version(&mut selected, change)?;
-            }
+            reader.with_path(path, || {
+                scan_source(reader, read, source, &mut |stored_key, bytes| {
+                    let change: RuntimeChange = serde_json::from_slice(&bytes)?;
+                    if change.cursor > read.commit_cursor {
+                        return Ok(());
+                    }
+                    validate_version_entry(source, read, &stored_key, &change)?;
+                    insert_version(&mut selected, change)
+                })
+            })?;
         }
         let authentication = reader.with_path(RuntimeReadAccessPath::AccumulatorProof, || {
             let accumulator = match &mut accumulator {
@@ -605,10 +606,11 @@ fn authenticated_steps<R: AccessRead + ?Sized>(
             )
         });
         reader.preserve_budget_error(authentication)?;
-        for change in selected.values() {
-            insert_version(&mut changes, change.clone())?;
+        let selected = selected.into_values().collect::<Vec<_>>();
+        let next = expand(&selected);
+        for change in selected {
+            insert_version(&mut changes, change)?;
         }
-        let next = expand(&selected.into_values().collect::<Vec<_>>());
         step = ranges.admit(&next, &read.scope)?;
     }
     Ok(changes)
@@ -715,9 +717,43 @@ fn scan_source(
     reader: &(impl AccessRead + ?Sized),
     read: &ReadStamp,
     source: &RuntimeVersionedSource,
-) -> Result<Vec<(Vec<u8>, Vec<u8>)>> {
+    visit: &mut dyn FnMut(Vec<u8>, Vec<u8>) -> Result<()>,
+) -> Result<()> {
     let (_, start, end) = source_interval(source, &read.scope)?;
-    reader.scan_range(&start, &end, usize::MAX)
+    scan_in_batches(reader, start, &end, visit)
+}
+
+/// Rows one versioned scan asks storage for at a time. `projected_output_bytes`
+/// bounds what a scan holds, so this is what lets a read outgrow that limit.
+/// A smaller batch costs more seeks, and a larger one refuses rows it could read.
+const VERSIONED_SCAN_BATCH_ROWS: usize = 1024;
+
+/// Visits `[start, end)` in key order, holding one batch of stored rows at a
+/// time. Every batch reads the same snapshot, because the reader does.
+fn scan_in_batches(
+    reader: &(impl AccessRead + ?Sized),
+    mut start: Vec<u8>,
+    end: &[u8],
+    visit: &mut dyn FnMut(Vec<u8>, Vec<u8>) -> Result<()>,
+) -> Result<()> {
+    loop {
+        let rows = reader.scan_range(&start, end, VERSIONED_SCAN_BATCH_ROWS)?;
+        let complete = rows.len() < VERSIONED_SCAN_BATCH_ROWS;
+        let Some((last, _)) = rows.last() else {
+            return Ok(());
+        };
+        // The smallest key after the last one, which is the next batch's start.
+        let mut next = Vec::with_capacity(last.len() + 1);
+        next.extend_from_slice(last);
+        next.push(0);
+        for (key, value) in rows {
+            visit(key, value)?;
+        }
+        if complete || next.as_slice() >= end {
+            return Ok(());
+        }
+        start = next;
+    }
 }
 
 fn source_interval(
@@ -1367,6 +1403,10 @@ mod identity_range_tests;
 #[cfg(test)]
 #[path = "vector_delta_read_tests.rs"]
 mod vector_delta_read_tests;
+
+#[cfg(test)]
+#[path = "versioned_read_batch_tests.rs"]
+mod versioned_read_batch_tests;
 
 #[cfg(test)]
 mod tests {
