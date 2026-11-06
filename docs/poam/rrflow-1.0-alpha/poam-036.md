@@ -1,8 +1,18 @@
-# POAM-036 — DuckDB analytical interoperability is absent
+# POAM-036 — Earlier DuckDB interoperability direction withdrawn
 
 **Status:** active parent-owned POA&M detail
 **Coordinate:** `rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-036`
 **Owner:** [RRFlow 1.0 alpha POA&M](../rrflow-1.0-alpha.md)
+
+## Current disposition
+
+The owner withdrew the DuckDB interoperability and bundled-worker direction
+on 2026-11-02. This row is withdrawn because the requested scope changed; it
+was not implemented or qualified, and withdrawal does not claim completion.
+Native rrflowDB analytical, Parquet, resource and recovery gaps remain with
+their respective C, D and F owners. The material below is historical context
+and is no longer a closure requirement. See the [research record](../../reference/data/duckdb.md).
+
 
 ## Observed deficiency
 

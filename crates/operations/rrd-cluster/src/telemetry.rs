@@ -625,8 +625,8 @@ mod tests {
     #[test]
     fn identity_concurrency_and_window_limits_are_bounded_and_reset_explicit() {
         let telemetry = RrdTransportTelemetry::new(policy(), 90).unwrap();
-        let one = NodeId::new("node:one").unwrap();
-        let two = NodeId::new("node:two").unwrap();
+        let one = NodeId::new("node-one").unwrap();
+        let two = NodeId::new("node-two").unwrap();
         let first = telemetry
             .admit(&one, RrdTransportOperation::Append, 100, 100)
             .unwrap();
@@ -676,7 +676,7 @@ mod tests {
     #[test]
     fn dropped_guard_records_failed_work_and_connection_denials_are_content_free() {
         let telemetry = RrdTransportTelemetry::new(policy(), 1).unwrap();
-        let identity = NodeId::new("node:one").unwrap();
+        let identity = NodeId::new("node-one").unwrap();
         drop(
             telemetry
                 .admit(&identity, RrdTransportOperation::Snapshot, 123, 2)
@@ -702,8 +702,8 @@ mod tests {
         let mut admission = policy();
         admission.max_global_in_flight = 1;
         let telemetry = RrdTransportTelemetry::new(admission, 1).unwrap();
-        let one = NodeId::new("node:one").unwrap();
-        let two = NodeId::new("node:two").unwrap();
+        let one = NodeId::new("node-one").unwrap();
+        let two = NodeId::new("node-two").unwrap();
         let first = telemetry
             .admit(&one, RrdTransportOperation::Append, 10, 2)
             .unwrap();
@@ -725,7 +725,7 @@ mod tests {
     #[test]
     fn identity_admission_is_enforced_across_operation_kinds() {
         let telemetry = RrdTransportTelemetry::new(policy(), 1).unwrap();
-        let identity = NodeId::new("node:one").unwrap();
+        let identity = NodeId::new("node-one").unwrap();
         let first = telemetry
             .admit(&identity, RrdTransportOperation::Append, 10, 2)
             .unwrap();
@@ -742,9 +742,9 @@ mod tests {
     #[test]
     fn observations_and_admission_reject_prestart_time_and_identity_growth_is_bounded() {
         let telemetry = RrdTransportTelemetry::new(policy(), 100).unwrap();
-        let one = NodeId::new("node:one").unwrap();
-        let two = NodeId::new("node:two").unwrap();
-        let three = NodeId::new("node:three").unwrap();
+        let one = NodeId::new("node-one").unwrap();
+        let two = NodeId::new("node-two").unwrap();
+        let three = NodeId::new("node-three").unwrap();
         assert!(telemetry.snapshot(99).is_err());
         assert!(telemetry
             .admit(&one, RrdTransportOperation::Append, 1, 99)

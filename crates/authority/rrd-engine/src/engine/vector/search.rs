@@ -293,7 +293,21 @@ impl RrdEngine {
             .bindings
             .values()
             .filter(|binding| vector_artifact_relevant(&binding.descriptor, search));
-        let (Some(binding), None) = (eligible.next(), eligible.next()) else {
+        let first = eligible.next();
+        let second = eligible.next();
+        if first.is_none() {
+            // The stamped catalogue has no compatible loaded binding. Ask
+            // the existing planner whether any descriptor can serve even at
+            // source cursor zero, before reading canonical vector versions.
+            // A successful plan falls through: only a definitive planner
+            // refusal is safe to return without inspecting the source.
+            manifest
+                .runtime
+                .prepare_search_at(search, 0, ef_search)
+                .map_err(core_vector)?;
+            return Ok(None);
+        }
+        let (Some(binding), None) = (first, second) else {
             return Ok(None);
         };
         if binding.kind != rrd_vector::VectorArtifactKind::TurboQuant {

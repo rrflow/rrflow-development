@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { endpoints } from "../src/generated/endpoints.js";
+import type { RequestPayload } from "../src/index.js";
 import { RrdApiError, RrdClient, RrdClientError } from "../src/index.js";
 
 const jsonResponse = (value: unknown, status = 200) =>
@@ -25,6 +26,19 @@ test("generated catalogue tracks all mutation boundaries", () => {
   assert.equal(endpoints["audit-export"].path, "/v1/audit/export");
   assert.equal(endpoints["backup-create"].mutation, true);
   assert.equal(endpoints["transaction-preview"].mutation, true);
+});
+
+test("endpoint proposal payload accepts a future field in the generated type", () => {
+  const request: RequestPayload<"task-endpoint-propose"> = {
+    scope: "project",
+    task_id: "task-1",
+    attempt_id: "attempt-1",
+    max_storage_keys: 1,
+    expected_task_sha256: "a".repeat(64),
+    expected_configuration_sha256: "b".repeat(64),
+    future_observation: { status: "uninterpreted" },
+  };
+  assert.deepEqual(request.future_observation, { status: "uninterpreted" });
 });
 
 test("public negotiation retries transport loss and validates the ArkType envelope", async () => {

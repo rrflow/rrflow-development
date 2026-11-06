@@ -49,7 +49,7 @@
 | POAM-033 | High | Open | [rejected native commits retain an unabortable intent](rrflow-1.0-alpha/poam-033.md) |
 | POAM-034 | High | Open | [commit-time schema constraints load the whole scope](rrflow-1.0-alpha/poam-034.md) |
 | POAM-035 | Critical | Open | [installed storage failure and growth qualification](rrflow-1.0-alpha/poam-035.md) |
-| POAM-036 | High | Sequenced | [DuckDB analytical interoperability is absent](rrflow-1.0-alpha/poam-036.md) |
+| POAM-036 | High | Withdrawn | [Earlier DuckDB interoperability direction withdrawn](rrflow-1.0-alpha/poam-036.md) |
 | POAM-037 | High | Open | [external knowledge providers and turnkey cloud synchronization](rrflow-1.0-alpha/poam-037.md) |
 | POAM-038 | High | Open | [attunement acts on an unverified source binding](rrflow-1.0-alpha/poam-038.md) |
 | POAM-039 | High | Open | [no versioned handoff or open-question record](rrflow-1.0-alpha/poam-039.md) |
@@ -59,7 +59,7 @@
 | POAM-043 | High | Open | [transaction previews rebuild the whole scope and skip object checks](rrflow-1.0-alpha/poam-043.md) |
 | POAM-044 | High | Open | [rrflowQL refusals are unstructured, and queries cannot be checked without running](rrflow-1.0-alpha/poam-044.md) |
 | POAM-045 | High | Verifying | [vector search returns a vector's old version after it moves to another collection](rrflow-1.0-alpha/poam-045.md) |
-| POAM-046 | High | Open | [a vector index makes the public changefeed refuse its scope](rrflow-1.0-alpha/poam-046.md) |
+| POAM-046 | High | Verifying | [a vector index makes the public changefeed refuse its scope](rrflow-1.0-alpha/poam-046.md) |
 | POAM-047 | High | Verifying | [a collection whose vectors all moved to another collection cannot be deleted](rrflow-1.0-alpha/poam-047.md) |
 | POAM-048 | High | Verifying | [an approximate generation keeps proposing a vector that moved to another collection](rrflow-1.0-alpha/poam-048.md) |
 | POAM-049 | High | Open | [an audit read's journal scan grows with the journal's length](rrflow-1.0-alpha/poam-049.md) |
