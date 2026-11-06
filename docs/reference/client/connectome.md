@@ -104,20 +104,28 @@ the reviewed UI revision independently. The
 owns build and desktop-use instructions.
 
 [Connectome PR13](https://github.com/rrflow/connectome-development/pull/13)
-adds selected-project workspaces with nested Overview, Knowledge, Activity,
-Learning and Services sections. Basic descriptions lead to advanced engine
-identity and evidence; native model, record/relationship, vector and storage
-views remain bounded public-operation projections. Manage project engines owns
-at most four local processes, and authenticated native connections are keyed by
-project profile (at most eight), so opening or stopping one does not replace
-another project's session. Context sharing is not implied by parallel execution.
+adds selected-project workspaces with nested Overview, Knowledge, Workbench,
+Activity, Learning and Services sections. Basic descriptions lead to advanced
+engine identity and evidence; native model, record/relationship, vector and
+storage views remain bounded public-operation projections. Manage project
+engines owns at most four local processes, and authenticated native connections
+are keyed by project profile (at most eight), so opening or stopping one does
+not replace another project's session. Context sharing is not implied by
+parallel execution.
 
 The [project workspaces pin receipt](../../evidence/change-journals/gate-h/h-06-project-workspaces-pin.md)
 binds the merged UI to its Windows/Linux/macOS, frontend and real-engine process
-CI. Knowledge-path activation, replay, supervised/unsupervised learning and
-cloud sync remain visibly unavailable. This UI revision retains the same older
-engine/SDK pair named above; neither source association nor parallel process
-control is proof of those downstream capabilities or full H-06 acceptance.
+CI. Workbench planning and receipt capture are available as project-scoped UI
+records, including runtime-backed receipt capture from authenticated engine
+reads, governed observe-flight launch, and task/flight snapshot summaries, while
+bounded recent-flight snapshots (ID/status/provider/context mode) are rendered
+from engine reads, and selected flights can be read for governed summary/event
+detail from the same authenticated session, while
+knowledge-path activation, replay, supervised/unsupervised learning and cloud
+sync remain visibly unavailable. This UI revision retains
+the same older engine/SDK pair named above; neither source association nor
+parallel process control is proof of those downstream capabilities or full
+H-06 acceptance.
 
 Newer RRFlow installation-plan contract v2 requires an explicit identity from
 `rrflow install identity`, retained across preview regeneration and supplied
@@ -452,6 +460,7 @@ each algorithm:
 |---|---|---|
 | Overview | Project name, indexed/source-changed/blocked status, effective effort, next useful action | Instance, plan/configuration/source identities; phase/checkpoint and exact unavailable reason |
 | Knowledge | Sources, files, relationships, search results and source citations | Schema/records, rrflowQL explain, graph adjacency, vector collection/model/dimension, rrflowKV resource evidence, Parquet export |
+| Workbench | Create project-scoped testing/reverse-engineering/optimization/release-update plans and capture receipts | Planned scope, retained diagnostics and updates tied to the selected project profile; execution remains engine-authorized |
 | Activity | Current task, elapsed/remaining allowance, Stop, result and retained session | Original deadline, attempt receipts, selected/skipped retrieval, read stamp, retries, queue/compute/storage/model time and uncertainty |
 | Learning | Disabled/available/experiment/candidate status, separate supervised and unsupervised choices | Dataset authorization, model/configuration identity, held-out quality, promotion/rollback and RROFLOW receipts |
 | Services | Local operation, optional account/knowledge-path setup and transfer state | Expected endpoint/account/instance, scope, selected datasets, checkpoints, conflict/revocation and failure evidence |
