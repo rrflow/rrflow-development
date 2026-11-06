@@ -62,4 +62,5 @@
 - [POAM-053 — clients cannot build RRFlow's HNSW or payload indexes](poam-053.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-053`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-053) — active parent-owned POA&M detail
 - [POAM-054 — a default install accepts a vector corpus its search then refuses](poam-054.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-054`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-054) — active parent-owned POA&M detail
 - [POAM-055 — a vector search the engine will refuse first reads every vector](poam-055.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-055`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-055) — active parent-owned POA&M detail
+- [POAM-056 — storage maintenance stalls every search, and searches cause it](poam-056.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-056`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-056) — active parent-owned POA&M detail
 <!-- rrflow:generated-index:end -->
