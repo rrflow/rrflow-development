@@ -597,7 +597,7 @@ mod checkpoint_tests {
         let store = RrflowKvStore::open(path).unwrap();
         for index in 0..actions {
             let claim = Claim::new(
-                Subject::new(format!("checkpoint:{index}")).unwrap(),
+                Subject::new(format!("checkpoint-{index}")).unwrap(),
                 Predicate::new("value").unwrap(),
                 "x".repeat(value_bytes),
                 index + 1,

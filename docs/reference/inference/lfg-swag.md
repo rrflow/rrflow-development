@@ -133,11 +133,18 @@ human review, provider-quality evidence or completion of G-01b.
 ### Task-bound proposal semantics in progress
 
 `EndpointSelectionRequest` names an existing task and stable attempt, expected
-task/configuration digests and a bounded task-read allowance. It accepts no URL,
-credential, prompt or caller-authored candidate catalogue. The task-text packet
+task/configuration digests and a bounded task-read allowance. It uses no
+caller-supplied URL, credential, prompt or candidate catalogue. The task-text packet
 omits the task creation replay key, binds an open task version/read coordinate
 and requires the exact configured selector and allowance. Task projection checks
 do not authorize repository context or establish source-edit freshness.
+
+Unknown request fields are accepted and ignored for forward compatibility; they
+do not enter the typed request, its operation identity, or controller packet.
+Adding an LFG observation as an unknown field does not mean it was read,
+validated or used. That needs a separately implemented, authorized engine path.
+The [request extension journal](../../evidence/change-journals/gate-g/lfg-endpoint-request-extensions.md)
+records the compatibility oracle and its limits.
 
 `EndpointSelectionProposal` binds request, task, attempt, packet, configuration,
 allowance, service alias and observed request/response/content identities. Its
@@ -149,9 +156,9 @@ tolerating unrelated provider envelope metadata.
 
 These types alone are consistency checks, not an engine dispatcher.
 Constructing a valid tuple does not prove that a model produced it for that packet.
-Authenticated packet construction, explicit experimental policy admission,
-credential setup and installed execution still require implementation in the
-same [draft package](https://github.com/rrflow/rrflow-development/pull/206).
+Authenticated packet construction, experimental policy admission and installed
+controller proposal execution were implemented in
+[PR206](https://github.com/rrflow/rrflow-development/pull/206).
 The [semantics-stage journal](../../evidence/change-journals/gate-g/controller-task-proposal-semantics.md)
 records actual-task projection and retained-provider validation checks. No new
 provider execution or model-quality claim follows from those checks.
