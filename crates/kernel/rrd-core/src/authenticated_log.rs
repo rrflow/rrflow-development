@@ -583,36 +583,16 @@ fn node_hash(left: [u8; 32], right: [u8; 32]) -> [u8; 32] {
 }
 
 fn encode_digest(value: [u8; 32]) -> String {
-    let mut output = String::with_capacity(64);
-    for byte in value {
-        use std::fmt::Write as _;
-        write!(&mut output, "{byte:02x}").expect("writing to String cannot fail");
-    }
-    output
+    crate::digest::hex(value)
 }
 
 fn parse_digest(label: &str, value: &str) -> Result<[u8; 32]> {
     if value.len() != 64 {
         return invalid(format!("{label} must be a 64-character SHA-256 digest"));
     }
-    if !value
-        .bytes()
-        .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
-    {
-        return invalid(format!("{label} must contain lowercase hexadecimal"));
-    }
-    let mut bytes = [0_u8; 32];
-    for (index, slot) in bytes.iter_mut().enumerate() {
-        *slot = u8::from_str_radix(&value[index * 2..index * 2 + 2], 16).map_err(|_| {
-            Error::InvalidRuntime {
-                reason: format!("{label} must contain lowercase hexadecimal"),
-            }
-        })?;
-    }
-    if encode_digest(bytes) != value {
-        return invalid(format!("{label} must contain lowercase hexadecimal"));
-    }
-    Ok(bytes)
+    crate::digest::from_hex(value).ok_or_else(|| Error::InvalidRuntime {
+        reason: format!("{label} must contain lowercase hexadecimal"),
+    })
 }
 
 fn invalid<T>(reason: impl Into<String>) -> Result<T> {
@@ -658,7 +638,7 @@ mod tests {
     #[test]
     fn ordered_generation_neighbors_prove_the_selection_and_reject_omissions() {
         let scope = ScopeId::new("instance:test").unwrap();
-        let project = RuntimeId::new("project:test").unwrap();
+        let project = RuntimeId::new("project-test").unwrap();
         let mut history =
             SourceGenerationHistory::new(scope.clone(), project.clone(), generation_budget())
                 .unwrap();
@@ -804,7 +784,7 @@ mod tests {
             Some(&last)
         )
         .is_err());
-        let other = RuntimeId::new("project:other").unwrap();
+        let other = RuntimeId::new("project-other").unwrap();
         assert!(verify_source_generation_at(
             &scope,
             &other,
@@ -826,7 +806,7 @@ mod tests {
     #[test]
     fn generation_history_rejects_unordered_or_foreign_appends_without_mutation() {
         let scope = ScopeId::new("instance:test").unwrap();
-        let project = RuntimeId::new("project:test").unwrap();
+        let project = RuntimeId::new("project-test").unwrap();
         let mut history =
             SourceGenerationHistory::new(scope.clone(), project.clone(), generation_budget())
                 .unwrap();
@@ -843,7 +823,7 @@ mod tests {
         earlier.completed_cursor = 7;
         assert!(history.append(&earlier).is_err());
         let mut foreign = selection.clone();
-        foreign.project = RuntimeId::new("project:other").unwrap();
+        foreign.project = RuntimeId::new("project-other").unwrap();
         foreign.completed_cursor = 9;
         assert!(history.append(&foreign).is_err());
         let mut malformed = selection.clone();
@@ -856,7 +836,7 @@ mod tests {
     #[test]
     fn generation_proof_budgets_are_explicit_and_fail_closed() {
         let scope = ScopeId::new("instance:test").unwrap();
-        let project = RuntimeId::new("project:test").unwrap();
+        let project = RuntimeId::new("project-test").unwrap();
         let none = SourceGenerationProofBudget {
             max_identity_bytes: 0,
             max_path_nodes: 64,
@@ -902,7 +882,7 @@ mod tests {
     #[test]
     fn generation_writer_reopens_from_authenticated_tail_and_preserves_order() {
         let scope = ScopeId::new("instance:test").unwrap();
-        let project = RuntimeId::new("project:test").unwrap();
+        let project = RuntimeId::new("project-test").unwrap();
         let mut original =
             SourceGenerationHistory::new(scope.clone(), project.clone(), generation_budget())
                 .unwrap();
@@ -960,7 +940,7 @@ mod tests {
     #[test]
     fn generation_neighbor_proofs_match_linear_history_for_every_cursor() {
         let scope = ScopeId::new("instance:oracle").unwrap();
-        let project = RuntimeId::new("project:oracle").unwrap();
+        let project = RuntimeId::new("project-oracle").unwrap();
         let mut history =
             SourceGenerationHistory::new(scope.clone(), project.clone(), generation_budget())
                 .unwrap();
@@ -1112,6 +1092,54 @@ mod tests {
         let mut malformed = accumulator.clone();
         malformed.frontier[0] = None;
         assert!(malformed.validate().is_err());
+
+        // 64 bytes, with a two-byte character across the first hex pair.
+        let split_character = format!("a\u{e9}{}", "a".repeat(61));
+        assert_eq!(split_character.len(), 64);
+        let mut multibyte = proof.clone();
+        multibyte.path[0] = split_character.clone();
+        assert!(multibyte.verify(b"three", &accumulator.root).is_err());
+        assert!(proof.verify(b"three", &split_character).is_err());
+    }
+
+    #[test]
+    fn digests_accept_exactly_what_encoding_produces() {
+        for byte in 0..=u8::MAX {
+            let digest = [byte; 32];
+            let encoded = encode_digest(digest);
+            assert_eq!(encoded, format!("{byte:02x}").repeat(32));
+            assert_eq!(parse_digest("digest", &encoded).unwrap(), digest);
+        }
+        let mut mixed = [0_u8; 32];
+        for (index, slot) in mixed.iter_mut().enumerate() {
+            *slot = (index as u8).wrapping_mul(37);
+        }
+        assert_eq!(
+            parse_digest("digest", &encode_digest(mixed)).unwrap(),
+            mixed
+        );
+
+        let lowercase = "digest must contain lowercase hexadecimal";
+        let length = "digest must be a 64-character SHA-256 digest";
+        for (input, reason) in [
+            ("AB".repeat(32), lowercase),
+            ("aB".repeat(32), lowercase),
+            ("+a".repeat(32), lowercase),
+            ("zz".repeat(32), lowercase),
+            (" a".repeat(32), lowercase),
+            (format!("a\u{e9}{}", "a".repeat(61)), lowercase),
+            (format!("\u{e9}{}", "a".repeat(62)), lowercase),
+            ("ab".repeat(31), length),
+            (format!("{}a", "ab".repeat(32)), length),
+            (String::new(), length),
+        ] {
+            match parse_digest("digest", &input) {
+                Err(Error::InvalidRuntime { reason: actual }) => {
+                    assert_eq!(actual, reason, "{input:?}");
+                }
+                other => panic!("{input:?} was not refused: {other:?}"),
+            }
+        }
     }
 
     #[test]

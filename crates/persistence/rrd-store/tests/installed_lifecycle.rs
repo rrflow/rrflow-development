@@ -9,7 +9,7 @@ fn bootstrap_commit() -> RuntimeCommit {
         expected_cursor: 0,
         mutations: vec![RuntimeMutation::Claim {
             claim: Claim::new(
-                Subject::new("runtime:installed-test").unwrap(),
+                Subject::new("runtime-installed-test").unwrap(),
                 Predicate::new("status").unwrap(),
                 "installed",
                 100,
@@ -137,7 +137,7 @@ fn checkpoint_commit(store: &dyn StorageEngine) -> rrd_core::ReadStamp {
         .insert(0, RuntimeMutation::Schema { registry });
     commit.mutations.push(RuntimeMutation::Record {
         record: rrd_core::RuntimeRecord {
-            reference: rrd_core::RuntimeRef::new("file", "src/lib.rs").unwrap(),
+            reference: rrd_core::RuntimeRef::new("file", "src-lib.rs").unwrap(),
             valid_from: 100,
             valid_to: None,
             properties: rrd_core::RuntimeProperties::new(),
@@ -344,7 +344,7 @@ fn selection_event_and_checkpoint_are_stamped_together_across_reopen() {
         expected_cursor: second_read.commit_cursor,
         mutations: vec![RuntimeMutation::Claim {
             claim: Claim::new(
-                Subject::new("unrelated:subject").unwrap(),
+                Subject::new("unrelated-subject").unwrap(),
                 Predicate::new("unrelated-status").unwrap(),
                 "newer",
                 300,
@@ -416,7 +416,7 @@ fn selection_event_and_checkpoint_are_stamped_together_across_reopen() {
         .unwrap();
     assert!(unrelated.changes.iter().any(|change| matches!(
         &change.mutation,
-        RuntimeMutation::Claim { claim } if claim.subject.as_str() == "unrelated:subject"
+        RuntimeMutation::Claim { claim } if claim.subject.as_str() == "unrelated-subject"
     )));
     assert!(matches!(
         reopened.runtime().read_versioned(
