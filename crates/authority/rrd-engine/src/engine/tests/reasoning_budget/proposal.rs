@@ -20,7 +20,7 @@ fn captured(file: &str) -> Vec<u8> {
     bytes
 }
 
-fn configured() -> EndpointConfiguration {
+pub(super) fn configured() -> EndpointConfiguration {
     let mut configuration: EndpointConfiguration =
         serde_json::from_slice(&captured("configuration.json")).unwrap();
     let allowance: EndpointSelectionAllowance =

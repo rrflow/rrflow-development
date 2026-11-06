@@ -13,6 +13,15 @@ mod storage_cursor;
 pub use storage_cursor::{InspectStorageCursor, StorageCursorAction, StorageCursorSnapshot};
 mod endpoint_binding;
 mod endpoint_configuration;
+mod endpoint_generation;
+mod endpoint_worker;
+pub use endpoint_generation::{
+    EndpointGenerationSettings, EndpointResponseFormat, EndpointTokenParameter,
+};
+pub use endpoint_worker::{
+    EndpointWorkerBinding, EndpointWorkerPolicy, TaskWorkerContext, TaskWorkerOutput,
+    TaskWorkerRequest, ENDPOINT_WORKER_VERSION,
+};
 mod endpoint_policy;
 mod endpoint_proposal;
 mod endpoint_selection;
@@ -263,7 +272,7 @@ use std::fmt;
 pub const PROTOCOL: &str = "rrd";
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const OPENAPI_DOCUMENT_SHA256: &str =
-    "c4375b035939ca40618f6e56eb1d52ea11347b742d003508f40df5d73c441d38";
+    "4186a8f279fd213b592d54d5061717a8f27ce0a85aeba145aeda5ef24c025f2e";
 pub const MAX_ID_BYTES: usize = 128;
 pub const MAX_MESSAGE_BYTES: usize = 4_096;
 pub const MAX_CAPABILITIES: usize = 512;
@@ -3111,6 +3120,7 @@ pub enum SecurityAction {
     ReasoningRead,
     ReasoningWrite,
     EndpointPropose,
+    WorkerExecute,
     ObservationPrepare,
     ObservationDeliver,
     ObservationRead,
@@ -3121,7 +3131,7 @@ pub enum SecurityAction {
 impl SecurityAction {
     /// Canonical policy-action catalogue. Installation profiles and other
     /// projections consume this list instead of maintaining parallel copies.
-    pub const ALL: [Self; 57] = [
+    pub const ALL: [Self; 58] = [
         Self::ServiceInspect,
         Self::UnknownRequest,
         Self::SessionCreate,
@@ -3174,6 +3184,7 @@ impl SecurityAction {
         Self::ReasoningRead,
         Self::ReasoningWrite,
         Self::EndpointPropose,
+        Self::WorkerExecute,
         Self::ObservationPrepare,
         Self::ObservationDeliver,
         Self::ObservationRead,
@@ -4204,6 +4215,16 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             "EndpointSelectionProposal",
         ),
         endpoint(
+            "task-worker-execute",
+            HttpMethod::Post,
+            "/v1/tasks/worker/execute",
+            EndpointAuthentication::SessionBearer,
+            true,
+            SecurityAction::WorkerExecute,
+            "TaskWorkerRequest",
+            "TaskWorkerOutput",
+        ),
+        endpoint(
             "task-close",
             HttpMethod::Post,
             "/v1/tasks/close",
@@ -4730,6 +4751,7 @@ fn request_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "ConfigureTaskBudget" => schema_json::<RequestEnvelope<ConfigureTaskBudget>>(),
         "ExecuteTaskEmbedding" => schema_json::<RequestEnvelope<ExecuteTaskEmbedding>>(),
         "EndpointSelectionRequest" => schema_json::<RequestEnvelope<EndpointSelectionRequest>>(),
+        "TaskWorkerRequest" => schema_json::<RequestEnvelope<TaskWorkerRequest>>(),
         "PrepareObservationDelivery" => {
             schema_json::<RequestEnvelope<PrepareObservationDelivery>>()
         }
@@ -4823,6 +4845,7 @@ fn response_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "GenerateEmbeddingsResult" => schema_json::<ResponseEnvelope<GenerateEmbeddingsResult>>(),
         "TaskAttemptView" => schema_json::<ResponseEnvelope<TaskAttemptView>>(),
         "EndpointSelectionProposal" => schema_json::<ResponseEnvelope<EndpointSelectionProposal>>(),
+        "TaskWorkerOutput" => schema_json::<ResponseEnvelope<TaskWorkerOutput>>(),
         "TaskBudgetView" => schema_json::<ResponseEnvelope<TaskBudgetView>>(),
         "AuditExport" => schema_json::<ResponseEnvelope<AuditExport>>(),
         "AuditPage" => schema_json::<ResponseEnvelope<AuditPage>>(),

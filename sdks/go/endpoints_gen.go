@@ -2,9 +2,9 @@
 
 package rrd
 
-// OpenAPI SHA-256: c4375b035939ca40618f6e56eb1d52ea11347b742d003508f40df5d73c441d38
+// OpenAPI SHA-256: 4186a8f279fd213b592d54d5061717a8f27ce0a85aeba145aeda5ef24c025f2e
 
-const EndpointOpenAPIDocumentSHA256 = "c4375b035939ca40618f6e56eb1d52ea11347b742d003508f40df5d73c441d38"
+const EndpointOpenAPIDocumentSHA256 = "4186a8f279fd213b592d54d5061717a8f27ce0a85aeba145aeda5ef24c025f2e"
 
 type OperationID string
 
@@ -71,6 +71,7 @@ const (
 	OperationTaskList                     OperationID = "task-list"
 	OperationTaskOpen                     OperationID = "task-open"
 	OperationTaskRead                     OperationID = "task-read"
+	OperationTaskWorkerExecute            OperationID = "task-worker-execute"
 	OperationTransactionAbort             OperationID = "transaction-abort"
 	OperationTransactionBegin             OperationID = "transaction-begin"
 	OperationTransactionCommit            OperationID = "transaction-commit"
@@ -152,6 +153,7 @@ var endpoints = map[OperationID]Endpoint{
 	OperationTaskList:                     {Method: "POST", Path: "/v1/tasks/list", Authentication: "session_bearer", Mutation: false},
 	OperationTaskOpen:                     {Method: "POST", Path: "/v1/tasks", Authentication: "session_bearer", Mutation: true},
 	OperationTaskRead:                     {Method: "POST", Path: "/v1/tasks/read", Authentication: "session_bearer", Mutation: false},
+	OperationTaskWorkerExecute:            {Method: "POST", Path: "/v1/tasks/worker/execute", Authentication: "session_bearer", Mutation: true},
 	OperationTransactionAbort:             {Method: "DELETE", Path: "/v1/transactions/{transaction}", Authentication: "session_bearer", Mutation: true},
 	OperationTransactionBegin:             {Method: "POST", Path: "/v1/transactions", Authentication: "session_bearer", Mutation: true},
 	OperationTransactionCommit:            {Method: "POST", Path: "/v1/transactions/{transaction}/commit", Authentication: "session_bearer", Mutation: true},

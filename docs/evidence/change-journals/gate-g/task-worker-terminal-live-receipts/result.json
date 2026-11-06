@@ -1,0 +1,204 @@
+{
+  "sourceCommit": "75c26a80d5d1d07550070096df463d006aca6680",
+  "binarySha256": "c9f481103d6ba2a2cf1e0b42e386b084d92530bc42375b0039c7cf6722243636",
+  "runnerSha256": "5bfcb1365442f6cba8279bbd6e0237fcaac60dbfed329587f2a07443bb8839cb",
+  "relaySha256": "af3b9eb9a9e42bd8fb081d8ac9556578c9484e8f01c44009d3ca412767deca7b",
+  "actualProviderCalls": 3,
+  "acceptedProposal": {
+    "contract_version": 1,
+    "purpose": "experimental_proposal",
+    "scope": "instance:instance-be85f56a70410d440ae893fc",
+    "task_id": "task-04f20c639907a51c4804df2b91207dd97407eb17615d1822de27ff7368afd835",
+    "attempt_id": "actual-proposal-aad425f3fb6c46729b98675ec540d938",
+    "task_sha256": "32acd7642945d2bb94fd0e3d9d381e270acdea2539061fa13d983e298d163dd7",
+    "packet_sha256": "f96b2835422b1778e64d59fc3c8d8207e2930f5fd9610fd767a26072fa375d36",
+    "configuration_sha256": "fe60eac2ef880c83bce6654b0be1fbc58d19ab1374c8a922657fd8048a860688",
+    "allowance_sha256": "cf42661cacca5cab179463e357fc0774144af3ffd06d401ce148956edcf19588",
+    "controller_binding_id": "swag-custom-bf16",
+    "service_id": "swag-qwen3-coder-intent-20261028",
+    "request_sha256": "018d2dd8be4622a8ea7fe73a359c9865cd69fb8029c20df128759e6ac6e2e13f",
+    "response_sha256": "c53c6373b877246c9253b7fc74ed829b283c2cbf9bab2e589c520bcae2922ec9",
+    "content_sha256": "f00ec144e84b0093c575418c45be469717d1725ba11736e3f0070c2fa666e6a2",
+    "choice": {
+      "kind": "select",
+      "binding_id": "swag-custom-bf16",
+      "effort": null
+    },
+    "usage": {
+      "prompt_tokens": 2025,
+      "completion_tokens": 20,
+      "total_tokens": 2045
+    },
+    "elapsed_ms": 1878,
+    "http_status": 200
+  },
+  "selectorAttempt": {
+    "attempt": {
+      "attempt_id": "actual-proposal-aad425f3fb6c46729b98675ec540d938",
+      "ordinal": 1,
+      "status": "accepted",
+      "outcome_sha256": "a39690037cdbb3d092923ef11a592d7b87d6a68226ef77ca6b61a62d53344b69",
+      "result": null,
+      "endpoint_proposal": {
+        "contract_version": 1,
+        "purpose": "experimental_proposal",
+        "scope": "instance:instance-be85f56a70410d440ae893fc",
+        "task_id": "task-04f20c639907a51c4804df2b91207dd97407eb17615d1822de27ff7368afd835",
+        "attempt_id": "actual-proposal-aad425f3fb6c46729b98675ec540d938",
+        "task_sha256": "32acd7642945d2bb94fd0e3d9d381e270acdea2539061fa13d983e298d163dd7",
+        "packet_sha256": "f96b2835422b1778e64d59fc3c8d8207e2930f5fd9610fd767a26072fa375d36",
+        "configuration_sha256": "fe60eac2ef880c83bce6654b0be1fbc58d19ab1374c8a922657fd8048a860688",
+        "allowance_sha256": "cf42661cacca5cab179463e357fc0774144af3ffd06d401ce148956edcf19588",
+        "controller_binding_id": "swag-custom-bf16",
+        "service_id": "swag-qwen3-coder-intent-20261028",
+        "request_sha256": "018d2dd8be4622a8ea7fe73a359c9865cd69fb8029c20df128759e6ac6e2e13f",
+        "response_sha256": "c53c6373b877246c9253b7fc74ed829b283c2cbf9bab2e589c520bcae2922ec9",
+        "content_sha256": "f00ec144e84b0093c575418c45be469717d1725ba11736e3f0070c2fa666e6a2",
+        "choice": {
+          "kind": "select",
+          "binding_id": "swag-custom-bf16",
+          "effort": null
+        },
+        "usage": {
+          "prompt_tokens": 2025,
+          "completion_tokens": 20,
+          "total_tokens": 2045
+        },
+        "elapsed_ms": 1878,
+        "http_status": 200
+      }
+    }
+  },
+  "workerAttempt": {
+    "attempt": {
+      "attempt_id": "actual-worker-af2646e3dbee4335a5fd1784a6b7ed10",
+      "ordinal": 2,
+      "status": "stopped",
+      "outcome_sha256": null,
+      "result": null
+    }
+  },
+  "budget": {
+    "budget": {
+      "format_version": 1,
+      "instance_id": "instance-be85f56a70410d440ae893fc",
+      "scope": "instance:instance-be85f56a70410d440ae893fc",
+      "task_id": "task-04f20c639907a51c4804df2b91207dd97407eb17615d1822de27ff7368afd835",
+      "configuration_sha256": "2d382dbde4b923db65fb5ebbf841d12b45ec0e278c7cab41635dbff782072d55",
+      "limits": {
+        "max_run_elapsed_ms": 900000,
+        "max_steps": 256,
+        "max_step_elapsed_ms": 60000
+      },
+      "started_at_unix_ms": 1793477699130,
+      "deadline_unix_ms": 1793478599130,
+      "last_observed_at_unix_ms": 1793477703688,
+      "charged_elapsed_ms": 2481,
+      "reserved_steps": 2,
+      "active_attempt": null,
+      "execution_may_continue": false,
+      "stopped": "attempt_failed",
+      "stop_expected_sha256": null
+    },
+    "budget_sha256": "d5e1caa9c44ce2514d1dac3c3af68bfbf2676b1928bd250b54a1c36742fbbbf8"
+  },
+  "capacityProbe": {
+    "proposal": {
+      "contract_version": 1,
+      "purpose": "experimental_proposal",
+      "scope": "instance:instance-be85f56a70410d440ae893fc",
+      "task_id": "task-ef91735a82e12feb90678c42733f300bcef4bfbd30b19b1b4e46b49375dac454",
+      "attempt_id": "actual-capacity-proposal-a4e727e249e24f51aba468a00eff20d3",
+      "task_sha256": "857d114b0f2e749c3f424bdec52d17496363bcd069a94653b06a1f667e15cf50",
+      "packet_sha256": "83b5e9c6986d69732b83209ab5d274c6049a067cc8cef003d4141511840e91ba",
+      "configuration_sha256": "fe60eac2ef880c83bce6654b0be1fbc58d19ab1374c8a922657fd8048a860688",
+      "allowance_sha256": "cf42661cacca5cab179463e357fc0774144af3ffd06d401ce148956edcf19588",
+      "controller_binding_id": "swag-custom-bf16",
+      "service_id": "swag-qwen3-coder-intent-20261028",
+      "request_sha256": "ce1aa58a84ee0017e818ab26c7147de939fb1a13e307adfaedeeb69038210d41",
+      "response_sha256": "9e02902da44fe33cf82ecac3530800bbab8b6667cd09b37414999d31a637b639",
+      "content_sha256": "f00ec144e84b0093c575418c45be469717d1725ba11736e3f0070c2fa666e6a2",
+      "choice": {
+        "kind": "select",
+        "binding_id": "swag-custom-bf16",
+        "effort": null
+      },
+      "usage": {
+        "prompt_tokens": 2125,
+        "completion_tokens": 20,
+        "total_tokens": 2145
+      },
+      "elapsed_ms": 2008,
+      "http_status": 200
+    },
+    "attempt": {
+      "attempt": {
+        "attempt_id": "actual-capacity-proposal-a4e727e249e24f51aba468a00eff20d3",
+        "ordinal": 1,
+        "status": "accepted",
+        "outcome_sha256": "5d72734538650ba5ddc3675a1889bf1116b93b40243142ef4ddb1ff0f4f82c6e",
+        "result": null,
+        "endpoint_proposal": {
+          "contract_version": 1,
+          "purpose": "experimental_proposal",
+          "scope": "instance:instance-be85f56a70410d440ae893fc",
+          "task_id": "task-ef91735a82e12feb90678c42733f300bcef4bfbd30b19b1b4e46b49375dac454",
+          "attempt_id": "actual-capacity-proposal-a4e727e249e24f51aba468a00eff20d3",
+          "task_sha256": "857d114b0f2e749c3f424bdec52d17496363bcd069a94653b06a1f667e15cf50",
+          "packet_sha256": "83b5e9c6986d69732b83209ab5d274c6049a067cc8cef003d4141511840e91ba",
+          "configuration_sha256": "fe60eac2ef880c83bce6654b0be1fbc58d19ab1374c8a922657fd8048a860688",
+          "allowance_sha256": "cf42661cacca5cab179463e357fc0774144af3ffd06d401ce148956edcf19588",
+          "controller_binding_id": "swag-custom-bf16",
+          "service_id": "swag-qwen3-coder-intent-20261028",
+          "request_sha256": "ce1aa58a84ee0017e818ab26c7147de939fb1a13e307adfaedeeb69038210d41",
+          "response_sha256": "9e02902da44fe33cf82ecac3530800bbab8b6667cd09b37414999d31a637b639",
+          "content_sha256": "f00ec144e84b0093c575418c45be469717d1725ba11736e3f0070c2fa666e6a2",
+          "choice": {
+            "kind": "select",
+            "binding_id": "swag-custom-bf16",
+            "effort": null
+          },
+          "usage": {
+            "prompt_tokens": 2125,
+            "completion_tokens": 20,
+            "total_tokens": 2145
+          },
+          "elapsed_ms": 2008,
+          "http_status": 200
+        }
+      }
+    },
+    "budget": {
+      "budget": {
+        "format_version": 1,
+        "instance_id": "instance-be85f56a70410d440ae893fc",
+        "scope": "instance:instance-be85f56a70410d440ae893fc",
+        "task_id": "task-ef91735a82e12feb90678c42733f300bcef4bfbd30b19b1b4e46b49375dac454",
+        "configuration_sha256": "2d382dbde4b923db65fb5ebbf841d12b45ec0e278c7cab41635dbff782072d55",
+        "limits": {
+          "max_run_elapsed_ms": 900000,
+          "max_steps": 256,
+          "max_step_elapsed_ms": 60000
+        },
+        "started_at_unix_ms": 1793477705401,
+        "deadline_unix_ms": 1793478605401,
+        "last_observed_at_unix_ms": 1793477707431,
+        "charged_elapsed_ms": 2040,
+        "reserved_steps": 1,
+        "active_attempt": null,
+        "execution_may_continue": false,
+        "stopped": null,
+        "stop_expected_sha256": null
+      },
+      "budget_sha256": "54279b720e084bb204793633534f484b9989cbf037cbed58daf7b3d2c3b749a9"
+    }
+  },
+  "restartReadbackEqual": true,
+  "sameAttemptReplayRejected": true,
+  "capacityAvailableAfterReopen": true,
+  "originalBudgetUnchangedAfterOtherTask": true,
+  "ownedServersStopped": true,
+  "modelQualityQualified": false,
+  "trainingDataCreated": false,
+  "scope": "actual terminal worker rejection and separate real-task capacity proof; no original-task resume or historical lease clearance"
+}

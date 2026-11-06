@@ -1,0 +1,50 @@
+{
+  "purpose": "Actual installed native protocol evidence; not training data or routing-quality qualification",
+  "files": {
+    "available/result.json": {
+      "sha256": "38014d0cddf8ea1763d93465a35cb8a1be36b3c0fc56c9315e878024f151c3ca",
+      "bytes": 7773,
+      "source": "installed-worker-native-short\\result.json"
+    },
+    "available/native-proposal.json": {
+      "sha256": "36566c185e9ace3baa963326154e7735c143ce836ebdf604035068c2536e6827",
+      "bytes": 1650,
+      "source": "installed-worker-native-short\\authorized-native-proposal.stdout.json"
+    },
+    "available/native-worker.json": {
+      "sha256": "7e932587e8ad09ed85a8835eefd886eba6be6bdb4a6080cc13aa67c8ca9293ea",
+      "bytes": 3165,
+      "source": "installed-worker-native-short\\worker-authorized-native-worker.stdout.json"
+    },
+    "available/recovery.json": {
+      "sha256": "084645d8785a13a13f58d909aad23245e25ebaf439c826e61fe0adf2d8f6833e",
+      "bytes": 6261,
+      "source": "installed-worker-native-short-recovery\\result.json"
+    },
+    "available/replay.json": {
+      "sha256": "a54c4e9116e71d9e7c23edfdb38d7bc863aa26b5de2112c66b2f6cf312fe6c1d",
+      "bytes": 1759,
+      "source": "installed-worker-native-short\\reopened-worker-replay.json"
+    },
+    "available/credential-denial.json": {
+      "sha256": "bf130d53bc2be7a87881ff79cd9d0293b04ad93b16c9fd6510e0e4bc443a5abc",
+      "bytes": 1751,
+      "source": "installed-worker-native-short\\worker-missing-credential-worker-missing-credential.json"
+    },
+    "withheld/native-worker.json": {
+      "sha256": "d93614a6b1eb69fc25c15ab6a40e61021a21a0f9b32e90a371348328e0d73ac6",
+      "bytes": 887,
+      "source": "installed-worker-native\\worker-authorized-native-worker.stdout.json"
+    },
+    "withheld/recovery.json": {
+      "sha256": "ea30ee29e26de2f97e2d6e760cd2ede6f16163b8d8358005900bc87ee93a8fa6",
+      "bytes": 3379,
+      "source": "installed-worker-native-recovery\\result.json"
+    },
+    "client-build.json": {
+      "sha256": "9acb4b084d7652c2d1d2940ecc261bf813ecf5777b59b412c4e3c32e7fee49ed",
+      "bytes": 1134,
+      "source": "worker-native-client\\native-build-receipt.json"
+    }
+  }
+}

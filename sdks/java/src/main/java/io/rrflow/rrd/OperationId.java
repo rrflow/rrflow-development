@@ -1,5 +1,5 @@
 // Generated from rrd-contract; do not edit.
-// OpenAPI SHA-256: c4375b035939ca40618f6e56eb1d52ea11347b742d003508f40df5d73c441d38
+// OpenAPI SHA-256: 4186a8f279fd213b592d54d5061717a8f27ce0a85aeba145aeda5ef24c025f2e
 package io.rrflow.rrd;
 
 public enum OperationId {
@@ -65,6 +65,7 @@ public enum OperationId {
     TASK_LIST("task-list", "POST", "/v1/tasks/list", Authentication.SESSION_BEARER, false),
     TASK_OPEN("task-open", "POST", "/v1/tasks", Authentication.SESSION_BEARER, true),
     TASK_READ("task-read", "POST", "/v1/tasks/read", Authentication.SESSION_BEARER, false),
+    TASK_WORKER_EXECUTE("task-worker-execute", "POST", "/v1/tasks/worker/execute", Authentication.SESSION_BEARER, true),
     TRANSACTION_ABORT("transaction-abort", "DELETE", "/v1/transactions/{transaction}", Authentication.SESSION_BEARER, true),
     TRANSACTION_BEGIN("transaction-begin", "POST", "/v1/transactions", Authentication.SESSION_BEARER, true),
     TRANSACTION_COMMIT("transaction-commit", "POST", "/v1/transactions/{transaction}/commit", Authentication.SESSION_BEARER, true),
@@ -82,7 +83,7 @@ public enum OperationId {
     VECTOR_QUANTIZATION_RETIRE("vector-quantization-retire", "POST", "/v1/vector/quantizations/retire", Authentication.SESSION_BEARER, true),
     VECTOR_SEARCH("vector-search", "POST", "/v1/vector/search", Authentication.SESSION_BEARER, false);
 
-    static final String OPENAPI_DOCUMENT_SHA256 = "c4375b035939ca40618f6e56eb1d52ea11347b742d003508f40df5d73c441d38";
+    static final String OPENAPI_DOCUMENT_SHA256 = "4186a8f279fd213b592d54d5061717a8f27ce0a85aeba145aeda5ef24c025f2e";
 
     public enum Authentication { PUBLIC, API_KEY, SESSION_BEARER }
 
