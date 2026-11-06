@@ -147,6 +147,12 @@ impl RrdEngine {
             .iter()
             .find(|worker| &worker.binding_id == binding_id)
             .ok_or_else(|| ServiceError::Contract("selected worker is not configured".into()))?;
+        if !worker.adapter.is_native_chat_adapter() {
+            return Err(ServiceError::EndpointCallFailed {
+                reason: "selected worker adapter is not implemented by this engine build",
+                execution_may_continue: false,
+            });
+        }
         let binding = profile
             .bindings
             .iter()

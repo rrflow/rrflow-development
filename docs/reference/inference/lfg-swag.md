@@ -244,6 +244,13 @@ remain missing; this transport is not automatically active in the installed engi
 | Resource and access facts | Profile limits intersect the task's remaining aggregate allowance, locality/sharing policy and observed capacity/health/quota/cost facts. Bind facts to their producer, observation revision/time and freshness rule. A stale or unknown fact cannot satisfy a requirement that depends on it. A subscription label never supplies an API credential or proves an entitlement. |
 | Selection policy | Versioned configuration defines the objective, required constraints, permitted fallback behavior and experimental/shadow scope. No task-keyword branch, fixed provider ranking, model alias or deployment host is embedded in selection code. Quality claims require the associated evaluation evidence. |
 
+Worker policy now carries a typed adapter profile (`openai_chat_completions_v1`,
+`swag_chat_completions_v1`, `lfg_chat_completions_v1`, or an explicitly typed
+`other` schema pair). The current engine build executes only the declared
+native chat-completions profiles and fails closed on unimplemented adapters,
+so configuration can remain provider-extensible without implying unreviewed
+wire compatibility.
+
 An endpoint declaration alone is insufficient: current `EndpointBinding`
 contains a locator, service identity, credential reference and operating limits,
 but no verified provider effort catalogue or usage/cancellation guarantees.

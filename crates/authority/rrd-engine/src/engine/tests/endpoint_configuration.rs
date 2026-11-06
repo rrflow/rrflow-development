@@ -175,6 +175,7 @@ fn configuration_policy_reopens(include_worker: bool, include_observation: bool)
                 binding_id: candidate.binding_id.clone(),
                 // Protocol persistence probe, not a new capability observation.
                 protocol_evidence_sha256: evidence_sha256.clone(),
+                adapter: rrd_contract::EndpointWorkerAdapter::OpenaiChatCompletionsV1,
                 system_prompt: "Return a bounded draft.".into(),
                 generation: rrd_contract::EndpointGenerationSettings {
                     maximum_output_tokens: 256,

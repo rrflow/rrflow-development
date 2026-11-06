@@ -10,6 +10,61 @@ use std::collections::BTreeMap;
 
 pub const ENDPOINT_WORKER_VERSION: u16 = 1;
 
+/// Typed worker adapter selection. The policy may name future adapters while
+/// the engine executes only adapters it explicitly implements.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+pub enum EndpointWorkerAdapter {
+    OpenaiChatCompletionsV1,
+    SwagChatCompletionsV1,
+    LfgChatCompletionsV1,
+    Other {
+        adapter_id: CanonicalId,
+        request_schema_sha256: String,
+        response_schema_sha256: String,
+    },
+}
+
+impl Default for EndpointWorkerAdapter {
+    fn default() -> Self {
+        Self::OpenaiChatCompletionsV1
+    }
+}
+
+impl EndpointWorkerAdapter {
+    pub fn validate(&self) -> Result<()> {
+        if let Self::Other {
+            request_schema_sha256,
+            response_schema_sha256,
+            ..
+        } = self
+        {
+            validate_sha256(
+                request_schema_sha256,
+                "worker adapter request schema digest",
+            )?;
+            validate_sha256(
+                response_schema_sha256,
+                "worker adapter response schema digest",
+            )?;
+        }
+        Ok(())
+    }
+
+    pub fn is_native_chat_adapter(&self) -> bool {
+        matches!(
+            self,
+            Self::OpenaiChatCompletionsV1
+                | Self::SwagChatCompletionsV1
+                | Self::LfgChatCompletionsV1
+        )
+    }
+}
+
+fn adapter_is_default(value: &EndpointWorkerAdapter) -> bool {
+    matches!(value, EndpointWorkerAdapter::OpenaiChatCompletionsV1)
+}
+
 /// References an accepted routing attempt; carries no endpoint or credential.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -161,6 +216,8 @@ pub struct EndpointWorkerBinding {
     pub binding_id: CanonicalId,
     /// Reference to observed wire support; its presence is not an attestation.
     pub protocol_evidence_sha256: String,
+    #[serde(default, skip_serializing_if = "adapter_is_default")]
+    pub adapter: EndpointWorkerAdapter,
     pub system_prompt: String,
     pub generation: EndpointGenerationSettings,
     pub maximum_response_bytes: u64,
@@ -225,6 +282,7 @@ impl EndpointWorkerPolicy {
         selector.validate_for(bindings)?;
         bounded(self, MAX_ROUTE_REQUEST_BYTES)?;
         for worker in &self.bindings {
+            worker.adapter.validate()?;
             worker.generation.validate()?;
             validate_sha256(
                 &worker.protocol_evidence_sha256,

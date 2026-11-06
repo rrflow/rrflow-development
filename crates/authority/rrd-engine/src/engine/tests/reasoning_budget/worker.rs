@@ -6,8 +6,9 @@ use crate::engine::operation_digest;
 use rrd_contract::{
     ApplyEndpointConfiguration, EndpointConfiguration, EndpointGenerationSettings, EndpointLocator,
     EndpointProfileInput, EndpointResponseFormat, EndpointSelectionChoice,
-    EndpointSelectionRequest, EndpointTokenParameter, EndpointWorkerBinding, EndpointWorkerPolicy,
-    InstalledEstateIdentity, PreviewEndpointConfiguration, ReadTaskAttempt, TaskAttemptStatus,
+    EndpointSelectionRequest, EndpointTokenParameter, EndpointWorkerAdapter,
+    EndpointWorkerBinding, EndpointWorkerPolicy, InstalledEstateIdentity,
+    PreviewEndpointConfiguration, ReadTaskAttempt, TaskAttemptStatus,
 };
 use rrd_contract::{EndpointSelectionTask, ReadTask, TaskWorkerRequest, MAX_TASK_STORAGE_KEYS};
 use std::io::{Read, Write};
@@ -100,6 +101,7 @@ fn admitted_fixture(
                 protocol_evidence_sha256: digest::sha256_hex(
                     b"controlled protocol fixture, not provider qualification",
                 ),
+                adapter: EndpointWorkerAdapter::OpenaiChatCompletionsV1,
                 system_prompt: "Return a protocol-test draft, no project effects.".into(),
                 generation: EndpointGenerationSettings {
                     maximum_output_tokens: 256,

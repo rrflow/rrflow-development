@@ -43,6 +43,7 @@ fn proposed() -> (EndpointConfiguration, EndpointWorkerPolicy) {
             binding_id: candidate.binding_id.clone(),
             // Digest-shaped protocol probe, not evidence of worker compatibility.
             protocol_evidence_sha256: evidence_sha256.clone(),
+            adapter: EndpointWorkerAdapter::OpenaiChatCompletionsV1,
             system_prompt: "Return a draft; do not claim project effects.".into(),
             generation: EndpointGenerationSettings {
                 maximum_output_tokens: 256,
@@ -157,6 +158,33 @@ fn configured_effort_mapping_is_exact_and_default_is_never_inferred() {
     assert!(binding.wire_effort(Some("wire-value")).is_err());
     binding.allow_default_effort = true;
     assert_eq!(binding.wire_effort(None).unwrap(), None);
+}
+
+#[test]
+fn worker_adapter_profiles_are_typed_and_extensible() {
+    let (configuration, policy) = proposed();
+    let profile = configuration.profile.unwrap();
+    let mut swag = policy.clone();
+    swag.bindings[0].adapter = EndpointWorkerAdapter::SwagChatCompletionsV1;
+    swag.validate_for(&profile.bindings, profile.selection_policy.as_ref())
+        .unwrap();
+
+    let mut lfg = policy.clone();
+    lfg.bindings[0].adapter = EndpointWorkerAdapter::LfgChatCompletionsV1;
+    lfg.validate_for(&profile.bindings, profile.selection_policy.as_ref())
+        .unwrap();
+
+    let mut invalid_other = policy;
+    invalid_other.bindings[0].adapter = EndpointWorkerAdapter::Other {
+        adapter_id: CanonicalId::new("future-adapter").unwrap(),
+        request_schema_sha256: "not-a-digest".into(),
+        response_schema_sha256: "2".repeat(64),
+    };
+    assert!(
+        invalid_other
+            .validate_for(&profile.bindings, profile.selection_policy.as_ref())
+            .is_err()
+    );
 }
 
 #[test]

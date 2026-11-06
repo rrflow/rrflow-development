@@ -19,8 +19,8 @@ pub use endpoint_generation::{
     EndpointGenerationSettings, EndpointResponseFormat, EndpointTokenParameter,
 };
 pub use endpoint_worker::{
-    EndpointWorkerBinding, EndpointWorkerPolicy, TaskWorkerContext, TaskWorkerOutput,
-    TaskWorkerRequest, ENDPOINT_WORKER_VERSION,
+    EndpointWorkerAdapter, EndpointWorkerBinding, EndpointWorkerPolicy, TaskWorkerContext,
+    TaskWorkerOutput, TaskWorkerRequest, ENDPOINT_WORKER_VERSION,
 };
 mod endpoint_policy;
 mod endpoint_proposal;
