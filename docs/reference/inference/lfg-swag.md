@@ -77,6 +77,12 @@ capacity, then guards completion against current task/configuration/authority.
 success, provider qualification or training consent. Historical context stamps
 do not attest current project-file freshness. Worker readback requires TaskRead
 and, for context-derived drafts, current MemoryContextRead permission.
+`EndpointSelectionRequest` may now carry typed LFG/SWAG routing input:
+bounded context-extraction signals plus semantic-router ranked candidates and
+narrowing count. The engine validates that narrowed candidates are a non-empty
+subset of configured allowance candidates before proposal dispatch, then
+retains the same routing input in packet/proposal identity so receipts can bind
+intent → narrowing → authorized execution.
 The [worker activity journal](../../evidence/change-journals/gate-g/task-worker-model-admission.md)
 separates local protocol checks from installed provider and public-release proof.
 The [installed worker journal](../../evidence/change-journals/gate-g/task-worker-installed-live.md)

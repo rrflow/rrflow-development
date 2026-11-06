@@ -6,9 +6,9 @@ use crate::engine::operation_digest;
 use rrd_contract::{
     ApplyEndpointConfiguration, EndpointConfiguration, EndpointGenerationSettings, EndpointLocator,
     EndpointProfileInput, EndpointResponseFormat, EndpointSelectionChoice,
-    EndpointSelectionRequest, EndpointTokenParameter, EndpointWorkerAdapter,
-    EndpointWorkerBinding, EndpointWorkerPolicy, InstalledEstateIdentity,
-    PreviewEndpointConfiguration, ReadTaskAttempt, TaskAttemptStatus,
+    EndpointSelectionRequest, EndpointTokenParameter, EndpointWorkerAdapter, EndpointWorkerBinding,
+    EndpointWorkerPolicy, InstalledEstateIdentity, PreviewEndpointConfiguration, ReadTaskAttempt,
+    TaskAttemptStatus,
 };
 use rrd_contract::{EndpointSelectionTask, ReadTask, TaskWorkerRequest, MAX_TASK_STORAGE_KEYS};
 use std::io::{Read, Write};
@@ -165,6 +165,7 @@ fn admitted_fixture(
             .task_sha256,
         expected_configuration_sha256: configuration.sha256().unwrap(),
         flight: None,
+        routing: None,
     };
     (root, engine, lease, request)
 }

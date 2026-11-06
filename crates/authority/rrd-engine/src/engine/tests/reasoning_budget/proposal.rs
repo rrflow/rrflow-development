@@ -85,6 +85,7 @@ fn proposal_packet_binds_actual_task_and_rejects_changed_projection() {
         read_cursor: task.read.runtime_cursor,
         controller_binding_id: policy.controller_binding_id.clone(),
         allowance: policy.allowance(&configuration).unwrap(),
+        routing: None,
     };
     packet.validate_for(&configuration).unwrap();
     packet.validate_task(&task.task).unwrap();
@@ -177,6 +178,7 @@ pub(super) fn tuple_fixture() -> (
         read_cursor: task.read.runtime_cursor,
         controller_binding_id: policy.controller_binding_id.clone(),
         allowance: policy.allowance(&configuration).unwrap(),
+        routing: None,
     };
     let request = EndpointSelectionRequest {
         scope: SCOPE.into(),
@@ -186,6 +188,7 @@ pub(super) fn tuple_fixture() -> (
         expected_task_sha256: packet.task.task_sha256.clone(),
         expected_configuration_sha256: configuration.sha256().unwrap(),
         flight: None,
+        routing: None,
     };
     let provider: serde_json::Value =
         serde_json::from_slice(&captured("choice-response.json")).unwrap();
@@ -207,6 +210,7 @@ pub(super) fn tuple_fixture() -> (
         response_sha256: digest::sha256_hex(&captured("choice-response.json")),
         content_sha256: digest::sha256_hex(&captured("choice-content.json")),
         flight: None,
+        routing: None,
         choice: EndpointSelectionChoice::decode(
             &captured("choice-content.json"),
             &packet.allowance,

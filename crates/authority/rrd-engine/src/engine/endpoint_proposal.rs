@@ -192,6 +192,16 @@ impl RrdEngine {
                 .flight;
             validate_flight_identity(request, flight, &observed_flight.record)?;
         }
+        let allowance = policy
+            .allowance(&configuration)
+            .map_err(|e| ServiceError::Contract(e.to_string()))?;
+        let allowance = if let Some(routing) = request.routing.as_ref() {
+            routing
+                .narrow_allowance(&allowance)
+                .map_err(|e| ServiceError::Contract(e.to_string()))?
+        } else {
+            allowance
+        };
         let packet = EndpointSelectionPacket {
             contract_version: ENDPOINT_SELECTION_VERSION,
             purpose: policy.purpose,
@@ -200,9 +210,8 @@ impl RrdEngine {
             read_manifest_sha256: read.manifest_id.clone(),
             read_cursor: read.commit_cursor,
             controller_binding_id: policy.controller_binding_id.clone(),
-            allowance: policy
-                .allowance(&configuration)
-                .map_err(|e| ServiceError::Contract(e.to_string()))?,
+            allowance,
+            routing: request.routing.clone(),
         };
         if packet.task.task_sha256 != request.expected_task_sha256 {
             return Err(ServiceError::TaskAttemptInvalidated(
@@ -351,6 +360,7 @@ impl RrdEngine {
                 response_sha256: observed.response_sha256,
                 content_sha256: observed.content_sha256,
                 flight: request.flight.clone(),
+                routing: request.routing.clone(),
                 choice: observed.choice,
                 usage: observed.usage,
                 elapsed_ms: observed.elapsed_ms,

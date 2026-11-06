@@ -180,11 +180,9 @@ fn worker_adapter_profiles_are_typed_and_extensible() {
         request_schema_sha256: "not-a-digest".into(),
         response_schema_sha256: "2".repeat(64),
     };
-    assert!(
-        invalid_other
-            .validate_for(&profile.bindings, profile.selection_policy.as_ref())
-            .is_err()
-    );
+    assert!(invalid_other
+        .validate_for(&profile.bindings, profile.selection_policy.as_ref())
+        .is_err());
 }
 
 #[test]

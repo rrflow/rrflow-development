@@ -48,6 +48,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 expected_task_sha256: projected.task_sha256,
                 expected_configuration_sha256: configuration.sha256()?,
                 flight: None,
+                routing: None,
             };
             request.validate()?;
             println!("{}", serde_json::to_string(&request)?);
