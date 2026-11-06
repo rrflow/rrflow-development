@@ -146,3 +146,20 @@ No macOS or complete candidate CI has been run for this revised package.
 
 `python -X utf8 scripts/ci/build_execution_inventory.py` regenerated the local
 mechanical inventory (2,428 records) after staging the package paths.
+
+## Prerequisite integration into this candidate
+
+An ordinary merge of PR #258 head `6ff1a64e7b970c3c31ac7d4fb89ed17d6bf171be`
+into package commit `95f61e084bdb2efc33891c91c86989d13e7e746f` produced
+conflicts only in the POA&M ledger and its generated index. The resolution
+preserves all entries 050 through 056 in order and regenerates the index; it
+also corrects the new 056 heading, whose em dash was converted to `?` when the
+file was first written through the local Windows shell. The first combined
+`check_documentation.py` identified missing required headings in POAM-056;
+a second exposed unintended gate-token matches in its owning-gates prose.
+Both were corrected. `python -X utf8 scripts/ci/check_documentation.py` then
+passed (979 document statuses), `scripts/knowledge/test_navigation.py` passed
+six tests, and `scripts/ci/build_execution_inventory.py` followed by
+`--check` passed with 2,432 records. The prerequisite remains a separate PR;
+its automatic merge is subject to candidate CI and the merge queue. This merge
+into the draft does not prove that either PR has landed or passed candidate CI.

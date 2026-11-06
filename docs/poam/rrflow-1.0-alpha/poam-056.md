@@ -1,4 +1,4 @@
-# POAM-056 ? HNSW search reads the vector-version source before traversal
+# POAM-056 — HNSW search reads the vector-version source before traversal
 
 **Status:** active parent-owned POA&M detail
 **Coordinate:** `rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-056`
@@ -29,14 +29,16 @@ other work ran during the measurement. No profile attributes the latency to a
 specific function, and this run is not a release qualification or a general
 performance comparison.
 
-## Impact and ownership
+## Impact
 
 A successful approximate HNSW search still performs a potentially corpus-sized
 versioned read, putting work and storage-budget pressure ahead of graph traversal.
-The E-04 immutable generation and exact delta overlay are the canonical route for
-repair; `RrdEngine` remains the transaction and read-stamp authority. Do not
-replace correctness or authorization with an unverified cache. The finding is
-owned by [Gate E](../../roadmap/rrflow-1.0/gate-e.md), E-04 and OBJ-13.
+
+## Owning gates
+
+E-04 and OBJ-13 (bounded vector search with an immutable generation and exact delta overlay).
+
+Roadmap owner: [Gate E](../../roadmap/rrflow-1.0/gate-e.md).
 
 ## Closure evidence
 
