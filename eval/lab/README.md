@@ -75,8 +75,11 @@ adapter, like Qdrant, implements `SystemAdapter` in `crates/evaluation/rrflow-ev
 and its responses are captured into `tests/lab_adapters.rs`.
 
 If a system lacks a capability, declare that in the binding's `availability`
-with a reason. Do not leave it out, since a gap is a result. RRFlow's own HNSW
-arm is declared `unimplemented` this way.
+with a reason. Do not leave it out, since a gap is a result. The RRFlow HNSW
+arm uses the public index and payload-index operations; its native maximum
+level, seed, and build policy are explicit in the manifest. A declared arm is
+not evidence of a completed run: inspect its status, actual access path and
+quality before drawing conclusions.
 
 ## Add a test
 
@@ -117,3 +120,28 @@ Every report carries its own limits, and these apply to all of them today:
 When an optimization claims to help, rerun the same manifest on the same host and
 compare the two reports. Gate J's rule applies: change one thing at a time, and
 reject regressions or explicitly review the tradeoff.
+
+
+## Workbench integration to implement
+
+The existing Connectome vector lens compares two searches on one engine; it
+is not this cross-system lab. Its next consumer should read the lab's generated
+report schema, show each system and case with failures, limits, input and binary
+identities, and render the report's declared table, bars and curves. Unsupported
+schema versions or view kinds must be reported explicitly. A selected report is
+read-only diagnostic evidence, not an engine lifecycle transition or a parity
+claim. Validate artifact sizes, digests and paths before accessing raw samples;
+reject path escapes and changed bytes. A changed, partial or absent run remains
+visible rather than inheriting a previous success. Tests must import real lab
+output as well as exercise tampered artifacts and unknown views.
+
+Launching a comparison is a separate capability: preview the project, binaries
+and image digests, workload, endpoint scope, resource limits, storage, output
+paths and cleanup before authorization. The selected engine owns authorized
+effects and receipts; the workbench displays them. Preserve explicit adapter
+selection, custom systems and a no-run/unavailable state. No UI action may
+silently start a model, upload data, change a project, or declare a winner. A
+later implementation must prove launch, interruption, restart, result readback
+and comparison on the installed path; importing a report alone proves none of
+those. The current candidate provides neither a Connectome lab report reader
+nor this launch capability.

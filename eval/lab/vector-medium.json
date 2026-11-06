@@ -129,13 +129,57 @@
       "artifact": "source-built rrflow, see the run's journal",
       "storage_profile": "rrflowKV on local disk",
       "availability": {
-        "state": "unimplemented",
-        "reason": "RrdEngine::ensure_vector_index exists, but no public operation builds an HNSW generation, so a client cannot reach it."
+        "state": "available"
       },
       "index": {
-        "index": "exact"
+        "index": "hnsw",
+        "m": 16,
+        "ef_construction": 100
       },
-      "search_ladder": []
+      "search_ladder": [
+        {
+          "id": "ef-16",
+          "ef": 16
+        },
+        {
+          "id": "ef-32",
+          "ef": 32
+        },
+        {
+          "id": "ef-64",
+          "ef": 64
+        },
+        {
+          "id": "ef-128",
+          "ef": 128
+        },
+        {
+          "id": "ef-256",
+          "ef": 256
+        }
+      ],
+      "rrflow_hnsw": {
+        "max_level": 12,
+        "seed": 7,
+        "build_policy": {
+          "kind": "cpu"
+        }
+      },
+      "credentials": {
+        "principal_env": "RRFLOW_LAB_PRINCIPAL",
+        "secret_env": "RRFLOW_LAB_SECRET",
+        "instance_env": "RRFLOW_LAB_INSTANCE"
+      },
+      "memory_probe": [
+        "eval/lab/probe.sh",
+        "memory",
+        "rrflow"
+      ],
+      "disk_probe": [
+        "eval/lab/probe.sh",
+        "disk",
+        "rrflow"
+      ]
     },
     {
       "id": "rrflow-exact-raised",

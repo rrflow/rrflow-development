@@ -34,6 +34,7 @@ fn binding(name: &str) -> SystemBinding {
         storage_profile: "memory".into(),
         availability: Availability::Available,
         index: IndexSpec::Exact,
+        rrflow_hnsw: None,
         search_ladder: vec![SearchSetting {
             id: id("default"),
             ef: None,
@@ -554,7 +555,7 @@ fn manifests_refuse_what_would_make_a_result_misleading_or_unsafe() {
         };
         m.systems[0].search_ladder[0].ef = Some(32);
     })
-    .contains("no public operation"));
+    .contains("native HNSW"));
     assert!(refused(|m| {
         m.systems[0].index = IndexSpec::Hnsw {
             m: 16,
@@ -857,4 +858,29 @@ fn raw_samples_include_each_failure_and_its_duration() {
             .iter()
             .all(|failure| failure.category == "request_failed"));
     }
+}
+
+#[test]
+fn rrflow_hnsw_requires_explicit_native_build_parameters() {
+    let mut value = serde_json::to_value(manifest(vec![binding("native-hnsw")])).unwrap();
+    value["systems"][0]["kind"] = json!("rrflow");
+    value["systems"][0]["index"] = json!({"index":"hnsw", "m":16, "ef_construction":100});
+    value["systems"][0]["search_ladder"][0]["ef"] = json!(32);
+    value["systems"][0]["rrflow_hnsw"] =
+        json!({"max_level":12, "seed":7, "build_policy":{"kind":"cpu"}});
+    let parsed: VectorComparisonManifest = serde_json::from_value(value.clone()).unwrap();
+    parsed.validate().unwrap();
+    let mut invalid = value.clone();
+    invalid["systems"][0]["rrflow_hnsw"]["max_level"] = json!(0);
+    let invalid: VectorComparisonManifest = serde_json::from_value(invalid).unwrap();
+    assert!(invalid
+        .validate()
+        .unwrap_err()
+        .contains("outside engine bounds"));
+    value["systems"][0]
+        .as_object_mut()
+        .unwrap()
+        .remove("rrflow_hnsw");
+    let missing: VectorComparisonManifest = serde_json::from_value(value).unwrap();
+    assert!(missing.validate().unwrap_err().contains("native HNSW"));
 }
