@@ -718,3 +718,143 @@ fn index_evidence_travels_into_the_report() {
         Some("0 of 200 points indexed")
     );
 }
+
+/// The real RRFlow smoke answered unfiltered searches but refused filtered searches.
+struct FilterRefusal(PerfectSystem);
+impl SystemAdapter for FilterRefusal {
+    fn observed_version(&self) -> Result<String> {
+        self.0.observed_version()
+    }
+    fn prepare(&self, spec: &CollectionSpec<'_>) -> Result<()> {
+        self.0.prepare(spec)
+    }
+    fn ingest(&self, batch: &PointBatch<'_>) -> Result<()> {
+        self.0.ingest(batch)
+    }
+    fn finish_ingest(&self, deadline: Instant) -> Result<()> {
+        self.0.finish_ingest(deadline)
+    }
+    fn search(&self, request: &SearchRequest<'_>) -> Result<Vec<u64>> {
+        if request.category.is_some() {
+            Err("filtered path refused".into())
+        } else {
+            self.0.search(request)
+        }
+    }
+    fn teardown(&self) -> Result<()> {
+        self.0.teardown()
+    }
+}
+
+#[test]
+fn a_partial_run_is_not_reported_as_complete_and_preserves_the_failure() {
+    let m = manifest(vec![binding("partial")]);
+    let inputs = prepare_inputs(&m).unwrap();
+    let run = run_with(&m, "partial", &FilterRefusal(PerfectSystem::new()), &inputs);
+    assert_eq!(serde_json::to_value(run.status).unwrap(), json!("partial"));
+    assert!(run
+        .reason
+        .as_deref()
+        .unwrap()
+        .contains("filtered path refused"));
+    let report = combine(&m, std::slice::from_ref(&run), Vec::new()).unwrap();
+    assert_eq!(
+        serde_json::to_value(report.systems[0].status).unwrap(),
+        json!("partial")
+    );
+    assert!(report
+        .observations
+        .iter()
+        .any(|o| o.metric.as_str() == "search_errors"
+            && o.case.get("filter").is_some_and(|v| v == "category")
+            && o.value == 16.0));
+    assert_eq!(
+        verdict(&report, "filtered-recall-partial"),
+        VerdictOutcome::NotRun
+    );
+    assert!(!report
+        .observations
+        .iter()
+        .any(|o| o.metric.as_str() == "queries_per_second"
+            && o.case.get("filter").is_some_and(|v| v == "category")));
+    assert!(report
+        .observations
+        .iter()
+        .any(|o| o.metric.as_str() == "case_attempted"
+            && o.case.get("filter").is_some_and(|v| v == "category")
+            && o.value == 16.0));
+    // Old retained runs may have called the same partial result completed.
+    let mut retained = run;
+    retained.status = SystemStatus::Completed;
+    retained.reason = None;
+    let replayed = combine(&m, &[retained], Vec::new()).unwrap();
+    assert_eq!(
+        serde_json::to_value(replayed.systems[0].status).unwrap(),
+        json!("partial")
+    );
+}
+
+#[test]
+fn a_truncated_case_cannot_claim_recall_or_matched_quality() {
+    let mut m = manifest(vec![binding("limited")]);
+    m.workload.concurrency = vec![1];
+    m.workload.filtered = false;
+    let inputs = prepare_inputs(&m).unwrap();
+    let mut run = run_with(&m, "limited", &PerfectSystem::new(), &inputs);
+    run.cases[0].truncated = true;
+    let report = combine(&m, &[run], Vec::new()).unwrap();
+    assert_eq!(
+        verdict(&report, "unfiltered-recall-limited"),
+        VerdictOutcome::NotRun
+    );
+    assert!(!report
+        .observations
+        .iter()
+        .any(|o| o.metric.as_str() == "qps_at_recall_target"));
+    assert!(report
+        .observations
+        .iter()
+        .any(|o| o.metric.as_str() == "case_truncated" && o.value == 1.0));
+}
+
+#[test]
+fn matching_client_metadata_never_proves_server_resource_equivalence() {
+    let m = manifest(vec![binding("a"), binding("b")]);
+    let inputs = prepare_inputs(&m).unwrap();
+    let a = run_with(&m, "a", &PerfectSystem::new(), &inputs);
+    let b = run_with(&m, "b", &PerfectSystem::new(), &inputs);
+    let report = combine(&m, &[a, b], Vec::new()).unwrap();
+    assert_eq!(
+        verdict(&report, "server-resource-equivalence"),
+        VerdictOutcome::NotRun
+    );
+    let item = report
+        .verdicts
+        .iter()
+        .find(|v| v.id.as_str() == "same-environment")
+        .unwrap();
+    assert!(item.question.contains("client metadata"));
+}
+
+#[test]
+fn raw_samples_include_each_failure_and_its_duration() {
+    let m = manifest(vec![binding("partial")]);
+    let inputs = prepare_inputs(&m).unwrap();
+    let adapter = FilterRefusal(PerfectSystem::new());
+    let (run, raw) = run_system(
+        &m,
+        m.binding("partial").unwrap(),
+        &adapter,
+        &inputs,
+        BTreeMap::new(),
+    );
+    assert_eq!(run.cases.len(), raw.len());
+    for (case, samples) in run.cases.iter().zip(raw.iter()) {
+        assert_eq!(samples.latency_ns.len() as u64, case.succeeded);
+        assert_eq!(samples.failures.len() as u64, case.errors);
+        assert!(samples
+            .failures
+            .iter()
+            .all(|failure| failure.category == "request_failed"));
+    }
+}

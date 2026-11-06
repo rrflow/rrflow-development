@@ -99,6 +99,16 @@ The first measured results and their limits are in the
 [package journal](../../docs/evidence/change-journals/gate-j/comparison-lab.md).
 Every report carries its own limits, and these apply to all of them today:
 
+- A system is `partial` when some requested cases fail or are truncated. The CLI
+  exits nonzero, while the run and its raw samples remain available for combine.
+  Incomplete cases retain attempts, successes, failures and truncation but do
+  not enter the normal recall/speed curve or qualify for matched-quality speed.
+  Individual failed-request durations carry a fixed category; the case summary
+  holds the first error, which is untrusted server text and needs review before
+  sharing. A report is not proof that arbitrary server responses contain no secrets.
+- Matching benchmark-client metadata does not establish equivalent server CPU,
+  memory, storage, or deployment. The server-resource verdict remains `not_run`
+  until these conditions can be independently established.
 - Clients are closed-loop, so results understate latency under overload.
 - Ingest is one sequential writer, so it does not show parallel write capacity.
 - The corpus is a synthetic mixture, not embeddings of real content.

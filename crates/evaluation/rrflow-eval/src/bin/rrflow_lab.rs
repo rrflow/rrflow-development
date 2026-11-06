@@ -141,12 +141,15 @@ fn run(arguments: &Arguments) -> Result<ExitCode> {
         &directory.join(format!("{id}.run.json")),
         &canonical_json(&run)?,
     )?;
-    if run.status == SystemStatus::Completed {
-        eprintln!("{id}: completed, {} case(s)", run.cases.len());
-        Ok(ExitCode::SUCCESS)
-    } else {
-        eprintln!("{id}: failed: {}", run.reason.unwrap_or_default());
-        Ok(ExitCode::from(3))
+    match run.status {
+        SystemStatus::Completed => {
+            eprintln!("{id}: completed, {} case(s)", run.cases.len());
+            Ok(ExitCode::SUCCESS)
+        }
+        status => {
+            eprintln!("{id}: {status:?}: {}", run.reason.unwrap_or_default());
+            Ok(ExitCode::from(3))
+        }
     }
 }
 
