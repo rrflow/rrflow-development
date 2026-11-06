@@ -76,3 +76,28 @@ until one lands.
 ## Status change
 
 Three new Open rows in the POA&M. No roadmap or objective status changes.
+
+## Public-main reconciliation, 2026-11-06
+
+The draft head `5f1c6cbd9165a6ab07dab0298be3bba6e79816b7` was
+merged in an isolated worktree with public main
+`1fd7f163de3448c694e09c916b328540303eab1c`; the merge had no conflicts.
+The updated review read the three detail records, the task/context operations
+in `operation_reference.rs`, `reasoning_budget/public.rs` and
+`reasoning_budget/persistence.rs`, `RuntimeChangeSnapshot` and
+`AuditRecordSnapshot` in `rrd-contract/src/lib.rs`, `AssembleContext` in
+`memory_context.rs`, rank-fusion references in `engine/context.rs`, and the
+POA&M detail records matched by an attempted duplicate search. The three
+public-contract gaps remain evident in those sources. The gap search did not
+prove that no differently worded duplicate exists. This was source review, not a
+running-client test; no capability or gate status is newly claimed.
+
+`rg` using a Windows literal wildcard as a path failed with an invalid path;
+repeating the search against the directory using `-g` succeeded. This
+reconciliation changes this journal beyond the original package; navigation regeneration made no changes. Candidate CI has not yet run for the refreshed head.
+
+Local checks: `python -X utf8 scripts/knowledge/render_navigation.py` passed
+(18 indexes, no files changed); `python -X utf8 scripts/ci/check_documentation.py`
+passed; `python -X utf8 scripts/knowledge/test_navigation.py` passed all six
+tests. The first `git diff --check` found a stray carriage return introduced by
+the journal append; the line ending was corrected and the check rerun.
