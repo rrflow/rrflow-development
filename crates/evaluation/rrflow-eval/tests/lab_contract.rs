@@ -3,7 +3,9 @@
 use rrflow_eval::lab::adapter::{CollectionSpec, PointBatch, SearchRequest, SystemAdapter};
 use rrflow_eval::lab::corpus::{exact_answers, generate, GroundTruth, VectorSet};
 use rrflow_eval::lab::custom::CustomProtocol;
-use rrflow_eval::lab::driver::{combine, prepare_inputs, run_system, Inputs, SystemRun};
+use rrflow_eval::lab::driver::{
+    combine, prepare_inputs, run_system, run_system_with_progress, Inputs, LabProgress, SystemRun,
+};
 use rrflow_eval::lab::manifest::{
     Availability, CorpusSource, CorpusSpec, CredentialReferences, IndexSpec, LabMetric,
     QualitySpec, SearchSetting, SystemBinding, SystemKind, SystemLocation,
@@ -221,6 +223,65 @@ fn run_with(
 ) -> SystemRun {
     let binding = manifest.binding(system).unwrap();
     run_system(manifest, binding, adapter, inputs, BTreeMap::new()).0
+}
+
+#[test]
+fn progress_reports_completed_work_and_never_invents_failed_stages() {
+    let manifest = manifest(vec![binding("progress")]);
+    let inputs = prepare_inputs(&manifest).unwrap();
+    let binding = manifest.binding("progress").unwrap();
+    let mut events = Vec::new();
+    let (run, _) = run_system_with_progress(
+        &manifest,
+        binding,
+        &PerfectSystem::new(),
+        &inputs,
+        BTreeMap::new(),
+        &mut |event| events.push(event),
+    );
+    assert_eq!(run.status, SystemStatus::Completed);
+    assert_eq!(events.first(), Some(&LabProgress::Prepared));
+    let completed: Vec<_> = events
+        .iter()
+        .filter_map(|event| match event {
+            LabProgress::IngestBatchCompleted {
+                completed, total, ..
+            } => Some((*completed, *total)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        completed,
+        vec![(64, 200), (128, 200), (192, 200), (200, 200)]
+    );
+    assert!(events
+        .iter()
+        .any(|event| matches!(event, LabProgress::IndexReady { .. })));
+    let cases: Vec<_> = events
+        .iter()
+        .filter_map(|event| match event {
+            LabProgress::CaseCompleted {
+                succeeded, errors, ..
+            } => Some((*succeeded, *errors)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(cases, vec![(16, 0); 4]);
+
+    let mut failed_events = Vec::new();
+    let (failed, _) = run_system_with_progress(
+        &manifest,
+        binding,
+        &FailingSystem::new(true, 0),
+        &inputs,
+        BTreeMap::new(),
+        &mut |event| failed_events.push(event),
+    );
+    assert_eq!(failed.status, SystemStatus::Failed);
+    assert!(
+        failed_events.is_empty(),
+        "a refused prepare completed no stage"
+    );
 }
 
 fn verdict(report: &LabReport, verdict_id: &str) -> VerdictOutcome {

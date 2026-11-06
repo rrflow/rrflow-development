@@ -28,3 +28,121 @@ Connectome does not yet consume these reports or offer an authorized launch work
 ## Dependency integration trial
 
 In a separate detached worktree from `a44dcc6b`, an ordinary no-commit trial merge of #258 (`5f1c6cbd`) produced the two predicted POA&M conflicts. The ledger was reconciled in numerical order, preserving 050 through 055; the generated index was regenerated. The first resolution script failed its own zero-padding assertion and its check failed with conflict markers still present; a corrected script resolved the ledger and `python -X utf8 scripts/ci/check_documentation.py` then passed. This trial contains neither the later HNSW working diff nor a merged #258, and is not candidate CI or permission to land it.
+
+## Operator visibility and safe container ownership
+
+The live 20,000-point diagnostic revealed that the existing CLI said only
+`running` throughout a multi-minute operation. The package now adds typed
+`LabProgress` observations in `driver.rs`, emitted by the CLI as JSON on
+stderr for collection preparation, started and completed ingest batches, index
+build and readiness, and started and completed cases. Callbacks occur outside
+measured search cases. A batch completion means only that its adapter call
+returned successfully. The observations are transient, not an audit or a
+completed run; a slow stderr consumer can affect ingest or index timing. The
+old entry point remains available to callers that do not observe progress. The
+CLI still emits failure reasons, which may include untrusted server text.
+
+The existing `eval/lab/run_system.sh` assigned a container name before Docker
+created it. A mock-Docker baseline test on Linux failed as expected: when
+creation of `lab-qdrant` returned an error, the trap called `docker rm -f -v
+lab-qdrant`. The revised launcher assigns ownership only after a successful
+creation returns a 64-digit hexadecimal container ID, and cleans up that ID.
+`bash -n` and the Unix `lab_runner` integration test passed on ARM Linux across
+Qdrant, SurrealDB and Milvus, for failed creation, invalid returned ID and
+successful ID cleanup. A real Docker name-collision exercise also returned
+125 and `docker inspect` confirmed the pre-existing test container remained;
+the test container was stopped rather than running. The first shell cleanup
+attempt did not remove that test container, and an initial manual removal had
+a mistyped ID; the exact test-created ID was then removed and its absence
+checked. A lost or invalid Docker response after a real creation can leave an
+unowned container for operator inspection rather than justify deleting by name.
+
+The typed-progress test passed on ARM Linux and in the Windows package suite;
+it verifies batch counts, completed cases and that refused preparation emits no
+completed stage. A real `custom-reference` process on ARM, using the debug lab
+and a synthetic 200-point/32-dimensional input, emitted the expected JSON
+batch, index and case events and completed 20 filtered and 20 unfiltered
+queries. Its stderr SHA-256 was
+`a2d38648eb09e0857c8590a94f6848cf4194e9a5130e9fecd0a29bb71a73c49a`.
+It ran while the separate release diagnostic used other cores; this is an
+integration smoke, not a performance measurement.
+
+## Retained 20,000-point ARM diagnostic
+
+The release executables were built offline on `clyffy-01` from the source
+archive, patch, and final adapter file identified above. `cargo build --offline
+--locked --release -p rrflow-eval --bin rrflow-lab -p rrflow-cli --bin rrflow`
+passed; executable SHA-256 values were
+`52ca1afbb866e82089cd36a556cc3db59f9ce69949789f18595d8a8827203b80`
+for RRFlow and
+`35d36ddd2357b7e026c21dba4a0791d06621df2465c0efe39c313da4e58f3df1`
+for the lab. This diagnostic used that lab executable before the subsequent
+progress implementation, and the original launcher for the already-started
+HNSW arm; subsequent arms used the corrected launcher. The data and reports
+are retained under `eval/lab/evidence/arm-20k-20261106/`. The executed raw manifest
+file SHA-256 is `573d69d7843ab5c021e0e269e7473b7222baea8606d833cb74fbe04b5f5a1fa5`.
+The retained manifest is the identical JSON with CRLF normalized to LF, SHA-256
+`554e8ed64eee906862e56502d8b8a0530e2534baf20ca13cd60026a6cf8e9b09`;
+this correction followed a `git diff --check` trailing-CR failure. The canonical
+manifest digest in every run is
+`7859639965b045c230d6ba7c9b6ef3e661396a32d11a974b7590a149e4f1da3f`.
+The combined report SHA-256 is
+`1132b667a0d6016dd61529fb6a114f04af00b37646631a3b578eb46a6e2a8b74`.
+All eight report-referenced run and sample artifacts matched their recorded
+sizes and digests; all four run identity maps matched. A bounded scan for
+common credential patterns found none, but does not prove no secret is present.
+Server logs are not included in the retained artifacts.
+
+Each arm ran sequentially on disk-backed ext4 with server CPU set
+`5-9,15-19` and client CPU set `0-4,10-14`, 20,000 points, 384 dimensions,
+100 queries per case, one client, `k=10`, with and without a category filter.
+HNSW used `ef=32`; TurboQuant used 4-bit quantization and rerank 40.
+All four arms reported 100 successes and zero errors in each case. RRFlow
+HNSW reported mean recall 0.982/1.0 and median client latency
+1,765.8/1,743.8 ms (unfiltered/filtered); TurboQuant reported 0.985/1.0 and
+60.0/31.4 ms. SurrealDB reported 0.979/1.0 and 15.5/22.8 ms. Qdrant reported
+1.0/1.0 and 1.81/1.47 ms but its own evidence was `0 of 20000 points indexed`,
+so it was not a matched HNSW comparison. These are one-run diagnostic numbers,
+not a competitive or release qualification. The host was shared, a build and a
+short custom-system smoke ran during HNSW, and CPU placement alone does not
+prove isolation. The original combined report's server-resource verdict must
+not be promoted into a claim of equivalence.
+
+Source inspection in `engine/vector/search.rs` establishes that HNSW's selected
+route currently reads the vector-version source before graph traversal when the
+specialized TurboQuant path does not serve the request. This is a plausible
+optimization lead, not a measured causal profile. New [POAM-056](../../../poam/rrflow-1.0-alpha/poam-056.md)
+records it and its correctness and attribution requirements. No gate is closed.
+The first attempt to start the larger run had a shell-script syntax error and
+did not run a system; the corrected launch produced the retained evidence.
+
+## Current integration state
+
+PR #258 was refreshed separately against public main and its local navigation,
+documentation, and six navigation tests passed. It was marked ready, starting
+required candidate CI; it is not yet merged. PR #253 still depends on its
+POA&M records and must reconcile its own ledger/index after #258 lands, then
+pass candidate CI on that exact merged state. Connectome report reading and
+authorized launching remain unimplemented. These records and small synthetic
+runs do not establish alpha, J-04, C-07, native platform qualification, or
+performance superiority.
+
+## Package checks after the visibility and ownership changes
+
+`cargo test --offline --locked -p rrflow-eval` passed on Windows (including
+27 lab contract tests; the Unix-only runner test is skipped there), and
+`cargo clippy --offline --locked -p rrflow-eval --all-targets -- -D warnings`
+passed. `cargo fmt --all -- --check` and `git diff --check` passed. The first
+full ARM Linux package suite failed `generated_schemas_match_the_checked_in_projections`:
+the isolated server tree still contained an older `lab-manifest-v1.json`.
+The local generated schema hash was
+`fc293eaa140741ed137b8b6baa7dbf02df42d7be02201b7d5366fbc0da53bdf3`,
+while the copied server tree's schema hash was
+`333ab76184e0ad2a8c63b6b638574a10b32de6d86d4724515a7b13f8795494e2`.
+After copying the candidate schema, the full ARM `cargo test --offline --locked
+-p rrflow-eval` passed, including the Unix launcher test. The discrepancy was
+in the test fixture copy; it does not change the earlier benchmark binaries.
+No macOS or complete candidate CI has been run for this revised package.
+
+`python -X utf8 scripts/ci/build_execution_inventory.py` regenerated the local
+mechanical inventory (2,428 records) after staging the package paths.

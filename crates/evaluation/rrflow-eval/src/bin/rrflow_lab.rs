@@ -1,7 +1,9 @@
 //! Run and combine comparison-lab tests. See eval/lab/README.md.
 use rrflow_eval::lab::adapter::connect;
 use rrflow_eval::lab::custom::CustomProtocol;
-use rrflow_eval::lab::driver::{combine, empty_run, prepare_inputs, run_system, SystemRun};
+use rrflow_eval::lab::driver::{
+    combine, empty_run, prepare_inputs, run_system_with_progress, SystemRun,
+};
 use rrflow_eval::lab::manifest::{Availability, VectorComparisonManifest};
 use rrflow_eval::lab::report::{ArtifactReference, LabReport, SystemStatus};
 use rrflow_eval::lab::{canonical_json, sha256_hex, Result};
@@ -126,7 +128,19 @@ fn run(arguments: &Arguments) -> Result<ExitCode> {
     let environment = environment(&arguments.notes);
     eprintln!("running {id}");
     let (run, raw) = match connect(binding, &manifest.workload) {
-        Ok(adapter) => run_system(&manifest, binding, adapter.as_ref(), &inputs, environment),
+        Ok(adapter) => run_system_with_progress(
+            &manifest,
+            binding,
+            adapter.as_ref(),
+            &inputs,
+            environment,
+            &mut |progress| {
+                eprintln!(
+                    "{}",
+                    serde_json::json!({"system": id, "progress": progress})
+                );
+            },
+        ),
         Err(error) => {
             let mut run = empty_run(binding, &inputs, environment);
             run.reason = Some(error);

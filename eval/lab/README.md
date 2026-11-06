@@ -35,7 +35,7 @@ cargo build --locked --release -p rrflow-eval --bin rrflow-lab -p rrflow-cli --b
 export RRFLOW_LAB_BIN=$PWD/target/release/rrflow-lab RRFLOW_BIN=$PWD/target/release/rrflow
 export RRFLOW_LAB_CPUSET=5-9,15-19 RRFLOW_LAB_CLIENT_CPUSET=0-4,10-14 TMPDIR=$HOME/lab-tmp
 mkdir -p "$TMPDIR"
-for system in qdrant milvus surrealdb custom-reference rrflow-exact rrflow-turboquant; do
+for system in qdrant milvus surrealdb custom-reference rrflow-exact rrflow-hnsw rrflow-turboquant; do
   eval/lab/run_system.sh "$system" runs/vector-small
 done
 "$RRFLOW_LAB_BIN" combine --manifest eval/lab/vector-small.json --in runs/vector-small \
@@ -47,6 +47,20 @@ drive the load. Use your host's topology. `TMPDIR` must be on the disk under
 test, since a RAM-backed `/tmp` would flatter whatever stores its data there.
 Keep the run directory: it holds every latency and recall sample, and the report
 binds those files by digest.
+
+The lab prints transient JSON progress events on stderr for prepared
+collections, started and completed ingest batches, index build, and search
+cases. Completed batch counts mean the adapter call returned successfully;
+they do not establish durable recovery or search readiness. Progress output is
+not an audit record or a completed report. Capture stderr explicitly if it is
+needed later, and review server error text before sharing it. Progress output
+occurs outside query-case timing, but a slow stderr consumer can delay the
+run and affect ingest or index timing and the overall host environment.
+
+Container cleanup uses the ID returned by a successful Docker creation. A
+name conflict or invalid response fails without deleting a pre-existing named
+container. If Docker creates a container but its response is lost or invalid,
+the launcher cannot prove ownership and may leave it for an operator to inspect.
 
 Run on a host with nothing else working. On a GB10 the CPU and GPU share memory and
 power, so GPU work can slow a search without showing as CPU load. Repeat a run before

@@ -24,6 +24,44 @@ pub const RUN_SCHEMA_VERSION: u16 = 1;
 const ERRORS_BEFORE_GIVING_UP: usize = 20;
 const Z95: f64 = 1.96;
 
+/// Transient operator observations. These are not a durable audit or a run result.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "stage", rename_all = "snake_case", deny_unknown_fields)]
+pub enum LabProgress {
+    Prepared,
+    IngestBatchStarted {
+        completed: u64,
+        total: u64,
+    },
+    IngestBatchCompleted {
+        completed: u64,
+        total: u64,
+        elapsed_ms: u64,
+    },
+    IndexBuildStarted,
+    IndexReady {
+        elapsed_ms: u64,
+    },
+    CaseStarted {
+        setting: Id,
+        filtered: bool,
+        concurrency: u32,
+    },
+    CaseCompleted {
+        setting: Id,
+        filtered: bool,
+        concurrency: u32,
+        attempted: u64,
+        succeeded: u64,
+        errors: u64,
+        truncated: bool,
+    },
+}
+
+fn elapsed_ms(started: Instant) -> u64 {
+    u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX)
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct IngestResult {
@@ -351,6 +389,7 @@ fn run_phases(
     inputs: &Inputs,
     run: &mut SystemRun,
     raw: &mut Vec<RawCase>,
+    progress: &mut dyn FnMut(LabProgress),
 ) -> Result<()> {
     run.observed_version = Some(adapter.observed_version()?);
     adapter.prepare(&CollectionSpec {
@@ -360,6 +399,7 @@ fn run_phases(
         categories: manifest.corpus.categories,
         index: &binding.index,
     })?;
+    progress(LabProgress::Prepared);
     let points = &inputs.points;
     let ids: Vec<u64> = (0..points.len()).map(VectorSet::point_id).collect();
     let batch_size = manifest.workload.ingest_batch as usize;
@@ -367,6 +407,10 @@ fn run_phases(
     let mut start = 0;
     while start < points.len() {
         let end = (start + batch_size).min(points.len());
+        progress(LabProgress::IngestBatchStarted {
+            completed: start as u64,
+            total: points.len() as u64,
+        });
         adapter.ingest(&PointBatch {
             ids: &ids[start..end],
             vectors: &points.values[start * points.dimensions..end * points.dimensions],
@@ -374,9 +418,15 @@ fn run_phases(
             dimensions: points.dimensions,
         })?;
         start = end;
+        progress(LabProgress::IngestBatchCompleted {
+            completed: start as u64,
+            total: points.len() as u64,
+            elapsed_ms: elapsed_ms(started),
+        });
     }
     let seconds = started.elapsed().as_secs_f64();
     let ready_started = Instant::now();
+    progress(LabProgress::IndexBuildStarted);
     let ready = adapter.finish_ingest(
         ready_started + Duration::from_millis(manifest.workload.readiness_timeout_ms),
     );
@@ -388,6 +438,9 @@ fn run_phases(
         ready_seconds: ready_started.elapsed().as_secs_f64(),
     });
     ready?;
+    progress(LabProgress::IndexReady {
+        elapsed_ms: elapsed_ms(ready_started),
+    });
     for setting in &binding.search_ladder {
         for filtered in [false, true] {
             let truth = if filtered {
@@ -399,6 +452,11 @@ fn run_phases(
                 &inputs.truth
             };
             for concurrency in &manifest.workload.concurrency {
+                progress(LabProgress::CaseStarted {
+                    setting: setting.id.clone(),
+                    filtered,
+                    concurrency: *concurrency,
+                });
                 let (case, samples) = measure_case(
                     adapter,
                     manifest,
@@ -410,6 +468,15 @@ fn run_phases(
                         concurrency: *concurrency,
                     },
                 );
+                progress(LabProgress::CaseCompleted {
+                    setting: setting.id.clone(),
+                    filtered,
+                    concurrency: *concurrency,
+                    attempted: case.attempted,
+                    succeeded: case.succeeded,
+                    errors: case.errors,
+                    truncated: case.truncated,
+                });
                 run.cases.push(case);
                 raw.push(samples);
             }
@@ -456,9 +523,23 @@ pub fn run_system(
     inputs: &Inputs,
     environment: BTreeMap<String, String>,
 ) -> (SystemRun, Vec<RawCase>) {
+    run_system_with_progress(manifest, binding, adapter, inputs, environment, &mut |_| {})
+}
+
+/// Progress callbacks run outside measured query cases and must not mutate the system.
+pub fn run_system_with_progress(
+    manifest: &VectorComparisonManifest,
+    binding: &SystemBinding,
+    adapter: &dyn SystemAdapter,
+    inputs: &Inputs,
+    environment: BTreeMap<String, String>,
+    progress: &mut dyn FnMut(LabProgress),
+) -> (SystemRun, Vec<RawCase>) {
     let mut run = empty_run(binding, inputs, environment);
     let mut raw = Vec::new();
-    match run_phases(manifest, binding, adapter, inputs, &mut run, &mut raw) {
+    match run_phases(
+        manifest, binding, adapter, inputs, &mut run, &mut raw, progress,
+    ) {
         Ok(()) if run.cases.iter().all(|case| case.succeeded == 0) => {
             run.status = SystemStatus::Failed;
             run.reason = Some(
