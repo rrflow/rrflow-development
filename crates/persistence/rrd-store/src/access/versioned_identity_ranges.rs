@@ -5,8 +5,8 @@ fn interval(lower: Bound<&str>, upper: Bound<&str>) -> RuntimeVersionedSource {
     RuntimeVersionedSource::IdentityRange {
         model: RuntimeLogicalModel::Relational,
         kind: RuntimeType::new("document").unwrap(),
-        lower: lower.map(|s| RuntimeId::new(s).unwrap()),
-        upper: upper.map(|s| RuntimeId::new(s).unwrap()),
+        lower: lower.map(|s| RuntimeId::parse(s).unwrap()),
+        upper: upper.map(|s| RuntimeId::parse(s).unwrap()),
     }
 }
 
@@ -63,14 +63,15 @@ fn identity_interval_keys_preserve_string_order_and_validate_returned_identity()
     let scope = ScopeId::new("instance:ranges").unwrap();
     let ids = [
         "a",
+        "a-b",
+        "a.b",
+        "a0",
+        "a_b",
         "aa",
         "abcdefgh",
         "abcdefghx",
         "b",
-        "q\"uote",
-        "slash\\id",
-        "é",
-        "雪",
+        "cursor:7",
     ];
     for lower in ids {
         for upper in ids.into_iter().filter(|upper| *upper >= lower) {
@@ -95,7 +96,7 @@ fn identity_interval_keys_preserve_string_order_and_validate_returned_identity()
                         source
                     );
                     for id in ids {
-                        let reference = RuntimeRef::new("document", id).unwrap();
+                        let reference = RuntimeRef::parse("document", id).unwrap();
                         let address = VersionAddress {
                             space,
                             reference: reference.clone(),

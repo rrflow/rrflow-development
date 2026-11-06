@@ -339,10 +339,12 @@ pub fn import_vectordbbench(
         case_observations(case, &system, recall_target, &mut observations)?;
     }
     for (system, count) in &failed {
-        if systems
-            .get(system)
-            .is_some_and(|entry| entry.status == SystemStatus::Completed)
+        if let Some(entry) = systems
+            .get_mut(system)
+            .filter(|entry| entry.status == SystemStatus::Completed)
         {
+            entry.status = SystemStatus::Partial;
+            entry.reason = Some(format!("VectorDBBench reported {count} failed case(s)"));
             push(
                 &mut observations,
                 system,

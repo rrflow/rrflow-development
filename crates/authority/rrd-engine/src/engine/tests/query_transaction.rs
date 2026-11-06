@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 
 use rrd_contract::{
     DataLogicalModel, DataReference, DataSchemaMode, DataSchemaRegistry, DataTableSchema,
-    DataTarget, ExecuteQueryTransaction, QueryValue, ReadDataSnapshot,
+    DataTarget, ExecuteQuery, ExecuteQueryTransaction, QueryBudget, QueryValue, ReadDataSnapshot,
 };
 
 fn reference(kind: &str, value: &str) -> DataReference {
@@ -232,9 +232,38 @@ fn query_transaction_commit_cancel_failure_replay_and_reopen_share_one_authority
         )
         .is_err());
 
+    let read_document = |engine: &RrdEngine, suffix: &str| {
+        let result = engine
+            .execute_query(
+                &lease.session_id,
+                &lease.token,
+                &ExecuteQuery {
+                    scope: format!("instance:{}", instance()),
+                    query:
+                        "FROM record:document AT VALID 1300 KNOWN HEAD PROJECT id, revision, absent"
+                            .into(),
+                    parameters: BTreeMap::new(),
+                    budget: QueryBudget::default(),
+                },
+                1_400,
+                &format!("request-schemaless-read-{suffix}"),
+                &format!("operation-schemaless-read-{suffix}"),
+            )
+            .unwrap();
+        assert_eq!(result.rows.len(), 1);
+        assert_eq!(
+            result.rows[0].values["id"],
+            QueryValue::String("alpha".into())
+        );
+        assert_eq!(result.rows[0].values["revision"], QueryValue::Unsigned(1));
+        assert_eq!(result.rows[0].values["absent"], QueryValue::Null);
+        result.execution.read_evidence.validate().unwrap();
+    };
+    read_document(&engine, "before-reopen");
     drop(engine);
     let reopened = RrdEngine::open(root.path(), instance(), TOKEN_KEY).unwrap();
     assert_eq!(snapshot(&reopened, &lease, 1_300, "reopen"), after_cancel);
+    read_document(&reopened, "after-reopen");
     let reopened_replay = reopened
         .execute_query_transaction(&lease.session_id, &lease.token, &request, &context, 1_500)
         .unwrap();

@@ -39,13 +39,21 @@ bound query. A newer artifact is not valid for an older bitemporal read.
 Absent, building, quarantined, retiring, stale, or differently-timed entries
 fall back to the current authoritative path.
 
+The catalogue and artifact also bind the derived result-identity version.
+Entries without the current version cannot be selected, even if their stored
+projection state is `ready`. The public snapshot retains that stored state and
+reports `identity_rebuild_required`; an authorized ensure starts a full rebuild
+from the authoritative data. Older artifacts are not used as incremental diff
+inputs. A previously installed unique constraint remains enforced throughout.
+
 ## Build, publication, and selection
 
 The current builder executes the definition's all-fields reference query at a
 captured head and literal valid time. It validates uniqueness where requested,
 builds any BM25 or analytical payload, serializes the sorted `QueryRow`
 snapshot, and writes it under a content-addressed projection name. Publication
-then revalidates generation, source cursor, digest, coverage, and state before
+then verifies the actual content-addressed artifact, its identity version,
+definition, generation, source cursor, digest, row count and coverage before
 marking the entry ready.
 
 Scalar and geospatial selection requires matching leading fields. A
