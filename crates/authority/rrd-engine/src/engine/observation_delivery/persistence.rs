@@ -116,6 +116,9 @@ fn source_references(
         plan_sha256: None,
         source_sha256: None,
         configuration_sha256: None,
+        selector_policy_id: None,
+        selector_routing_sha256: None,
+        selector_narrowed_candidate_count: None,
     };
     match source {
         ObservationSource::TaskAttempt {
@@ -141,16 +144,33 @@ fn source_references(
             references.operation = operation("ReadTaskAttempt")?;
             references.task_id = Some(request.task_id.to_string());
             references.attempt_id = Some(request.attempt_id.as_str().into());
-            // Bind the configuration that produced the retained result, not
-            // the later configuration authorizing this observation export.
-            references.configuration_sha256 = attempt
-                .endpoint_proposal
-                .map(|proposal| proposal.configuration_sha256)
-                .or_else(|| {
-                    attempt
-                        .worker_output
-                        .map(|worker| worker.configuration_sha256)
-                });
+            if let Some(proposal) = attempt.endpoint_proposal.as_ref() {
+                // Bind the configuration that produced the retained result, not
+                // the later configuration authorizing this observation export.
+                references.configuration_sha256 = Some(proposal.configuration_sha256.clone());
+                if let Some(routing) = proposal.routing.as_ref() {
+                    references.selector_policy_id =
+                        Some(routing.semantic_router.policy_id.to_string());
+                    references.selector_routing_sha256 = Some(
+                        rrd_contract::endpoint_selection_routing_sha256(routing)
+                            .map_err(contract)?,
+                    );
+                    references.selector_narrowed_candidate_count =
+                        Some(routing.semantic_router.narrowed_candidate_count);
+                }
+            } else if let Some(worker) = attempt.worker_output.as_ref() {
+                references.configuration_sha256 = Some(worker.configuration_sha256.clone());
+                if let Some(routing) = worker.routing.as_ref() {
+                    references.selector_policy_id =
+                        Some(routing.semantic_router.policy_id.to_string());
+                    references.selector_routing_sha256 = Some(
+                        rrd_contract::endpoint_selection_routing_sha256(routing)
+                            .map_err(contract)?,
+                    );
+                    references.selector_narrowed_candidate_count =
+                        Some(routing.semantic_router.narrowed_candidate_count);
+                }
+            }
         }
         ObservationSource::AttunementJob {
             request,

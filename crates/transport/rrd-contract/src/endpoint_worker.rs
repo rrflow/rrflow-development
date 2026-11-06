@@ -141,6 +141,8 @@ pub struct TaskWorkerOutput {
     pub content: String,
     pub read: crate::ContextReadStamp,
     pub context: Option<TaskWorkerContext>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub routing: Option<crate::EndpointSelectionRoutingInput>,
     pub usage: Option<crate::EndpointTokenUsage>,
     pub elapsed_ms: Option<u64>,
     pub http_status: Option<u16>,
@@ -199,6 +201,9 @@ impl TaskWorkerOutput {
             context.read.validate()?;
             validate_sha256(&context.request_sha256, "worker context request digest")?;
             validate_sha256(&context.packet_sha256, "worker context packet digest")?;
+        }
+        if let Some(routing) = &self.routing {
+            routing.validate()?;
         }
         if self.http_status.is_some_and(|status| status != 200) {
             return invalid("accepted worker HTTP status must be 200");

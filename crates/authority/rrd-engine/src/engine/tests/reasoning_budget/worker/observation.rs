@@ -1,16 +1,51 @@
 //! Controlled wire fixtures: no model-quality, task-completion or training labels.
 use super::*;
 use rrd_contract::{
-    CredentialReference, DeliverObservation, ObservationDeliveryState, ObservationExportPolicy,
-    ObservationSource, PrepareObservationDelivery, ReadObservationDelivery,
+    CredentialReference, DeliverObservation, EndpointSelectionRoutingInput,
+    ObservationDeliveryState, ObservationExportPolicy, ObservationSource,
+    PrepareObservationDelivery, ReadObservationDelivery,
 };
 
 #[test]
 fn worker_observation_exports_original_configuration_and_reopens_without_completing_task() {
     let model = TcpListener::bind("127.0.0.1:0").unwrap();
     let sink = TcpListener::bind("127.0.0.1:0").unwrap();
-    let (root, mut engine, lease, selection) =
+    let (root, mut engine, lease, mut selection) =
         admitted_fixture(&format!("http://{}/v1", model.local_addr().unwrap()));
+    let selected_binding = engine
+        .read_endpoint_configuration(
+            &lease.session_id,
+            &lease.token,
+            900,
+            "configuration",
+            "configuration",
+        )
+        .unwrap()
+        .profile
+        .unwrap()
+        .selection_policy
+        .unwrap()
+        .candidates[0]
+        .binding_id
+        .to_string();
+    selection.routing = Some(
+        serde_json::from_value::<EndpointSelectionRoutingInput>(serde_json::json!({
+            "context_extraction": {
+                "modality": "text",
+                "signals": [
+                    {"name": "intent", "value": "summarize"}
+                ]
+            },
+            "semantic_router": {
+                "policy_id": "semantic-router-v1",
+                "ranked_candidates": [
+                    {"binding_id": selected_binding, "score_milli": 900}
+                ],
+                "narrowed_candidate_count": 1
+            }
+        }))
+        .unwrap(),
+    );
     let request = selected_request(&engine, &lease, &model, &selection, 1_000, false);
     let (output, _) = complete_worker(&engine, &lease, &model, &request, 1_100);
     let worker_budget = budget(&engine, &lease, &request.task_id);
@@ -137,6 +172,13 @@ fn worker_observation_exports_original_configuration_and_reopens_without_complet
     assert_eq!(
         references["response_sha256"],
         prepared.source_response_sha256
+    );
+    assert_eq!(references["selector_policy_id"], "semantic-router-v1");
+    assert_eq!(references["selector_narrowed_candidate_count"], 1);
+    assert_eq!(
+        references["selector_routing_sha256"],
+        rrd_contract::endpoint_selection_routing_sha256(selection.routing.as_ref().unwrap())
+            .unwrap()
     );
     assert!(!wire.to_string().contains(&output.content));
     assert!(!wire.to_string().contains("controlled-test-secret"));

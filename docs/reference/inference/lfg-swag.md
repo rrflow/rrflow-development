@@ -83,6 +83,11 @@ narrowing count. The engine validates that narrowed candidates are a non-empty
 subset of configured allowance candidates before proposal dispatch, then
 retains the same routing input in packet/proposal identity so receipts can bind
 intent → narrowing → authorized execution.
+Observation export now includes optional selector feedback references derived
+from retained task attempts: `selector_policy_id`,
+`selector_routing_sha256`, and `selector_narrowed_candidate_count`. These
+values identify the exact routing input admitted for execution so downstream
+learning review can correlate outcomes without trusting client-supplied labels.
 The [worker activity journal](../../evidence/change-journals/gate-g/task-worker-model-admission.md)
 separates local protocol checks from installed provider and public-release proof.
 The [installed worker journal](../../evidence/change-journals/gate-g/task-worker-installed-live.md)

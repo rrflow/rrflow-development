@@ -170,6 +170,13 @@ impl EndpointSelectionRoutingInput {
     }
 }
 
+pub fn endpoint_selection_routing_sha256(
+    routing: &EndpointSelectionRoutingInput,
+) -> Result<String> {
+    routing.validate()?;
+    digest(routing)
+}
+
 /// Unknown fields are accepted and ignored for forward compatibility. No
 /// endpoint, credential, prompt or client-authored candidate facts are used by
 /// this request; an extension needs explicit engine admission to matter.

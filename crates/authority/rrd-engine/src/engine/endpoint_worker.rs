@@ -393,6 +393,7 @@ impl RrdEngine {
                 content: observed.content,
                 read: packet.read.clone(),
                 context: context_reference,
+                routing: selection.routing.clone(),
                 usage: observed.usage,
                 elapsed_ms: observed.elapsed_ms,
                 http_status: observed.http_status,

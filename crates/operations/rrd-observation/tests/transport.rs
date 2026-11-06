@@ -39,6 +39,9 @@ fn references() -> EngineReferences {
         plan_sha256: None,
         source_sha256: None,
         configuration_sha256: Some("b".repeat(64)),
+        selector_policy_id: None,
+        selector_routing_sha256: None,
+        selector_narrowed_candidate_count: None,
     }
 }
 fn payload() -> Vec<u8> {
