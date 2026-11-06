@@ -6,6 +6,7 @@ use crate::{
     Result,
 };
 use crate::{Join, Projection, Source};
+use rrd_core::result_identity::{self, ResultIdentityFamily};
 use rrd_core::{
     resolve_as_of, Claim, GeoValue, RuntimeChange, RuntimeGeo, RuntimeMutation, RuntimeRecord,
     RuntimeRelation, RuntimeValue, SeriesValue,
@@ -741,7 +742,8 @@ fn rows_for_source(
             .into_values()
             .filter(|record| &record.reference.kind == kind)
             .map(|record| {
-                let identity = format!("record:{}:{}", record.reference.kind, record.reference.id);
+                let identity =
+                    result_identity::typed(ResultIdentityFamily::Record, &record.reference);
                 let mut values = record.properties;
                 values.insert("id".into(), string(record.reference.id.to_string()));
                 values.insert("kind".into(), string(record.reference.kind.to_string()));
@@ -758,10 +760,8 @@ fn rows_for_source(
             .into_values()
             .filter(|relation| &relation.reference.kind == kind)
             .map(|relation| {
-                let identity = format!(
-                    "relation:{}:{}",
-                    relation.reference.kind, relation.reference.id
-                );
+                let identity =
+                    result_identity::typed(ResultIdentityFamily::Relation, &relation.reference);
                 let mut values = relation.properties;
                 values.insert("id".into(), string(relation.reference.id.to_string()));
                 values.insert("kind".into(), string(relation.reference.kind.to_string()));
@@ -787,11 +787,8 @@ fn rows_for_source(
                     RuntimeMutation::Event { event }
                         if &event.kind == kind && change.at <= valid_at =>
                     {
-                        let reference = rrd_core::RuntimeRef::new(
-                            event.kind.to_string(),
-                            format!("cursor:{}", change.cursor),
-                        )
-                        .expect("persisted event reference is valid");
+                        let reference =
+                            rrd_core::RuntimeRef::event(event.kind.clone(), change.cursor);
                         active.insert(reference, (change, event));
                     }
                     RuntimeMutation::Retire { retirement }
@@ -829,7 +826,10 @@ fn rows_for_source(
                             .map_or(RuntimeValue::Null, |subject| string(subject.id.to_string())),
                     );
                     QueryRow {
-                        identity: format!("event:{}:{}", event.kind, change.cursor),
+                        identity: result_identity::encode(
+                            ResultIdentityFamily::Event,
+                            &[event.kind.as_str(), &change.cursor.to_string()],
+                        ),
                         values,
                     }
                 })
@@ -870,12 +870,9 @@ fn rows_for_source(
                     );
                     values.insert("value".into(), series_value(&sample.value));
                     QueryRow {
-                        identity: format!(
-                            "series:{}:{}:{}:{}",
-                            sample.series.kind,
-                            sample.series.id,
-                            sample.observed_at,
-                            sample.reference.id
+                        identity: result_identity::typed(
+                            ResultIdentityFamily::Series,
+                            &sample.reference,
                         ),
                         values,
                     }
@@ -974,7 +971,7 @@ fn geo_rows(
             values.insert("valid_to".into(), optional_u64(geo.valid_to));
             insert_geo_value(&mut values, &geo.value);
             QueryRow {
-                identity: format!("geo:{}:{}", geo.reference.kind, geo.reference.id),
+                identity: result_identity::typed(ResultIdentityFamily::Geo, &geo.reference),
                 values,
             }
         })
@@ -1083,7 +1080,7 @@ fn claim_rows(
             values.insert("tx_time".into(), RuntimeValue::Unsigned(claim.tx_time));
             values.insert("actor".into(), string(claim.producer.actor.clone()));
             Some(QueryRow {
-                identity: format!("claim:{subject}:{predicate}"),
+                identity: result_identity::claim(&claim.subject, &claim.predicate),
                 values,
             })
         })

@@ -502,7 +502,7 @@ mod tests {
 
     #[test]
     fn lifecycle_event_chain_rejects_skips_and_backward_activation() {
-        let id = ProjectionId::new("quant:scalar:body").unwrap();
+        let id = ProjectionId::new("quant-scalar-body").unwrap();
         let mut catalogue = QuantizationArtifactCatalogue::default();
         let build = catalogue
             .next_event(id.clone(), 1, QuantizationLifecycleAction::Build, 1, None)

@@ -9,6 +9,7 @@
 ## Chapters
 
 <!-- rrflow:generated-index:start -->
+- [Adaptive project execution and the developer build](adaptive-developer-build-design.md) — [`rrflow://rrflow-instance/data/design/adaptive-developer-build`](rrflow://rrflow-instance/data/design/adaptive-developer-build) — active supporting design proposal; no runtime capability or gate accepted
 - [Current alpha objective and remediation](current-alpha-objective-and-remediation.md) — [`rrflow://rrflow-instance/data/roadmap/rrflow-1.0/current-alpha-objective-and-remediation`](rrflow://rrflow-instance/data/roadmap/rrflow-1.0/current-alpha-objective-and-remediation) — active canonical RRFlow 1.0 roadmap chapter
 - [Executable dependency spine](executable-dependency-spine.md) — [`rrflow://rrflow-instance/data/roadmap/rrflow-1.0/executable-dependency-spine`](rrflow://rrflow-instance/data/roadmap/rrflow-1.0/executable-dependency-spine) — active canonical RRFlow 1.0 roadmap chapter
 - [RRFlow 1.0 execution checklist](execution-checklist.md) — [`rrflow://rrflow-instance/data/roadmap/rrflow-1.0/execution-checklist`](rrflow://rrflow-instance/data/roadmap/rrflow-1.0/execution-checklist) — active canonical RRFlow 1.0 roadmap chapter
@@ -27,4 +28,5 @@
 - [Gate H — prove context flow, feedback, live delivery, and Connectome](gate-h.md) — [`rrflow://rrflow-instance/data/roadmap/rrflow-1.0/gate-h`](rrflow://rrflow-instance/data/roadmap/rrflow-1.0/gate-h) — active canonical RRFlow 1.0 roadmap chapter
 - [Gate I — add explicit automation scaffolding with host hooks as alias stubs](gate-i.md) — [`rrflow://rrflow-instance/data/roadmap/rrflow-1.0/gate-i`](rrflow://rrflow-instance/data/roadmap/rrflow-1.0/gate-i) — active canonical RRFlow 1.0 roadmap chapter
 - [Gate J — RRFlow 1.0 release proof](gate-j.md) — [`rrflow://rrflow-instance/data/roadmap/rrflow-1.0/gate-j`](rrflow://rrflow-instance/data/roadmap/rrflow-1.0/gate-j) — active canonical RRFlow 1.0 roadmap chapter
+- [Installed project indexing: implementation and evidence plan](project-indexing-execution-plan.md) — [`rrflow://rrflow-instance/data/design/installed-project-indexing-plan`](rrflow://rrflow-instance/data/design/installed-project-indexing-plan) — active supporting implementation proposal; no runtime or gate accepted
 <!-- rrflow:generated-index:end -->
