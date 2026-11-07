@@ -8,9 +8,9 @@ use rrflow_eval::lab::provider::{
 use rrflow_eval::lab::report::{SystemStatus, TestIdentity, VerdictOutcome};
 use rrflow_eval::lab::tasks::{
     combine_task_runs, exact_mcnemar, normalize_path, parse_plan, run_order, run_task, score_plan,
-    task_prompt, wilson_interval, AgentPlan, AgentTask, Preregistration, RunInputs, RunKey,
-    SpendLimits, TaskArm, TaskComparisonManifest, TaskModel, TaskProviderKind, TaskRun,
-    TaskRunOutcome,
+    task_prompt, wilson_interval, AgentPlan, AgentTask, CaptureField, Preregistration, RunInputs,
+    RunKey, SpendLimits, StudyStage, TaskArm, TaskComparisonManifest, TaskModel, TaskProviderKind,
+    TaskRun, TaskRunOutcome,
 };
 use rrflow_eval::lab::Result;
 use rrflow_eval::storage::Id;
@@ -69,6 +69,8 @@ fn manifest() -> TaskComparisonManifest {
             min_file_recall: 0.5,
             min_file_precision: 0.5,
             max_floor_file_match_rate: 0.1,
+            stage: StudyStage::Confirmatory,
+            required_captures: vec![CaptureField::Cost],
         },
         models: vec![TaskModel {
             id: id("model-a"),
@@ -141,6 +143,7 @@ fn run_with(manifest: &TaskComparisonManifest, provider: &Scripted, key: &RunKey
             empty_directory: Path::new("empty"),
             spent_usd: 0.0,
             mcp_config: None,
+            chunk_files: None,
         },
     )
     .unwrap()
@@ -257,6 +260,7 @@ fn nothing_runs_until_models_and_a_spend_limit_are_chosen() {
                 empty_directory: Path::new("empty"),
                 spent_usd: 0.0,
                 mcp_config: None,
+                chunk_files: None,
             },
         )
         .unwrap_err()
@@ -283,6 +287,7 @@ fn a_run_that_could_pass_the_total_spend_is_refused() {
             empty_directory: Path::new("empty"),
             spent_usd: 9.5,
             mcp_config: None,
+            chunk_files: None,
         },
     )
     .unwrap_err();
@@ -576,6 +581,7 @@ fn a_changed_design_or_a_declared_gap_cannot_use_a_run() {
             empty_directory: Path::new("empty"),
             spent_usd: 0.0,
             mcp_config: None,
+            chunk_files: None,
         },
     )
     .unwrap_err();
@@ -625,6 +631,7 @@ fn an_arm_with_an_mcp_tool_must_be_given_its_server_and_no_other_arm_may_be() {
         .tools
         .push("mcp__rrflow__rrflow_context".into());
     let provider = Scripted::replying(GOOD);
+    let chunks = std::collections::BTreeMap::new();
     let run = |arm: &str, config: Option<&Path>| {
         run_task(
             &manifest,
@@ -635,6 +642,7 @@ fn an_arm_with_an_mcp_tool_must_be_given_its_server_and_no_other_arm_may_be() {
                 empty_directory: Path::new("empty"),
                 spent_usd: 0.0,
                 mcp_config: config,
+                chunk_files: config.map(|_| &chunks),
             },
         )
     };

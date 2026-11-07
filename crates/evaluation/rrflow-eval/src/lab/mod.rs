@@ -16,6 +16,7 @@ pub mod qdrant;
 pub mod report;
 pub mod rrflow;
 pub mod sources;
+pub mod study;
 pub mod surrealdb;
 pub mod tasks;
 

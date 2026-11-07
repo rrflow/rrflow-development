@@ -62,6 +62,47 @@
       ],
       "type": "object"
     },
+    "RetrievalCapture": {
+      "additionalProperties": false,
+      "description": "What an MCP tool gave the agent and what the agent did with it, separately, because a\ncorrect result that goes unused is a different failure from a search that missed.",
+      "properties": {
+        "bytes_returned": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "calls": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "files_returned": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "needed_files_returned": {
+          "description": "Files the change needed that the tool returned.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "needed_files_used": {
+          "description": "Of those, the ones the plan named.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "calls",
+        "bytes_returned",
+        "files_returned",
+        "needed_files_returned",
+        "needed_files_used"
+      ],
+      "type": "object"
+    },
     "TaskRunOutcome": {
       "oneOf": [
         {
@@ -83,6 +124,11 @@
           "const": "provider_failed",
           "description": "The provider failed, so the comparison is incomplete and stays visible.",
           "type": "string"
+        },
+        {
+          "const": "tooling_failed",
+          "description": "The arm's own tools did not come up, so this measured nothing about the arm.",
+          "type": "string"
         }
       ]
     }
@@ -92,6 +138,22 @@
   "properties": {
     "arm": {
       "$ref": "#/$defs/Id"
+    },
+    "cache_read_tokens": {
+      "format": "uint64",
+      "minimum": 0,
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "cache_write_tokens": {
+      "format": "uint64",
+      "minimum": 0,
+      "type": [
+        "integer",
+        "null"
+      ]
     },
     "cost_usd": {
       "format": "double",
@@ -114,6 +176,12 @@
     "model": {
       "$ref": "#/$defs/Id"
     },
+    "model_reported": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "outcome": {
       "$ref": "#/$defs/TaskRunOutcome"
     },
@@ -122,6 +190,12 @@
       "minimum": 0,
       "type": [
         "integer",
+        "null"
+      ]
+    },
+    "provider_version": {
+      "type": [
+        "string",
         "null"
       ]
     },
@@ -147,6 +221,16 @@
       ],
       "description": "The provider's whole output, kept beside the run under this digest."
     },
+    "retrieval": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/RetrievalCapture"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "schema_version": {
       "format": "uint16",
       "maximum": 65535,
@@ -162,6 +246,17 @@
     },
     "task": {
       "$ref": "#/$defs/Id"
+    },
+    "tool_calls": {
+      "additionalProperties": {
+        "format": "uint64",
+        "minimum": 0,
+        "type": "integer"
+      },
+      "type": [
+        "object",
+        "null"
+      ]
     },
     "turns": {
       "format": "uint64",

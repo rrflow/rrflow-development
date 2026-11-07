@@ -57,3 +57,13 @@ uses one visible root set for selection and traversal. The expired/future/
 retired/missing, mixed-root and historical corpus passes on rrflowMX and
 rrflowKV, with identical persistent packets after reopen. This is context
 correctness evidence only; the broader item remains open.
+
+## Study capture provenance
+
+The unmerged study-capture draft PR 267 accepts an audit produced by its
+scripted provider test as meeting the confirmatory capture requirement. A
+matching audit digest and reported fields do not establish that a real provider
+executed or that its event stream is authentic. Before a confirmatory study,
+bind capture to independently verifiable execution and test forged, missing,
+and substituted receipts. Keep the draft unqualified and do not treat its
+current audit as proof of real-provider capture or model quality.

@@ -2,6 +2,7 @@
 //! paired trial and a task run read a provider's output the same way.
 use super::Result;
 use serde_json::Value;
+use std::collections::BTreeMap;
 use std::io::Read;
 use std::path::Path;
 use std::process::{Command, Stdio};
@@ -97,6 +98,17 @@ pub struct AgentReply {
     pub output_tokens: Option<u64>,
     pub cost_usd: Option<f64>,
     pub turns: Option<u64>,
+    pub cache_read_tokens: Option<u64>,
+    pub cache_write_tokens: Option<u64>,
+    /// The model that answered, which can differ from the one asked for.
+    pub model_reported: Option<String>,
+    pub provider_version: Option<String>,
+    /// Each MCP server's state at startup. Absent if the provider said nothing about them.
+    pub mcp_servers: Option<BTreeMap<String, String>>,
+    /// Calls per tool. Absent if the event stream could not be read, and empty if there were none.
+    pub tool_calls: Option<BTreeMap<String, u64>>,
+    /// What MCP tools replied, in order.
+    pub mcp_results: Vec<String>,
 }
 
 /// A test supplies its own, so no test can start a model.
@@ -115,7 +127,8 @@ pub fn claude_arguments(request: &AgentRequest<'_>) -> Vec<String> {
         "--model",
         request.model,
         "--output-format",
-        "json",
+        "stream-json",
+        "--verbose",
         "--no-session-persistence",
         "--permission-mode",
         "plan",
@@ -138,25 +151,130 @@ pub fn claude_arguments(request: &AgentRequest<'_>) -> Vec<String> {
     arguments
 }
 
-/// Reads Claude Code's JSON result.
+fn content_blocks(event: &Value) -> &[Value] {
+    event
+        .get("message")
+        .and_then(|message| message.get("content"))
+        .and_then(Value::as_array)
+        .map_or(&[], Vec::as_slice)
+}
+
+fn tool_result_text(block: &Value) -> String {
+    match block.get("content") {
+        Some(Value::String(text)) => text.clone(),
+        Some(Value::Array(parts)) => parts
+            .iter()
+            .filter_map(|part| part.get("text").and_then(Value::as_str))
+            .collect::<Vec<_>>()
+            .join("\n"),
+        _ => String::new(),
+    }
+}
+
+/// Reads Claude Code's event stream, one event to a line. A field it cannot find stays absent
+/// and is not guessed, so the capture audit can report it.
 pub fn parse_claude_output(raw: Vec<u8>, exit_code: Option<i32>, timed_out: bool) -> AgentReply {
-    let text_output = String::from_utf8_lossy(&raw).to_string();
-    let value: Value = serde_json::from_str(&text_output).unwrap_or(Value::Null);
-    let (input_tokens, output_tokens, _) = usage_metrics("claude", &text_output);
-    AgentReply {
-        text: value
-            .get("result")
-            .and_then(Value::as_str)
-            .unwrap_or_default()
-            .to_string(),
+    let mut reply = AgentReply {
         exit_code,
         timed_out,
-        input_tokens,
-        output_tokens,
-        cost_usd: value.get("total_cost_usd").and_then(Value::as_f64),
-        turns: value.get("num_turns").and_then(Value::as_u64),
-        raw,
+        ..AgentReply::default()
+    };
+    let text_output = String::from_utf8_lossy(&raw).to_string();
+    let mut calls: Option<BTreeMap<String, u64>> = None;
+    let mut names: BTreeMap<String, String> = BTreeMap::new();
+    for line in text_output.lines() {
+        let Ok(event) = serde_json::from_str::<Value>(line) else {
+            continue;
+        };
+        match event.get("type").and_then(Value::as_str) {
+            Some("system") if event.get("subtype").and_then(Value::as_str) == Some("init") => {
+                reply.provider_version = event
+                    .get("claude_code_version")
+                    .and_then(Value::as_str)
+                    .map(str::to_string);
+                reply.model_reported = event
+                    .get("model")
+                    .and_then(Value::as_str)
+                    .map(str::to_string);
+                reply.mcp_servers =
+                    event
+                        .get("mcp_servers")
+                        .and_then(Value::as_array)
+                        .map(|servers| {
+                            servers
+                                .iter()
+                                .filter_map(|server| {
+                                    Some((
+                                        server.get("name")?.as_str()?.to_string(),
+                                        server.get("status")?.as_str()?.to_string(),
+                                    ))
+                                })
+                                .collect()
+                        });
+                calls.get_or_insert_with(BTreeMap::new);
+            }
+            Some("assistant") => {
+                if let Some(model) = event
+                    .get("message")
+                    .and_then(|message| message.get("model"))
+                    .and_then(Value::as_str)
+                {
+                    reply.model_reported = Some(model.to_string());
+                }
+                for block in content_blocks(&event) {
+                    if block.get("type").and_then(Value::as_str) != Some("tool_use") {
+                        continue;
+                    }
+                    let Some(name) = block.get("name").and_then(Value::as_str) else {
+                        continue;
+                    };
+                    if let Some(calls) = calls.as_mut() {
+                        *calls.entry(name.to_string()).or_default() += 1;
+                    }
+                    if let Some(use_id) = block.get("id").and_then(Value::as_str) {
+                        names.insert(use_id.to_string(), name.to_string());
+                    }
+                }
+            }
+            Some("user") => {
+                for block in content_blocks(&event) {
+                    let is_mcp = block.get("type").and_then(Value::as_str) == Some("tool_result")
+                        && block
+                            .get("tool_use_id")
+                            .and_then(Value::as_str)
+                            .and_then(|use_id| names.get(use_id))
+                            .is_some_and(|name| name.starts_with("mcp__"));
+                    if is_mcp {
+                        reply.mcp_results.push(tool_result_text(block));
+                    }
+                }
+            }
+            Some("result") => {
+                let (input_tokens, output_tokens, _) = usage_metrics("claude", line);
+                reply.input_tokens = input_tokens;
+                reply.output_tokens = output_tokens;
+                let usage = event.get("usage");
+                let tokens = |field: &str| {
+                    usage
+                        .and_then(|usage| usage.get(field))
+                        .and_then(Value::as_u64)
+                };
+                reply.cache_read_tokens = tokens("cache_read_input_tokens");
+                reply.cache_write_tokens = tokens("cache_creation_input_tokens");
+                reply.text = event
+                    .get("result")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default()
+                    .to_string();
+                reply.cost_usd = event.get("total_cost_usd").and_then(Value::as_f64);
+                reply.turns = event.get("num_turns").and_then(Value::as_u64);
+            }
+            _ => {}
+        }
     }
+    reply.tool_calls = calls;
+    reply.raw = raw;
+    reply
 }
 
 pub struct ClaudeCode;

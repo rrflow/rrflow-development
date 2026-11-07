@@ -13,6 +13,7 @@ use rrflow_eval::lab::manifest::{
 };
 use rrflow_eval::lab::report::{LabReport, SystemStatus, TestIdentity, VerdictOutcome};
 use rrflow_eval::lab::sources::SourceList;
+use rrflow_eval::lab::study::{CaptureAudit, StudyCheck, StudyConfig, StudyRequirements};
 use rrflow_eval::lab::tasks::{TaskComparisonManifest, TaskRun};
 use rrflow_eval::lab::{canonical_json, sha256_hex, Result};
 use rrflow_eval::storage::{schema, Id};
@@ -890,6 +891,13 @@ fn generated_schemas_match_the_checked_in_projections() {
         ("lab-report-v1.json", schema::<LabReport>()),
         ("lab-custom-protocol-v1.json", schema::<CustomProtocol>()),
         ("lab-sources-v1.json", schema::<SourceList>()),
+        ("lab-study-config-v1.json", schema::<StudyConfig>()),
+        (
+            "lab-study-requirements-v1.json",
+            schema::<StudyRequirements>(),
+        ),
+        ("lab-study-check-v1.json", schema::<StudyCheck>()),
+        ("lab-capture-audit-v1.json", schema::<CaptureAudit>()),
         (
             "lab-task-manifest-v1.json",
             schema::<TaskComparisonManifest>(),

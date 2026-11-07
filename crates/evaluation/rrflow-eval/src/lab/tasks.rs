@@ -17,6 +17,48 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
 pub const TASKS_SCHEMA_VERSION: u16 = 1;
+
+/// A pilot tests the test, so its report cannot answer the question. A confirmatory study can.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum StudyStage {
+    Pilot,
+    #[default]
+    Confirmatory,
+}
+
+/// Data a study requires of every finished run.
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema,
+)]
+#[serde(rename_all = "snake_case")]
+pub enum CaptureField {
+    Model,
+    ProviderVersion,
+    Tokens,
+    CacheTokens,
+    Cost,
+    Turns,
+    ToolCalls,
+    Retrieval,
+    Transcript,
+}
+
+impl CaptureField {
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Model => "the model that answered",
+            Self::ProviderVersion => "the provider's version",
+            Self::Tokens => "tokens",
+            Self::CacheTokens => "cache tokens",
+            Self::Cost => "cost",
+            Self::Turns => "turns",
+            Self::ToolCalls => "tool calls",
+            Self::Retrieval => "what retrieval returned",
+            Self::Transcript => "the transcript",
+        }
+    }
+}
 pub const MAX_TASKS: usize = 1_024;
 pub const MAX_REPETITIONS: u32 = 32;
 const Z95: f64 = 1.96;
@@ -37,6 +79,11 @@ pub struct Preregistration {
     pub min_file_recall: f64,
     pub min_file_precision: f64,
     pub max_floor_file_match_rate: f64,
+    #[serde(default)]
+    pub stage: StudyStage,
+    /// A finished run lacking one of these stays visible and does not count.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub required_captures: Vec<CaptureField>,
 }
 
 /// A run cannot start without these, and the person who pays decides them.
@@ -238,6 +285,10 @@ impl TaskComparisonManifest {
             !self.models.is_empty(),
             "no model is chosen, so nothing can run",
         )?;
+        require(
+            !self.preregistration.required_captures.is_empty(),
+            "the study requires no data of its runs, so nothing can run",
+        )?;
         self.spend
             .as_ref()
             .ok_or_else(|| "no spend limit is set, so nothing can run".to_string())
@@ -278,16 +329,21 @@ pub fn run_order(manifest: &TaskComparisonManifest) -> Vec<RunKey> {
             }
         }
     }
-    let mut state = manifest.preregistration.order_seed;
-    for index in (1..keys.len()).rev() {
+    shuffle(&mut keys, manifest.preregistration.order_seed);
+    keys
+}
+
+/// A shuffle that a seed fully decides.
+pub fn shuffle<T>(items: &mut [T], seed: u64) {
+    let mut state = seed;
+    for index in (1..items.len()).rev() {
         state = state.wrapping_add(0x9E37_79B9_7F4A_7C15);
         let mut z = state;
         z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
         z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
         z ^= z >> 31;
-        keys.swap(index, (z % (index as u64 + 1)) as usize);
+        items.swap(index, (z % (index as u64 + 1)) as usize);
     }
-    keys
 }
 
 /// What the agent was asked to reply with. Unknown fields are ignored, so a longer reply
@@ -412,6 +468,22 @@ pub enum TaskRunOutcome {
     TimedOut,
     /// The provider failed, so the comparison is incomplete and stays visible.
     ProviderFailed,
+    /// The arm's own tools did not come up, so this measured nothing about the arm.
+    ToolingFailed,
+}
+
+/// What an MCP tool gave the agent and what the agent did with it, separately, because a
+/// correct result that goes unused is a different failure from a search that missed.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct RetrievalCapture {
+    pub calls: u64,
+    pub bytes_returned: u64,
+    pub files_returned: u64,
+    /// Files the change needed that the tool returned.
+    pub needed_files_returned: u64,
+    /// Of those, the ones the plan named.
+    pub needed_files_used: u64,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -439,6 +511,120 @@ pub struct TaskRun {
     /// The provider's whole output, kept beside the run under this digest.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reply_sha256: Option<Digest>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model_reported: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub provider_version: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cache_read_tokens: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cache_write_tokens: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_calls: Option<BTreeMap<String, u64>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub retrieval: Option<RetrievalCapture>,
+}
+
+impl TaskRun {
+    /// What a finished run lacks. A run that failed is a result and owes nothing further.
+    pub fn missing_captures(&self, arm: &TaskArm, required: &[CaptureField]) -> Vec<CaptureField> {
+        if !matches!(
+            self.outcome,
+            TaskRunOutcome::Planned | TaskRunOutcome::NoPlan
+        ) {
+            return Vec::new();
+        }
+        required
+            .iter()
+            .copied()
+            .filter(|field| !self.holds(*field, arm))
+            .collect()
+    }
+
+    fn holds(&self, field: CaptureField, arm: &TaskArm) -> bool {
+        match field {
+            CaptureField::Model => self.model_reported.is_some(),
+            CaptureField::ProviderVersion => self.provider_version.is_some(),
+            CaptureField::Tokens => self.input_tokens.is_some() && self.output_tokens.is_some(),
+            CaptureField::CacheTokens => {
+                self.cache_read_tokens.is_some() && self.cache_write_tokens.is_some()
+            }
+            CaptureField::Cost => self.cost_usd.is_some(),
+            CaptureField::Turns => self.turns.is_some(),
+            CaptureField::ToolCalls => self.tool_calls.is_some(),
+            CaptureField::Retrieval => {
+                !arm.tools.iter().any(|tool| tool.starts_with("mcp__")) || self.retrieval.is_some()
+            }
+            CaptureField::Transcript => self.reply_sha256.is_some(),
+        }
+    }
+
+    /// Whether this run can count for or against its arm.
+    pub fn counts(&self, arm: &TaskArm, required: &[CaptureField]) -> bool {
+        self.outcome != TaskRunOutcome::ToolingFailed
+            && self.missing_captures(arm, required).is_empty()
+    }
+}
+
+/// What a run took from the total. A provider that reported no cost is charged at the run's limit.
+pub fn charged_usd(run: &TaskRun, spend: &SpendLimits) -> f64 {
+    run.cost_usd.unwrap_or(spend.max_usd_per_run)
+}
+
+/// Why an arm's MCP servers are not usable, from what the provider reported at startup.
+fn tooling_problem(arm: &TaskArm, reply: &AgentReply) -> Option<String> {
+    arm.tools
+        .iter()
+        .filter_map(|tool| tool.strip_prefix("mcp__")?.split("__").next())
+        .find_map(
+            |server| match reply.mcp_servers.as_ref().and_then(|all| all.get(server)) {
+                Some(status) if status == "connected" => None,
+                Some(status) => Some(format!("the {server} MCP server was {status}")),
+                None => Some(format!(
+                    "the provider did not report the {server} MCP server"
+                )),
+            },
+        )
+}
+
+/// Which files an MCP tool returned, read from the chunk identities in its replies. Any shape
+/// of reply works, and a reply without identities shows as nothing returned.
+fn capture_retrieval(
+    task: &AgentTask,
+    reply: &AgentReply,
+    chunk_files: &BTreeMap<String, String>,
+    plan: Option<&AgentPlan>,
+) -> RetrievalCapture {
+    let mut returned = BTreeSet::new();
+    for text in &reply.mcp_results {
+        for token in text.split(|character: char| !character.is_ascii_alphanumeric()) {
+            if let Some(path) = chunk_files.get(token) {
+                returned.insert(normalize_path(path));
+            }
+        }
+    }
+    let named: BTreeSet<String> = plan
+        .map(|plan| plan.files.iter().map(|path| normalize_path(path)).collect())
+        .unwrap_or_default();
+    let needed: BTreeSet<String> = task
+        .expected_files
+        .iter()
+        .map(|path| normalize_path(path))
+        .collect();
+    let found: Vec<&String> = needed.intersection(&returned).collect();
+    RetrievalCapture {
+        calls: reply
+            .tool_calls
+            .iter()
+            .flatten()
+            .filter(|(name, _)| name.starts_with("mcp__"))
+            .map(|(_, calls)| *calls)
+            .sum(),
+        bytes_returned: reply.mcp_results.iter().map(|text| text.len() as u64).sum(),
+        files_returned: returned.len() as u64,
+        needed_files_returned: found.len() as u64,
+        needed_files_used: found.iter().filter(|path| named.contains(**path)).count() as u64,
+    }
 }
 
 pub struct RunInputs<'a> {
@@ -451,6 +637,8 @@ pub struct RunInputs<'a> {
     pub spent_usd: f64,
     /// Where an arm with MCP tools finds its server.
     pub mcp_config: Option<&'a Path>,
+    /// Each imported chunk's file, so what an MCP tool returned can be read.
+    pub chunk_files: Option<&'a BTreeMap<String, String>>,
 }
 
 /// Runs one key from the plan. A provider's failure is a result and comes back as a run.
@@ -475,6 +663,13 @@ pub fn run_task(
         uses_mcp == inputs.mcp_config.is_some(),
         &format!(
             "{} must have an MCP configuration exactly when it uses an MCP tool",
+            arm.id.as_str()
+        ),
+    )?;
+    require(
+        uses_mcp == inputs.chunk_files.is_some(),
+        &format!(
+            "{} must have a chunk index exactly when it uses an MCP tool",
             arm.id.as_str()
         ),
     )?;
@@ -526,6 +721,12 @@ pub fn run_task(
         cost_usd: reply.cost_usd,
         turns: reply.turns,
         reply_sha256: None,
+        model_reported: reply.model_reported.clone(),
+        provider_version: reply.provider_version.clone(),
+        cache_read_tokens: reply.cache_read_tokens,
+        cache_write_tokens: reply.cache_write_tokens,
+        tool_calls: reply.tool_calls.clone(),
+        retrieval: None,
     };
     let reply = match reply {
         Ok(reply) => reply,
@@ -541,8 +742,12 @@ pub fn run_task(
         }
     };
     let digest = Digest::try_from(sha256_hex(&reply.raw))?;
+    let tooling = tooling_problem(arm, &reply)
+        .filter(|_| reply.exit_code == Some(0) || reply.mcp_servers.is_some());
     let mut run = if reply.timed_out {
         blank(TaskRunOutcome::TimedOut, None, &reply)
+    } else if let Some(problem) = tooling {
+        blank(TaskRunOutcome::ToolingFailed, Some(problem), &reply)
     } else if reply.exit_code != Some(0) {
         blank(
             TaskRunOutcome::ProviderFailed,
@@ -552,9 +757,16 @@ pub fn run_task(
     } else if let Some(plan) = parse_plan(&reply.text) {
         let mut run = blank(TaskRunOutcome::Planned, None, &reply);
         run.score = score_plan(task, &plan, &manifest.preregistration);
+        run.retrieval = inputs
+            .chunk_files
+            .map(|chunks| capture_retrieval(task, &reply, chunks, Some(&plan)));
         run
     } else {
-        blank(TaskRunOutcome::NoPlan, None, &reply)
+        let mut run = blank(TaskRunOutcome::NoPlan, None, &reply);
+        run.retrieval = inputs
+            .chunk_files
+            .map(|chunks| capture_retrieval(task, &reply, chunks, None));
+        run
     };
     run.reply_sha256 = Some(digest);
     Ok((run, reply.raw))
@@ -712,7 +924,44 @@ fn system_observations(system: &Id, runs: &[&TaskRun], list: &mut Vec<Observatio
         runs.len() as u64,
         None,
     )?);
-    let medians: [(&str, Vec<f64>); 4] = [
+    let retrievals: Vec<&RetrievalCapture> = runs
+        .iter()
+        .filter_map(|run| run.retrieval.as_ref())
+        .collect();
+    if !retrievals.is_empty() {
+        let returned: u64 = retrievals
+            .iter()
+            .map(|retrieval| retrieval.needed_files_returned)
+            .sum();
+        let used: u64 = retrievals
+            .iter()
+            .map(|retrieval| retrieval.needed_files_used)
+            .sum();
+        let needed: u64 = runs
+            .iter()
+            .filter(|run| run.retrieval.is_some())
+            .map(|run| run.score.files_expected)
+            .sum();
+        list.push(observation(
+            system,
+            "needed_returned",
+            none(),
+            returned as f64 / needed.max(1) as f64,
+            needed,
+            None,
+        )?);
+        if returned > 0 {
+            list.push(observation(
+                system,
+                "returned_used",
+                none(),
+                used as f64 / returned as f64,
+                returned,
+                None,
+            )?);
+        }
+    }
+    let medians: [(&str, Vec<f64>); 6] = [
         ("seconds", runs.iter().map(|run| run.seconds).collect()),
         (
             "input_tokens",
@@ -729,6 +978,22 @@ fn system_observations(system: &Id, runs: &[&TaskRun], list: &mut Vec<Observatio
         (
             "cost_usd",
             runs.iter().filter_map(|run| run.cost_usd).collect(),
+        ),
+        (
+            "cache_read_tokens",
+            runs.iter()
+                .filter_map(|run| run.cache_read_tokens.map(|value| value as f64))
+                .collect(),
+        ),
+        (
+            "tool_calls",
+            runs.iter()
+                .filter_map(|run| {
+                    run.tool_calls
+                        .as_ref()
+                        .map(|calls| calls.values().sum::<u64>() as f64)
+                })
+                .collect(),
         ),
     ];
     for (metric_id, values) in medians {
@@ -805,8 +1070,9 @@ fn paired_verdict(
         }
     }
     let p = exact_mcnemar(only_arm, only_baseline);
+    let pilot = rules.stage == StudyStage::Pilot;
     let expected_pairs = (manifest.tasks.len() as u64) * u64::from(rules.repetitions);
-    let outcome = if pairs == 0 {
+    let outcome = if pairs == 0 || pilot {
         VerdictOutcome::NotRun
     } else if pairs != expected_pairs || rules.repetitions > 1 {
         VerdictOutcome::Inconclusive
@@ -817,7 +1083,7 @@ fn paired_verdict(
     } else {
         VerdictOutcome::Inconclusive
     };
-    Ok(Verdict {
+    let mut verdict = Verdict {
         id: id(&format!(
             "helps-{}",
             system_id(&arm.id, &model.id)?.as_str()
@@ -841,7 +1107,14 @@ fn paired_verdict(
                 "{pairs} of {expected_pairs} scheduled pairs: only this arm matched {only_arm}, only the baseline matched {only_baseline}, exact McNemar p = {p:.4}. A result that is not significant does not show the arm has no effect."
             )
         },
-    })
+    };
+    if pilot {
+        verdict.basis = format!(
+            "A pilot tests the test and cannot answer this. {}",
+            verdict.basis
+        );
+    }
+    Ok(verdict)
 }
 
 fn floor_verdict(
@@ -924,6 +1197,16 @@ pub fn combine_task_runs(
             ),
         )?;
     }
+    let required = &manifest.preregistration.required_captures;
+    let counted: Vec<TaskRun> = runs
+        .iter()
+        .filter(|run| {
+            manifest
+                .arm(run.arm.as_str())
+                .is_ok_and(|arm| run.counts(arm, required))
+        })
+        .cloned()
+        .collect();
     let mut systems = Vec::new();
     let mut observations = Vec::new();
     let mut verdicts = Vec::new();
@@ -960,25 +1243,29 @@ pub fn combine_task_runs(
         }
         for model in &manifest.models {
             let system = system_id(&arm.id, &model.id)?;
-            let own: Vec<&TaskRun> = runs
+            let own: Vec<&TaskRun> = counted
                 .iter()
                 .filter(|run| run.arm == arm.id && run.model == model.id)
                 .collect();
-            let unusable = own
+            let made = runs
+                .iter()
+                .filter(|run| run.arm == arm.id && run.model == model.id)
+                .count();
+            let usable = own
                 .iter()
                 .filter(|run| {
                     matches!(
                         run.outcome,
-                        TaskRunOutcome::TimedOut | TaskRunOutcome::ProviderFailed
+                        TaskRunOutcome::Planned | TaskRunOutcome::NoPlan
                     )
                 })
                 .count();
             let expected = manifest.tasks.len() * manifest.preregistration.repetitions as usize;
-            let status = if own.is_empty() {
+            let status = if made == 0 {
                 SystemStatus::NotRun
-            } else if unusable == own.len() {
+            } else if usable == 0 {
                 SystemStatus::Failed
-            } else if own.len() != expected || unusable > 0 {
+            } else if made != expected || usable != expected {
                 SystemStatus::Partial
             } else {
                 SystemStatus::Completed
@@ -991,8 +1278,7 @@ pub fn combine_task_runs(
                 reason: match status {
                     SystemStatus::NotRun => Some("no run file was supplied".to_string()),
                     SystemStatus::Failed | SystemStatus::Partial => Some(format!(
-                        "{} of {expected} scheduled runs supplied; {unusable} timed out or failed at the provider",
-                        own.len()
+                        "{made} of {expected} scheduled runs supplied; {usable} have usable replies and required capture; see the capture audit"
                     )),
                     _ => None,
                 },
@@ -1002,15 +1288,25 @@ pub fn combine_task_runs(
             if !own.is_empty() {
                 system_observations(&system, &own, &mut observations)?;
             }
+            if made > own.len() {
+                observations.push(observation(
+                    &system,
+                    "runs_not_counted",
+                    BTreeMap::new(),
+                    (made - own.len()) as f64,
+                    made as u64,
+                    None,
+                )?);
+            }
             if arm.id != manifest.preregistration.baseline_arm
                 && arm.id != manifest.preregistration.floor_arm
             {
-                verdicts.push(paired_verdict(manifest, runs, arm, model)?);
+                verdicts.push(paired_verdict(manifest, &counted, arm, model)?);
             }
         }
     }
     for model in &manifest.models {
-        verdicts.push(floor_verdict(manifest, runs, model)?);
+        verdicts.push(floor_verdict(manifest, &counted, model)?);
     }
     use MetricDirection::{Higher, Lower};
     let mut limits = vec![
@@ -1019,6 +1315,13 @@ pub fn combine_task_runs(
         "Historical-file-match thresholds were frozen before any run and are a judgement.".to_string(),
         "Grading reads the plan. It does not check that the plan would work if carried out.".to_string(),
     ];
+    if manifest.preregistration.stage == StudyStage::Pilot {
+        limits.insert(
+            0,
+            "This is a pilot. It tests the test, and it cannot say whether an arm helps."
+                .to_string(),
+        );
+    }
     for arm in &manifest.arms {
         for limit in &arm.limits {
             limits.push(format!("{}: {limit}", arm.id.as_str()));
@@ -1063,6 +1366,31 @@ pub fn combine_task_runs(
                 "count",
                 Lower,
             )?,
+            metric(
+                "runs_not_counted",
+                "Runs that cannot count, for missing data or tools that never came up",
+                "count",
+                Lower,
+            )?,
+            metric(
+                "needed_returned",
+                "Needed files the tool returned",
+                "fraction",
+                Higher,
+            )?,
+            metric(
+                "returned_used",
+                "Returned needed files the plan named",
+                "fraction",
+                Higher,
+            )?,
+            metric(
+                "cache_read_tokens",
+                "Median cache-read tokens per run",
+                "tokens",
+                Lower,
+            )?,
+            metric("tool_calls", "Median tool calls per run", "calls", Lower)?,
             metric("seconds", "Median time per run", "s", Lower)?,
             metric(
                 "input_tokens",

@@ -11,11 +11,17 @@ use rrflow_eval::lab::provider::ClaudeCode;
 use rrflow_eval::lab::report::{ArtifactReference, LabReport, SystemStatus};
 use rrflow_eval::lab::rrflow::RrflowAdapter;
 use rrflow_eval::lab::sources::SourceList;
+use rrflow_eval::lab::study::{
+    audit_runs, check_study, plan_study, CaptureAudit, RequirementStatus, StudyCheck, StudyConfig,
+    StudyRequirements,
+};
 use rrflow_eval::lab::tasks::{
-    combine_task_runs, run_order, run_task, RunInputs, RunKey, TaskComparisonManifest, TaskRun,
+    charged_usd, combine_task_runs, run_order, run_task, RunInputs, RunKey, TaskComparisonManifest,
+    TaskRun,
 };
 use rrflow_eval::lab::{canonical_json, sha256_hex, Result};
 use rrflow_eval::storage::{schema, Digest, Id};
+use serde::de::DeserializeOwned;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -30,9 +36,13 @@ const USAGE: &str = "usage:
   rrflow-lab sources --file FILE
   rrflow-lab tasks-validate --manifest FILE
   rrflow-lab tasks-order --manifest FILE
-  rrflow-lab tasks-run --manifest FILE --task ID --arm ID --model ID --repetition N --checkout DIR --empty DIR --out DIR
+  rrflow-lab tasks-digest --manifest FILE
+  rrflow-lab tasks-run --manifest FILE --task ID --arm ID --model ID --repetition N --checkout DIR --empty DIR --out DIR [--mcp-config FILE --chunks FILE]
+  rrflow-lab tasks-audit --manifest FILE --in DIR [--out FILE]
   rrflow-lab tasks-combine --manifest FILE --in DIR --out FILE
   rrflow-lab tasks-import --checkout DIR --endpoint URL [--chunks-out FILE]
+  rrflow-lab study-check --config FILE --catalog FILE --requirements FILE --sources FILE [--capture-proof FILE] [--out FILE]
+  rrflow-lab study-plan --config FILE --catalog FILE --requirements FILE --sources FILE [--capture-proof FILE] --out FILE
   rrflow-lab report-validate --file FILE
   rrflow-lab schemas --out DIR";
 
@@ -264,6 +274,167 @@ fn check_sources(arguments: &Arguments) -> Result<ExitCode> {
     Ok(ExitCode::SUCCESS)
 }
 
+fn read_json<T: DeserializeOwned>(path: &str) -> Result<T> {
+    let bytes = std::fs::read(path).map_err(|error| format!("{path}: {error}"))?;
+    serde_json::from_slice(&bytes).map_err(|error| format!("{path}: {error}"))
+}
+
+struct StudyFiles {
+    config: StudyConfig,
+    catalog: TaskComparisonManifest,
+    requirements: StudyRequirements,
+    proof: Option<CaptureAudit>,
+}
+
+fn load_study(arguments: &Arguments) -> Result<StudyFiles> {
+    let sources: SourceList = read_json(arguments.required("sources")?)?;
+    sources.validate()?;
+    let requirements: StudyRequirements = read_json(arguments.required("requirements")?)?;
+    requirements.validate(&sources)?;
+    Ok(StudyFiles {
+        config: read_json(arguments.required("config")?)?,
+        catalog: load_tasks(arguments.required("catalog")?)?,
+        requirements,
+        proof: arguments
+            .values
+            .get("capture-proof")
+            .map(|path| read_json(path))
+            .transpose()?,
+    })
+}
+
+fn print_check(check: &StudyCheck) {
+    println!(
+        "{} ({:?}): {} runs across {} tasks, {} arms and {} models",
+        check.study.as_str(),
+        check.stage,
+        check.runs,
+        check.tasks,
+        check.arms,
+        check.models
+    );
+    if let Some(worst) = check.worst_case_usd {
+        println!("at most ${worst}");
+    }
+    println!(
+        "exact McNemar needs at least {} one-sided pairs, so this design {} reach significance",
+        check.discordant_pairs_needed,
+        if check.can_reach_significance {
+            "can"
+        } else {
+            "cannot"
+        }
+    );
+    for outcome in &check.outcomes {
+        let label = match outcome.status {
+            RequirementStatus::Met => "met    ",
+            RequirementStatus::NotMet => "NOT MET",
+            RequirementStatus::AdvisedNotMet => "advised",
+        };
+        println!("{label} {}: {}", outcome.id.as_str(), outcome.detail);
+    }
+    println!("{}", if check.ready { "ready" } else { "not ready" });
+}
+
+fn study_check(arguments: &Arguments) -> Result<ExitCode> {
+    let files = load_study(arguments)?;
+    let check = check_study(
+        &files.config,
+        &files.catalog,
+        &files.requirements,
+        files.proof.as_ref(),
+    )?;
+    print_check(&check);
+    if let Some(path) = arguments.values.get("out") {
+        std::fs::write(path, canonical_json(&check)?).map_err(|error| error.to_string())?;
+    }
+    Ok(if check.ready {
+        ExitCode::SUCCESS
+    } else {
+        ExitCode::FAILURE
+    })
+}
+
+fn study_plan(arguments: &Arguments) -> Result<ExitCode> {
+    let files = load_study(arguments)?;
+    let manifest = plan_study(
+        &files.config,
+        &files.catalog,
+        &files.requirements,
+        files.proof.as_ref(),
+    )?;
+    let path = PathBuf::from(arguments.required("out")?);
+    publish(&path, &canonical_json(&manifest)?)?;
+    println!("{} {}", manifest.digest()?.as_str(), path.display());
+    Ok(ExitCode::SUCCESS)
+}
+
+fn audit_tasks(arguments: &Arguments) -> Result<ExitCode> {
+    let manifest = load_tasks(arguments.required("manifest")?)?;
+    let runs: Vec<TaskRun> = saved_task_runs(Path::new(arguments.required("in")?))?
+        .into_iter()
+        .map(|(_, run)| run)
+        .collect();
+    let audit = audit_runs(&manifest, &runs)?;
+    for arm in &audit.arms {
+        println!(
+            "{} {}: {} of {} runs present, {} counted, {} failed, {} without tools, {}",
+            arm.arm.as_str(),
+            arm.model_name,
+            arm.runs_present,
+            arm.runs_expected,
+            arm.runs_counted,
+            arm.runs_failed,
+            arm.runs_without_tools,
+            if arm.proven { "proven" } else { "not proven" }
+        );
+        for field in &arm.fields {
+            println!(
+                "  {}: {} captured, {} missing",
+                field.field.label(),
+                field.captured,
+                field.missing
+            );
+        }
+    }
+    for problem in &audit.problems {
+        println!("problem: {problem}");
+    }
+    if let Some(path) = arguments.values.get("out") {
+        std::fs::write(path, canonical_json(&audit)?).map_err(|error| error.to_string())?;
+        println!("{} {path}", audit.digest()?.as_str());
+    }
+    println!(
+        "{}",
+        if audit.complete {
+            "complete"
+        } else {
+            "incomplete"
+        }
+    );
+    Ok(if audit.complete {
+        ExitCode::SUCCESS
+    } else {
+        ExitCode::FAILURE
+    })
+}
+
+/// Each imported chunk's file, keyed by the identity that appears in a tool's reply.
+fn load_chunk_files(path: &str) -> Result<BTreeMap<String, String>> {
+    let text = std::fs::read_to_string(path).map_err(|error| format!("{path}: {error}"))?;
+    let mut files = BTreeMap::new();
+    for line in text.lines() {
+        let chunk: serde_json::Value =
+            serde_json::from_str(line).map_err(|error| format!("{path}: {error}"))?;
+        let (Some(identity), Some(file)) = (chunk["id"].as_str(), chunk["path"].as_str()) else {
+            return Err(format!("{path}: a line has no id or path"));
+        };
+        let short = identity.rsplit(':').next().unwrap_or(identity);
+        files.insert(short.to_string(), file.to_string());
+    }
+    Ok(files)
+}
+
 fn load_tasks(path: &str) -> Result<TaskComparisonManifest> {
     let bytes = std::fs::read(path).map_err(|error| format!("{path}: {error}"))?;
     let manifest: TaskComparisonManifest =
@@ -319,10 +490,16 @@ fn run_one_task(arguments: &Arguments) -> Result<ExitCode> {
         eprintln!("{name}: already measured");
         return Ok(ExitCode::SUCCESS);
     }
+    let spend = manifest.require_runnable()?;
     let spent_usd = saved_task_runs(&directory)?
         .iter()
-        .filter_map(|(_, run)| run.cost_usd)
+        .map(|(_, run)| charged_usd(run, spend))
         .sum();
+    let chunk_files = arguments
+        .values
+        .get("chunks")
+        .map(|path| load_chunk_files(path))
+        .transpose()?;
     let (run, raw) = run_task(
         &manifest,
         &key,
@@ -332,6 +509,7 @@ fn run_one_task(arguments: &Arguments) -> Result<ExitCode> {
             empty_directory: Path::new(arguments.required("empty")?),
             spent_usd,
             mcp_config: arguments.values.get("mcp-config").map(Path::new),
+            chunk_files: chunk_files.as_ref(),
         },
     )?;
     publish(&directory.join(format!("{name}.reply.json")), &raw)?;
@@ -421,6 +599,13 @@ fn write_schemas(arguments: &Arguments) -> Result<ExitCode> {
         ("lab-report-v1.json", schema::<LabReport>()),
         ("lab-custom-protocol-v1.json", schema::<CustomProtocol>()),
         ("lab-sources-v1.json", schema::<SourceList>()),
+        ("lab-study-config-v1.json", schema::<StudyConfig>()),
+        (
+            "lab-study-requirements-v1.json",
+            schema::<StudyRequirements>(),
+        ),
+        ("lab-study-check-v1.json", schema::<StudyCheck>()),
+        ("lab-capture-audit-v1.json", schema::<CaptureAudit>()),
         (
             "lab-task-manifest-v1.json",
             schema::<TaskComparisonManifest>(),
@@ -472,7 +657,15 @@ fn dispatch(arguments: &[String]) -> Result<ExitCode> {
             }
             Ok(ExitCode::SUCCESS)
         }
+        "tasks-digest" => {
+            let manifest = load_tasks(parsed.required("manifest")?)?;
+            println!("{}", manifest.digest()?.as_str());
+            Ok(ExitCode::SUCCESS)
+        }
         "tasks-run" => run_one_task(&parsed),
+        "tasks-audit" => audit_tasks(&parsed),
+        "study-check" => study_check(&parsed),
+        "study-plan" => study_plan(&parsed),
         "tasks-combine" => combine_tasks(&parsed),
         "tasks-import" => import_repository(&parsed),
         "report-validate" => validate_report(&parsed),

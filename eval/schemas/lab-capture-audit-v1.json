@@ -1,0 +1,193 @@
+{
+  "$defs": {
+    "ArmCapture": {
+      "additionalProperties": false,
+      "properties": {
+        "arm": {
+          "$ref": "#/$defs/Id"
+        },
+        "fields": {
+          "items": {
+            "$ref": "#/$defs/FieldCapture"
+          },
+          "type": "array"
+        },
+        "model": {
+          "$ref": "#/$defs/Id"
+        },
+        "model_name": {
+          "type": "string"
+        },
+        "proven": {
+          "description": "At least one run counted, and no finished run lacks anything.",
+          "type": "boolean"
+        },
+        "runs_counted": {
+          "description": "Runs that finished and hold every required field.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "runs_expected": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "runs_failed": {
+          "description": "Runs that timed out or failed, which are results and need no further data.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "runs_present": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "runs_without_tools": {
+          "description": "Runs whose tools never came up, which cannot count as evidence for or against the arm.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "tools": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "arm",
+        "model",
+        "model_name",
+        "tools",
+        "runs_expected",
+        "runs_present",
+        "runs_counted",
+        "runs_failed",
+        "runs_without_tools",
+        "proven",
+        "fields"
+      ],
+      "type": "object"
+    },
+    "CaptureField": {
+      "description": "Data a study requires of every finished run.",
+      "enum": [
+        "model",
+        "provider_version",
+        "tokens",
+        "cache_tokens",
+        "cost",
+        "turns",
+        "tool_calls",
+        "retrieval",
+        "transcript"
+      ],
+      "type": "string"
+    },
+    "Digest": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "FieldCapture": {
+      "additionalProperties": false,
+      "properties": {
+        "captured": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "field": {
+          "$ref": "#/$defs/CaptureField"
+        },
+        "missing": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "field",
+        "captured",
+        "missing"
+      ],
+      "type": "object"
+    },
+    "Id": {
+      "maxLength": 96,
+      "minLength": 1,
+      "pattern": "^[a-z0-9][a-z0-9_.-]*$",
+      "type": "string"
+    },
+    "StudyStage": {
+      "description": "A pilot tests the test, so its report cannot answer the question. A confirmatory study can.",
+      "enum": [
+        "pilot",
+        "confirmatory"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "arms": {
+      "items": {
+        "$ref": "#/$defs/ArmCapture"
+      },
+      "type": "array"
+    },
+    "complete": {
+      "description": "Every arm proven, and no problem found. The study itself may still have runs to make.",
+      "type": "boolean"
+    },
+    "manifest_sha256": {
+      "$ref": "#/$defs/Digest"
+    },
+    "problems": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "runs_counted": {
+      "format": "uint64",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "runs_expected": {
+      "format": "uint64",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "runs_present": {
+      "format": "uint64",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "schema_version": {
+      "format": "uint16",
+      "maximum": 65535,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "stage": {
+      "$ref": "#/$defs/StudyStage"
+    }
+  },
+  "required": [
+    "schema_version",
+    "manifest_sha256",
+    "stage",
+    "runs_expected",
+    "runs_present",
+    "runs_counted",
+    "complete",
+    "arms",
+    "problems"
+  ],
+  "title": "CaptureAudit",
+  "type": "object"
+}
