@@ -61,6 +61,63 @@ fn requested_journal_cut_rejects_missing_or_corrupt_entries_and_anchors() {
 }
 
 #[test]
+fn corrupt_tail_refuses_single_and_batch_writes_without_publishing() {
+    for native in [false, true] {
+        for corrupt in [false, true] {
+            let root = tempfile::tempdir().unwrap();
+            let path = root.path().join("store");
+            let store: Box<dyn StorageEngine> = if native {
+                Box::new(RrflowKvStore::open(&path).unwrap())
+            } else {
+                Box::new(RrflowMxStore::new())
+            };
+            let entries = seed(&*store);
+            let replacement = corrupt.then(|| {
+                let mut entry = entries[2].clone();
+                entry.action = "tampered".into();
+                serde_json::to_vec(&entry).unwrap()
+            });
+            damage(&*store, 3, replacement);
+            let transition = |suffix: &str| ControlTransition {
+                key: format!("server/state/test/new-{suffix}"),
+                expected: None,
+                replacement: Some(b"unpublished".to_vec()),
+                at: 10,
+                actor: "test".into(),
+                action: "test".into(),
+                request_id: format!("request-{suffix}"),
+                operation_id: format!("operation-{suffix}"),
+            };
+            assert!(store.control().commit(&transition("single")).is_err());
+            assert!(store
+                .control()
+                .commit_batch(&[transition("batch")])
+                .is_err());
+            let verify = |engine: &dyn StorageEngine| {
+                assert_eq!(engine.control().sequence().unwrap(), 3);
+                assert_eq!(
+                    engine
+                        .control()
+                        .get("server/state/test/new-single")
+                        .unwrap(),
+                    None
+                );
+                assert_eq!(
+                    engine.control().get("server/state/test/new-batch").unwrap(),
+                    None
+                );
+                assert!(engine.control().journal_since(2, 1).is_err());
+            };
+            verify(&*store);
+            drop(store);
+            if native {
+                verify(&RrflowKvStore::open(&path).unwrap());
+            }
+        }
+    }
+}
+
+#[test]
 fn journal_pages_do_not_read_later_system_families() {
     let root = tempfile::tempdir().unwrap();
     let store = RrflowKvStore::open_with_options(
