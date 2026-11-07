@@ -774,6 +774,40 @@ impl RrdEngine {
     }
 }
 
+#[cfg(test)]
+mod legacy_attempt_record_tests {
+    use super::{AttemptOutcome, AttemptRecord};
+    use rrd_contract::CorrelationId;
+
+    #[test]
+    fn prior_v1_attempt_record_without_assessment_output_loads_and_keeps_its_wire_shape() {
+        let legacy = serde_json::json!({
+            "format_version": 1,
+            "attempt_id": "legacy-attempt-v1",
+            "request_sha256": "a".repeat(64),
+            "ordinal": 3,
+            "read_manifest_sha256": "b".repeat(64),
+            "read_cursor": 17,
+            "outcome": "stopped",
+            "outcome_sha256": null,
+            "result": null
+        });
+        let record: AttemptRecord = serde_json::from_value(legacy.clone()).unwrap();
+        assert_eq!(
+            record.attempt_id,
+            CorrelationId::new("legacy-attempt-v1").unwrap()
+        );
+        assert_eq!(record.outcome, AttemptOutcome::Stopped);
+        assert!(record.assessment_output.is_none());
+        let roundtrip = serde_json::to_value(record).unwrap();
+        assert_eq!(roundtrip, legacy);
+        assert!(!roundtrip
+            .as_object()
+            .unwrap()
+            .contains_key("assessment_output"));
+    }
+}
+
 fn validate_attempt_digest(value: &str) -> Result<()> {
     if value.len() != 64
         || !value

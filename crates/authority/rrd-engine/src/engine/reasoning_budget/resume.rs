@@ -65,7 +65,11 @@ impl RrdEngine {
             ));
         }
         match budget.stopped {
-            Some(ReasoningBudgetStop::Cancelled | ReasoningBudgetStop::AttemptFailed) => {}
+            Some(
+                ReasoningBudgetStop::Cancelled
+                | ReasoningBudgetStop::AttemptFailed
+                | ReasoningBudgetStop::RepeatedWork,
+            ) => {}
             Some(reason) => return Err(ServiceError::ReasoningBudgetStopped(reason)),
             None => return Err(ServiceError::Contract("task budget is not stopped".into())),
         }

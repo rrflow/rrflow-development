@@ -474,8 +474,119 @@ fn repetition_history_is_bounded_without_evicting_old_identities() {
     assert_eq!(stopped.reserved_steps, 129);
     assert_eq!(calls.load(Ordering::SeqCst), 129);
     drop(engine);
-    let engine = RrdEngine::open_existing(root.path(), instance(), TOKEN_KEY).unwrap();
-    assert_eq!(state(&engine, &lease, &task), stopped);
+    let mut engine = RrdEngine::open_existing(root.path(), instance(), TOKEN_KEY).unwrap();
+    configure(&mut engine, 130);
+    engine.estate_configuration.reasoning.max_run_elapsed_ms = 60_000;
+    engine.estate_configuration.configuration_sha256 =
+        rrd_contract::estate_configuration_sha256(&engine.estate_configuration).unwrap();
+    assert_eq!(
+        engine.estate_configuration.configuration_sha256,
+        stopped.configuration_sha256
+    );
+    engine.installed_estate = Some(rrd_contract::InstalledEstateIdentity {
+        project_id: CanonicalId::new("tracking-limit-project").unwrap(),
+        estate_id: CanonicalId::new("tracking-limit-estate").unwrap(),
+        instance_id: engine.instance.clone(),
+    });
+
+    let authorization_at = stopped.last_observed_at_unix_ms + 1;
+    assert!(authorization_at < stopped.deadline_unix_ms);
+    let principal_id = engine.instance.clone();
+    let credential = id("tracking-limit-resume-test-credential");
+    let principal = rrd_security::Principal {
+        id: principal_id.clone(),
+        kind: rrd_security::PrincipalKind::Service,
+        credential_sha256: digest::sha256_hex(credential.as_str().as_bytes()),
+        credential_revision: 1,
+        not_before_unix_ms: 1,
+        expires_at_unix_ms: u64::MAX,
+        disabled: false,
+        role_ids: Default::default(),
+        grants: SecurityAction::ALL
+            .into_iter()
+            .map(|action| rrd_security::ResourceGrant {
+                action,
+                resource_prefix: engine.instance_resource(),
+                data_policy: None,
+            })
+            .collect(),
+    };
+    rrd_security::SecurityRepository::new(&engine.storage, engine.instance.clone())
+        .initialize(
+            rrd_security::SecurityState {
+                format_version: rrd_security::SECURITY_FORMAT,
+                revision: 1,
+                principals: [(principal_id.clone(), principal)].into_iter().collect(),
+                roles: Default::default(),
+                identity_bindings: Default::default(),
+                jwt_issuers: Default::default(),
+            },
+            authorization_at,
+            "tracking-limit-test-authority",
+            "tracking-limit-test-authority",
+            "tracking-limit-test-authority",
+        )
+        .unwrap();
+    let authorized_lease = engine
+        .create_authenticated_session(
+            &principal_id,
+            credential.as_str().as_bytes(),
+            &session_request(9_000, 4),
+            &id("tracking-limit-resume-session"),
+            authorization_at,
+            "tracking-limit-resume-session",
+            "tracking-limit-resume-session",
+        )
+        .unwrap();
+    let read_request = rrd_contract::ReadTaskBudget {
+        scope: SCOPE.into(),
+        task_id: task.clone(),
+    };
+    let public_before = engine
+        .read_task_budget(
+            &authorized_lease.session_id,
+            &authorized_lease.token,
+            &read_request,
+            authorization_at + 1,
+            "tracking-limit-resume-budget-before",
+            "tracking-limit-resume-budget-before",
+        )
+        .unwrap();
+    assert_eq!(public_before.budget, Some(stopped.clone()));
+    let expected_budget_sha256 = public_before.budget_sha256.clone().unwrap();
+    let resume = engine.resume_task_budget_with_clock(
+        &authorized_lease.session_id,
+        &authorized_lease.token,
+        &rrd_contract::ResumeTaskBudget {
+            scope: SCOPE.into(),
+            task_id: task.clone(),
+            expected_budget_sha256,
+        },
+        "tracking-limit-resume",
+        "tracking-limit-resume",
+        &FixedClock::at(authorization_at + 2),
+    );
+    assert!(
+        matches!(
+            resume,
+            Err(ServiceError::ReasoningBudgetStopped(
+                ReasoningBudgetStop::RepetitionTrackingLimit
+            ))
+        ),
+        "tracking-limit resume returned {resume:?}"
+    );
+    let public_after = engine
+        .read_task_budget(
+            &authorized_lease.session_id,
+            &authorized_lease.token,
+            &read_request,
+            authorization_at + 3,
+            "tracking-limit-resume-budget-after",
+            "tracking-limit-resume-budget-after",
+        )
+        .unwrap();
+    assert_eq!(public_after, public_before);
+    assert_eq!(calls.load(Ordering::SeqCst), 129);
 }
 
 #[test]

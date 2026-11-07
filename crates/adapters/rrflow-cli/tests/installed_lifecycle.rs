@@ -8,13 +8,13 @@
 
 use rrd_client::{ClientConfig, RequestOptions, RrdClient};
 use rrd_contract::{
-    transaction_operation_sha256, AssessmentInputKind, AssessmentOption, AssessmentPracticeIdentity,
-    AssessmentScoreDirection, BackupCoverageSnapshot, BeginTransaction, CanonicalId, CloseSession,
-    CommitTransaction, CreateInstanceBackup, CreateSession, EndpointAssessmentPolicy,
-    EndpointGenerationSettings, EndpointResponseFormat, EndpointTokenParameter, ErrorCode,
-    ExecuteQuery, QueryBudget, QueryResult, QueryValue, RestoreInstanceBackup, SessionLimits,
-    TaskAssessmentDecision, TaskAssessmentDescriptor, TaskAssessmentRequest, TaskAssessmentValue,
-    TransactionMutation, TASK_ASSESSMENT_VERSION,
+    transaction_operation_sha256, AssessmentInputKind, AssessmentOption,
+    AssessmentPracticeIdentity, AssessmentScoreDirection, BackupCoverageSnapshot, BeginTransaction,
+    CanonicalId, CloseSession, CommitTransaction, CreateInstanceBackup, CreateSession,
+    EndpointAssessmentPolicy, EndpointGenerationSettings, EndpointResponseFormat,
+    EndpointTokenParameter, ErrorCode, ExecuteQuery, QueryBudget, QueryResult, QueryValue,
+    RestoreInstanceBackup, SessionLimits, TaskAssessmentDecision, TaskAssessmentDescriptor,
+    TaskAssessmentRequest, TaskAssessmentValue, TransactionMutation, TASK_ASSESSMENT_VERSION,
 };
 use rrd_engine::RrdEngine;
 use std::collections::BTreeMap;
@@ -1865,36 +1865,40 @@ fn exercise_installed_source_worker(project: &Path, source_read_enabled: bool, j
     assert!(proposal.source.is_some());
 
     let assessment_task = runtime
-        .block_on(client.open_task(
-            &session,
-            rrd_contract::OpenTask {
-                scope: scope.clone(),
-                title: "Assess selected source separately".into(),
-                goal: "Evaluate explicit typed questions over one accepted source file.".into(),
-            },
-            RequestOptions::mutation(
-                "source-choice-assessment-open-task",
-                "source-choice-assessment-open-task",
-                "source-choice-assessment-open-task",
-            )
-            .unwrap(),
-        ))
+        .block_on(
+            client.open_task(
+                &session,
+                rrd_contract::OpenTask {
+                    scope: scope.clone(),
+                    title: "Assess selected source separately".into(),
+                    goal: "Evaluate explicit typed questions over one accepted source file.".into(),
+                },
+                RequestOptions::mutation(
+                    "source-choice-assessment-open-task",
+                    "source-choice-assessment-open-task",
+                    "source-choice-assessment-open-task",
+                )
+                .unwrap(),
+            ),
+        )
         .unwrap()
         .task;
     let assessment_task_read = runtime
-        .block_on(client.read_task(
-            &session,
-            rrd_contract::ReadTask {
-                scope: scope.clone(),
-                task_id: assessment_task.task_id.clone(),
-                max_storage_keys: rrd_contract::MAX_TASK_STORAGE_KEYS,
-            },
-            RequestOptions::read(
-                "source-choice-assessment-read-task",
-                "source-choice-assessment-read-task",
-            )
-            .unwrap(),
-        ))
+        .block_on(
+            client.read_task(
+                &session,
+                rrd_contract::ReadTask {
+                    scope: scope.clone(),
+                    task_id: assessment_task.task_id.clone(),
+                    max_storage_keys: rrd_contract::MAX_TASK_STORAGE_KEYS,
+                },
+                RequestOptions::read(
+                    "source-choice-assessment-read-task",
+                    "source-choice-assessment-read-task",
+                )
+                .unwrap(),
+            ),
+        )
         .unwrap()
         .task;
     assert_ne!(assessment_task_read.task_id, task.task_id);
@@ -1910,16 +1914,18 @@ fn exercise_installed_source_worker(project: &Path, source_read_enabled: bool, j
         repetition_policy: None,
     };
     let budget_before = runtime
-        .block_on(client.configure_task_budget(
-            &session,
-            budget_request.clone(),
-            RequestOptions::mutation(
-                "source-choice-assessment-budget-configure",
-                "source-choice-assessment-budget-configure",
-                "source-choice-assessment-budget-configure",
-            )
-            .unwrap(),
-        ))
+        .block_on(
+            client.configure_task_budget(
+                &session,
+                budget_request.clone(),
+                RequestOptions::mutation(
+                    "source-choice-assessment-budget-configure",
+                    "source-choice-assessment-budget-configure",
+                    "source-choice-assessment-budget-configure",
+                )
+                .unwrap(),
+            ),
+        )
         .unwrap()
         .budget
         .expect("public assessment task budget is configured");
@@ -1958,9 +1964,7 @@ fn exercise_installed_source_worker(project: &Path, source_read_enabled: bool, j
         question_id: CanonicalId::new("installed-assessment-question").unwrap(),
         template_id: CanonicalId::new("installed-assessment-template").unwrap(),
         template_revision: 1,
-        template_sha256: rrd_core::digest::sha256_hex(
-            b"controlled installed practice declaration",
-        ),
+        template_sha256: rrd_core::digest::sha256_hex(b"controlled installed practice declaration"),
         requirement_id: CanonicalId::new("installed-assessment-requirement").unwrap(),
     };
     let practice_text = "Review only the selected source bytes against this declared practice.";
@@ -2130,18 +2134,20 @@ fn exercise_installed_source_worker(project: &Path, source_read_enabled: bool, j
             other => panic!("unexpected assessment reference binding: {other:?}"),
         }
         let next_budget = runtime
-            .block_on(client.read_task_budget(
-                &session,
-                rrd_contract::ReadTaskBudget {
-                    scope: scope.clone(),
-                    task_id: assessment_task_read.task_id.clone(),
-                },
-                RequestOptions::read(
-                    &format!("source-choice-assessment-budget-read-{suffix}"),
-                    &format!("source-choice-assessment-budget-read-{suffix}"),
-                )
-                .unwrap(),
-            ))
+            .block_on(
+                client.read_task_budget(
+                    &session,
+                    rrd_contract::ReadTaskBudget {
+                        scope: scope.clone(),
+                        task_id: assessment_task_read.task_id.clone(),
+                    },
+                    RequestOptions::read(
+                        &format!("source-choice-assessment-budget-read-{suffix}"),
+                        &format!("source-choice-assessment-budget-read-{suffix}"),
+                    )
+                    .unwrap(),
+                ),
+            )
             .unwrap()
             .budget
             .expect("public task budget remains readable");
@@ -2164,10 +2170,8 @@ fn exercise_installed_source_worker(project: &Path, source_read_enabled: bool, j
         credential.credential(),
     );
     let mut malformed_request = assessment_outputs[0].0.clone();
-    malformed_request.attempt_id = rrd_contract::CorrelationId::new(
-        "source-choice-assessment-unsupported-context",
-    )
-    .unwrap();
+    malformed_request.attempt_id =
+        rrd_contract::CorrelationId::new("source-choice-assessment-unsupported-context").unwrap();
     let mut payload = serde_json::to_value(malformed_request).unwrap();
     payload["context"] = serde_json::to_value(&context).unwrap();
     let malformed_envelope = raw_envelope(
@@ -2207,18 +2211,20 @@ fn exercise_installed_source_worker(project: &Path, source_read_enabled: bool, j
         .contains("unknown field `context`"));
     assert_listener_empty(&listener);
     let after_unsupported_context = runtime
-        .block_on(client.read_task_budget(
-            &session,
-            rrd_contract::ReadTaskBudget {
-                scope: scope.clone(),
-                task_id: assessment_task_read.task_id.clone(),
-            },
-            RequestOptions::read(
-                "source-choice-assessment-budget-after-unsupported-context",
-                "source-choice-assessment-budget-after-unsupported-context",
-            )
-            .unwrap(),
-        ))
+        .block_on(
+            client.read_task_budget(
+                &session,
+                rrd_contract::ReadTaskBudget {
+                    scope: scope.clone(),
+                    task_id: assessment_task_read.task_id.clone(),
+                },
+                RequestOptions::read(
+                    "source-choice-assessment-budget-after-unsupported-context",
+                    "source-choice-assessment-budget-after-unsupported-context",
+                )
+                .unwrap(),
+            ),
+        )
         .unwrap()
         .budget
         .unwrap();
@@ -2271,26 +2277,28 @@ fn exercise_installed_source_worker(project: &Path, source_read_enabled: bool, j
     );
     for (request, expected) in &assessment_outputs {
         let retained = runtime
-            .block_on(client.call_operation::<rrd_client::operations::TaskAssessmentRead>(
-                &session,
-                rrd_contract::ReadTaskAssessment {
-                    contract_version: TASK_ASSESSMENT_VERSION,
-                    scope: scope.clone(),
-                    task_id: assessment_task_read.task_id.clone(),
-                    attempt_id: request.attempt_id.clone(),
-                },
-                RequestOptions::read(
-                    &format!(
-                        "source-choice-assessment-read-{}-restored",
-                        request.attempt_id.as_str()
-                    ),
-                    &format!(
-                        "source-choice-assessment-read-{}-restored",
-                        request.attempt_id.as_str()
-                    ),
-                )
-                .unwrap(),
-            ))
+            .block_on(
+                client.call_operation::<rrd_client::operations::TaskAssessmentRead>(
+                    &session,
+                    rrd_contract::ReadTaskAssessment {
+                        contract_version: TASK_ASSESSMENT_VERSION,
+                        scope: scope.clone(),
+                        task_id: assessment_task_read.task_id.clone(),
+                        attempt_id: request.attempt_id.clone(),
+                    },
+                    RequestOptions::read(
+                        &format!(
+                            "source-choice-assessment-read-{}-restored",
+                            request.attempt_id.as_str()
+                        ),
+                        &format!(
+                            "source-choice-assessment-read-{}-restored",
+                            request.attempt_id.as_str()
+                        ),
+                    )
+                    .unwrap(),
+                ),
+            )
             .unwrap();
         assert_eq!(retained.assessment, Some(expected.clone()));
     }
@@ -2362,44 +2370,46 @@ fn exercise_installed_source_worker(project: &Path, source_read_enabled: bool, j
     );
     for (request, expected) in &assessment_outputs {
         let assessment_read = runtime
-            .block_on(reopened_client.call_operation::<
-                rrd_client::operations::TaskAssessmentRead,
-            >(
-                &fresh_session,
-                rrd_contract::ReadTaskAssessment {
-                    contract_version: TASK_ASSESSMENT_VERSION,
-                    scope: scope.clone(),
-                    task_id: assessment_task_read.task_id.clone(),
-                    attempt_id: request.attempt_id.clone(),
-                },
-                RequestOptions::read(
-                    &format!(
-                        "source-choice-assessment-reopen-read-{}",
-                        request.attempt_id.as_str()
-                    ),
-                    &format!(
-                        "source-choice-assessment-reopen-read-{}",
-                        request.attempt_id.as_str()
-                    ),
-                )
-                .unwrap(),
-            ))
+            .block_on(
+                reopened_client.call_operation::<rrd_client::operations::TaskAssessmentRead>(
+                    &fresh_session,
+                    rrd_contract::ReadTaskAssessment {
+                        contract_version: TASK_ASSESSMENT_VERSION,
+                        scope: scope.clone(),
+                        task_id: assessment_task_read.task_id.clone(),
+                        attempt_id: request.attempt_id.clone(),
+                    },
+                    RequestOptions::read(
+                        &format!(
+                            "source-choice-assessment-reopen-read-{}",
+                            request.attempt_id.as_str()
+                        ),
+                        &format!(
+                            "source-choice-assessment-reopen-read-{}",
+                            request.attempt_id.as_str()
+                        ),
+                    )
+                    .unwrap(),
+                ),
+            )
             .unwrap();
         assert_eq!(assessment_read.assessment, Some(expected.clone()));
     }
     let reopened_budget = runtime
-        .block_on(reopened_client.read_task_budget(
-            &fresh_session,
-            rrd_contract::ReadTaskBudget {
-                scope: scope.clone(),
-                task_id: assessment_task_read.task_id.clone(),
-            },
-            RequestOptions::read(
-                "source-choice-assessment-budget-reopen-read",
-                "source-choice-assessment-budget-reopen-read",
-            )
-            .unwrap(),
-        ))
+        .block_on(
+            reopened_client.read_task_budget(
+                &fresh_session,
+                rrd_contract::ReadTaskBudget {
+                    scope: scope.clone(),
+                    task_id: assessment_task_read.task_id.clone(),
+                },
+                RequestOptions::read(
+                    "source-choice-assessment-budget-reopen-read",
+                    "source-choice-assessment-budget-reopen-read",
+                )
+                .unwrap(),
+            ),
+        )
         .unwrap()
         .budget
         .expect("assessment budget survives authenticated reopen");
@@ -2452,16 +2462,18 @@ fn execute_installed_assessment(
             packet
         });
         let output = runtime
-            .block_on(client.call_operation::<rrd_client::operations::TaskAssessmentExecute>(
-                session,
-                request.clone(),
-                RequestOptions::mutation(
-                    &format!("assessment-execute-{}", request.attempt_id.as_str()),
-                    &format!("assessment-execute-{}", request.attempt_id.as_str()),
-                    &format!("assessment-execute-{}", request.attempt_id.as_str()),
-                )
-                .unwrap(),
-            ))
+            .block_on(
+                client.call_operation::<rrd_client::operations::TaskAssessmentExecute>(
+                    session,
+                    request.clone(),
+                    RequestOptions::mutation(
+                        &format!("assessment-execute-{}", request.attempt_id.as_str()),
+                        &format!("assessment-execute-{}", request.attempt_id.as_str()),
+                        &format!("assessment-execute-{}", request.attempt_id.as_str()),
+                    )
+                    .unwrap(),
+                ),
+            )
             .unwrap();
         let packet = server.join().unwrap();
         assert_listener_empty(listener);
@@ -2523,13 +2535,11 @@ fn raw_envelope<T: serde::Serialize>(
             deadline_unix_ms: None,
         },
         resource: rrd_contract::ResourcePath {
-            segments: vec![
-                rrd_contract::ResourceId::new(
-                    rrd_contract::ResourceKind::Instance,
-                    instance_id.as_str(),
-                )
-                .unwrap(),
-            ],
+            segments: vec![rrd_contract::ResourceId::new(
+                rrd_contract::ResourceKind::Instance,
+                instance_id.as_str(),
+            )
+            .unwrap()],
         },
         payload,
     }
@@ -2599,14 +2609,8 @@ fn open_raw_public_session(
         "/v1/sessions",
         &envelope,
         &[
-            (
-                "X-RRD-Principal",
-                principal_id.as_str().to_owned(),
-            ),
-            (
-                "Authorization",
-                format!("ApiKey {api_key}"),
-            ),
+            ("X-RRD-Principal", principal_id.as_str().to_owned()),
+            ("Authorization", format!("ApiKey {api_key}")),
         ],
     );
     assert_eq!(status, 200);
@@ -2633,10 +2637,7 @@ fn raw_close_public_session(
         &envelope,
         &[
             ("X-RRD-Session", lease.session_id.as_str().to_owned()),
-            (
-                "Authorization",
-                format!("Bearer {}", lease.token.as_str()),
-            ),
+            ("Authorization", format!("Bearer {}", lease.token.as_str())),
         ],
     );
     assert_eq!(status, 200);
@@ -2671,8 +2672,8 @@ fn install_loopback_assessment_profile(
         allow_network: true,
         allow_source_export,
         allow_context_export,
-        system_prompt: "Assess only the supplied packet; this controlled fixture is not a model result."
-            .into(),
+        system_prompt:
+            "Assess only the supplied packet; this controlled fixture is not a model result.".into(),
         generation: EndpointGenerationSettings {
             maximum_output_tokens: 128,
             token_parameter: EndpointTokenParameter::MaxTokens,
