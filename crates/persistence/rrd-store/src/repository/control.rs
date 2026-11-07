@@ -119,40 +119,12 @@ impl<'a> ControlRepository<'a> {
         index_bindings: Option<&IndexBindingProjection<'_>>,
     ) -> Result<(Option<u64>, ControlJournalEntry)> {
         let mut transaction = self.storage.begin_transaction()?;
-        let record_key = keyspaces::control_record_key(&transition.key);
-        let current = get(&*transaction, keyspaces::META, &record_key)?;
-        if current.as_deref() != transition.expected.as_deref() {
-            return Err(Error::ControlConflict(transition.key.clone()));
-        }
-        let current_sequence =
-            read_sequence(&*transaction, &keyspaces::control_journal_sequence_key())?;
-        let previous_digest = get(
-            &*transaction,
-            keyspaces::META,
-            &keyspaces::control_journal_last_digest_key(),
-        )?
-        .map(String::from_utf8)
-        .transpose()
-        .map_err(|error| Error::CorruptWatermark(error.to_string()))?;
-        let previous_entry = if current_sequence == 0 {
-            None
-        } else {
-            get(
-                &*transaction,
-                keyspaces::META,
-                &keyspaces::control_journal_key(current_sequence),
-            )?
-            .map(|bytes| serde_json::from_slice(&bytes))
-            .transpose()?
-        };
-        verify_control_tail(
-            current_sequence,
-            previous_digest.as_deref(),
-            previous_entry.as_ref(),
-        )?;
-        let sequence = current_sequence
-            .checked_add(1)
-            .ok_or(Error::SequenceOverflow)?;
+        // Every control journal entry, including catalogue and engine-composed
+        // transitions, must use the same CAS and hash-chain write authority.
+        // These writes remain staged until catalogue/index work also succeeds.
+        let mut entries =
+            prepare_control_batch(&mut *transaction, std::slice::from_ref(transition))?;
+        let entry = entries.pop().expect("one validated control transition");
         let catalog_revision = catalog_scope
             .map(|scope| {
                 read_sequence(&*transaction, &keyspaces::catalog_revision_key(scope))?
@@ -160,13 +132,6 @@ impl<'a> ControlRepository<'a> {
                     .ok_or(Error::SequenceOverflow)
             })
             .transpose()?;
-        let entry = ControlJournalEntry::committed(sequence, transition, previous_digest);
-        match &transition.replacement {
-            Some(value) => {
-                transaction.put(checked_key(keyspaces::META, &record_key)?, value.clone())?
-            }
-            None => transaction.delete(checked_key(keyspaces::META, &record_key)?)?,
-        }
         if let Some(projection) = index_bindings {
             synchronize_index_commit_bindings(
                 &mut *transaction,
@@ -178,22 +143,6 @@ impl<'a> ControlRepository<'a> {
                 projection.definitions,
             )?;
         }
-        transaction.put(
-            checked_key(keyspaces::META, &keyspaces::control_journal_key(sequence))?,
-            serde_json::to_vec(&entry)?,
-        )?;
-        put_sequence(
-            &mut *transaction,
-            &keyspaces::control_journal_sequence_key(),
-            sequence,
-        )?;
-        transaction.put(
-            checked_key(
-                keyspaces::META,
-                &keyspaces::control_journal_last_digest_key(),
-            )?,
-            entry.digest.as_bytes().to_vec(),
-        )?;
         if let (Some(scope), Some(revision)) = (catalog_scope, catalog_revision) {
             put_sequence(
                 &mut *transaction,
