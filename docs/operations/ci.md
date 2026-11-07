@@ -11,6 +11,25 @@ defines risk-based package widening, and the [POA&M](../poam/rrflow-1.0-alpha.md
 owns deficiencies. A green workflow proves only the commands and assertions it
 actually executes.
 
+## C-07 installed campaign progress
+
+The existing `scripts/ci/run_sustained_capacity.py` launcher accepts the opt-in
+`--observe-progress`, `--progress-interval-ms` (1,000–60,000; default 15,000)
+and `--progress-max-bytes` (4,096–16,777,216; default 1,048,576) flags. It
+exclusively creates `<evidence>.observations.jsonl` alongside the campaign
+directory and emits the same bounded, cumulative event-kind counts to stderr.
+No event payload, record ID, prompt or credential is copied. A source-available
+flag distinguishes a not-yet-created stream from zero observed events. Linux
+observations include available owned-cgroup counters; Windows reports these as
+unavailable. The observer stops on malformed, replaced or truncated input or
+when its output limit is reached and reports an error to stderr; the campaign
+continues. It starts after the Linux cgroup is created or, on Windows, after
+the harness image is pinned and before the owned job is launched. Observations
+are best-effort, buffered diagnostics, not durable audit, proof of completed
+records, the campaign verifier, or a qualification result. Observer startup
+requires a fresh sidecar path. Its thread is joined on exit; a blocked read is
+reported after a bounded stop wait and may finish after native cleanup.
+
 ## C-07 storage-diagnostic attribution
 
 To characterize a slow installed `rrflow` storage-diagnostic request, start the
