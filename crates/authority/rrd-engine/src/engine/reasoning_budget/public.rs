@@ -326,6 +326,21 @@ impl RrdEngine {
                 || record.worker_output.as_ref().is_some_and(|output| {
                     output.scope != request.scope || output.task_id != request.task_id
                 })
+                || record.assessment_output.as_ref().is_some_and(|output| {
+                    output.validate().is_err()
+                        || output.scope != request.scope
+                        || output.task_id != request.task_id
+                        || output.attempt_id != request.attempt_id
+                        || record.outcome != super::AttemptOutcome::Accepted
+                        || record.result.is_some()
+                        || record.endpoint_proposal.is_some()
+                        || record.worker_output.is_some()
+                        || serde_json::to_vec(output)
+                            .ok()
+                            .map(|bytes| digest::sha256_hex(&bytes))
+                            .as_deref()
+                            != record.outcome_sha256.as_deref()
+                })
         }) {
             return Err(ServiceError::Storage(
                 "attempt format or scope mismatch".into(),

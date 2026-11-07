@@ -55,6 +55,57 @@ impl AppState {
             },
         )
     }
+    pub(in crate::http) fn execute_task_assessment(
+        &self,
+        headers: &HeaderMap,
+        body: &[u8],
+        now: u64,
+    ) -> HttpResponse {
+        self.with_authenticated_envelope::<rrd_contract::TaskAssessmentRequest, _, _>(
+            headers,
+            body,
+            now,
+            RrdOperation::EndpointPropose,
+            None,
+            |envelope, session, token| {
+                self.service
+                    .execute_task_assessment(
+                        session,
+                        token,
+                        &envelope.payload,
+                        envelope.context.request_id.as_str(),
+                        envelope.context.operation_id.as_str(),
+                    )
+                    .map_err(api_error)
+            },
+        )
+    }
+    pub(in crate::http) fn read_task_assessment(
+        &self,
+        headers: &HeaderMap,
+        body: &[u8],
+        now: u64,
+    ) -> HttpResponse {
+        self.with_authenticated_envelope::<rrd_contract::ReadTaskAssessment, _, _>(
+            headers,
+            body,
+            now,
+            RrdOperation::ReasoningRead,
+            None,
+            |envelope, session, token| {
+                self.service
+                    .read_task_assessment(
+                        session,
+                        token,
+                        &envelope.payload,
+                        now,
+                        envelope.context.request_id.as_str(),
+                        envelope.context.operation_id.as_str(),
+                    )
+                    .map_err(api_error)
+            },
+        )
+    }
     pub(in crate::http) fn propose_task_endpoint(
         &self,
         headers: &HeaderMap,

@@ -2,9 +2,9 @@
 
 package rrd
 
-// OpenAPI SHA-256: 5a14cb9e11a001542a863b295990e27d58a21b0b5d98da183189f09d5869d817
+// OpenAPI SHA-256: fb09bd98e533e3330b86e461a82ce7a6cd02a1cc0d31888cc72dedbe3f767797
 
-const EndpointOpenAPIDocumentSHA256 = "5a14cb9e11a001542a863b295990e27d58a21b0b5d98da183189f09d5869d817"
+const EndpointOpenAPIDocumentSHA256 = "fb09bd98e533e3330b86e461a82ce7a6cd02a1cc0d31888cc72dedbe3f767797"
 
 type OperationID string
 
@@ -61,6 +61,8 @@ const (
 	OperationSessionRenew                 OperationID = "session-renew"
 	OperationSubscriptionClose            OperationID = "subscription-close"
 	OperationSubscriptionOpen             OperationID = "subscription-open"
+	OperationTaskAssessmentExecute        OperationID = "task-assessment-execute"
+	OperationTaskAssessmentRead           OperationID = "task-assessment-read"
 	OperationTaskAttemptRead              OperationID = "task-attempt-read"
 	OperationTaskBudgetConfigure          OperationID = "task-budget-configure"
 	OperationTaskBudgetRead               OperationID = "task-budget-read"
@@ -144,6 +146,8 @@ var endpoints = map[OperationID]Endpoint{
 	OperationSessionRenew:                 {Method: "POST", Path: "/v1/sessions/{session}/renew", Authentication: "session_bearer", Mutation: true},
 	OperationSubscriptionClose:            {Method: "POST", Path: "/v1/subscriptions/close", Authentication: "session_bearer", Mutation: true},
 	OperationSubscriptionOpen:             {Method: "POST", Path: "/v1/subscriptions/open", Authentication: "session_bearer", Mutation: true},
+	OperationTaskAssessmentExecute:        {Method: "POST", Path: "/v1/tasks/assessment/execute", Authentication: "session_bearer", Mutation: true},
+	OperationTaskAssessmentRead:           {Method: "POST", Path: "/v1/tasks/assessment/read", Authentication: "session_bearer", Mutation: false},
 	OperationTaskAttemptRead:              {Method: "POST", Path: "/v1/tasks/attempt/read", Authentication: "session_bearer", Mutation: false},
 	OperationTaskBudgetConfigure:          {Method: "POST", Path: "/v1/tasks/budget/configure", Authentication: "session_bearer", Mutation: true},
 	OperationTaskBudgetRead:               {Method: "POST", Path: "/v1/tasks/budget/read", Authentication: "session_bearer", Mutation: false},

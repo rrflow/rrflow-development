@@ -17,6 +17,8 @@ use std::path::Path;
 use std::sync::mpsc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+mod assessment;
+
 struct SourceWorkerFixture {
     installed: crate::engine::tests::attunement::Installed,
     engine: RrdEngine,
@@ -448,6 +450,7 @@ fn source_worker_fixture_for_path_at(
         bindings,
         selection_policy: Some(selector),
         observation_policy: None,
+        assessment_policy: None,
         worker_policy: Some(EndpointWorkerPolicy {
             contract_version: rrd_contract::ENDPOINT_WORKER_VERSION,
             allow_network: true,
@@ -847,6 +850,7 @@ fn set_worker_export_flags(
         selection_policy: profile.selection_policy,
         worker_policy: Some(worker_policy),
         observation_policy: profile.observation_policy,
+        assessment_policy: profile.assessment_policy,
     };
     let preview = engine
         .preview_endpoint_configuration(
@@ -1773,6 +1777,7 @@ fn retained_source_observation_is_denied_on_exclusion_and_available_after_restor
             retry_delay_ms: 1_000,
             max_response_bytes: 16_384,
         }),
+        assessment_policy: None,
     };
     let configured_at = fixture.now + 3;
     let plan = fixture

@@ -20,6 +20,7 @@ fn profile(name: &str) -> EndpointProfileInput {
         selection_policy: None,
         worker_policy: None,
         observation_policy: None,
+        assessment_policy: None,
         bindings: vec![EndpointBinding {
             id: CanonicalId::new("knowledge-source").unwrap(),
             class: WorkloadClass::VectorStore,
@@ -233,6 +234,7 @@ fn configuration_policy_reopens(include_worker: bool, include_observation: bool)
         selection_policy: Some(policy.clone()),
         worker_policy: worker_policy.clone(),
         observation_policy: observation_policy.clone(),
+        assessment_policy: None,
     };
     let (root, mut engine) = isolated_engine();
     bind(&mut engine, "selector-policy-persistence");

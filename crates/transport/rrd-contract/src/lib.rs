@@ -26,6 +26,7 @@ pub use endpoint_worker::{
 mod endpoint_policy;
 mod endpoint_proposal;
 mod endpoint_selection;
+mod task_assessment;
 pub use endpoint_policy::EndpointSelectionPolicy;
 pub use endpoint_proposal::*;
 pub use endpoint_selection::{
@@ -33,6 +34,7 @@ pub use endpoint_selection::{
     EndpointSelectionCandidate, EndpointSelectionChoice, EndpointSelectionLimits,
     ENDPOINT_SELECTION_VERSION,
 };
+pub use task_assessment::*;
 mod observation_source;
 pub use observation_source::*;
 mod observation_delivery;
@@ -273,7 +275,7 @@ use std::fmt;
 pub const PROTOCOL: &str = "rrd";
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const OPENAPI_DOCUMENT_SHA256: &str =
-    "5a14cb9e11a001542a863b295990e27d58a21b0b5d98da183189f09d5869d817";
+    "fb09bd98e533e3330b86e461a82ce7a6cd02a1cc0d31888cc72dedbe3f767797";
 pub const MAX_ID_BYTES: usize = 128;
 pub const MAX_MESSAGE_BYTES: usize = 4_096;
 pub const MAX_CAPABILITIES: usize = 512;
@@ -4238,6 +4240,26 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             "TaskWorkerOutput",
         ),
         endpoint(
+            "task-assessment-execute",
+            HttpMethod::Post,
+            "/v1/tasks/assessment/execute",
+            EndpointAuthentication::SessionBearer,
+            true,
+            SecurityAction::EndpointPropose,
+            "TaskAssessmentRequest",
+            "TaskAssessmentOutput",
+        ),
+        endpoint(
+            "task-assessment-read",
+            HttpMethod::Post,
+            "/v1/tasks/assessment/read",
+            EndpointAuthentication::SessionBearer,
+            false,
+            SecurityAction::ReasoningRead,
+            "ReadTaskAssessment",
+            "TaskAssessmentView",
+        ),
+        endpoint(
             "task-close",
             HttpMethod::Post,
             "/v1/tasks/close",
@@ -4765,11 +4787,13 @@ fn request_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "ExecuteTaskEmbedding" => schema_json::<RequestEnvelope<ExecuteTaskEmbedding>>(),
         "EndpointSelectionRequest" => schema_json::<RequestEnvelope<EndpointSelectionRequest>>(),
         "TaskWorkerRequest" => schema_json::<RequestEnvelope<TaskWorkerRequest>>(),
+        "TaskAssessmentRequest" => schema_json::<RequestEnvelope<TaskAssessmentRequest>>(),
         "PrepareObservationDelivery" => {
             schema_json::<RequestEnvelope<PrepareObservationDelivery>>()
         }
         "DeliverObservation" => schema_json::<RequestEnvelope<DeliverObservation>>(),
         "ReadObservationDelivery" => schema_json::<RequestEnvelope<ReadObservationDelivery>>(),
+        "ReadTaskAssessment" => schema_json::<RequestEnvelope<ReadTaskAssessment>>(),
         "ReadTaskAttempt" => schema_json::<RequestEnvelope<ReadTaskAttempt>>(),
         "ReadTaskBudget" => schema_json::<RequestEnvelope<ReadTaskBudget>>(),
         "StopTaskBudget" => schema_json::<RequestEnvelope<StopTaskBudget>>(),
@@ -4858,7 +4882,9 @@ fn response_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "EmbeddingModelCatalogue" => schema_json::<ResponseEnvelope<EmbeddingModelCatalogue>>(),
         "GenerateEmbeddingsResult" => schema_json::<ResponseEnvelope<GenerateEmbeddingsResult>>(),
         "TaskAttemptView" => schema_json::<ResponseEnvelope<TaskAttemptView>>(),
+        "TaskAssessmentView" => schema_json::<ResponseEnvelope<TaskAssessmentView>>(),
         "EndpointSelectionProposal" => schema_json::<ResponseEnvelope<EndpointSelectionProposal>>(),
+        "TaskAssessmentOutput" => schema_json::<ResponseEnvelope<TaskAssessmentOutput>>(),
         "TaskWorkerOutput" => schema_json::<ResponseEnvelope<TaskWorkerOutput>>(),
         "TaskBudgetView" => schema_json::<ResponseEnvelope<TaskBudgetView>>(),
         "AuditExport" => schema_json::<ResponseEnvelope<AuditExport>>(),
