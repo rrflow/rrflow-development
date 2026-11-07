@@ -13,12 +13,13 @@ use crate::engine::token_key::{
     read_token_key_anchored as read_token_key, ApiKeyDocument,
 };
 use rrd_contract::{
-    attunement_plan_sha256, installation_plan_sha256, installation_result_sha256, AttunementJob,
-    AttunementJobState, AttunementPhase, AttunementPhasePlan, AttunementPlan, DeploymentProfile,
-    EstateConfiguration, EstateConfigurationInput, InstallationActionDisposition,
-    InstallationActionKind, InstallationActionResult, InstallationManagedPathKind,
-    InstallationPlan, InstallationPlanAction, InstallationResult, InstallationTargetKind,
-    InstalledEstateIdentity, PersistMemoryEstate, StorageProfileKind, ATTUNEMENT_CONTRACT_VERSION,
+    attunement_plan_sha256, installation_initial_grants, installation_plan_sha256,
+    installation_result_sha256, AttunementJob, AttunementJobState, AttunementPhase,
+    AttunementPhasePlan, AttunementPlan, DeploymentProfile, EstateConfiguration,
+    EstateConfigurationInput, InstallationActionDisposition, InstallationActionKind,
+    InstallationActionResult, InstallationManagedPathKind, InstallationPlan,
+    InstallationPlanAction, InstallationResult, InstallationTargetKind, InstalledEstateIdentity,
+    PersistMemoryEstate, StorageProfileKind, ATTUNEMENT_CONTRACT_VERSION,
     INSTALLATION_PLAN_CONTRACT_VERSION, INSTALL_ATTUNEMENT_CONTRACT_VERSION, MAX_ATTUNEMENT_PHASES,
 };
 use rrd_core::digest::Sha256 as IncrementalSha256;
@@ -321,6 +322,16 @@ pub struct InstallationPreview {
     pub attunement: AttunementPlan,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub attunement_proposal: Option<AttunementProposal>,
+    /// Explicit source grant scope. Absent in the unchanged default preview.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_read_resource_scope: Option<String>,
+}
+
+/// Explicit inputs that alter the canonical new-install preview.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct InstallationPlanningOptions<'a> {
+    pub attunement_proposal: Option<&'a AttunementProposal>,
+    pub allow_project_source_read: bool,
 }
 
 impl InstallationPreview {
@@ -338,6 +349,15 @@ impl InstallationPreview {
             {
                 return Err(ServiceError::ProjectBindingMismatch);
             }
+        }
+        let source_read_enabled = self
+            .installation
+            .initial_grants
+            .contains(&SecurityAction::ProjectSourceRead);
+        if self.source_read_resource_scope.as_deref()
+            != source_read_enabled.then_some("instance_prefix")
+        {
+            return Err(ServiceError::ProjectBindingMismatch);
         }
         self.installation
             .validate_attunement_plan(&self.attunement)
@@ -548,6 +568,34 @@ impl RrdEngine {
         proposal: Option<&AttunementProposal>,
         executable: &Path,
     ) -> Result<InstallationPreview> {
+        Self::plan_installation_with_options(
+            project,
+            target_kind,
+            installation_identity,
+            profile_id,
+            configuration_path,
+            InstallationPlanningOptions {
+                attunement_proposal: proposal,
+                allow_project_source_read: false,
+            },
+            executable,
+        )
+    }
+
+    /// Produce an exact installation preview with explicit bounded choices.
+    /// Initial source grants remain the unchanged default or that list plus
+    /// ProjectSourceRead; this is not a general grant editor.
+    pub fn plan_installation_with_options(
+        project: &Path,
+        target_kind: InstallationTargetKind,
+        installation_identity: &str,
+        profile_id: &str,
+        configuration_path: Option<&Path>,
+        options: InstallationPlanningOptions<'_>,
+        executable: &Path,
+    ) -> Result<InstallationPreview> {
+        let proposal = options.attunement_proposal;
+        let allow_project_source_read = options.allow_project_source_read;
         if let Some(proposal) = proposal {
             proposal.validate()?;
         }
@@ -633,10 +681,7 @@ impl RrdEngine {
             initial_seat: profile.specialization.seat.clone(),
             bootstrap,
             initial_principal_id: profile.initial_principal_id,
-            initial_grants: SecurityAction::ALL
-                .into_iter()
-                .filter(|action| *action != SecurityAction::ProjectSourceRead)
-                .collect(),
+            initial_grants: installation_initial_grants(allow_project_source_read),
             credential_bytes: profile.credential_bytes,
             inactive_capabilities: profile.inactive_capabilities,
             managed_paths,
@@ -652,6 +697,8 @@ impl RrdEngine {
             installation,
             attunement,
             attunement_proposal: proposal.cloned(),
+            source_read_resource_scope: allow_project_source_read
+                .then(|| "instance_prefix".to_owned()),
         };
         preview.validate()?;
         Ok(preview)
@@ -1745,10 +1792,11 @@ fn validate_sealed_preview(
             )?
         || installation.initial_principal_id != profile.initial_principal_id
         || installation.initial_grants
-            != SecurityAction::ALL
-                .into_iter()
-                .filter(|action| *action != SecurityAction::ProjectSourceRead)
-                .collect::<Vec<_>>()
+            != installation_initial_grants(
+                installation
+                    .initial_grants
+                    .contains(&SecurityAction::ProjectSourceRead),
+            )
         || installation.credential_bytes != profile.credential_bytes
         || installation.inactive_capabilities != profile.inactive_capabilities
         || installation.managed_paths != expected_paths
