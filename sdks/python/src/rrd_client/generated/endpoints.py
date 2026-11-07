@@ -1,9 +1,9 @@
 # Generated from rrd-contract; do not edit.
-# OpenAPI SHA-256: 5a14cb9e11a001542a863b295990e27d58a21b0b5d98da183189f09d5869d817
+# OpenAPI SHA-256: fb09bd98e533e3330b86e461a82ce7a6cd02a1cc0d31888cc72dedbe3f767797
 from typing import Final, Literal, TypedDict
 
 ENDPOINT_OPENAPI_DOCUMENT_SHA256: Final[str] = (
-    "5a14cb9e11a001542a863b295990e27d58a21b0b5d98da183189f09d5869d817"
+    "fb09bd98e533e3330b86e461a82ce7a6cd02a1cc0d31888cc72dedbe3f767797"
 )
 
 OperationId = Literal[
@@ -59,6 +59,8 @@ OperationId = Literal[
     "session-renew",
     "subscription-close",
     "subscription-open",
+    "task-assessment-execute",
+    "task-assessment-read",
     "task-attempt-read",
     "task-budget-configure",
     "task-budget-read",
@@ -409,6 +411,18 @@ ENDPOINTS: Final[dict[OperationId, Endpoint]] = {
         "method": "POST",
         "mutation": True,
         "path": "/v1/subscriptions/open",
+    },
+    "task-assessment-execute": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": True,
+        "path": "/v1/tasks/assessment/execute",
+    },
+    "task-assessment-read": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": False,
+        "path": "/v1/tasks/assessment/read",
     },
     "task-attempt-read": {
         "authentication": "session_bearer",

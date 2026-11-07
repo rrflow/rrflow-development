@@ -54,6 +54,7 @@ fn profile(engine: &RrdEngine, retained: u32) -> EndpointProfileInput {
             retry_delay_ms: 10,
             max_response_bytes: 1024,
         }),
+        assessment_policy: None,
     }
 }
 fn credential() -> CredentialReference {

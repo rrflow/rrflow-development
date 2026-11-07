@@ -1,5 +1,5 @@
 // Generated from rrd-contract; do not edit.
-// OpenAPI SHA-256: 5a14cb9e11a001542a863b295990e27d58a21b0b5d98da183189f09d5869d817
+// OpenAPI SHA-256: fb09bd98e533e3330b86e461a82ce7a6cd02a1cc0d31888cc72dedbe3f767797
 namespace Rrflow.Rrd;
 
 public enum OperationId
@@ -56,6 +56,8 @@ public enum OperationId
     SessionRenew,
     SubscriptionClose,
     SubscriptionOpen,
+    TaskAssessmentExecute,
+    TaskAssessmentRead,
     TaskAttemptRead,
     TaskBudgetConfigure,
     TaskBudgetRead,
@@ -102,8 +104,8 @@ public sealed record Endpoint(
 
 public static class EndpointCatalog
 {
-    public const string OpenApiDocumentSha256 = "5a14cb9e11a001542a863b295990e27d58a21b0b5d98da183189f09d5869d817";
-    public const int Count = 80;
+    public const string OpenApiDocumentSha256 = "fb09bd98e533e3330b86e461a82ce7a6cd02a1cc0d31888cc72dedbe3f767797";
+    public const int Count = 82;
 
     public static Endpoint Get(OperationId operation) => operation switch
     {
@@ -159,6 +161,8 @@ public static class EndpointCatalog
         OperationId.SessionRenew => new("session-renew", "POST", "/v1/sessions/{session}/renew", Authentication.SessionBearer, true),
         OperationId.SubscriptionClose => new("subscription-close", "POST", "/v1/subscriptions/close", Authentication.SessionBearer, true),
         OperationId.SubscriptionOpen => new("subscription-open", "POST", "/v1/subscriptions/open", Authentication.SessionBearer, true),
+        OperationId.TaskAssessmentExecute => new("task-assessment-execute", "POST", "/v1/tasks/assessment/execute", Authentication.SessionBearer, true),
+        OperationId.TaskAssessmentRead => new("task-assessment-read", "POST", "/v1/tasks/assessment/read", Authentication.SessionBearer, false),
         OperationId.TaskAttemptRead => new("task-attempt-read", "POST", "/v1/tasks/attempt/read", Authentication.SessionBearer, false),
         OperationId.TaskBudgetConfigure => new("task-budget-configure", "POST", "/v1/tasks/budget/configure", Authentication.SessionBearer, true),
         OperationId.TaskBudgetRead => new("task-budget-read", "POST", "/v1/tasks/budget/read", Authentication.SessionBearer, false),

@@ -1,6 +1,6 @@
 // Generated from rrd-contract; do not edit.
-// OpenAPI SHA-256: 5a14cb9e11a001542a863b295990e27d58a21b0b5d98da183189f09d5869d817
-export const ENDPOINT_OPENAPI_DOCUMENT_SHA256 = "5a14cb9e11a001542a863b295990e27d58a21b0b5d98da183189f09d5869d817" as const;
+// OpenAPI SHA-256: fb09bd98e533e3330b86e461a82ce7a6cd02a1cc0d31888cc72dedbe3f767797
+export const ENDPOINT_OPENAPI_DOCUMENT_SHA256 = "fb09bd98e533e3330b86e461a82ce7a6cd02a1cc0d31888cc72dedbe3f767797" as const;
 
 export const endpoints = {
   "attunement-cancel": {
@@ -320,6 +320,18 @@ export const endpoints = {
     "path": "/v1/tasks",
     "authentication": "session_bearer",
     "mutation": true
+  },
+  "task-assessment-execute": {
+    "method": "POST",
+    "path": "/v1/tasks/assessment/execute",
+    "authentication": "session_bearer",
+    "mutation": true
+  },
+  "task-assessment-read": {
+    "method": "POST",
+    "path": "/v1/tasks/assessment/read",
+    "authentication": "session_bearer",
+    "mutation": false
   },
   "task-attempt-read": {
     "method": "POST",
