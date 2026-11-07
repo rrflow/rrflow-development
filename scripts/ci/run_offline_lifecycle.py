@@ -278,12 +278,14 @@ class CommandOutputNotClosed(RuntimeError):
     `captured` is never rendered. It holds a failed command's bounded output for
     a caller that owns that command as evidence, such as an owned-image OS tool.
     """
-    def __init__(self, command_category, child_returncode, stdout_open, stderr_open, captured=None):
+    def __init__(self, command_category, child_returncode, stdout_open, stderr_open, captured=None,
+                 timed_out=False):
         self.command_category = command_category if command_category in _CAPTURE_COMMANDS.values() else "other"
         self.child_returncode = (child_returncode if type(child_returncode) is int
                                  and -(2 ** 31) <= child_returncode < 2 ** 31 else None)
         self.stdout_open = bool(stdout_open)
         self.stderr_open = bool(stderr_open)
+        self.timed_out = bool(timed_out)
         self.captured = captured
         super().__init__("command output did not close")
 
@@ -310,8 +312,8 @@ def _await_process_group_exit(group: int, deadline: float, failed: threading.Eve
 def run(*arguments: str, **kwargs: object) -> subprocess.CompletedProcess:
     """Capture a finite amount without communicate()'s unbounded allocation.
 
-    The privileged outer runner owns the PID namespace and its descendants.
-    This helper kills/reaps only the exact child it started. Never log arbitrary
+    Reap the direct child. When requested, terminate members of its separate
+    process group; descendants can escape that group. Never log arbitrary
     product output: it can include credentials if a redaction assertion fails.
     """
     check = kwargs.pop("check", True)
@@ -402,7 +404,8 @@ def run(*arguments: str, **kwargs: object) -> subprocess.CompletedProcess:
         verb = arguments[1] if len(arguments) > 1 else ""
         category = _CAPTURE_COMMANDS.get((tool, verb), "other")
         raise CommandOutputNotClosed(category, child.returncode, *open_streams,
-                                     captured=result if child.returncode != 0 else None)
+                                     captured=result if child.returncode != 0 else None,
+                                     timed_out=error == "command exceeded its deadline")
     if on_completion is not None:
         on_completion(result)
     if capture_deadline_output and error == "command exceeded its deadline":

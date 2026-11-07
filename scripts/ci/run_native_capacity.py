@@ -85,6 +85,7 @@ def retain_native_failure(config, fixture, mode, point, case_index, error):
                        "github_run_attempt": closed(os.environ.get("GITHUB_RUN_ATTEMPT"), r"[0-9]{1,8}"),
                        "command_category": source.command_category,
                        "child_returncode": source.child_returncode,
+                       "timed_out": source.timed_out,
                        "stdout_open": source.stdout_open, "stderr_open": source.stderr_open,
                        "cleanup_state": "unknown"}
             encoded = json.dumps(receipt, ensure_ascii=False).encode("utf-8", errors="replace")
@@ -177,9 +178,9 @@ def loop_binding(device: str, image: Path):
 def native_command(*arguments, **kwargs):
     # These are owned-image OS commands only, never credential-bearing product
     # output. Keep the failing tool and bounded native message in CI evidence.
-    # POSIX callers own a fresh process group, so a failed command cannot
-    # leave its subprocesses holding the capture pipe. A successful command
-    # must also finish its owned descendants before it can be accepted.
+    # POSIX callers own a fresh process group. Its remaining members are
+    # terminated on failure; an escaped pipe holder is reported, not killed.
+    # A successful command must finish its group before it can be accepted.
     if os.name == "posix":
         kwargs["process_group"] = True
         kwargs["require_clean_process_group"] = True
@@ -194,7 +195,8 @@ def native_command(*arguments, **kwargs):
         if unclosed.captured is None:
             raise
         raise NativeCommandFailure(arguments[0], arguments[1], unclosed.captured,
-                                   unclosed.stdout_open, unclosed.stderr_open) from unclosed
+                                   unclosed.stdout_open, unclosed.stderr_open,
+                                   timed_out=unclosed.timed_out) from unclosed
     if result.returncode != 0:
         raise NativeCommandFailure(arguments[0], arguments[1], result)
     return result

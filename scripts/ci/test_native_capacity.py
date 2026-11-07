@@ -35,7 +35,8 @@ class NativeCapacityCases(unittest.TestCase):
                        "GITHUB_SHA": "abc", "GITHUB_RUN_ID": "42", "GITHUB_RUN_ATTEMPT": "2"}
         try:
             try:
-                raise runner.CommandOutputNotClosed("hdiutil-attach", 0, True, False)
+                raise runner.CommandOutputNotClosed("hdiutil-attach", 0, True, False,
+                                                    timed_out=True)
             except runner.CommandOutputNotClosed:
                 raise RuntimeError("private cleanup path and product output")
         except RuntimeError as error:
@@ -51,6 +52,7 @@ class NativeCapacityCases(unittest.TestCase):
         self.assertEqual(receipt["child_returncode"], 0)
         self.assertTrue(receipt["stdout_open"])
         self.assertFalse(receipt["stderr_open"])
+        self.assertTrue(receipt["timed_out"])
         self.assertEqual(receipt["cleanup_state"], "unknown")
         self.assertNotIn("private", raw)
         self.assertNotIn(str(self.root), raw)
@@ -232,6 +234,25 @@ class NativeCapacityCases(unittest.TestCase):
                     runner.native_command("hdiutil", "attach", timeout=10)
             self.assertTrue(caught.exception.stderr_open)
             self.assertFalse(caught.exception.stdout_open)
+            os.kill(int(pid_file.read_text()), 0)
+        finally:
+            end_holder(pid_file)
+
+    @unittest.skipUnless(os.name == "posix", "requires native POSIX process ownership")
+    def test_timeout_with_escaped_pipe_holder_retains_deadline_classification(self):
+        pid_file = self.root / "escaped-timeout.pid"
+        code = ("import pathlib,subprocess,sys,time; "
+                "child=subprocess.Popen([sys.executable,'-c','import time; time.sleep(60)'],"
+                "stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=sys.stderr,"
+                "start_new_session=True); pathlib.Path(sys.argv[1]).write_text(str(child.pid)); "
+                "print('native pre-timeout output',file=sys.stderr,flush=True); time.sleep(60)")
+        try:
+            with self.native_child((sys.executable, "-c", code, str(pid_file)), "create"):
+                with self.assertRaises(runner.NativeCommandFailure) as caught:
+                    runner.native_command("hdiutil", "create", timeout=0.5)
+            self.assertTrue(caught.exception.timed_out)
+            self.assertTrue(caught.exception.stderr_open)
+            self.assertIn("native pre-timeout output", caught.exception.stderr_tail)
             os.kill(int(pid_file.read_text()), 0)
         finally:
             end_holder(pid_file)
