@@ -20,7 +20,7 @@ fn scope() -> ScopeId {
 }
 
 fn reference(kind: &str, id: &str) -> RuntimeRef {
-    RuntimeRef::new(kind, id).unwrap()
+    RuntimeRef::parse(kind, id).unwrap()
 }
 
 fn schema() -> RuntimeSchemaRegistry {
@@ -104,7 +104,7 @@ fn initial_mutations() -> Vec<RuntimeMutation> {
         },
         RuntimeMutation::Claim {
             claim: Claim::new(
-                Subject::new("entity:a").unwrap(),
+                Subject::new("entity-a").unwrap(),
                 Predicate::new("status").unwrap(),
                 "ready",
                 100,

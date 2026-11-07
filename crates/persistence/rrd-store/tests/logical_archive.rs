@@ -11,7 +11,7 @@ use std::io::{Seek, SeekFrom, Write};
 
 fn claim(name: &str, at: u64) -> Claim {
     Claim::new(
-        Subject::new(format!("subject:{name}")).unwrap(),
+        Subject::new(format!("subject-{name}")).unwrap(),
         Predicate::new("status").unwrap(),
         "verified",
         at,

@@ -110,13 +110,15 @@ def command(args, label, timeout=120, limit=OUTPUT_LIMIT, expect_failure=False, 
 
 def check_view(view, expected, instance=None):
     tasks, relations = view["tasks"], view["relationships"]
-    if (not tasks["scope"].startswith("instance:") or tasks["scope"] != relations["scope"]
-            or tasks["known_at_cursor"] != relations["known_at_cursor"]
-            or tasks["schema_revision"] != relations["schema_revision"]):
+    documents, document_relations = view["documents"], view["document_relationships"]
+    results = (tasks, relations, documents, document_relations)
+    if (not tasks["scope"].startswith("instance:") or any(
+            result[key] != tasks[key] for result in results
+            for key in ("scope", "known_at_cursor", "schema_revision"))):
         raise ValueError("database view has inconsistent scope or stamps")
     if instance is not None and tasks["scope"] != f"instance:{instance}":
         raise ValueError("database view differs from the served instance")
-    for result in (tasks, relations):
+    for result in results:
         if result["execution"]["truncated"] is not False or result["execution"]["returned_rows"] != 1 or len(result["rows"]) != 1:
             raise ValueError("database view is incomplete")
     value = lambda text: {"type": "string", "value": text}
@@ -124,6 +126,15 @@ def check_view(view, expected, instance=None):
         raise ValueError("database task differs from independent expected state")
     if relations["rows"][0]["values"] != {"left.name": value("Local AI project"), "right.to_id": value("first-task")}:
         raise ValueError("database relationship differs from independent expected state")
+    document = {"id": value("context-note"), "title": value("Project context"),
+                "metadata": {"type": "map", "value": {
+                    "source": value("local"), "revision": {"type": "unsigned", "value": 1}}}}
+    if documents["rows"][0]["values"] != document:
+        raise ValueError("database document differs from independent expected state")
+    if document_relations["rows"][0]["values"] != {
+            "left.id": value("context-note"), "right.to_id": value("first-task"),
+            "right.reason": value("supports")}:
+        raise ValueError("database document relationship differs from independent expected state")
     if view["verified_expected_status"] != expected:
         raise ValueError("example did not report expected verification")
 

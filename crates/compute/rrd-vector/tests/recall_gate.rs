@@ -23,8 +23,12 @@ fn deterministic_ann_recall_gate_covers_unfiltered_and_selective_queries() {
     ] {
         let index = HnswIndex::build(
             HnswConfig {
-                id: ProjectionId::new(format!("vector:hnsw:recall-{metric:?}").to_lowercase())
-                    .unwrap(),
+                id: ProjectionId::new(
+                    format!("vector-hnsw-recall-{metric:?}")
+                        .to_lowercase()
+                        .to_lowercase(),
+                )
+                .unwrap(),
                 scope: scope.clone(),
                 field: "body".into(),
                 dimensions: 16,

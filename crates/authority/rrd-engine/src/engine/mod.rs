@@ -107,6 +107,7 @@ mod diagnostic;
 mod distributed;
 mod endpoint_configuration;
 mod endpoint_proposal;
+mod endpoint_worker;
 pub use endpoint_proposal::EndpointCredentials;
 mod error;
 mod estate;
@@ -167,9 +168,9 @@ pub use estate_control::{
 pub use installation::{
     attunement_proposal_schema, load_attunement_proposal, load_estate_configuration,
     AttunementProposal, AttunementProposalStep, DefaultAttunementPhase, DefaultInstallProfile,
-    InstallationPreview, InstallationVerificationCheck, InstallationVerificationReport,
-    InstallationVerificationStatus, InstalledEstateRecord, ProjectLocator,
-    ATTUNEMENT_PROPOSAL_FORMAT_VERSION, INSTALLATION_PREVIEW_FORMAT_VERSION,
+    InstallationPlanningOptions, InstallationPreview, InstallationVerificationCheck,
+    InstallationVerificationReport, InstallationVerificationStatus, InstalledEstateRecord,
+    ProjectLocator, ATTUNEMENT_PROPOSAL_FORMAT_VERSION, INSTALLATION_PREVIEW_FORMAT_VERSION,
 };
 pub use invocation::{
     AuthorizedInvocation, Invocation, InvocationCompletion, InvocationCredential, RrdOperation,

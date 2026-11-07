@@ -1,0 +1,313 @@
+{
+  "sourceCommit": "a99d577aedcf05c9dc435114912ee666a6d0875b",
+  "binarySha256": "efc0115997c32056987937f17797876abaf8c255fd9ee4df6b9f205f51749dfe",
+  "runnerSha256": "ffe13640b4719f9c7d07bfa89a585a22c8994af6d027faf0374233f9d754a00c",
+  "attempt": {
+    "attempt": {
+      "attempt_id": "actual-proposal-58cdd27c0ec845d283119fe55338d237",
+      "ordinal": 1,
+      "status": "accepted",
+      "outcome_sha256": "380a27cd014f4ce75504ed46c028492b83f9c670f0f83e7f2eb06c4bf8b51015",
+      "result": null,
+      "endpoint_proposal": {
+        "contract_version": 1,
+        "purpose": "experimental_proposal",
+        "scope": "instance:instance-0976612a58664c75431765c9",
+        "task_id": "task-19c2df2501b33aecb8a127b8d15fa0e8c281d60e36172c73974b3a7029f4bf9f",
+        "attempt_id": "actual-proposal-58cdd27c0ec845d283119fe55338d237",
+        "task_sha256": "62e20741c6862789c243005a39daf4dddd4c4ebd262c299e850e1e70859255fa",
+        "packet_sha256": "2c065c7ce35d6bb875512f6239cf5f554d0fa5613ef3e31a422e962e1e4c3cbb",
+        "configuration_sha256": "46de4bc84a0fd069c01e719b5a57b12c8a2a529324b5a369f3d7ab284080849a",
+        "allowance_sha256": "465e64ca74603df49f1d3803b5d6ab462fbccd3ef29e0e1da96b53f35896a0f2",
+        "controller_binding_id": "swag-custom-bf16",
+        "service_id": "swag-qwen3-coder-intent-20261028",
+        "request_sha256": "597a4f1c6b94a55f35ac32e3d1969c82280242cdf5fa46c2a60409d7ac0a42c2",
+        "response_sha256": "5d78f6ff0a0c9ed2498d45cb4df4b4a5ce64efb3e48332b4f1ba6b8e4bff9eac",
+        "content_sha256": "f00ec144e84b0093c575418c45be469717d1725ba11736e3f0070c2fa666e6a2",
+        "choice": {
+          "kind": "select",
+          "binding_id": "swag-custom-bf16",
+          "effort": null
+        },
+        "usage": {
+          "prompt_tokens": 2082,
+          "completion_tokens": 20,
+          "total_tokens": 2102
+        },
+        "elapsed_ms": 1935,
+        "http_status": 200
+      }
+    }
+  },
+  "workerAttempt": {
+    "attempt": {
+      "attempt_id": "actual-worker-70328021c7614a0cbd88606ad064aca6",
+      "ordinal": 2,
+      "status": "stopped",
+      "outcome_sha256": null,
+      "result": null
+    }
+  },
+  "budget": {
+    "budget": {
+      "format_version": 1,
+      "instance_id": "instance-0976612a58664c75431765c9",
+      "scope": "instance:instance-0976612a58664c75431765c9",
+      "task_id": "task-19c2df2501b33aecb8a127b8d15fa0e8c281d60e36172c73974b3a7029f4bf9f",
+      "configuration_sha256": "2d382dbde4b923db65fb5ebbf841d12b45ec0e278c7cab41635dbff782072d55",
+      "limits": {
+        "max_run_elapsed_ms": 900000,
+        "max_steps": 256,
+        "max_step_elapsed_ms": 60000
+      },
+      "started_at_unix_ms": 1794014003615,
+      "deadline_unix_ms": 1794014903615,
+      "last_observed_at_unix_ms": 1794014029573,
+      "charged_elapsed_ms": 21855,
+      "reserved_steps": 4,
+      "active_attempt": null,
+      "execution_may_continue": false,
+      "stopped": null,
+      "stop_expected_sha256": null
+    },
+    "budget_sha256": "6509e944d0d94d9ea932839321f2d1ad6f615c8acf256156556d45bb69333c6c"
+  },
+  "providerCallRequested": false,
+  "resumeProbe": {
+    "resumeRequest": {
+      "scope": "instance:instance-0976612a58664c75431765c9",
+      "task_id": "task-19c2df2501b33aecb8a127b8d15fa0e8c281d60e36172c73974b3a7029f4bf9f",
+      "expected_budget_sha256": "3ef9ac0b4612a5f5e5c9bc7085ef725a2ad9f33c0ec2d73475ca404007cf8fa7"
+    },
+    "stoppedBudget": {
+      "budget": {
+        "format_version": 1,
+        "instance_id": "instance-0976612a58664c75431765c9",
+        "scope": "instance:instance-0976612a58664c75431765c9",
+        "task_id": "task-19c2df2501b33aecb8a127b8d15fa0e8c281d60e36172c73974b3a7029f4bf9f",
+        "configuration_sha256": "2d382dbde4b923db65fb5ebbf841d12b45ec0e278c7cab41635dbff782072d55",
+        "limits": {
+          "max_run_elapsed_ms": 900000,
+          "max_steps": 256,
+          "max_step_elapsed_ms": 60000
+        },
+        "started_at_unix_ms": 1794014003615,
+        "deadline_unix_ms": 1794014903615,
+        "last_observed_at_unix_ms": 1794014008278,
+        "charged_elapsed_ms": 2741,
+        "reserved_steps": 2,
+        "active_attempt": null,
+        "execution_may_continue": false,
+        "stopped": "attempt_failed",
+        "stop_expected_sha256": null
+      },
+      "budget_sha256": "3ef9ac0b4612a5f5e5c9bc7085ef725a2ad9f33c0ec2d73475ca404007cf8fa7"
+    },
+    "resumedBudget": {
+      "budget": {
+        "format_version": 1,
+        "instance_id": "instance-0976612a58664c75431765c9",
+        "scope": "instance:instance-0976612a58664c75431765c9",
+        "task_id": "task-19c2df2501b33aecb8a127b8d15fa0e8c281d60e36172c73974b3a7029f4bf9f",
+        "configuration_sha256": "2d382dbde4b923db65fb5ebbf841d12b45ec0e278c7cab41635dbff782072d55",
+        "limits": {
+          "max_run_elapsed_ms": 900000,
+          "max_steps": 256,
+          "max_step_elapsed_ms": 60000
+        },
+        "started_at_unix_ms": 1794014003615,
+        "deadline_unix_ms": 1794014903615,
+        "last_observed_at_unix_ms": 1794014010198,
+        "charged_elapsed_ms": 2741,
+        "reserved_steps": 2,
+        "active_attempt": null,
+        "execution_may_continue": false,
+        "stopped": null,
+        "stop_expected_sha256": null
+      },
+      "budget_sha256": "e16d326bf04f69d480ced0abc04c5b27635b4fb94ebd1a292f5fde4bf88ddfe0"
+    },
+    "proposalRequest": {
+      "scope": "instance:instance-0976612a58664c75431765c9",
+      "task_id": "task-19c2df2501b33aecb8a127b8d15fa0e8c281d60e36172c73974b3a7029f4bf9f",
+      "attempt_id": "actual-resumed-proposal-72d3b231047f40a98185ebb5319d2929",
+      "max_storage_keys": 1000000,
+      "expected_task_sha256": "62e20741c6862789c243005a39daf4dddd4c4ebd262c299e850e1e70859255fa",
+      "expected_configuration_sha256": "de61345abfd42c0a80fcb2fac06f259adac5db54d6ac8d884afcda97960ab59b"
+    },
+    "proposal": {
+      "contract_version": 1,
+      "purpose": "experimental_proposal",
+      "scope": "instance:instance-0976612a58664c75431765c9",
+      "task_id": "task-19c2df2501b33aecb8a127b8d15fa0e8c281d60e36172c73974b3a7029f4bf9f",
+      "attempt_id": "actual-resumed-proposal-72d3b231047f40a98185ebb5319d2929",
+      "task_sha256": "62e20741c6862789c243005a39daf4dddd4c4ebd262c299e850e1e70859255fa",
+      "packet_sha256": "7e869f594ce389e79b36307bb6ee283e8792c7cec5cefa4c62f83fa0828059e4",
+      "configuration_sha256": "de61345abfd42c0a80fcb2fac06f259adac5db54d6ac8d884afcda97960ab59b",
+      "allowance_sha256": "751ef5dd43162e5ff8be73157e9275474829968f8ac51afe1901352af38c87a6",
+      "controller_binding_id": "swag-custom-bf16",
+      "service_id": "swag-qwen3-coder-intent-20261028",
+      "request_sha256": "b8ea323fecb4fbc953a1dae4e156c205309e749791ee00287538977408218a79",
+      "response_sha256": "edb1a2bd8f9032aaca0d9c31e6f7e8181eb8e545b631d6907907ff01daf4b953",
+      "content_sha256": "f00ec144e84b0093c575418c45be469717d1725ba11736e3f0070c2fa666e6a2",
+      "choice": {
+        "kind": "select",
+        "binding_id": "swag-custom-bf16",
+        "effort": null
+      },
+      "usage": {
+        "prompt_tokens": 2067,
+        "completion_tokens": 20,
+        "total_tokens": 2087
+      },
+      "elapsed_ms": 1893,
+      "http_status": 200
+    },
+    "selectorAttempt": {
+      "attempt": {
+        "attempt_id": "actual-resumed-proposal-72d3b231047f40a98185ebb5319d2929",
+        "ordinal": 3,
+        "status": "accepted",
+        "outcome_sha256": "220862abfb3f65a3e5f2004a4a1973f71dba0ad6f40133eb11e568bc3bdd5c84",
+        "result": null,
+        "endpoint_proposal": {
+          "contract_version": 1,
+          "purpose": "experimental_proposal",
+          "scope": "instance:instance-0976612a58664c75431765c9",
+          "task_id": "task-19c2df2501b33aecb8a127b8d15fa0e8c281d60e36172c73974b3a7029f4bf9f",
+          "attempt_id": "actual-resumed-proposal-72d3b231047f40a98185ebb5319d2929",
+          "task_sha256": "62e20741c6862789c243005a39daf4dddd4c4ebd262c299e850e1e70859255fa",
+          "packet_sha256": "7e869f594ce389e79b36307bb6ee283e8792c7cec5cefa4c62f83fa0828059e4",
+          "configuration_sha256": "de61345abfd42c0a80fcb2fac06f259adac5db54d6ac8d884afcda97960ab59b",
+          "allowance_sha256": "751ef5dd43162e5ff8be73157e9275474829968f8ac51afe1901352af38c87a6",
+          "controller_binding_id": "swag-custom-bf16",
+          "service_id": "swag-qwen3-coder-intent-20261028",
+          "request_sha256": "b8ea323fecb4fbc953a1dae4e156c205309e749791ee00287538977408218a79",
+          "response_sha256": "edb1a2bd8f9032aaca0d9c31e6f7e8181eb8e545b631d6907907ff01daf4b953",
+          "content_sha256": "f00ec144e84b0093c575418c45be469717d1725ba11736e3f0070c2fa666e6a2",
+          "choice": {
+            "kind": "select",
+            "binding_id": "swag-custom-bf16",
+            "effort": null
+          },
+          "usage": {
+            "prompt_tokens": 2067,
+            "completion_tokens": 20,
+            "total_tokens": 2087
+          },
+          "elapsed_ms": 1893,
+          "http_status": 200
+        }
+      }
+    },
+    "workerRequest": {
+      "scope": "instance:instance-0976612a58664c75431765c9",
+      "task_id": "task-19c2df2501b33aecb8a127b8d15fa0e8c281d60e36172c73974b3a7029f4bf9f",
+      "attempt_id": "actual-resumed-worker-4361d2314ff2415e8a809109d5086941",
+      "selection_attempt_id": "actual-resumed-proposal-72d3b231047f40a98185ebb5319d2929",
+      "expected_selection_sha256": "220862abfb3f65a3e5f2004a4a1973f71dba0ad6f40133eb11e568bc3bdd5c84",
+      "expected_task_sha256": "62e20741c6862789c243005a39daf4dddd4c4ebd262c299e850e1e70859255fa",
+      "expected_configuration_sha256": "de61345abfd42c0a80fcb2fac06f259adac5db54d6ac8d884afcda97960ab59b",
+      "max_storage_keys": 1000000,
+      "context": null
+    },
+    "workerOutput": {
+      "contract_version": 1,
+      "scope": "instance:instance-0976612a58664c75431765c9",
+      "task_id": "task-19c2df2501b33aecb8a127b8d15fa0e8c281d60e36172c73974b3a7029f4bf9f",
+      "attempt_id": "actual-resumed-worker-4361d2314ff2415e8a809109d5086941",
+      "selection_attempt_id": "actual-resumed-proposal-72d3b231047f40a98185ebb5319d2929",
+      "selection_sha256": "220862abfb3f65a3e5f2004a4a1973f71dba0ad6f40133eb11e568bc3bdd5c84",
+      "task_sha256": "62e20741c6862789c243005a39daf4dddd4c4ebd262c299e850e1e70859255fa",
+      "configuration_sha256": "de61345abfd42c0a80fcb2fac06f259adac5db54d6ac8d884afcda97960ab59b",
+      "binding_id": "swag-custom-bf16",
+      "service_id": "swag-qwen3-coder-intent-20261028",
+      "packet_sha256": "9cbcfdf49ccd5037294caa9a0a385936afe10bc332504222270e123c86d82cb6",
+      "request_sha256": "697b25bc72a95de94f3ea1c873d526594df8be611f6ad2cdb43d8da49cdbfde7",
+      "response_sha256": "7b3679993c58ad127519f9dce6de52391af2144e0edfe9e00a6e1c2d5e3b220d",
+      "content_sha256": "800d1828b55c74fcfef0da9a9e89cbeaeda3b384d4a325cdc273f2cdaf708a78",
+      "content": "{\n  \"implementation_steps\": [\n    \"Add a new `task-budget-resume` operation to handle resuming tasks from a known stopped state without resetting effort.\",\n    \"Update the task state machine to support transitioning from failed/cancelled to resumed states while preserving original metadata.\",\n    \"Integrate the resume logic into the existing budget management flow to ensure no new admission is triggered during the resume process.\"\n  ],\n  \"verification_steps\": [\n    \"Confirm that a task in a stopped state can be resumed using the new `task-budget-resume` operation without resetting effort or deadline.\",\n    \"Verify that active or uncertain attempts remain denied after a successful resume operation.\",\n    \"Validate that the original attempt history and repetition counts are preserved through the resume transition.\"\n  ],\n  \"unresolved_questions\": [\n    \"Should the resume operation also restore previous provider outcomes if they are known and stable?\",\n    \"How should the system handle cases where the original task's deadline has passed during the stop period?\",\n    \"What is the expected behavior when attempting to resume a task that has been modified externally since its last known good state?\"\n  ]\n}",
+      "read": {
+        "runtime_manifest_sha256": "d3be260b24ac066846adb2a92bd06766c906c285d7feb7bd92851eb2ffe95678",
+        "runtime_cursor": 12,
+        "schema_revision": 3,
+        "catalogue_revision": 0
+      },
+      "context": null,
+      "usage": {
+        "prompt_tokens": 1563,
+        "completion_tokens": 229,
+        "total_tokens": 1792
+      },
+      "elapsed_ms": 17161,
+      "http_status": 200
+    },
+    "workerAttempt": {
+      "attempt": {
+        "attempt_id": "actual-resumed-worker-4361d2314ff2415e8a809109d5086941",
+        "ordinal": 4,
+        "status": "accepted",
+        "outcome_sha256": "81766460465ead2c805d8a3a4850abf8481c01a62aa3830c96b386352ca6e61f",
+        "result": null,
+        "worker_output": {
+          "contract_version": 1,
+          "scope": "instance:instance-0976612a58664c75431765c9",
+          "task_id": "task-19c2df2501b33aecb8a127b8d15fa0e8c281d60e36172c73974b3a7029f4bf9f",
+          "attempt_id": "actual-resumed-worker-4361d2314ff2415e8a809109d5086941",
+          "selection_attempt_id": "actual-resumed-proposal-72d3b231047f40a98185ebb5319d2929",
+          "selection_sha256": "220862abfb3f65a3e5f2004a4a1973f71dba0ad6f40133eb11e568bc3bdd5c84",
+          "task_sha256": "62e20741c6862789c243005a39daf4dddd4c4ebd262c299e850e1e70859255fa",
+          "configuration_sha256": "de61345abfd42c0a80fcb2fac06f259adac5db54d6ac8d884afcda97960ab59b",
+          "binding_id": "swag-custom-bf16",
+          "service_id": "swag-qwen3-coder-intent-20261028",
+          "packet_sha256": "9cbcfdf49ccd5037294caa9a0a385936afe10bc332504222270e123c86d82cb6",
+          "request_sha256": "697b25bc72a95de94f3ea1c873d526594df8be611f6ad2cdb43d8da49cdbfde7",
+          "response_sha256": "7b3679993c58ad127519f9dce6de52391af2144e0edfe9e00a6e1c2d5e3b220d",
+          "content_sha256": "800d1828b55c74fcfef0da9a9e89cbeaeda3b384d4a325cdc273f2cdaf708a78",
+          "content": "{\n  \"implementation_steps\": [\n    \"Add a new `task-budget-resume` operation to handle resuming tasks from a known stopped state without resetting effort.\",\n    \"Update the task state machine to support transitioning from failed/cancelled to resumed states while preserving original metadata.\",\n    \"Integrate the resume logic into the existing budget management flow to ensure no new admission is triggered during the resume process.\"\n  ],\n  \"verification_steps\": [\n    \"Confirm that a task in a stopped state can be resumed using the new `task-budget-resume` operation without resetting effort or deadline.\",\n    \"Verify that active or uncertain attempts remain denied after a successful resume operation.\",\n    \"Validate that the original attempt history and repetition counts are preserved through the resume transition.\"\n  ],\n  \"unresolved_questions\": [\n    \"Should the resume operation also restore previous provider outcomes if they are known and stable?\",\n    \"How should the system handle cases where the original task's deadline has passed during the stop period?\",\n    \"What is the expected behavior when attempting to resume a task that has been modified externally since its last known good state?\"\n  ]\n}",
+          "read": {
+            "runtime_manifest_sha256": "d3be260b24ac066846adb2a92bd06766c906c285d7feb7bd92851eb2ffe95678",
+            "runtime_cursor": 12,
+            "schema_revision": 3,
+            "catalogue_revision": 0
+          },
+          "context": null,
+          "usage": {
+            "prompt_tokens": 1563,
+            "completion_tokens": 229,
+            "total_tokens": 1792
+          },
+          "elapsed_ms": 17161,
+          "http_status": 200
+        }
+      }
+    },
+    "budget": {
+      "budget": {
+        "format_version": 1,
+        "instance_id": "instance-0976612a58664c75431765c9",
+        "scope": "instance:instance-0976612a58664c75431765c9",
+        "task_id": "task-19c2df2501b33aecb8a127b8d15fa0e8c281d60e36172c73974b3a7029f4bf9f",
+        "configuration_sha256": "2d382dbde4b923db65fb5ebbf841d12b45ec0e278c7cab41635dbff782072d55",
+        "limits": {
+          "max_run_elapsed_ms": 900000,
+          "max_steps": 256,
+          "max_step_elapsed_ms": 60000
+        },
+        "started_at_unix_ms": 1794014003615,
+        "deadline_unix_ms": 1794014903615,
+        "last_observed_at_unix_ms": 1794014029573,
+        "charged_elapsed_ms": 21855,
+        "reserved_steps": 4,
+        "active_attempt": null,
+        "execution_may_continue": false,
+        "stopped": null,
+        "stop_expected_sha256": null
+      },
+      "budget_sha256": "6509e944d0d94d9ea932839321f2d1ad6f615c8acf256156556d45bb69333c6c"
+    }
+  },
+  "ownedServersStopped": true,
+  "modelQualityQualified": false,
+  "trainingDataCreated": false
+}

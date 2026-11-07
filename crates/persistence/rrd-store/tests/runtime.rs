@@ -44,7 +44,7 @@ fn commit(expected_cursor: u64, scope: &str) -> RuntimeCommit {
             },
             RuntimeMutation::Claim {
                 claim: Claim::new(
-                    Subject::new("runtime:p1").unwrap(),
+                    Subject::new("runtime-p1").unwrap(),
                     Predicate::new("status").unwrap(),
                     "verified",
                     100,
@@ -103,7 +103,7 @@ fn assert_schema_free_claim_contract(engine: &dyn StorageEngine) {
             expected_cursor: 0,
             mutations: vec![RuntimeMutation::Claim {
                 claim: Claim::new(
-                    Subject::new("runtime:claim-only").unwrap(),
+                    Subject::new("runtime-claim-only").unwrap(),
                     Predicate::new("status").unwrap(),
                     "verified",
                     10,

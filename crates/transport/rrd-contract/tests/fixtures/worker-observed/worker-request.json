@@ -1,0 +1,11 @@
+{
+  "scope": "instance:instance-c5087832e97c133440d7093b",
+  "task_id": "task-6d8f89bf1ea1c7ab1c69d86680f3c8f90ac5f040caf9899b2cb85d3300ebeb6f",
+  "attempt_id": "actual-worker-3ee68d9aac0e4fd397b0ad67c55e8035",
+  "selection_attempt_id": "actual-proposal-a5dbf20e12ad44ec85dc41c4850f0df6",
+  "expected_selection_sha256": "da84be7a2c20e2fcba4442cea9fd0d7836dcf2e5529b89290b4f2cbdd83864f5",
+  "expected_task_sha256": "fdaf0ca65ccd86b6e058ec054645d43d0f3f78356038cc89a4ad61934ddf0db7",
+  "expected_configuration_sha256": "3d5f5e982b106e7f8023b128181a020ed0671e7f2405666e5a3312a1acddb3b0",
+  "max_storage_keys": 1000000,
+  "context": null
+}

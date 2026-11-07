@@ -192,11 +192,11 @@
     "nodes": 4,
     "scope": "instance:vector-golden",
     "stamp": {
-      "artifact_digest": "ca292103f9cfc9efb3e57989fc4c87dcc3d5a9b9f2ba06df209dda0d8c1a6dd3",
-      "config_digest": "229d146576a37ed2a6268dc9a523d1d49fc69f1380d70624ee353a3a3deabf96",
+      "artifact_digest": "8c51a7e08e3dec0c923d0caaaaa699989061f5c6bab99777f5a2b06f78e46bbd",
+      "config_digest": "7f8bd484f8ecb9b51d54d4e2f216ca662568952c8958a6d2793ff92bcaa51c18",
       "contract_version": 1,
       "generation": 1,
-      "id": "vector:hnsw:golden",
+      "id": "vector-hnsw-golden",
       "source_cursor": 4,
       "state": "ready"
     }
@@ -248,11 +248,11 @@
     "minimum_cursor": 0,
     "scope": "instance:vector-golden",
     "stamp": {
-      "artifact_digest": "5e710c26bdd941ad94d918a4e6783e9c5a6ac9bc0aece4e4eccb11d29ca29300",
-      "config_digest": "fb9ba3b9a0879da2ba42f3ed3076e2cd80e19c6d803e5586fdfdf48c579f44c3",
+      "artifact_digest": "7956af04418abc4ddf68c28a776943da08a8d3d6fba4786ee76ab122f03babe8",
+      "config_digest": "294368d77d1b789ce4f127f7988c45f3befb26103e2ff3b3fe594ca6854dbc9f",
       "contract_version": 1,
       "generation": 1,
-      "id": "vector:exact:golden",
+      "id": "vector-exact-golden",
       "source_cursor": 4,
       "state": "ready"
     }

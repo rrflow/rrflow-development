@@ -1,6 +1,6 @@
 // Generated from rrd-contract; do not edit.
-// OpenAPI SHA-256: 1c508a4b2819d4470e6717a304f9990595da25ed09ef729d5fa0b76324bc2975
-export const ENDPOINT_OPENAPI_DOCUMENT_SHA256 = "1c508a4b2819d4470e6717a304f9990595da25ed09ef729d5fa0b76324bc2975" as const;
+// OpenAPI SHA-256: 5a14cb9e11a001542a863b295990e27d58a21b0b5d98da183189f09d5869d817
+export const ENDPOINT_OPENAPI_DOCUMENT_SHA256 = "5a14cb9e11a001542a863b295990e27d58a21b0b5d98da183189f09d5869d817" as const;
 
 export const endpoints = {
   "attunement-cancel": {
@@ -339,6 +339,12 @@ export const endpoints = {
     "authentication": "session_bearer",
     "mutation": false
   },
+  "task-budget-resume": {
+    "method": "POST",
+    "path": "/v1/tasks/budget/resume",
+    "authentication": "session_bearer",
+    "mutation": true
+  },
   "task-budget-stop": {
     "method": "POST",
     "path": "/v1/tasks/budget/stop",
@@ -375,6 +381,12 @@ export const endpoints = {
     "authentication": "session_bearer",
     "mutation": false
   },
+  "task-worker-execute": {
+    "method": "POST",
+    "path": "/v1/tasks/worker/execute",
+    "authentication": "session_bearer",
+    "mutation": true
+  },
   "transaction-begin": {
     "method": "POST",
     "path": "/v1/transactions",
@@ -410,6 +422,24 @@ export const endpoints = {
     "path": "/v1/vector/collections/list",
     "authentication": "session_bearer",
     "mutation": false
+  },
+  "vector-index-ensure": {
+    "method": "POST",
+    "path": "/v1/vector/indexes/ensure",
+    "authentication": "session_bearer",
+    "mutation": true
+  },
+  "vector-payload-index-delete": {
+    "method": "POST",
+    "path": "/v1/vector/payload-indexes/delete",
+    "authentication": "session_bearer",
+    "mutation": true
+  },
+  "vector-payload-index-ensure": {
+    "method": "POST",
+    "path": "/v1/vector/payload-indexes/ensure",
+    "authentication": "session_bearer",
+    "mutation": true
   },
   "vector-point-retrieve": {
     "method": "POST",

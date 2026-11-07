@@ -21,6 +21,8 @@ use std::collections::{BTreeMap, BTreeSet};
 
 #[path = "query/adjacency_reads.rs"]
 mod adjacency_reads;
+#[path = "query/identity_consistency.rs"]
+mod identity_consistency;
 #[path = "query/identity_ranges.rs"]
 mod identity_ranges;
 #[path = "query/identity_reads.rs"]
@@ -156,7 +158,7 @@ fn fixture_commit() -> RuntimeCommit {
             },
             RuntimeMutation::Claim {
                 claim: Claim::new(
-                    Subject::new("document:a").unwrap(),
+                    Subject::new("document-a").unwrap(),
                     Predicate::new("status").unwrap(),
                     "ready",
                     30,
@@ -313,7 +315,7 @@ fn seed_historical_corrections<E: StorageEngine>(engine: &E) {
                 },
                 RuntimeMutation::Claim {
                     claim: Claim::new(
-                        Subject::new("document:a").unwrap(),
+                        Subject::new("document-a").unwrap(),
                         Predicate::new("status").unwrap(),
                         "corrected",
                         30,
@@ -823,6 +825,10 @@ fn all_source_families_execute_at_explicit_time() {
     let engine = RrflowMxStore::new();
     engine.runtime().commit(&fixture_commit()).unwrap();
     let catalog = fixture_catalog(&engine);
+    let claim_identity = rrd_core::result_identity::claim(
+        &Subject::new("document-a").unwrap(),
+        &Predicate::new("status").unwrap(),
+    );
     for (text, identity) in [
         (
             "FROM relation:depends_on AT VALID 100 KNOWN HEAD WHERE id = \"a-b\" PROJECT id",
@@ -834,11 +840,11 @@ fn all_source_families_execute_at_explicit_time() {
         ),
         (
             "FROM claim:status AT VALID 100 KNOWN HEAD PROJECT subject, object",
-            "claim:document:a:status",
+            claim_identity.as_str(),
         ),
         (
             "FROM series:metric AT VALID 100 KNOWN HEAD WHERE series_id = \"latency\" PROJECT observed_at, value",
-            "series:metric:latency:100:latency-100",
+            "series:sample:latency-100",
         ),
         (
             "FROM geo:location AT VALID 100 KNOWN HEAD WHERE subject_id = \"a\" PROJECT geometry_kind, longitude, latitude",
@@ -879,7 +885,7 @@ fn bound_event_cursor_uses_one_typed_identity_range_on_every_engine() {
             sources.as_slice(),
             [RuntimeVersionedSource::Identity { model, reference }]
                 if model.is_event_like()
-                    && reference == &RuntimeRef::new("tool_result", "cursor:5").unwrap()
+                    && reference == &RuntimeRef::parse("tool_result", "cursor:5").unwrap()
         ));
         assert_eq!(
             physical
@@ -1130,7 +1136,7 @@ fn event_queries_honor_cursor_typed_retirement_at_valid_time() {
             mutations: vec![RuntimeMutation::Retire {
                 retirement: RuntimeRetirement {
                     model: RuntimeLogicalModel::Event,
-                    reference: RuntimeRef::new("tool_result", "cursor:5").unwrap(),
+                    reference: RuntimeRef::parse("tool_result", "cursor:5").unwrap(),
                     effective_at: 101,
                 },
             }],
