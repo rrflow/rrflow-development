@@ -1312,6 +1312,12 @@ The [corrected-cadence 4k characterization](../../evidence/change-journals/gate-
 
 The [native harness real-error repair](../../evidence/change-journals/gate-c/c-07-native-harness-real-errors.md) retains macOS installed-domain-crash runs [40996295111](https://github.com/rrflow/rrflow-development/actions/runs/40996295111), [41005095969](https://github.com/rrflow/rrflow-development/actions/runs/41005095969), [41088508920](https://github.com/rrflow/rrflow-development/actions/runs/41088508920), [41274684626](https://github.com/rrflow/rrflow-development/actions/runs/41274684626) and [41323461134](https://github.com/rrflow/rrflow-development/actions/runs/41323461134), each failing with `command output did not close`. Real-pipe tests on Windows and Linux show a non-zero native command with a held output stream losing its text, and the harness now reports its status and text. All 10 retained `Resource busy` jobs ran heads without `5ab909b0`, which added `-verbose`, and all 5 pipe jobs ran heads with it. That `-verbose` turned one failure into the other remains an unproven hypothesis: these runs never recorded the command or its exit status. `Terminate orphan process ... (diskimages-help)` follows 14 of those 15 jobs and none of 7 other retained macOS jobs; that is correlation only. The cause of `Resource busy` remains unknown, the macOS job can still fail, and this note changes no status.
 
+
+A [100,000-record ARM characterization](../../evidence/change-journals/gate-c/c-07-arm100k-unrequested-backup-20261107.md) verified post-reopen readback, then failed because the measured driver started backup even though the frozen campaign did not request that lane. The warmup also had failures and latency overruns. Preserve this result and repair lane admission; it does not qualify C-07 or prove that full-size backup meets its deadline.
+
+
+The [retained ARM conflict analysis](../../evidence/change-journals/gate-c/c-07-arm100k-conflict-analysis-20261107.md) binds both warmup rejection traces to client intervals and overlapping acknowledged operations. Those intervals do not prove commit order or cause; correlated engine evidence and a separately reviewed concurrency decision remain open.
+
 The [native command ownership investigation](../../evidence/change-journals/gate-c/c-07-native-command-ownership-20261107.md)
 records two further macOS `hdiutil create` failures and a controlled Linux
 reproduction in which the wrapper leaves its test-owned stderr holder alive.
