@@ -278,7 +278,7 @@ impl TaskAssessmentPacket {
         if self.practice_text.trim().is_empty()
             || self.practice_text.len() as u64 > MAX_ASSESSMENT_PRACTICE_BYTES
             || sha256_bytes(self.practice_text.as_bytes()) != self.practice_sha256
-            || self.source_content.as_bytes().len() as u64 > MAX_ROUTE_REQUEST_BYTES
+            || self.source_content.len() as u64 > MAX_ROUTE_REQUEST_BYTES
             || sha256_bytes(self.source_content.as_bytes()) != self.source.content_sha256
         {
             return invalid("assessment packet input digest or bound mismatch");

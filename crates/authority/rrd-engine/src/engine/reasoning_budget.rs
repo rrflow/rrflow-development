@@ -774,6 +774,39 @@ impl RrdEngine {
     }
 }
 
+fn validate_attempt_digest(value: &str) -> Result<()> {
+    if value.len() != 64
+        || !value
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+    {
+        return Err(ServiceError::Contract(
+            "task attempt identity must be a lowercase SHA-256 digest".into(),
+        ));
+    }
+    Ok(())
+}
+
+pub(super) struct ActiveTaskCancellation<'a> {
+    pub engine: &'a RrdEngine,
+    pub key: String,
+    pub attempt_id: CorrelationId,
+}
+impl Drop for ActiveTaskCancellation<'_> {
+    fn drop(&mut self) {
+        if let Ok(mut active) = self.engine.active_task_cancellations.lock() {
+            // Completion may have admitted the next attempt before this guard
+            // runs. An old guard must never unregister the next attempt's Stop.
+            if active
+                .get(&self.key)
+                .is_some_and(|(id, _)| id == &self.attempt_id)
+            {
+                active.remove(&self.key);
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod legacy_attempt_record_tests {
     use super::{AttemptOutcome, AttemptRecord};
@@ -805,38 +838,5 @@ mod legacy_attempt_record_tests {
             .as_object()
             .unwrap()
             .contains_key("assessment_output"));
-    }
-}
-
-fn validate_attempt_digest(value: &str) -> Result<()> {
-    if value.len() != 64
-        || !value
-            .bytes()
-            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
-    {
-        return Err(ServiceError::Contract(
-            "task attempt identity must be a lowercase SHA-256 digest".into(),
-        ));
-    }
-    Ok(())
-}
-
-pub(super) struct ActiveTaskCancellation<'a> {
-    pub engine: &'a RrdEngine,
-    pub key: String,
-    pub attempt_id: CorrelationId,
-}
-impl Drop for ActiveTaskCancellation<'_> {
-    fn drop(&mut self) {
-        if let Ok(mut active) = self.engine.active_task_cancellations.lock() {
-            // Completion may have admitted the next attempt before this guard
-            // runs. An old guard must never unregister the next attempt's Stop.
-            if active
-                .get(&self.key)
-                .is_some_and(|(id, _)| id == &self.attempt_id)
-            {
-                active.remove(&self.key);
-            }
-        }
     }
 }

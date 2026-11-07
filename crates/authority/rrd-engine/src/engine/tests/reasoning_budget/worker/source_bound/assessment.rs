@@ -10,6 +10,13 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 struct AssessmentClock(AtomicU64);
 
+struct AssessmentPolicyOptions<'a> {
+    allow_network: bool,
+    allow_source_export: bool,
+    allow_context_export: bool,
+    system_prompt: &'a str,
+}
+
 impl AssessmentClock {
     fn at(at: u64) -> Self {
         Self(AtomicU64::new(at))
@@ -63,10 +70,12 @@ fn publish_assessment_policy_with_prompt(
         &fixture.lease,
         &mut fixture.now,
         &mut fixture.selection,
-        allow_network,
-        allow_source_export,
-        allow_context_export,
-        system_prompt,
+        AssessmentPolicyOptions {
+            allow_network,
+            allow_source_export,
+            allow_context_export,
+            system_prompt,
+        },
     )
 }
 
@@ -75,10 +84,7 @@ fn publish_assessment_policy_with_prompt_for(
     lease: &SessionLease,
     fixture_now: &mut u64,
     selection: &mut EndpointSelectionRequest,
-    allow_network: bool,
-    allow_source_export: bool,
-    allow_context_export: bool,
-    system_prompt: &str,
+    options: AssessmentPolicyOptions<'_>,
 ) -> EndpointConfiguration {
     let read_at = *fixture_now + 1;
     let current = engine
@@ -108,10 +114,10 @@ fn publish_assessment_policy_with_prompt_for(
         .max_input_bytes;
     let assessment_policy = EndpointAssessmentPolicy {
         contract_version: TASK_ASSESSMENT_VERSION,
-        allow_network,
-        allow_source_export,
-        allow_context_export,
-        system_prompt: system_prompt.into(),
+        allow_network: options.allow_network,
+        allow_source_export: options.allow_source_export,
+        allow_context_export: options.allow_context_export,
+        system_prompt: options.system_prompt.into(),
         generation: EndpointGenerationSettings {
             maximum_output_tokens: 256,
             token_parameter: EndpointTokenParameter::MaxTokens,
@@ -1669,10 +1675,12 @@ fn current_configuration_change_during_assessment_withholds_output_without_retry
             &fixture.lease,
             &mut fixture.now,
             &mut fixture.selection,
-            true,
-            true,
-            true,
-            "Use the currently approved alternate advisory rubric.",
+            AssessmentPolicyOptions {
+                allow_network: true,
+                allow_source_export: true,
+                allow_context_export: true,
+                system_prompt: "Use the currently approved alternate advisory rubric.",
+            },
         );
         assert_ne!(
             changed.sha256().unwrap(),

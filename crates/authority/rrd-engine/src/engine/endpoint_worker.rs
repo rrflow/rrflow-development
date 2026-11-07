@@ -58,6 +58,14 @@ struct WorkerAuthority {
     guards: Vec<(AttemptAuthorityGuard, TaskAttemptInvalidation)>,
 }
 
+struct SelectedSourceReadbackContext<'a> {
+    session: &'a CorrelationId,
+    token: &'a CorrelationId,
+    now: u64,
+    request_id: &'a str,
+    operation_id: &'a str,
+}
+
 impl RrdEngine {
     pub(in crate::engine) fn authorize_worker_source_readback(
         &self,
@@ -69,12 +77,14 @@ impl RrdEngine {
         operation_id: &str,
     ) -> Result<()> {
         self.authorize_selected_source_readback(
-            session,
-            token,
+            SelectedSourceReadbackContext {
+                session,
+                token,
+                now,
+                request_id,
+                operation_id,
+            },
             source,
-            now,
-            request_id,
-            operation_id,
             false,
         )
     }
@@ -89,45 +99,43 @@ impl RrdEngine {
         operation_id: &str,
     ) -> Result<()> {
         self.authorize_selected_source_readback(
-            session,
-            token,
+            SelectedSourceReadbackContext {
+                session,
+                token,
+                now,
+                request_id,
+                operation_id,
+            },
             source,
-            now,
-            request_id,
-            operation_id,
             true,
         )
     }
 
     fn authorize_selected_source_readback(
         &self,
-        session: &CorrelationId,
-        token: &CorrelationId,
+        context: SelectedSourceReadbackContext<'_>,
         source: &TaskWorkerSourceProvenance,
-        now: u64,
-        request_id: &str,
-        operation_id: &str,
         assessment: bool,
     ) -> Result<()> {
         let resource =
             worker_source_resource(&self.instance, &source.project_id, &source.entry_identity)?;
         self.authorize_resource_without_data_policy(
-            session,
-            token,
+            context.session,
+            context.token,
             SecurityAction::ProjectSourceRead,
             &resource,
-            now,
-            request_id,
-            operation_id,
+            context.now,
+            context.request_id,
+            context.operation_id,
         )?;
         self.authorize_resource_without_data_policy(
-            session,
-            token,
+            context.session,
+            context.token,
             SecurityAction::MemoryContextRead,
             &self.instance_resource(),
-            now,
-            request_id,
-            operation_id,
+            context.now,
+            context.request_id,
+            context.operation_id,
         )?;
 
         let configuration = self.load_endpoint_configuration()?.1;

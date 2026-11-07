@@ -25,9 +25,10 @@ preceding selector call. ProjectPlan remains the attunement/replanning owner;
 the client does not create a second plan, scheduler or permission authority.
 [Connectome PR42](https://github.com/rrflow/connectome-development/pull/42)
 publishes that consumer's pre-edit scope on a tree-preserving anchor from merged
-`e74f2ef1a06632e0c70169f3c09aa83669b81977`. It remains draft, without
-implementation, awaiting the tested native candidate and matching SDK/binary
-identities. The planned form derives an explicitly user-authored declaration
+`e74f2ef1a06632e0c70169f3c09aa83669b81977`. It remains draft. Consumer
+implementation is underway against clean native checkpoint
+`24c633161b2dbb05c925bbfd1c38873b9b17297e`; its Rust and installed-desktop
+validation are not yet established. The form derives a user-authored declaration
 from actual entered criteria; it does not claim authenticated SWAG template
 provenance or require users to type internal hashes.
 
@@ -335,8 +336,42 @@ The corrected full `cargo test --locked -p rrd-engine` then passed 456 tests
 across the library and integration suites, with four ignored and no failures;
 the reviewed executable-source hashes were unchanged during that run. Its stdout
 has SHA-256 `41e518897dd0aebc3a09236c965dad254b9ffdbff3d72a87df83d7ca469371f9`.
-Full contract, client, server, installed lifecycle and strict lint/format checks,
-the remaining SDK conformance matrix and candidate/protected CI remain pending.
+Subsequent full contract and server suites passed 180 and 34 tests respectively.
+The default-symbol client build failed before tests with Windows linker
+`LNK1318`, reported as `Unexpected PDB error; LIMIT (12)`. Low free disk space
+was observed, but the precise linker cause was not established. Generated PDBs
+were preserved with verified hashes, and subsequent builds used a fresh target
+with the checked-in Windows CI debug settings: `CARGO_PROFILE_DEV_DEBUG=0`,
+`CARGO_PROFILE_TEST_DEBUG=0`, and `CARGO_BUILD_JOBS=1`.
+
+That configuration linked successfully and exposed an outdated client-test
+expectation that repeated-work resume must fail. The corrected test proves
+successful resume preserves the entire original budget except its stop fields
+and advancing observation clock. Unchanged work then stops before dispatch,
+with no new attempt record. The full client suite passed 31 tests and the full
+installed lifecycle suite passed eight. Their stdout digests are respectively
+`045dfc3d50dc1c8a17047ab980d89fc082b41e9427ac68f9123faca56db38ab9`
+and `f6f75cba28c46bcf775ddbf8742754dcd1ca3549df4dc40f6f1447f126a8338d`.
+These passes do not retroactively turn the default-symbol build into a pass.
+
+Strict lint subsequently required a direct UTF-8 string byte-length call,
+grouping shared source-readback authorization coordinates in a private context
+struct, moving a test module after production items, and grouping test fixture
+options. The reviewed changes preserve the public contract, byte counting and
+authorization ordering. The contract suite again passed 180 tests after its
+cleanup. `cargo clippy --locked -p rrd-contract -p rrd-engine -p rrd-server
+-p rrd-client -p rrflow-cli --all-targets -- -D warnings`, workspace format and
+whitespace checks then passed. The post-cleanup full engine suite passed 456
+tests, with four ignored and no failures, under those CI debug settings. Its
+stdout has SHA-256
+`5c7ede2df07b2ee52c03f30f7f03406d155a54ab5854a02b56568a6e15055713`.
+Root review covered all five cleanup diffs; the independent reviewer additionally
+checked the shared readback context, byte-length change and client recovery
+oracle. No concrete defect was found. Final generated-surface check passed
+82 operations and seven signal projections; workspace format and whitespace
+checks passed again. The complete shared SDK matrix was not run locally because
+Maven is unavailable; required candidate CI must execute it. Candidate/protected
+CI and actual Connectome model assessments remain pending.
 
 A clean tested draft checkpoint and matching binary may support independent
 Connectome draft implementation while broader native validation continues. The
