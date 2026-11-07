@@ -17,6 +17,22 @@ active work remains denied. Installed same-task BF16 recovery, UI composition,
 candidate/dependency landing and the broader project workflow remain required;
 this does not qualify automatic retry or unknown-outcome reconciliation.
 
+The [current installed worker trial](../../evidence/change-journals/gate-g/task-worker-main-installed-live-20261106.md)
+uses real model responses on reconciled source `604c196d`, with native selection
+and worker calls, restart/replay checks and independent recovery without provider
+dispatch. Candidate/protected CI and public UI prompt binding remain open. It
+does not establish source-edit replanning, verified project effects or model
+quality; earlier receipts retain their original source identities.
+
+The [worker/observation reconciliation](../../evidence/change-journals/gate-g/task-worker-observation-main.md)
+composes the worker candidate with landed observation delivery and discovery.
+It retains both configuration policies and native operations. The
+[installed worker/receiver trial](../../evidence/change-journals/gate-g/task-worker-observation-installed.md)
+then proves an actual model selection and worker draft, credential-free recovery,
+and correlated metadata delivery/readback through the local installed receiver.
+Candidate publication and protected CI remain open. This does not supply template
+project effects or close the full development journey.
+
 The [terminal-response repair](../../evidence/change-journals/gate-g/task-worker-terminal-response.md)
 addresses a reproduced completion-classification defect: a matching worker reply
 ending at its token limit was rejected but classified as still possibly running.
@@ -70,6 +86,14 @@ Reuse the task budget, authority guards and authorized context
 for a separately admitted model activity; draft text cannot become a project
 effect, correctness label or training consent. Implementation and real installed
 worker evidence remain pending.
+The [optimized Windows artifact trial](../../evidence/change-journals/repository/controller-testing-bundle-artifact.md)
+passed actual proposal/reopen and three response-fault histories, but exposed a
+real model reliability gap: after configuration invalidation, the fresh provider
+response selected the unsupported effort `observed`. The engine rejected it;
+the success-expecting case failed. Recovery retained two charged steps and
+stopped/uncertain capacity. Preserve this failure for independent review; do not
+repair the response, clear uncertainty or label it qualified routing. Model
+qualification and public uncertainty reconciliation remain open.
 
 The later [installed live histories](../../evidence/change-journals/gate-g/controller-task-proposal-installed-live.md)
 prove a real configured BF16 proposal, restart/replay and guarded completion under

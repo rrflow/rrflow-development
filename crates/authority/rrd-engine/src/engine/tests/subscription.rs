@@ -596,7 +596,7 @@ fn subscription_open_requires_both_subscription_and_stream_permissions() {
 
 #[test]
 fn live_query_subscription_pushes_semantic_delta_on_the_runtime_cursor() {
-    let (_root, engine) = isolated_engine();
+    let (root, engine) = isolated_engine();
     let scope = ScopeId::new(format!("instance:{}", instance())).unwrap();
     let mut registry = RuntimeSchemaRegistry::empty(1, "subscription live query fixture");
     registry
@@ -669,6 +669,7 @@ fn live_query_subscription_pushes_semantic_delta_on_the_runtime_cursor() {
             parameters: BTreeMap::new(),
             budget: rrd_contract::QueryBudget::default(),
             max_delta_rows: 16,
+            result_identity_version: Some(rrd_core::result_identity::RESULT_IDENTITY_VERSION),
         },
         after_cursor: 2,
         batch_size: 1,
@@ -677,6 +678,35 @@ fn live_query_subscription_pushes_semantic_delta_on_the_runtime_cursor() {
         lease_ms: 5_000,
         heartbeat_interval_ms: 100,
     };
+    for version in [None, Some(1)] {
+        let mut invalid = request.clone();
+        let SubscriptionStream::LiveQuery {
+            result_identity_version,
+            ..
+        } = &mut invalid.stream
+        else {
+            unreachable!()
+        };
+        *result_identity_version = version;
+        assert!(matches!(
+            engine.open_subscription(
+                &lease.session_id,
+                &lease.token,
+                &id("invalid-live-open"),
+                &invalid,
+                1_009,
+                "invalid-live-open",
+                "invalid-live-open"
+            ),
+            Err(ServiceError::Subscription(_))
+        ));
+        let key = format!(
+            "server/state/{}/subscription/{}",
+            instance(),
+            invalid.subscription_id.as_str()
+        );
+        assert!(engine.storage.control().get(&key).unwrap().is_none());
+    }
     let opened = engine
         .open_subscription(
             &lease.session_id,
@@ -791,7 +821,7 @@ fn live_query_subscription_pushes_semantic_delta_on_the_runtime_cursor() {
             &lease.session_id,
             &lease.token,
             &SubscriptionAcknowledgement {
-                subscription_id: request.subscription_id,
+                subscription_id: request.subscription_id.clone(),
                 connection_generation: connected.connection_generation,
                 delivery_sequence: batch.delivery_sequence,
                 through_cursor: batch.through_cursor,
@@ -802,4 +832,93 @@ fn live_query_subscription_pushes_semantic_delta_on_the_runtime_cursor() {
         )
         .unwrap();
     assert_eq!(acknowledged.acknowledged_cursor, 4);
+
+    // Model an older durable live subscription without a format acknowledgement.
+    let key = format!(
+        "server/state/{}/subscription/{}",
+        instance(),
+        request.subscription_id.as_str()
+    );
+    let previous = engine.storage.control().get(&key).unwrap().unwrap();
+    let mut legacy: serde_json::Value = serde_json::from_slice(&previous).unwrap();
+    legacy
+        .as_object_mut()
+        .unwrap()
+        .remove("result_identity_version");
+    legacy["stream"]
+        .as_object_mut()
+        .unwrap()
+        .remove("result_identity_version");
+    let legacy_stream: SubscriptionStream =
+        serde_json::from_value(legacy["stream"].clone()).unwrap();
+    let stream_sha = digest::sha256_hex(&serde_json::to_vec(&legacy_stream).unwrap());
+    legacy["stream_sha256"] = stream_sha.clone().into();
+    engine
+        .storage
+        .control()
+        .commit_batch(&[ControlTransition {
+            key: key.clone(),
+            expected: Some(previous),
+            replacement: Some(serde_json::to_vec(&legacy).unwrap()),
+            at: 1_016,
+            actor: "test".into(),
+            action: "test.legacy_subscription".into(),
+            request_id: "legacy".into(),
+            operation_id: "legacy".into(),
+        }])
+        .unwrap();
+    drop(engine);
+    let engine = RrdEngine::open(root.path(), instance(), TOKEN_KEY).unwrap();
+    let mut resume = SubscriptionResume::from_snapshot(&acknowledged);
+    resume.stream_sha256 = stream_sha;
+    let unchanged = engine.storage.control().get(&key).unwrap().unwrap();
+    assert!(matches!(
+        engine.connect_subscription(
+            &lease.session_id,
+            &lease.token,
+            &resume,
+            1_017,
+            "legacy-connect",
+            "legacy-connect"
+        ),
+        Err(ServiceError::Subscription(_))
+    ));
+    assert_eq!(
+        engine.storage.control().get(&key).unwrap().unwrap(),
+        unchanged
+    );
+    assert!(matches!(
+        engine.acknowledge_subscription(
+            &lease.session_id,
+            &lease.token,
+            &SubscriptionAcknowledgement {
+                subscription_id: request.subscription_id.clone(),
+                connection_generation: connected.connection_generation,
+                delivery_sequence: 1,
+                through_cursor: 4
+            },
+            1_017,
+            "legacy-ack",
+            "legacy-ack"
+        ),
+        Err(ServiceError::Subscription(_))
+    ));
+    assert_eq!(
+        engine.storage.control().get(&key).unwrap().unwrap(),
+        unchanged
+    );
+    let closed = engine
+        .close_subscription(
+            &lease.session_id,
+            &lease.token,
+            &id("legacy-close"),
+            &CloseSubscription {
+                subscription_id: request.subscription_id,
+            },
+            1_018,
+            "legacy-close",
+            "legacy-close",
+        )
+        .unwrap();
+    assert_eq!(closed.subscription.status, SubscriptionStatus::Closed);
 }

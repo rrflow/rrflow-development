@@ -69,6 +69,10 @@ fn workspace_packages_use_the_canonical_grouped_layout() {
             "rrd-operator-knowledge",
             "crates/operations/rrd-operator-knowledge/Cargo.toml",
         ),
+        (
+            "rrd-observation",
+            "crates/operations/rrd-observation/Cargo.toml",
+        ),
         ("rrflow-eval", "crates/evaluation/rrflow-eval/Cargo.toml"),
     ]
     .into_iter()
@@ -141,6 +145,7 @@ fn engine_has_exact_composition() {
             "rrd-cluster",
             "rrd-core",
             "rrd-inference",
+            "rrd-observation",
             "rrd-operator-knowledge",
             "rrd-query",
             "rrd-store",
@@ -158,6 +163,39 @@ fn daemon_depends_only_on_engine_and_contract() {
         names(&["rrd-contract", "rrd-engine"]),
         "rrd-server production workspace dependencies",
     );
+}
+
+#[test]
+fn observation_transport_has_no_authority_or_storage_dependency() {
+    let metadata = workspace_metadata();
+    assert_exact(
+        &metadata.packages["rrd-observation"].all,
+        names(&[
+            "rrd-contract",
+            "rrd-core",
+            "serde",
+            "serde_json",
+            "chrono",
+            "ureq",
+        ]),
+        "observation transport is a stateless codec and bounded HTTP adapter",
+    );
+    let consumers = metadata
+        .dependency_inputs
+        .iter()
+        .filter(|dependency| dependency.name == "rrd-observation")
+        .map(|dependency| {
+            (
+                dependency.owner.as_str(),
+                dependency.kind.as_str(),
+                dependency.optional,
+            )
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(consumers, vec![("rrd-engine", "normal", true)]);
+    let engine = &metadata.packages["rrd-engine"];
+    assert!(engine.features["full"].contains("dep:rrd-observation"));
+    assert!(!engine.features["edge"].contains("dep:rrd-observation"));
 }
 
 #[test]
@@ -196,6 +234,7 @@ fn outward_consumers_cannot_bypass_the_engine_boundary() {
         "rrd-core",
         "rrd-inference",
         "rrd-lsm",
+        "rrd-observation",
         "rrd-query",
         "rrd-operator-knowledge",
         "rrd-store",
@@ -225,6 +264,7 @@ fn outward_product_sources_do_not_import_physical_components() {
         "rrd_graph",
         "rrd_inference",
         "rrd_lsm",
+        "rrd_observation",
         "rrd_operator_knowledge",
         "rrd_query",
         "rrd_security",

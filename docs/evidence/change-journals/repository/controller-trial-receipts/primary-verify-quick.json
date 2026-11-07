@@ -1,0 +1,136 @@
+{
+  "status": "passed",
+  "product_version": "1.0.0",
+  "instance_id": "instance-ec998e8c3e188fa4a6f4b21c",
+  "plan_sha256": "9e86da39f880f22a16e940c30791abc645a0ea3f59c1b4e20da65d14bd531a28",
+  "project_inventory_sha256": "518749698128ef2afbb507e5483cd97fb80bcb1be5544560c826c0b2f026c24c",
+  "attunement_source_current": true,
+  "runtime_manifest_sha256": "99019458fbf4043dd9e3784b00633275dc7f7cf92b126bc693d7941fe639c8c9",
+  "runtime_cursor": 7,
+  "control_journal_sequence": 106,
+  "clock": {
+    "status": "current",
+    "observation": {
+      "format_version": 1,
+      "source": "host_system_time",
+      "trust": "unverified",
+      "observed_at_unix_ms": 1793321112296
+    },
+    "failure": null,
+    "anchor": {
+      "format_version": 1,
+      "source": "host_system_time",
+      "trust": "unverified",
+      "observed_at_unix_ms": 1793321072298
+    },
+    "maximum_rollback_ms": 0,
+    "rollback_ms": 0
+  },
+  "physical": {
+    "physical": {
+      "application_format": 5931886492748099633,
+      "current_manifest_sha256": "2eec289f07208510c69c1954a092936ebaff6289e3cce4db6cbdfe36b35d4239",
+      "current_generation": 1,
+      "durable_sequence": 0,
+      "visible_sequence": 376,
+      "wal_valid_bytes": 567085,
+      "manifest_lineage": [
+        "2eec289f07208510c69c1954a092936ebaff6289e3cce4db6cbdfe36b35d4239"
+      ],
+      "reachable_segments": [],
+      "files": [
+        {
+          "relative_path": "CURRENT",
+          "bytes": 191,
+          "sha256": "0e97130026bb5cc23131cd6ce0db74ec26a637e3442cbfaee8d84a8484d37bb7"
+        },
+        {
+          "relative_path": "MANIFEST.LOCK",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "relative_path": "manifests/2eec289f07208510c69c1954a092936ebaff6289e3cce4db6cbdfe36b35d4239.json",
+          "bytes": 239,
+          "sha256": "f805b8df5fba98ea538fdb52d8f2d2dcddff57ef0f98c71eeb1004307514c580"
+        },
+        {
+          "relative_path": "wal/00000000000000000001.wal",
+          "bytes": 567085,
+          "sha256": "f52a335aabddb9f883dcaf0af092a2d2bca72916d476cf19ef4df14d84264584"
+        }
+      ],
+      "total_bytes": 567515
+    },
+    "claim_sequence": 0,
+    "runtime_cursor": 7,
+    "control_journal_sequence": 106
+  },
+  "checks": [
+    {
+      "id": "locator",
+      "passed": true,
+      "evidence_sha256": "72b32994bc22c1155932e5031d7b8f4a18dc549a3c8a2ff4a9730be6944e0238"
+    },
+    {
+      "id": "profile",
+      "passed": true,
+      "evidence_sha256": "8931c327e315c1d8f5676c4675c224ba9a722eeb09da46147e001c32fc91e324"
+    },
+    {
+      "id": "executable",
+      "passed": true,
+      "evidence_sha256": "fb9b5727e6ea0de668c723e63d008bfd976a02ca020aad218b122b61142afee0"
+    },
+    {
+      "id": "project-inventory",
+      "passed": true,
+      "evidence_sha256": "518749698128ef2afbb507e5483cd97fb80bcb1be5544560c826c0b2f026c24c"
+    },
+    {
+      "id": "physical",
+      "passed": true,
+      "evidence_sha256": "2452163794fc702a86f7e3e1d54784e5aefb970c09e9b97eff1ee14361f89435"
+    },
+    {
+      "id": "installed-record",
+      "passed": true,
+      "evidence_sha256": "e3b8b6f32bff27c27e97efdca2ed76e5a6d38054b69f8d2a0fd749390eb0c7b4"
+    },
+    {
+      "id": "configuration",
+      "passed": true,
+      "evidence_sha256": "2d382dbde4b923db65fb5ebbf841d12b45ec0e278c7cab41635dbff782072d55"
+    },
+    {
+      "id": "credentials",
+      "passed": true,
+      "evidence_sha256": "1b181e798f24c2a7ddd82629b6574399c2bb62a113133b0954de30765c2cf75f"
+    },
+    {
+      "id": "security",
+      "passed": true,
+      "evidence_sha256": "4f4509749b22772c57a5413e1bd92d200b0b2c60250b6bce20051ddcccbf6386"
+    },
+    {
+      "id": "runtime",
+      "passed": true,
+      "evidence_sha256": "99019458fbf4043dd9e3784b00633275dc7f7cf92b126bc693d7941fe639c8c9"
+    },
+    {
+      "id": "attunement",
+      "passed": true,
+      "evidence_sha256": "89ae94d8fe1bcd02b19d2f6aa13c28974a39f772db649c376e685d68151c33b5"
+    },
+    {
+      "id": "checkpoint",
+      "passed": true,
+      "evidence_sha256": "8d4c08fd6f7f3f9c3de4d4942ca62620ab19d043db7e9eed419c057494c9a4ec"
+    },
+    {
+      "id": "clock",
+      "passed": true,
+      "evidence_sha256": "181fcc1c6e934bf6191165e698f17f3130c8117534d3fbbe8ebe5f8b4d6afa68"
+    }
+  ]
+}

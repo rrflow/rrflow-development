@@ -1,4 +1,5 @@
 //! Admission probes, not model-quality observations or learning records.
+mod observation;
 mod resume;
 mod terminal_response;
 use super::*;
@@ -88,6 +89,7 @@ fn admitted_fixture(
         name: profile.name,
         bindings,
         selection_policy: Some(selector.clone()),
+        observation_policy: None,
         worker_policy: Some(EndpointWorkerPolicy {
             contract_version: 1,
             allow_network: true,
@@ -166,6 +168,10 @@ fn admitted_fixture(
 }
 
 fn read_wire(listener: &TcpListener) -> (std::net::TcpStream, Vec<u8>) {
+    read_wire_for(listener, "/v1/chat/completions")
+}
+
+fn read_wire_for(listener: &TcpListener, path: &str) -> (std::net::TcpStream, Vec<u8>) {
     // A bounded accept prevents a failed admission from hanging the test process.
     listener.set_nonblocking(true).unwrap();
     let deadline = Instant::now() + Duration::from_secs(15);
@@ -192,7 +198,7 @@ fn read_wire(listener: &TcpListener) -> (std::net::TcpStream, Vec<u8>) {
         assert!(head.len() < 8192);
     }
     let head = String::from_utf8(head).unwrap();
-    assert!(head.starts_with("POST /v1/chat/completions HTTP/1.1"));
+    assert!(head.starts_with(&format!("POST {path} HTTP/1.1")));
     let length: usize = head
         .lines()
         .find_map(|line| {
@@ -504,6 +510,7 @@ fn replace_profile(
         name: profile.name,
         bindings: profile.bindings,
         selection_policy: profile.selection_policy,
+        observation_policy: profile.observation_policy,
         worker_policy: profile.worker_policy,
     };
     edit(&mut input);

@@ -1,13 +1,14 @@
 # Generated from rrd-contract; do not edit.
-# OpenAPI SHA-256: 1344d5a23f04dc0a2cd9efb8743caaa945be0e3691c61868d2577d3f419c2139
+# OpenAPI SHA-256: e6bd6b60e12398a5ee5ddaf23f846e74288bc128f91acc561d9099381072d80f
 from typing import Final, Literal, TypedDict
 
 ENDPOINT_OPENAPI_DOCUMENT_SHA256: Final[str] = (
-    "1344d5a23f04dc0a2cd9efb8743caaa945be0e3691c61868d2577d3f419c2139"
+    "e6bd6b60e12398a5ee5ddaf23f846e74288bc128f91acc561d9099381072d80f"
 )
 
 OperationId = Literal[
     "attunement-cancel",
+    "attunement-job-list",
     "attunement-pause",
     "attunement-read",
     "attunement-receipt-read",
@@ -43,6 +44,9 @@ OperationId = Literal[
     "health-ready",
     "knowledge-tree-list",
     "knowledge-tree-replace",
+    "observation-deliver",
+    "observation-prepare",
+    "observation-read",
     "openapi-read",
     "query-execute",
     "query-export",
@@ -73,6 +77,9 @@ OperationId = Literal[
     "transaction-preview",
     "vector-collection-ensure",
     "vector-collection-list",
+    "vector-index-ensure",
+    "vector-payload-index-delete",
+    "vector-payload-index-ensure",
     "vector-point-retrieve",
     "vector-point-scroll",
     "vector-quantization-activate",
@@ -96,6 +103,12 @@ ENDPOINTS: Final[dict[OperationId, Endpoint]] = {
         "method": "POST",
         "mutation": True,
         "path": "/v1/attunement/cancel",
+    },
+    "attunement-job-list": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": False,
+        "path": "/v1/attunement/jobs/list",
     },
     "attunement-pause": {
         "authentication": "session_bearer",
@@ -307,6 +320,24 @@ ENDPOINTS: Final[dict[OperationId, Endpoint]] = {
         "mutation": True,
         "path": "/v1/knowledge/trees/replace",
     },
+    "observation-deliver": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": True,
+        "path": "/v1/observations/deliver",
+    },
+    "observation-prepare": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": True,
+        "path": "/v1/observations/prepare",
+    },
+    "observation-read": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": False,
+        "path": "/v1/observations/read",
+    },
     "openapi-read": {
         "authentication": "public",
         "method": "GET",
@@ -486,6 +517,24 @@ ENDPOINTS: Final[dict[OperationId, Endpoint]] = {
         "method": "POST",
         "mutation": False,
         "path": "/v1/vector/collections/list",
+    },
+    "vector-index-ensure": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": True,
+        "path": "/v1/vector/indexes/ensure",
+    },
+    "vector-payload-index-delete": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": True,
+        "path": "/v1/vector/payload-indexes/delete",
+    },
+    "vector-payload-index-ensure": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": True,
+        "path": "/v1/vector/payload-indexes/ensure",
     },
     "vector-point-retrieve": {
         "authentication": "session_bearer",

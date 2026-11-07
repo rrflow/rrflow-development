@@ -117,6 +117,7 @@ mod flight;
 mod function;
 mod inference;
 mod installation;
+mod observation_delivery;
 mod observation_source;
 pub use attunement::{
     AttunementCommand, AttunementControlResult, AttunementReceiptView, AttunementReplanPreview,

@@ -1,0 +1,43 @@
+{
+  "status": 412,
+  "request": {
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "context": {
+      "request_id": "controller-proof-4cf45c7323b448f19b9949bbb8e8b3f2",
+      "operation_id": "controller-proof-4cf45c7323b448f19b9949bbb8e8b3f2",
+      "idempotency_key": "controller-proof-4cf45c7323b448f19b9949bbb8e8b3f2",
+      "deadline_unix_ms": null
+    },
+    "resource": {
+      "segments": [
+        {
+          "kind": "instance",
+          "id": "instance-ea9fbe11bc3ef0089e873a21"
+        }
+      ]
+    },
+    "payload": {
+      "scope": "instance:instance-ea9fbe11bc3ef0089e873a21",
+      "task_id": "task-75acac3175cc2721522ce2c3407b48e96f870bd96209770947209f749cf4afd9",
+      "attempt_id": "actual-successor-0c97d01597304f5ebbc1a06eafe5d507",
+      "max_storage_keys": 1000000,
+      "expected_task_sha256": "d9b380566f6256836d6e1bff08d5831abee989f82e9b648a4c92ebdca30c88cc",
+      "expected_configuration_sha256": "9d7e56b6fabe0d983a2be0acf06b52b357faf3d75b5cebada823704b5d0873ea"
+    }
+  },
+  "response": {
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "request_id": "controller-proof-4cf45c7323b448f19b9949bbb8e8b3f2",
+    "operation_id": "controller-proof-4cf45c7323b448f19b9949bbb8e8b3f2",
+    "outcome": {
+      "status": "error",
+      "error": {
+        "code": "failed_precondition",
+        "message": "EndpointCallFailed { reason: \"invalid endpoint selection choice\", execution_may_continue: true }",
+        "retryable": false
+      }
+    }
+  }
+}

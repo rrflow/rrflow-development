@@ -13,6 +13,15 @@ use std::collections::{BTreeMap, BTreeSet};
 pub const VECTOR_ARTIFACT_CATALOG_VERSION: u16 = 2;
 pub const VECTOR_ARTIFACT_RECORD_TYPE: &str = "vector_artifact";
 
+/// The idempotent operation that published a generation: its key and the
+/// SHA-256 of the request, recorded in the same commit as the generation.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct VectorArtifactOperationReceipt {
+    pub idempotency_key: String,
+    pub operation_sha256: String,
+}
+
 /// One immutable, reconstructable vector projection publication.
 ///
 /// The descriptor says what may be served. The object reference says exactly
@@ -30,15 +39,20 @@ pub struct VectorArtifactCatalogEntry {
     pub published_at: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub build_evidence: Option<HnswBuildEvidence>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub operation: Option<VectorArtifactOperationReceipt>,
     pub entry_digest: String,
 }
 
 impl VectorArtifactCatalogEntry {
+    /// `{projection}.{generation}`: a public canonical id whenever the
+    /// projection id is one, so the public changefeed can project the record.
+    /// The generation has no `.`, so the identity stays unique.
     pub fn record_reference(descriptor: &VectorProjectionDescriptor) -> Result<RuntimeRef> {
         RuntimeRef::new(
             VECTOR_ARTIFACT_RECORD_TYPE,
             format!(
-                "{}@{}",
+                "{}.{}",
                 descriptor.stamp().id,
                 descriptor.stamp().generation
             ),
@@ -59,6 +73,7 @@ impl VectorArtifactCatalogEntry {
             object,
             published_at,
             None,
+            None,
         )
     }
 
@@ -69,6 +84,7 @@ impl VectorArtifactCatalogEntry {
         object: ObjectReference,
         published_at: u64,
         build_evidence: Option<HnswBuildEvidence>,
+        operation: Option<VectorArtifactOperationReceipt>,
     ) -> Result<Self> {
         let mut entry = Self {
             contract_version: VECTOR_ARTIFACT_CATALOG_VERSION,
@@ -78,6 +94,7 @@ impl VectorArtifactCatalogEntry {
             object,
             published_at,
             build_evidence,
+            operation,
             entry_digest: String::new(),
         };
         entry.validate_components()?;
@@ -192,6 +209,7 @@ impl VectorArtifactCatalogEntry {
             &self.object,
             self.published_at,
             &self.build_evidence,
+            &self.operation,
         ));
         encoded.map_err(|error| rrd_core::Error::InvalidRuntime {
             reason: format!("vector artifact catalog identity cannot be encoded: {error}"),
@@ -488,7 +506,7 @@ mod tests {
     }
 
     fn artifact_entry() -> VectorArtifactCatalogEntry {
-        let descriptor = VectorProjectionDescriptor::from(segment("vector:body", 1, 1));
+        let descriptor = VectorProjectionDescriptor::from(segment("vector-body", 1, 1));
         let subject = VectorArtifactCatalogEntry::record_reference(&descriptor).unwrap();
         let bytes = b"current vector artifact";
         let object_key = ObjectReference::canonical_key(&digest::sha256_hex(bytes)).unwrap();
@@ -514,7 +532,7 @@ mod tests {
             descriptor: TurboQuantDescriptor {
                 stamp: ProjectionStamp {
                     contract_version: DATA_RUNTIME_CONTRACT_VERSION,
-                    id: ProjectionId::new("quant-turbo:body").unwrap(),
+                    id: ProjectionId::new("quant-turbo-body").unwrap(),
                     generation: 1,
                     source_cursor: 1,
                     config_digest: "11".repeat(32),
@@ -533,6 +551,7 @@ mod tests {
                 candidate_versions: 1,
                 packed_vector_bytes: 1,
                 full_precision_vector_bytes: 8,
+                estimator: crate::TurboQuantEstimator::Mse,
             },
         }
     }
@@ -583,7 +602,7 @@ mod tests {
 
     #[test]
     fn catalog_enforces_cas_generation_retirement_and_quarantine() {
-        let id = ProjectionId::new("vector:body").unwrap();
+        let id = ProjectionId::new("vector-body").unwrap();
         let mut catalog = VectorCatalog::default();
         assert_eq!(catalog.publish(0, segment(id.as_str(), 1, 1)).unwrap(), 1);
         assert!(catalog.publish(0, segment(id.as_str(), 2, 2)).is_err());

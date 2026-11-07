@@ -42,9 +42,12 @@ optional model provenance, and indexed payload types. Any invalid mutation
 rejects the whole transaction. `retire_data` records vector retirement at an
 explicit valid time without erasing prior versions.
 
-Retrieve and scroll capture one read stamp, select collection-addressed
-candidates through authenticated direct semantic-version reads, reduce visible
-temporal versions, and then filter or paginate them. They are bounded and
+Retrieve and scroll capture one read stamp and read candidates through
+authenticated direct semantic-version reads. They keep an identity only when
+its latest version at the request's valid time names the collection and named
+vector, then reduce visible temporal versions and filter or paginate them. A
+move to another collection or named vector removes the identity from the one
+it left. They are bounded and
 restart-safe, but they are not native point lookups or payload-index scans.
 Gate E must replace candidate materialization with planner-selected native
 point, payload, exact-vector, or approximate access paths.
@@ -66,7 +69,13 @@ filtered recall, and reopen behavior.
 Collection deletion scans the current vector history within an explicit
 budget, rejects live or future points, and rejects active HNSW or ready/active
 quantization artifacts, including TurboQuant. The caller must first retire
-points and governed artifacts. Historical runtime changes remain intact.
+points and governed artifacts. Historical runtime changes remain intact. A
+point is live or future when the collection holds its identity at the
+deletion time or any later valid time: when, at that time, the identity's
+latest version names one of the collection's named vectors and is not
+retired. An identity that moved out at or before the deletion time is no
+longer a point of the collection; one whose move takes effect later still is
+([POAM-047](../../poam/rrflow-1.0-alpha/poam-047.md)).
 
 ## Verified boundary and required convergence
 

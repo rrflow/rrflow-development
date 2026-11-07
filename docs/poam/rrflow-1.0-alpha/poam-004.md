@@ -23,6 +23,12 @@ stamped asynchronous `TableProvider`/`ExecutionPlan` proving provider backpressu
 semantics, shared request-budget enforcement, or borrowed `RecordBatch` lifetime through the
 full analytical path.
 
+The current `rrd-query/src/parquet.rs::export_parquet` writes a bounded,
+uncompressed query-result artifact. It does not implement the requested
+background Parquet cold-storage lifecycle, including atomic generation
+publication, retention, hot/cold reads and recovery. F-06 tracks that missing
+work independently from exchange/import.
+
 ## Impact
 
 The physical prerequisite no longer requires a result-sized storage scan, but current
@@ -32,7 +38,7 @@ cancellation/resource path remain absent.
 
 ## Owning gates
 
-C-07, F-01, F-02, F-04, F-05
+C-07, F-01, F-02, F-04, F-05, F-06
 
 Roadmap owners: [Gate C](../../roadmap/rrflow-1.0/gate-c.md) and
 [Gate F](../../roadmap/rrflow-1.0/gate-f.md).
