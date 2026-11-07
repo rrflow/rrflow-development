@@ -1,7 +1,9 @@
 # C-07: ARM 100,000-record campaign exposed unrequested backup
 
-**Status:** active characterization evidence; C-07 remains open  
-**Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/gate-c/c-07-arm100k-unrequested-backup-20261107`  
+**Status:** active characterization evidence; C-07 remains open
+
+**Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/gate-c/c-07-arm100k-unrequested-backup-20261107`
+
 **Owner:** C-07g, OBJ-10/11, [POAM-035](../../../poam/rrflow-1.0-alpha/poam-035.md)
 
 ## Frozen run and observed failure

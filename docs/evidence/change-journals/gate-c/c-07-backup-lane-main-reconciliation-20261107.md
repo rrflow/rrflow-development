@@ -48,6 +48,13 @@ latency overruns, native matrix, soak or project source visibility. No roadmap
 or POA&M status changed. The code and linked records were reviewed for their
 existing package; this merge changes no upstream source or runtime policy.
 
+After the merge commit, the full diff against merged main exposed trailing
+spaces on the status and coordinate lines of four earlier package records.
+The merge-only staged whitespace check did not cover those pre-existing branch
+additions. Their metadata formatting was corrected without changing evidence
+content, and the full candidate whitespace and documentation checks were
+repeated before push.
+
 Change checklist: current and target behavior and failure oracle remain in
 the earlier package records; exact starting revisions and PR were recorded;
 the conflicting generated index and both sets of source records were

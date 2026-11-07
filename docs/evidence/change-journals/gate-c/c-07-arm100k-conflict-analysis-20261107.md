@@ -1,7 +1,9 @@
 # C-07: ARM 100,000-record conflict interval analysis
 
-**Status:** active diagnostic evidence; no capacity or release gate passed  
-**Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/gate-c/c-07-arm100k-conflict-analysis-20261107`  
+**Status:** active diagnostic evidence; no capacity or release gate passed
+
+**Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/gate-c/c-07-arm100k-conflict-analysis-20261107`
+
 **Owner:** C-07g, [POAM-035](../../../poam/rrflow-1.0-alpha/poam-035.md), [draft PR #294](https://github.com/rrflow/rrflow-development/pull/294)
 
 The independently verified [failed ARM characterization](c-07-arm100k-unrequested-backup-20261107.md) retained one completed warmup segment and its launcher trace. From draft source `fc543813a7ffd19566a4a3ba8aa38eec262abf73`, `python scripts/ci/analyze_sustained_conflicts.py D:/localdev/devlabs/rrflow/target/c07-arm100k-failure-evidence-20261107/evidence D:/localdev/devlabs/rrflow/target/c07-arm100k-failure-evidence-20261107/launcher.log` exited 0. The analyzer Git blob `196f61cbe4c1a2f4ad6e89cc7c69e695269fe06e` is identical in PR #294 head `fcd0851b7e9d19f05c62121efcf7075e9f0897e3`. Output is retained as `D:/localdev/devlabs/rrflow/target/c07-arm100k-failure-evidence-20261107/conflict-analysis.json`, SHA-256 `e42e41eecd85ee57783b56933b2447a4f1eeac3b9b0fb1f47adad981ade9ae0b`. The local path is not a portable artifact guarantee.

@@ -1,7 +1,9 @@
 # C-07: honor the requested backup lane
 
-**Status:** active draft; installed lane runs and candidate CI pending  
-**Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/gate-c/c-07-backup-lane-admission-20261107`  
+**Status:** active draft; installed lane runs and candidate CI pending
+
+**Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/gate-c/c-07-backup-lane-admission-20261107`
+
 **Owner:** C-07g, OBJ-10/11, [POAM-035](../../../poam/rrflow-1.0-alpha/poam-035.md), [draft PR #294](https://github.com/rrflow/rrflow-development/pull/294)
 
 ## Change and traceability
