@@ -8,6 +8,7 @@
 mod arrow;
 mod bm25;
 mod catalog;
+mod cold_history;
 mod error;
 mod execute;
 mod fusion;
@@ -32,6 +33,11 @@ pub use bm25::{
     Bm25Posting, Bm25Stemmer, Bm25Tokenizer, BM25_ARTIFACT_CONTRACT_VERSION,
 };
 pub use catalog::{Catalog, SchemaVersion, SourceWatermarks};
+pub use cold_history::{
+    decode_cold_history_page, encode_cold_history_page, ColdHistoryPage,
+    ColdHistoryReadExpectation, ColdHistoryReadLimits, DecodedColdHistoryPage,
+    COLD_HISTORY_FORMAT_VERSION,
+};
 pub use error::{Error, Result};
 pub use execute::{execute, ExecutionBudget, QueryBatch, QueryExecution, QueryRow};
 pub use fusion::{execute_snapshot, FusionAnalysis, FusionBudget};
@@ -47,7 +53,10 @@ pub use index::{
     INDEX_ARTIFACT_CONTRACT_VERSION, INDEX_CATALOGUE_CONTRACT_VERSION,
 };
 pub use live::{poll_live_query, LiveQueryBudget, LiveQueryDelta, LiveRowChange};
-pub use parquet::{export_parquet, ParquetExport, ParquetExportLimits};
+pub use parquet::{
+    export_parquet, export_parquet_encoded, ParquetCompression, ParquetEncoding, ParquetExport,
+    ParquetExportLimits,
+};
 pub use pipeline::{StampedQueryExecution, StampedQueryPipeline};
 pub use plan::{
     bind, plan, BoundFilter, BoundIndexCandidate, BoundQuery, CandidatePath, ExecutionContract,

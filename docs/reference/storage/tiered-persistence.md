@@ -13,6 +13,59 @@ around that boundary.
 This record distinguishes implemented local storage mechanics from the
 unfinished DevForge placement and hibernation system.
 
+## Derived Parquet history
+
+An installation may opt into bounded background publication of scoped runtime
+change pages. The policy belongs in the installation configuration; omission
+leaves it disabled. For example, under the existing `[storage]` configuration:
+
+```toml
+[storage.cold_history]
+interval_ms = 1000
+max_changes = 128
+max_input_bytes = 1048576
+max_output_bytes = 1048576
+max_memory_bytes = 67108864
+max_elapsed_ms = 30000
+row_group_rows = 16
+compression = { kind = "zstd", level = 3 }
+dictionary = true
+statistics = true
+```
+
+The engine records the source stamp and configuration digest, prepares a page,
+syncs a content-addressed Parquet artifact and then commits its receipt and
+cursor through the existing control journal. Before preparation and replay it
+checks each scanned source entry against the captured accumulator root. The
+cost and peak memory of those proof reads have not been qualified. The configured policy is sealed
+with the installation and requires a governed configuration change and reopen;
+it is not hot-applied. The authenticated `cold-history-read` operation reports
+the recorded head or reads a named generation with an explicit query and
+artifact budget. A head-only status does not read or verify an artifact.
+When a maintenance quantum fails, the engine attempts to persist a payload-free
+failure class in that status. Identical repeated failures do not create repeated
+failure records; the class clears on a subsequent committed progress transition.
+If the control journal is unavailable, persistence of the failure itself cannot
+be guaranteed and the server emits a warning.
+The elapsed-time limit is cooperative between source entries and encoding
+steps; a single native read, compression operation or filesystem sync may
+run past it. Source reads can wait on native storage; nonblocking admission and
+starvation bounds are not yet established. The configured interval controls
+offers to the existing joined maintenance worker; offers made while it is busy
+are skipped. Native maintenance and cursor cleanup retain their one-second sweep.
+The period is a target, not a minimum spacing or latency guarantee; timer
+delays and worker contention can change when offers occur.
+
+These files are derived runtime history, not replacements for the WAL, source
+history, security/control audit, or the separate logical backup. The source is
+retained. Current application backups omit these derived files and their cold
+control receipts; rebuilding them after restore does not preserve generation
+identities. A scoped page cannot independently prove omission-free coverage, and
+orphan cleanup, SQL hot/cold planning, detailed maintenance measurements,
+hard process-memory limits, retention, and full interruption and soak evidence
+remain open. Statistics and columnar encoding do not by themselves prove that
+a query prunes any I/O or that a zero-copy path exists.
+
 ## Canonical tier taxonomy
 
 | Layer | Canonical role | Current implementation |

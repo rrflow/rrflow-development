@@ -1,6 +1,33 @@
 use super::super::*;
 
 impl AppState {
+    pub(in crate::http) fn read_cold_history(
+        &self,
+        headers: &HeaderMap,
+        body: &[u8],
+        now: u64,
+    ) -> HttpResponse {
+        self.with_authenticated_envelope::<rrd_contract::ReadColdHistory, _, _>(
+            headers,
+            body,
+            now,
+            RrdOperation::ChangefeedRead,
+            None,
+            |envelope, session, token| {
+                self.service
+                    .read_cold_history(
+                        session,
+                        token,
+                        &envelope.payload,
+                        now,
+                        envelope.context.request_id.as_str(),
+                        envelope.context.operation_id.as_str(),
+                    )
+                    .map_err(api_error)
+            },
+        )
+    }
+
     pub(in crate::http) fn read_data_schema(
         &self,
         headers: &HeaderMap,

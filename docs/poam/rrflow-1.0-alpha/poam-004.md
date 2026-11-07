@@ -29,6 +29,25 @@ background Parquet cold-storage lifecycle, including atomic generation
 publication, retention, hot/cold reads and recovery. F-06 tracks that missing
 work independently from exchange/import.
 
+The F-06 draft additionally exposed two constraints that remain open: a scoped
+page of the global runtime change chain cannot independently prove that no
+matching changes were omitted, and an interrupted or replanned publication can
+leave an unreferenced immutable file without a bounded orphan-reclamation
+policy. Runtime history also excludes the separate security/control audit
+streams. Application backups omit cold artifacts and receipts, so a restore
+does not preserve their generation identities. Cold-maintenance failures have
+a bounded typed status when the control journal can record one, but detailed
+resource/latency observations and failure-reporting under an unavailable
+control store remain open. The source read can
+wait behind native storage even though the preceding maintenance offer skips a
+busy lock; nonblocking admission and starvation bounds remain unproven. The
+draft cold schedule is configurable, but its behavior under sustained native
+maintenance and foreground load still needs measurement. The draft verifies
+an inclusion proof per scanned change, but its proof-node read cost and peak
+memory under large source logs have not been measured or separately admitted.
+Derived cold files must not replace or reclaim their source until
+coverage, all intended streams, retention and recovery are proven.
+
 ## Impact
 
 The physical prerequisite no longer requires a result-sized storage scan, but current
