@@ -1,5 +1,6 @@
 //! Controlled paired evaluation runner. Provider output is evidence, not prose.
 
+use rrflow_eval::lab::provider::usage_metrics;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::path::{Path, PathBuf};
@@ -101,7 +102,7 @@ fn run_trial(args: &[String]) -> Result<(), Box<dyn std::error::Error>> {
     let latency_ms = started.elapsed().as_millis() as u64;
     let raw_output = String::from_utf8_lossy(&output.stdout).to_string();
     let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-    let (input_tokens, output_tokens, tool_calls) = metrics(provider, &raw_output);
+    let (input_tokens, output_tokens, tool_calls) = usage_metrics(provider, &raw_output);
     let trial = Trial {
         provider: provider.clone(),
         repository: repo.display().to_string(),
@@ -133,70 +134,6 @@ fn run_trial(args: &[String]) -> Result<(), Box<dyn std::error::Error>> {
         trial.latency_ms
     );
     Ok(())
-}
-
-fn metrics(provider: &str, output: &str) -> (Option<u64>, Option<u64>, u64) {
-    match provider {
-        "claude" | "gemini" => {
-            let value: Value = serde_json::from_str(output).unwrap_or(Value::Null);
-            let usage = value.get("usage").or_else(|| {
-                value
-                    .get("stats")
-                    .and_then(|v| v.get("models"))
-                    .and_then(Value::as_object)
-                    .and_then(|models| models.values().next())
-            });
-            let input = usage.map(|usage| {
-                [
-                    "input_tokens",
-                    "inputTokens",
-                    "cache_creation_input_tokens",
-                    "cache_read_input_tokens",
-                ]
-                .iter()
-                .filter_map(|field| usage.get(field).and_then(Value::as_u64))
-                .sum()
-            });
-            let output_tokens = usage
-                .and_then(|u| u.get("output_tokens").or_else(|| u.get("outputTokens")))
-                .and_then(Value::as_u64);
-            let calls = value
-                .get("num_turns")
-                .and_then(Value::as_u64)
-                .unwrap_or(1)
-                .saturating_sub(1);
-            (input, output_tokens, calls)
-        }
-        "codex" => {
-            let values: Vec<Value> = output
-                .lines()
-                .filter_map(|line| serde_json::from_str(line).ok())
-                .collect();
-            let usage = values.iter().find_map(|value| value.get("usage"));
-            let input = usage
-                .and_then(|u| u.get("input_tokens"))
-                .and_then(Value::as_u64);
-            let output_tokens = usage
-                .and_then(|u| u.get("output_tokens"))
-                .and_then(Value::as_u64);
-            let calls = values
-                .iter()
-                .filter(|value| {
-                    value
-                        .get("type")
-                        .and_then(Value::as_str)
-                        .is_some_and(|kind| {
-                            kind.contains("tool")
-                                || kind == "item.completed"
-                                    && value.pointer("/item/type").and_then(Value::as_str)
-                                        == Some("command_execution")
-                        })
-                })
-                .count() as u64;
-            (input, output_tokens, calls)
-        }
-        _ => (None, None, 0),
-    }
 }
 
 fn summarize(dir: &Path) -> Result<(), Box<dyn std::error::Error>> {

@@ -101,6 +101,8 @@ pub struct Observation {
 pub enum VerdictOutcome {
     Met,
     NotMet,
+    /// The comparison ran but its evidence does not support either conclusion.
+    Inconclusive,
     NotRun,
 }
 

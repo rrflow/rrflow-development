@@ -190,6 +190,50 @@ this same report.
 Change a test deliberately: changing its corpus, workload or quality target changes its
 digest, and runs from before and after cannot be combined.
 
+## Test whether something helps an agent
+
+Vector tests say how fast a system finds nearest vectors. They say nothing about whether it
+helps an agent do real work. `agent-tasks` measures one planning heuristic, with
+[`tasks/rrflow-package-planning.json`](tasks/rrflow-package-planning.json) as its first package.
+
+Each task comes from a merged pull request: the behavior its brief asked for, at the revision it
+started from, with the files it really changed as an answer the agent never sees.
+[`extract_package_tasks.py`](extract_package_tasks.py) builds them. The design is frozen in the
+manifest before any run, and a run from a different design cannot join a report. Runs are paired
+across arms. A single repetition per task can use an exact paired McNemar test once
+every scheduled pair is usable; repeated runs of a task are correlated, so the
+current report marks their paired verdict inconclusive. Provider failures and
+missing runs remain visible and cannot be counted as incorrect plans. An arm with
+no repository is a leakage check; a low observed file-match rate does not prove
+there is no leakage.
+
+The measured outcome is whether a plan names enough files from one historical
+change. It is not a correctness or completion test: alternative valid plans can
+name other files, and no implementation or test is executed by this score.
+Independent executable test oracles and evaluated answers remain future work.
+
+Nothing runs until a manifest names `models` and a `spend` limit, because those are decisions for
+whoever pays. Then:
+
+```bash
+rrflow-lab tasks-order --manifest eval/lab/tasks/rrflow-package-planning.json
+rrflow-lab tasks-run --manifest FILE --task ID --arm ID --model ID --repetition N   --checkout DIR --empty DIR --out runs/tasks
+rrflow-lab tasks-combine --manifest FILE --in runs/tasks --out report.json
+```
+
+`--checkout` is the task's repository at its `revision`, and `--empty` is an empty directory.
+Real runs use `claude --bare`, which keeps a person's memory and settings out and needs
+`ANTHROPIC_API_KEY`. Pilot on a few tasks before freezing a design.
+
+RRFlow cannot yet return a repository's content through its own path, so `rrflow-attuned` is a
+declared gap. `rrflow-harness-import` searches text this harness imports through public operations,
+and it measures lexical and graph retrieval and nothing more.
+
+[`retrieval_signal.py`](retrieval_signal.py) measures that retrieval with no model: it sends each
+task to the real `rrflow-mcp` process and scores the files returned, beside plain BM25 over the same
+chunks. The [package journal](../../docs/evidence/change-journals/gate-j/reasoning-tests.md) has its
+first results and what they do not show.
+
 ## Reading a result
 
 The first measured results and their limits are in the

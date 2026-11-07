@@ -4,6 +4,7 @@ use super::adapter::{
     required_credentials, required_instance, split_by_size, CollectionSpec, PointBatch,
     SearchRequest, SystemAdapter,
 };
+use super::knowledge::{TextChunk, CHUNK_TABLE};
 use super::manifest::{IndexSpec, LabMetric, RrflowHnswParameters, SystemBinding, WorkloadSpec};
 use super::Result;
 use rrd_client::{ClientConfig, RequestOptions, RrdClient, Session};
@@ -211,8 +212,26 @@ impl RrflowAdapter {
     pub fn connect(binding: &SystemBinding, workload: &WorkloadSpec) -> Result<Self> {
         let (principal, secret) = required_credentials(binding)?;
         let instance = required_instance(binding)?;
-        let address = binding
-            .endpoint
+        let mut adapter = Self::connect_to(
+            &binding.endpoint,
+            &instance,
+            &principal,
+            secret,
+            Duration::from_millis(workload.request_timeout_ms),
+        )?;
+        adapter.hnsw = binding.rrflow_hnsw.clone();
+        adapter.filter_categories = workload.filtered;
+        Ok(adapter)
+    }
+
+    pub fn connect_to(
+        endpoint: &str,
+        instance: &str,
+        principal: &str,
+        secret: String,
+        request_timeout: Duration,
+    ) -> Result<Self> {
+        let address = endpoint
             .trim_start_matches("http://")
             .trim_end_matches('/')
             .parse()
@@ -221,9 +240,9 @@ impl RrflowAdapter {
             .enable_all()
             .build()
             .map_err(|error| error.to_string())?;
-        let instance_id = id(&instance)?;
+        let instance_id = id(instance)?;
         let config = ClientConfig {
-            request_timeout: Duration::from_millis(workload.request_timeout_ms),
+            request_timeout,
             ..ClientConfig::default()
         };
         let client = runtime
@@ -240,7 +259,7 @@ impl RrflowAdapter {
             &format!("{run}-session"),
         )
         .map_err(|error| error.to_string())?;
-        let principal = id(&principal)?;
+        let principal = id(principal)?;
         let session = open_session(&runtime, &client, &principal, &secret, options)?;
         let scope = format!("instance:{}", client.instance_id());
         Ok(Self {
@@ -257,8 +276,8 @@ impl RrflowAdapter {
             counter: AtomicU64::new(0),
             prepared: OnceLock::new(),
             access_paths: Mutex::new(BTreeSet::new()),
-            hnsw: binding.rrflow_hnsw.clone(),
-            filter_categories: workload.filtered,
+            hnsw: None,
+            filter_categories: false,
         })
     }
 
@@ -334,6 +353,53 @@ impl RrflowAdapter {
                 options,
             ))
             .map_err(|error| error.to_string())?;
+        Ok(())
+    }
+}
+
+impl RrflowAdapter {
+    /// Stores chunks through public transactions, as any caller could.
+    pub fn import_chunks(&self, chunks: &[TextChunk]) -> Result<()> {
+        let session = self.session()?;
+        let installed = self
+            .runtime
+            .block_on(self.client.read_data_schema(
+                &session,
+                ReadDataSchema {
+                    scope: self.scope.clone(),
+                    max_storage_keys: 4_096,
+                },
+                self.read_options("schema")?,
+            ))
+            .map_err(|error| error.to_string())?;
+        let mut registry =
+            serde_json::to_value(installed.schema.ok_or("RRFlow returned no data schema")?)
+                .map_err(|error| error.to_string())?;
+        registry["revision"] = json!(registry["revision"].as_u64().unwrap_or(0) + 1);
+        registry["migration"] = json!("add the lab's imported repository text");
+        registry["tables"][CHUNK_TABLE] = json!({"model": "relational", "mode": "strict"});
+        registry["records"][CHUNK_TABLE] = json!({
+            "properties": {},
+            "allow_additional_properties": true,
+            "unique_properties": []
+        });
+        self.commit(decode(
+            json!([{"mutation": "put_schema", "registry": registry}]),
+        )?)?;
+        let mut mutations: Vec<Vec<TransactionMutation>> = Vec::with_capacity(chunks.len());
+        let mut sizes = Vec::with_capacity(chunks.len());
+        for chunk in chunks {
+            let one: Vec<TransactionMutation> = decode(json!([chunk.mutation()]))?;
+            sizes.push(
+                serde_json::to_vec(&one)
+                    .map_err(|error| error.to_string())?
+                    .len(),
+            );
+            mutations.push(one);
+        }
+        for group in split_by_size(sizes, MAX_COMMIT_BYTES, MAX_TRANSACTION_CLAIMS) {
+            self.commit(mutations[group].iter().flatten().cloned().collect())?;
+        }
         Ok(())
     }
 }
