@@ -62,3 +62,14 @@ inspected and regenerated; the integrated package diff, local test and policy
 checks were reviewed; the linked journal records unrun candidate, native and
 soak checks. No external source adaptation or new trace was needed for this
 mechanical reconciliation.
+
+
+## Integration with the native-command repair
+
+The next ordinary merge incorporated public main `b555d22c891c511775b5e54a9f9d00c8a51da48e` into draft head `3891f32ffd64ff3c7f231a0ab81cc3cc96eda7a3`. The PR brief was amended before integration. The sole conflict was in POAM-035: both the ARM characterization and conflict-analysis paragraphs and the merged native-command ownership investigation were preserved. No evidence or status was discarded. The generated Gate C index was regenerated; main's intervening changes did not modify the Rust crates, workspace manifests, lockfile or toolchain.
+
+The sustained driver and changed ledger and records were reviewed in full; the driver Git blob is `1136cb9b30bcd8793ca6fbf67e10d471f0f78e59`. Sequence 14 is the first mixed-write coordinate in the pre-existing frozen 20-operation C-07 workload and is checked against that workload's classifier. It is a test fixture coordinate, not a production reasoning step or a configurable routing rule. Retaining it keeps this correction comparable with the frozen workload; future workload configurability requires separately reviewed qualification.
+
+On the same isolated Windows Cargo target and offline locked dependencies, the exact backup-lane unit test passed and `cargo test --offline --locked -p rrflow-cli --test installed_reopen` passed 33 tests with 14 ignored. Its retained log SHA-256 is `74fd0b626a2fad015279ffe776ec2922030a190890ce37d9bead43c8e36b717f`. `cargo clippy --offline --locked -p rrflow-cli --test installed_reopen -- -D warnings` passed (log SHA-256 `fb75f0654149334558f110efac3c5eb0a3d00b83678212aba48281d86d4aa31f`), as did `cargo fmt --all -- --check`. `python scripts/ci/test_candidate_admission.py` passed 21 tests; `python scripts/ci/test_native_capacity.py` ran 42 tests with 5 skipped; `python scripts/ci/check_workflow.py` passed for six workflows; and the navigation and documentation checks passed. These checks are local and do not replace exact-candidate CI.
+
+The original macOS `Resource busy` cause remains unproved. The 100,000-record ARM run remains failed, with two warmup conflicts and six latency overruns; the selected backup run at full size, native profile matrix, real 24-hour soak and protected CI are not established by this integration. C-07, POAM-035 and alpha status remain open.

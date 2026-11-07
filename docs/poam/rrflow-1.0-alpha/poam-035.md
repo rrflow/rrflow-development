@@ -1317,3 +1317,9 @@ A [100,000-record ARM characterization](../../evidence/change-journals/gate-c/c-
 
 
 The [retained ARM conflict analysis](../../evidence/change-journals/gate-c/c-07-arm100k-conflict-analysis-20261107.md) binds both warmup rejection traces to client intervals and overlapping acknowledged operations. Those intervals do not prove commit order or cause; correlated engine evidence and a separately reviewed concurrency decision remain open.
+
+The [native command ownership investigation](../../evidence/change-journals/gate-c/c-07-native-command-ownership-20261107.md)
+records two further macOS `hdiutil create` failures and a controlled Linux
+reproduction in which the wrapper leaves its test-owned stderr holder alive.
+The actual macOS pipe holder and cause of `Resource busy` remain unknown;
+no candidate, native matrix, soak or C-07 acceptance follows.
