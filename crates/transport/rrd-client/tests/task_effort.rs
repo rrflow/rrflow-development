@@ -145,6 +145,7 @@ async fn public_task_effort_executes_stops_and_replays_after_reopen() {
                     expected_configuration_sha256: "3".repeat(64),
                     max_storage_keys: 100,
                     context: None,
+                    source: None,
                 },
                 mutation("denied-worker"),
             )

@@ -1,6 +1,7 @@
 //! Admission probes, not model-quality observations or learning records.
 mod observation;
 mod resume;
+mod source_bound;
 mod terminal_response;
 use super::*;
 use crate::engine::operation_digest;
@@ -94,6 +95,7 @@ fn admitted_fixture(
             contract_version: 1,
             allow_network: true,
             allow_context_export: true,
+            allow_source_export: false,
             allow_unverified_identity: true,
             maximum_concurrent_calls: 1,
             bindings: vec![EndpointWorkerBinding {
@@ -300,6 +302,7 @@ fn worker_consumes_retained_selection_reserves_before_http_and_reopens_without_r
             expected_configuration_sha256: selection.configuration_sha256,
             max_storage_keys: MAX_TASK_STORAGE_KEYS,
             context: None,
+            source: None,
         };
         let before = budget(&engine, &lease, &request.task_id);
         let output = engine
@@ -408,6 +411,7 @@ fn worker_requires_initialized_authority_before_reservation() {
         expected_configuration_sha256: digest::sha256_hex(b"explicit absent configuration probe"),
         max_storage_keys: MAX_TASK_STORAGE_KEYS,
         context: None,
+        source: None,
     };
     assert!(matches!(
         engine.execute_task_worker_with_clock(
@@ -487,6 +491,7 @@ fn selected_request(
         expected_configuration_sha256: proposal.configuration_sha256,
         max_storage_keys: MAX_TASK_STORAGE_KEYS,
         context: None,
+        source: None,
     }
 }
 

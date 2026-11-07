@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 pub const ENDPOINT_WORKER_VERSION: u16 = 1;
+pub const TASK_WORKER_SOURCE_VERSION: u16 = 1;
 
 /// References an accepted routing attempt; carries no endpoint or credential.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -24,6 +25,78 @@ pub struct TaskWorkerRequest {
     pub max_storage_keys: u64,
     /// Explicit historical context selection, not permission to mutate sources.
     pub context: Option<crate::AssembleContext>,
+    /// One explicitly selected file from the installed project's accepted inventory.
+    /// The entry identity resolves only inside the engine; this carries no path or bytes.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source: Option<TaskWorkerSourceRequest>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct TaskWorkerSourceRequest {
+    pub contract_version: u16,
+    pub entry_identity: String,
+    pub expected_content_sha256: String,
+    pub maximum_input_bytes: u64,
+}
+
+impl TaskWorkerSourceRequest {
+    pub fn validate(&self) -> Result<()> {
+        if self.contract_version != TASK_WORKER_SOURCE_VERSION
+            || self.maximum_input_bytes == 0
+            || self.maximum_input_bytes > MAX_ROUTE_REQUEST_BYTES
+        {
+            return invalid("invalid worker source version or input bound");
+        }
+        validate_sha256(&self.entry_identity, "worker source entry identity")?;
+        validate_sha256(
+            &self.expected_content_sha256,
+            "worker source content digest",
+        )
+    }
+}
+
+/// Provenance for the selected source bytes actually admitted into the worker
+/// packet. Captured and completion-validated inventory identities are distinct.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct TaskWorkerSourceProvenance {
+    pub contract_version: u16,
+    pub captured_snapshot_sha256: String,
+    pub captured_read: crate::ContextReadStamp,
+    pub project_id: CanonicalId,
+    pub entry_identity: String,
+    pub path_sha256: String,
+    pub content_sha256: String,
+    /// Global policy digest recorded by the accepted snapshot, not a
+    /// path-specific current-policy authorization.
+    pub policy_sha256: String,
+    pub profile_sha256: String,
+    pub captured_at_unix_ms: u64,
+    pub validated_snapshot_sha256: String,
+    pub validated_read: crate::ContextReadStamp,
+    pub validated_at_unix_ms: u64,
+}
+
+impl TaskWorkerSourceProvenance {
+    pub fn validate(&self) -> Result<()> {
+        if self.contract_version != TASK_WORKER_SOURCE_VERSION {
+            return invalid("invalid worker source provenance version");
+        }
+        for (value, label) in [
+            (&self.captured_snapshot_sha256, "captured snapshot digest"),
+            (&self.entry_identity, "entry identity"),
+            (&self.path_sha256, "path digest"),
+            (&self.content_sha256, "content digest"),
+            (&self.policy_sha256, "policy digest"),
+            (&self.profile_sha256, "profile digest"),
+            (&self.validated_snapshot_sha256, "validated snapshot digest"),
+        ] {
+            validate_sha256(value, label)?;
+        }
+        self.captured_read.validate()?;
+        self.validated_read.validate()
+    }
 }
 
 impl TaskWorkerRequest {
@@ -49,6 +122,9 @@ impl TaskWorkerRequest {
             if context.scope != self.scope {
                 return invalid("worker context scope mismatch");
             }
+        }
+        if let Some(source) = &self.source {
+            source.validate()?;
         }
         bounded(self, MAX_ROUTE_REQUEST_BYTES)
     }
@@ -85,6 +161,8 @@ pub struct TaskWorkerOutput {
     /// Provider draft only; acceptance records transport/admission, not task success.
     pub content: String,
     pub read: crate::ContextReadStamp,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source: Option<TaskWorkerSourceProvenance>,
     pub context: Option<TaskWorkerContext>,
     pub usage: Option<crate::EndpointTokenUsage>,
     pub elapsed_ms: Option<u64>,
@@ -108,13 +186,21 @@ impl TaskWorkerOutput {
             return invalid("worker response identity differs from request");
         }
         match (&request.context, &self.context) {
+            (None, None) => {}
+            (Some(expected), Some(observed))
+                if crate::context_request_sha256(expected)? == observed.request_sha256 => {}
+            _ => return invalid("worker context identity differs from request"),
+        }
+        match (&request.source, &self.source) {
             (None, None) => Ok(()),
             (Some(expected), Some(observed))
-                if crate::context_request_sha256(expected)? == observed.request_sha256 =>
+                if expected.contract_version == observed.contract_version
+                    && expected.entry_identity == observed.entry_identity
+                    && expected.expected_content_sha256 == observed.content_sha256 =>
             {
                 Ok(())
             }
-            _ => invalid("worker context identity differs from request"),
+            _ => invalid("worker source identity differs from request"),
         }
     }
 
@@ -144,6 +230,9 @@ impl TaskWorkerOutput {
             context.read.validate()?;
             validate_sha256(&context.request_sha256, "worker context request digest")?;
             validate_sha256(&context.packet_sha256, "worker context packet digest")?;
+        }
+        if let Some(source) = &self.source {
+            source.validate()?;
         }
         if self.http_status.is_some_and(|status| status != 200) {
             return invalid("accepted worker HTTP status must be 200");
@@ -196,9 +285,17 @@ pub struct EndpointWorkerPolicy {
     pub allow_network: bool,
     /// Explicit permission to export admitted task text and selected context.
     pub allow_context_export: bool,
+    /// Separately opted-in permission to export one selected project file.
+    /// Defaults to false when loading older policy documents.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub allow_source_export: bool,
     pub allow_unverified_identity: bool,
     pub maximum_concurrent_calls: u32,
     pub bindings: Vec<EndpointWorkerBinding>,
+}
+
+fn is_false(value: &bool) -> bool {
+    !value
 }
 
 impl EndpointWorkerPolicy {

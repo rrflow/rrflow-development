@@ -49,6 +49,9 @@ pub const ATTUNEMENT_PROPOSAL_FORMAT_VERSION: u16 = 1;
 mod admission;
 mod bootstrap;
 mod inventory;
+pub(in crate::engine) use inventory::{
+    read_admitted_inventory_file, validate_selected_inventory_path,
+};
 mod lease;
 mod policy;
 pub(super) mod recovery;
@@ -630,7 +633,10 @@ impl RrdEngine {
             initial_seat: profile.specialization.seat.clone(),
             bootstrap,
             initial_principal_id: profile.initial_principal_id,
-            initial_grants: SecurityAction::ALL.to_vec(),
+            initial_grants: SecurityAction::ALL
+                .into_iter()
+                .filter(|action| *action != SecurityAction::ProjectSourceRead)
+                .collect(),
             credential_bytes: profile.credential_bytes,
             inactive_capabilities: profile.inactive_capabilities,
             managed_paths,
@@ -1738,7 +1744,11 @@ fn validate_sealed_preview(
                 &EstateLayout::new(&install_id, &profile.initial_principal_id)?,
             )?
         || installation.initial_principal_id != profile.initial_principal_id
-        || installation.initial_grants != SecurityAction::ALL
+        || installation.initial_grants
+            != SecurityAction::ALL
+                .into_iter()
+                .filter(|action| *action != SecurityAction::ProjectSourceRead)
+                .collect::<Vec<_>>()
         || installation.credential_bytes != profile.credential_bytes
         || installation.inactive_capabilities != profile.inactive_capabilities
         || installation.managed_paths != expected_paths

@@ -10,6 +10,14 @@ independently.
 
 ## Observed deficiency
 
+The [selected-source worker package](../../evidence/change-journals/gate-g/task-worker-selected-source.md)
+adds an explicit one-file inventory selection to existing worker admission and
+protects source-derived attempt and observation readback. Local engine,
+contract/client/server, SDK and strict-lint checks pass. Candidate/protected CI
+and the matching Connectome consumer remain pending.
+This does not establish a source-grounded live model result, verified project
+effects, generic binary/score/choice assessment or reviewed learning.
+
 The [reconciled installed recovery trial](../../evidence/change-journals/gate-g/task-budget-resume-current-installed.md)
 proves explicit same-task resume on clean source `a99d577a`: four actual provider
 responses, preserved original effort/deadline/history and independent credential-free

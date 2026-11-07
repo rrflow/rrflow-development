@@ -10,6 +10,20 @@ independently.
 
 ## Observed deficiency
 
+The [selected-source worker regression](../../evidence/change-journals/gate-g/task-worker-selected-source.md)
+exposed a restart limitation on the installed bootstrap principal. The authorized
+security-authority replacement accepts adding `ProjectSourceRead` to that
+principal, but `installation.rs::with_installed_binding` subsequently compares
+its entire grant-action list with immutable `initial_grants` and returns
+`ProjectBindingMismatch` when opening the installed estate. Source edits and
+replanning are not the identified cause. The current worker proof must use a
+separate explicitly granted principal and authenticate again after reopening.
+The accepted bootstrap-policy-change/restart mismatch remains open: reconcile
+governed security changes with installation binding, or reject unsupported
+changes before commit, and prove the resulting public restart behavior. This
+package does not redesign initialization or claim that original-principal path
+works.
+
 Security policy, sessions, and audit have useful validation and denial behavior, but
 `rrd-security` still exposes a direct `StorageEngine` repository; policy and runtime data
 use separate observations; transaction authorization is operation-wide rather than

@@ -1,4 +1,4 @@
-// OpenAPI SHA-256: e6bd6b60e12398a5ee5ddaf23f846e74288bc128f91acc561d9099381072d80f
+// OpenAPI SHA-256: 5a14cb9e11a001542a863b295990e27d58a21b0b5d98da183189f09d5869d817
 export interface paths {
     "/v1/attunement/cancel": {
         parameters: {
@@ -8854,7 +8854,7 @@ export interface operations {
                                 chain_head_sha256?: string | null;
                                 records: {
                                     /** @enum {string} */
-                                    action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "worker_execute" | "observation_prepare" | "observation_deliver" | "observation_read" | "knowledge_tree_read" | "knowledge_tree_write";
+                                    action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "worker_execute" | "project_source_read" | "observation_prepare" | "observation_deliver" | "observation_read" | "knowledge_tree_read" | "knowledge_tree_write";
                                     /** Format: uint64 */
                                     at_unix_ms: number;
                                     /**
@@ -8944,7 +8944,7 @@ export interface operations {
                                 chain_head_sha256?: string | null;
                                 records: {
                                     /** @enum {string} */
-                                    action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "worker_execute" | "observation_prepare" | "observation_deliver" | "observation_read" | "knowledge_tree_read" | "knowledge_tree_write";
+                                    action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "worker_execute" | "project_source_read" | "observation_prepare" | "observation_deliver" | "observation_read" | "knowledge_tree_read" | "knowledge_tree_write";
                                     /** Format: uint64 */
                                     at_unix_ms: number;
                                     /**
@@ -14625,6 +14625,11 @@ export interface operations {
                                     /** @description Explicit permission to export admitted task text and selected context. */
                                     allow_context_export: boolean;
                                     allow_network: boolean;
+                                    /**
+                                     * @description Separately opted-in permission to export one selected project file.
+                                     *     Defaults to false when loading older policy documents.
+                                     */
+                                    allow_source_export?: boolean;
                                     allow_unverified_identity: boolean;
                                     bindings: {
                                         allow_default_effort: boolean;
@@ -14979,6 +14984,11 @@ export interface operations {
                                         /** @description Explicit permission to export admitted task text and selected context. */
                                         allow_context_export: boolean;
                                         allow_network: boolean;
+                                        /**
+                                         * @description Separately opted-in permission to export one selected project file.
+                                         *     Defaults to false when loading older policy documents.
+                                         */
+                                        allow_source_export?: boolean;
                                         allow_unverified_identity: boolean;
                                         bindings: {
                                             allow_default_effort: boolean;
@@ -15335,6 +15345,11 @@ export interface operations {
                                         /** @description Explicit permission to export admitted task text and selected context. */
                                         allow_context_export: boolean;
                                         allow_network: boolean;
+                                        /**
+                                         * @description Separately opted-in permission to export one selected project file.
+                                         *     Defaults to false when loading older policy documents.
+                                         */
+                                        allow_source_export?: boolean;
                                         allow_unverified_identity: boolean;
                                         bindings: {
                                             allow_default_effort: boolean;
@@ -15669,6 +15684,11 @@ export interface operations {
                                 /** @description Explicit permission to export admitted task text and selected context. */
                                 allow_context_export: boolean;
                                 allow_network: boolean;
+                                /**
+                                 * @description Separately opted-in permission to export one selected project file.
+                                 *     Defaults to false when loading older policy documents.
+                                 */
+                                allow_source_export?: boolean;
                                 allow_unverified_identity: boolean;
                                 bindings: {
                                     allow_default_effort: boolean;
@@ -16029,6 +16049,11 @@ export interface operations {
                                         /** @description Explicit permission to export admitted task text and selected context. */
                                         allow_context_export: boolean;
                                         allow_network: boolean;
+                                        /**
+                                         * @description Separately opted-in permission to export one selected project file.
+                                         *     Defaults to false when loading older policy documents.
+                                         */
+                                        allow_source_export?: boolean;
                                         allow_unverified_identity: boolean;
                                         bindings: {
                                             allow_default_effort: boolean;
@@ -16387,6 +16412,11 @@ export interface operations {
                                         /** @description Explicit permission to export admitted task text and selected context. */
                                         allow_context_export: boolean;
                                         allow_network: boolean;
+                                        /**
+                                         * @description Separately opted-in permission to export one selected project file.
+                                         *     Defaults to false when loading older policy documents.
+                                         */
+                                        allow_source_export?: boolean;
                                         allow_unverified_identity: boolean;
                                         bindings: {
                                             allow_default_effort: boolean;
@@ -16784,6 +16814,11 @@ export interface operations {
                                         /** @description Explicit permission to export admitted task text and selected context. */
                                         allow_context_export: boolean;
                                         allow_network: boolean;
+                                        /**
+                                         * @description Separately opted-in permission to export one selected project file.
+                                         *     Defaults to false when loading older policy documents.
+                                         */
+                                        allow_source_export?: boolean;
                                         allow_unverified_identity: boolean;
                                         bindings: {
                                             allow_default_effort: boolean;
@@ -17140,6 +17175,11 @@ export interface operations {
                                         /** @description Explicit permission to export admitted task text and selected context. */
                                         allow_context_export: boolean;
                                         allow_network: boolean;
+                                        /**
+                                         * @description Separately opted-in permission to export one selected project file.
+                                         *     Defaults to false when loading older policy documents.
+                                         */
+                                        allow_source_export?: boolean;
                                         allow_unverified_identity: boolean;
                                         bindings: {
                                             allow_default_effort: boolean;
@@ -18329,7 +18369,7 @@ export interface operations {
                                     chain_head_sha256?: string | null;
                                     records: {
                                         /** @enum {string} */
-                                        action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "worker_execute" | "observation_prepare" | "observation_deliver" | "observation_read" | "knowledge_tree_read" | "knowledge_tree_write";
+                                        action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "worker_execute" | "project_source_read" | "observation_prepare" | "observation_deliver" | "observation_read" | "knowledge_tree_read" | "knowledge_tree_write";
                                         /** Format: uint64 */
                                         at_unix_ms: number;
                                         /**
@@ -21027,7 +21067,7 @@ export interface operations {
                                     chain_head_sha256?: string | null;
                                     records: {
                                         /** @enum {string} */
-                                        action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "worker_execute" | "observation_prepare" | "observation_deliver" | "observation_read" | "knowledge_tree_read" | "knowledge_tree_write";
+                                        action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "worker_execute" | "project_source_read" | "observation_prepare" | "observation_deliver" | "observation_read" | "knowledge_tree_read" | "knowledge_tree_write";
                                         /** Format: uint64 */
                                         at_unix_ms: number;
                                         /**
@@ -31841,7 +31881,7 @@ export interface operations {
                                 endpoints: {
                                     action: {
                                         /** @enum {string} */
-                                        action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "worker_execute" | "observation_prepare" | "observation_deliver" | "observation_read" | "knowledge_tree_read" | "knowledge_tree_write";
+                                        action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "worker_execute" | "project_source_read" | "observation_prepare" | "observation_deliver" | "observation_read" | "knowledge_tree_read" | "knowledge_tree_write";
                                         /** @constant */
                                         source: "fixed";
                                     };
@@ -31890,7 +31930,7 @@ export interface operations {
                                     /** @enum {string} */
                                     authentication: "public" | "api_key" | "session_bearer";
                                     /** @enum {string} */
-                                    connect_action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "worker_execute" | "observation_prepare" | "observation_deliver" | "observation_read" | "knowledge_tree_read" | "knowledge_tree_write";
+                                    connect_action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "worker_execute" | "project_source_read" | "observation_prepare" | "observation_deliver" | "observation_read" | "knowledge_tree_read" | "knowledge_tree_write";
                                     description: string;
                                     /**
                                      * @description The reference group an operation belongs to.
@@ -31944,7 +31984,7 @@ export interface operations {
                                 endpoints: {
                                     action: {
                                         /** @enum {string} */
-                                        action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "worker_execute" | "observation_prepare" | "observation_deliver" | "observation_read" | "knowledge_tree_read" | "knowledge_tree_write";
+                                        action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "worker_execute" | "project_source_read" | "observation_prepare" | "observation_deliver" | "observation_read" | "knowledge_tree_read" | "knowledge_tree_write";
                                         /** @constant */
                                         source: "fixed";
                                     };
@@ -31993,7 +32033,7 @@ export interface operations {
                                     /** @enum {string} */
                                     authentication: "public" | "api_key" | "session_bearer";
                                     /** @enum {string} */
-                                    connect_action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "worker_execute" | "observation_prepare" | "observation_deliver" | "observation_read" | "knowledge_tree_read" | "knowledge_tree_write";
+                                    connect_action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "worker_execute" | "project_source_read" | "observation_prepare" | "observation_deliver" | "observation_read" | "knowledge_tree_read" | "knowledge_tree_write";
                                     description: string;
                                     /**
                                      * @description The reference group an operation belongs to.
@@ -33546,6 +33586,54 @@ export interface operations {
                                         /** @description Observed alias, not an attestation of loaded weights. */
                                         service_id: string;
                                         /**
+                                         * @description Provenance for the selected source bytes actually admitted into the worker
+                                         *     packet. Captured and completion-validated inventory identities are distinct.
+                                         */
+                                        source?: {
+                                            /** Format: uint64 */
+                                            captured_at_unix_ms: number;
+                                            captured_read: {
+                                                /** Format: uint64 */
+                                                catalogue_revision: number;
+                                                /** Format: uint64 */
+                                                runtime_cursor: number;
+                                                runtime_manifest_sha256: string;
+                                                /** Format: uint64 */
+                                                schema_revision?: number | null;
+                                            };
+                                            captured_snapshot_sha256: string;
+                                            content_sha256: string;
+                                            /** Format: uint16 */
+                                            contract_version: number;
+                                            entry_identity: string;
+                                            path_sha256: string;
+                                            /**
+                                             * @description Global policy digest recorded by the accepted snapshot, not a
+                                             *     path-specific current-policy authorization.
+                                             */
+                                            policy_sha256: string;
+                                            profile_sha256: string;
+                                            /**
+                                             * @description A canonical public identifier component.
+                                             *
+                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                             *     labels are separate data and may use arbitrary Unicode.
+                                             */
+                                            project_id: string;
+                                            /** Format: uint64 */
+                                            validated_at_unix_ms: number;
+                                            validated_read: {
+                                                /** Format: uint64 */
+                                                catalogue_revision: number;
+                                                /** Format: uint64 */
+                                                runtime_cursor: number;
+                                                runtime_manifest_sha256: string;
+                                                /** Format: uint64 */
+                                                schema_revision?: number | null;
+                                            };
+                                            validated_snapshot_sha256: string;
+                                        } | null;
+                                        /**
                                          * @description A canonical public identifier component.
                                          *
                                          *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
@@ -33869,6 +33957,54 @@ export interface operations {
                                         selection_sha256: string;
                                         /** @description Observed alias, not an attestation of loaded weights. */
                                         service_id: string;
+                                        /**
+                                         * @description Provenance for the selected source bytes actually admitted into the worker
+                                         *     packet. Captured and completion-validated inventory identities are distinct.
+                                         */
+                                        source?: {
+                                            /** Format: uint64 */
+                                            captured_at_unix_ms: number;
+                                            captured_read: {
+                                                /** Format: uint64 */
+                                                catalogue_revision: number;
+                                                /** Format: uint64 */
+                                                runtime_cursor: number;
+                                                runtime_manifest_sha256: string;
+                                                /** Format: uint64 */
+                                                schema_revision?: number | null;
+                                            };
+                                            captured_snapshot_sha256: string;
+                                            content_sha256: string;
+                                            /** Format: uint16 */
+                                            contract_version: number;
+                                            entry_identity: string;
+                                            path_sha256: string;
+                                            /**
+                                             * @description Global policy digest recorded by the accepted snapshot, not a
+                                             *     path-specific current-policy authorization.
+                                             */
+                                            policy_sha256: string;
+                                            profile_sha256: string;
+                                            /**
+                                             * @description A canonical public identifier component.
+                                             *
+                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                             *     labels are separate data and may use arbitrary Unicode.
+                                             */
+                                            project_id: string;
+                                            /** Format: uint64 */
+                                            validated_at_unix_ms: number;
+                                            validated_read: {
+                                                /** Format: uint64 */
+                                                catalogue_revision: number;
+                                                /** Format: uint64 */
+                                                runtime_cursor: number;
+                                                runtime_manifest_sha256: string;
+                                                /** Format: uint64 */
+                                                schema_revision?: number | null;
+                                            };
+                                            validated_snapshot_sha256: string;
+                                        } | null;
                                         /**
                                          * @description A canonical public identifier component.
                                          *
@@ -36571,6 +36707,18 @@ export interface operations {
                         scope: string;
                         selection_attempt_id: string;
                         /**
+                         * @description One explicitly selected file from the installed project's accepted inventory.
+                         *     The entry identity resolves only inside the engine; this carries no path or bytes.
+                         */
+                        source?: {
+                            /** Format: uint16 */
+                            contract_version: number;
+                            entry_identity: string;
+                            expected_content_sha256: string;
+                            /** Format: uint64 */
+                            maximum_input_bytes: number;
+                        } | null;
+                        /**
                          * @description A canonical public identifier component.
                          *
                          *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
@@ -36664,6 +36812,54 @@ export interface operations {
                                 selection_sha256: string;
                                 /** @description Observed alias, not an attestation of loaded weights. */
                                 service_id: string;
+                                /**
+                                 * @description Provenance for the selected source bytes actually admitted into the worker
+                                 *     packet. Captured and completion-validated inventory identities are distinct.
+                                 */
+                                source?: {
+                                    /** Format: uint64 */
+                                    captured_at_unix_ms: number;
+                                    captured_read: {
+                                        /** Format: uint64 */
+                                        catalogue_revision: number;
+                                        /** Format: uint64 */
+                                        runtime_cursor: number;
+                                        runtime_manifest_sha256: string;
+                                        /** Format: uint64 */
+                                        schema_revision?: number | null;
+                                    };
+                                    captured_snapshot_sha256: string;
+                                    content_sha256: string;
+                                    /** Format: uint16 */
+                                    contract_version: number;
+                                    entry_identity: string;
+                                    path_sha256: string;
+                                    /**
+                                     * @description Global policy digest recorded by the accepted snapshot, not a
+                                     *     path-specific current-policy authorization.
+                                     */
+                                    policy_sha256: string;
+                                    profile_sha256: string;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    project_id: string;
+                                    /** Format: uint64 */
+                                    validated_at_unix_ms: number;
+                                    validated_read: {
+                                        /** Format: uint64 */
+                                        catalogue_revision: number;
+                                        /** Format: uint64 */
+                                        runtime_cursor: number;
+                                        runtime_manifest_sha256: string;
+                                        /** Format: uint64 */
+                                        schema_revision?: number | null;
+                                    };
+                                    validated_snapshot_sha256: string;
+                                } | null;
                                 /**
                                  * @description A canonical public identifier component.
                                  *
@@ -36766,6 +36962,54 @@ export interface operations {
                                 selection_sha256: string;
                                 /** @description Observed alias, not an attestation of loaded weights. */
                                 service_id: string;
+                                /**
+                                 * @description Provenance for the selected source bytes actually admitted into the worker
+                                 *     packet. Captured and completion-validated inventory identities are distinct.
+                                 */
+                                source?: {
+                                    /** Format: uint64 */
+                                    captured_at_unix_ms: number;
+                                    captured_read: {
+                                        /** Format: uint64 */
+                                        catalogue_revision: number;
+                                        /** Format: uint64 */
+                                        runtime_cursor: number;
+                                        runtime_manifest_sha256: string;
+                                        /** Format: uint64 */
+                                        schema_revision?: number | null;
+                                    };
+                                    captured_snapshot_sha256: string;
+                                    content_sha256: string;
+                                    /** Format: uint16 */
+                                    contract_version: number;
+                                    entry_identity: string;
+                                    path_sha256: string;
+                                    /**
+                                     * @description Global policy digest recorded by the accepted snapshot, not a
+                                     *     path-specific current-policy authorization.
+                                     */
+                                    policy_sha256: string;
+                                    profile_sha256: string;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    project_id: string;
+                                    /** Format: uint64 */
+                                    validated_at_unix_ms: number;
+                                    validated_read: {
+                                        /** Format: uint64 */
+                                        catalogue_revision: number;
+                                        /** Format: uint64 */
+                                        runtime_cursor: number;
+                                        runtime_manifest_sha256: string;
+                                        /** Format: uint64 */
+                                        schema_revision?: number | null;
+                                    };
+                                    validated_snapshot_sha256: string;
+                                } | null;
                                 /**
                                  * @description A canonical public identifier component.
                                  *
