@@ -12,8 +12,10 @@ it cannot close a roadmap gate independently.
 
 The [selected-source worker package](../../evidence/change-journals/gate-g/task-worker-selected-source.md)
 separates selected-file identity and current eligibility from unrelated inventory
-head and Git changes. Local source, restart and eligible-refresh tests pass;
-candidate/protected CI and installed UI evidence remain pending.
+head and Git changes. Its native prerequisites and matching Connectome PR39 have
+landed through protected CI. The [assessment package's dependency evidence](../../evidence/change-journals/gate-g/task-controller-assessments.md#dependency-evidence-and-exact-limits)
+records the actual source-bound worker and exact merged-desktop recovery; this
+does not establish general attunement or project-effect closure.
 The existing `make_attunement_replan` boundary accepts only eligible unresolved
 jobs with Connect/Inventory checkpoints. Completed jobs and later-effect jobs
 have no general inventory refresh path. Older inventories lacking the derived

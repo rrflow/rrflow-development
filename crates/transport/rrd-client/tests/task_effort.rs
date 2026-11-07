@@ -214,7 +214,7 @@ async fn public_task_effort_executes_stops_and_replays_after_reopen() {
         .unwrap();
     assert_eq!(
         client
-            .activate_builtin_embedding(session, activation, mutation("activate-again"))
+            .activate_builtin_embedding(session, activation.clone(), mutation("activate-again"))
             .await
             .unwrap(),
         models
@@ -373,6 +373,7 @@ async fn public_task_effort_executes_stops_and_replays_after_reopen() {
     repeat_request.attempt_id = CorrelationId::new("renamed-attempt").unwrap();
     repeat_request.request.inputs[0].id = CanonicalId::new("renamed-input").unwrap();
     repeat_request.request.inputs[0].bytes = original_bytes;
+    let equivalent_request = repeat_request.clone();
     let error = client
         .execute_task_embedding(session, repeat_request, mutation("repeat-a-again"))
         .await
@@ -445,7 +446,7 @@ async fn public_task_effort_executes_stops_and_replays_after_reopen() {
     );
     assert_eq!(
         client
-            .read_task_budget(session, repeat_read, read("reopened-repetition"))
+            .read_task_budget(session, repeat_read.clone(), read("reopened-repetition"))
             .await
             .unwrap(),
         repeat_stopped
@@ -491,7 +492,7 @@ async fn public_task_effort_executes_stops_and_replays_after_reopen() {
         .await
         .is_err());
     let repeated = repeat_stopped.budget.as_ref().unwrap();
-    assert!(client
+    let resumed_repeat = client
         .call_operation::<TaskBudgetResume>(
             session,
             ResumeTaskBudget {
@@ -499,10 +500,73 @@ async fn public_task_effort_executes_stops_and_replays_after_reopen() {
                 task_id: repeated.task_id.clone(),
                 expected_budget_sha256: repeat_stopped.budget_sha256.clone().unwrap(),
             },
-            mutation("resume-repetition-denied")
+            mutation("resume-repetition"),
         )
         .await
-        .is_err());
+        .unwrap();
+    let mut repeat_preserved = repeat_stopped.budget.clone().unwrap();
+    repeat_preserved.stopped = None;
+    repeat_preserved.stop_expected_sha256 = None;
+    repeat_preserved.last_observed_at_unix_ms = resumed_repeat
+        .budget
+        .as_ref()
+        .unwrap()
+        .last_observed_at_unix_ms;
+    assert_eq!(resumed_repeat.budget, Some(repeat_preserved.clone()));
+    assert_eq!(repeat_preserved.reserved_steps, 2);
+    assert_eq!(repeat_preserved.deadline_unix_ms, repeated.deadline_unix_ms);
+    let reopened_models = client
+        .activate_builtin_embedding(
+            session,
+            activation.clone(),
+            mutation("resume-repeat-activate"),
+        )
+        .await
+        .unwrap();
+    assert_eq!(reopened_models, models);
+    let mut equivalent_after_resume = equivalent_request;
+    equivalent_after_resume.attempt_id = CorrelationId::new("repeat-after-resume").unwrap();
+    let repeat_error = client
+        .execute_task_embedding(
+            session,
+            equivalent_after_resume.clone(),
+            mutation("repeat-after-resume"),
+        )
+        .await
+        .unwrap_err();
+    assert!(matches!(
+        repeat_error,
+        rrd_client::Error::Api { error, .. } if error.code == ErrorCode::FailedPrecondition
+    ));
+    let repeat_after = client
+        .read_task_budget(session, repeat_read.clone(), read("repeat-stopped-again"))
+        .await
+        .unwrap();
+    assert_eq!(
+        repeat_after.budget.as_ref().unwrap().stopped,
+        Some(ReasoningBudgetStop::RepeatedWork)
+    );
+    let mut repeated_again = repeat_preserved;
+    repeated_again.stopped = Some(ReasoningBudgetStop::RepeatedWork);
+    repeated_again.last_observed_at_unix_ms = repeat_after
+        .budget
+        .as_ref()
+        .unwrap()
+        .last_observed_at_unix_ms;
+    assert_eq!(repeat_after.budget, Some(repeated_again));
+    let rejected_attempt = client
+        .read_task_attempt(
+            session,
+            ReadTaskAttempt {
+                scope: scope.clone(),
+                task_id: repeated.task_id.clone(),
+                attempt_id: equivalent_after_resume.attempt_id,
+            },
+            read("repeat-after-resume-attempt"),
+        )
+        .await
+        .unwrap();
+    assert!(rejected_attempt.attempt.is_none());
     client
         .activate_builtin_embedding(
             session,

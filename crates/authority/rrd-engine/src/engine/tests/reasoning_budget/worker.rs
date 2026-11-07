@@ -91,6 +91,7 @@ fn admitted_fixture(
         bindings,
         selection_policy: Some(selector.clone()),
         observation_policy: None,
+        assessment_policy: None,
         worker_policy: Some(EndpointWorkerPolicy {
             contract_version: 1,
             allow_network: true,
@@ -516,6 +517,7 @@ fn replace_profile(
         bindings: profile.bindings,
         selection_policy: profile.selection_policy,
         observation_policy: profile.observation_policy,
+        assessment_policy: profile.assessment_policy,
         worker_policy: profile.worker_policy,
     };
     edit(&mut input);

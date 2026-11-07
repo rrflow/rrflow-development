@@ -1,4 +1,4 @@
-// OpenAPI SHA-256: 5a14cb9e11a001542a863b295990e27d58a21b0b5d98da183189f09d5869d817
+// OpenAPI SHA-256: fb09bd98e533e3330b86e461a82ce7a6cd02a1cc0d31888cc72dedbe3f767797
 export interface paths {
     "/v1/attunement/cancel": {
         parameters: {
@@ -1060,6 +1060,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/tasks/assessment/execute": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request one source-bound controller assessment
+         * @description Requires EndpointPropose, TaskRead, ReasoningWrite, ProjectSourceRead, MemoryContextRead and network/source/context export consent. Binds task/config and accepted source to a binary/choice/score descriptor and bounded practice text. Reserves a task-budget step and shared controller capacity; calls configured selector once. Retains typed answer or abstention only after source and authority revalidation. Source/practice references use byte ranges. Advisory, not correctness, completion, permission, training or model evidence. Unknown calls retain capacity; read task-assessment-read, never replay.
+         */
+        post: operations["task-assessment-execute"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tasks/assessment/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Read a retained typed task assessment
+         * @description Requires ReasoningRead, TaskRead and the current ProjectSourceRead and MemoryContextRead grants, plus current assessment source/context export policy and selected-path eligibility. Returns only a validated accepted assessment from task-attempt storage; legacy and non-assessment attempts return an absent result. Current revocation withholds the historical answer while task-attempt-read keeps its unchanged v1 projection. A read does not dispatch or retry a controller call.
+         */
+        post: operations["task-assessment-read"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/tasks/attempt/read": {
         parameters: {
             query?: never;
@@ -1131,7 +1171,7 @@ export interface paths {
         put?: never;
         /**
          * Resume safely stopped work under its original task budget
-         * @description Requires the exact current expected_budget_sha256 and ReasoningWrite authorization. Resumes only cancelled or attempt_failed budgets with no active or uncertain execution, an open task, unchanged estate configuration and remaining original time and steps. Preserves spent effort, deadline, repetition counts and attempt history; dispatches nothing. Old attempts remain non-replayable. Stale requests conflict; after a lost reply read the budget before any further action.
+         * @description Requires the exact current expected_budget_sha256 and ReasoningWrite authorization. Resumes cancelled, attempt_failed or repeated_work budgets only with no active or uncertain execution, an open task, unchanged estate configuration and remaining original time and steps. Preserves spent effort, deadline, repetition counts and attempt history; dispatches nothing. An equivalent request stops again before reservation. Old attempts remain non-replayable. Stale requests conflict; after a lost reply read the budget before any further action.
          */
         post: operations["task-budget-resume"];
         delete?: never;
@@ -14390,6 +14430,41 @@ export interface operations {
                              *     change that produces the next revision.
                              */
                             profile?: {
+                                /**
+                                 * @description Assessment is disabled unless an operator explicitly reviews these flags.
+                                 *     The controller is always the selector's configured controller binding.
+                                 */
+                                assessment_policy?: {
+                                    allow_context_export: boolean;
+                                    allow_network: boolean;
+                                    allow_source_export: boolean;
+                                    /** Format: uint16 */
+                                    contract_version: number;
+                                    /**
+                                     * @description No defaults: the installed binding's policy must name the supported wire
+                                     *     parameters. An omitted temperature is distinct from requesting zero.
+                                     */
+                                    generation: {
+                                        /** Format: uint32 */
+                                        maximum_output_tokens: number;
+                                        response_format: {
+                                            /** @constant */
+                                            type: "text";
+                                        } | {
+                                            /** @constant */
+                                            type: "json_object";
+                                        };
+                                        /** Format: uint16 */
+                                        temperature_milli?: number | null;
+                                        /** @enum {string} */
+                                        token_parameter: "max_tokens" | "max_completion_tokens";
+                                    };
+                                    /** Format: uint64 */
+                                    maximum_input_bytes: number;
+                                    /** Format: uint64 */
+                                    maximum_response_bytes: number;
+                                    system_prompt: string;
+                                } | null;
                                 bindings: {
                                     /**
                                      * @description The eight workload classes. Code depends on a class contract; a profile
@@ -14749,6 +14824,41 @@ export interface operations {
                                  *     change that produces the next revision.
                                  */
                                 profile?: {
+                                    /**
+                                     * @description Assessment is disabled unless an operator explicitly reviews these flags.
+                                     *     The controller is always the selector's configured controller binding.
+                                     */
+                                    assessment_policy?: {
+                                        allow_context_export: boolean;
+                                        allow_network: boolean;
+                                        allow_source_export: boolean;
+                                        /** Format: uint16 */
+                                        contract_version: number;
+                                        /**
+                                         * @description No defaults: the installed binding's policy must name the supported wire
+                                         *     parameters. An omitted temperature is distinct from requesting zero.
+                                         */
+                                        generation: {
+                                            /** Format: uint32 */
+                                            maximum_output_tokens: number;
+                                            response_format: {
+                                                /** @constant */
+                                                type: "text";
+                                            } | {
+                                                /** @constant */
+                                                type: "json_object";
+                                            };
+                                            /** Format: uint16 */
+                                            temperature_milli?: number | null;
+                                            /** @enum {string} */
+                                            token_parameter: "max_tokens" | "max_completion_tokens";
+                                        };
+                                        /** Format: uint64 */
+                                        maximum_input_bytes: number;
+                                        /** Format: uint64 */
+                                        maximum_response_bytes: number;
+                                        system_prompt: string;
+                                    } | null;
                                     bindings: {
                                         /**
                                          * @description The eight workload classes. Code depends on a class contract; a profile
@@ -15110,6 +15220,41 @@ export interface operations {
                                  *     change that produces the next revision.
                                  */
                                 profile?: {
+                                    /**
+                                     * @description Assessment is disabled unless an operator explicitly reviews these flags.
+                                     *     The controller is always the selector's configured controller binding.
+                                     */
+                                    assessment_policy?: {
+                                        allow_context_export: boolean;
+                                        allow_network: boolean;
+                                        allow_source_export: boolean;
+                                        /** Format: uint16 */
+                                        contract_version: number;
+                                        /**
+                                         * @description No defaults: the installed binding's policy must name the supported wire
+                                         *     parameters. An omitted temperature is distinct from requesting zero.
+                                         */
+                                        generation: {
+                                            /** Format: uint32 */
+                                            maximum_output_tokens: number;
+                                            response_format: {
+                                                /** @constant */
+                                                type: "text";
+                                            } | {
+                                                /** @constant */
+                                                type: "json_object";
+                                            };
+                                            /** Format: uint16 */
+                                            temperature_milli?: number | null;
+                                            /** @enum {string} */
+                                            token_parameter: "max_tokens" | "max_completion_tokens";
+                                        };
+                                        /** Format: uint64 */
+                                        maximum_input_bytes: number;
+                                        /** Format: uint64 */
+                                        maximum_response_bytes: number;
+                                        system_prompt: string;
+                                    } | null;
                                     bindings: {
                                         /**
                                          * @description The eight workload classes. Code depends on a class contract; a profile
@@ -15452,6 +15597,38 @@ export interface operations {
                         expected_revision: number;
                         /** @description None previews revocation. This neither deletes history nor contacts a provider. */
                         profile?: {
+                            /** @description Absent means task assessment is disabled. */
+                            assessment_policy?: {
+                                allow_context_export: boolean;
+                                allow_network: boolean;
+                                allow_source_export: boolean;
+                                /** Format: uint16 */
+                                contract_version: number;
+                                /**
+                                 * @description No defaults: the installed binding's policy must name the supported wire
+                                 *     parameters. An omitted temperature is distinct from requesting zero.
+                                 */
+                                generation: {
+                                    /** Format: uint32 */
+                                    maximum_output_tokens: number;
+                                    response_format: {
+                                        /** @constant */
+                                        type: "text";
+                                    } | {
+                                        /** @constant */
+                                        type: "json_object";
+                                    };
+                                    /** Format: uint16 */
+                                    temperature_milli?: number | null;
+                                    /** @enum {string} */
+                                    token_parameter: "max_tokens" | "max_completion_tokens";
+                                };
+                                /** Format: uint64 */
+                                maximum_input_bytes: number;
+                                /** Format: uint64 */
+                                maximum_response_bytes: number;
+                                system_prompt: string;
+                            } | null;
                             /**
                              * @description Bindings in declaration order. Within one class, the order is the
                              *     fallback order: the first binding is primary.
@@ -15814,6 +15991,41 @@ export interface operations {
                                  *     change that produces the next revision.
                                  */
                                 profile?: {
+                                    /**
+                                     * @description Assessment is disabled unless an operator explicitly reviews these flags.
+                                     *     The controller is always the selector's configured controller binding.
+                                     */
+                                    assessment_policy?: {
+                                        allow_context_export: boolean;
+                                        allow_network: boolean;
+                                        allow_source_export: boolean;
+                                        /** Format: uint16 */
+                                        contract_version: number;
+                                        /**
+                                         * @description No defaults: the installed binding's policy must name the supported wire
+                                         *     parameters. An omitted temperature is distinct from requesting zero.
+                                         */
+                                        generation: {
+                                            /** Format: uint32 */
+                                            maximum_output_tokens: number;
+                                            response_format: {
+                                                /** @constant */
+                                                type: "text";
+                                            } | {
+                                                /** @constant */
+                                                type: "json_object";
+                                            };
+                                            /** Format: uint16 */
+                                            temperature_milli?: number | null;
+                                            /** @enum {string} */
+                                            token_parameter: "max_tokens" | "max_completion_tokens";
+                                        };
+                                        /** Format: uint64 */
+                                        maximum_input_bytes: number;
+                                        /** Format: uint64 */
+                                        maximum_response_bytes: number;
+                                        system_prompt: string;
+                                    } | null;
                                     bindings: {
                                         /**
                                          * @description The eight workload classes. Code depends on a class contract; a profile
@@ -16177,6 +16389,41 @@ export interface operations {
                                  *     change that produces the next revision.
                                  */
                                 profile?: {
+                                    /**
+                                     * @description Assessment is disabled unless an operator explicitly reviews these flags.
+                                     *     The controller is always the selector's configured controller binding.
+                                     */
+                                    assessment_policy?: {
+                                        allow_context_export: boolean;
+                                        allow_network: boolean;
+                                        allow_source_export: boolean;
+                                        /** Format: uint16 */
+                                        contract_version: number;
+                                        /**
+                                         * @description No defaults: the installed binding's policy must name the supported wire
+                                         *     parameters. An omitted temperature is distinct from requesting zero.
+                                         */
+                                        generation: {
+                                            /** Format: uint32 */
+                                            maximum_output_tokens: number;
+                                            response_format: {
+                                                /** @constant */
+                                                type: "text";
+                                            } | {
+                                                /** @constant */
+                                                type: "json_object";
+                                            };
+                                            /** Format: uint16 */
+                                            temperature_milli?: number | null;
+                                            /** @enum {string} */
+                                            token_parameter: "max_tokens" | "max_completion_tokens";
+                                        };
+                                        /** Format: uint64 */
+                                        maximum_input_bytes: number;
+                                        /** Format: uint64 */
+                                        maximum_response_bytes: number;
+                                        system_prompt: string;
+                                    } | null;
                                     bindings: {
                                         /**
                                          * @description The eight workload classes. Code depends on a class contract; a profile
@@ -16579,6 +16826,41 @@ export interface operations {
                                  *     change that produces the next revision.
                                  */
                                 profile?: {
+                                    /**
+                                     * @description Assessment is disabled unless an operator explicitly reviews these flags.
+                                     *     The controller is always the selector's configured controller binding.
+                                     */
+                                    assessment_policy?: {
+                                        allow_context_export: boolean;
+                                        allow_network: boolean;
+                                        allow_source_export: boolean;
+                                        /** Format: uint16 */
+                                        contract_version: number;
+                                        /**
+                                         * @description No defaults: the installed binding's policy must name the supported wire
+                                         *     parameters. An omitted temperature is distinct from requesting zero.
+                                         */
+                                        generation: {
+                                            /** Format: uint32 */
+                                            maximum_output_tokens: number;
+                                            response_format: {
+                                                /** @constant */
+                                                type: "text";
+                                            } | {
+                                                /** @constant */
+                                                type: "json_object";
+                                            };
+                                            /** Format: uint16 */
+                                            temperature_milli?: number | null;
+                                            /** @enum {string} */
+                                            token_parameter: "max_tokens" | "max_completion_tokens";
+                                        };
+                                        /** Format: uint64 */
+                                        maximum_input_bytes: number;
+                                        /** Format: uint64 */
+                                        maximum_response_bytes: number;
+                                        system_prompt: string;
+                                    } | null;
                                     bindings: {
                                         /**
                                          * @description The eight workload classes. Code depends on a class contract; a profile
@@ -16940,6 +17222,41 @@ export interface operations {
                                  *     change that produces the next revision.
                                  */
                                 profile?: {
+                                    /**
+                                     * @description Assessment is disabled unless an operator explicitly reviews these flags.
+                                     *     The controller is always the selector's configured controller binding.
+                                     */
+                                    assessment_policy?: {
+                                        allow_context_export: boolean;
+                                        allow_network: boolean;
+                                        allow_source_export: boolean;
+                                        /** Format: uint16 */
+                                        contract_version: number;
+                                        /**
+                                         * @description No defaults: the installed binding's policy must name the supported wire
+                                         *     parameters. An omitted temperature is distinct from requesting zero.
+                                         */
+                                        generation: {
+                                            /** Format: uint32 */
+                                            maximum_output_tokens: number;
+                                            response_format: {
+                                                /** @constant */
+                                                type: "text";
+                                            } | {
+                                                /** @constant */
+                                                type: "json_object";
+                                            };
+                                            /** Format: uint16 */
+                                            temperature_milli?: number | null;
+                                            /** @enum {string} */
+                                            token_parameter: "max_tokens" | "max_completion_tokens";
+                                        };
+                                        /** Format: uint64 */
+                                        maximum_input_bytes: number;
+                                        /** Format: uint64 */
+                                        maximum_response_bytes: number;
+                                        system_prompt: string;
+                                    } | null;
                                     bindings: {
                                         /**
                                          * @description The eight workload classes. Code depends on a class contract; a profile
@@ -33224,6 +33541,1176 @@ export interface operations {
                                     task_id: string;
                                     title: string;
                                 };
+                            };
+                            /** @constant */
+                            status: "ok";
+                        } | {
+                            error: {
+                                /** @enum {string} */
+                                code: "invalid_argument" | "not_found" | "already_exists" | "conflict" | "failed_precondition" | "unauthenticated" | "permission_denied" | "resource_exhausted" | "deadline_exceeded" | "cancelled" | "unavailable" | "corruption" | "unsupported_version" | "internal";
+                                details?: {
+                                    [key: string]: string;
+                                };
+                                message: string;
+                                retryable: boolean;
+                            };
+                            /** @constant */
+                            status: "error";
+                        };
+                        protocol: string;
+                        /** Format: uint16 */
+                        protocol_version: number;
+                        request_id: string;
+                    };
+                };
+            };
+        };
+    };
+    "task-assessment-execute": {
+        parameters: {
+            query?: never;
+            header: {
+                "X-RRD-Session": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    context: {
+                        /** Format: uint64 */
+                        deadline_unix_ms?: number | null;
+                        idempotency_key?: string | null;
+                        operation_id: string;
+                        request_id: string;
+                    };
+                    /**
+                     * @description Strict source and practice selection. Paths and source bytes are resolved
+                     *     only by the engine from its accepted inventory.
+                     */
+                    payload: {
+                        attempt_id: string;
+                        /** Format: uint16 */
+                        contract_version: number;
+                        /** @description Closed mode descriptor for a single assessment. */
+                        descriptor: {
+                            /** @constant */
+                            mode: "binary";
+                            proposition: string;
+                        } | {
+                            /** @constant */
+                            mode: "choice";
+                            options: {
+                                description: string;
+                                /**
+                                 * @description A canonical public identifier component.
+                                 *
+                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                 *     labels are separate data and may use arbitrary Unicode.
+                                 */
+                                id: string;
+                            }[];
+                            question: string;
+                        } | {
+                            /** @enum {string} */
+                            direction: "higher_is_better" | "lower_is_better";
+                            /** Format: double */
+                            maximum: number;
+                            /** Format: double */
+                            minimum: number;
+                            /** @constant */
+                            mode: "score";
+                            rubric: string;
+                        };
+                        expected_configuration_sha256: string;
+                        expected_task_sha256: string;
+                        /** Format: uint64 */
+                        max_storage_keys: number;
+                        /**
+                         * @description Caller-declared practice provenance. Its digest describes the declaration,
+                         *     not a separately authenticated template repository.
+                         */
+                        practice_identity: {
+                            /**
+                             * @description A canonical public identifier component.
+                             *
+                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                             *     labels are separate data and may use arbitrary Unicode.
+                             */
+                            question_id: string;
+                            /**
+                             * @description A canonical public identifier component.
+                             *
+                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                             *     labels are separate data and may use arbitrary Unicode.
+                             */
+                            question_set_id: string;
+                            /**
+                             * @description A canonical public identifier component.
+                             *
+                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                             *     labels are separate data and may use arbitrary Unicode.
+                             */
+                            requirement_id: string;
+                            /**
+                             * @description A canonical public identifier component.
+                             *
+                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                             *     labels are separate data and may use arbitrary Unicode.
+                             */
+                            template_id: string;
+                            /** Format: uint64 */
+                            template_revision: number;
+                            template_sha256: string;
+                        };
+                        practice_text: string;
+                        scope: string;
+                        source: {
+                            /** Format: uint16 */
+                            contract_version: number;
+                            entry_identity: string;
+                            expected_content_sha256: string;
+                            /** Format: uint64 */
+                            maximum_input_bytes: number;
+                        };
+                        /**
+                         * @description A canonical public identifier component.
+                         *
+                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                         *     labels are separate data and may use arbitrary Unicode.
+                         */
+                        task_id: string;
+                    };
+                    protocol: string;
+                    /** Format: uint16 */
+                    protocol_version: number;
+                    /**
+                     * @description A fully explicit hierarchical identity. No field is inferred from process
+                     *     cwd, connection state, or a human label.
+                     */
+                    resource: {
+                        segments: {
+                            /**
+                             * @description A canonical public identifier component.
+                             *
+                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                             *     labels are separate data and may use arbitrary Unicode.
+                             */
+                            id: string;
+                            /** @enum {string} */
+                            kind: "organization" | "estate" | "project" | "instance" | "tenant" | "namespace" | "database" | "table" | "collection" | "record" | "point" | "relation" | "alias" | "cluster" | "node" | "shard" | "replica" | "segment" | "transaction" | "snapshot" | "backup" | "operation";
+                        }[];
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description Typed RRD response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        operation_id: string;
+                        outcome: {
+                            /** @description Durable assessment projection is read separately from task-attempt v1. */
+                            payload: {
+                                attempt_id: string;
+                                configuration_sha256: string;
+                                content_sha256: string;
+                                /** Format: uint16 */
+                                contract_version: number;
+                                /**
+                                 * @description A canonical public identifier component.
+                                 *
+                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                 *     labels are separate data and may use arbitrary Unicode.
+                                 */
+                                controller_binding_id: string;
+                                decision: {
+                                    /** @constant */
+                                    outcome: "answered";
+                                    /** @description A controller answer has exactly the type required by its declared mode. */
+                                    value: {
+                                        /** @constant */
+                                        kind: "binary";
+                                        value: boolean;
+                                    } | {
+                                        /** @constant */
+                                        kind: "choice";
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        option_id: string;
+                                    } | {
+                                        /** @constant */
+                                        kind: "score";
+                                        /** Format: double */
+                                        value: number;
+                                    };
+                                } | {
+                                    /** @constant */
+                                    outcome: "abstained";
+                                    reason: string;
+                                };
+                                /** @description Closed mode descriptor for a single assessment. */
+                                descriptor: {
+                                    /** @constant */
+                                    mode: "binary";
+                                    proposition: string;
+                                } | {
+                                    /** @constant */
+                                    mode: "choice";
+                                    options: {
+                                        description: string;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        id: string;
+                                    }[];
+                                    question: string;
+                                } | {
+                                    /** @enum {string} */
+                                    direction: "higher_is_better" | "lower_is_better";
+                                    /** Format: double */
+                                    maximum: number;
+                                    /** Format: double */
+                                    minimum: number;
+                                    /** @constant */
+                                    mode: "score";
+                                    rubric: string;
+                                };
+                                /** Format: uint64 */
+                                elapsed_ms?: number | null;
+                                /** Format: uint16 */
+                                http_status?: number | null;
+                                packet_sha256: string;
+                                /** Format: uint64 */
+                                practice_bytes: number;
+                                /**
+                                 * @description Caller-declared practice provenance. Its digest describes the declaration,
+                                 *     not a separately authenticated template repository.
+                                 */
+                                practice_identity: {
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    question_id: string;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    question_set_id: string;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    requirement_id: string;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    template_id: string;
+                                    /** Format: uint64 */
+                                    template_revision: number;
+                                    template_sha256: string;
+                                };
+                                practice_sha256: string;
+                                read: {
+                                    /** Format: uint64 */
+                                    catalogue_revision: number;
+                                    /** Format: uint64 */
+                                    runtime_cursor: number;
+                                    runtime_manifest_sha256: string;
+                                    /** Format: uint64 */
+                                    schema_revision?: number | null;
+                                };
+                                references: {
+                                    /** Format: uint64 */
+                                    end_byte: number;
+                                    /** @enum {string} */
+                                    input: "source" | "practice";
+                                    input_sha256: string;
+                                    /** Format: uint64 */
+                                    start_byte: number;
+                                }[];
+                                request_sha256: string;
+                                response_sha256: string;
+                                scope: string;
+                                /** @description Provider alias observed at the configured endpoint; not loaded-model proof. */
+                                service_id: string;
+                                /**
+                                 * @description Provenance for the selected source bytes actually admitted into the worker
+                                 *     packet. Captured and completion-validated inventory identities are distinct.
+                                 */
+                                source: {
+                                    /** Format: uint64 */
+                                    captured_at_unix_ms: number;
+                                    captured_read: {
+                                        /** Format: uint64 */
+                                        catalogue_revision: number;
+                                        /** Format: uint64 */
+                                        runtime_cursor: number;
+                                        runtime_manifest_sha256: string;
+                                        /** Format: uint64 */
+                                        schema_revision?: number | null;
+                                    };
+                                    captured_snapshot_sha256: string;
+                                    content_sha256: string;
+                                    /** Format: uint16 */
+                                    contract_version: number;
+                                    entry_identity: string;
+                                    path_sha256: string;
+                                    /**
+                                     * @description Global policy digest recorded by the accepted snapshot, not a
+                                     *     path-specific current-policy authorization.
+                                     */
+                                    policy_sha256: string;
+                                    profile_sha256: string;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    project_id: string;
+                                    /** Format: uint64 */
+                                    validated_at_unix_ms: number;
+                                    validated_read: {
+                                        /** Format: uint64 */
+                                        catalogue_revision: number;
+                                        /** Format: uint64 */
+                                        runtime_cursor: number;
+                                        runtime_manifest_sha256: string;
+                                        /** Format: uint64 */
+                                        schema_revision?: number | null;
+                                    };
+                                    validated_snapshot_sha256: string;
+                                };
+                                /** Format: uint64 */
+                                source_bytes: number;
+                                /**
+                                 * @description A canonical public identifier component.
+                                 *
+                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                 *     labels are separate data and may use arbitrary Unicode.
+                                 */
+                                task_id: string;
+                                task_sha256: string;
+                                /** @description Provider-reported counts only. Absence is unknown, not zero or an estimate. */
+                                usage?: {
+                                    /** Format: uint64 */
+                                    completion_tokens?: number | null;
+                                    /** Format: uint64 */
+                                    prompt_tokens?: number | null;
+                                    /** Format: uint64 */
+                                    total_tokens?: number | null;
+                                } | null;
+                            };
+                            /** @constant */
+                            status: "ok";
+                        } | {
+                            error: {
+                                /** @enum {string} */
+                                code: "invalid_argument" | "not_found" | "already_exists" | "conflict" | "failed_precondition" | "unauthenticated" | "permission_denied" | "resource_exhausted" | "deadline_exceeded" | "cancelled" | "unavailable" | "corruption" | "unsupported_version" | "internal";
+                                details?: {
+                                    [key: string]: string;
+                                };
+                                message: string;
+                                retryable: boolean;
+                            };
+                            /** @constant */
+                            status: "error";
+                        };
+                        protocol: string;
+                        /** Format: uint16 */
+                        protocol_version: number;
+                        request_id: string;
+                    };
+                };
+            };
+            /** @description Typed RRD error response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        operation_id: string;
+                        outcome: {
+                            /** @description Durable assessment projection is read separately from task-attempt v1. */
+                            payload: {
+                                attempt_id: string;
+                                configuration_sha256: string;
+                                content_sha256: string;
+                                /** Format: uint16 */
+                                contract_version: number;
+                                /**
+                                 * @description A canonical public identifier component.
+                                 *
+                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                 *     labels are separate data and may use arbitrary Unicode.
+                                 */
+                                controller_binding_id: string;
+                                decision: {
+                                    /** @constant */
+                                    outcome: "answered";
+                                    /** @description A controller answer has exactly the type required by its declared mode. */
+                                    value: {
+                                        /** @constant */
+                                        kind: "binary";
+                                        value: boolean;
+                                    } | {
+                                        /** @constant */
+                                        kind: "choice";
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        option_id: string;
+                                    } | {
+                                        /** @constant */
+                                        kind: "score";
+                                        /** Format: double */
+                                        value: number;
+                                    };
+                                } | {
+                                    /** @constant */
+                                    outcome: "abstained";
+                                    reason: string;
+                                };
+                                /** @description Closed mode descriptor for a single assessment. */
+                                descriptor: {
+                                    /** @constant */
+                                    mode: "binary";
+                                    proposition: string;
+                                } | {
+                                    /** @constant */
+                                    mode: "choice";
+                                    options: {
+                                        description: string;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        id: string;
+                                    }[];
+                                    question: string;
+                                } | {
+                                    /** @enum {string} */
+                                    direction: "higher_is_better" | "lower_is_better";
+                                    /** Format: double */
+                                    maximum: number;
+                                    /** Format: double */
+                                    minimum: number;
+                                    /** @constant */
+                                    mode: "score";
+                                    rubric: string;
+                                };
+                                /** Format: uint64 */
+                                elapsed_ms?: number | null;
+                                /** Format: uint16 */
+                                http_status?: number | null;
+                                packet_sha256: string;
+                                /** Format: uint64 */
+                                practice_bytes: number;
+                                /**
+                                 * @description Caller-declared practice provenance. Its digest describes the declaration,
+                                 *     not a separately authenticated template repository.
+                                 */
+                                practice_identity: {
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    question_id: string;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    question_set_id: string;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    requirement_id: string;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    template_id: string;
+                                    /** Format: uint64 */
+                                    template_revision: number;
+                                    template_sha256: string;
+                                };
+                                practice_sha256: string;
+                                read: {
+                                    /** Format: uint64 */
+                                    catalogue_revision: number;
+                                    /** Format: uint64 */
+                                    runtime_cursor: number;
+                                    runtime_manifest_sha256: string;
+                                    /** Format: uint64 */
+                                    schema_revision?: number | null;
+                                };
+                                references: {
+                                    /** Format: uint64 */
+                                    end_byte: number;
+                                    /** @enum {string} */
+                                    input: "source" | "practice";
+                                    input_sha256: string;
+                                    /** Format: uint64 */
+                                    start_byte: number;
+                                }[];
+                                request_sha256: string;
+                                response_sha256: string;
+                                scope: string;
+                                /** @description Provider alias observed at the configured endpoint; not loaded-model proof. */
+                                service_id: string;
+                                /**
+                                 * @description Provenance for the selected source bytes actually admitted into the worker
+                                 *     packet. Captured and completion-validated inventory identities are distinct.
+                                 */
+                                source: {
+                                    /** Format: uint64 */
+                                    captured_at_unix_ms: number;
+                                    captured_read: {
+                                        /** Format: uint64 */
+                                        catalogue_revision: number;
+                                        /** Format: uint64 */
+                                        runtime_cursor: number;
+                                        runtime_manifest_sha256: string;
+                                        /** Format: uint64 */
+                                        schema_revision?: number | null;
+                                    };
+                                    captured_snapshot_sha256: string;
+                                    content_sha256: string;
+                                    /** Format: uint16 */
+                                    contract_version: number;
+                                    entry_identity: string;
+                                    path_sha256: string;
+                                    /**
+                                     * @description Global policy digest recorded by the accepted snapshot, not a
+                                     *     path-specific current-policy authorization.
+                                     */
+                                    policy_sha256: string;
+                                    profile_sha256: string;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    project_id: string;
+                                    /** Format: uint64 */
+                                    validated_at_unix_ms: number;
+                                    validated_read: {
+                                        /** Format: uint64 */
+                                        catalogue_revision: number;
+                                        /** Format: uint64 */
+                                        runtime_cursor: number;
+                                        runtime_manifest_sha256: string;
+                                        /** Format: uint64 */
+                                        schema_revision?: number | null;
+                                    };
+                                    validated_snapshot_sha256: string;
+                                };
+                                /** Format: uint64 */
+                                source_bytes: number;
+                                /**
+                                 * @description A canonical public identifier component.
+                                 *
+                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                 *     labels are separate data and may use arbitrary Unicode.
+                                 */
+                                task_id: string;
+                                task_sha256: string;
+                                /** @description Provider-reported counts only. Absence is unknown, not zero or an estimate. */
+                                usage?: {
+                                    /** Format: uint64 */
+                                    completion_tokens?: number | null;
+                                    /** Format: uint64 */
+                                    prompt_tokens?: number | null;
+                                    /** Format: uint64 */
+                                    total_tokens?: number | null;
+                                } | null;
+                            };
+                            /** @constant */
+                            status: "ok";
+                        } | {
+                            error: {
+                                /** @enum {string} */
+                                code: "invalid_argument" | "not_found" | "already_exists" | "conflict" | "failed_precondition" | "unauthenticated" | "permission_denied" | "resource_exhausted" | "deadline_exceeded" | "cancelled" | "unavailable" | "corruption" | "unsupported_version" | "internal";
+                                details?: {
+                                    [key: string]: string;
+                                };
+                                message: string;
+                                retryable: boolean;
+                            };
+                            /** @constant */
+                            status: "error";
+                        };
+                        protocol: string;
+                        /** Format: uint16 */
+                        protocol_version: number;
+                        request_id: string;
+                    };
+                };
+            };
+        };
+    };
+    "task-assessment-read": {
+        parameters: {
+            query?: never;
+            header: {
+                "X-RRD-Session": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    context: {
+                        /** Format: uint64 */
+                        deadline_unix_ms?: number | null;
+                        idempotency_key?: string | null;
+                        operation_id: string;
+                        request_id: string;
+                    };
+                    payload: {
+                        attempt_id: string;
+                        /** Format: uint16 */
+                        contract_version: number;
+                        scope: string;
+                        /**
+                         * @description A canonical public identifier component.
+                         *
+                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                         *     labels are separate data and may use arbitrary Unicode.
+                         */
+                        task_id: string;
+                    };
+                    protocol: string;
+                    /** Format: uint16 */
+                    protocol_version: number;
+                    /**
+                     * @description A fully explicit hierarchical identity. No field is inferred from process
+                     *     cwd, connection state, or a human label.
+                     */
+                    resource: {
+                        segments: {
+                            /**
+                             * @description A canonical public identifier component.
+                             *
+                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                             *     labels are separate data and may use arbitrary Unicode.
+                             */
+                            id: string;
+                            /** @enum {string} */
+                            kind: "organization" | "estate" | "project" | "instance" | "tenant" | "namespace" | "database" | "table" | "collection" | "record" | "point" | "relation" | "alias" | "cluster" | "node" | "shard" | "replica" | "segment" | "transaction" | "snapshot" | "backup" | "operation";
+                        }[];
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description Typed RRD response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        operation_id: string;
+                        outcome: {
+                            payload: {
+                                /** @description Durable assessment projection is read separately from task-attempt v1. */
+                                assessment?: {
+                                    attempt_id: string;
+                                    configuration_sha256: string;
+                                    content_sha256: string;
+                                    /** Format: uint16 */
+                                    contract_version: number;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    controller_binding_id: string;
+                                    decision: {
+                                        /** @constant */
+                                        outcome: "answered";
+                                        /** @description A controller answer has exactly the type required by its declared mode. */
+                                        value: {
+                                            /** @constant */
+                                            kind: "binary";
+                                            value: boolean;
+                                        } | {
+                                            /** @constant */
+                                            kind: "choice";
+                                            /**
+                                             * @description A canonical public identifier component.
+                                             *
+                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                             *     labels are separate data and may use arbitrary Unicode.
+                                             */
+                                            option_id: string;
+                                        } | {
+                                            /** @constant */
+                                            kind: "score";
+                                            /** Format: double */
+                                            value: number;
+                                        };
+                                    } | {
+                                        /** @constant */
+                                        outcome: "abstained";
+                                        reason: string;
+                                    };
+                                    /** @description Closed mode descriptor for a single assessment. */
+                                    descriptor: {
+                                        /** @constant */
+                                        mode: "binary";
+                                        proposition: string;
+                                    } | {
+                                        /** @constant */
+                                        mode: "choice";
+                                        options: {
+                                            description: string;
+                                            /**
+                                             * @description A canonical public identifier component.
+                                             *
+                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                             *     labels are separate data and may use arbitrary Unicode.
+                                             */
+                                            id: string;
+                                        }[];
+                                        question: string;
+                                    } | {
+                                        /** @enum {string} */
+                                        direction: "higher_is_better" | "lower_is_better";
+                                        /** Format: double */
+                                        maximum: number;
+                                        /** Format: double */
+                                        minimum: number;
+                                        /** @constant */
+                                        mode: "score";
+                                        rubric: string;
+                                    };
+                                    /** Format: uint64 */
+                                    elapsed_ms?: number | null;
+                                    /** Format: uint16 */
+                                    http_status?: number | null;
+                                    packet_sha256: string;
+                                    /** Format: uint64 */
+                                    practice_bytes: number;
+                                    /**
+                                     * @description Caller-declared practice provenance. Its digest describes the declaration,
+                                     *     not a separately authenticated template repository.
+                                     */
+                                    practice_identity: {
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        question_id: string;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        question_set_id: string;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        requirement_id: string;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        template_id: string;
+                                        /** Format: uint64 */
+                                        template_revision: number;
+                                        template_sha256: string;
+                                    };
+                                    practice_sha256: string;
+                                    read: {
+                                        /** Format: uint64 */
+                                        catalogue_revision: number;
+                                        /** Format: uint64 */
+                                        runtime_cursor: number;
+                                        runtime_manifest_sha256: string;
+                                        /** Format: uint64 */
+                                        schema_revision?: number | null;
+                                    };
+                                    references: {
+                                        /** Format: uint64 */
+                                        end_byte: number;
+                                        /** @enum {string} */
+                                        input: "source" | "practice";
+                                        input_sha256: string;
+                                        /** Format: uint64 */
+                                        start_byte: number;
+                                    }[];
+                                    request_sha256: string;
+                                    response_sha256: string;
+                                    scope: string;
+                                    /** @description Provider alias observed at the configured endpoint; not loaded-model proof. */
+                                    service_id: string;
+                                    /**
+                                     * @description Provenance for the selected source bytes actually admitted into the worker
+                                     *     packet. Captured and completion-validated inventory identities are distinct.
+                                     */
+                                    source: {
+                                        /** Format: uint64 */
+                                        captured_at_unix_ms: number;
+                                        captured_read: {
+                                            /** Format: uint64 */
+                                            catalogue_revision: number;
+                                            /** Format: uint64 */
+                                            runtime_cursor: number;
+                                            runtime_manifest_sha256: string;
+                                            /** Format: uint64 */
+                                            schema_revision?: number | null;
+                                        };
+                                        captured_snapshot_sha256: string;
+                                        content_sha256: string;
+                                        /** Format: uint16 */
+                                        contract_version: number;
+                                        entry_identity: string;
+                                        path_sha256: string;
+                                        /**
+                                         * @description Global policy digest recorded by the accepted snapshot, not a
+                                         *     path-specific current-policy authorization.
+                                         */
+                                        policy_sha256: string;
+                                        profile_sha256: string;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        project_id: string;
+                                        /** Format: uint64 */
+                                        validated_at_unix_ms: number;
+                                        validated_read: {
+                                            /** Format: uint64 */
+                                            catalogue_revision: number;
+                                            /** Format: uint64 */
+                                            runtime_cursor: number;
+                                            runtime_manifest_sha256: string;
+                                            /** Format: uint64 */
+                                            schema_revision?: number | null;
+                                        };
+                                        validated_snapshot_sha256: string;
+                                    };
+                                    /** Format: uint64 */
+                                    source_bytes: number;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    task_id: string;
+                                    task_sha256: string;
+                                    /** @description Provider-reported counts only. Absence is unknown, not zero or an estimate. */
+                                    usage?: {
+                                        /** Format: uint64 */
+                                        completion_tokens?: number | null;
+                                        /** Format: uint64 */
+                                        prompt_tokens?: number | null;
+                                        /** Format: uint64 */
+                                        total_tokens?: number | null;
+                                    } | null;
+                                } | null;
+                                /** Format: uint16 */
+                                contract_version: number;
+                                outcome_sha256?: string | null;
+                            };
+                            /** @constant */
+                            status: "ok";
+                        } | {
+                            error: {
+                                /** @enum {string} */
+                                code: "invalid_argument" | "not_found" | "already_exists" | "conflict" | "failed_precondition" | "unauthenticated" | "permission_denied" | "resource_exhausted" | "deadline_exceeded" | "cancelled" | "unavailable" | "corruption" | "unsupported_version" | "internal";
+                                details?: {
+                                    [key: string]: string;
+                                };
+                                message: string;
+                                retryable: boolean;
+                            };
+                            /** @constant */
+                            status: "error";
+                        };
+                        protocol: string;
+                        /** Format: uint16 */
+                        protocol_version: number;
+                        request_id: string;
+                    };
+                };
+            };
+            /** @description Typed RRD error response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        operation_id: string;
+                        outcome: {
+                            payload: {
+                                /** @description Durable assessment projection is read separately from task-attempt v1. */
+                                assessment?: {
+                                    attempt_id: string;
+                                    configuration_sha256: string;
+                                    content_sha256: string;
+                                    /** Format: uint16 */
+                                    contract_version: number;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    controller_binding_id: string;
+                                    decision: {
+                                        /** @constant */
+                                        outcome: "answered";
+                                        /** @description A controller answer has exactly the type required by its declared mode. */
+                                        value: {
+                                            /** @constant */
+                                            kind: "binary";
+                                            value: boolean;
+                                        } | {
+                                            /** @constant */
+                                            kind: "choice";
+                                            /**
+                                             * @description A canonical public identifier component.
+                                             *
+                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                             *     labels are separate data and may use arbitrary Unicode.
+                                             */
+                                            option_id: string;
+                                        } | {
+                                            /** @constant */
+                                            kind: "score";
+                                            /** Format: double */
+                                            value: number;
+                                        };
+                                    } | {
+                                        /** @constant */
+                                        outcome: "abstained";
+                                        reason: string;
+                                    };
+                                    /** @description Closed mode descriptor for a single assessment. */
+                                    descriptor: {
+                                        /** @constant */
+                                        mode: "binary";
+                                        proposition: string;
+                                    } | {
+                                        /** @constant */
+                                        mode: "choice";
+                                        options: {
+                                            description: string;
+                                            /**
+                                             * @description A canonical public identifier component.
+                                             *
+                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                             *     labels are separate data and may use arbitrary Unicode.
+                                             */
+                                            id: string;
+                                        }[];
+                                        question: string;
+                                    } | {
+                                        /** @enum {string} */
+                                        direction: "higher_is_better" | "lower_is_better";
+                                        /** Format: double */
+                                        maximum: number;
+                                        /** Format: double */
+                                        minimum: number;
+                                        /** @constant */
+                                        mode: "score";
+                                        rubric: string;
+                                    };
+                                    /** Format: uint64 */
+                                    elapsed_ms?: number | null;
+                                    /** Format: uint16 */
+                                    http_status?: number | null;
+                                    packet_sha256: string;
+                                    /** Format: uint64 */
+                                    practice_bytes: number;
+                                    /**
+                                     * @description Caller-declared practice provenance. Its digest describes the declaration,
+                                     *     not a separately authenticated template repository.
+                                     */
+                                    practice_identity: {
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        question_id: string;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        question_set_id: string;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        requirement_id: string;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        template_id: string;
+                                        /** Format: uint64 */
+                                        template_revision: number;
+                                        template_sha256: string;
+                                    };
+                                    practice_sha256: string;
+                                    read: {
+                                        /** Format: uint64 */
+                                        catalogue_revision: number;
+                                        /** Format: uint64 */
+                                        runtime_cursor: number;
+                                        runtime_manifest_sha256: string;
+                                        /** Format: uint64 */
+                                        schema_revision?: number | null;
+                                    };
+                                    references: {
+                                        /** Format: uint64 */
+                                        end_byte: number;
+                                        /** @enum {string} */
+                                        input: "source" | "practice";
+                                        input_sha256: string;
+                                        /** Format: uint64 */
+                                        start_byte: number;
+                                    }[];
+                                    request_sha256: string;
+                                    response_sha256: string;
+                                    scope: string;
+                                    /** @description Provider alias observed at the configured endpoint; not loaded-model proof. */
+                                    service_id: string;
+                                    /**
+                                     * @description Provenance for the selected source bytes actually admitted into the worker
+                                     *     packet. Captured and completion-validated inventory identities are distinct.
+                                     */
+                                    source: {
+                                        /** Format: uint64 */
+                                        captured_at_unix_ms: number;
+                                        captured_read: {
+                                            /** Format: uint64 */
+                                            catalogue_revision: number;
+                                            /** Format: uint64 */
+                                            runtime_cursor: number;
+                                            runtime_manifest_sha256: string;
+                                            /** Format: uint64 */
+                                            schema_revision?: number | null;
+                                        };
+                                        captured_snapshot_sha256: string;
+                                        content_sha256: string;
+                                        /** Format: uint16 */
+                                        contract_version: number;
+                                        entry_identity: string;
+                                        path_sha256: string;
+                                        /**
+                                         * @description Global policy digest recorded by the accepted snapshot, not a
+                                         *     path-specific current-policy authorization.
+                                         */
+                                        policy_sha256: string;
+                                        profile_sha256: string;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        project_id: string;
+                                        /** Format: uint64 */
+                                        validated_at_unix_ms: number;
+                                        validated_read: {
+                                            /** Format: uint64 */
+                                            catalogue_revision: number;
+                                            /** Format: uint64 */
+                                            runtime_cursor: number;
+                                            runtime_manifest_sha256: string;
+                                            /** Format: uint64 */
+                                            schema_revision?: number | null;
+                                        };
+                                        validated_snapshot_sha256: string;
+                                    };
+                                    /** Format: uint64 */
+                                    source_bytes: number;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    task_id: string;
+                                    task_sha256: string;
+                                    /** @description Provider-reported counts only. Absence is unknown, not zero or an estimate. */
+                                    usage?: {
+                                        /** Format: uint64 */
+                                        completion_tokens?: number | null;
+                                        /** Format: uint64 */
+                                        prompt_tokens?: number | null;
+                                        /** Format: uint64 */
+                                        total_tokens?: number | null;
+                                    } | null;
+                                } | null;
+                                /** Format: uint16 */
+                                contract_version: number;
+                                outcome_sha256?: string | null;
                             };
                             /** @constant */
                             status: "ok";

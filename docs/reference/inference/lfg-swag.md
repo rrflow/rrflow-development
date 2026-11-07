@@ -574,8 +574,10 @@ never the durable authority.
 
 Activation is process-local and must be repeated explicitly after restart for
 new execution. Replaying retained output does not activate a backend. A stopped
-budget stays stopped across configuration retries, new sessions and reopen.
-There is no extension or reconciliation operation in this package. See the
+budget stays stopped across configuration retries, new sessions and reopen
+until an eligible explicit `task-budget-resume`; that operation preserves its
+original limits and history. There is no extension or reconciliation operation
+in this package. See the
 [public-flow evidence](../../evidence/change-journals/gate-g/g-02a-public-task-effort.md).
 
 #### Configurable repeated embedding work
@@ -721,17 +723,20 @@ completion does not imply acceptable output, attested identity or retry permissi
 Malformed, mismatched, oversized and lost responses remain uncertain. A failed
 attempt still spends its step and elapsed effort and stops its task budget.
 This classification applies to newly observed calls, not historical reservations.
-`task-budget-resume` allows an explicit authenticated transition from `cancelled`
-or `attempt_failed` when the task is open, no active or uncertain work remains,
-the estate configuration matches and original time/steps remain available.
-Supply the current `task-budget-read` digest as `expected_budget_sha256`.
-The engine preserves the original deadline, spent effort, repetition history and
-all attempts. Resume dispatches nothing and cannot clear capacity leases. A new
-attempt must separately pass current authorization/input/capacity admission;
-old attempt IDs remain non-replayable. Stale resume requests conflict. After a
-lost acknowledgement read the budget; do not automatically retry or reset it.
-The operation does not reconcile unknown provider outcomes or extend deadlines.
-Read `task-attempt-read` to recover a receipt without calling the provider again.
+`task-budget-resume` allows an explicit authenticated transition from `cancelled`,
+`attempt_failed` or `repeated_work` when the task is open, no active or uncertain
+work remains, the estate configuration matches and original time/steps remain
+available. Supply the current `task-budget-read` digest as
+`expected_budget_sha256`. The engine preserves the original deadline, spent
+effort, repetition counts and all attempts. Resume dispatches nothing and cannot
+clear capacity leases. An equivalent request is stopped again before it reserves
+a step or calls a provider; a changed, currently authorized input must separately
+pass normal admission. Old attempt IDs remain non-replayable. Stale resume
+requests conflict. After a lost acknowledgement read the budget; do not
+automatically retry or reset it. The operation does not reconcile unknown
+provider outcomes or extend deadlines. `repetition_tracking_limit` remains
+stopped because the bounded identity history is full. Read `task-attempt-read`
+to recover a receipt without calling the provider again.
 Changed authority/configuration/task inputs invalidate accepted-output publication
 while retaining consumed effort. Ordinary repository-edit successor plans are not
 implemented by this task-text operation.
