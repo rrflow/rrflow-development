@@ -1314,3 +1314,6 @@ The [native harness real-error repair](../../evidence/change-journals/gate-c/c-0
 
 
 A [100,000-record ARM characterization](../../evidence/change-journals/gate-c/c-07-arm100k-unrequested-backup-20261107.md) verified post-reopen readback, then failed because the measured driver started backup even though the frozen campaign did not request that lane. The warmup also had failures and latency overruns. Preserve this result and repair lane admission; it does not qualify C-07 or prove that full-size backup meets its deadline.
+
+
+The [retained ARM conflict analysis](../../evidence/change-journals/gate-c/c-07-arm100k-conflict-analysis-20261107.md) binds both warmup rejection traces to client intervals and overlapping acknowledged operations. Those intervals do not prove commit order or cause; correlated engine evidence and a separately reviewed concurrency decision remain open.
