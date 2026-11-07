@@ -40,6 +40,94 @@ use workload::{Prepared, Workload};
 
 type DriverResult<T> = std::result::Result<T, String>;
 
+#[test]
+fn installed_transaction_timing_correlates_and_replays_after_restart() {
+    let estate = Estate::install("fresh");
+    let clock = Instant::now();
+    let credential = rrd_engine::RrdEngine::read_installed_api_key(&estate.project).unwrap();
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+    let filter = Some("rrd_engine::transaction_diagnostic=debug");
+    let (mut child, client, _) =
+        estate.start_for_with_filter(clock, Duration::from_secs(180), filter);
+    let (session, transaction) = runtime.block_on(async {
+        let session = client
+            .create_session(
+                credential.principal_id.clone(),
+                credential.credential(),
+                CreateSession {
+                    limits: SessionLimits {
+                        idle_timeout_ms: 300_000,
+                        absolute_timeout_ms: 600_000,
+                        max_open_transactions: 2,
+                    },
+                },
+                super::options("timing-session"),
+            )
+            .await
+            .unwrap();
+        let transaction = client
+            .begin_transaction(
+                &session,
+                rrd_contract::BeginTransaction {
+                    scope: rrd_contract::CanonicalId::new("claims").unwrap(),
+                    timeout_ms: 300_000,
+                },
+                super::options("private-installed-begin"),
+            )
+            .await
+            .unwrap();
+        (session, transaction)
+    });
+    child.terminate();
+    let output = child.finish().expect("reap installed traced server");
+    assert_installed_begin_trace(&output.stderr, credential.credential(), "created");
+
+    let (mut reopened, client, _) =
+        estate.start_for_with_filter(clock, Duration::from_secs(180), filter);
+    let replay = runtime
+        .block_on(client.begin_transaction(
+            &session,
+            rrd_contract::BeginTransaction {
+                scope: rrd_contract::CanonicalId::new("claims").unwrap(),
+                timeout_ms: 300_000,
+            },
+            super::options("private-installed-begin"),
+        ))
+        .unwrap();
+    assert_eq!(replay, transaction);
+    reopened.terminate();
+    let output = reopened.finish().expect("reap reopened traced server");
+    assert_installed_begin_trace(&output.stderr, credential.credential(), "replayed");
+}
+
+fn assert_installed_begin_trace(bytes: &[u8], credential: &str, outcome: &str) {
+    let raw = std::str::from_utf8(bytes).unwrap();
+    assert!(!raw.contains("private-installed-begin"));
+    assert!(!raw.contains(credential));
+    let digest = rrd_core::digest::sha256_hex(b"private-installed-begin");
+    let events: Vec<serde_json::Value> = raw
+        .lines()
+        .map(|line| serde_json::from_str(line).expect("complete JSON trace"))
+        .collect();
+    let matching: Vec<_> = events
+        .iter()
+        .filter(|event| {
+            event["target"] == "rrd_engine::transaction_diagnostic"
+                && event["fields"]["request_sha256"] == digest
+                && event["fields"]["outcome"] == outcome
+        })
+        .collect();
+    assert_eq!(
+        matching.len(),
+        1,
+        "installed process must emit the expected transaction timing"
+    );
+    assert!(matching[0]["fields"]["total_ns"].is_u64());
+}
+
 fn retain_failed_lifecycle<T>(
     estate: &super::owned_directory::OwnedDirectory,
     result: DriverResult<T>,
