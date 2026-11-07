@@ -34,3 +34,19 @@ was launched on the earlier `6fd27c40` revision and cannot be claimed as
 evidence for this source. Exact corrected-source macOS preflight, the full
 candidate and protected merge remain pending. Source review covered the
 three affected Python files and their full diff. No C-07 or POAM status changed.
+
+
+## Corrected-source macOS preflight
+
+[Run 42406185131](https://github.com/rrflow/rrflow-development/actions/runs/42406185131)
+completed successfully for exact source `d0cf12b6077de93c8ad5aeefef880ab4eabc9a94`.
+Its native-preflight job `128504277010` recorded 24 successful installed native
+case markers and 24 owned-image detachment markers. The real injected native
+create-failure capture step passed and retained artifact `13588020289`. The
+full downloaded job log SHA-256 was
+`059c3cc7960399a49c5b5ba5f5ee2a6a100ae78df6d617d42c5a98baf1f9ffe5`.
+This is one hosted macOS preflight, not proof of the earlier Resource busy
+cause, candidate or protected merge CI, the native capacity matrix, or C-07
+soak qualification. No roadmap or POAM status changed. The recorded source
+revision precedes this evidence-only update; the required candidate CI must
+run against the final submitted head.
