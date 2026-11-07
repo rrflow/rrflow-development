@@ -75,8 +75,10 @@ class ProgressTests(unittest.TestCase):
             root.mkdir()
             (root / "progress.jsonl").write_text('{"kind":"campaign","secret":"hidden"}\n', encoding="utf-8")
             observer = ProgressObserver(root, None, 1000, 4096)
+            self.assertIsNone(observer.started)
             with self.assertRaises(KeyboardInterrupt):
                 with observer:
+                    self.assertIsNotNone(observer.started)
                     raise KeyboardInterrupt()
             self.assertFalse(observer.thread.is_alive())
             rows = [json.loads(row) for row in observer.output_path.read_text(encoding="utf-8").splitlines()]

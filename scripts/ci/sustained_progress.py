@@ -132,7 +132,7 @@ class ProgressObserver:
         self.reader = ProgressReader(evidence)
         self.output_path = evidence.with_name(evidence.name + ".observations.jsonl")
         self.stop_event = threading.Event()
-        self.started = time.monotonic_ns()
+        self.started = None
         self.written = 0
         self.thread = None
         self.output = None
@@ -141,6 +141,7 @@ class ProgressObserver:
     def __enter__(self):
         # Exclusive creation leaves any prior operator evidence untouched.
         self.output = self.output_path.open("x", encoding="utf-8", newline="\n")
+        self.started = time.monotonic_ns()
         self.thread = threading.Thread(target=self._run, name="rrflow-progress-observer", daemon=True)
         try:
             self.thread.start()
