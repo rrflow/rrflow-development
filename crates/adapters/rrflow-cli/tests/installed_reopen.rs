@@ -327,6 +327,8 @@ fn installed_redacted_transaction_capture_survives_restart() {
     let capture = transaction_trace::Capture::new(2).unwrap();
     let clock = Instant::now();
     let credential = RrdEngine::read_installed_api_key(&estate.project).unwrap();
+    let begin_options = options("private-redacted-begin");
+    let begin_digest = rrd_core::digest::sha256_hex(begin_options.request_id.as_str().as_bytes());
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
@@ -357,7 +359,7 @@ fn installed_redacted_transaction_capture_survives_restart() {
                     scope: CanonicalId::new("claims").unwrap(),
                     timeout_ms: 300_000,
                 },
-                options("private-redacted-begin"),
+                begin_options.clone(),
             )
             .await
             .unwrap();
@@ -381,7 +383,7 @@ fn installed_redacted_transaction_capture_survives_restart() {
                 scope: CanonicalId::new("claims").unwrap(),
                 timeout_ms: 300_000,
             },
-            options("private-redacted-begin"),
+            begin_options,
         ))
         .unwrap();
     assert_eq!(replay, transaction);
@@ -395,6 +397,9 @@ fn installed_redacted_transaction_capture_survives_restart() {
     assert_eq!(report["registered_observers"], 2);
     assert_eq!(report["finished_readers"], 2);
     assert_eq!(report["failed_readers"], 0);
+    assert!(events
+        .iter()
+        .all(|event| event["request_sha256"] == begin_digest));
     assert!(events.iter().any(|event| event["pid"] == first_pid
         && event["observer_ordinal"] == 1
         && event["outcome"] == "created"));
