@@ -100,6 +100,7 @@ tutorial, and reference material, and MADR's one-decision-per-record model:
 - [RRFlow architecture](architecture/) — [`rrflow://rrflow-instance/data/architecture-index/rrflow-architecture`](rrflow://rrflow-instance/data/architecture-index/rrflow-architecture) — active architecture index
 - [RRFlow architecture decisions](decisions/) — [`rrflow://rrflow-instance/data/decision-index/rrflow-decisions`](rrflow://rrflow-instance/data/decision-index/rrflow-decisions) — active architecture-decision index
 - [RRFlow evidence index](evidence/) — [`rrflow://rrflow-instance/data/evidence-index/rrflow-evidence`](rrflow://rrflow-instance/data/evidence-index/rrflow-evidence) — active evidence index; test plans are not execution evidence
+- [RRFlow guides](guides/) — [`rrflow://rrflow-instance/data/guide-index/rrflow-guides`](rrflow://rrflow-instance/data/guide-index/rrflow-guides) — active guide index
 - [RRFlow history](history/) — [`rrflow://rrflow-instance/data/history-index/rrflow-history`](rrflow://rrflow-instance/data/history-index/rrflow-history) — active history index for explicitly superseded records
 - [RRFlow objectives](objectives/) — [`rrflow://rrflow-instance/data/objective-index/rrflow-objectives`](rrflow://rrflow-instance/data/objective-index/rrflow-objectives) — active objective index
 - [RRFlow operations](operations/) — [`rrflow://rrflow-instance/data/operations-index/rrflow-operations`](rrflow://rrflow-instance/data/operations-index/rrflow-operations) — active operations index

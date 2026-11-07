@@ -1,0 +1,58 @@
+name: Something did not work
+description: A command failed, gave the wrong result, or did something you did not expect.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for trying RRFlow. Please remove secrets before you post: never paste a project's `.rrflow/` folder, credentials, API keys or tokens.
+        A security problem belongs in a private report, as SECURITY.md describes, not here.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you ran, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: The exact commands, in order. If you followed the getting-started guide, say which step.
+      render: bash
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Output
+      description: Everything the failing command printed.
+      render: text
+  - type: input
+    id: version
+    attributes:
+      label: rrflow version
+      description: The output of `rrflow version`.
+    validations:
+      required: true
+  - type: input
+    id: revision
+    attributes:
+      label: Revision
+      description: The output of `git rev-parse HEAD` in your checkout.
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Operating system and CPU
+      description: For example "Windows 11 x86_64" or "Ubuntu 24.04 aarch64".
+    validations:
+      required: true
+  - type: checkboxes
+    id: secrets
+    attributes:
+      label: Before posting
+      options:
+        - label: I removed credentials, tokens and private data from everything above.
+          required: true
