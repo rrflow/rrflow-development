@@ -806,6 +806,48 @@ def verify_development_container(reusable: str, pgvector_job: str) -> int:
     return len(expected) + len(CONTAINER_CHECKSUMS)
 
 
+def verify_storage_contract_preflight(jobs: dict[str, str]) -> None:
+    """The expensive reopen matrix requires the candidate's synthetic contract."""
+    preflight = jobs.get("storage-contract-preflight", "")
+    reopen = jobs.get("installed-reopen", "")
+    gate = jobs.get("ci-gate", "")
+    require(bool(preflight), "storage contract preflight is missing")
+    require(
+        "runs-on: ${{ fromJSON(inputs.linux-standard-runner) }}" in preflight
+        and "cache-on-failure: false" in preflight
+        and not re.search(r"(?m)^    if:", preflight)
+        and "continue-on-error:" not in preflight,
+        "storage preflight must run on the selected trusted lane without bypass",
+    )
+    command = (
+        "      - name: Validate candidate catalogue and synthetic storage projections\n"
+        "        shell: bash\n"
+        "        run: |\n"
+        "          set -euo pipefail\n"
+        "          cargo test --locked -p rrflow-eval --test storage_contract "
+        "generated_schemas_and_synthetic_receipts_match_goldens -- --exact --list | "
+        "grep -Fx 'generated_schemas_and_synthetic_receipts_match_goldens: test'\n"
+        "          cargo test --locked -p rrflow-eval --test storage_contract "
+        "generated_schemas_and_synthetic_receipts_match_goldens -- --exact"
+    )
+    require(preflight.count(command) == 1, "storage preflight must run the exact golden test")
+    require(
+        re.search(r"(?m)^    needs: storage-contract-preflight\s*$", reopen) is not None
+        and not re.search(r"(?m)^    if:", reopen)
+        and "continue-on-error:" not in reopen,
+        "installed reopen must depend on successful storage preflight without bypass",
+    )
+    require(
+        "    if: ${{ always() }}\n" in gate
+        and "continue-on-error:" not in gate
+        and "      - name: Require every CI partition\n        env:\n" in gate
+        and "      - storage-contract-preflight\n" in gate
+        and "STORAGE_PREFLIGHT_RESULT: ${{ needs.storage-contract-preflight.result }}" in gate
+        and 'test "$STORAGE_PREFLIGHT_RESULT" = success' in gate,
+        "ci-gate must require the storage preflight result to be success",
+    )
+
+
 def main() -> None:
     workflows = workflow_sources()
     require(NATIVE_PREFLIGHT in workflows, "native macOS preflight workflow missing")
@@ -813,6 +855,7 @@ def main() -> None:
     caller = workflows[CALLER]
     reusable = workflows[REUSABLE]
     jobs = job_blocks(reusable)
+    verify_storage_contract_preflight(jobs)
     verify_candidate_admission(caller)
     verify_linux_arm64_ci(caller, reusable)
     warmer = workflows.get(WORKFLOW_DIRECTORY / "ci-cache-warm.yml")
@@ -874,6 +917,7 @@ def main() -> None:
 
     expected_jobs = {
         "native-arm64",
+        "storage-contract-preflight",
         "installed-reopen",
         "installed-crash",
         "topology-smoke",

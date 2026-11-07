@@ -580,8 +580,34 @@ jobs:
       - name: Deny PostgreSQL operator-knowledge warnings
         run: cargo clippy -p rrd-operator-knowledge --all-targets --all-features --locked -- -D warnings
 
+  storage-contract-preflight:
+    name: synthetic storage contract preflight
+    runs-on: ${{ fromJSON(inputs.linux-standard-runner) }}
+    timeout-minutes: 15
+    env:
+      CARGO_BUILD_JOBS: "2"
+      CARGO_PROFILE_TEST_DEBUG: "0"
+      RUSTFLAGS: "-C link-arg=-Wl,--threads=1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          submodules: recursive
+      - uses: dtolnay/rust-toolchain@d124f86f28ff42855784ff3319f48ac182c248f8 # 1.99.1
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          shared-key: linux-storage-contract-test-debug0-lld1
+          cache-on-failure: false
+      - name: Validate candidate catalogue and synthetic storage projections
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo test --locked -p rrflow-eval --test storage_contract generated_schemas_and_synthetic_receipts_match_goldens -- --exact --list | grep -Fx 'generated_schemas_and_synthetic_receipts_match_goldens: test'
+          cargo test --locked -p rrflow-eval --test storage_contract generated_schemas_and_synthetic_receipts_match_goldens -- --exact
+
   installed-reopen:
     name: installed 100-cycle reopen (${{ matrix.os }})
+    needs: storage-contract-preflight
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
     strategy:
@@ -839,6 +865,7 @@ jobs:
       - optional-features
       - pgvector-feature
       - installed-crash
+      - storage-contract-preflight
       - installed-reopen
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -854,6 +881,7 @@ jobs:
           OPTIONAL_FEATURES_RESULT: ${{ needs.optional-features.result }}
           PGVECTOR_FEATURE_RESULT: ${{ needs.pgvector-feature.result }}
           INSTALLED_CRASH_RESULT: ${{ needs.installed-crash.result }}
+          STORAGE_PREFLIGHT_RESULT: ${{ needs.storage-contract-preflight.result }}
           INSTALLED_REOPEN_RESULT: ${{ needs.installed-reopen.result }}
         run: |
           test "$ARM64_RESULT" = success
@@ -865,4 +893,5 @@ jobs:
           test "$OPTIONAL_FEATURES_RESULT" = success
           test "$PGVECTOR_FEATURE_RESULT" = success
           test "$INSTALLED_CRASH_RESULT" = success
+          test "$STORAGE_PREFLIGHT_RESULT" = success
           test "$INSTALLED_REOPEN_RESULT" = success

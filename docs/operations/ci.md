@@ -92,6 +92,10 @@ check for branch protection:
   and `product-operations`;
 - one current shared SDK harness, isolated optional-feature checks, and a real
   PostgreSQL/pgvector integration;
+- a synthetic storage-contract preflight on the selected standard Linux runner;
+  the ordinary 100-cycle reopen matrix starts only after this candidate's
+  catalogue and synthetic fixture projections pass. The job first verifies that
+  the named test exists, so an empty test selection cannot pass;
 - installed lifecycle and daemon portability on GitHub-hosted Windows and
   macOS runners;
 - separately identified installed domain-crash diagnostics and ordinary-build
@@ -99,6 +103,14 @@ check for branch protection:
 - ordinary-primary fresh/existing 100-cycle acknowledged kill/reopen histories
   on those same three native platforms; and
 - one always-evaluated gate which fails unless every partition succeeded.
+
+The preflight responds to a candidate whose changed operation catalogue left a
+stale synthetic fixture: the native reopen smoke rejected that identity only
+after its release build. On a valid candidate the added dependency can increase
+wall-clock time; measure the actual preflight and matrix durations before
+claiming a speedup. It does not replace a native smoke, reopen, crash, capacity
+or soak test. The aggregate gate explicitly rejects a skipped, cancelled or
+failed preflight and the same outcomes from every other required partition.
 
 ### Inspect candidate failures while jobs are running
 
