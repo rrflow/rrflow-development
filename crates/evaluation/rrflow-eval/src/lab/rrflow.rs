@@ -5,13 +5,14 @@ use super::adapter::{
     SearchRequest, SystemAdapter,
 };
 use super::knowledge::{TextChunk, CHUNK_TABLE};
-use super::manifest::{IndexSpec, LabMetric, SystemBinding, WorkloadSpec};
+use super::manifest::{IndexSpec, LabMetric, RrflowHnswParameters, SystemBinding, WorkloadSpec};
 use super::Result;
 use rrd_client::{ClientConfig, RequestOptions, RrdClient, Session};
 use rrd_contract::{
-    transaction_operation_sha256, BeginTransaction, CanonicalId, CommitTransaction, CreateSession,
-    ReadDataSchema, SessionLimits, TransactionMutation, MAX_TRANSACTION_CLAIMS,
-    MAX_VECTOR_STORAGE_KEYS,
+    transaction_operation_sha256, BeginTransaction, BuildVectorQuantizationArtifact, CanonicalId,
+    CommitTransaction, CreateSession, EnsureVectorIndex, EnsureVectorPayloadIndex, ReadDataSchema,
+    SessionLimits, TransactionMutation, VectorIndexConfiguration, VectorPayloadIndexKind,
+    MAX_TRANSACTION_CLAIMS, MAX_VECTOR_STORAGE_KEYS,
 };
 use serde::de::DeserializeOwned;
 use serde_json::{json, Value};
@@ -41,6 +42,8 @@ struct Prepared {
     vector_table: String,
     collection: String,
     index: IndexSpec,
+    hnsw: Option<RrflowHnswParameters>,
+    filter_categories: bool,
 }
 
 struct Lease {
@@ -59,6 +62,8 @@ pub struct RrflowAdapter {
     counter: AtomicU64,
     prepared: OnceLock<Prepared>,
     access_paths: Mutex<BTreeSet<String>>,
+    hnsw: Option<RrflowHnswParameters>,
+    filter_categories: bool,
 }
 
 fn decode<T: DeserializeOwned>(value: Value) -> Result<T> {
@@ -136,7 +141,7 @@ pub(crate) fn search_mode(
     k: u32,
 ) -> Value {
     match index {
-        IndexSpec::TurboQuant { .. } => {
+        IndexSpec::TurboQuant { .. } | IndexSpec::Hnsw { .. } => {
             let ef = ef.unwrap_or(k);
             json!({
                 "mode": "require_approximate",
@@ -148,17 +153,75 @@ pub(crate) fn search_mode(
     }
 }
 
+fn category_index_request(scope: &str, collection: &str) -> Result<EnsureVectorPayloadIndex> {
+    Ok(EnsureVectorPayloadIndex {
+        scope: scope.to_string(),
+        collection_id: id(collection)?,
+        field: id("category")?,
+        kind: VectorPayloadIndexKind::Unsigned,
+    })
+}
+
+fn quantization_request(
+    scope: &str,
+    prepared: &Prepared,
+) -> Result<BuildVectorQuantizationArtifact> {
+    let IndexSpec::TurboQuant { bits, seed } = &prepared.index else {
+        return Err("TurboQuant build requested with another index type".into());
+    };
+    decode(json!({
+        "scope": scope,
+        "collection_id": prepared.collection,
+        "vector_name": VECTOR_NAME,
+        "method": {"method": "turbo_quant", "bits": bits, "seed": seed},
+        "filter_properties": if prepared.filter_categories { vec!["category"] } else { Vec::<&str>::new() },
+        "max_storage_keys": MAX_VECTOR_STORAGE_KEYS
+    }))
+}
+
+fn hnsw_index_request(scope: &str, prepared: &Prepared) -> Result<EnsureVectorIndex> {
+    let IndexSpec::Hnsw { m, ef_construction } = &prepared.index else {
+        return Err("HNSW index requested with another index type".into());
+    };
+    let native = prepared
+        .hnsw
+        .as_ref()
+        .ok_or("native HNSW parameters are required")?;
+    let filter_properties = if prepared.filter_categories {
+        vec![id("category")?]
+    } else {
+        Vec::new()
+    };
+    Ok(EnsureVectorIndex {
+        scope: scope.to_string(),
+        collection_id: id(&prepared.collection)?,
+        vector_name: id(VECTOR_NAME)?,
+        configuration: VectorIndexConfiguration::Hnsw {
+            m: *m,
+            ef_construction: u64::from(*ef_construction),
+            max_level: native.max_level,
+            seed: native.seed,
+            filter_properties,
+        },
+        build_policy: native.build_policy.clone(),
+        max_storage_keys: MAX_VECTOR_STORAGE_KEYS,
+    })
+}
+
 impl RrflowAdapter {
     pub fn connect(binding: &SystemBinding, workload: &WorkloadSpec) -> Result<Self> {
         let (principal, secret) = required_credentials(binding)?;
         let instance = required_instance(binding)?;
-        Self::connect_to(
+        let mut adapter = Self::connect_to(
             &binding.endpoint,
             &instance,
             &principal,
             secret,
             Duration::from_millis(workload.request_timeout_ms),
-        )
+        )?;
+        adapter.hnsw = binding.rrflow_hnsw.clone();
+        adapter.filter_categories = workload.filtered;
+        Ok(adapter)
     }
 
     pub fn connect_to(
@@ -213,6 +276,8 @@ impl RrflowAdapter {
             counter: AtomicU64::new(0),
             prepared: OnceLock::new(),
             access_paths: Mutex::new(BTreeSet::new()),
+            hnsw: None,
+            filter_categories: false,
         })
     }
 
@@ -360,6 +425,8 @@ impl SystemAdapter for RrflowAdapter {
             vector_table: format!("{}_vector", spec.name.replace('-', "_")),
             collection: collection.clone(),
             index: spec.index.clone(),
+            hnsw: self.hnsw.clone(),
+            filter_categories: self.filter_categories,
         };
         let installed = self
             .runtime
@@ -413,6 +480,15 @@ impl SystemAdapter for RrflowAdapter {
         self.commit(decode(
             json!([{"mutation": "put_schema", "registry": registry}]),
         )?)?;
+        if prepared.filter_categories && !matches!(prepared.index, IndexSpec::Exact) {
+            self.runtime
+                .block_on(self.client.ensure_vector_payload_index(
+                    &session,
+                    category_index_request(&self.scope, &prepared.collection)?,
+                    self.mutation_options("category-index")?,
+                ))
+                .map_err(|error| error.to_string())?;
+        }
         let _ = self.prepared.set(prepared);
         Ok(())
     }
@@ -450,24 +526,26 @@ impl SystemAdapter for RrflowAdapter {
 
     fn finish_ingest(&self, _deadline: Instant) -> Result<()> {
         let prepared = self.prepared()?;
-        let IndexSpec::TurboQuant { bits, seed } = &prepared.index else {
-            return Ok(());
-        };
-        // No public operation declares a payload index, so a generation cannot cover
-        // filters. Filtered searches then report the engine's refusal, as any caller
-        // would see, rather than quietly falling back to an exact scan.
         let session = self.session()?;
+        if matches!(prepared.index, IndexSpec::Hnsw { .. }) {
+            let request = hnsw_index_request(&self.scope, prepared)?;
+            self.runtime
+                .block_on(self.client.ensure_vector_index(
+                    &session,
+                    request,
+                    self.mutation_options("hnsw")?,
+                ))
+                .map_err(|error| error.to_string())?;
+            return Ok(());
+        }
+        if matches!(prepared.index, IndexSpec::Exact) {
+            return Ok(());
+        }
         let built = self
             .runtime
             .block_on(self.client.build_vector_quantization(
                 &session,
-                decode(json!({
-                    "scope": self.scope,
-                    "collection_id": prepared.collection,
-                    "vector_name": VECTOR_NAME,
-                    "method": {"method": "turbo_quant", "bits": bits, "seed": seed},
-                    "max_storage_keys": MAX_VECTOR_STORAGE_KEYS
-                }))?,
+                quantization_request(&self.scope, prepared)?,
                 self.mutation_options("quantize")?,
             ))
             .map_err(|error| error.to_string())?;
@@ -581,6 +659,71 @@ mod tests {
         assert_eq!(parse_point("p42"), Ok(42));
         assert!(parse_point("q42").is_err());
         assert!(parse_point("p").is_err());
+    }
+
+    #[test]
+    fn native_hnsw_request_uses_manifest_parameters_and_requested_filter() {
+        let prepared = Prepared {
+            record_table: "lab_point".into(),
+            vector_table: "lab_vector".into(),
+            collection: "lab".into(),
+            index: IndexSpec::Hnsw {
+                m: 12,
+                ef_construction: 90,
+            },
+            hnsw: Some(RrflowHnswParameters {
+                max_level: 9,
+                seed: 123,
+                build_policy: rrd_contract::VectorIndexBuildPolicy::Cpu,
+            }),
+            filter_categories: true,
+        };
+        let request = hnsw_index_request("instance:lab", &prepared).unwrap();
+        request.validate().unwrap();
+        assert_eq!(
+            request.configuration,
+            VectorIndexConfiguration::Hnsw {
+                m: 12,
+                ef_construction: 90,
+                max_level: 9,
+                seed: 123,
+                filter_properties: vec![id("category").unwrap()],
+            }
+        );
+        let payload = category_index_request("instance:lab", "lab").unwrap();
+        payload.validate().unwrap();
+        assert_eq!(payload.kind, VectorPayloadIndexKind::Unsigned);
+        assert_eq!(payload.field, id("category").unwrap());
+        let mut turbo = prepared.clone();
+        turbo.index = IndexSpec::TurboQuant {
+            bits: "bits4".into(),
+            seed: 23,
+        };
+        turbo.hnsw = None;
+        let turbo_request = quantization_request("instance:lab", &turbo).unwrap();
+        turbo_request.validate().unwrap();
+        assert_eq!(
+            turbo_request.filter_properties,
+            vec![id("category").unwrap()]
+        );
+        turbo.filter_categories = false;
+        assert!(quantization_request("instance:lab", &turbo)
+            .unwrap()
+            .filter_properties
+            .is_empty());
+        let mode = search_mode(&prepared.index, Some(40), Some(20), 10);
+        assert_eq!(
+            mode,
+            json!({"mode":"require_approximate", "ef_search":40, "exact_rerank":20})
+        );
+        let mut unfiltered = prepared;
+        unfiltered.filter_categories = false;
+        let request = hnsw_index_request("instance:lab", &unfiltered).unwrap();
+        assert!(
+            matches!(request.configuration, VectorIndexConfiguration::Hnsw { filter_properties, .. } if filter_properties.is_empty())
+        );
+        unfiltered.hnsw = None;
+        assert!(hnsw_index_request("instance:lab", &unfiltered).is_err());
     }
 
     #[test]

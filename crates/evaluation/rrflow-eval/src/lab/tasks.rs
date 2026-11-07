@@ -33,10 +33,10 @@ pub struct Preregistration {
     pub repetitions: u32,
     pub order_seed: u64,
     pub alpha: f64,
-    /// A plan counts as solved only at or above both of these.
+    /// A plan matches the historical file threshold only at or above both.
     pub min_file_recall: f64,
     pub min_file_precision: f64,
-    pub max_floor_solve_rate: f64,
+    pub max_floor_file_match_rate: f64,
 }
 
 /// A run cannot start without these, and the person who pays decides them.
@@ -139,7 +139,7 @@ impl TaskComparisonManifest {
             (plan.alpha, "alpha"),
             (plan.min_file_recall, "file recall threshold"),
             (plan.min_file_precision, "file precision threshold"),
-            (plan.max_floor_solve_rate, "floor threshold"),
+            (plan.max_floor_file_match_rate, "floor threshold"),
         ] {
             require(
                 value > 0.0 && value < 1.0,
@@ -362,7 +362,7 @@ pub struct PlanScore {
     pub file_precision: f64,
     pub records_cited: u64,
     pub records_expected: u64,
-    pub solved: bool,
+    pub matches_file_threshold: bool,
 }
 
 pub fn score_plan(task: &AgentTask, plan: &AgentPlan, rules: &Preregistration) -> PlanScore {
@@ -396,7 +396,8 @@ pub fn score_plan(task: &AgentTask, plan: &AgentPlan, rules: &Preregistration) -
         file_precision,
         records_cited,
         records_expected: task.expected_records.len() as u64,
-        solved: file_recall >= rules.min_file_recall && file_precision >= rules.min_file_precision,
+        matches_file_threshold: file_recall >= rules.min_file_recall
+            && file_precision >= rules.min_file_precision,
     }
 }
 
@@ -405,11 +406,11 @@ pub fn score_plan(task: &AgentTask, plan: &AgentPlan, rules: &Preregistration) -
 pub enum TaskRunOutcome {
     /// It replied with a plan, which was graded.
     Planned,
-    /// It replied without a readable plan, which counts as not solved.
+    /// It replied without a readable plan, which does not match the file threshold.
     NoPlan,
-    /// It hit its time limit, which counts as not solved.
+    /// It hit its time limit, so the comparison is incomplete.
     TimedOut,
-    /// The provider failed, which counts as not solved and stays visible.
+    /// The provider failed, so the comparison is incomplete and stays visible.
     ProviderFailed,
 }
 
@@ -646,37 +647,51 @@ fn observation(
 }
 
 fn system_observations(system: &Id, runs: &[&TaskRun], list: &mut Vec<Observation>) -> Result<()> {
-    let total = runs.len() as u64;
-    let solved = runs.iter().filter(|run| run.score.solved).count() as u64;
+    let usable: Vec<&&TaskRun> = runs
+        .iter()
+        .filter(|run| {
+            matches!(
+                run.outcome,
+                TaskRunOutcome::Planned | TaskRunOutcome::NoPlan
+            )
+        })
+        .collect();
+    let total = usable.len() as u64;
+    let solved = usable
+        .iter()
+        .filter(|run| run.score.matches_file_threshold)
+        .count() as u64;
     let none = BTreeMap::new;
-    list.push(observation(
-        system,
-        "solve_rate",
-        none(),
-        solved as f64 / total as f64,
-        total,
-        Some(wilson_interval(solved, total)),
-    )?);
-    let recalls: Vec<f64> = runs.iter().map(|run| run.score.file_recall).collect();
-    let precisions: Vec<f64> = runs.iter().map(|run| run.score.file_precision).collect();
-    list.push(observation(
-        system,
-        "file_recall",
-        none(),
-        mean(&recalls),
-        total,
-        None,
-    )?);
-    list.push(observation(
-        system,
-        "file_precision",
-        none(),
-        mean(&precisions),
-        total,
-        None,
-    )?);
-    let cited: u64 = runs.iter().map(|run| run.score.records_cited).sum();
-    let expected: u64 = runs.iter().map(|run| run.score.records_expected).sum();
+    if total > 0 {
+        list.push(observation(
+            system,
+            "file_match_rate",
+            none(),
+            solved as f64 / total as f64,
+            total,
+            Some(wilson_interval(solved, total)),
+        )?);
+        let recalls: Vec<f64> = usable.iter().map(|run| run.score.file_recall).collect();
+        let precisions: Vec<f64> = usable.iter().map(|run| run.score.file_precision).collect();
+        list.push(observation(
+            system,
+            "file_recall",
+            none(),
+            mean(&recalls),
+            total,
+            None,
+        )?);
+        list.push(observation(
+            system,
+            "file_precision",
+            none(),
+            mean(&precisions),
+            total,
+            None,
+        )?);
+    }
+    let cited: u64 = usable.iter().map(|run| run.score.records_cited).sum();
+    let expected: u64 = usable.iter().map(|run| run.score.records_expected).sum();
     if expected > 0 {
         list.push(observation(
             system,
@@ -694,7 +709,7 @@ fn system_observations(system: &Id, runs: &[&TaskRun], list: &mut Vec<Observatio
         runs.iter()
             .filter(|run| run.outcome != TaskRunOutcome::Planned)
             .count() as f64,
-        total,
+        runs.len() as u64,
         None,
     )?);
     let medians: [(&str, Vec<f64>); 4] = [
@@ -730,17 +745,17 @@ fn system_observations(system: &Id, runs: &[&TaskRun], list: &mut Vec<Observatio
         }
     }
     let mut by_task: BTreeMap<&Id, (u64, u64)> = BTreeMap::new();
-    for run in runs {
+    for run in usable {
         let entry = by_task.entry(&run.task).or_default();
         entry.1 += 1;
-        if run.score.solved {
+        if run.score.matches_file_threshold {
             entry.0 += 1;
         }
     }
     for (task, (solved, total)) in by_task {
         list.push(observation(
             system,
-            "solve_rate",
+            "file_match_rate",
             BTreeMap::from([("task".to_string(), task.as_str().to_string())]),
             solved as f64 / total as f64,
             total,
@@ -760,8 +775,20 @@ fn paired_verdict(
     let rules = &manifest.preregistration;
     let lookup = |arm_id: &Id| -> BTreeMap<(&Id, u32), bool> {
         runs.iter()
-            .filter(|run| &run.arm == arm_id && run.model == model.id)
-            .map(|run| ((&run.task, run.repetition), run.score.solved))
+            .filter(|run| {
+                &run.arm == arm_id
+                    && run.model == model.id
+                    && matches!(
+                        run.outcome,
+                        TaskRunOutcome::Planned | TaskRunOutcome::NoPlan
+                    )
+            })
+            .map(|run| {
+                (
+                    (&run.task, run.repetition),
+                    run.score.matches_file_threshold,
+                )
+            })
             .collect()
     };
     let this_arm = lookup(&arm.id);
@@ -778,12 +805,17 @@ fn paired_verdict(
         }
     }
     let p = exact_mcnemar(only_arm, only_baseline);
+    let expected_pairs = (manifest.tasks.len() as u64) * u64::from(rules.repetitions);
     let outcome = if pairs == 0 {
         VerdictOutcome::NotRun
+    } else if pairs != expected_pairs || rules.repetitions > 1 {
+        VerdictOutcome::Inconclusive
     } else if only_arm > only_baseline && p < rules.alpha {
         VerdictOutcome::Met
-    } else {
+    } else if only_baseline > only_arm && p < rules.alpha {
         VerdictOutcome::NotMet
+    } else {
+        VerdictOutcome::Inconclusive
     };
     Ok(Verdict {
         id: id(&format!(
@@ -791,7 +823,7 @@ fn paired_verdict(
             system_id(&arm.id, &model.id)?.as_str()
         ))?,
         question: format!(
-            "Did {} solve more tasks than {} on the same tasks, at alpha {}?",
+            "Did {} match the historical file threshold more often than {} on the same tasks, at alpha {}?",
             arm.id.as_str(),
             rules.baseline_arm.as_str(),
             rules.alpha
@@ -800,9 +832,13 @@ fn paired_verdict(
         outcome,
         basis: if pairs == 0 {
             "no paired runs".to_string()
+        } else if rules.repetitions > 1 {
+            format!(
+                "{pairs} of {expected_pairs} scheduled pairs: only this arm matched {only_arm}, only the baseline matched {only_baseline}. Repetitions of a task are not independent; this diagnostic has no clustered significance test."
+            )
         } else {
             format!(
-                "{pairs} pairs: only this arm solved {only_arm}, only the baseline solved {only_baseline}, exact McNemar p = {p:.4}. A result that is not significant does not show the arm has no effect."
+                "{pairs} of {expected_pairs} scheduled pairs: only this arm matched {only_arm}, only the baseline matched {only_baseline}, exact McNemar p = {p:.4}. A result that is not significant does not show the arm has no effect."
             )
         },
     })
@@ -816,20 +852,32 @@ fn floor_verdict(
     let rules = &manifest.preregistration;
     let floor: Vec<&TaskRun> = runs
         .iter()
-        .filter(|run| run.arm == rules.floor_arm && run.model == model.id)
+        .filter(|run| {
+            run.arm == rules.floor_arm
+                && run.model == model.id
+                && matches!(
+                    run.outcome,
+                    TaskRunOutcome::Planned | TaskRunOutcome::NoPlan
+                )
+        })
         .collect();
-    let solved = floor.iter().filter(|run| run.score.solved).count();
+    let solved = floor
+        .iter()
+        .filter(|run| run.score.matches_file_threshold)
+        .count();
     let rate = solved as f64 / floor.len().max(1) as f64;
     Ok(Verdict {
-        id: id(&format!("no-leak-{}", model.id.as_str()))?,
+        id: id(&format!("floor-match-{}", model.id.as_str()))?,
         question: format!(
-            "Did the arm with no repository solve at most {} of the tasks, so the tasks do not leak?",
-            rules.max_floor_solve_rate
+            "Did the arm with no repository match the historical file threshold on at most {} of observed runs?",
+            rules.max_floor_file_match_rate
         ),
         system: Some(system_id(&rules.floor_arm, &model.id)?),
         outcome: if floor.is_empty() {
             VerdictOutcome::NotRun
-        } else if rate <= rules.max_floor_solve_rate {
+        } else if floor.len() != manifest.tasks.len() * rules.repetitions as usize {
+            VerdictOutcome::Inconclusive
+        } else if rate <= rules.max_floor_file_match_rate {
             VerdictOutcome::Met
         } else {
             VerdictOutcome::NotMet
@@ -837,7 +885,7 @@ fn floor_verdict(
         basis: if floor.is_empty() {
             "no floor runs".to_string()
         } else {
-            format!("{solved} of {} solved", floor.len())
+            format!("{solved} of {} matched. This observation cannot prove the tasks have no leakage.", floor.len())
         },
     })
 }
@@ -862,6 +910,12 @@ pub fn combine_task_runs(
             "a run appears twice",
         )?;
         let arm = manifest.arm(run.arm.as_str())?;
+        require(
+            manifest.tasks.iter().any(|task| task.id == run.task)
+                && manifest.models.iter().any(|model| model.id == run.model)
+                && (1..=manifest.preregistration.repetitions).contains(&run.repetition),
+            "run coordinates are outside the frozen design",
+        )?;
         require(
             arm.availability == Availability::Available,
             &format!(
@@ -910,8 +964,22 @@ pub fn combine_task_runs(
                 .iter()
                 .filter(|run| run.arm == arm.id && run.model == model.id)
                 .collect();
+            let unusable = own
+                .iter()
+                .filter(|run| {
+                    matches!(
+                        run.outcome,
+                        TaskRunOutcome::TimedOut | TaskRunOutcome::ProviderFailed
+                    )
+                })
+                .count();
+            let expected = manifest.tasks.len() * manifest.preregistration.repetitions as usize;
             let status = if own.is_empty() {
                 SystemStatus::NotRun
+            } else if unusable == own.len() {
+                SystemStatus::Failed
+            } else if own.len() != expected || unusable > 0 {
+                SystemStatus::Partial
             } else {
                 SystemStatus::Completed
             };
@@ -920,9 +988,14 @@ pub fn combine_task_runs(
                 label: format!("{}, {}", arm.label, model.model),
                 kind: "agent-arm".into(),
                 status,
-                reason: own
-                    .is_empty()
-                    .then(|| "no run file was supplied".to_string()),
+                reason: match status {
+                    SystemStatus::NotRun => Some("no run file was supplied".to_string()),
+                    SystemStatus::Failed | SystemStatus::Partial => Some(format!(
+                        "{} of {expected} scheduled runs supplied; {unusable} timed out or failed at the provider",
+                        own.len()
+                    )),
+                    _ => None,
+                },
                 observed_version: Some(model.model.clone()),
                 configuration: BTreeMap::new(),
             });
@@ -942,8 +1015,8 @@ pub fn combine_task_runs(
     use MetricDirection::{Higher, Lower};
     let mut limits = vec![
         "Diagnostic evidence for optimization: not J-04 acceptance, and no parity or superiority claim.".to_string(),
-        "A task's answer is the files one real change touched. Another valid plan can score lower, so compare arms pair by pair and do not read a solve rate as an absolute.".to_string(),
-        "The thresholds for solved were frozen before any run, and they are a judgement.".to_string(),
+        "The reference is the files one historical change touched. Other valid plans can name different files; file matches do not prove correctness or task completion.".to_string(),
+        "Historical-file-match thresholds were frozen before any run and are a judgement.".to_string(),
         "Grading reads the plan. It does not check that the plan would work if carried out.".to_string(),
     ];
     for arm in &manifest.arms {
@@ -965,7 +1038,12 @@ pub fn combine_task_runs(
             label: "Task".into(),
         }],
         metrics: vec![
-            metric("solve_rate", "Tasks solved", "fraction", Higher)?,
+            metric(
+                "file_match_rate",
+                "Plans matching historical file thresholds",
+                "fraction",
+                Higher,
+            )?,
             metric(
                 "file_recall",
                 "Needed files the plan named",
@@ -1004,9 +1082,9 @@ pub fn combine_task_runs(
         verdicts,
         views: vec![
             ViewDefinition::Bars {
-                id: id("solved")?,
-                title: "Tasks solved".into(),
-                metric: id("solve_rate")?,
+                id: id("file-match")?,
+                title: "Historical file-threshold matches".into(),
+                metric: id("file_match_rate")?,
                 fixed: BTreeMap::new(),
             },
             ViewDefinition::Bars {
@@ -1023,8 +1101,8 @@ pub fn combine_task_runs(
             },
             ViewDefinition::Table {
                 id: id("by-task")?,
-                title: "Tasks solved, by task".into(),
-                metrics: vec![id("solve_rate")?],
+                title: "Historical file-threshold matches, by task".into(),
+                metrics: vec![id("file_match_rate")?],
                 rows: vec![id("task")?],
                 fixed: BTreeMap::new(),
             },

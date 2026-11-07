@@ -10,6 +10,12 @@ it cannot close a roadmap gate independently.
 
 ## Observed deficiency
 
+The [discovery package on accepted main](../../evidence/change-journals/gate-d/d-02-job-discovery-on-main.md)
+adapts the existing bounded installed-job list independently of unmerged worker
+and task-budget ancestors. It remains a candidate for public initial/successor
+discovery, with no current-source verification, job-journal, memory-receipt or
+Connectome acceptance claim. This gap remains open.
+
 The [draft replan receipt readback](../../evidence/change-journals/gate-d/d-02-replan-receipt-readback.md)
 adds principal-scoped embedded inspection of a committed successor receipt
 without replaying acceptance, and validates its lineage on both read and replay.

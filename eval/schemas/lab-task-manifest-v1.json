@@ -139,7 +139,7 @@
           "$ref": "#/$defs/Id",
           "description": "The arm with no access to the repository. If it scores well, the tasks leak."
         },
-        "max_floor_solve_rate": {
+        "max_floor_file_match_rate": {
           "format": "double",
           "type": "number"
         },
@@ -148,7 +148,7 @@
           "type": "number"
         },
         "min_file_recall": {
-          "description": "A plan counts as solved only at or above both of these.",
+          "description": "A plan matches the historical file threshold only at or above both.",
           "format": "double",
           "type": "number"
         },
@@ -175,7 +175,7 @@
         "alpha",
         "min_file_recall",
         "min_file_precision",
-        "max_floor_solve_rate"
+        "max_floor_file_match_rate"
       ],
       "type": "object"
     },

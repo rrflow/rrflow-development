@@ -15,7 +15,7 @@
     "alpha": 0.05,
     "min_file_recall": 0.6,
     "min_file_precision": 0.5,
-    "max_floor_solve_rate": 0.1
+    "max_floor_file_match_rate": 0.1
   },
   "arms": [
     {

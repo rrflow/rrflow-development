@@ -6,7 +6,7 @@ const DIGEST_B: &str = "4c94150b4ea4f9dcb27d3b602e9f190debe656533c047b99e11367bc
 
 fn claim() -> Claim {
     Claim::new(
-        Subject::new("request:one").unwrap(),
+        Subject::new("request-one").unwrap(),
         Predicate::new("status").unwrap(),
         "accepted",
         10,

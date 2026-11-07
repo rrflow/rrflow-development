@@ -12,6 +12,7 @@
 use crate::catalog::version_source_covers;
 use crate::execute::{active_graph_values, string, QueryRow};
 use crate::{Source, TraversalDirection};
+use rrd_core::result_identity::{self, ResultIdentityFamily};
 use rrd_core::{
     RuntimeChange, RuntimeLogicalModel, RuntimeMutation, RuntimeRef, RuntimeRelation, RuntimeType,
     RuntimeValue, ScopeId,
@@ -367,14 +368,22 @@ pub(crate) fn traversal_rows(
                 RuntimeValue::List(
                     next_path
                         .iter()
-                        .map(|node| string(format!("{}:{}", node.kind, node.id)))
+                        .map(|node| string(result_identity::reference(node)))
                         .collect(),
                 ),
             );
             rows.push(QueryRow {
-                identity: format!(
-                    "traversal:{}:{}:{}:{}:{}:{}",
-                    relation_kind, start.kind, start.id, next_depth, relation.reference.id, next.id
+                identity: result_identity::encode(
+                    ResultIdentityFamily::Traversal,
+                    &[
+                        relation_kind.as_str(),
+                        start.kind.as_str(),
+                        start.id.as_str(),
+                        &next_depth.to_string(),
+                        relation.reference.id.as_str(),
+                        next.kind.as_str(),
+                        next.id.as_str(),
+                    ],
                 ),
                 values,
             });

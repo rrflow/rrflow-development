@@ -28,6 +28,8 @@ evidence; editing this table cannot declare a capability complete.
   or under review.
 - `Closed`: the owning roadmap gate contains accepted evidence at an exact
   revision.
+- `Withdrawn`: the owner has explicitly removed the requested scope; this is
+  not implementation or closure evidence for any remaining capability.
 
 ## Milestone discipline
 

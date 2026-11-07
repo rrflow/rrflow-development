@@ -120,6 +120,7 @@ fn binding(endpoint: &str, kind: SystemKind, credentials: CredentialReferences) 
             m: 16,
             ef_construction: 100,
         },
+        rrflow_hnsw: None,
         search_ladder: Vec::new(),
         engine_settings: Default::default(),
         limits: Vec::new(),
