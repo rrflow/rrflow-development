@@ -242,7 +242,7 @@ tracked-source check was preserved. All 33 architecture checks pass, log SHA-256
 
 The next owning run passed engine checks and 21 HTTP lifecycle tests, then failed
 the process kill/recovery matrix because this isolated build directory lacked
-`rrd-estate-controller.exe`. This is an explicit test prerequisite, not a skipped
+`rrd-engram-controller.exe`. This is an explicit test prerequisite, not a skipped
 test or a changed recovery assertion. Failure log
 `owning-engine-server-client-corrected.log` SHA-256:
 `6083baace0e17f67fc0f27d250e3b5d33e6edef92f4a74108e7b080adb11b7cb`.

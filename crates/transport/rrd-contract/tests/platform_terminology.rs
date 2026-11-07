@@ -15,7 +15,7 @@ fn canonical_platform_terms_are_unique_complete_and_classified() {
             "RRFlow",
             "RRD",
             "organization",
-            "estate",
+            "engram",
             "project",
             "environment",
             "instance",
@@ -77,7 +77,7 @@ fn public_resource_vocabulary_contains_every_canonical_resource() {
         resources,
         BTreeSet::from([
             ResourceKind::Organization,
-            ResourceKind::Estate,
+            ResourceKind::engram,
             ResourceKind::Project,
             ResourceKind::Instance,
             ResourceKind::Tenant,

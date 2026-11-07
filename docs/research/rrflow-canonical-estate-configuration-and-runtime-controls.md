@@ -1,12 +1,12 @@
-# RRFlow canonical estate configuration and runtime controls research
+# RRFlow canonical engram configuration and runtime controls research
 
 **Status:** active primary-source research and code-grounded implementation guidance
-**Coordinate:** `rrflow://rrflow-instance/data/research/rrflow-canonical-estate-configuration-and-runtime-controls`
-**Owner:** research basis for canonical estate layout, configuration activation, bounded compute, discovery, and rollout; not lifecycle or roadmap authority
+**Coordinate:** `rrflow://rrflow-instance/data/research/rrflow-canonical-engram-configuration-and-runtime-controls`
+**Owner:** research basis for canonical engram layout, configuration activation, bounded compute, discovery, and rollout; not lifecycle or roadmap authority
 **Reviewed:** 2026-09-14
 
 This record answers one implementation question: how should RRFlow establish a
-clean project-local estate, accept useful operator configuration, expose that
+clean project-local engram, accept useful operator configuration, expose that
 configuration to clients, and preserve adaptive AI reasoning without creating
 a second authority or a schema of thought?
 
@@ -14,11 +14,11 @@ The answer is a narrow control boundary. RRFlow keeps exploratory reading,
 search, hypothesis formation, and private reasoning fluid. It governs the
 moment a request spends bounded shared resources, persists canonical state,
 mutates the project, invokes an external effect, or claims reproducible
-evidence. One installed estate configuration supplies operator ceilings at
+evidence. One installed engram configuration supplies operator ceilings at
 that boundary. It does not prescribe how a model thinks.
 
 This research informed package
-`D01-02-canonical-estate-layout-and-configuration-v1`. The roadmap remains the
+`D01-02-canonical-engram-layout-and-configuration-v1`. The roadmap remains the
 completion authority, and the package does not close D-01, reasoning,
 attunement, Connectome, or release qualification.
 
@@ -69,7 +69,7 @@ embedded or served; and a UI cannot infer durability from its own location.
 canonicalization scheme for interoperable cryptographic hashing. RRFlow's
 current configuration digest is deliberately narrower: it hashes a
 domain-separated serialization of the typed Rust fields in a fixed tuple
-order. It must be called the RRFlow estate-configuration v2 digest, not “JCS”
+order. It must be called the RRFlow engram-configuration v2 digest, not “JCS”
 or generic canonical JSON. If independent implementations must calculate the
 digest later, RRFlow should either publish byte vectors for this encoding or
 adopt an explicitly versioned interoperable canonicalization in a separately
@@ -142,7 +142,7 @@ This distinction matters operationally. A passing local test proves the
 declared no-overwrite path; it does not prove adversarial filesystem safety on
 Linux, macOS, and Windows.
 
-### Arrow and DataFusion are compute boundaries, not estate authority
+### Arrow and DataFusion are compute boundaries, not engram authority
 
 The Arrow specification describes a language-independent columnar memory
 format and separates the physical layout from algorithms and lifecycle. Its
@@ -159,9 +159,9 @@ state. Its [execution API](https://docs.rs/datafusion/latest/datafusion/executio
 [crate documentation](https://docs.rs/datafusion/latest/datafusion/), and
 [configuration reference](https://datafusion.apache.org/user-guide/configs.html)
 provide controls for memory, spilling, batch sizes, and execution behavior.
-RRFlow should translate validated estate/query configuration into these
+RRFlow should translate validated engram/query configuration into these
 scoped controls. DataFusion must not read `.rrflow/config.toml`, select the
-estate, write rrflowKV, activate adapters, or become a reasoning scheduler.
+engram, write rrflowKV, activate adapters, or become a reasoning scheduler.
 
 The default boundary remains in-process:
 
@@ -190,7 +190,7 @@ semantics or lifecycle status.
 
 For Connectome, `/v1/capabilities` is the runtime truth for the connected
 instance. It now carries independent deployment coordinates and the effective
-estate configuration. A client must disable or label a feature according to
+engram configuration. A client must disable or label a feature according to
 the advertised capability state; the existence of a generated type is not
 availability.
 
@@ -221,7 +221,7 @@ It should not be repurposed as project lifecycle state. After a bundle is
 acquired, `rrflow install` must work offline from bundle-resident assets and
 produce its own digest-bound project plan and engine receipts.
 
-## Canonical estate boundary
+## Canonical engram boundary
 
 The implemented project-local shape is:
 
@@ -239,7 +239,7 @@ The implemented project-local shape is:
 
 The install plan names all four directories and all four leaf/tree paths in
 that order, with an explicit removal rule for each. The locator contains only:
-format/product identity; project/estate/instance IDs; project-relative storage,
+format/product identity; project/engram/instance IDs; project-relative storage,
 token, and credential locations; plan/profile/executable/installed-record
 digests; and active configuration revision/digest. It carries no absolute
 project path, plaintext secret, mutable canonical state, provider hook, or UI
@@ -298,7 +298,7 @@ The precedence is:
 
 ```text
 compiled hard safety maximum
-  >= installed durable estate ceiling
+  >= installed durable engram ceiling
        >= individual request budget
 ```
 
@@ -323,10 +323,10 @@ The real-world rollout is a sequence of independently testable packages. Each
 package must preserve the one contract and delete a conflicting predecessor
 only after replacement evidence passes.
 
-### R0 — canonical contract and local estate slice (implemented here)
+### R0 — canonical contract and local engram slice (implemented here)
 
-- freeze `InstalledEstateIdentity`, the three deployment axes, and
-  `EstateConfiguration` in `rrd-contract`;
+- freeze `InstalledengramIdentity`, the three deployment axes, and
+  `engramConfiguration` in `rrd-contract`;
 - generate OpenAPI/SDK discovery from that owner and reject
   `deployment_mode`;
 - make install planning accept bundled default or explicit bounded TOML;
@@ -348,7 +348,7 @@ remain open.
 
 - characterize every `InstanceManifest`, `ensure_dedicated`, raw-root server,
   create-or-open, supervisor, and standalone initializer caller;
-- map useful behavior and tests into the installed estate boundary;
+- map useful behavior and tests into the installed engram boundary;
 - add fault points before/after directory creation, key/credential creation,
   engine commit, locator publication, and acknowledgement;
 - resume the same sealed plan, exactly verify owned partial state, and remove
@@ -485,7 +485,7 @@ failure proof does not become a public caller-injection API.
 - **Attunement auto-activation:** rejected because discovery is not authority
   and recommendations can be wrong or environment-dependent.
 - **DataFusion-owned memory/configuration database:** rejected because compute
-  configuration is not estate identity or transaction authority.
+  configuration is not engram identity or transaction authority.
 - **Default analytical subprocess:** rejected until measured isolation evidence
   justifies IPC and copy/ownership costs.
 - **Preserving `deployment_mode` as an alias:** rejected because successful old
@@ -504,14 +504,14 @@ attunement boundary, not a second UI-owned schema. A separate Connectome session
 can proceed against the generated discovery shape and build installation,
 readiness, and configuration screens, but must keep unavailable operations
 disabled and retain capability/catalogue change handling. R2 and R3 can add
-operations without changing the estate identity or reintroducing client-owned
+operations without changing the engram identity or reintroducing client-owned
 lifecycle state.
 
 The stable handoff is:
 
 ```text
 GET /v1/capabilities
-  -> installed_estate (required for the D-01-installed product)
+  -> installed_engram (required for the D-01-installed product)
   -> deployment { contract_version, deployment_form, storage_profile,
                   endpoint_presentation }
   -> configuration { format_version, revision, configuration_sha256,
@@ -521,6 +521,6 @@ GET /v1/capabilities
 
 Connectome should pin the protocol/OpenAPI identity used to generate its
 client, validate the runtime response, and render effective limits. It should
-not calculate estate identity, infer profile facts, edit `.rrflow`, read the
+not calculate engram identity, infer profile facts, edit `.rrflow`, read the
 operator credential in the renderer, or interpret a configured ceiling as an
 implemented engine feature.

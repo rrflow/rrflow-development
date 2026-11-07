@@ -499,7 +499,7 @@ mod tests {
         let codec = KeyCodec;
         let address = KeyAddress {
             tenant: Some("tenant/a"),
-            scope: Some("estate:\0-safe"),
+            scope: Some("engram:\0-safe"),
         };
         let parts = [
             KeyPart::Bytes(&[0, 1, 0xff, b'/']),
@@ -564,20 +564,20 @@ mod tests {
             )
         };
         assert_ne!(
-            key(Some("tenant-a"), Some("estate"), "a/b", "c"),
-            key(Some("tenant-b"), Some("estate"), "a/b", "c")
+            key(Some("tenant-a"), Some("engram"), "a/b", "c"),
+            key(Some("tenant-b"), Some("engram"), "a/b", "c")
         );
         assert_ne!(
-            key(Some("tenant-a"), Some("estate-a"), "a/b", "c"),
-            key(Some("tenant-a"), Some("estate-b"), "a/b", "c")
+            key(Some("tenant-a"), Some("engram-a"), "a/b", "c"),
+            key(Some("tenant-a"), Some("engram-b"), "a/b", "c")
         );
         assert_ne!(
-            key(Some("tenant-a"), Some("estate"), "a/b", "c"),
-            key(Some("tenant-a"), Some("estate"), "a", "b/c")
+            key(Some("tenant-a"), Some("engram"), "a/b", "c"),
+            key(Some("tenant-a"), Some("engram"), "a", "b/c")
         );
         assert_ne!(
-            key(None, Some("estate"), "a", "b"),
-            key(Some(""), Some("estate"), "a", "b")
+            key(None, Some("engram"), "a", "b"),
+            key(Some(""), Some("engram"), "a", "b")
         );
     }
 
@@ -603,7 +603,7 @@ mod tests {
         let codec = KeyCodec;
         let address = KeyAddress {
             tenant: Some("tenant-a"),
-            scope: Some("estate-a"),
+            scope: Some("engram-a"),
         };
         let prefix = codec.encode(
             address,
@@ -703,7 +703,7 @@ mod tests {
         let codec = KeyCodec;
         let address = KeyAddress {
             tenant: Some("tenant-a"),
-            scope: Some("estate-a"),
+            scope: Some("engram-a"),
         };
         let vectors = [
             (

@@ -284,7 +284,7 @@ uncertain observation or mutation outcome. They retain safe bounded causes and
 server details without embedding uncontrolled transport strings or secrets.
 
 Every operation propagates canonical request and operation IDs plus valid W3C
-`traceparent`/`tracestate`. Attempts are child spans of one semantic operation;
+`traceparent`/`tracengram`. Attempts are child spans of one semantic operation;
 reconnects and endpoint rotation are causal links. Trace output is redacted
 and bounded and never becomes completion truth, durable state, or hidden model
 reasoning.
@@ -363,7 +363,7 @@ Current evidence is deliberately bounded:
 The live script currently exercises capability retry/version rejection,
 catalogue count, one authentication denial, session create/renew/close, vector
 ensure/search, transaction begin/preview/abort/commit, one query, changefeed
-read/follow/local deadline, backup create/list, and estate read. Its shared
+read/follow/local deadline, backup create/list, and engram read. Its shared
 domain labels overstate CRUD, backup/restore, vectors, live delivery, typed
 errors, retry/failure gaps, cancellation, and version/package coverage as
 catalogued in the [Rust reference](rust.md#conformance-that-actually-counts).
@@ -458,7 +458,7 @@ The dependency order is:
   distinguishes source and wheel artifacts; RRFlow additionally requires a
   deterministic signed offline dependency closure and network-denied install.
 - [W3C Trace Context](https://www.w3.org/TR/trace-context/) defines
-  `traceparent` and `tracestate`; RRFlow owns its redaction, bounded causal
+  `traceparent` and `tracengram`; RRFlow owns its redaction, bounded causal
   attributes, and evidence semantics.
 - [OWASP logging guidance](https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html#data-to-exclude)
   excludes access tokens, authentication secrets, and session identifiers from

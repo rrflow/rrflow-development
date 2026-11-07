@@ -48,7 +48,7 @@ forced restart then exited with status 1 before readiness. The bounded stderr
 capture now reports `Storage("multiply linked file denied")`. There were no
 measured segments and no final readback. This reproduces the formerly hidden
 startup exit with a specific admission error, not an identified file or cause.
-The temporary estate was removed by the harness's ordinary TempDir unwind;
+The temporary engram was removed by the harness's ordinary TempDir unwind;
 the result/progress/logs survive, but those failed filesystem bytes do not.
 That diagnostic-retention deficiency must be repaired before another growth
 reproduction. Keep strict link/mount/symlink admission; do not treat a zero-link

@@ -41,7 +41,7 @@ implementation scope; imported main history retains its existing evidence.
 
 The added configuration test previews and applies worker and observation
 policies together, rejects an independently tampered policy before mutation,
-reopens the persistent estate, checks exact readback and idempotent apply, and
+reopens the persistent engram, checks exact readback and idempotent apply, and
 rejects stale resurrection after revocation. Its first run exposed a malformed
 test sink inheriting a model's placement machine. The engine correctly rejected
 that API binding; removing the fixture's placement resolved it. All seven

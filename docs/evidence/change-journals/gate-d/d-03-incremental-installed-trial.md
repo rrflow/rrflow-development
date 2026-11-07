@@ -19,7 +19,7 @@ It is an unoptimized engineering executable, not a release or model artifact.
 
 The disposable actual repository contains 1,870 tracked paths at public source
 `d1b8a26a73cfb8f01791737913b4098988c1acdd`, tree
-`c4cc385adc54705cd5b22cdc26ade218b2ebd4a0`. Earlier estates were preserved.
+`c4cc385adc54705cd5b22cdc26ade218b2ebd4a0`. Earlier engrams were preserved.
 The Python public SDK was installed from its frozen lockfile and used actual
 loopback processes, private installed credentials in memory, unique request keys,
 120-second request deadlines and unchanged 60-second job leases. No provider,
@@ -30,10 +30,10 @@ model, project worker or learning admission was invoked.
 The initial trial successfully planned and applied installation. Its first
 `serve` exited with `ProjectBindingMismatch`, producing no readiness line; the
 harness consequently raised `JSONDecodeError`. Inventory had not executed.
-The original result, stderr and estate remain intact. A subsequent offline
+The original result, stderr and engram remain intact. A subsequent offline
 quick verification passed, including current source and executable identity.
 One separate bounded startup probe then reached `listening` using the identical
-executable and estate. No binding check, installation record, budget or binary
+executable and engram. No binding check, installation record, budget or binary
 was changed. These observations do not establish the cause or a fix.
 
 A separate continuation verified the preserved installation, read the untouched
@@ -59,15 +59,15 @@ Local raw evidence is under
 `D:/projects/swag/.swag/evidence/20261030/engine-source-inventory/`:
 `delta-primary-build.log`, `delta-publication-source-envelope.json`,
 `delta-repository-trial.py`, `delta-repository-result.json`,
-`delta-repository-server-0.log`, `delta-failed-estate-quick-verify.log`,
+`delta-repository-server-0.log`, `delta-failed-engram-quick-verify.log`,
 `probe-delta-startup.py`, `delta-startup-reprobe.json`, and the separate
 `delta-resumed-repository-trial.py` / result / process logs. The original and
 continuation result SHA-256 values respectively are
 `2b59ed7cc40c94f4aa305c4cf56874901a27713051da84005c91209e9ba6d077` and
 `a9ef9789722465ceb60a919b1d518c293fa80e15f1349be2e6c72601f49ef28c`.
 The scripts ran with `uv --directory sdks/python run --frozen python` from the
-candidate worktree; each preserves its result and targets the recorded estate.
-Do not replay installation over these evidence estates.
+candidate worktree; each preserves its result and targets the recorded engram.
+Do not replay installation over these evidence engrams.
 
 The package review inspected the implementation diff, reuse/current-record
 tests, publication recovery, installation open/inspect checks, serving publisher,

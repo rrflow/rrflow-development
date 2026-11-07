@@ -30,12 +30,12 @@ force push or direct development-main push is authorized by this package.
   CI operations and POAM-006. Existing clock, native lifecycle and invocation
   correction journals supply prior behavior and limits.
 - Source inspection: complete clock module and lifecycle test; installation,
-  recovery, estate-control and authority call sites; installed CLI dispatch,
+  recovery, engram-control and authority call sites; installed CLI dispatch,
   restore and clock helpers; contract export and SDK generation/test paths;
   workflow validator and development-container configuration. Large owner files
   were read in relevant sections; this is not a claim of whole-repository review.
 - Local clock observation/policy remains at `RrdEngine` installation. Main's
-  installed-record visibility, restore publication and estate catalogue behavior
+  installed-record visibility, restore publication and engram catalogue behavior
   remain there. Remove obsolete timestamp arguments from newly merged callers.
 - Main's bounded `RunningEngine` harness replaces the older child helper. Carry
   startup instance identity, authenticated restart readiness, closed sessions,

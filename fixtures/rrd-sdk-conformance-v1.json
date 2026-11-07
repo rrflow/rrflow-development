@@ -8,7 +8,7 @@
     "backup",
     "cancellation",
     "crud",
-    "estate",
+    "engram",
     "live_feeds",
     "query",
     "retries",
@@ -20,7 +20,7 @@
   ],
   "identity": {
     "instance": "instance-e94433b2dad856172e39d9e9",
-    "estate": "estate-e94433b2dad856172e39d9e9",
+    "engram": "engram-e94433b2dad856172e39d9e9",
     "principal": "sdk-conformance",
     "api_key": "sdk-conformance-key"
   },
@@ -317,7 +317,7 @@
       "verify_archives": true
     }
   },
-  "estate": {},
+  "engram": {},
   "expected": {
     "endpoint_count": 79,
     "query_identity": "record:document:sdk-conformance",
@@ -325,7 +325,7 @@
     "quantized_access_path": "turboquant",
     "indexed_access_path": "hnsw",
     "indexed_reference": "embedding:sdk-conformance-body",
-    "estate_revision": 1,
+    "engram_revision": 1,
     "typed_error": "unauthenticated",
     "retry_attempts": 2
   }

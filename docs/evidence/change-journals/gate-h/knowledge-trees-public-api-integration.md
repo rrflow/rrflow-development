@@ -59,7 +59,7 @@ required before commit; the local outputs retain their exact commands.
 
 ## Limits and checklist
 
-The three public-flow fixtures are separate temporary estates; this is not a
+The three public-flow fixtures are separate temporary engrams; this is not a
 claim of full knowledge ingestion, graph/vector reasoning, provider execution
 or a unified production workload. Current Connectome's knowledge editor remains
 reserved for the owner's Slice D rebuild; the submodule pin and original

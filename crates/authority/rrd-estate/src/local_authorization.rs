@@ -6,12 +6,12 @@ use std::path::Path;
 
 pub const LOCAL_OPERATOR_POLICY_FORMAT: u16 = 1;
 const MAX_POLICY_BYTES: u64 = 1024 * 1024;
-const MAX_ESTATE_GRANTS: usize = 1024;
+const MAX_engram_GRANTS: usize = 1024;
 const OPERATOR_KEY_BYTES: usize = 32;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub enum LocalEstatePermission {
+pub enum LocalengramPermission {
     Create,
     SetDesired,
     ScheduleBackup,
@@ -29,14 +29,14 @@ pub struct LocalOperatorPolicy {
     pub key_sha256: String,
     pub not_before_unix_ms: u64,
     pub expires_at_unix_ms: u64,
-    pub estates: BTreeMap<String, BTreeSet<LocalEstatePermission>>,
+    pub engrams: BTreeMap<String, BTreeSet<LocalengramPermission>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LocalOperatorAuthorization {
     pub operator_id: CanonicalId,
-    pub estate_id: CanonicalId,
-    pub permission: LocalEstatePermission,
+    pub engram_id: CanonicalId,
+    pub permission: LocalengramPermission,
 }
 
 impl LocalOperatorPolicy {
@@ -60,8 +60,8 @@ impl LocalOperatorPolicy {
 
     pub fn validate(&self) -> Result<(), String> {
         if self.format != LOCAL_OPERATOR_POLICY_FORMAT
-            || self.estates.is_empty()
-            || self.estates.len() > MAX_ESTATE_GRANTS
+            || self.engrams.is_empty()
+            || self.engrams.len() > MAX_engram_GRANTS
         {
             return Err("unsupported or empty/oversized local operator policy".into());
         }
@@ -69,10 +69,10 @@ impl LocalOperatorPolicy {
         if self.not_before_unix_ms >= self.expires_at_unix_ms {
             return Err("local operator policy validity window is invalid".into());
         }
-        for (estate, permissions) in &self.estates {
-            let canonical = CanonicalId::new(estate.clone()).map_err(|error| error.to_string())?;
-            if canonical.as_str() != estate || permissions.is_empty() {
-                return Err("local operator estate grant is invalid".into());
+        for (engram, permissions) in &self.engrams {
+            let canonical = CanonicalId::new(engram.clone()).map_err(|error| error.to_string())?;
+            if canonical.as_str() != engram || permissions.is_empty() {
+                return Err("local operator engram grant is invalid".into());
             }
         }
         Ok(())
@@ -81,17 +81,17 @@ impl LocalOperatorPolicy {
     pub fn authorize_key_file(
         &self,
         key_path: &Path,
-        estate_id: CanonicalId,
-        permission: LocalEstatePermission,
+        engram_id: CanonicalId,
+        permission: LocalengramPermission,
         at_unix_ms: u64,
     ) -> Result<LocalOperatorAuthorization, String> {
         if at_unix_ms < self.not_before_unix_ms || at_unix_ms >= self.expires_at_unix_ms {
             return Err("local operator policy is outside its validity window".into());
         }
         let permissions = self
-            .estates
-            .get(estate_id.as_str())
-            .ok_or("local operator policy does not grant this estate")?;
+            .engrams
+            .get(engram_id.as_str())
+            .ok_or("local operator policy does not grant this engram")?;
         if !permissions.contains(&permission) {
             return Err("local operator policy does not grant this action".into());
         }
@@ -111,7 +111,7 @@ impl LocalOperatorPolicy {
         }
         Ok(LocalOperatorAuthorization {
             operator_id: self.operator_id.clone(),
-            estate_id,
+            engram_id,
             permission,
         })
     }

@@ -38,7 +38,7 @@ source diffs. Targeted reads: README/AGENTS, change-authoring procedure,
 POAM-035, candidate jobs and previous failed characterization. Research:
 existing code and retained failures suffice; no upstream adaptation. Trace and
 resource decisions: preserve source/binary/harness/configuration identities,
-original limits and independent expected-value readback; retain old estates.
+original limits and independent expected-value readback; retain old engrams.
 
 ## Native boundary
 
@@ -47,7 +47,7 @@ Staging fetched only the public development source, recursively fetched its
 pinned Connectome gitlink and checked a clean exact-source checkout. Preparation
 service `rrflow-c07-desktop-prep-04559542` started at 2026-10-26 03:54:43 UTC.
 It builds the locked release primary and installed-reopen harness, validates
-installation/configuration and prepares a new estate; it does not reuse the
+installation/configuration and prepares a new engram; it does not reuse the
 failed `05817485` data. That older failure and all its evidence remain intact.
 
 The same Desktop characterization preserves 4 vCPUs, 8 GiB guest memory,
@@ -78,7 +78,7 @@ Retained evidence root in the owned guest:
 `/home/devcontainers/rrflow-c07-native-79663cdd/desktop-integrated-preflight-04559542/`.
 It contains campaign/configuration, build/installation records,
 `service-launch.json`, `evidence/progress.jsonl` and launcher logs. The fresh
-estate temporary parent is `desktop-integrated-files-04559542` under the same
+engram temporary parent is `desktop-integrated-files-04559542` under the same
 owned base. Preparation log: `desktop-preparation-04559542.log`. A local copy
 of the launch receipt is `target/c07-window-service-launch.json`.
 

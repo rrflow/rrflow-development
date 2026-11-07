@@ -24,7 +24,7 @@ diff; no alternate reader, storage or policy authority was introduced.
 
 Downloaded PR 64 native receipts qualify fresh/existing histories on Linux,
 macOS and Windows: 600 forced restarts and 30,900 reconciled attempts, with no
-violations and explicit owned-estate cleanup. The three required interleaved
+violations and explicit owned-engram cleanup. The three required interleaved
 history steps passed. GitHub temporarily retained an in-progress macOS job
 status despite completed steps, then finalized successfully without a bypass.
 These receipts accept PR 64, not this pending mutable-limit candidate.

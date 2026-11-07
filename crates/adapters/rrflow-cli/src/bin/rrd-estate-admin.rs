@@ -1,15 +1,15 @@
-use rrd_contract::{CanonicalId, EstateDesiredPhase};
-use rrd_engine::{EstateAdminAction, RrdEngine};
+use rrd_contract::{CanonicalId, engramDesiredPhase};
+use rrd_engine::{engramAdminAction, RrdEngine};
 use std::path::PathBuf;
 
 #[derive(Debug)]
 struct Args {
-    action: EstateAdminAction,
+    action: engramAdminAction,
     db: PathBuf,
     authority_instance: CanonicalId,
     policy: PathBuf,
     key: PathBuf,
-    estate: CanonicalId,
+    engram: CanonicalId,
     at: u64,
     request_id: String,
     operation_id: CanonicalId,
@@ -17,19 +17,19 @@ struct Args {
 
 fn main() {
     if let Err(error) = run() {
-        eprintln!("rrd-estate-admin: {error}");
+        eprintln!("rrd-engram-admin: {error}");
         std::process::exit(2);
     }
 }
 
 fn run() -> Result<(), Box<dyn std::error::Error>> {
     let args = parse_args(std::env::args().skip(1))?;
-    let result = RrdEngine::administer_estate_store(
+    let result = RrdEngine::administer_engram_store(
         &args.db,
         args.authority_instance,
         &args.policy,
         &args.key,
-        args.estate,
+        args.engram,
         args.at,
         args.request_id,
         args.operation_id,
@@ -45,7 +45,7 @@ fn parse_args(mut arguments: impl Iterator<Item = String>) -> Result<Args, Strin
     let mut authority_instance = None;
     let mut policy = None;
     let mut key = None;
-    let mut estate = None;
+    let mut engram = None;
     let mut at = None;
     let mut request_id = None;
     let mut operation_id = None;
@@ -72,7 +72,7 @@ fn parse_args(mut arguments: impl Iterator<Item = String>) -> Result<Args, Strin
             }
             "--policy" => policy = Some(PathBuf::from(value)),
             "--key" => key = Some(PathBuf::from(value)),
-            "--estate" => estate = Some(canonical(value, "--estate")?),
+            "--engram" => engram = Some(canonical(value, "--engram")?),
             "--at" => at = Some(value.parse().map_err(|_| "--at must be u64")?),
             "--request" => request_id = Some(value),
             "--operation" => operation_id = Some(canonical(value, "--operation")?),
@@ -126,7 +126,7 @@ fn parse_args(mut arguments: impl Iterator<Item = String>) -> Result<Args, Strin
             {
                 return Err("create does not accept desired-state options".into());
             }
-            EstateAdminAction::Create
+            engramAdminAction::Create
         }
         "set-desired" => {
             if label.is_some()
@@ -140,7 +140,7 @@ fn parse_args(mut arguments: impl Iterator<Item = String>) -> Result<Args, Strin
             {
                 return Err("set-desired received an unrelated option".into());
             }
-            EstateAdminAction::SetDesired {
+            engramAdminAction::SetDesired {
                 instance: instance.ok_or("--instance is required")?,
                 idempotency_key: idempotency_key.ok_or("--idempotency is required")?,
                 phase: phase.ok_or("--phase is required")?,
@@ -165,7 +165,7 @@ fn parse_args(mut arguments: impl Iterator<Item = String>) -> Result<Args, Strin
             {
                 return Err("schedule-backup does not accept desired-state options".into());
             }
-            EstateAdminAction::ScheduleBackup {
+            engramAdminAction::ScheduleBackup {
                 instance: instance.ok_or("--instance is required")?,
                 idempotency_key: idempotency_key.ok_or("--idempotency is required")?,
                 label: label.ok_or("--label is required")?,
@@ -183,7 +183,7 @@ fn parse_args(mut arguments: impl Iterator<Item = String>) -> Result<Args, Strin
             {
                 return Err("set-recovery-policy received an unrelated option".into());
             }
-            EstateAdminAction::SetRecoveryPolicy {
+            engramAdminAction::SetRecoveryPolicy {
                 instance: instance.ok_or("--instance is required")?,
                 idempotency_key: idempotency_key.ok_or("--idempotency is required")?,
                 max_rpo_ms: max_rpo_ms.ok_or("--max-rpo-ms is required")?,
@@ -208,7 +208,7 @@ fn parse_args(mut arguments: impl Iterator<Item = String>) -> Result<Args, Strin
             {
                 return Err("pin-recovery-point received an unrelated option".into());
             }
-            EstateAdminAction::PinRecoveryPoint {
+            engramAdminAction::PinRecoveryPoint {
                 idempotency_key: idempotency_key.ok_or("--idempotency is required")?,
                 backup_sha256: backup_sha256.ok_or("--backup-sha256 is required")?,
                 expires_at_unix_ms,
@@ -230,7 +230,7 @@ fn parse_args(mut arguments: impl Iterator<Item = String>) -> Result<Args, Strin
             {
                 return Err("release-recovery-pin received an unrelated option".into());
             }
-            EstateAdminAction::ReleaseRecoveryPin {
+            engramAdminAction::ReleaseRecoveryPin {
                 idempotency_key: idempotency_key.ok_or("--idempotency is required")?,
                 pin_id: pin_id.ok_or("--pin is required")?,
             }
@@ -243,7 +243,7 @@ fn parse_args(mut arguments: impl Iterator<Item = String>) -> Result<Args, Strin
         authority_instance: authority_instance.ok_or("--authority-instance is required")?,
         policy: policy.ok_or("--policy is required")?,
         key: key.ok_or("--key is required")?,
-        estate: estate.ok_or("--estate is required")?,
+        engram: engram.ok_or("--engram is required")?,
         at: at.ok_or("--at is required")?,
         request_id: request_id.ok_or("--request is required")?,
         operation_id: operation_id.ok_or("--operation is required")?,
@@ -260,17 +260,17 @@ fn canonical(value: String, option: &str) -> Result<CanonicalId, String> {
     CanonicalId::new(value).map_err(|error| format!("{option}: {error}"))
 }
 
-fn parse_phase(value: &str) -> Result<EstateDesiredPhase, String> {
+fn parse_phase(value: &str) -> Result<engramDesiredPhase, String> {
     match value {
-        "running" => Ok(EstateDesiredPhase::Running),
-        "stopped" => Ok(EstateDesiredPhase::Stopped),
-        "absent" => Ok(EstateDesiredPhase::Absent),
+        "running" => Ok(engramDesiredPhase::Running),
+        "stopped" => Ok(engramDesiredPhase::Stopped),
+        "absent" => Ok(engramDesiredPhase::Absent),
         _ => Err("--phase must be running, stopped, or absent".into()),
     }
 }
 
 fn usage() -> &'static str {
-    "usage: rrd-estate-admin <create|set-desired|schedule-backup|set-recovery-policy|pin-recovery-point|release-recovery-pin> --db PATH --authority-instance ID --policy PATH --key PATH --estate ID --at UNIX_MS --request ID --operation ID [--instance ID --idempotency KEY] [--phase running|stopped|absent --deployment ID --version VERSION --configuration-sha256 SHA256] [--label LABEL] [--max-rpo-ms MS --max-rto-ms MS --minimum-recovery-points COUNT --retention-ms MS] [--backup-sha256 SHA256 --expires-at UNIX_MS] [--pin ID]"
+    "usage: rrd-engram-admin <create|set-desired|schedule-backup|set-recovery-policy|pin-recovery-point|release-recovery-pin> --db PATH --authority-instance ID --policy PATH --key PATH --engram ID --at UNIX_MS --request ID --operation ID [--instance ID --idempotency KEY] [--phase running|stopped|absent --deployment ID --version VERSION --configuration-sha256 SHA256] [--label LABEL] [--max-rpo-ms MS --max-rto-ms MS --minimum-recovery-points COUNT --retention-ms MS] [--backup-sha256 SHA256 --expires-at UNIX_MS] [--pin ID]"
 }
 
 #[cfg(test)]
@@ -288,8 +288,8 @@ mod tests {
                 "/tmp/policy",
                 "--key",
                 "/tmp/key",
-                "--estate",
-                "estate-a",
+                "--engram",
+                "engram-a",
                 "--at",
                 "1",
                 "--request",

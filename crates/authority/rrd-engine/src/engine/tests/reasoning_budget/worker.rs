@@ -7,7 +7,7 @@ use rrd_contract::{
     ApplyEndpointConfiguration, EndpointConfiguration, EndpointGenerationSettings, EndpointLocator,
     EndpointProfileInput, EndpointResponseFormat, EndpointSelectionChoice,
     EndpointSelectionRequest, EndpointTokenParameter, EndpointWorkerAdapter, EndpointWorkerBinding,
-    EndpointWorkerPolicy, InstalledEstateIdentity, PreviewEndpointConfiguration, ReadTaskAttempt,
+    EndpointWorkerPolicy, InstalledengramIdentity, PreviewEndpointConfiguration, ReadTaskAttempt,
     TaskAttemptStatus,
 };
 use rrd_contract::{EndpointSelectionTask, ReadTask, TaskWorkerRequest, MAX_TASK_STORAGE_KEYS};
@@ -24,9 +24,9 @@ fn admitted_fixture(
 ) {
     let (root, mut engine, lease, task_id, _) = actual_request_fixture();
     configure(&mut engine, 8);
-    engine.installed_estate = Some(InstalledEstateIdentity {
+    engine.installed_engram = Some(InstalledengramIdentity {
         project_id: CanonicalId::new("worker-project").unwrap(),
-        estate_id: CanonicalId::new("worker-estate").unwrap(),
+        engram_id: CanonicalId::new("worker-engram").unwrap(),
         instance_id: instance(),
     });
     let principal_id = engine.instance.clone();
@@ -364,7 +364,7 @@ fn worker_consumes_retained_selection_reserves_before_http_and_reopens_without_r
     assert_eq!(budget(&engine, &lease, &request.task_id), after);
     drop(engine);
     let mut engine = RrdEngine::open_existing(root.path(), instance(), TOKEN_KEY).unwrap();
-    engine.installed_estate = Some(configuration.identity.clone());
+    engine.installed_engram = Some(configuration.identity.clone());
     configure(&mut engine, 8);
     assert_eq!(
         engine
@@ -802,10 +802,10 @@ fn changed_inputs_stop_and_response_loss_withhold_worker_output_and_survive_reop
             assert_eq!(receipt.status, TaskAttemptStatus::Stopped);
             assert!(after.execution_may_continue);
         }
-        let identity = engine.installed_estate.clone();
+        let identity = engine.installed_engram.clone();
         drop(engine);
         let mut engine = RrdEngine::open_existing(root.path(), instance(), TOKEN_KEY).unwrap();
-        engine.installed_estate = identity;
+        engine.installed_engram = identity;
         configure(&mut engine, 8);
         assert_eq!(
             engine

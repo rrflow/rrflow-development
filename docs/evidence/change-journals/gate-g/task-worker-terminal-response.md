@@ -83,7 +83,7 @@ validation record binds command arrays, source-file hashes and log digests.
 No acceptance check failed after repair. Installed and final candidate checks
 are not substituted by these component tests; they remain pending as stated below.
 
-No old estate is cleared and no request is retried. Explicit resume/reconciliation,
+No old engram is cleared and no request is retried. Explicit resume/reconciliation,
 complete ordinary-edit UI replanning, governed project effects, RROFLOW outcomes,
 reviewed learning and native/container/model qualification remain unfinished.
 Earlier installed trials and the Connectome preview retain their original binary

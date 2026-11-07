@@ -54,7 +54,7 @@ alias, not loaded-weight attestation. Private credentials are never evidence.
 The first installed selector returned HTTP 412: `invalid endpoint selection
 choice`. No worker was dispatched. Credential-free recovery retained one spent
 step, stopped `attempt_failed`, `execution_may_continue: true` and no accepted
-proposal. Its estate and unresolved capacity remain intact. The raw choice was
+proposal. Its engram and unresolved capacity remain intact. The raw choice was
 not present in the public error, so its specific decoding cause is unknown.
 The failure response SHA-256 is
 `b2e2365610a36c7e6b5ef11f8b4819afc2597d13b1a2a542e536ac1d5401c1bc`;
@@ -88,11 +88,11 @@ Result SHA-256: `d75800affce27396f6541b06899f15c7c65af49a04e1175018fda09b56a042f
 Credential-free recovery SHA-256:
 `d5a79ebc70aa38ff9aaa718cf42fa08801fff201ea7dd2ea253b320788b75a11`.
 
-Local inputs, exact command arrays and both trial estates are under SWAG's
+Local inputs, exact command arrays and both trial engrams are under SWAG's
 `.swag/evidence/20261031/worker-installed-inputs`, `installed-worker-first`,
 `installed-worker-explicit-choice` and their `-recovery` directories. The runner
 commands are its existing explicit build/contract/profile/task/credential inputs
-plus `--worker`; recovery uses only `--recover-proof <estate> --output <new-dir>`.
+plus `--worker`; recovery uses only `--recover-proof <engram> --output <new-dir>`.
 A profile-tagging mistake was corrected before dispatch with the original input
 retained. An initial runner parenthesis error was corrected before execution.
 
@@ -100,7 +100,7 @@ retained. An initial runner parenthesis error was corrected before execution.
 
 `python -m py_compile scripts/inference/installed_controller_proof.py` passes.
 Three incompatible worker-mode combinations (admission-only, selector fault and
-recovery) each exit 2 before creating an estate. Actual installed trials and
+recovery) each exit 2 before creating an engram. Actual installed trials and
 credential-free recoveries above supply the behavior oracle; controlled or
 generated model responses are not substituted for these calls.
 `python scripts/knowledge/render_navigation.py`,

@@ -104,7 +104,7 @@ internal `.git` and an uninitialized submodule leaf. The rebuilt primary was cop
 to a single-link executable. `rrflow --json install identity` and four
 `install plan --mode existing --project <clone>` calls succeeded: unchanged source
 has the same digest; an excluded `target/` file preserves it; a README edit changes
-it. Original README bytes were restored and no estate was created. Individual
+it. Original README bytes were restored and no engram was created. Individual
 elapsed observations: 23.469 seconds initially, 7.515 unchanged, 10.938 with the
 excluded addition, 11.109 with the source edit. This is read-only preflight, not
 a benchmark, zero-read reuse, installed Inventory or clean-machine qualification.

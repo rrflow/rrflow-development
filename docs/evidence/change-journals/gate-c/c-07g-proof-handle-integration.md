@@ -44,7 +44,7 @@ Mechanical byte equality is preservation evidence, not proof of correctness.
 
 Research and trace/resource decisions remain with the two owning repair
 journals; integration adds no algorithm or borrowed source. Public physical
-counters, exact native receipts and original failed estate remain intact.
+counters, exact native receipts and original failed engram remain intact.
 The fresh preflight must seal the integrated source/tree, executable, harness,
 configuration, corpus and allocation before load. It must create a fresh
 installation; replacing an executable in the original sealed installation is

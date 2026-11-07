@@ -82,7 +82,7 @@ No new trace vocabulary or private debug lifecycle was introduced. The fixture
 prints counters and read coordinates, not source payloads or credentials.
 Catalogue generation history still contributes work inside its typed ranges;
 this repair removes unrelated scope history, not the need for E-04's persistent
-incremental index work or large-estate evaluation.
+incremental index work or large-engram evaluation.
 
 ## Validation and observed limits
 

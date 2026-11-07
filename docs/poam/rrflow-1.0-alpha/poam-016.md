@@ -30,7 +30,7 @@ transaction can contain unauthorized graph/index/vector or field effects, an uni
 component fixture can grant loopback application access, and a domain mutation can commit
 without final audit/outbox evidence. Platform or provider credential handling remains
 unqualified even though the removed product bootstrap paths can no longer initialize a
-different estate or grant set.
+different engram or grant set.
 
 ## Owning gates
 

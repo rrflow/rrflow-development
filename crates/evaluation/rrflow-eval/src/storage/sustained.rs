@@ -77,7 +77,7 @@ pub struct CapacityAllocation {
     pub vcpus: Limit,
     pub host_bytes: Limit,
     pub engine_bytes: Limit,
-    pub estates: Limit,
+    pub engrams: Limit,
     pub records: Limit,
     pub edges: Limit,
     pub vectors: Limit,
@@ -317,14 +317,14 @@ impl StorageCampaign {
         )?;
         require(
             self.allocation.engine_bytes.get() <= self.allocation.host_bytes.get()
-                && self.allocation.estates.get() == self.storage.budgets.estates.get()
+                && self.allocation.engrams.get() == self.storage.budgets.engrams.get()
                 && self.allocation.engine_bytes.get() == self.storage.budgets.process_bytes.get()
                 && self
                     .storage
                     .budgets
                     .aggregate_process_bytes
                     .is_none_or(|pool| pool == self.allocation.engine_bytes)
-                && (self.allocation.estates.get() == 1
+                && (self.allocation.engrams.get() == 1
                     || self.storage.budgets.aggregate_process_bytes.is_some())
                 && self.allocation.host_bytes.get() == self.storage.budgets.host_bytes.get(),
             "allocation and storage budget identity differ",
@@ -1615,7 +1615,7 @@ fn validate_next(
 }
 
 fn qualifies(campaign: &StorageCampaign, result: &CampaignResult) -> Result<bool> {
-    if campaign.purpose != CampaignPurpose::Qualification || campaign.allocation.estates.get() != 1
+    if campaign.purpose != CampaignPurpose::Qualification || campaign.allocation.engrams.get() != 1
     {
         return Ok(false);
     }
@@ -1948,7 +1948,7 @@ pub(super) mod tests {
             serde_json::from_str(include_str!("../../tests/fixtures/storage/manifest.json"))
                 .unwrap();
         manifest.evidence_class = EvidenceClass::NativeCapacity;
-        manifest.budgets.estates = limit(1);
+        manifest.budgets.engrams = limit(1);
         let mut result: StorageResult =
             serde_json::from_str(include_str!("../../tests/fixtures/storage/result.json")).unwrap();
         result.manifest_sha256 = manifest_digest(&manifest).unwrap();
@@ -1960,7 +1960,7 @@ pub(super) mod tests {
                 vcpus: limit(1),
                 host_bytes: manifest.budgets.host_bytes,
                 engine_bytes: manifest.budgets.process_bytes,
-                estates: manifest.budgets.estates,
+                engrams: manifest.budgets.engrams,
                 records: limit(1),
                 edges: limit(1),
                 vectors: limit(1),
@@ -2543,7 +2543,7 @@ pub(super) mod tests {
             vcpus: limit(profile.vcpus),
             host_bytes: limit(profile.host_bytes),
             engine_bytes: limit(profile.engine_bytes),
-            estates: limit(profile.estates),
+            engrams: limit(profile.engrams),
             records: limit(profile.records_min),
             edges: limit(profile.edges_min),
             vectors: limit(profile.vectors_min),
@@ -2552,7 +2552,7 @@ pub(super) mod tests {
         };
         campaign.storage.budgets.host_bytes = campaign.allocation.host_bytes;
         campaign.storage.budgets.process_bytes = campaign.allocation.engine_bytes;
-        campaign.storage.budgets.estates = campaign.allocation.estates;
+        campaign.storage.budgets.engrams = campaign.allocation.engrams;
         campaign.points[0].requests_per_second = limit(profile.rates[0]);
     }
 
@@ -2569,7 +2569,7 @@ pub(super) mod tests {
                 2 => invalid.allocation.vcpus = limit(1),
                 3 => invalid.allocation.host_bytes = limit(1),
                 4 => invalid.allocation.engine_bytes = limit(1),
-                5 => invalid.allocation.estates = limit(2),
+                5 => invalid.allocation.engrams = limit(2),
                 6 => invalid.allocation.records = limit(1),
                 7 => invalid.allocation.edges = limit(1),
                 8 => invalid.allocation.vectors = limit(1),

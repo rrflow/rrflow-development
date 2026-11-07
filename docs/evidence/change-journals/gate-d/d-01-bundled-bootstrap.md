@@ -19,7 +19,7 @@ The old preview omitted the actual secret-bearing root intent and locator
 staging path, provided no materialized generic instructions, and hashed assets
 whose checkout bytes could differ between platforms. Plan contract version 4
 binds a versioned bootstrap value within the existing InstallationPlan and
-InstalledEstateRecord. It declares thirteen managed paths and ten ordered
+InstalledengramRecord. It declares thirteen managed paths and ten ordered
 actions, distinguishing secret preparation from delivery. Product version
 remains `1.0.0`; older installation plans are rejected without a fallback reader.
 
@@ -54,7 +54,7 @@ model reasoning or provider-activation evidence.
 | Prior behavior/source | Canonical replacement and evidence | Gate |
 |---|---|---|
 | `assets/install/default-profile-v1.json`, DefaultInstallProfile seat and phase data | Version-2 default/Clyffy assets, specialization-owned seat, retained install/lifecycle tests and explicit default/clyffy record inspection | D-01.4 |
-| Nine-path installation contract and EstateLayout | Same plan/layout extended with intent, locator pending, bootstrap and bootstrap pending; independent literal path set plus observed filesystem at every stage | D-01.4 |
+| Nine-path installation contract and engramLayout | Same plan/layout extended with intent, locator pending, bootstrap and bootstrap pending; independent literal path set plus observed filesystem at every stage | D-01.4 |
 | No linked instruction template | Engine-owned generic Markdown, exact staged publication/readback, altered-template and altered-installed-byte rejection | D-01.4 |
 | Build-dependent include_bytes input | Asset-local LF attributes, fixed literal digest assertions and forced-autocrlf checkout comparison | D-01.4 |
 | Initial semantic transaction assembled by current engine/security/seat owners | Same transaction, with explicit kind/count and payload bounds before commit; actual journal and bounded stamped semantic reads prove installed state | D-01.4 |
@@ -68,7 +68,7 @@ and traceability procedures. The immutable first-oracle record retains the
 starting characterization and research.
 
 Implementation reads across this D-01 sequence include the complete existing
-installation, estate-layout, admission, recovery, contract attunement/export,
+installation, engram-layout, admission, recovery, contract attunement/export,
 engine installation/recovery/concurrency tests and actual CLI lifecycle files.
 This package rereviews their changed planning, validation, staging, inspection,
 receipt, fixture and denial boundaries. Complete new-file reads cover engine
@@ -77,13 +77,13 @@ installation_bootstrap corpus, both replacement profiles and the generic
 instructions. The storage initialization-format projection is reviewed against
 all of rrflow_kv.rs and its lib.rs exports; it changes no storage algorithms.
 The inventory generator is read in full before replacing its planned asset
-entries. Targeted owner reads cover build_memory_estate_plan,
+entries. Targeted owner reads cover build_memory_engram_plan,
 prepare_security_initialization, EndpointProfile, engine clock/secret intent,
 rrflowKV inspection and bounded versioned reads. The complete package diff is
 reviewed before commit; no unrelated worktree state is included.
 
 Changed implementation paths are the existing `rrd-contract` attunement types,
-exports, fixture and tests; engine assets/install, estate_layout, installation,
+exports, fixture and tests; engine assets/install, engram_layout, installation,
 installation/recovery and installation tests; the two storage format projection
 paths; and the CLI lifecycle test. New helpers remain within those existing
 owners. Reference/roadmap/POA&M prose, this journal, generated journal navigation
@@ -109,7 +109,7 @@ exactly for all four owned assets (zero CRLF pairs):
 |---|---:|---|
 | default-profile-v2.json | 2991 | `4cd907c211671714e33208bc13540a50c59e6b7488184d9e7378d1d5976d3f53` |
 | clyffy-profile-v2.json | 3101 | `048de57d1a8f5aec86b58cfb1533996f6bad7f6927040d69876c05fc68eeab5e` |
-| default-estate-configuration-v2.toml | 413 | `aed474faf82e0a185b94d972f917170f06f27181d3ab6eafa249abe6a9e85d63` |
+| default-engram-configuration-v2.toml | 413 | `aed474faf82e0a185b94d972f917170f06f27181d3ab6eafa249abe6a9e85d63` |
 | templates/generic-project-v1.md | 1000 | `2df8396b905776c27f3d5c0d9b178410a792671d1c2fd50eac7c1fe7c98bc6df` |
 
 The command used the reviewed staged index and an ignored target-directory

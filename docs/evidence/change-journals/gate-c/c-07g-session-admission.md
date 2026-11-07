@@ -6,7 +6,7 @@
 
 Starting canonical revision 903aeae58edcdb4c12f030f802f9e879ffcacce0.
 PR 72 comments 6361112630 and 6361195878 bind the pre-edit scope.
-The combined 9dddf9eb candidate's real two-estate concurrent flow first failed
+The combined 9dddf9eb candidate's real two-engram concurrent flow first failed
 InvocationInProgress (78.13s): workload reads shared constant invocation IDs.
 workload.rs now assigns bounded checked monotonic IDs to each read invocation,
 including verification reads. Mutation, transaction and idempotency identities
@@ -50,7 +50,7 @@ storage format or hidden conflict handling. The PR candidate gate still applies.
 Combined baseline 9dddf9eb126cce2eed951e71028dfae8b45a53e3 with reviewed validation overlay
 SHA256 1d1f6120ae31a8f3b87d6d75d3d75b4568350baa5e6354afced44115e486c87d passed:
 
-- Native two-estate ordinary-binary concurrent flow: 116.61s, two estates,
+- Native two-engram ordinary-binary concurrent flow: 116.61s, two engrams,
   four clients each, insert/update/retire/recreate, six foreign-session denials,
   two exact reopen histories, unchanged retained page digests through source
   cancellation, and actual output/pin release after final owner drop.

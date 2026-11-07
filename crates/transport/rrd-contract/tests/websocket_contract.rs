@@ -9,7 +9,7 @@ use rrd_contract::{
     WebSocketAcknowledged, WebSocketBackpressure, WebSocketBackpressureTarget, WebSocketCancel,
     WebSocketCancellation, WebSocketCancellationDisposition, WebSocketConnected, WebSocketDelivery,
     WebSocketError, WebSocketErrorTarget, WebSocketFrame, WebSocketHeartbeat, WebSocketLimits,
-    WebSocketPayload, WebSocketPeer, WebSocketReceiveState, WebSocketRequest,
+    WebSocketPayload, WebSocketPeer, WebSocketReceivengram, WebSocketRequest,
     WebSocketRequestTarget, WebSocketResponse, WebSocketSendState, WebSocketSubscribe,
     WebSocketSubscribed, WebSocketUnsubscribe, WebSocketUnsubscribed, MAX_WEBSOCKET_MESSAGE_BYTES,
     MIN_WEBSOCKET_HEARTBEAT_MS, PROTOCOL, PROTOCOL_VERSION, WEBSOCKET_CONTRACT_VERSION,
@@ -362,14 +362,14 @@ fn multiplex_protocol_matches_the_language_neutral_golden() {
     assert_eq!(actual, expected);
 
     let connection = id("connection-alpha");
-    let mut client_receiver = WebSocketReceiveState::for_connection(
+    let mut client_receiver = WebSocketReceivengram::for_connection(
         WebSocketPeer::Client,
         connection.clone(),
         actual.limits.clone(),
     )
     .unwrap();
     let mut server_receiver =
-        WebSocketReceiveState::awaiting_server(actual.limits.clone()).unwrap();
+        WebSocketReceivengram::awaiting_server(actual.limits.clone()).unwrap();
     for directed in actual.frames {
         let bytes =
             encode_websocket_frame(&directed.frame, directed.sender, &actual.limits).unwrap();
@@ -398,7 +398,7 @@ fn sequence_connection_direction_and_unknown_fields_fail_closed() {
     let bytes = encode_websocket_frame(first, WebSocketPeer::Server, &fixture.limits).unwrap();
     assert!(decode_websocket_frame(&bytes, WebSocketPeer::Client, &fixture.limits).is_err());
 
-    let mut receiver = WebSocketReceiveState::awaiting_server(fixture.limits.clone()).unwrap();
+    let mut receiver = WebSocketReceivengram::awaiting_server(fixture.limits.clone()).unwrap();
     receiver.accept(&bytes).unwrap();
     assert!(receiver.accept(&bytes).is_err());
 
@@ -607,7 +607,7 @@ fn negotiated_lower_limits_govern_every_later_message() {
             limits: negotiated,
         }),
     };
-    let mut receiver = WebSocketReceiveState::awaiting_server(admission.clone()).unwrap();
+    let mut receiver = WebSocketReceivengram::awaiting_server(admission.clone()).unwrap();
     receiver
         .accept(&encode_websocket_frame(&connected, WebSocketPeer::Server, &admission).unwrap())
         .unwrap();
@@ -653,7 +653,7 @@ fn negotiated_lower_limits_govern_every_later_message() {
                 limits: enlarged,
             }),
         };
-        let mut receiver = WebSocketReceiveState::awaiting_server(admission.clone()).unwrap();
+        let mut receiver = WebSocketReceivengram::awaiting_server(admission.clone()).unwrap();
         let bytes = serde_json::to_vec(&connected).unwrap();
         assert!(receiver.accept(&bytes).is_err());
     }

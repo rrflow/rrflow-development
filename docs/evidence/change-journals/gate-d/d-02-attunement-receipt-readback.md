@@ -16,9 +16,9 @@ the comment itself was corrected just before that amendment.
 
 Previously a principal could recover an attunement control receipt only by
 resubmitting its mutation. `RrdEngine::read_attunement_receipt` now authorizes
-`EstateRead`, derives the same existing principal/job/idempotency-scoped receipt
+`engramRead`, derives the same existing principal/job/idempotency-scoped receipt
 key, reads the stored receipt without executing the command, verifies its
-principal, job, digest shape, original plan and installed estate, and returns the
+principal, job, digest shape, original plan and installed engram, and returns the
 original status plus operation digest. It resolves the plan named by that
 historical receipt rather than the current job's plan. The existing receipt
 format, control-WAL/CAS writes, grant and engine authority are preserved. The
@@ -50,7 +50,7 @@ Windows x64; rustc 1.99.1; offline locked dependencies; isolated
 - The same focused oracle passed after implementation. Three receipt-specific
   tests pass: original status and digest after later job failure and reopen;
   another authorized principal cannot retrieve the first principal's receipt;
-  missing `EstateRead` and invalid credentials are denied; malformed stored
+  missing `engramRead` and invalid credentials are denied; malformed stored
   digest is rejected. The test checks no new attunement receipt is created and
   the live job remains unchanged. It reconstructs the original key independently.
 - `cargo test --offline --locked -p rrd-engine --lib engine::tests::attunement::`

@@ -1,28 +1,28 @@
-# ADR-0003: Configurable estate organisation
+# ADR-0003: Configurable engram organisation
 
 **Status:** active accepted architecture decision
-**Coordinate:** `rrflow://rrflow-instance/data/decision/0003-configurable-estate-organisation`
-**Owner:** how one project estate is organised into domains, categories and tags, isolated where required, and measured per domain
+**Coordinate:** `rrflow://rrflow-instance/data/decision/0003-configurable-engram-organisation`
+**Owner:** how one project engram is organised into domains, categories and tags, isolated where required, and measured per domain
 **Decision date:** 2026-10-27
 
 ## Context
 
-One project has one estate, its logical rrflowDB
+One project has one engram, its logical rrflowDB
 ([instance topology](../architecture/instance-topology.md)). A real project
 is rarely one subject. It has services, packages, product areas and kinds of
-knowledge that behave differently. Today the estate has no layer that
+knowledge that behave differently. Today the engram has no layer that
 represents those parts ([POAM-042](../poam/rrflow-1.0-alpha/poam-042.md)):
 
 - every kind sits in one flat schema registry;
 - the registry's `namespace`/`database` pair is one inert label;
-- every read is estate-wide;
-- grants cannot name a part of the estate;
-- evidence is reported only for the whole estate.
+- every read is engram-wide;
+- grants cannot name a part of the engram;
+- evidence is reported only for the whole engram.
 
 A client that wants to show the project's structure would have to invent one.
 
 On 2026-10-27 the repository owner directed that domains inside a project
-estate are configurable. RRFlow offers a default setup that each project
+engram are configurable. RRFlow offers a default setup that each project
 tunes itself. It groups kinds, lets projects create categories and tags, can
 isolate data, and drills down to find bottlenecks and also what is working
 well. The design must absorb what current research shows succeeds for
@@ -86,20 +86,20 @@ choices below rest on the parts with direct evidence.
 
 ## Decision
 
-RRFlow adopts **configurable estate organisation**. It is part of the
-estate's schema registry, is enforced by `RrdEngine`, and is measured per
-domain. The [estate organisation contract](../reference/data/estate-organisation.md)
+RRFlow adopts **configurable engram organisation**. It is part of the
+engram's schema registry, is enforced by `RrdEngine`, and is measured per
+domain. The [engram organisation contract](../reference/data/engram-organisation.md)
 owns the exact terms, limits and build order.
 
 1. **Domains group kinds.**
-   - A domain is a named part of one estate's catalogue, such as a service, a
+   - A domain is a named part of one engram's catalogue, such as a service, a
      package or a subject area. Domains may nest to a bounded depth.
    - Every record, relation, event, series, geo, object and vector-collection
      kind belongs to exactly one domain.
    - A kind's identity is independent of its domain, so moving a kind is a
      schema revision that rewrites no record. Old read stamps still see the
      old organisation.
-   - The estate is the one database. A domain is its catalogue namespace and
+   - The engram is the one database. A domain is its catalogue namespace and
      becomes the SQL schema in the PostgreSQL projection. The inert
      `namespace`/`database` registry label is retired.
 2. **Categories and tags label across domains.**
@@ -120,10 +120,10 @@ owns the exact terms, limits and build order.
      adjacency. It never filters after a bounded search.
    - Every result names the scope it read and reports truncation explicitly.
 4. **Isolation is optional, per domain, and fails closed.**
-   - Shared domains are the default. They behave as one estate, with atomic
+   - Shared domains are the default. They behave as one engram, with atomic
      cross-domain commits and reasoning across domains.
    - An isolated domain is reachable only through grants that name it. Grants
-     for the whole estate do not reach into it.
+     for the whole engram do not reach into it.
    - A relation may cross an isolated boundary only when the domain allows
      that relation kind and the writer holds both grants.
    - An isolated domain keeps its own lexical statistics, and its vectors
@@ -164,7 +164,7 @@ owns the exact terms, limits and build order.
 - A project can see and work in its own structure. Connectome and SQL clients
   show the same domains at the same read stamp, and no client invents a
   grouping.
-- Grants, budgets and evidence gain a stable unit smaller than the estate, so
+- Grants, budgets and evidence gain a stable unit smaller than the engram, so
   a bottleneck or a success can be traced to one domain.
 - Reorganising stays cheap and reversible: membership is a revision, not a
   data migration.
@@ -172,7 +172,7 @@ owns the exact terms, limits and build order.
   filter-aware candidate generation over domain and tag candidate sets, and
   the E-04 vector serving work inherits that requirement.
 - Isolation adds enforcement points to every read, traversal, retrieval,
-  changefeed and relation write. The whole estate stays one transaction
+  changefeed and relation write. The whole engram stays one transaction
   authority and one backup unit.
 
 ## Rejected alternatives
@@ -183,7 +183,7 @@ owns the exact terms, limits and build order.
   exception, and it brings back the containers the topology record rejects.
 - **A grouping kept only in the client.** It would be a second source of truth
   that grants, scopes, evidence and other clients cannot see.
-- **One estate per domain.** It would split one project's knowledge,
+- **One engram per domain.** It would split one project's knowledge,
   transactions and reasoning across instances. Project links already cover
   knowledge that is genuinely separate.
 - **Free-form model-assigned tags applied automatically.** Nothing measures a
@@ -194,7 +194,7 @@ owns the exact terms, limits and build order.
 
 ## Links
 
-- [Estate organisation contract](../reference/data/estate-organisation.md)
+- [engram organisation contract](../reference/data/engram-organisation.md)
 - [Instance topology](../architecture/instance-topology.md)
 - [Schema catalogue](../reference/data/schema-catalogue.md)
 - [rrflowDB capability record](../reference/data/rrflowdb-capability.md)

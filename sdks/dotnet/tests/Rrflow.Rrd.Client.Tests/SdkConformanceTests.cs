@@ -20,7 +20,7 @@ public sealed class SdkConformanceTests
         "backup",
         "cancellation",
         "crud",
-        "estate",
+        "engram",
         "live_feeds",
         "query",
         "retries",
@@ -201,7 +201,7 @@ public sealed class SdkConformanceTests
                     + reference.GetProperty("id").GetString()
                     == expected.GetProperty("vector_reference").GetString();
             });
-        // The runners share one estate, so activate the generation this build returned.
+        // The runners share one engram, so activate the generation this build returned.
         JsonElement quantization = vector.GetProperty("quantization");
         JsonElement built = await api.CallAsync(
             OperationId.VectorQuantizationBuild,
@@ -351,20 +351,20 @@ public sealed class SdkConformanceTests
             backups.GetProperty("backups").EnumerateArray(),
             entry => entry.GetProperty("backup_sha256").GetString()
                 == backupSnapshot.GetProperty("backup_sha256").GetString());
-        JsonElement estate = await api.CallAsync(
-            OperationId.EstateRead,
-            corpus.GetProperty("estate"),
+        JsonElement engram = await api.CallAsync(
+            OperationId.engramRead,
+            corpus.GetProperty("engram"),
             Options(
-                "estate-read",
+                "engram-read",
                 session,
                 paths: new Dictionary<string, string>
                 {
-                    ["estate"] = identity.GetProperty("estate").GetString()!,
+                    ["engram"] = identity.GetProperty("engram").GetString()!,
                 }),
             TestContext.Current.CancellationToken);
         Assert.Equal(
-            expected.GetProperty("estate_revision").GetInt32(),
-            estate.GetProperty("revision").GetInt32());
+            expected.GetProperty("engram_revision").GetInt32(),
+            engram.GetProperty("revision").GetInt32());
         JsonElement closed = await api.CallAsync(
             OperationId.SessionClose,
             sessionFixture.GetProperty("close"),

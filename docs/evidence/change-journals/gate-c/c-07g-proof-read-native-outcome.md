@@ -12,7 +12,7 @@ session. The [launch record](c-07g-proof-read-native-preflight.md) froze actual
 workload source `05817485c1b083e4bf64eeb902314f47eac5f4c0`, tree
 `1fac463ab180bddebed45b99d4f0b09fe16e2574`, binary and allocation identities.
 This successor records its terminal outcome without modifying the old receipt,
-source, failed estate, workload, original setup/operation deadlines or gates.
+source, failed engram, workload, original setup/operation deadlines or gates.
 
 ## Actual result and retained identity
 
@@ -21,7 +21,7 @@ The driver acknowledged 100000 corpus operations and independently verified
 38960 before `corpus setup exceeded its frozen deadline`. Launcher elapsed
 7202224 ms; original setup bound 7200000 ms. No measured load segment or actual
 24-hour soak started. Continuation and qualification services for this frozen
-revision are absent. The original estate and all evidence remain retained.
+revision are absent. The original engram and all evidence remain retained.
 This is incomplete readback, not demonstrated lost acknowledgements.
 
 The final sample reports current/peak segment handles 128/128 and zero handle
@@ -78,7 +78,7 @@ qualification, evidence loss or an unowned implementation change.
 returned the terminal service/progress/result/launch/error evidence successfully.
 `inspect_c07_outcome_receipt.py` streamed and hashed only the named evidence
 files; local receipt is `target/c07-proof-outcome-identities.json`. No secrets
-were printed and no service, source or estate was changed. The Windows CI job's
+were printed and no service, source or engram was changed. The Windows CI job's
 live log could not be fetched while running; that command is not passing test
 evidence. Source exploration included an invalid guessed core directory; no
 missing-code conclusion was drawn from it.

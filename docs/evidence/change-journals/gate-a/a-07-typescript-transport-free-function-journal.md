@@ -28,7 +28,7 @@ remaining known errors and owner: the SDK's browser profile remains loopback-onl
 full-file reread and diff review: complete for every changed authored file before commit.
 change checklist: complete — owner chain, reference record, link closure, generated indexes, knowledge package, and execution inventory reconciled; no POA&M row changes.
 roadmap/POA&M status change, or explicit none: none.
-pull request, CI run, and merge evidence: pull request #15 carries the candidate CI runs and the merge; this record does not restate them.
+pull request, CI run, and merge evidence: pull request #15 carries the candidate CI runs and the merge; this record does not rengram them.
 ```
 
 ## Links

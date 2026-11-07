@@ -171,9 +171,9 @@ export const endpoints = {
     "authentication": "session_bearer",
     "mutation": true
   },
-  "estate-read": {
+  "engram-read": {
     "method": "POST",
-    "path": "/v1/estates/{estate}/read",
+    "path": "/v1/engrams/{engram}/read",
     "authentication": "session_bearer",
     "mutation": false
   },

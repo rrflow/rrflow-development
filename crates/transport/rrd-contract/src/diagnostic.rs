@@ -1,6 +1,6 @@
 use crate::{
     invalid, AuditPage, CanonicalId, ChangefeedPage, DataObjectReceipt, DataProperties,
-    DataSchemaRegistry, EstateSnapshot, ProductCapabilityCatalogue, QueryIndexCatalogueSnapshot,
+    DataSchemaRegistry, engramSnapshot, ProductCapabilityCatalogue, QueryIndexCatalogueSnapshot,
     Readiness, ResourceId, StorageProfileKind, VectorCollectionCatalogueSnapshot,
     MAX_CHANGEFEED_PAGE, MAX_MESSAGE_BYTES,
 };
@@ -568,7 +568,7 @@ pub struct DiagnosticSnapshot {
     pub query_indexes: QueryIndexCatalogueSnapshot,
     pub vector_collections: VectorCollectionCatalogueSnapshot,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub estate: Option<EstateSnapshot>,
+    pub engram: Option<engramSnapshot>,
     pub storage: DiagnosticStorageSnapshot,
     pub changes: ChangefeedPage,
     pub audit: AuditPage,

@@ -72,7 +72,7 @@ journals. All three raw receipts and the selected summary were read and checked.
 Research/source adaptation: none needed for measured-evidence retention; native
 API research remains in the D-01.5 journals. Trace/resource/debug decision:
 preserve existing bounds and only sanitized structural outcomes/digests; retain
-no raw estate, credential or private reasoning. No implementation is moved,
+no raw engram, credential or private reasoning. No implementation is moved,
 deleted or replaced. Further local runtime suites are not repeated because the
 exact candidate already passed and this package changes evidence/docs only.
 

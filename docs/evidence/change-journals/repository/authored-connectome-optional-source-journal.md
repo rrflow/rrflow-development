@@ -134,7 +134,7 @@ artifact or complete H-06 conformance result:
 - The engine answered authenticated readiness. The authored Connectome UI
   opened a session as `local-operator`, rendered **Records & relations** at
   cursor 2, and showed all three engine-identity cards as **VERIFIED**.
-- The estate was stopped through the UI, the desktop application closed, and
+- The engram was stopped through the UI, the desktop application closed, and
   development process 31300 exited with status 0.
 
 No legacy form, unavailable engine operation, full multi-model corpus, remote

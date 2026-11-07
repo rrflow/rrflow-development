@@ -43,8 +43,8 @@ failed, so token truncation is not asserted as the cause.
 [Credential-free recovery](task-worker-native-receipts/withheld/recovery.json)
 retained the accepted selector, stopped worker, two spent steps,
 `attempt_failed`, `execution_may_continue: true` and no accepted worker output.
-Its estate/capacity remain intact. Public reconciliation of uncertain work is
-still a deployment requirement; a new test estate does not clear this one.
+Its engram/capacity remain intact. Public reconciliation of uncertain work is
+still a deployment requirement; a new test engram does not clear this one.
 
 ## Second isolated experiment
 
@@ -83,7 +83,7 @@ These individual observations are not comparative performance or quality results
 
 The [manifest](task-worker-native-receipts/manifest.json) binds nine exact copied
 receipts by byte count, hash and source. Copies were checked against the actual
-provider key and both estates' operator credentials; none occurs in these files.
+provider key and both engrams' operator credentials; none occurs in these files.
 Configuration/credential files are omitted. Captured newline bytes are preserved
 using the existing repository fixture convention. The failed and successful
 cases remain distinct, inspectable observations.

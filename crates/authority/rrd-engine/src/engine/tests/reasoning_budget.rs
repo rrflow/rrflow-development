@@ -22,7 +22,7 @@ mod completion;
 mod proposal;
 mod worker;
 
-// Retained real task/request inputs in a fresh test estate. These are admission
+// Retained real task/request inputs in a fresh test engram. These are admission
 // and persistence probes: no provider is installed or called, no model output
 // is manufactured, and no record is admitted as training or evaluation data.
 fn actual_request_fixture() -> (
@@ -255,7 +255,7 @@ fn repetition_budget(
             &rrd_contract::ConfigureTaskBudget {
                 scope: SCOPE.into(),
                 task_id: task.clone(),
-                limits: engine.estate_configuration.reasoning.clone(),
+                limits: engine.engram_configuration.reasoning.clone(),
                 repetition_policy: Some(rrd_contract::TaskRepetitionPolicy {
                     max_equivalent_attempts: maximum,
                 }),
@@ -433,9 +433,9 @@ fn repetition_allowance_is_not_double_spent_by_competing_workers() {
 #[test]
 fn repetition_history_is_bounded_without_evicting_old_identities() {
     let (root, mut engine, lease, task, mut request, calls) = fixture(130);
-    engine.estate_configuration.reasoning.max_run_elapsed_ms = 60_000;
-    engine.estate_configuration.configuration_sha256 =
-        rrd_contract::estate_configuration_sha256(&engine.estate_configuration).unwrap();
+    engine.engram_configuration.reasoning.max_run_elapsed_ms = 60_000;
+    engine.engram_configuration.configuration_sha256 =
+        rrd_contract::engram_configuration_sha256(&engine.engram_configuration).unwrap();
     let configured = repetition_budget(&engine, &lease, &task, 2);
     let clock = FixedClock::at(configured.started_at_unix_ms + 1);
     for index in 0..128 {
@@ -717,13 +717,13 @@ impl EmbeddingBackend for CountedBackend {
 }
 
 fn configure(engine: &mut RrdEngine, steps: u64) {
-    engine.estate_configuration.reasoning = rrd_contract::ReasoningLimits {
+    engine.engram_configuration.reasoning = rrd_contract::ReasoningLimits {
         max_run_elapsed_ms: 10_000,
         max_steps: steps,
         max_step_elapsed_ms: 5_000,
     };
-    engine.estate_configuration.configuration_sha256 =
-        rrd_contract::estate_configuration_sha256(&engine.estate_configuration).unwrap();
+    engine.engram_configuration.configuration_sha256 =
+        rrd_contract::engram_configuration_sha256(&engine.engram_configuration).unwrap();
 }
 
 fn fixture(
@@ -1083,10 +1083,10 @@ fn cancellation_persists_stop_and_uncertainty_for_running_work() {
 
 fn interrupted_budgeted_provider(cancel: bool) {
     let (_root, mut engine, lease, task, mut request, calls) = fixture(3);
-    engine.estate_configuration.reasoning.max_run_elapsed_ms = 5_000;
-    engine.estate_configuration.reasoning.max_step_elapsed_ms = 5_000;
-    engine.estate_configuration.configuration_sha256 =
-        rrd_contract::estate_configuration_sha256(&engine.estate_configuration).unwrap();
+    engine.engram_configuration.reasoning.max_run_elapsed_ms = 5_000;
+    engine.engram_configuration.reasoning.max_step_elapsed_ms = 5_000;
+    engine.engram_configuration.configuration_sha256 =
+        rrd_contract::engram_configuration_sha256(&engine.engram_configuration).unwrap();
     call(
         &engine,
         &lease,

@@ -309,7 +309,7 @@ stale results. [Moka crate documentation](https://docs.rs/moka/latest/moka/)
 
 OpenTelemetry models a trace as low-cardinality named spans with parentage,
 attributes, timestamped events, links, and status. W3C Trace Context defines
-the interoperable `traceparent` and optional `tracestate` propagation fields.
+the interoperable `traceparent` and optional `tracengram` propagation fields.
 Those are the correct outward diagnostic conventions; they do not define
 RRFlow's durable state machine. [OpenTelemetry tracing API](https://opentelemetry.io/docs/specs/otel/trace/api/),
 [W3C Trace Context](https://www.w3.org/TR/trace-context/)
@@ -325,7 +325,7 @@ RRFlow therefore needs two coordinated representations, not two authorities:
 
 At ingress, RRD validates and continues an incoming W3C context or creates a
 new one. `RrdEngine` binds that context to the authenticated request
-correlation, actor, estate/scope, authorization decision, and `ReadStamp`.
+correlation, actor, engram/scope, authorization decision, and `ReadStamp`.
 Child work keeps the trace identity. Asynchronous work caused by a committed
 event, projection delta, retry, or routine activity records a causal link
 rather than inventing false synchronous parentage.
@@ -345,7 +345,7 @@ The current trace foundation is useful but incomplete. It already has W3C-
 width identifiers, parent IDs, bounded attributes, typed causal links,
 start/annotation/finish phases, rrflowMX/rrflowKV equivalence, conflict retry,
 and crash-visible incomplete starts. It does not parse or propagate
-`traceparent`/`tracestate`, has no OpenTelemetry bridge, uses mixed unprefixed
+`traceparent`/`tracengram`, has no OpenTelemetry bridge, uses mixed unprefixed
 operation names, exposes direct-store persistence helpers, and does not cover
 the complete graph/BM25/vector/Arrow/DataFusion/context path. A-07 freezes the
 mapping; each owning gate converges its names and instrumentation; H-05 proves

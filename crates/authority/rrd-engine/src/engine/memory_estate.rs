@@ -1,7 +1,7 @@
 use super::*;
 use rrd_contract::{
-    AssembleContext, ContextReadStamp, DataPropertySchema, MemoryEstatePlan, MemoryWarp,
-    PersistMemoryEstate, ProviderRepresentation, ResolveMemoryWarp, ResolveSeatIdentity,
+    AssembleContext, ContextReadStamp, DataPropertySchema, MemoryengramPlan, MemoryWarp,
+    PersistMemoryengram, ProviderRepresentation, ResolveMemoryWarp, ResolveSeatIdentity,
     ResolvedMemoryWarp, SeatIdentity, MEMORY_PROVIDER_IDENTITY_KIND, MEMORY_REPRESENTS_KIND,
     MEMORY_SEAT_KIND,
 };
@@ -12,15 +12,15 @@ impl RrdEngine {
     /// The returned plan is committed through the existing authenticated data
     /// transaction API; this method creates no side registry or write path.
     #[allow(clippy::too_many_arguments)]
-    pub fn plan_memory_estate(
+    pub fn plan_memory_engram(
         &self,
         session_id: &CorrelationId,
         token: &CorrelationId,
-        request: &PersistMemoryEstate,
+        request: &PersistMemoryengram,
         now: u64,
         request_id: &str,
         operation_id: &str,
-    ) -> Result<MemoryEstatePlan> {
+    ) -> Result<MemoryengramPlan> {
         self.authorize(
             session_id,
             token,
@@ -37,7 +37,7 @@ impl RrdEngine {
             .as_ref()
             .map(public_schema)
             .transpose()?;
-        build_memory_estate_plan(request, current)
+        build_memory_engram_plan(request, current)
     }
 
     /// Resolves a stable `rrflow://` coordinate through the same context
@@ -213,16 +213,16 @@ impl RrdEngine {
     }
 }
 
-/// Pure canonical memory-estate planner used by both authenticated previews
+/// Pure canonical memory-engram planner used by both authenticated previews
 /// and the cold-start transaction. It performs no authentication or I/O.
-pub(crate) fn build_memory_estate_plan(
-    request: &PersistMemoryEstate,
+pub(crate) fn build_memory_engram_plan(
+    request: &PersistMemoryengram,
     current: Option<DataSchemaRegistry>,
-) -> Result<MemoryEstatePlan> {
+) -> Result<MemoryengramPlan> {
     request
         .validate()
         .map_err(|error| ServiceError::Contract(error.to_string()))?;
-    let (schema, schema_changed) = memory_estate_schema(current)?;
+    let (schema, schema_changed) = memory_engram_schema(current)?;
     let mut mutations = Vec::with_capacity(2 + request.representations.len() * 2);
     if schema_changed {
         mutations.push(TransactionMutation::PutSchema { registry: schema });
@@ -282,7 +282,7 @@ pub(crate) fn build_memory_estate_plan(
             properties: BTreeMap::new(),
         });
     }
-    let plan = MemoryEstatePlan {
+    let plan = MemoryengramPlan {
         operation_sha256: transaction_operation_sha256(&mutations),
         mutations,
     };
@@ -291,11 +291,11 @@ pub(crate) fn build_memory_estate_plan(
     Ok(plan)
 }
 
-fn memory_estate_schema(current: Option<DataSchemaRegistry>) -> Result<(DataSchemaRegistry, bool)> {
+fn memory_engram_schema(current: Option<DataSchemaRegistry>) -> Result<(DataSchemaRegistry, bool)> {
     let mut registry = current.unwrap_or_else(|| DataSchemaRegistry {
         revision: 0,
-        migration: "memory estate bootstrap".into(),
-        organisation: DataEstateOrganisation::default(),
+        migration: "memory engram bootstrap".into(),
+        organisation: DataengramOrganisation::default(),
         tables: BTreeMap::new(),
         records: BTreeMap::new(),
         relations: BTreeMap::new(),
@@ -383,9 +383,9 @@ fn memory_estate_schema(current: Option<DataSchemaRegistry>) -> Result<(DataSche
     )?;
     if changed {
         registry.revision = registry.revision.checked_add(1).ok_or_else(|| {
-            ServiceError::Contract("memory estate schema revision overflowed".into())
+            ServiceError::Contract("memory engram schema revision overflowed".into())
         })?;
-        registry.migration = "install rrflow memory estate v1".into();
+        registry.migration = "install rrflow memory engram v1".into();
     }
     Ok((registry, changed))
 }
@@ -399,7 +399,7 @@ fn install_exact<T: PartialEq>(
     match entries.get(&kind) {
         Some(existing) if existing == &expected => Ok(false),
         Some(_) => Err(ServiceError::StorageConflict(format!(
-            "memory estate {description} {kind} conflicts with the canonical definition"
+            "memory engram {description} {kind} conflicts with the canonical definition"
         ))),
         None => {
             entries.insert(kind, expected);
@@ -423,7 +423,7 @@ fn required_string(properties: &RuntimeProperties, name: &str) -> Result<String>
     match properties.get(name) {
         Some(RuntimeValue::String(value)) => Ok(value.clone()),
         _ => Err(ServiceError::Storage(format!(
-            "memory estate record lacks string property {name}"
+            "memory engram record lacks string property {name}"
         ))),
     }
 }
@@ -432,7 +432,7 @@ fn required_digest(properties: &RuntimeProperties, name: &str) -> Result<String>
     match properties.get(name) {
         Some(RuntimeValue::Digest(value)) => Ok(value.clone()),
         _ => Err(ServiceError::Storage(format!(
-            "memory estate record lacks digest property {name}"
+            "memory engram record lacks digest property {name}"
         ))),
     }
 }

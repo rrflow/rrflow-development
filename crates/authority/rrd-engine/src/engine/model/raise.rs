@@ -195,8 +195,8 @@ pub(in crate::engine) fn public_properties(
 }
 
 fn public_organisation(
-    organisation: &rrd_core::RuntimeEstateOrganisation,
-) -> Result<DataEstateOrganisation> {
+    organisation: &rrd_core::RuntimeengramOrganisation,
+) -> Result<DataengramOrganisation> {
     let id = |value: &RuntimeType| public_change_id(value.as_str());
     let memberships = |entries: &BTreeMap<RuntimeType, RuntimeType>| {
         entries
@@ -204,7 +204,7 @@ fn public_organisation(
             .map(|(identity, domain)| Ok((id(identity)?, id(domain)?)))
             .collect::<Result<BTreeMap<_, _>>>()
     };
-    Ok(DataEstateOrganisation {
+    Ok(DataengramOrganisation {
         domains: organisation
             .domains
             .iter()

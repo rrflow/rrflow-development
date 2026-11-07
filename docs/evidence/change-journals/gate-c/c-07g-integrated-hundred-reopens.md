@@ -63,7 +63,7 @@ Raw evidence remains at
 `/home/devcontainers/rrflow-c07-native-79663cdd/integrated64-reopen100-growth-10000-316569a3/`.
 Safe summaries are retained at operator
 `target/c07-pr120-evidence/316569a3/reopen100/10000/`; no bootstrap credential or
-private estate content was copied into the repository.
+private engram content was copied into the repository.
 
 ## Commands, review and limits
 

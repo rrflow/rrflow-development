@@ -14,11 +14,11 @@ description recorded the scope, source map, oracles and stop conditions before
 implementation. The original worktree and unrelated DevPulse processes were
 preserved. Prerequisite and candidate CI remain required before merge.
 
-Previously, task embedding effort was embedded-only, always adopted estate
+Previously, task embedding effort was embedded-only, always adopted engram
 caps, returned only replay digests, and had no public durable Stop. This package
 exposes one authenticated flow through the existing operation catalogue,
 HTTP dispatcher and Rust SDK: explicitly activate the bundled CPU reference
-adapter; configure immutable task limits at or below estate caps; execute a
+adapter; configure immutable task limits at or below engram caps; execute a
 bounded attempt; read budget/output; Stop using the observed budget digest;
 reopen and replay without redispatch. Configuration starts the original
 deadline immediately. Repeating configuration cannot reset it, even after Stop.
@@ -101,7 +101,7 @@ runtime assets. Durations include build or build-lock waits where applicable.
 | Initial documentation validation | Rejected a journal status without the required active/historical prefix and a missing Gate C dependency link in POAM-009. Both documentation declarations corrected. |
 | `python scripts/knowledge/render_navigation.py`, `python scripts/ci/build_execution_inventory.py`, `python -X utf8 scripts/ci/check_documentation.py` | Corrected run passed: 17 indexes, 1465 inventory records, 438 document statuses and 436 classified coordinates. |
 
-The in-flight test configures narrower limits, denies mutation/estate-cap
+The in-flight test configures narrower limits, denies mutation/engram-cap
 excess and stale Stop, blocks actual provider execution, durably stops it,
 receives cancellation before releasing the non-cooperative provider, preserves
 uncertainty, and reopens the same stopped budget/attempt. The real HTTP test

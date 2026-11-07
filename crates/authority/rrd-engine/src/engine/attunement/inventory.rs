@@ -53,11 +53,11 @@ pub(super) fn execute(
     let policy = &profile.inventory_policy;
     let output_limit = policy.limits.output_bytes.min(
         engine
-            .estate_configuration
+            .engram_configuration
             .storage
             .transaction_admission_bytes,
     );
-    let mut remaining_keys = engine.estate_configuration.query.max_storage_keys;
+    let mut remaining_keys = engine.engram_configuration.query.max_storage_keys;
     let (prior_bytes, prior) = records::load_prior(
         engine,
         &work.plan,
@@ -66,7 +66,7 @@ pub(super) fn execute(
         &mut remaining_keys,
     )?;
     let source_scope = SourceScope {
-        estate: work.plan.target.estate_id.as_str().into(),
+        engram: work.plan.target.engram_id.as_str().into(),
         project: work.plan.target.project_id.as_str().into(),
         root: policy.logical_root.as_str().into(),
     };
@@ -96,7 +96,7 @@ pub(super) fn execute(
     permit.charge(
         &commit,
         engine
-            .estate_configuration
+            .engram_configuration
             .storage
             .transaction_admission_bytes,
     )?;

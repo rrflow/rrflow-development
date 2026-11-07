@@ -80,7 +80,7 @@ index or native filesystem freshness cache is introduced.
   passes; it did not run after the initial failed suite.
 - A separate clone of the same actual public source revision `d1b8a26a`, tree
   `c4cc385a`, retains 1,870 tracked paths for the installed binary trial. Earlier
-  failed and successful estates remain intact. The new trial has not run yet.
+  failed and successful engrams remain intact. The new trial has not run yet.
 
 The first expanded test compile exposed missing explicit core-type imports;
 those imports were corrected and both focused tests passed. No failure log was

@@ -48,11 +48,11 @@ impl ProviderRepresentationDefinition {
     }
 }
 
-/// Input for a canonical memory-estate mutation plan. The plan is committed
+/// Input for a canonical memory-engram mutation plan. The plan is committed
 /// with the normal authenticated data transaction capability.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct PersistMemoryEstate {
+pub struct PersistMemoryengram {
     pub scope: String,
     pub seat: MemorySeatDefinition,
     #[serde(default)]
@@ -60,15 +60,15 @@ pub struct PersistMemoryEstate {
     pub valid_from: u64,
 }
 
-impl PersistMemoryEstate {
+impl PersistMemoryengram {
     pub fn validate(&self) -> Result<()> {
         validate_scope(&self.scope)?;
         self.seat.validate()?;
         if self.valid_from == 0 {
-            return invalid("memory estate valid_from must be greater than zero");
+            return invalid("memory engram valid_from must be greater than zero");
         }
         if self.representations.len() > MAX_PROVIDER_REPRESENTATIONS {
-            return invalid("memory estate exceeds its provider representation bound");
+            return invalid("memory engram exceeds its provider representation bound");
         }
         let mut ids = BTreeSet::new();
         let mut provider_identities = BTreeSet::new();
@@ -78,7 +78,7 @@ impl PersistMemoryEstate {
                 return invalid("provider representation ids must be unique");
             }
             if !provider_identities.insert(&representation.provider_identity) {
-                return invalid("provider identities must be unique within a memory estate plan");
+                return invalid("provider identities must be unique within a memory engram plan");
             }
         }
         Ok(())
@@ -87,22 +87,22 @@ impl PersistMemoryEstate {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct MemoryEstatePlan {
+pub struct MemoryengramPlan {
     pub mutations: Vec<TransactionMutation>,
     pub operation_sha256: String,
 }
 
-impl MemoryEstatePlan {
+impl MemoryengramPlan {
     pub fn validate(&self) -> Result<()> {
         if self.mutations.is_empty() {
-            return invalid("memory estate plan must contain at least one mutation");
+            return invalid("memory engram plan must contain at least one mutation");
         }
         for mutation in &self.mutations {
             mutation.validate()?;
         }
-        validate_sha256(&self.operation_sha256, "memory estate operation_sha256")?;
+        validate_sha256(&self.operation_sha256, "memory engram operation_sha256")?;
         if self.operation_sha256 != transaction_operation_sha256(&self.mutations) {
-            return invalid("memory estate operation digest does not match its mutations");
+            return invalid("memory engram operation digest does not match its mutations");
         }
         Ok(())
     }
@@ -304,7 +304,7 @@ impl SeatIdentity {
 
 fn validate_scope(scope: &str) -> Result<()> {
     if scope.is_empty() || scope.len() > 256 || scope.as_bytes().contains(&0) {
-        return invalid("memory estate scope must be a non-empty bounded string without NUL");
+        return invalid("memory engram scope must be a non-empty bounded string without NUL");
     }
     Ok(())
 }

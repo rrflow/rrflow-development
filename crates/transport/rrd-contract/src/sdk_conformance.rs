@@ -4,7 +4,7 @@ use crate::{
     CanonicalId, CloseSession, CommitTransaction, ContractError, CreateInstanceBackup,
     CreateSession, DeleteVectorPayloadIndex, EnsureVectorCollection, EnsureVectorIndex,
     EnsureVectorPayloadIndex, ErrorCode, ExecuteQuery, ListInstanceBackups, PreviewTransaction,
-    ReadChangefeed, ReadEstate, RenewSession, Result, SearchVectors, VectorQuantizationMethod,
+    ReadChangefeed, Readengram, RenewSession, Result, SearchVectors, VectorQuantizationMethod,
     VectorSearchMode, PROTOCOL, PROTOCOL_VERSION,
 };
 use schemars::JsonSchema;
@@ -18,7 +18,7 @@ const REQUIRED_DOMAINS: [&str; 13] = [
     "backup",
     "cancellation",
     "crud",
-    "estate",
+    "engram",
     "live_feeds",
     "query",
     "retries",
@@ -50,7 +50,7 @@ pub struct SdkConformanceCorpus {
     pub vector: SdkConformanceVector,
     pub changefeed: SdkConformanceChangefeed,
     pub backup: SdkConformanceBackup,
-    pub estate: ReadEstate,
+    pub engram: Readengram,
     pub expected: SdkConformanceExpected,
 }
 
@@ -58,7 +58,7 @@ pub struct SdkConformanceCorpus {
 #[serde(deny_unknown_fields)]
 pub struct SdkConformanceIdentity {
     pub instance: CanonicalId,
-    pub estate: CanonicalId,
+    pub engram: CanonicalId,
     pub principal: CanonicalId,
     pub api_key: String,
 }
@@ -107,7 +107,7 @@ pub struct SdkConformanceVectorIndex {
 
 /// The quantization lifecycle on the corpus's vector: build a TurboQuant
 /// generation, activate it, and require it. `activate` names the artifact the
-/// build must return; the runners share one estate, so each one activates
+/// build must return; the runners share one engram, so each one activates
 /// the generation its own build returned.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -142,7 +142,7 @@ pub struct SdkConformanceExpected {
     pub quantized_access_path: CanonicalId,
     pub indexed_access_path: CanonicalId,
     pub indexed_reference: String,
-    pub estate_revision: u64,
+    pub engram_revision: u64,
     pub typed_error: ErrorCode,
     pub retry_attempts: u8,
 }
@@ -279,7 +279,7 @@ impl SdkConformanceCorpus {
         if usize::from(self.expected.endpoint_count) != endpoint_catalogue().endpoints.len()
             || self.expected.query_identity.is_empty()
             || self.expected.vector_reference.is_empty()
-            || self.expected.estate_revision == 0
+            || self.expected.engram_revision == 0
             || self.expected.typed_error != ErrorCode::Unauthenticated
             || self.expected.retry_attempts != 2
         {

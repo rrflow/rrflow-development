@@ -50,7 +50,7 @@ operation must derive the relevant guards from actual authorization/configuratio
 this generic primitive cannot establish permission by itself.
 
 Five new tests reuse the prior real-task/provider projection helper in isolated
-estates. They prove supplied typed-output persistence/reopen/replay, charged
+engrams. They prove supplied typed-output persistence/reopen/replay, charged
 invalidation followed by another bounded reservation, a real session closure
 between guard read and commit, a real task closure between runtime read and commit,
 and stopped/uncertain completion without accepted output. The session and task

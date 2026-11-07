@@ -109,14 +109,14 @@ passed, two existing dedicated helpers ignored; `cargo test -p rrd-store --lib
 --locked`: 73 passed, one existing dedicated helper ignored. The full validation
 log is retained at `target/c07-handles-validation.log`. Candidate CI and the protected merge group remain required.
 No macOS result, full Desktop corpus preflight or 24-hour soak is claimed here.
-The original failed private estate remains untouched. C-07 and POAM035 stay open;
+The original failed private engram remains untouched. C-07 and POAM035 stay open;
 this package repairs a verified growth prerequisite, not the whole alpha.
 
 Documentation validation caught a Windows text-encoding change in the POAM title;
 the original UTF-8 bytes were restored and derived navigation regenerated.
 
 `cargo test -p rrd-engine --test engine_authority --locked`: three passed,
-covering coordinated data/security/catalogues/audit/reopen and fenced estate
+covering coordinated data/security/catalogues/audit/reopen and fenced engram
 recovery. Generated-surface parity, documentation policy, CI workflow policy,
 format and whitespace checks passed. Navigation and execution inventory were
 regenerated (608 knowledge nodes, 1,734 inventory records).

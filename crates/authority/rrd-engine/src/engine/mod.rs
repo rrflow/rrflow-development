@@ -10,7 +10,7 @@ use rrd_contract::{
     ClaimPromotionSnapshot, ClaimTierSnapshot, CloseSession, CloseSubscription,
     CloseSubscriptionResult, CommitReceipt, CommitTransaction, CorrelationId, CreateInstanceBackup,
     CreateInstanceBackupResult, CreateSession, DataCategorySchema, DataCategoryTargets,
-    DataDomainSchema, DataEmbeddingProvenance, DataEstateOrganisation, DataEventSchema,
+    DataDomainSchema, DataEmbeddingProvenance, DataengramOrganisation, DataEventSchema,
     DataGeoPoint, DataGeoValue, DataLogicalModel, DataObjectReceipt, DataProperties,
     DataPropertySchema, DataRecordSchema, DataReference, DataRelationSchema, DataSchemaMode,
     DataSchemaRegistry, DataSeriesValue, DataSnapshot, DataSnapshotEntry, DataTableSchema,
@@ -26,12 +26,12 @@ use rrd_contract::{
     DiagnosticVectorArtifactKind, DiagnosticVectorArtifactSnapshot, EnsureQueryIndex,
     EnsureQueryIndexResult, EnsureVectorCollection, EnsureVectorCollectionResult,
     EnsureVectorIndex, EnsureVectorIndexResult, EnsureVectorPayloadIndex,
-    EnsureVectorPayloadIndexResult, EstateConfiguration, ExecuteFunction, ExecuteQuery,
+    EnsureVectorPayloadIndexResult, engramConfiguration, ExecuteFunction, ExecuteQuery,
     ExecuteQueryTransaction, ExecuteRetrievalQuery, ExportAudit, FollowChangefeed,
     ForwardRollbackCounts, ForwardRollbackPlan, ForwardRollbackRequest, FunctionArtifact,
     FunctionArtifactMediaType, FunctionCatalogue, FunctionDefinition, FunctionExecutionResult,
     FunctionInvocationProposal, FunctionInvocationReceipt, FunctionRuntime, FunctionRuntimeKind,
-    HybridFusion, HybridSearchHit, HybridSearchResult, InstalledEstateIdentity,
+    HybridFusion, HybridSearchHit, HybridSearchResult, InstalledengramIdentity,
     InstanceBackupCatalogueSnapshot, InstanceBackupSnapshot, ListInstanceBackups, ListQueryIndexes,
     ListVectorCollections, ListVectorPayloadIndexes, ListVectorQuantizationArtifacts,
     ListVectorQuantizationArtifactsResult, LiveQueryDeltaResult, LiveQueryRowChange,
@@ -110,9 +110,9 @@ mod endpoint_proposal;
 mod endpoint_worker;
 pub use endpoint_proposal::EndpointCredentials;
 mod error;
-mod estate;
-mod estate_control;
-mod estate_layout;
+mod engram;
+mod engram_control;
+mod engram_layout;
 mod flight;
 mod function;
 mod inference;
@@ -127,7 +127,7 @@ pub use attunement::{
 mod invocation;
 mod knowledge;
 mod maintenance;
-mod memory_estate;
+mod memory_engram;
 mod model;
 mod query;
 mod query_export;
@@ -163,14 +163,14 @@ pub use distributed::{
     DistributedAuthorityRead, DistributedReadRoute, PreparedDistributedAuthority,
 };
 pub use error::{Result, ServiceError, ServiceErrorKind};
-pub use estate_control::{
-    EstateAdminAction, EstateAdminResult, EstateBackupReconcileOutcome, EstateReconcileOutcome,
+pub use engram_control::{
+    engramAdminAction, engramAdminResult, engramBackupReconcileOutcome, engramReconcileOutcome,
 };
 pub use installation::{
-    attunement_proposal_schema, load_attunement_proposal, load_estate_configuration,
+    attunement_proposal_schema, load_attunement_proposal, load_engram_configuration,
     AttunementProposal, AttunementProposalStep, DefaultAttunementPhase, DefaultInstallProfile,
     InstallationPreview, InstallationVerificationCheck, InstallationVerificationReport,
-    InstallationVerificationStatus, InstalledEstateRecord, ProjectLocator,
+    InstallationVerificationStatus, InstalledengramRecord, ProjectLocator,
     ATTUNEMENT_PROPOSAL_FORMAT_VERSION, INSTALLATION_PREVIEW_FORMAT_VERSION,
 };
 pub use invocation::{

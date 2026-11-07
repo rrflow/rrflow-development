@@ -6,10 +6,10 @@
 `D01-03-current-state-documentation-alignment-v1`; the roadmap retains
 completion authority
 
-This record resolves current-state drift found after the canonical-estate
+This record resolves current-state drift found after the canonical-engram
 implementation audit. It aligns the bootstrap README and three implementation
 references with accepted C-03/C-04 evidence and the bounded D-01
-estate/configuration implementation. It changes no runtime behavior, public
+engram/configuration implementation. It changes no runtime behavior, public
 schema, generated SDK, roadmap checkbox, POA&M lifecycle, release decision, or
 promotion status.
 
@@ -45,7 +45,7 @@ facts:
   reconstruction;
 - the D-01 walking product can plan, apply, serve, answer authenticated
   readiness, verify, close, and reopen as a real process;
-- the next bounded D-01 slice owns one canonical project-local estate,
+- the next bounded D-01 slice owns one canonical project-local engram,
   project-relative locator, structured deployment profile, sealed effective
   configuration, installed identity, generated discovery, and enforced query
   and recall ceilings; and
@@ -61,7 +61,7 @@ assigned accepted C-03/C-04 work to the future. The deployment reference said
 the current classification was structurally wrong, assigned accepted A-07 and
 C-02 through C-04 to future convergence, and told the Rust client to stop an
 inference already removed. README described only the preceding walking-product
-slice and omitted the canonical-estate/configuration result from the product's
+slice and omitted the canonical-engram/configuration result from the product's
 current-status owner.
 
 The target was a factual alignment, not a new architecture: retain accepted
@@ -88,7 +88,7 @@ dependent edits or evidence projection:
 | `docs/roadmap/rrflow-1.0/gate-c.md` | 1-27 | Gate C requirements and accepted/open rows. |
 | `docs/roadmap/rrflow-1.0/gate-c-evidence.md` | 1-375 | Accepted C-03 and C-04 behavior and evidence. |
 | `docs/roadmap/rrflow-1.0/gate-d.md` | 1-31 | D-01 acceptance and remaining Gate D work. |
-| `docs/evidence/change-journals/gate-d/d-01-canonical-estate-layout-and-configuration.md` | 1-456 | Implemented D01-02 behavior, exact tests, limitations, and follow-up. |
+| `docs/evidence/change-journals/gate-d/d-01-canonical-engram-layout-and-configuration.md` | 1-456 | Implemented D01-02 behavior, exact tests, limitations, and follow-up. |
 | `docs/reference/protocol/server.md` | 1-264 | Complete server bootstrap, commit, query, and qualification narrative. |
 | `docs/reference/protocol/public-contract.md` | 1-267 | Complete contract proof map, gaps, and evidence. |
 | `docs/reference/deployment/modes.md` | 1-247 | Complete profile taxonomy, audit, sequence, and acceptance. |
@@ -126,7 +126,7 @@ New external research was not required because this package makes no new
 architecture or implementation choice. It reconciles supporting prose with the
 roadmap, accepted Gate C evidence, generated contract, and the preceding fully
 researched D01-02 package. That package's
-[research synthesis](../../../research/rrflow-canonical-estate-configuration-and-runtime-controls.md)
+[research synthesis](../../../research/rrflow-canonical-engram-configuration-and-runtime-controls.md)
 remains the primary-source decision record; this journal does not duplicate it.
 
 Runtime trace, resource evidence, and debugging instrumentation are not

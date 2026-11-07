@@ -1,36 +1,36 @@
-use super::estate_layout::{
+use super::engram_layout::{
     instance_operation_root, BACKUPS_DIRECTORY_NAME, RESTORES_DIRECTORY_NAME,
 };
 use super::installation::read_locator;
 use super::restore_publication::require_distribution_binding;
 use super::security::AuditEvent;
 use super::*;
-use rrd_estate::{EstateBackupDriver, EstateDriver};
+use rrd_engram::{engramBackupDriver, engramDriver};
 use std::fs;
 #[cfg(debug_assertions)]
 use std::io::Write as _;
 
-const ESTATE_RECOVERY_OPERATION_FORMAT: u16 = 1;
+const engram_RECOVERY_OPERATION_FORMAT: u16 = 1;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-struct EstateRecoveryPruneOperationState {
+struct engramRecoveryPruneOperationState {
     format_version: u16,
     operation_sha256: String,
     instance_id: CanonicalId,
     operation_id: CanonicalId,
     evaluated_at: u64,
-    expected_estate_revision: u64,
+    expected_engram_revision: u64,
     expected_catalogue_sha256: String,
     retained_backup_ids: Vec<String>,
     prune_candidate_backup_ids: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    result: Option<rrd_contract::EstateRecoveryPruneResult>,
+    result: Option<rrd_contract::engramRecoveryPruneResult>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-struct EstateRecoveryRestoreOperationState {
+struct engramRecoveryRestoreOperationState {
     format_version: u16,
     operation_sha256: String,
     instance_id: CanonicalId,
@@ -39,18 +39,18 @@ struct EstateRecoveryRestoreOperationState {
     restore_id: CanonicalId,
     started_at: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    result: Option<rrd_contract::EstateRecoveryRestoreResult>,
+    result: Option<rrd_contract::engramRecoveryRestoreResult>,
 }
 
-/// A bounded estate mutation accepted by the RRD composition root.
+/// A bounded engram mutation accepted by the RRD composition root.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case", tag = "action")]
-pub enum EstateAdminAction {
+pub enum engramAdminAction {
     Create,
     SetDesired {
         instance: CanonicalId,
         idempotency_key: String,
-        phase: rrd_contract::EstateDesiredPhase,
+        phase: rrd_contract::engramDesiredPhase,
         deployment: CanonicalId,
         version: String,
         configuration_sha256: String,
@@ -79,31 +79,31 @@ pub enum EstateAdminAction {
     },
 }
 
-/// Public result from an engine-owned estate administration operation.
+/// Public result from an engine-owned engram administration operation.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(untagged)]
-pub enum EstateAdminResult {
-    Mutation(Box<rrd_contract::EstateMutationResult>),
-    Backup(Box<rrd_contract::EstateBackupMutationResult>),
-    Recovery(Box<rrd_contract::EstateRecoveryMutationResult>),
+pub enum engramAdminResult {
+    Mutation(Box<rrd_contract::engramMutationResult>),
+    Backup(Box<rrd_contract::engramBackupMutationResult>),
+    Recovery(Box<rrd_contract::engramRecoveryMutationResult>),
 }
 
-pub type EstateReconcileOutcome = rrd_estate::ReconcileOutcome;
-pub type EstateBackupReconcileOutcome = rrd_estate::BackupReconcileOutcome;
+pub type engramReconcileOutcome = rrd_engram::ReconcileOutcome;
+pub type engramBackupReconcileOutcome = rrd_engram::BackupReconcileOutcome;
 
-fn estate_audit_resource(instance: &CanonicalId, estate: &CanonicalId) -> ResourcePath {
+fn engram_audit_resource(instance: &CanonicalId, engram: &CanonicalId) -> ResourcePath {
     ResourcePath {
         segments: vec![
             ResourceId::new(ResourceKind::Instance, instance.as_str())
                 .expect("engine instance identity is canonical"),
-            ResourceId::new(ResourceKind::Estate, estate.as_str())
-                .expect("estate identity is canonical"),
+            ResourceId::new(ResourceKind::engram, engram.as_str())
+                .expect("engram identity is canonical"),
         ],
     }
 }
 
 #[allow(clippy::too_many_arguments)]
-fn audit_estate_operation<T, F>(
+fn audit_engram_operation<T, F>(
     engine: &RrdEngine,
     at: u64,
     principal_id: CanonicalId,
@@ -121,7 +121,7 @@ where
         at_unix_ms: at,
         attempt: 1,
         principal_id: Some(principal_id.clone()),
-        action: SecurityAction::EstateAdmin,
+        action: SecurityAction::engramAdmin,
         resource: resource.clone(),
         request_id: request_id.clone(),
         operation_id: operation_id.clone(),
@@ -151,7 +151,7 @@ where
         at_unix_ms: at,
         attempt: 1,
         principal_id: Some(principal_id),
-        action: SecurityAction::EstateAdmin,
+        action: SecurityAction::engramAdmin,
         resource,
         request_id,
         operation_id,
@@ -165,53 +165,53 @@ where
 }
 
 impl RrdEngine {
-    /// Authorizes and applies one estate mutation through a single local RRD
+    /// Authorizes and applies one engram mutation through a single local RRD
     /// authority. Policy denial happens before the database can be created.
     #[allow(clippy::too_many_arguments)]
-    pub fn administer_estate_store(
+    pub fn administer_engram_store(
         database: &Path,
         authority_instance: CanonicalId,
         policy_path: &Path,
         key_path: &Path,
-        estate_id: CanonicalId,
+        engram_id: CanonicalId,
         at: u64,
         request_id: String,
         operation_id: CanonicalId,
-        action: EstateAdminAction,
-    ) -> Result<EstateAdminResult> {
+        action: engramAdminAction,
+    ) -> Result<engramAdminResult> {
         let permission = match &action {
-            EstateAdminAction::Create => rrd_estate::LocalEstatePermission::Create,
-            EstateAdminAction::SetDesired { .. } => rrd_estate::LocalEstatePermission::SetDesired,
-            EstateAdminAction::ScheduleBackup { .. } => {
-                rrd_estate::LocalEstatePermission::ScheduleBackup
+            engramAdminAction::Create => rrd_engram::LocalengramPermission::Create,
+            engramAdminAction::SetDesired { .. } => rrd_engram::LocalengramPermission::SetDesired,
+            engramAdminAction::ScheduleBackup { .. } => {
+                rrd_engram::LocalengramPermission::ScheduleBackup
             }
-            EstateAdminAction::SetRecoveryPolicy { .. } => {
-                rrd_estate::LocalEstatePermission::ManageRecoveryPolicy
+            engramAdminAction::SetRecoveryPolicy { .. } => {
+                rrd_engram::LocalengramPermission::ManageRecoveryPolicy
             }
-            EstateAdminAction::PinRecoveryPoint { .. }
-            | EstateAdminAction::ReleaseRecoveryPin { .. } => {
-                rrd_estate::LocalEstatePermission::ManageRecoveryHolds
+            engramAdminAction::PinRecoveryPoint { .. }
+            | engramAdminAction::ReleaseRecoveryPin { .. } => {
+                rrd_engram::LocalengramPermission::ManageRecoveryHolds
             }
         };
-        let policy = rrd_estate::LocalOperatorPolicy::load_json(policy_path)
+        let policy = rrd_engram::LocalOperatorPolicy::load_json(policy_path)
             .map_err(ServiceError::Contract)?;
         let authorization = policy
-            .authorize_key_file(key_path, estate_id, permission, at)
+            .authorize_key_file(key_path, engram_id, permission, at)
             .map_err(ServiceError::Contract)?;
         let audit_request_id = request_id.clone();
         let audit_operation_id = operation_id.to_string();
         let audit_request_sha256 =
             digest::sha256_hex(&serde_json::to_vec(&action).map_err(contract_json)?);
-        let audit_resource = estate_audit_resource(&authority_instance, &authorization.estate_id);
+        let audit_resource = engram_audit_resource(&authority_instance, &authorization.engram_id);
         let audit_principal = authorization.operator_id.clone();
         let engine = Self::open_local_authority(database, authority_instance)?;
         let repository =
-            rrd_estate::EstateRepository::new(&engine.storage, authorization.estate_id);
+            rrd_engram::engramRepository::new(&engine.storage, authorization.engram_id);
         engine.append_audit(AuditEvent {
             at_unix_ms: at,
             attempt: 1,
             principal_id: Some(audit_principal.clone()),
-            action: SecurityAction::EstateAdmin,
+            action: SecurityAction::engramAdmin,
             resource: audit_resource.clone(),
             request_id: audit_request_id.clone(),
             operation_id: audit_operation_id.clone(),
@@ -221,23 +221,23 @@ impl RrdEngine {
             request_sha256: audit_request_sha256.clone(),
             response_sha256: digest::sha256_hex(b"rrd-audit-completion-pending"),
         })?;
-        let context = rrd_estate::MutationContext {
+        let context = rrd_engram::MutationContext {
             at,
             actor: authorization.operator_id.to_string(),
             request_id,
             operation_id,
         };
         let result = (|| match action {
-            EstateAdminAction::Create => {
+            engramAdminAction::Create => {
                 let outcome = repository.create_idempotent(&context)?;
-                Ok(EstateAdminResult::Mutation(Box::new(
-                    rrd_contract::EstateMutationResult {
-                        estate: rrd_estate::public_snapshot(&outcome.document),
+                Ok(engramAdminResult::Mutation(Box::new(
+                    rrd_contract::engramMutationResult {
+                        engram: rrd_engram::public_snapshot(&outcome.document),
                         idempotent_replay: outcome.idempotent_replay,
                     },
                 )))
             }
-            EstateAdminAction::SetDesired {
+            engramAdminAction::SetDesired {
                 instance,
                 idempotency_key,
                 phase,
@@ -246,48 +246,48 @@ impl RrdEngine {
                 configuration_sha256,
             } => {
                 let phase = match phase {
-                    rrd_contract::EstateDesiredPhase::Running => rrd_estate::DesiredPhase::Running,
-                    rrd_contract::EstateDesiredPhase::Stopped => rrd_estate::DesiredPhase::Stopped,
-                    rrd_contract::EstateDesiredPhase::Absent => rrd_estate::DesiredPhase::Absent,
+                    rrd_contract::engramDesiredPhase::Running => rrd_engram::DesiredPhase::Running,
+                    rrd_contract::engramDesiredPhase::Stopped => rrd_engram::DesiredPhase::Stopped,
+                    rrd_contract::engramDesiredPhase::Absent => rrd_engram::DesiredPhase::Absent,
                 };
-                let outcome = repository.set_desired(&rrd_estate::SetDesired {
+                let outcome = repository.set_desired(&rrd_engram::SetDesired {
                     context,
                     instance_id: instance,
                     idempotency_key,
-                    target: rrd_estate::DesiredTarget {
+                    target: rrd_engram::DesiredTarget {
                         phase,
                         deployment_ref: deployment,
                         version,
                         configuration_sha256,
                     },
                 })?;
-                Ok(EstateAdminResult::Mutation(Box::new(
-                    rrd_contract::EstateMutationResult {
-                        estate: rrd_estate::public_snapshot(&outcome.document),
+                Ok(engramAdminResult::Mutation(Box::new(
+                    rrd_contract::engramMutationResult {
+                        engram: rrd_engram::public_snapshot(&outcome.document),
                         idempotent_replay: outcome.idempotent_replay,
                     },
                 )))
             }
-            EstateAdminAction::ScheduleBackup {
+            engramAdminAction::ScheduleBackup {
                 instance,
                 idempotency_key,
                 label,
             } => {
-                let outcome = repository.schedule_backup(&rrd_estate::ScheduleBackup {
+                let outcome = repository.schedule_backup(&rrd_engram::ScheduleBackup {
                     context,
                     instance_id: instance,
                     idempotency_key,
                     label,
                 })?;
-                Ok(EstateAdminResult::Backup(Box::new(
-                    rrd_contract::EstateBackupMutationResult {
-                        estate: rrd_estate::public_snapshot(&outcome.document),
-                        job: rrd_estate::public_backup_job(&outcome.job),
+                Ok(engramAdminResult::Backup(Box::new(
+                    rrd_contract::engramBackupMutationResult {
+                        engram: rrd_engram::public_snapshot(&outcome.document),
+                        job: rrd_engram::public_backup_job(&outcome.job),
                         idempotent_replay: outcome.idempotent_replay,
                     },
                 )))
             }
-            EstateAdminAction::SetRecoveryPolicy {
+            engramAdminAction::SetRecoveryPolicy {
                 instance,
                 idempotency_key,
                 max_rpo_ms,
@@ -295,7 +295,7 @@ impl RrdEngine {
                 minimum_recovery_points,
                 retention_ms,
             } => {
-                let outcome = repository.set_recovery_policy(&rrd_estate::SetRecoveryPolicy {
+                let outcome = repository.set_recovery_policy(&rrd_engram::SetRecoveryPolicy {
                     context,
                     instance_id: instance,
                     idempotency_key,
@@ -304,43 +304,43 @@ impl RrdEngine {
                     minimum_recovery_points,
                     retention_ms,
                 })?;
-                Ok(EstateAdminResult::Recovery(Box::new(
-                    rrd_contract::EstateRecoveryMutationResult {
-                        recovery: rrd_estate::public_recovery_snapshot(&outcome.document),
+                Ok(engramAdminResult::Recovery(Box::new(
+                    rrd_contract::engramRecoveryMutationResult {
+                        recovery: rrd_engram::public_recovery_snapshot(&outcome.document),
                         idempotent_replay: outcome.idempotent_replay,
                     },
                 )))
             }
-            EstateAdminAction::PinRecoveryPoint {
+            engramAdminAction::PinRecoveryPoint {
                 idempotency_key,
                 backup_sha256,
                 expires_at_unix_ms,
             } => {
-                let outcome = repository.pin_recovery_point(&rrd_estate::PinRecoveryPoint {
+                let outcome = repository.pin_recovery_point(&rrd_engram::PinRecoveryPoint {
                     context,
                     idempotency_key,
                     backup_id: backup_sha256,
                     expires_at: expires_at_unix_ms,
                 })?;
-                Ok(EstateAdminResult::Recovery(Box::new(
-                    rrd_contract::EstateRecoveryMutationResult {
-                        recovery: rrd_estate::public_recovery_snapshot(&outcome.document),
+                Ok(engramAdminResult::Recovery(Box::new(
+                    rrd_contract::engramRecoveryMutationResult {
+                        recovery: rrd_engram::public_recovery_snapshot(&outcome.document),
                         idempotent_replay: outcome.idempotent_replay,
                     },
                 )))
             }
-            EstateAdminAction::ReleaseRecoveryPin {
+            engramAdminAction::ReleaseRecoveryPin {
                 idempotency_key,
                 pin_id,
             } => {
-                let outcome = repository.release_recovery_pin(&rrd_estate::ReleaseRecoveryPin {
+                let outcome = repository.release_recovery_pin(&rrd_engram::ReleaseRecoveryPin {
                     context,
                     idempotency_key,
                     pin_id,
                 })?;
-                Ok(EstateAdminResult::Recovery(Box::new(
-                    rrd_contract::EstateRecoveryMutationResult {
-                        recovery: rrd_estate::public_recovery_snapshot(&outcome.document),
+                Ok(engramAdminResult::Recovery(Box::new(
+                    rrd_contract::engramRecoveryMutationResult {
+                        recovery: rrd_engram::public_recovery_snapshot(&outcome.document),
                         idempotent_replay: outcome.idempotent_replay,
                     },
                 )))
@@ -365,7 +365,7 @@ impl RrdEngine {
             at_unix_ms: at,
             attempt: 1,
             principal_id: Some(audit_principal),
-            action: SecurityAction::EstateAdmin,
+            action: SecurityAction::engramAdmin,
             resource: audit_resource,
             request_id: audit_request_id,
             operation_id: audit_operation_id,
@@ -378,27 +378,27 @@ impl RrdEngine {
         result
     }
 
-    /// Advances one estate reconciliation boundary. The outward executable
+    /// Advances one engram reconciliation boundary. The outward executable
     /// supplies coordinates only; catalog, driver, repository, and store
     /// construction remain inside `RrdEngine`.
     #[allow(clippy::too_many_arguments)]
-    pub fn reconcile_estate_store(
+    pub fn reconcile_engram_store(
         database: &Path,
         authority_instance: CanonicalId,
         state_root: &Path,
         catalog_path: &Path,
-        estate_id: CanonicalId,
+        engram_id: CanonicalId,
         worker: CanonicalId,
         lease_ms: u64,
         at: u64,
         hold_after_effect: Option<&Path>,
-    ) -> Result<EstateReconcileOutcome> {
-        let audit_resource = estate_audit_resource(&authority_instance, &estate_id);
-        let audit_request_id = format!("estate-reconcile-request-{estate_id}-{at}");
-        let audit_operation_id = format!("estate-reconcile-{estate_id}-{worker}-{at}");
+    ) -> Result<engramReconcileOutcome> {
+        let audit_resource = engram_audit_resource(&authority_instance, &engram_id);
+        let audit_request_id = format!("engram-reconcile-request-{engram_id}-{at}");
+        let audit_operation_id = format!("engram-reconcile-{engram_id}-{worker}-{at}");
         let audit_request_sha256 = operation_digest(&(
-            "estate-reconcile-v1",
-            &estate_id,
+            "engram-reconcile-v1",
+            &engram_id,
             &worker,
             lease_ms,
             at,
@@ -406,7 +406,7 @@ impl RrdEngine {
             catalog_path.to_string_lossy(),
         ))?;
         let engine = Self::open_local_authority(database, authority_instance)?;
-        audit_estate_operation(
+        audit_engram_operation(
             &engine,
             at,
             worker.clone(),
@@ -415,13 +415,13 @@ impl RrdEngine {
             audit_operation_id,
             audit_request_sha256,
             || {
-                let catalog = rrd_estate::LocalDeploymentCatalog::load_json(catalog_path)
+                let catalog = rrd_engram::LocalDeploymentCatalog::load_json(catalog_path)
                     .map_err(ServiceError::Contract)?;
-                let driver = rrd_estate::LocalProcessDriver::new(state_root, catalog)
+                let driver = rrd_engram::LocalProcessDriver::new(state_root, catalog)
                     .map_err(ServiceError::Contract)?;
-                let mut reconciler = rrd_estate::Reconciler::new(
+                let mut reconciler = rrd_engram::Reconciler::new(
                     &engine.storage,
-                    estate_id,
+                    engram_id,
                     worker.clone(),
                     lease_ms,
                     EffectHoldDriver {
@@ -434,28 +434,28 @@ impl RrdEngine {
         )
     }
 
-    /// Advances one estate backup boundary with an engine-owned local backup
+    /// Advances one engram backup boundary with an engine-owned local backup
     /// driver. The driver opens a managed instance only as another installed
-    /// `RrdEngine`, bound to the estate's distribution executable; no physical
+    /// `RrdEngine`, bound to the engram's distribution executable; no physical
     /// store handle escapes the composition root.
     #[allow(clippy::too_many_arguments)]
-    pub fn reconcile_estate_backup_store(
+    pub fn reconcile_engram_backup_store(
         database: &Path,
         authority_instance: CanonicalId,
         state_root: &Path,
         distribution_executable: &Path,
-        estate_id: CanonicalId,
+        engram_id: CanonicalId,
         worker: CanonicalId,
         lease_ms: u64,
         at: u64,
         hold_after_effect: Option<&Path>,
-    ) -> Result<EstateBackupReconcileOutcome> {
-        let audit_resource = estate_audit_resource(&authority_instance, &estate_id);
-        let audit_request_id = format!("estate-backup-reconcile-request-{estate_id}-{at}");
-        let audit_operation_id = format!("estate-backup-reconcile-{estate_id}-{worker}-{at}");
+    ) -> Result<engramBackupReconcileOutcome> {
+        let audit_resource = engram_audit_resource(&authority_instance, &engram_id);
+        let audit_request_id = format!("engram-backup-reconcile-request-{engram_id}-{at}");
+        let audit_operation_id = format!("engram-backup-reconcile-{engram_id}-{worker}-{at}");
         let audit_request_sha256 = operation_digest(&(
-            "estate-backup-reconcile-v1",
-            &estate_id,
+            "engram-backup-reconcile-v1",
+            &engram_id,
             &worker,
             lease_ms,
             at,
@@ -463,7 +463,7 @@ impl RrdEngine {
             distribution_executable.to_string_lossy(),
         ))?;
         let engine = Self::open_local_authority(database, authority_instance)?;
-        audit_estate_operation(
+        audit_engram_operation(
             &engine,
             at,
             worker.clone(),
@@ -474,9 +474,9 @@ impl RrdEngine {
             || {
                 let driver = EngineLocalBackupDriver::new(state_root, distribution_executable)
                     .map_err(ServiceError::Contract)?;
-                let mut reconciler = rrd_estate::BackupReconciler::new(
+                let mut reconciler = rrd_engram::BackupReconciler::new(
                     &engine.storage,
-                    estate_id,
+                    engram_id,
                     worker.clone(),
                     lease_ms,
                     BackupEffectHoldDriver {
@@ -489,26 +489,26 @@ impl RrdEngine {
         )
     }
 
-    /// Applies one estate-authorized retention decision through the existing
-    /// estate and authenticated backup catalogue authorities. The durable
-    /// estate intent fences policy, hold, restore, and backup completion
+    /// Applies one engram-authorized retention decision through the existing
+    /// engram and authenticated backup catalogue authorities. The durable
+    /// engram intent fences policy, hold, restore, and backup completion
     /// mutations until physical pruning is verified and recorded.
     #[allow(clippy::too_many_arguments)]
-    pub fn prune_estate_backups_store(
+    pub fn prune_engram_backups_store(
         database: &Path,
         authority_instance: CanonicalId,
         state_root: &Path,
         distribution_executable: &Path,
         policy_path: &Path,
         key_path: &Path,
-        estate_id: CanonicalId,
+        engram_id: CanonicalId,
         instance_id: CanonicalId,
         evaluated_at: u64,
         at: u64,
         request_id: String,
         operation_id: CanonicalId,
         idempotency_key: String,
-    ) -> Result<rrd_contract::EstateRecoveryPruneResult> {
+    ) -> Result<rrd_contract::engramRecoveryPruneResult> {
         validate_local_recovery_request(at, &idempotency_key)?;
         if evaluated_at == 0 || evaluated_at > at {
             return Err(ServiceError::Contract(
@@ -518,25 +518,25 @@ impl RrdEngine {
         let authorization = authorize_local_recovery(
             policy_path,
             key_path,
-            estate_id,
-            rrd_estate::LocalEstatePermission::PruneRecovery,
+            engram_id,
+            rrd_engram::LocalengramPermission::PruneRecovery,
             at,
         )?;
         let state_root = canonical_local_state_root(state_root)?;
         let managed = resolve_managed_instance(&state_root, &instance_id, distribution_executable)?;
         let catalogue_root = managed.catalogue_root;
         require_direct_directory(&catalogue_root, "backup catalogue")?;
-        let audit_resource = estate_audit_resource(&authority_instance, &authorization.estate_id);
+        let audit_resource = engram_audit_resource(&authority_instance, &authorization.engram_id);
         let audit_request_sha256 = operation_digest(&(
-            "estate-recovery-prune-audit-v1",
-            &authorization.estate_id,
+            "engram-recovery-prune-audit-v1",
+            &authorization.engram_id,
             &instance_id,
             evaluated_at,
             &operation_id,
             &idempotency_key,
         ))?;
         let engine = Self::open_local_authority(database, authority_instance)?;
-        audit_estate_operation(
+        audit_engram_operation(
             &engine,
             at,
             authorization.operator_id.clone(),
@@ -545,29 +545,29 @@ impl RrdEngine {
             operation_id.to_string(),
             audit_request_sha256,
             || {
-                let repository = rrd_estate::EstateRepository::new(
+                let repository = rrd_engram::engramRepository::new(
                     &engine.storage,
-                    authorization.estate_id.clone(),
+                    authorization.engram_id.clone(),
                 );
                 let operation_sha256 = operation_digest(&(
-                    "estate-recovery-prune-v1",
-                    &authorization.estate_id,
+                    "engram-recovery-prune-v1",
+                    &authorization.engram_id,
                     &instance_id,
                     evaluated_at,
                     &operation_id,
                 ))?;
                 let state_key = local_recovery_operation_key(
                     "prune",
-                    &authorization.estate_id,
+                    &authorization.engram_id,
                     &instance_id,
                     &idempotency_key,
                 );
                 let existing = engine.storage.control().get(&state_key)?;
                 let recovered_operation = existing.is_some();
                 let (prepared_bytes, mut state) = if let Some(bytes) = existing {
-                    let state: EstateRecoveryPruneOperationState =
+                    let state: engramRecoveryPruneOperationState =
                         serde_json::from_slice(&bytes).map_err(contract_json)?;
-                    if state.format_version != ESTATE_RECOVERY_OPERATION_FORMAT
+                    if state.format_version != engram_RECOVERY_OPERATION_FORMAT
                         || state.operation_sha256 != operation_sha256
                         || state.instance_id != instance_id
                         || state.operation_id != operation_id
@@ -582,37 +582,37 @@ impl RrdEngine {
                 } else {
                     let document = repository
                         .load()?
-                        .ok_or_else(|| ServiceError::Estate("estate is not initialized".into()))?;
+                        .ok_or_else(|| ServiceError::engram("engram is not initialized".into()))?;
                     let decision =
-                        rrd_estate::retention_decision(&document, &instance_id, evaluated_at)?;
+                        rrd_engram::retention_decision(&document, &instance_id, evaluated_at)?;
                     if decision.prune_candidate_backup_ids.is_empty() {
-                        return Err(ServiceError::Estate(
+                        return Err(ServiceError::engram(
                             "recovery retention decision has no prune candidates".into(),
                         ));
                     }
                     let catalogue = rrd_store::verify_backup_catalogue(&catalogue_root)?;
-                    let mut estate_inventory = decision.retained_backup_ids.clone();
-                    estate_inventory.extend(decision.prune_candidate_backup_ids.clone());
-                    estate_inventory.sort();
+                    let mut engram_inventory = decision.retained_backup_ids.clone();
+                    engram_inventory.extend(decision.prune_candidate_backup_ids.clone());
+                    engram_inventory.sort();
                     let mut physical_inventory = catalogue
                         .backups
                         .iter()
                         .map(|entry| entry.backup_id.clone())
                         .collect::<Vec<_>>();
                     physical_inventory.sort();
-                    if estate_inventory != physical_inventory {
+                    if engram_inventory != physical_inventory {
                         return Err(ServiceError::Backup(
-                    "estate recovery points do not exactly match the physical backup catalogue"
+                    "engram recovery points do not exactly match the physical backup catalogue"
                         .into(),
                 ));
                     }
-                    let state = EstateRecoveryPruneOperationState {
-                        format_version: ESTATE_RECOVERY_OPERATION_FORMAT,
+                    let state = engramRecoveryPruneOperationState {
+                        format_version: engram_RECOVERY_OPERATION_FORMAT,
                         operation_sha256: operation_sha256.clone(),
                         instance_id: instance_id.clone(),
                         operation_id: operation_id.clone(),
                         evaluated_at,
-                        expected_estate_revision: decision.estate_revision,
+                        expected_engram_revision: decision.engram_revision,
                         expected_catalogue_sha256: catalogue.catalogue_sha256,
                         retained_backup_ids: decision.retained_backup_ids,
                         prune_candidate_backup_ids: decision.prune_candidate_backup_ids,
@@ -626,7 +626,7 @@ impl RrdEngine {
                         &state,
                         at,
                         authorization.operator_id.as_str(),
-                        "estate.recovery.prune.operation.prepared",
+                        "engram.recovery.prune.operation.prepared",
                         &request_id,
                         operation_id.as_str(),
                     )?;
@@ -635,8 +635,8 @@ impl RrdEngine {
 
                 let prepare_key = local_recovery_idempotency_key("prune-prepare", &idempotency_key);
                 let prepared =
-                    repository.prepare_recovery_prune(&rrd_estate::PrepareRecoveryPrune {
-                        context: rrd_estate::MutationContext {
+                    repository.prepare_recovery_prune(&rrd_engram::PrepareRecoveryPrune {
+                        context: rrd_engram::MutationContext {
                             at,
                             actor: authorization.operator_id.to_string(),
                             request_id: request_id.clone(),
@@ -644,7 +644,7 @@ impl RrdEngine {
                         },
                         idempotency_key: prepare_key,
                         instance_id: instance_id.clone(),
-                        expected_estate_revision: state.expected_estate_revision,
+                        expected_engram_revision: state.expected_engram_revision,
                         evaluated_at: state.evaluated_at,
                         expected_catalogue_sha256: state.expected_catalogue_sha256.clone(),
                         retained_backup_ids: state.retained_backup_ids.clone(),
@@ -660,13 +660,13 @@ impl RrdEngine {
                 )?;
                 let complete_operation = derived_recovery_operation_id(
                     "prune-complete",
-                    &authorization.estate_id,
+                    &authorization.engram_id,
                     &instance_id,
                     &idempotency_key,
                 )?;
                 let completed =
-                    repository.complete_recovery_prune(&rrd_estate::CompleteRecoveryPrune {
-                        context: rrd_estate::MutationContext {
+                    repository.complete_recovery_prune(&rrd_engram::CompleteRecoveryPrune {
+                        context: rrd_engram::MutationContext {
                             at,
                             actor: authorization.operator_id.to_string(),
                             request_id: request_id.clone(),
@@ -679,15 +679,15 @@ impl RrdEngine {
                         intent_id: operation_id.clone(),
                         resulting_catalogue_sha256: physical.catalogue.catalogue_sha256.clone(),
                     })?;
-                let decision = rrd_contract::EstateRetentionDecisionSnapshot {
-                    estate_revision: state.expected_estate_revision,
+                let decision = rrd_contract::engramRetentionDecisionSnapshot {
+                    engram_revision: state.expected_engram_revision,
                     instance_id: instance_id.clone(),
                     evaluated_at_unix_ms: state.evaluated_at,
                     retained_backup_ids: state.retained_backup_ids.clone(),
                     prune_candidate_backup_ids: state.prune_candidate_backup_ids.clone(),
                 };
-                let result = rrd_contract::EstateRecoveryPruneResult {
-                    recovery: rrd_estate::public_recovery_snapshot(&completed.document),
+                let result = rrd_contract::engramRecoveryPruneResult {
+                    recovery: rrd_engram::public_recovery_snapshot(&completed.document),
                     decision,
                     catalogue_revision: physical.catalogue.revision,
                     catalogue_sha256: physical.catalogue.catalogue_sha256,
@@ -705,7 +705,7 @@ impl RrdEngine {
                     &state,
                     at,
                     authorization.operator_id.as_str(),
-                    "estate.recovery.prune.operation.completed",
+                    "engram.recovery.prune.operation.completed",
                     &request_id,
                     operation_id.as_str(),
                 )?;
@@ -714,20 +714,20 @@ impl RrdEngine {
         )
     }
 
-    /// Restores one estate-owned recovery point only to the absent
+    /// Restores one engram-owned recovery point only to the absent
     /// `.rrflow/rrd/restores/<instance>/<restore-id>` staging root of the
     /// managed instance, where the offline `restore plan|apply` publication
     /// finds it; verifies the reopened closure; and records measured RPO/RTO
     /// evidence before releasing its in-flight retention hold.
     #[allow(clippy::too_many_arguments)]
-    pub fn restore_estate_backup_store(
+    pub fn restore_engram_backup_store(
         database: &Path,
         authority_instance: CanonicalId,
         state_root: &Path,
         distribution_executable: &Path,
         policy_path: &Path,
         key_path: &Path,
-        estate_id: CanonicalId,
+        engram_id: CanonicalId,
         instance_id: CanonicalId,
         backup_sha256: String,
         restore_id: CanonicalId,
@@ -736,7 +736,7 @@ impl RrdEngine {
         request_id: String,
         operation_id: CanonicalId,
         idempotency_key: String,
-    ) -> Result<rrd_contract::EstateRecoveryRestoreResult> {
+    ) -> Result<rrd_contract::engramRecoveryRestoreResult> {
         validate_local_recovery_request(at, &idempotency_key)?;
         if started_at == 0 || started_at > at {
             return Err(ServiceError::Contract(
@@ -747,8 +747,8 @@ impl RrdEngine {
         let authorization = authorize_local_recovery(
             policy_path,
             key_path,
-            estate_id,
-            rrd_estate::LocalEstatePermission::RestoreRecovery,
+            engram_id,
+            rrd_engram::LocalengramPermission::RestoreRecovery,
             at,
         )?;
         let state_root = canonical_local_state_root(state_root)?;
@@ -763,10 +763,10 @@ impl RrdEngine {
             .pin_directory()
             .map_err(|e| ServiceError::Backup(e.to_string()))?;
         let target = restore_parent.join(restore_id.as_str());
-        let audit_resource = estate_audit_resource(&authority_instance, &authorization.estate_id);
+        let audit_resource = engram_audit_resource(&authority_instance, &authorization.engram_id);
         let audit_request_sha256 = operation_digest(&(
-            "estate-recovery-restore-audit-v1",
-            &authorization.estate_id,
+            "engram-recovery-restore-audit-v1",
+            &authorization.engram_id,
             &instance_id,
             &backup_sha256,
             &restore_id,
@@ -775,7 +775,7 @@ impl RrdEngine {
             &idempotency_key,
         ))?;
         let engine = Self::open_local_authority(database, authority_instance)?;
-        audit_estate_operation(
+        audit_engram_operation(
             &engine,
             at,
             authorization.operator_id.clone(),
@@ -784,13 +784,13 @@ impl RrdEngine {
             operation_id.to_string(),
             audit_request_sha256,
             || {
-                let repository = rrd_estate::EstateRepository::new(
+                let repository = rrd_engram::engramRepository::new(
                     &engine.storage,
-                    authorization.estate_id.clone(),
+                    authorization.engram_id.clone(),
                 );
                 let operation_sha256 = operation_digest(&(
-                    "estate-recovery-restore-v1",
-                    &authorization.estate_id,
+                    "engram-recovery-restore-v1",
+                    &authorization.engram_id,
                     &instance_id,
                     &backup_sha256,
                     &restore_id,
@@ -799,16 +799,16 @@ impl RrdEngine {
                 ))?;
                 let state_key = local_recovery_operation_key(
                     "restore",
-                    &authorization.estate_id,
+                    &authorization.engram_id,
                     &instance_id,
                     &idempotency_key,
                 );
                 let existing = engine.storage.control().get(&state_key)?;
                 let recovered_operation = existing.is_some();
                 let (prepared_bytes, mut state) = if let Some(bytes) = existing {
-                    let state: EstateRecoveryRestoreOperationState =
+                    let state: engramRecoveryRestoreOperationState =
                         serde_json::from_slice(&bytes).map_err(contract_json)?;
-                    if state.format_version != ESTATE_RECOVERY_OPERATION_FORMAT
+                    if state.format_version != engram_RECOVERY_OPERATION_FORMAT
                         || state.operation_sha256 != operation_sha256
                         || state.instance_id != instance_id
                         || state.operation_id != operation_id
@@ -825,13 +825,13 @@ impl RrdEngine {
                 } else {
                     let document = repository
                         .load()?
-                        .ok_or_else(|| ServiceError::Estate("estate is not initialized".into()))?;
+                        .ok_or_else(|| ServiceError::engram("engram is not initialized".into()))?;
                     let point = document
                         .recovery_points
                         .get(&backup_sha256)
-                        .ok_or_else(|| ServiceError::Estate("recovery point is unknown".into()))?;
+                        .ok_or_else(|| ServiceError::engram("recovery point is unknown".into()))?;
                     if point.instance_id != instance_id || point.pruned_at.is_some() {
-                        return Err(ServiceError::Estate(
+                        return Err(ServiceError::engram(
                             "recovery point is unavailable for this instance".into(),
                         ));
                     }
@@ -848,8 +848,8 @@ impl RrdEngine {
                             "recovery point archive identity diverges from the catalogue".into(),
                         ));
                     }
-                    let state = EstateRecoveryRestoreOperationState {
-                        format_version: ESTATE_RECOVERY_OPERATION_FORMAT,
+                    let state = engramRecoveryRestoreOperationState {
+                        format_version: engram_RECOVERY_OPERATION_FORMAT,
                         operation_sha256: operation_sha256.clone(),
                         instance_id: instance_id.clone(),
                         operation_id: operation_id.clone(),
@@ -866,7 +866,7 @@ impl RrdEngine {
                         &state,
                         at,
                         authorization.operator_id.as_str(),
-                        "estate.recovery.restore.operation.prepared",
+                        "engram.recovery.restore.operation.prepared",
                         &request_id,
                         operation_id.as_str(),
                     )?;
@@ -875,12 +875,12 @@ impl RrdEngine {
 
                 let hold_operation = derived_recovery_operation_id(
                     "restore-hold",
-                    &authorization.estate_id,
+                    &authorization.engram_id,
                     &instance_id,
                     &idempotency_key,
                 )?;
-                let held = repository.pin_recovery_point(&rrd_estate::PinRecoveryPoint {
-                    context: rrd_estate::MutationContext {
+                let held = repository.pin_recovery_point(&rrd_engram::PinRecoveryPoint {
+                    context: rrd_engram::MutationContext {
                         at,
                         actor: authorization.operator_id.to_string(),
                         request_id: request_id.clone(),
@@ -955,12 +955,12 @@ impl RrdEngine {
                     (report.inventory, report.reopened, false)
                 };
                 let closure_sha256 = digest::sha256_hex(
-                    &serde_json::to_vec(&("estate-recovery-closure-v1", entry, &inventory))
+                    &serde_json::to_vec(&("engram-recovery-closure-v1", entry, &inventory))
                         .map_err(contract_json)?,
                 );
                 let evidence =
-                    repository.record_restore_evidence(&rrd_estate::RecordRestoreEvidence {
-                        context: rrd_estate::MutationContext {
+                    repository.record_restore_evidence(&rrd_engram::RecordRestoreEvidence {
+                        context: rrd_engram::MutationContext {
                             at,
                             actor: authorization.operator_id.to_string(),
                             request_id: request_id.clone(),
@@ -981,13 +981,13 @@ impl RrdEngine {
                     })?;
                 let release_operation = derived_recovery_operation_id(
                     "restore-release",
-                    &authorization.estate_id,
+                    &authorization.engram_id,
                     &instance_id,
                     &idempotency_key,
                 )?;
                 let released =
-                    repository.release_recovery_pin(&rrd_estate::ReleaseRecoveryPin {
-                        context: rrd_estate::MutationContext {
+                    repository.release_recovery_pin(&rrd_engram::ReleaseRecoveryPin {
+                        context: rrd_engram::MutationContext {
                             at,
                             actor: authorization.operator_id.to_string(),
                             request_id: request_id.clone(),
@@ -999,8 +999,8 @@ impl RrdEngine {
                         ),
                         pin_id: hold_operation,
                     })?;
-                let result = rrd_contract::EstateRecoveryRestoreResult {
-                    recovery: rrd_estate::public_recovery_snapshot(&released.document),
+                let result = rrd_contract::engramRecoveryRestoreResult {
+                    recovery: rrd_engram::public_recovery_snapshot(&released.document),
                     restore_id: restore_id.clone(),
                     backup_sha256: backup_sha256.clone(),
                     inventory: super::backup::public_archive(&inventory),
@@ -1019,7 +1019,7 @@ impl RrdEngine {
                     &state,
                     at,
                     authorization.operator_id.as_str(),
-                    "estate.recovery.restore.operation.completed",
+                    "engram.recovery.restore.operation.completed",
                     &request_id,
                     operation_id.as_str(),
                 )?;
@@ -1030,26 +1030,26 @@ impl RrdEngine {
 }
 
 struct EffectHoldDriver {
-    inner: rrd_estate::LocalProcessDriver,
+    inner: rrd_engram::LocalProcessDriver,
     marker: Option<PathBuf>,
 }
 
-impl EstateDriver for EffectHoldDriver {
+impl engramDriver for EffectHoldDriver {
     fn apply(
         &mut self,
-        request: &rrd_estate::DriverRequest,
-    ) -> std::result::Result<rrd_estate::DriverEffect, rrd_estate::DriverError> {
+        request: &rrd_engram::DriverRequest,
+    ) -> std::result::Result<rrd_engram::DriverEffect, rrd_engram::DriverError> {
         let effect = self.inner.apply(request)?;
         maybe_test_hold(self.marker.as_deref(), &effect.evidence_sha256).map_err(|error| {
-            rrd_estate::DriverError::retryable(error.to_string(), effect.evidence_sha256.clone())
+            rrd_engram::DriverError::retryable(error.to_string(), effect.evidence_sha256.clone())
         })?;
         Ok(effect)
     }
 
     fn observe(
         &mut self,
-        request: &rrd_estate::DriverRequest,
-    ) -> std::result::Result<rrd_estate::DriverObservation, rrd_estate::DriverError> {
+        request: &rrd_engram::DriverRequest,
+    ) -> std::result::Result<rrd_engram::DriverObservation, rrd_engram::DriverError> {
         self.inner.observe(request)
     }
 }
@@ -1059,28 +1059,28 @@ struct BackupEffectHoldDriver {
     marker: Option<PathBuf>,
 }
 
-impl EstateBackupDriver for BackupEffectHoldDriver {
+impl engramBackupDriver for BackupEffectHoldDriver {
     fn create(
         &mut self,
-        request: &rrd_estate::BackupDriverRequest,
-    ) -> std::result::Result<rrd_estate::BackupResult, rrd_estate::DriverError> {
+        request: &rrd_engram::BackupDriverRequest,
+    ) -> std::result::Result<rrd_engram::BackupResult, rrd_engram::DriverError> {
         let result = self.inner.create(request)?;
         maybe_test_hold(self.marker.as_deref(), &result.backup_id).map_err(|error| {
-            rrd_estate::DriverError::retryable(error.to_string(), result.evidence_sha256.clone())
+            rrd_engram::DriverError::retryable(error.to_string(), result.evidence_sha256.clone())
         })?;
         Ok(result)
     }
 }
 
-/// Engine-owned backup driver over the estate's managed instances.
+/// Engine-owned backup driver over the engram's managed instances.
 ///
 /// A managed instance is the installed project `instances/<instance>` below
-/// the estate's state root. The driver resolves it through its own locator,
-/// binds the estate's distribution executable, opens it through
+/// the engram's state root. The driver resolves it through its own locator,
+/// binds the engram's distribution executable, opens it through
 /// `RrdEngine::open_installed` (the same path `serve` and `verify` take, so
 /// the real token key and the installed record are checked), and writes the
 /// backup into the instance's own catalogue, `.rrflow/rrd/backups/<id>`,
-/// which the served engine lists and the estate prunes. There is no second
+/// which the served engine lists and the engram prunes. There is no second
 /// catalogue lane.
 pub(in crate::engine) struct EngineLocalBackupDriver {
     state_root: PathBuf,
@@ -1146,7 +1146,7 @@ impl EngineLocalBackupDriver {
         })
     }
 
-    fn project_path(&self, request: &rrd_estate::BackupDriverRequest) -> PathBuf {
+    fn project_path(&self, request: &rrd_engram::BackupDriverRequest) -> PathBuf {
         self.state_root
             .join("instances")
             .join(request.instance_id.as_str())
@@ -1154,8 +1154,8 @@ impl EngineLocalBackupDriver {
 
     fn create_inner(
         &self,
-        request: &rrd_estate::BackupDriverRequest,
-    ) -> std::result::Result<rrd_estate::BackupResult, rrd_estate::DriverError> {
+        request: &rrd_engram::BackupDriverRequest,
+    ) -> std::result::Result<rrd_engram::BackupResult, rrd_engram::DriverError> {
         let process_record = self
             .state_root
             .join("processes")
@@ -1180,8 +1180,8 @@ impl EngineLocalBackupDriver {
         require_direct_directory(&project, "managed instance project")
             .map_err(|error| permanent(request, error.to_string()))?;
         // The instance is opened exactly as `serve` opens it: through its
-        // locator with the estate's distribution binding and its own token
-        // key. A project that is not an installed estate, or one installed by
+        // locator with the engram's distribution binding and its own token
+        // key. A project that is not an installed engram, or one installed by
         // a different distribution, fails here without creating anything.
         let engine = RrdEngine::open_installed(&project, &self.distribution_executable).map_err(
             |error| permanent(request, format!("installed instance open failed: {error}")),
@@ -1231,7 +1231,7 @@ impl EngineLocalBackupDriver {
         }
         let evidence_sha256 = digest::sha256_hex(
             &serde_json::to_vec(&(
-                "rrd-local-estate-backup-v1",
+                "rrd-local-engram-backup-v1",
                 request,
                 &entry.backup_id,
                 &entry.archive.archive_sha256,
@@ -1239,7 +1239,7 @@ impl EngineLocalBackupDriver {
             ))
             .expect("validated local backup evidence serializes"),
         );
-        Ok(rrd_estate::BackupResult {
+        Ok(rrd_engram::BackupResult {
             backup_id: entry.backup_id.clone(),
             archive_sha256: entry.archive.archive_sha256.clone(),
             catalogue_sha256: verified.catalogue_sha256,
@@ -1248,11 +1248,11 @@ impl EngineLocalBackupDriver {
     }
 }
 
-impl EstateBackupDriver for EngineLocalBackupDriver {
+impl engramBackupDriver for EngineLocalBackupDriver {
     fn create(
         &mut self,
-        request: &rrd_estate::BackupDriverRequest,
-    ) -> std::result::Result<rrd_estate::BackupResult, rrd_estate::DriverError> {
+        request: &rrd_engram::BackupDriverRequest,
+    ) -> std::result::Result<rrd_engram::BackupResult, rrd_engram::DriverError> {
         self.create_inner(request)
     }
 }
@@ -1286,13 +1286,13 @@ fn create_direct_directory(path: &Path) -> std::io::Result<()> {
 fn authorize_local_recovery(
     policy_path: &Path,
     key_path: &Path,
-    estate_id: CanonicalId,
-    permission: rrd_estate::LocalEstatePermission,
+    engram_id: CanonicalId,
+    permission: rrd_engram::LocalengramPermission,
     at: u64,
-) -> Result<rrd_estate::LocalOperatorAuthorization> {
-    rrd_estate::LocalOperatorPolicy::load_json(policy_path)
+) -> Result<rrd_engram::LocalOperatorAuthorization> {
+    rrd_engram::LocalOperatorPolicy::load_json(policy_path)
         .map_err(ServiceError::Contract)?
-        .authorize_key_file(key_path, estate_id, permission, at)
+        .authorize_key_file(key_path, engram_id, permission, at)
         .map_err(ServiceError::Contract)
 }
 
@@ -1359,15 +1359,15 @@ fn validate_sha256_contract(value: &str, name: &str) -> Result<()> {
 
 fn local_recovery_operation_key(
     kind: &str,
-    estate_id: &CanonicalId,
+    engram_id: &CanonicalId,
     instance_id: &CanonicalId,
     idempotency_key: &str,
 ) -> String {
     let identity = digest::sha256_hex(
-        format!("estate-recovery\0{kind}\0{estate_id}\0{instance_id}\0{idempotency_key}")
+        format!("engram-recovery\0{kind}\0{engram_id}\0{instance_id}\0{idempotency_key}")
             .as_bytes(),
     );
-    format!("server/state/estate-recovery/{estate_id}/{kind}/{identity}")
+    format!("server/state/engram-recovery/{engram_id}/{kind}/{identity}")
 }
 
 fn local_recovery_idempotency_key(kind: &str, idempotency_key: &str) -> String {
@@ -1377,12 +1377,12 @@ fn local_recovery_idempotency_key(kind: &str, idempotency_key: &str) -> String {
 
 fn derived_recovery_operation_id(
     kind: &str,
-    estate_id: &CanonicalId,
+    engram_id: &CanonicalId,
     instance_id: &CanonicalId,
     idempotency_key: &str,
 ) -> Result<CanonicalId> {
     let digest = digest::sha256_hex(
-        format!("{kind}\0{estate_id}\0{instance_id}\0{idempotency_key}").as_bytes(),
+        format!("{kind}\0{engram_id}\0{instance_id}\0{idempotency_key}").as_bytes(),
     );
     CanonicalId::new(format!("{kind}-{}", &digest[..32]))
         .map_err(|error| ServiceError::Contract(error.to_string()))
@@ -1414,22 +1414,22 @@ fn commit_local_recovery_control(
 }
 
 fn permanent(
-    request: &rrd_estate::BackupDriverRequest,
+    request: &rrd_engram::BackupDriverRequest,
     message: impl Into<String>,
-) -> rrd_estate::DriverError {
+) -> rrd_engram::DriverError {
     let message = message.into();
-    rrd_estate::DriverError::permanent(
+    rrd_engram::DriverError::permanent(
         message.clone(),
         digest::sha256_hex(format!("backup-permanent:{}:{message}", request.job_id).as_bytes()),
     )
 }
 
 fn retryable(
-    request: &rrd_estate::BackupDriverRequest,
+    request: &rrd_engram::BackupDriverRequest,
     message: impl Into<String>,
-) -> rrd_estate::DriverError {
+) -> rrd_engram::DriverError {
     let message = message.into();
-    rrd_estate::DriverError::retryable(
+    rrd_engram::DriverError::retryable(
         message.clone(),
         digest::sha256_hex(format!("backup-retryable:{}:{message}", request.job_id).as_bytes()),
     )

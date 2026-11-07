@@ -1,6 +1,6 @@
 use rrd_cluster::{
     plan_distributed_authority, ClusterError, ClusterId, DistributedAuthorityCatalogue,
-    LogicalTableId, LogicalTablePolicy, PlacementNode, PlacementNodeState, PlacementPolicy,
+    LogicalTableId, LogicalTablePolicy, PlacementNode, PlacementNodengram, PlacementPolicy,
     ReadConsistency, RegionId, ReplicaRole, ShardId, TenantId, TenantPlacementPolicy,
     WriteConsistency, ZoneId,
 };
@@ -14,7 +14,7 @@ fn node(index: u8) -> PlacementNode {
         node: rrd_cluster::NodeId::new(format!("node-{index}")).unwrap(),
         region: RegionId::new(format!("region-{region}")).unwrap(),
         zone: ZoneId::new(format!("zone-{index}")).unwrap(),
-        state: PlacementNodeState::Active,
+        state: PlacementNodengram::Active,
         voter_capacity: 32,
         learner_capacity: 32,
         observed_at: 100,
@@ -152,7 +152,7 @@ fn capacity_and_region_failures_are_denied_without_partial_authority() {
     let mut nodes = (1..=6).map(node).collect::<Vec<_>>();
     for node in &mut nodes {
         if node.region.as_str() == "region-3" {
-            node.state = PlacementNodeState::Unavailable;
+            node.state = PlacementNodengram::Unavailable;
         }
     }
     let error = plan_distributed_authority(

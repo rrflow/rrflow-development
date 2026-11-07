@@ -286,7 +286,7 @@
       "kind": "self_hosted",
       "endpoint": {
         "kind": "url",
-        "url": "https://warden.estate.example"
+        "url": "https://warden.engram.example"
       },
       "service_id": "warden",
       "manifest_sha256": null,

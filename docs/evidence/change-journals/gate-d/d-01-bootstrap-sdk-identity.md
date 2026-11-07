@@ -16,7 +16,7 @@ The PR's correction brief was published before these edits.
 failed its supported-SDK job before readiness. The default profile changed in
 D-01.4; its digest participates in the canonical installation identity. The
 checked shared SDK corpus still named `instance-d021958630bf8ce9b6073a33` and
-the corresponding estate, whereas the planner produced
+the corresponding engram, whereas the planner produced
 `instance-56c5f218cd3b36c14014abec`. The live SDK server correctly rejected that
 mismatch. Passing contract decoding and generated API parity did not detect
 the stale installation identity.

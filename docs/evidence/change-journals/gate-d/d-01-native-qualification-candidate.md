@@ -21,7 +21,7 @@ The existing five-case primary-process corpus remains the behavioral owner.
 `run_offline_lifecycle.py` now rejects omitted, duplicate or unknown case
 listings and requires exact successful result accounting. Two closed receipts
 bind fresh/existing plans, backup, executable/build/public-contract/signal
-hashes, observed durable cursors and bounded output. No raw estate or credential
+hashes, observed durable cursors and bounded output. No raw engram or credential
 is retained in an uploaded artifact. Receipt omission or unknown fields fail.
 
 `rrflow-cli/tests/support/process.rs` replaces unbounded command/service capture

@@ -24,12 +24,12 @@ catalogue, transaction semantics, security model, and evidence format.
    deployment environment. It is the AI governance, knowledge, and development
    layer for that project whether the environment is development, staging, or
    production.
-2. **Estate deployment** — an organization-level control plane manages many
+2. **engram deployment** — an organization-level control plane manages many
    project instances and the clusters on which they run. It does not combine
    multiple projects into one project instance or create a second data engine.
 
 Executable multi-project instance topology is retired. Multi-project operation
-belongs to the estate profile; source/build aggregation remains project
+belongs to the engram profile; source/build aggregation remains project
 topology, not instance tenancy.
 
 ## Canonical flow
@@ -38,7 +38,7 @@ topology, not instance tenancy.
 RRFlow product
 ├── organization
 │   ├── project ── environment ──> instance ──> exactly one RrdEngine authority
-│   └── estate
+│   └── engram
 │       ├── manages project instances
 │       └── manages clusters
 ├── instance data catalogue
@@ -64,11 +64,11 @@ partitions or dedicated shards.
 |---|---|---|---|
 | `RRFlow` | Product/engine | The complete AI governance, knowledge, development, data, runtime, and operator engine. | Keep as the only product brand and complete engine identity. |
 | `RRD` | Runtime boundary | Reason Ready Daemon: RRFlow's daemon and embedded runtime boundary within an instance. Specialized storage, graph, query, vector, and inference crates are internal operators. | `RrdEngine` is the sole composition and semantic authority entry point. |
-| `organization` | Control identity | The administrative owner of projects, estates, principals, policy, and billing/operations metadata. | Already a public `ResourceKind`; authoritative organization state is not implemented. |
-| `estate` | Control-plane resource | A managed fleet and lifecycle aggregate of instances and clusters owned by one organization. It owns desired state, reconciliation, fleet backup policy, and operational inventory. | Keep `rrd-estate`; never use estate as a database, tenant, namespace, or cluster synonym. |
+| `organization` | Control identity | The administrative owner of projects, engrams, principals, policy, and billing/operations metadata. | Already a public `ResourceKind`; authoritative organization state is not implemented. |
+| `engram` | Control-plane resource | A managed fleet and lifecycle aggregate of instances and clusters owned by one organization. It owns desired state, reconciliation, fleet backup policy, and operational inventory. | Keep `rrd-engram`; never use engram as a database, tenant, namespace, or cluster synonym. |
 | `project` | Governed workload identity | One software/product codebase governed by RRFlow. | Each project deployment instance binds exactly one project; no umbrella membership. |
 | `environment` | Instance attribute | The deployment context of a project instance, such as development, staging, or production. | Add an explicit typed attribute; never encode environment by overloading namespace, tenant, or instance mode. |
-| `instance` | Deployment and authority | One deployed RRFlow runtime bound to exactly one project and one environment, backed by exactly one logical RRD authority. It may be embedded, single-node, or served by a cluster. | Historical direction preserved `.rrflow/instance.toml`; the current topology instead uses the canonical installed-estate locator/record and has removed that pre-canonical reader. |
+| `instance` | Deployment and authority | One deployed RRFlow runtime bound to exactly one project and one environment, backed by exactly one logical RRD authority. It may be embedded, single-node, or served by a cluster. | Historical direction preserved `.rrflow/instance.toml`; the current topology instead uses the canonical installed-engram locator/record and has removed that pre-canonical reader. |
 | `workspace` | Discovered build fact only | A Cargo, pnpm, npm, uv, Go, Gradle, Maven, .NET, or similar workspace found while attuning a project. | Never add `WorkspaceId`, `ResourceKind::Workspace`, `/workspaces`, tenancy, or data ownership. |
 | `namespace` | Logical catalogue and isolation resource | The highest logical data/security container inside an instance. It contains databases and supplies an administration/policy scope. | Public `ResourceKind` exists; catalogue persistence remains incomplete. Kubernetes and language namespaces are unrelated. |
 | `database` | Logical data resource | A schema/catalogue and transaction container inside one namespace. It owns tables, collections, relations, indexes, aliases, triggers, and functions. | Public `ResourceKind` exists; persistence must enter the single `rrd-engine` catalogue. It is not an instance or filesystem directory. |
@@ -95,9 +95,9 @@ partitions or dedicated shards.
   precise model name for application data.
 - `boundary` remains ordinary architecture language for an authority,
   transaction, trust, or component edge. It is never a resource kind or ID.
-- `workspace` never means namespace, tenant, project, instance, or estate. It
+- `workspace` never means namespace, tenant, project, instance, or engram. It
   is permitted only when preserving the vocabulary of a discovered build tool.
-- `umbrella` is not a deployment profile. Estate control replaces multi-project
+- `umbrella` is not a deployment profile. engram control replaces multi-project
   umbrella instances.
 - `scope` is a generic parameter/value describing where an operation applies;
   it must resolve to canonical resource identities and must not become another
@@ -109,13 +109,13 @@ Resource paths are explicit; current directory, session state, labels, and
 filesystem proximity never supply missing identity.
 
 ```text
-organization/{organization}/estate/{estate}
+organization/{organization}/engram/{engram}
 organization/{organization}/project/{project}/instance/{instance}
 instance/{instance}/namespace/{namespace}/database/{database}
 .../table/{table}/record/{record}
 .../collection/{collection}/point/{point}
 .../relation/{relation}
-estate/{estate}/cluster/{cluster}/node/{node}
+engram/{engram}/cluster/{cluster}/node/{node}
 .../shard/{shard}/replica/{replica}/segment/{segment}
 ```
 
@@ -177,7 +177,7 @@ gap, while G01 must first preserve one security authority.
 - [`rrd-security`](../../crates/authority/rrd-security/src/lib.rs) owns persistent policy
   truth but still uses per-principal direct grants and the warm-path behavior
   described above.
-- [`rrd-estate`](../../crates/authority/rrd-estate/src/lib.rs) and
+- [`rrd-engram`](../../crates/authority/rrd-engram/src/lib.rs) and
   [`rrd-cluster`](../../crates/operations/rrd-cluster/src/contract.rs) already model the
   distinct control-plane and physical-topology concepts; they must remain
   distinct while routing through `rrd-engine`.

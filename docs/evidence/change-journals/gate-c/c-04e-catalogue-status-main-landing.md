@@ -17,7 +17,7 @@ research/trace/resource decision: none; no runtime source or test changed and no
 first oracle: cargo test --offline --locked -p rrd-engine --test direct_read_source_closure: 1 passed.
 acceptance commands: navigation, execution inventory, documentation, workflow and version checks, run after this record.
 checks not run: every Rust suite other than the source-closure test, because only documents changed; candidate CI and protected merge-group CI for this head.
-remaining errors and owner: POAM-028 and C-04 remain open: the rrd-maintenance log replay, large-estate resource qualification and current-head generation lookup. E-04 remains open.
+remaining errors and owner: POAM-028 and C-04 remain open: the rrd-maintenance log replay, large-engram resource qualification and current-head generation lookup. E-04 remains open.
 roadmap/POAM status change: none.
 pull request and CI: https://github.com/rrflow/rrflow-development/pull/155; candidate CI is pending for the integrated head.
 ```

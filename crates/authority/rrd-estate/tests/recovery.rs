@@ -1,8 +1,8 @@
 use rrd_contract::CanonicalId;
-use rrd_estate::{
+use rrd_engram::{
     public_recovery_snapshot, retention_decision, BackupCompleteRequest, BackupLeaseRequest,
     BackupPreparedRequest, BackupResult, CompleteRecoveryPrune, DesiredPhase, DesiredTarget, Error,
-    EstateDocument, EstateRepository, LeaseRequest, MutationContext, ObservationRequest,
+    engramDocument, engramRepository, LeaseRequest, MutationContext, ObservationRequest,
     ObservedPhase, PinRecoveryPoint, PrepareRecoveryPrune, ReceiptBoundary, ReceiptRequest,
     RecordRestoreEvidence, ReleaseRecoveryPin, ScheduleBackup, SetDesired, SetRecoveryPolicy,
 };
@@ -22,9 +22,9 @@ fn context(at: u64, request: &str, operation: &str) -> MutationContext {
 }
 
 fn prepare_stopped_instance<E: StorageEngine>(engine: &E) {
-    let repository = EstateRepository::new(engine, id("estate-a"));
+    let repository = engramRepository::new(engine, id("engram-a"));
     repository
-        .create(&context(10, "create-estate", "create-estate"))
+        .create(&context(10, "create-engram", "create-engram"))
         .unwrap();
     repository
         .set_desired(&SetDesired {
@@ -86,7 +86,7 @@ fn prepare_stopped_instance<E: StorageEngine>(engine: &E) {
 }
 
 fn set_policy<E: StorageEngine>(engine: &E, at: u64, operation: &str) {
-    EstateRepository::new(engine, id("estate-a"))
+    engramRepository::new(engine, id("engram-a"))
         .set_recovery_policy(&SetRecoveryPolicy {
             context: context(at, operation, operation),
             instance_id: id("instance-a"),
@@ -100,7 +100,7 @@ fn set_policy<E: StorageEngine>(engine: &E, at: u64, operation: &str) {
 }
 
 fn complete_backup<E: StorageEngine>(engine: &E, job: &str, created_at: u64, hex: char) -> String {
-    let repository = EstateRepository::new(engine, id("estate-a"));
+    let repository = engramRepository::new(engine, id("engram-a"));
     repository
         .schedule_backup(&ScheduleBackup {
             context: context(created_at, job, job),
@@ -148,13 +148,13 @@ fn complete_backup<E: StorageEngine>(engine: &E, job: &str, created_at: u64, hex
 #[test]
 fn policy_backup_point_and_public_posture_survive_reopen_and_replay() {
     let root = tempfile::tempdir().unwrap();
-    let database = root.path().join("estate-native");
+    let database = root.path().join("engram-native");
     {
         let engine = RrflowKvStore::open(&database).unwrap();
         prepare_stopped_instance(&engine);
         set_policy(&engine, 75, "set-policy");
         let backup_id = complete_backup(&engine, "backup-one", 80, '3');
-        let document = EstateRepository::new(&engine, id("estate-a"))
+        let document = engramRepository::new(&engine, id("engram-a"))
             .load()
             .unwrap()
             .unwrap();
@@ -162,7 +162,7 @@ fn policy_backup_point_and_public_posture_survive_reopen_and_replay() {
         assert_eq!(job.recovery_policy.revision, 1);
         assert_eq!(document.recovery_points[&backup_id].policy_revision, 1);
         assert!(document.recovery_pins.values().any(|pin| {
-            pin.backup_id == backup_id && pin.kind == rrd_estate::EstateRetentionPinKind::Policy
+            pin.backup_id == backup_id && pin.kind == rrd_engram::engramRetentionPinKind::Policy
         }));
         let public = public_recovery_snapshot(&document);
         assert_eq!(public.policies.len(), 1);
@@ -171,7 +171,7 @@ fn policy_backup_point_and_public_posture_survive_reopen_and_replay() {
     }
 
     let engine = RrflowKvStore::open(&database).unwrap();
-    let replay = EstateRepository::new(&engine, id("estate-a"))
+    let replay = engramRepository::new(&engine, id("engram-a"))
         .set_recovery_policy(&SetRecoveryPolicy {
             context: context(75, "set-policy", "set-policy"),
             instance_id: id("instance-a"),
@@ -193,14 +193,14 @@ fn policy_backup_point_and_public_posture_survive_reopen_and_replay() {
         retention_ms: 3_001,
     };
     assert!(matches!(
-        EstateRepository::new(&engine, id("estate-a")).set_recovery_policy(&drift),
+        engramRepository::new(&engine, id("engram-a")).set_recovery_policy(&drift),
         Err(Error::IdempotencyConflict(_))
     ));
     drift.idempotency_key = "invalid-policy".into();
     drift.context = context(120, "invalid-policy", "invalid-policy");
     drift.max_rpo_ms = 0;
     assert!(matches!(
-        EstateRepository::new(&engine, id("estate-a")).set_recovery_policy(&drift),
+        engramRepository::new(&engine, id("engram-a")).set_recovery_policy(&drift),
         Err(Error::Invalid(_))
     ));
 }
@@ -213,7 +213,7 @@ fn explicit_holds_drive_deterministic_prune_evidence() {
     let first = complete_backup(&engine, "backup-one", 80, '3');
     let second = complete_backup(&engine, "backup-two", 200, '4');
     let third = complete_backup(&engine, "backup-three", 320, '5');
-    let repository = EstateRepository::new(&engine, id("estate-a"));
+    let repository = engramRepository::new(&engine, id("engram-a"));
     let held = repository
         .pin_recovery_point(&PinRecoveryPoint {
             context: context(400, "hold-first", "hold-first"),
@@ -246,7 +246,7 @@ fn explicit_holds_drive_deterministic_prune_evidence() {
         context: context(4_300, "prepare-prune", "prepare-prune"),
         idempotency_key: "prepare-prune".into(),
         instance_id: id("instance-a"),
-        expected_estate_revision: decision.estate_revision,
+        expected_engram_revision: decision.engram_revision,
         evaluated_at: decision.evaluated_at,
         expected_catalogue_sha256: "a".repeat(64),
         retained_backup_ids: decision.retained_backup_ids,
@@ -296,7 +296,7 @@ fn restore_evidence_records_measured_rpo_and_rto_without_paths() {
     prepare_stopped_instance(&engine);
     set_policy(&engine, 75, "set-policy");
     let backup_id = complete_backup(&engine, "backup-one", 80, '3');
-    let repository = EstateRepository::new(&engine, id("estate-a"));
+    let repository = engramRepository::new(&engine, id("engram-a"));
     let passing = repository
         .record_restore_evidence(&RecordRestoreEvidence {
             context: context(1_000, "restore-pass", "restore-pass"),
@@ -335,7 +335,7 @@ fn restore_evidence_records_measured_rpo_and_rto_without_paths() {
 fn canonical_backup_job_requires_its_recovery_policy_snapshot() {
     let engine = RrflowMxStore::new();
     prepare_stopped_instance(&engine);
-    let scheduled = EstateRepository::new(&engine, id("estate-a"))
+    let scheduled = engramRepository::new(&engine, id("engram-a"))
         .schedule_backup(&ScheduleBackup {
             context: context(80, "backup-one", "backup-one"),
             instance_id: id("instance-a"),
@@ -349,29 +349,29 @@ fn canonical_backup_job_requires_its_recovery_policy_snapshot() {
         .as_object_mut()
         .unwrap()
         .remove("recovery_policy");
-    assert!(serde_json::from_value::<EstateDocument>(encoded).is_err());
+    assert!(serde_json::from_value::<engramDocument>(encoded).is_err());
 }
 
 #[test]
-fn canonical_estate_backup_and_recovery_match_mx_and_kv_reopen() {
+fn canonical_engram_backup_and_recovery_match_mx_and_kv_reopen() {
     let mx = RrflowMxStore::new();
     prepare_stopped_instance(&mx);
     set_policy(&mx, 75, "set-policy");
     complete_backup(&mx, "backup-one", 80, '3');
-    let expected = EstateRepository::new(&mx, id("estate-a"))
+    let expected = engramRepository::new(&mx, id("engram-a"))
         .load()
         .unwrap()
         .unwrap();
     expected.validate().unwrap();
 
     let root = tempfile::tempdir().unwrap();
-    let database = root.path().join("estate-native");
+    let database = root.path().join("engram-native");
     {
         let kv = RrflowKvStore::open(&database).unwrap();
         prepare_stopped_instance(&kv);
         set_policy(&kv, 75, "set-policy");
         complete_backup(&kv, "backup-one", 80, '3');
-        let actual = EstateRepository::new(&kv, id("estate-a"))
+        let actual = engramRepository::new(&kv, id("engram-a"))
             .load()
             .unwrap()
             .unwrap();
@@ -379,7 +379,7 @@ fn canonical_estate_backup_and_recovery_match_mx_and_kv_reopen() {
     }
 
     let reopened = RrflowKvStore::open(&database).unwrap();
-    let actual = EstateRepository::new(&reopened, id("estate-a"))
+    let actual = engramRepository::new(&reopened, id("engram-a"))
         .load()
         .unwrap()
         .unwrap();

@@ -5,7 +5,7 @@ use rrd_contract::{
     SubscriptionSnapshot, WebSocketAcknowledged, WebSocketBackpressure,
     WebSocketBackpressureTarget, WebSocketCancellation, WebSocketCancellationDisposition,
     WebSocketConnected, WebSocketDelivery, WebSocketError, WebSocketErrorTarget,
-    WebSocketHeartbeat, WebSocketLimits, WebSocketPayload, WebSocketPeer, WebSocketReceiveState,
+    WebSocketHeartbeat, WebSocketLimits, WebSocketPayload, WebSocketPeer, WebSocketReceivengram,
     WebSocketSendState, WebSocketSubscribed, WebSocketUnsubscribed, WEBSOCKET_CONTRACT_VERSION,
 };
 use std::collections::BTreeMap;
@@ -97,7 +97,7 @@ async fn serve_websocket(
             Ok(sender) => sender,
             Err(_) => return,
         };
-    let mut receiver = match WebSocketReceiveState::for_connection(
+    let mut receiver = match WebSocketReceivengram::for_connection(
         WebSocketPeer::Client,
         connection_id,
         limits.clone(),

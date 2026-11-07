@@ -54,7 +54,7 @@ include all three actual provider responses/observations, worker reservation and
 rejection, retained budgets, denied replay, separate-task proposal/readback and
 independent recovery. Each response hash matches its relay observation; copied
 receipts are scanned against the actual private credential and sensitive fields.
-Credentials, secret files and estates stay local. Full commands, process exits,
+Credentials, secret files and engrams stay local. Full commands, process exits,
 input identities and logs remain under SWAG
 `.swag/evidence/20261031/worker-terminal-installed/`.
 

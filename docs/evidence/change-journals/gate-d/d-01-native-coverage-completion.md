@@ -12,7 +12,7 @@ tree `c85cf6ba1f3609701562b1cde3e85267cb879801`. This follows the immutable
 ## Scope and traceability
 
 The process-death recovery test covered seven of eleven typed boundaries.
-It now includes EstateDirectoriesReady, StorageReady, TokenReady and
+It now includes engramDirectoriesReady, StorageReady, TokenReady and
 CredentialReady, retaining the existing credential-digest and recovery oracles.
 It prints each passed stage. These are component process cases using the
 existing small executable-identity fixture, distinct from the five-case actual

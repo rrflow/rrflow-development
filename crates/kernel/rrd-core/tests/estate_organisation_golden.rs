@@ -97,7 +97,7 @@ fn organised_registry_matches_checked_in_vector() {
     let actual = contract();
     let path = concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/fixtures/estate-organisation-v1.json"
+        "/fixtures/engram-organisation-v1.json"
     );
     if std::env::var_os("GOLDEN_WRITE").is_some() {
         std::fs::write(

@@ -1304,7 +1304,7 @@ fn installed_lifecycle(mode: &str) {
         std::fs::write(project.join("README.md"), "installed walking product\n").unwrap();
     }
     let plan_file = root.path().join("install-plan.json");
-    let configuration_file = root.path().join("estate-configuration.toml");
+    let configuration_file = root.path().join("engram-configuration.toml");
     std::fs::write(
         &configuration_file,
         r#"format_version = 3
@@ -1935,7 +1935,7 @@ max_elapsed_ms = 20000
 
     // Offline publication of the staged restore through the primary command
     // tree: a deterministic, no-write plan, an exact-digest apply, and a
-    // verified estate at the backup's state with the old root quarantined.
+    // verified engram at the backup's state with the old root quarantined.
     let publication_plan_file = root.path().join("restore-plan.json");
     let publication_plan_arg = publication_plan_file.to_str().unwrap();
     let plan_arguments = [
@@ -2072,9 +2072,9 @@ max_elapsed_ms = 20000
 
 /// H-07h: an instance started from the project folder records its endpoint,
 /// another process proves it through `ready` without an address, and a second
-/// serve of the same estate fails before binding.
+/// serve of the same engram fails before binding.
 #[test]
-fn a_served_estate_is_found_proved_and_not_served_twice() {
+fn a_served_engram_is_found_proved_and_not_served_twice() {
     let root = tempfile::tempdir().unwrap();
     let project = root.path().join("project");
     std::fs::create_dir(&project).unwrap();
@@ -2137,7 +2137,7 @@ fn a_served_estate_is_found_proved_and_not_served_twice() {
 
     let second = invoke(&["serve", "--project", project_arg, "--bind", "127.0.0.1:0"]);
     capture_output(&second, &mut captured);
-    assert!(!second.status.success(), "a second serve of an open estate");
+    assert!(!second.status.success(), "a second serve of an open engram");
     let refusal = String::from_utf8_lossy(&second.stderr);
     assert!(
         refusal.contains("already open in another process"),

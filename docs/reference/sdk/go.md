@@ -289,7 +289,7 @@ the public error text. An error's `Retryable` field never overrides operation
 semantics.
 
 Every operation propagates canonical request and operation IDs plus valid W3C
-`traceparent`/`tracestate`. Logical attempts are child spans of one semantic
+`traceparent`/`tracengram`. Logical attempts are child spans of one semantic
 operation; DNS, connect, TLS, pool wait, header, body, reconnect, and endpoint
 rotation observations are bounded attributes or causal links. Standard
 `httptrace` hooks may measure phases, but trace output is not completion truth,
@@ -371,7 +371,7 @@ Current evidence is deliberately bounded:
 The live conformance command exercises capability retry/version rejection,
 catalogue count, one authentication denial, session create/renew/close, vector
 ensure/search, transaction begin/preview/abort/commit, one query, changefeed
-read/follow/local cancellation, backup create/list, and estate read. Its
+read/follow/local cancellation, backup create/list, and engram read. Its
 labels overstate CRUD, backup/restore, vector, live delivery, typed-error,
 retry/failure, cancellation, and version/module coverage as catalogued in the
 [Rust reference](rust.md#conformance-that-actually-counts).
@@ -475,5 +475,5 @@ The dependency order is:
   require protection against oversized frames and reassembled messages; B-04
   defines RRFlow queue, identity, cursor, generation, and backpressure bounds.
 - [W3C Trace Context](https://www.w3.org/TR/trace-context/) defines
-  `traceparent` and `tracestate`; RRFlow owns validation, causal links,
+  `traceparent` and `tracengram`; RRFlow owns validation, causal links,
   redaction, and evidence meaning.

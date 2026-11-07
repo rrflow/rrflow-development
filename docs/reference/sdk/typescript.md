@@ -256,7 +256,7 @@ never headers, credentials, uncontrolled response excerpts, or arbitrary
 transport strings.
 
 Every operation propagates canonical request and operation IDs plus valid W3C
-`traceparent`/`tracestate`. Attempts are child spans of the same semantic
+`traceparent`/`tracengram`. Attempts are child spans of the same semantic
 operation; reconnects and endpoint rotation are causal links. Browser and Node
 telemetry apply the same redaction and bounded-attribute contract. Traces
 observe authoritative engine state and never become completion or hidden
@@ -330,7 +330,7 @@ The current evidence is bounded:
 The live script exercises only capability retry/version rejection, catalogue
 count, one authentication denial, session create/renew/close, vector
 ensure/search, transaction begin/preview/abort/commit, one query, changefeed
-read/follow/local abort, backup create/list, and estate read. Its shared domain
+read/follow/local abort, backup create/list, and engram read. Its shared domain
 labels overstate CRUD, backup/restore, vectors, live delivery, typed errors,
 retry/failure gaps, cancellation, and version/package coverage exactly as
 catalogued in the [Rust reference](rust.md#conformance-that-actually-counts).

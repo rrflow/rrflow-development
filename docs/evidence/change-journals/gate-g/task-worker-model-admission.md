@@ -39,7 +39,7 @@ Later compiler checks exposed a read-stamp field spelling and a
 missing test import; their original logs remain. The first controlled server
 inherited a nonblocking accepted socket on Windows; explicitly restoring
 blocking reads corrected the test fixture without changing production transport.
-The context probe initially exceeded the estate's configured storage-key ceiling;
+The context probe initially exceeded the engram's configured storage-key ceiling;
 the engine denied it before dispatch. The corrected probe requests 10,000 keys
 within the unchanged 100,000-key configured ceiling.
 

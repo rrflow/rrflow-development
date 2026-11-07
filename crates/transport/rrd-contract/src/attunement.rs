@@ -6,7 +6,7 @@
 
 use crate::{
     invalid, sha256_bytes, validate_sha256, CanonicalId, CorrelationId, DeploymentProfile,
-    EstateConfiguration, InstalledEstateIdentity, MemorySeatDefinition, Result, SecurityAction,
+    engramConfiguration, InstalledengramIdentity, MemorySeatDefinition, Result, SecurityAction,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -71,7 +71,7 @@ pub enum InstallationTargetKind {
 pub enum InstallationActionKind {
     ValidateProject,
     AcquireInstallationLease,
-    CreateEstateDirectories,
+    CreateengramDirectories,
     MaterializeBootstrap,
     CreateStorageRoot,
     PrepareCredentials,
@@ -115,7 +115,7 @@ impl InstallationPlanAction {
 )]
 #[serde(rename_all = "snake_case")]
 pub enum InstallationManagedPathKind {
-    EstateDirectory,
+    engramDirectory,
     StorageDirectory,
     StorageRootsDirectory,
     CredentialDirectory,
@@ -183,10 +183,10 @@ pub struct InstallationPlan {
     pub contract_version: u16,
     /// Explicit 256-bit identity input, generated once per independent install.
     pub installation_identity: String,
-    /// Initial canonical project root; not the permanent estate identity.
+    /// Initial canonical project root; not the permanent engram identity.
     pub project_root_sha256: String,
     pub id: CanonicalId,
-    pub target: InstalledEstateIdentity,
+    pub target: InstalledengramIdentity,
     pub target_kind: InstallationTargetKind,
     pub deployment: DeploymentProfile,
     pub product_version: String,
@@ -195,7 +195,7 @@ pub struct InstallationPlan {
     pub profile_sha256: String,
     pub project_precondition_sha256: String,
     pub storage_root_id: CanonicalId,
-    pub configuration: EstateConfiguration,
+    pub configuration: engramConfiguration,
     pub bootstrap: InstallationBootstrap,
     pub initial_seat: MemorySeatDefinition,
     pub initial_principal_id: CanonicalId,
@@ -252,7 +252,7 @@ impl InstallationPlan {
         )?;
         let expected_paths = [
             (
-                InstallationManagedPathKind::EstateDirectory,
+                InstallationManagedPathKind::engramDirectory,
                 InstallationRemovalRule::RemoveIfOwnedAndEmpty,
             ),
             (
@@ -384,7 +384,7 @@ impl InstallationPlan {
             InstallationActionKind::ValidateProject,
             InstallationActionKind::AcquireInstallationLease,
             InstallationActionKind::PrepareCredentials,
-            InstallationActionKind::CreateEstateDirectories,
+            InstallationActionKind::CreateengramDirectories,
             InstallationActionKind::MaterializeBootstrap,
             InstallationActionKind::CreateStorageRoot,
             InstallationActionKind::DeliverCredentials,
@@ -422,7 +422,7 @@ impl InstallationPlan {
 
     pub fn managed_path(&self, kind: InstallationManagedPathKind) -> &InstallationManagedPath {
         let index = match kind {
-            InstallationManagedPathKind::EstateDirectory => 0,
+            InstallationManagedPathKind::engramDirectory => 0,
             InstallationManagedPathKind::StorageDirectory => 1,
             InstallationManagedPathKind::StorageRootsDirectory => 2,
             InstallationManagedPathKind::CredentialDirectory => 3,
@@ -557,7 +557,7 @@ pub struct AttunementPlan {
     #[schemars(schema_with = "attunement_version_schema")]
     pub contract_version: u16,
     pub id: CanonicalId,
-    pub target: InstalledEstateIdentity,
+    pub target: InstalledengramIdentity,
     pub source_sha256: String,
     #[schemars(schema_with = "attunement_steps_schema")]
     pub phases: Vec<AttunementPhasePlan>,

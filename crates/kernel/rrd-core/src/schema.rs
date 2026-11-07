@@ -185,7 +185,7 @@ pub const MAX_TAGS_PER_KIND: usize = 64;
 pub const MAX_ORGANISATION_TITLE_BYTES: usize = 128;
 pub const MAX_ORGANISATION_DESCRIPTION_BYTES: usize = 1_024;
 
-/// One configurable part of an estate's catalogue, such as a service, package
+/// One configurable part of an engram's catalogue, such as a service, package
 /// or subject area. Isolation arrives with its enforcement in H-11d.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RuntimeDomainSchema {
@@ -250,11 +250,11 @@ pub struct RuntimeTagRef {
     pub tag: RuntimeType,
 }
 
-/// Domains, categories and memberships of one estate catalogue. A kind or
+/// Domains, categories and memberships of one engram catalogue. A kind or
 /// collection without an entry belongs to its default domain, so a registry
 /// written before organisation existed keeps its meaning and its digest.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct RuntimeEstateOrganisation {
+pub struct RuntimeengramOrganisation {
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub domains: BTreeMap<RuntimeType, RuntimeDomainSchema>,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
@@ -267,7 +267,7 @@ pub struct RuntimeEstateOrganisation {
     pub kind_tags: BTreeMap<RuntimeType, BTreeSet<RuntimeTagRef>>,
 }
 
-impl RuntimeEstateOrganisation {
+impl RuntimeengramOrganisation {
     pub fn is_default(&self) -> bool {
         self.domains.is_empty()
             && self.categories.is_empty()
@@ -298,7 +298,7 @@ impl RuntimeEstateOrganisation {
     fn validate(&self, tables: &BTreeMap<RuntimeType, RuntimeTableSchema>) -> Result<()> {
         if self.domains.len() + 2 > MAX_DOMAINS {
             return invalid(format!(
-                "an estate may declare at most {} domains besides default and rrflow",
+                "an engram may declare at most {} domains besides default and rrflow",
                 MAX_DOMAINS - 2
             ));
         }
@@ -332,7 +332,7 @@ impl RuntimeEstateOrganisation {
         }
         if self.categories.len() > MAX_CATEGORIES {
             return invalid(format!(
-                "an estate may declare at most {MAX_CATEGORIES} categories"
+                "an engram may declare at most {MAX_CATEGORIES} categories"
             ));
         }
         for (id, category) in &self.categories {
@@ -490,8 +490,8 @@ fn validate_label(subject: &str, id: &RuntimeType, title: &str, description: &st
 pub struct RuntimeSchemaRegistry {
     pub revision: u64,
     pub migration: String,
-    #[serde(default, skip_serializing_if = "RuntimeEstateOrganisation::is_default")]
-    pub organisation: RuntimeEstateOrganisation,
+    #[serde(default, skip_serializing_if = "RuntimeengramOrganisation::is_default")]
+    pub organisation: RuntimeengramOrganisation,
     /// Sole logical-model authority for every schema-bound table. Specialized
     /// maps below add family-specific constraints; they never create a table
     /// or infer its model.
@@ -509,7 +509,7 @@ impl RuntimeSchemaRegistry {
         Self {
             revision,
             migration: migration.into(),
-            organisation: RuntimeEstateOrganisation::default(),
+            organisation: RuntimeengramOrganisation::default(),
             tables: BTreeMap::new(),
             records: BTreeMap::new(),
             relations: BTreeMap::new(),
@@ -1492,7 +1492,7 @@ mod tests {
 
     /// Two project kinds and one engine-owned kind, organised into a small tree.
     fn organised() -> RuntimeSchemaRegistry {
-        let mut registry = RuntimeSchemaRegistry::empty(1, "organise the estate");
+        let mut registry = RuntimeSchemaRegistry::empty(1, "organise the engram");
         for name in ["invoice", "customer", "rrflow-seat"] {
             registry.tables.insert(
                 kind(name),
@@ -1743,7 +1743,7 @@ mod tests {
     #[test]
     fn default_organisation_is_omitted_from_the_persisted_registry() {
         let mut registry = organised();
-        registry.organisation = RuntimeEstateOrganisation::default();
+        registry.organisation = RuntimeengramOrganisation::default();
         let json = serde_json::to_value(&registry).unwrap();
         assert!(json.get("organisation").is_none());
         let organised = serde_json::to_value(organised()).unwrap();

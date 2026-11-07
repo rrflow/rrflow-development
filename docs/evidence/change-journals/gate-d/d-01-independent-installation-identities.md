@@ -13,7 +13,7 @@ Empty anchor `60f91637cbda126c27f2a6e7e0f5160a874e639a` allowed the PR brief
 to precede implementation. Its superseded workflow `39527677994` was cancelled.
 
 The first regression reproduced the defect: distinct empty directories with
-identical content received the same project, estate and instance IDs. The
+identical content received the same project, engram and instance IDs. The
 old seed bound only mode/content/profile/executable/configuration. Target:
 make independent identity an explicit input to deterministic installation,
 bind new apply and interrupted recovery to the previewed root, and retain the
@@ -45,7 +45,7 @@ contract version through JSON `version`, and requires `install plan
 test preview helpers hold a fixed fixture input; real independent-project
 cases allocate separate values. The shared SDK harness uses its existing
 install-anchor digest as a fixed explicit fixture identity, and only the six
-resulting instance/estate references change in
+resulting instance/engram references change in
 `fixtures/rrd-sdk-conformance-v1.json`. The corpus's operation and outcome
 assertions remain unchanged. Source scope is the PR diff and generated file
 inventory; no parallel initializer or compatibility fallback remains.
@@ -90,7 +90,7 @@ authority, weakened recovery/authentication, undeclared effects or failed CI.
 Windows, pinned Rust 1.99.1, shared development target directory.
 `cargo test --locked -p rrd-engine
 independent_installations_do_not_reuse_content_identity -- --nocapture`
-first failed with identical `InstalledEstateIdentity` values (one failure,
+first failed with identical `InstalledengramIdentity` values (one failure,
 117 filtered library tests). After implementation the same focused oracle
 passed one test, including both fresh/existing installations, foreign-plan
 denial and cross-credential checks. Zero-test filtered integration targets are
@@ -143,9 +143,9 @@ official promotion push is authorized by this package.
 Do not substitute this repair for project-sharing consent, a global uniqueness
 registry, filesystem-race/ACL qualification, model routing, attunement,
 PostgreSQL compatibility, signed distribution or an alpha release. Callers
-must allocate a fresh input for each independent estate; deliberately reusing
+must allocate a fresh input for each independent engram; deliberately reusing
 one is not shared-context authorization. Version-1 previews are rejected, and
-existing digest-bound pre-alpha estates retain their original executable;
+existing digest-bound pre-alpha engrams retain their original executable;
 this package supplies no upgrade/migration path. All objective, roadmap,
 POA&M lifecycle and product-version status remains unchanged. Exact candidate
 CI and merge receipts attach to PR 44.

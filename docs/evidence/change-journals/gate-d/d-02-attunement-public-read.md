@@ -15,7 +15,7 @@ records the related public-operation decision and is a landing dependency.
 
 Previously the installed `RrdEngine` could read one job internally, but the
 public catalogue did not expose that read or its stored plan. This package adds
-one authenticated, non-mutating `attunement-read` operation using EstateRead.
+one authenticated, non-mutating `attunement-read` operation using engramRead.
 The same engine loads and validates its stored plan and status; the Rust client
 checks the requested job and target instance identities. `not_checked` states
 that this read does not check the current source. The earlier installation
@@ -66,8 +66,8 @@ control; it does not claim those controls are public. `cargo test --offline
 installed HTTP read returns the original plan and pending job, continues to
 report unchecked source after a source edit, rejects an unknown job and reads
 the same durable job after the server reopens. The server's real-process
-security test passed with 401 for no session and 403 without EstateRead, and
-read back the denied EstateRead event from the existing audit journal.
+security test passed with 401 for no session and 403 without engramRead, and
+read back the denied engramRead event from the existing audit journal.
 
 `cargo clippy --offline --locked -p rrd-contract -p rrd-engine -p rrd-server
 -p rrd-client --all-targets -- -D warnings` passed. The complete local
@@ -78,9 +78,9 @@ and seven signal projections, with OpenAPI SHA-256
 `d9d95f65139470584c31e08cfc16495d33d689785e42b45b25637d25d0068bca`.
 
 The first `cargo test --offline --locked -p rrd-server --quiet` run failed
-because `rrd-estate-controller.exe` had not been built for the local process
+because `rrd-engram-controller.exe` had not been built for the local process
 fixture. After the documented CI build, `cargo build --offline --locked -p
-rrflow-cli --bin rrd-estate-controller`, the same server suite passed all
+rrflow-cli --bin rrd-engram-controller`, the same server suite passed all
 30 tests. The added audit assertion was subsequently rerun and passed.
 The initial Python SDK generation lacked `ruff` on PATH; the declared pinned
 `ruff==0.17.1` was installed in an isolated tooling environment, and the

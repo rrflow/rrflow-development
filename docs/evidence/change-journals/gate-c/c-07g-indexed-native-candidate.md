@@ -41,7 +41,7 @@ the generated journal index. No roadmap/objective status changes.
 ## Native campaign boundary
 
 This package prepares a fresh exact-source primary and installed-reopen harness
-in the existing owned KVM guest. It does not reuse or alter failed estates.
+in the existing owned KVM guest. It does not reuse or alter failed engrams.
 The source is fetched solely from the public development repository with its
 pinned submodules. Locked build inputs are reused offline. Operator scripts
 were reviewed in full: `stage_c07_proof_candidate.py`,

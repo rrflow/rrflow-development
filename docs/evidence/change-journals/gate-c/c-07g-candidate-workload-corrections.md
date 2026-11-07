@@ -11,7 +11,7 @@ c148465068f675ed70068b4b0aea60725e3718dc incorporated as
 
 Linux candidate 39919523350 job 120302344929 failed Workload::initialize:
 expected schema revision 2, received 1. Installation already owns the initial
-memory-estate schema. The driver now begins its transaction, reads that schema
+memory-engram schema. The driver now begins its transaction, reads that schema
 through the authenticated public operation, checks the transaction/read cursor,
 preserves installed definitions, rejects table collisions and increments the
 revision with overflow checking. Failure aborts the lease without concealing
@@ -43,9 +43,9 @@ builds. No upstream source was adapted.
 
 Reviewed implementation boundaries: complete Workload::initialize and commit,
 workload mutation/execute/verify/query flow, installed_capacity_workload_smoke,
-Estate::install_configured, RrdClient::read_data_schema, DataSchemaSnapshot and
+engram::install_configured, RrdClient::read_data_schema, DataSchemaSnapshot and
 ReadDataSchema contracts/validation, validate_data_schema, semantic commit
-schema revision validation, memory-estate planner, public local-database
+schema revision validation, memory-engram planner, public local-database
 initialize/extend_schema example, rrflowQL fields_for_source, and Filler
 creation/sync/cleanup plus native-error handshake. These are test-driver
 corrections; no source deletion, runtime replacement or parallel authority.

@@ -175,7 +175,7 @@ provider execution or model-quality claim follows from those checks.
 
 The existing task-attempt ledger retains a bounded typed proposal, worker draft or
 embedding output, with an exclusive kind and exact outcome digest. Its public
-readback validates scope/task/attempt identity. Reopening the estate preserves
+readback validates scope/task/attempt identity. Reopening the engram preserves
 the output and original consumed budget; replay cannot reserve the same attempt
 again. Both public model operations compose this same completion owner.
 
@@ -363,7 +363,7 @@ gate status and does not make a development endpoint a turnkey controller.
 
 ## Configuration revisions and failure behavior
 
-Extend the existing `EstateConfiguration` and `EndpointProfile` revision
+Extend the existing `engramConfiguration` and `EndpointProfile` revision
 mechanisms; do not add a mutable provider-owned configuration file. Defaults,
 project preferences and per-request overrides produce one effective digest
 with field origins. Hard policy intersects all applicable limits; an override
@@ -401,7 +401,7 @@ project override, then a global profile value. If the selected value is
 `inherit from caller`, resolve the admitted caller value at that position;
 missing/unsupported caller metadata falls back to the declared bounded profile
 and records the reason. Display the requested value, selected origin, effective
-value and limiting policy. Hard estate/security/resource ceilings intersect the
+value and limiting policy. Hard engram/security/resource ceilings intersect the
 result regardless of origin. A higher AI effort cannot grant network access,
 sharing, model installation or unlimited work. Imported project instructions
 are source content until their preference proposal is explicitly accepted.
@@ -498,7 +498,7 @@ owns implementation order and the failing histories required for acceptance.
 #### Embedded task-budget implementation
 
 `RrdEngine::generate_task_embeddings` now binds one task's embedding attempts
-to the sealed estate reasoning limits. `TaskEmbeddingAttempt` carries the
+to the sealed engram reasoning limits. `TaskEmbeddingAttempt` carries the
 existing task ID, stable attempt ID, embedding request and cancellation handle.
 It requires both `ReasoningWrite` and `EmbeddingGenerate`; inspection through
 `inspect_task_reasoning_budget` requires `ReasoningRead`. The public task
@@ -544,7 +544,7 @@ for it. A recorded terminal stop is distinct from a late response to already
 completed work. This is not a durable Stop operation for all task activities.
 
 Host time is explicitly unverified. Any rollback below the last stored
-observation stops this budget, even if the estate permits tolerance elsewhere;
+observation stops this budget, even if the engram permits tolerance elsewhere;
 unavailable completion time withholds output and retains the reservation.
 The original wall deadline survives restart; monotonic child time and charged
 elapsed time cover active computation. This does not prove trusted elapsed time
@@ -570,7 +570,7 @@ executes a task attempt, and reads its budget/result or requests Stop.
 
 | Operation | Required grant | Behavior |
 |---|---|---|
-| `task-budget-configure` | `ReasoningWrite` | Fix narrower-or-equal estate limits and the original deadline immediately. Repeating identical limits reads the existing budget; changing them conflicts. |
+| `task-budget-configure` | `ReasoningWrite` | Fix narrower-or-equal engram limits and the original deadline immediately. Repeating identical limits reads the existing budget; changing them conflicts. |
 | `embedding-builtin-activate` | `ReasoningWrite` | Explicitly activate the bundled CPU FeatureHash reference adapter for this process. No model fetch, LLM or trained semantic-quality claim. |
 | `task-embedding-execute` | `ReasoningWrite` and `EmbeddingGenerate` | Require configuration and an activated backend; reserve one attempt through the existing durable owner before dispatch. |
 | `task-budget-read` | `ReasoningRead` | Return persisted counters, original deadline, terminal reason, uncertainty and the digest required by Stop. |
@@ -634,8 +634,8 @@ Extend that same engine-owned revision and eventual run admission with:
 | Repetition/no progress | A configurable finite repetition threshold stops repeated equivalent requests with no new authorized input, evidence or accepted transition. Identity uses semantic request/configuration/source coordinates, not changing timestamps or correlation IDs. A stop reports insufficient progress; it does not assert that a repeated question is logically invalid. |
 | Stop, resume and extend | Cancellation prevents new dispatch and requests cancellation of active work. Report active/uncertain provider work until reconciled; returning to the UI does not prove a remote call stopped. Resume retains consumed steps/attempts/cost and the original deadline. An expired or exhausted run needs a separately authorized extension with explicit limits, never an automatic fresh allowance. |
 
-Estate policy, project preferences and per-run choices resolve to one effective
-budget with provenance and a digest. Per-run choices may narrow estate caps.
+engram policy, project preferences and per-run choices resolve to one effective
+budget with provenance and a digest. Per-run choices may narrow engram caps.
 SWAG may recommend more effort or reduce work, but cannot grant itself an
 extension. A connector, plugin, fallback adapter or UI client cannot reset or
 replace the engine's budget owner. Independently running external clients are
@@ -675,10 +675,10 @@ Model KV cache is disposable inference acceleration. It is not rrflowKV,
 durable recall, a portable memory format or a substitute for source provenance.
 Different models/tokenizers/adapters/runtimes may have incompatible tensors.
 
-The gateway must derive an opaque cache scope from authenticated estate and
+The gateway must derive an opaque cache scope from authenticated engram and
 principal authorization, explicit cache-sharing consent, policy epoch and
 endpoint/model revision. Default reuse stays within the authorized principal
-and estate. Broader reuse needs a separately approved trust group; a project
+and engram. Broader reuse needs a separately approved trust group; a project
 link, common account or co-located VM does not grant it. Mixed-scope context
 must satisfy every source's permitted audience or disable reuse.
 
@@ -759,7 +759,7 @@ data. G-02/G-04 prove governed dispatch and durable replay. G-06 compares
 policies on the same task/corpus/model inputs, including abstention and routing
 regret against the measured eligible choices.
 
-Cache tests pair identical prefixes across principals, estates and policy
+Cache tests pair identical prefixes across principals, engrams and policy
 epochs, forge caller metadata, change model/LoRA/media, revoke shared context,
 and exercise an unsupported provider. Require same-scope reuse where supported,
 no cross-scope reuse, and no stale authorized output after revocation. A

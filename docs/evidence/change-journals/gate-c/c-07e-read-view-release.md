@@ -71,7 +71,7 @@ No source was moved or deleted, and no parallel fallback or coordinator was
 added. Source edits are the reader and its test-module declaration. New tests
 are `src/segment/reader_lifetime_tests.rs` and `tests/projected_lifetime.rs`.
 Workflow/policy changes require both fixture commands in existing Linux
-topology and Windows/macOS estate jobs. Separate steps ensure a first native
+topology and Windows/macOS engram jobs. Separate steps ensure a first native
 command failure cannot be hidden by a later command's success. Supporting
 changes are CI operations, C-07, POAM-035, this journal/baseline and generated
 navigation/inventory.

@@ -18,7 +18,7 @@ status, version, configuration or authority changes.
 
 Downloaded completed job logs and parsed each `native_capacity_receipt` as
 JSON, requiring exactly eight receipts per platform, zero unresolved outcomes
-and an empty violation list. Each platform covers fresh and existing estates
+and an empty violation list. Each platform covers fresh and existing engrams
 at WAL write, immutable segment creation, manifest creation and CURRENT
 creation. Native owned-volume filling and cleanup remain in the original
 logs; this summary does not substitute an injected error for disk exhaustion.

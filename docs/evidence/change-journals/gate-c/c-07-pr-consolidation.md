@@ -36,7 +36,7 @@ the fetched main above and had no open PR. Immediately before deletion,
 `git ls-remote --heads development` verified every remote tip still matched.
 One ordinary `git push development --delete` removed exactly those 97 refs,
 exit zero. No force option, history rewrite, official-repository push, worktree
-removal or estate deletion occurred. All commits remain reachable from main.
+removal or engram deletion occurred. All commits remain reachable from main.
 
 The exact remote/ref/revision/main/merged-PR receipt is retained locally in
 `target/merged-branch-cleanup-plan.json`, SHA-256
@@ -55,7 +55,7 @@ is still required; no bypass or completed merge is claimed here.
 Read/review scope: README, CI operation contract, traceability procedure,
 source PR briefs/journals, complete changed-path comparisons and branch/PR
 state. Research: no algorithm change; repository and GitHub evidence suffice.
-Resource/debug decision: preserve the running native estate, original limits
+Resource/debug decision: preserve the running native engram, original limits
 and source `7c329d49`; no extra runtime collection. No new Cargo execution for
 this evidence-only package. Repository documentation/navigation/inventory,
 workflow, formatting and whitespace checks passed before candidate push.

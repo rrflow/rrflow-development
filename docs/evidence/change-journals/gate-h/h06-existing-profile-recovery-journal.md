@@ -5,7 +5,7 @@
 **Owner:** bounded existing-profile recovery evidence for OBJ-07 / H-06
 
 This record corrects the scope of the prior optional-client journal's local
-installation smoke. That smoke used a separate estate and did not repair the
+installation smoke. That smoke used a separate engram and did not repair the
 owner's saved Local RRFlow connection. It cannot establish existing-profile
 recovery or cloud/bidirectional-sync readiness.
 
@@ -14,13 +14,13 @@ recovery or cloud/bidirectional-sync readiness.
 Engine baseline 470594178d25f1bf12d3ec6d9041488817a9e931; authored Connectome
 baseline abc549cf7bb61f2ed4a20353ccb2e3621da515c9. Preserve the authored UI,
 profile I9ZKPaj55, its saved query, original credential and original remote
-estate. Fix the existing Edit/reconnect/serving code; refuse implicit blank
+engram. Fix the existing Edit/reconnect/serving code; refuse implicit blank
 replacement installation. Work resumed under D:\localdev\rrflow after the
 owner copied the repository; C: source is preserved during the remaining copy.
 
 Reviewed existing client/native command and transport, RuntimeConnection and
 session panel, Connection/defaults/config state, Edit connection and address
-probe, serving action/adapter/native estate lifecycle, repository/client
+probe, serving action/adapter/native engram lifecycle, repository/client
 contracts, and prior tests/diffs. Exact changed child source and test map is
 recorded in connectome/docs/rrflow-native-rewrite.md. No engine runtime change
 was necessary for this recovery. Existing server authority, protocol, storage,
@@ -29,7 +29,7 @@ version and public SDK pin are preserved. No source import was adapted.
 ## Real failure and repair
 
 The saved origin was http://127.0.0.1:9477; its C: project directory contained
-only an operator credential. The actual estate was already running on
+only an operator credential. The actual engram was already running on
 `devstation`, project /workspace/warden-storage/scratch/rrflow-dev/connectome-demo,
 as instance-07d784c6047ec8be023891a2. A remote fixed-hash presence check against
 that installed configuration exited 0 with no output, matching the saved
@@ -82,7 +82,7 @@ and bidirectional synchronization. Read-only audit found native vectors and a
 real external PostgreSQL/pgvector adapter, but no persisted knowledge-path
 registry, HydraDB/MongoDB Atlas/Pinecone Nexus adapter, or completed cloud sync.
 Those are separate engine/public-contract implementation work, not a reason
-to substitute a new empty estate. The later knowledge-tree change has its own
+to substitute a new empty engram. The later knowledge-tree change has its own
 bounded brief and evidence. Current roadmap and POA&M completion status are
 unchanged by this recovery receipt. Navigation/inventory regeneration follows
 stable source; PR/candidate CI remain landing requirements.

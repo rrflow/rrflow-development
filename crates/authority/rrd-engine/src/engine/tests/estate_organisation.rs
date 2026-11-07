@@ -1,4 +1,4 @@
-//! H-11a estate organisation through the public engine operations.
+//! H-11a engram organisation through the public engine operations.
 
 use super::*;
 use std::collections::BTreeMap;
@@ -41,7 +41,7 @@ fn registry(revision: u64) -> DataSchemaRegistry {
     let mut registry = DataSchemaRegistry {
         revision,
         migration: format!("organise billing, revision {revision}"),
-        organisation: DataEstateOrganisation::default(),
+        organisation: DataengramOrganisation::default(),
         tables: BTreeMap::from([
             (canonical("invoice"), document_table()),
             (canonical("customer"), document_table()),

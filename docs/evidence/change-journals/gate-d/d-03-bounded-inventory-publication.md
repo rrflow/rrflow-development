@@ -20,7 +20,7 @@ rejected Inventory with HTTP 429: encoded batch bytes 16,777,956 exceeded the
 native WAL ceiling of 16,777,216. The configured 64 MiB memory allowance does
 not change that format limit. Reopen proved cursor 2, the original Connect
 checkpoint, no source tables and no Inventory completion; quick verify passed.
-The failed estate is preserved. No source exclusions or physical limits were
+The failed engram is preserved. No source exclusions or physical limits were
 changed to make this corpus pass.
 
 ## Canonical implementation and review
@@ -63,7 +63,7 @@ batch; this repair does not claim unlimited project size.
 Unoptimized copied primary SHA-256:
 `9105fe3a3dd207174cbb26f65e5537b8e06e1f274edaa1c45e0d70f17ab4bb69`.
 The installed locator correctly rejects this different executable against the
-old estate with `ProjectBindingMismatch`. No binding was rewritten. Safe binary
+old engram with `ProjectBindingMismatch`. No binding was rewritten. Safe binary
 upgrade remains an explicit deployment gap; this is not an upgrade acceptance.
 
 A separate clone of the exact same revision/tree completed install/serve,

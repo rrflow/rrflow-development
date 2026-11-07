@@ -11,7 +11,7 @@ tree `42f1a022bf06f1a5c0593203f9a553e1c7d837e0`. Empty opening commit
 `ac43ee2e8998fdfa4a0d3783a6ad4ddf62536f26` opened
 [PR149](https://github.com/rrflow/rrflow-development/pull/149) with its brief
 before changes. The installed-open path already admits and validates the
-project's rooted `EstateFilesystem`, but its engine retained only the private
+project's rooted `engramFilesystem`, but its engine retained only the private
 storage container. This change retains a clone of the already admitted
 `AnchoredPath` inside `RrdEngine` after installed identity and security checks.
 Cloning shares the existing root ownership; it does not open another ambient
@@ -22,7 +22,7 @@ attunement transition, plan or on-disk format is added or changed.
 Changed `crates/authority/rrd-engine/src/engine/core.rs`,
 `engine/installation.rs`, and `engine/tests/installation.rs`; added this
 linked journal and regenerated navigation/inventory. Read README, ADR-0001/0002,
-D-02/D-03, POAM-038/039, the installed open and `EstateFilesystem` paths,
+D-02/D-03, POAM-038/039, the installed open and `engramFilesystem` paths,
 `rrd-lsm/src/filesystem.rs::AnchoredPath`, existing install fixtures and the
 change-authoring procedure. No upstream code, new dependency, new telemetry or
 source-tree traversal is introduced. Retaining one shared root capability has

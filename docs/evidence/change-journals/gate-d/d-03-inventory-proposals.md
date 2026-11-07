@@ -23,7 +23,7 @@ activate a provider, authorize effects, or commit a checkpoint. Existing runtime
 installation hash and wire contracts are unchanged; no implementation was moved
 or deleted and no parallel persistence authority was introduced.
 
-Stable identities bind estate, project, logical root and normalized relative
+Stable identities bind engram, project, logical root and normalized relative
 path. UTF-8 path byte ordering and bottom-up child hashes make traversal order
 irrelevant. Root digests bind scope even for an empty tree. Entries retain typed
 containment, policy exclusion/leaf decisions and explicit errors. Changes preserve

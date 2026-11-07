@@ -4904,7 +4904,7 @@ dependencies = [
  "rrd-contract",
  "rrd-core",
  "rrd-engine",
- "rrd-estate",
+ "rrd-engram",
  "rrd-security",
  "rrd-server",
  "rrd-store",
@@ -4968,7 +4968,7 @@ dependencies = [
  "rrd-cluster",
  "rrd-contract",
  "rrd-core",
- "rrd-estate",
+ "rrd-engram",
  "rrd-inference",
  "rrd-observation",
  "rrd-operator-knowledge",
@@ -4989,7 +4989,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "rrd-estate"
+name = "rrd-engram"
 version = "1.0.0"
 dependencies = [
  "rrd-contract",
@@ -5146,7 +5146,7 @@ dependencies = [
  "rrd-contract",
  "rrd-core",
  "rrd-engine",
- "rrd-estate",
+ "rrd-engram",
  "rrd-security",
  "rrd-store",
  "rustls",
@@ -5200,7 +5200,7 @@ dependencies = [
  "rrd-contract",
  "rrd-core",
  "rrd-engine",
- "rrd-estate",
+ "rrd-engram",
  "rrd-query",
  "rrd-security",
  "rrd-server",

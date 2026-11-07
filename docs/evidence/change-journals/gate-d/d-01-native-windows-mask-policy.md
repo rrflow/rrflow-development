@@ -30,7 +30,7 @@ The same failed CI step produced no artifact because it failed before receipt
 creation. record_outer_failure now writes a bounded preflight failure when no
 receipt exists and changes any prior success to failure on later cleanup error,
 retaining already-established hashes. Tests cover both paths and the 1024-character
-structural diagnostic ceiling. No product output or estate content is added.
+structural diagnostic ceiling. No product output or engram content is added.
 
 Full reads and diff review cover run_offline_lifecycle.py and its complete
 policy-test file, with the owning README/Gate D/POAM-006/CI records and existing

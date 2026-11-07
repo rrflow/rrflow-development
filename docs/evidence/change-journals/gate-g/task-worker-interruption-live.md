@@ -25,7 +25,7 @@ publication brief limits this increment to this immutable record, its generated
 index and adjacent byte-preserved receipts. The actual provider responses were
 inspected; selected receipts were scanned against the private credential and
 credential-bearing field names before copying. Credentials, session tokens,
-installed estates and environment files remain local. No new algorithm,
+installed engrams and environment files remain local. No new algorithm,
 resource measurement, runtime behavior or roadmap-status change is introduced.
 
 ## Actual experiment
@@ -35,7 +35,7 @@ From the clean harness source, run
 with the frozen build receipt, contract helper, explicit profile, actual task,
 private credential reference and a new output directory. Exact argument arrays,
 source hashes and logs are retained under SWAG
-`.swag/evidence/20261031/worker-interruption/`. The trial estate is
+`.swag/evidence/20261031/worker-interruption/`. The trial engram is
 `.swag/evidence/20261031/installed-worker-interrupted/`.
 
 The command exited zero at 18:48:03 UTC on 31 October 2026. Its log SHA-256 is
@@ -61,7 +61,7 @@ The [trial result](task-worker-interruption-receipts/result.json) SHA-256 is
 
 ## Separate recovery and remaining limits
 
-The existing `--recover-proof` mode then reopened that same estate in a separate
+The existing `--recover-proof` mode then reopened that same engram in a separate
 invocation with only source-proof and output arguments, no provider credentials.
 It exited zero at 18:48:21 UTC. Actual selector, worker and budget values equal
 the trial's records; recovery requested no provider call. The
@@ -82,7 +82,7 @@ No Rust suites or additional model calls are needed for this evidence-only
 increment; implementation checks belong to the preceding harness journal.
 
 Both actual commands and explicit cross-result/task equality assertions passed.
-No live retry, replacement estate or relaxed validator was used to obtain this
+No live retry, replacement engram or relaxed validator was used to obtain this
 result. A preparatory shell command used an invalid working-directory spelling;
 the process was not created, and the corrected commit command succeeded before
 the live trial. No engine or model defect was exposed in this experiment.
@@ -90,7 +90,7 @@ the live trial. No engine or model defect was exposed in this experiment.
 The worker remains reserved with `execution_may_continue: true`. This proves
 honest retention after process loss, not terminal reconciliation, capacity
 release, remote cancellation, replay safety for arbitrary providers, or a
-usable resume operation. Existing uncertain estates remain untouched. Candidate
+usable resume operation. Existing uncertain engrams remain untouched. Candidate
 CI, dependency landing, remaining policy/credential qualification, complete
 UI/project effects and RROFLOW correlation, independently reviewed learning,
 model qualification and native/container release remain open. No training

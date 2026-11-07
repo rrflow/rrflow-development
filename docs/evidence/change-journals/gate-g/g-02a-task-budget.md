@@ -17,7 +17,7 @@ scope, research, acceptance and stop conditions. No prerequisite CI is bypassed.
 
 Existing embedding calls had a step deadline and process-local cancellation,
 but no aggregate task allowance. The new embedded `generate_task_embeddings`
-operation binds the existing task to one immutable estate configuration,
+operation binds the existing task to one immutable engram configuration,
 original deadline and finite step limit. It requires ReasoningWrite and
 EmbeddingGenerate; inspection requires ReasoningRead. Ordinary standalone
 embedding and task open/close semantics remain unchanged.
@@ -68,7 +68,7 @@ The design inference is a persisted original wall deadline plus narrower
 monotonic child ceilings and charged execution time. It does not import
 Temporal code or introduce a dependency. Host time remains unverified; any
 observed rollback stops this budget, irrespective of tolerance on unrelated
-estate operations. No trusted cross-host or suspension-time guarantee is made.
+engram operations. No trusted cross-host or suspension-time guarantee is made.
 
 Trace/resource decisions: public task linkage, configuration/request/result
 digests, counts, terminal reasons and outstanding-work flags; no prompt or
@@ -118,7 +118,7 @@ integration, per-run preset resolution, token/cost accounting, no-progress
 controller, durable Stop operation, authorized extension, full output replay
 or uncertainty reconciliation. An execution failure conservatively stops the
 task budget. Starting a separate authorized task is distinct work, not proof of
-a global estate spending limit. Ordinary standalone embedding remains governed
+a global engram spending limit. Ordinary standalone embedding remains governed
 by its per-call ceiling. No Gate G, C-07, alpha or POAM closure is claimed.
 
 Checklist: pre-edit PR, exact baseline/source mapping, first oracle, research,

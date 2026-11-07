@@ -83,7 +83,7 @@ unknown. The dataset and raw model outputs are not published in this PR.
 ## Limits and handoff
 
 This tool uses bounded local files and no network, credentials, model calls or
-raw estate storage. It emits counts/digests; packets retain the exported content
+raw engram storage. It emits counts/digests; packets retain the exported content
 and require the same access protection as those inputs. Hashes establish byte
 identity, not source authenticity. Filesystem publication requires hard links
 and is not a durable engine receipt or power-loss guarantee. No runtime tracing

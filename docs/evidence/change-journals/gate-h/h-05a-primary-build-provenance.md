@@ -69,7 +69,7 @@ and [custom profiles](https://doc.rust-lang.org/cargo/reference/profiles.html#cu
 Actual compiled units/features are observed twice instead of inferred from
 dependency-resolution inventory. The helper records source and selected
 environment digests, not raw environment values; metadata contains no
-absolute source paths, timestamps, credentials or estate state.
+absolute source paths, timestamps, credentials or engram state.
 No upstream source is adapted.
 
 No new runtime signal is introduced. Executable hashing streams through a

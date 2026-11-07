@@ -1,8 +1,8 @@
 use rrd_contract::CanonicalId;
-use rrd_estate::{
+use rrd_engram::{
     public_snapshot, ApplyAuthority, AuthorityDesiredState, AuthorityObservedState,
     AuthorityReceipt, AuthorityReceiptBoundary, AuthorityResource, AuthorityResourceKind,
-    AuthorityStatus, DesiredPhase, DesiredTarget, Error, EstateRepository, MutationContext,
+    AuthorityStatus, DesiredPhase, DesiredTarget, Error, engramRepository, MutationContext,
     SetDesired,
 };
 use rrd_store::{RrflowKvStore, StorageEngine};
@@ -14,7 +14,7 @@ fn id(value: &str) -> CanonicalId {
 fn context(at: u64, request: &str, operation: &str) -> MutationContext {
     MutationContext {
         at,
-        actor: "estate-controller".into(),
+        actor: "engram-controller".into(),
         request_id: request.into(),
         operation_id: id(operation),
     }
@@ -180,7 +180,7 @@ fn complete_resources(at: u64) -> Vec<AuthorityResource> {
 }
 
 #[test]
-fn every_estate_resource_and_receipt_survives_native_reopen() {
+fn every_engram_resource_and_receipt_survives_native_reopen() {
     let temporary = tempfile::tempdir().unwrap();
     let path = temporary.path().join("authority");
     let request = ApplyAuthority {
@@ -199,9 +199,9 @@ fn every_estate_resource_and_receipt_survives_native_reopen() {
     };
     {
         let engine = RrflowKvStore::open(&path).unwrap();
-        let repository = EstateRepository::new(&engine, id("estate-a"));
+        let repository = engramRepository::new(&engine, id("engram-a"));
         repository
-            .create(&context(10, "create-estate", "create-estate"))
+            .create(&context(10, "create-engram", "create-engram"))
             .unwrap();
         repository
             .set_desired(&SetDesired {
@@ -226,7 +226,7 @@ fn every_estate_resource_and_receipt_survives_native_reopen() {
     }
 
     let reopened = RrflowKvStore::open(&path).unwrap();
-    let repository = EstateRepository::new(&reopened, id("estate-a"));
+    let repository = engramRepository::new(&reopened, id("engram-a"));
     let document = repository.load().unwrap().unwrap();
     document.validate().unwrap();
     for kind in [
@@ -262,9 +262,9 @@ fn every_estate_resource_and_receipt_survives_native_reopen() {
             .map(|entry| entry.action.as_str())
             .collect::<Vec<_>>(),
         vec![
-            "estate.create",
-            "estate.desired.set",
-            "estate.authority.apply"
+            "engram.create",
+            "engram.desired.set",
+            "engram.authority.apply"
         ]
     );
     assert!(journal.iter().all(|entry| entry.verify()));
@@ -273,9 +273,9 @@ fn every_estate_resource_and_receipt_survives_native_reopen() {
 #[test]
 fn references_generations_and_idempotency_fail_closed() {
     let engine = rrd_store::RrflowMxStore::new();
-    let repository = EstateRepository::new(&engine, id("estate-a"));
+    let repository = engramRepository::new(&engine, id("engram-a"));
     repository
-        .create(&context(10, "create-estate", "create-estate"))
+        .create(&context(10, "create-engram", "create-engram"))
         .unwrap();
 
     let orphan = ApplyAuthority {
@@ -344,7 +344,7 @@ fn references_generations_and_idempotency_fail_closed() {
 }
 
 fn document_resource(
-    repository: &EstateRepository<'_, rrd_store::RrflowMxStore>,
+    repository: &engramRepository<'_, rrd_store::RrflowMxStore>,
     resource_id: &str,
     context: MutationContext,
     idempotency_key: &str,

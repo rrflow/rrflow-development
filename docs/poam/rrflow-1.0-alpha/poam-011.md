@@ -35,7 +35,7 @@ created and validated a private Windows workspace, but its Windows candidate CI
 rejected the child manifest's ownership or DACL. The
 [staging correction](../../evidence/change-journals/gate-h/h-04-sdk-windows-manifest-ci-correction.md)
 creates an explicitly owned, protected staging file and publishes it after a
-complete write. Corrected candidate 137b90a1 passed the hosted Windows estate
+complete write. Corrected candidate 137b90a1 passed the hosted Windows engram
 job and complete candidate CI; this integration must pass its own exact-head CI.
 The complete Windows six-SDK corpus, separate-principal denial, ARM and macOS qualification
 remain required; local descriptor inspection and a real harness startup do not

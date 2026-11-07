@@ -77,13 +77,13 @@ pub(super) fn installed_storage_options(
 pub struct RrdEngine {
     pub(crate) storage: StorageProfile,
     pub(crate) storage_profile_kind: StorageProfileKind,
-    pub(crate) estate_configuration: EstateConfiguration,
-    pub(crate) installed_estate: Option<InstalledEstateIdentity>,
+    pub(crate) engram_configuration: engramConfiguration,
+    pub(crate) installed_engram: Option<InstalledengramIdentity>,
     pub(crate) installed_deployment: Option<DeploymentProfile>,
-    /// The admitted project root of an installed estate. Retaining this
+    /// The admitted project root of an installed engram. Retaining this
     /// capability does not authorize reads or establish a source snapshot.
     pub(crate) installed_project_root: Option<AnchoredPath>,
-    /// The managed persistent container `.rrflow/rrd` of an installed estate.
+    /// The managed persistent container `.rrflow/rrd` of an installed engram.
     /// Backups and restore staging roots live beside its storage roots; it is
     /// `None` for component and test roots opened outside an installation.
     pub(crate) installed_storage_container: Option<AnchoredPath>,
@@ -185,7 +185,7 @@ impl RrdEngine {
         )
     }
 
-    /// Opens a local engine authority for pre-release engine-owned estate
+    /// Opens a local engine authority for pre-release engine-owned engram
     /// control operations that do not yet resolve an installed-project
     /// locator. The constructor remains private to `rrd-engine`; outward
     /// adapters call typed operations.
@@ -260,8 +260,8 @@ impl RrdEngine {
         Ok(Self {
             storage: StorageProfile::rrflow_kv(storage),
             storage_profile_kind: StorageProfileKind::RrflowKv,
-            estate_configuration: EstateConfiguration::default(),
-            installed_estate: None,
+            engram_configuration: engramConfiguration::default(),
+            installed_engram: None,
             installed_deployment: None,
             installed_project_root: None,
             installed_storage_container: None,
@@ -305,8 +305,8 @@ impl RrdEngine {
         Ok(Self {
             storage: StorageProfile::rrflow_mx(),
             storage_profile_kind: StorageProfileKind::RrflowMx,
-            estate_configuration: EstateConfiguration::default(),
-            installed_estate: None,
+            engram_configuration: engramConfiguration::default(),
+            installed_engram: None,
             installed_deployment: None,
             installed_project_root: None,
             installed_storage_container: None,
@@ -341,12 +341,12 @@ impl RrdEngine {
         self.storage_profile_kind
     }
 
-    pub fn estate_configuration(&self) -> &EstateConfiguration {
-        &self.estate_configuration
+    pub fn engram_configuration(&self) -> &engramConfiguration {
+        &self.engram_configuration
     }
 
-    pub fn installed_estate_identity(&self) -> Option<&InstalledEstateIdentity> {
-        self.installed_estate.as_ref()
+    pub fn installed_engram_identity(&self) -> Option<&InstalledengramIdentity> {
+        self.installed_engram.as_ref()
     }
 
     pub fn installed_deployment_profile(&self) -> Option<&DeploymentProfile> {
@@ -358,14 +358,14 @@ impl RrdEngine {
         operation: &'static str,
         requested: &rrd_contract::QueryBudget,
     ) -> Result<()> {
-        if let Err(error) = self.estate_configuration.validate_query_budget(requested) {
-            let configured = &self.estate_configuration.query;
+        if let Err(error) = self.engram_configuration.validate_query_budget(requested) {
+            let configured = &self.engram_configuration.query;
             tracing::debug!(
                 target: "rrflow::configuration",
                 operation,
                 instance_id = %self.instance,
-                configuration_revision = self.estate_configuration.revision,
-                configuration_sha256 = %self.estate_configuration.configuration_sha256,
+                configuration_revision = self.engram_configuration.revision,
+                configuration_sha256 = %self.engram_configuration.configuration_sha256,
                 requested_max_storage_keys = requested.max_storage_keys,
                 configured_max_storage_keys = configured.max_storage_keys,
                 requested_max_rows = requested.max_rows,
@@ -381,7 +381,7 @@ impl RrdEngine {
                 requested_max_elapsed_ms = requested.max_elapsed_ms,
                 configured_max_elapsed_ms = configured.max_elapsed_ms,
                 reason = %error,
-                "estate configuration rejected query budget"
+                "engram configuration rejected query budget"
             );
             return Err(ServiceError::ConfigurationLimit(error.to_string()));
         }
@@ -393,14 +393,14 @@ impl RrdEngine {
         operation: &'static str,
         requested: &rrd_contract::AssembleContext,
     ) -> Result<()> {
-        if let Err(error) = self.estate_configuration.recall.validate_request(requested) {
-            let configured = &self.estate_configuration.recall;
+        if let Err(error) = self.engram_configuration.recall.validate_request(requested) {
+            let configured = &self.engram_configuration.recall;
             tracing::debug!(
                 target: "rrflow::configuration",
                 operation,
                 instance_id = %self.instance,
-                configuration_revision = self.estate_configuration.revision,
-                configuration_sha256 = %self.estate_configuration.configuration_sha256,
+                configuration_revision = self.engram_configuration.revision,
+                configuration_sha256 = %self.engram_configuration.configuration_sha256,
                 requested_max_graph_depth = requested.max_graph_depth,
                 configured_max_graph_depth = configured.max_graph_depth,
                 requested_max_items = requested.max_items,
@@ -410,7 +410,7 @@ impl RrdEngine {
                 requested_max_storage_keys = requested.max_storage_keys,
                 configured_max_storage_keys = configured.max_storage_keys,
                 reason = %error,
-                "estate configuration rejected recall request"
+                "engram configuration rejected recall request"
             );
             return Err(ServiceError::ConfigurationLimit(error.to_string()));
         }
@@ -419,9 +419,9 @@ impl RrdEngine {
 
     pub(in crate::engine) fn bind_installed_state(
         &mut self,
-        identity: InstalledEstateIdentity,
+        identity: InstalledengramIdentity,
         deployment: DeploymentProfile,
-        configuration: EstateConfiguration,
+        configuration: engramConfiguration,
         storage_container: AnchoredPath,
     ) -> Result<()> {
         identity
@@ -438,10 +438,10 @@ impl RrdEngine {
         {
             return Err(ServiceError::ProjectBindingMismatch);
         }
-        self.installed_estate = Some(identity);
+        self.installed_engram = Some(identity);
         self.installed_deployment = Some(deployment);
         self.installed_storage_container = Some(storage_container);
-        self.estate_configuration = configuration;
+        self.engram_configuration = configuration;
         Ok(())
     }
 

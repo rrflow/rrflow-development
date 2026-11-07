@@ -51,10 +51,10 @@ impl Drop for ServerFixturePermit {
     }
 }
 
-fn estate_context(at: u64, operation: &str) -> rrd_estate::MutationContext {
-    rrd_estate::MutationContext {
+fn engram_context(at: u64, operation: &str) -> rrd_engram::MutationContext {
+    rrd_engram::MutationContext {
         at,
-        actor: "rrd-estate".into(),
+        actor: "rrd-engram".into(),
         request_id: format!("request-{operation}"),
         operation_id: CanonicalId::new(operation).unwrap(),
     }
@@ -938,7 +938,7 @@ fn initialized_security_authority_binds_sessions_and_denies_ungranted_routes() {
     }));
     assert!(records
         .iter()
-        .any(|record| { record["action"] == "estate_read" && record["decision"] == "denied" }));
+        .any(|record| { record["action"] == "engram_read" && record["decision"] == "denied" }));
     assert!(records.iter().any(|record| {
         record["action"] == "vector_collection_ensure" && record["decision"] == "denied"
     }));
@@ -2552,23 +2552,23 @@ fn data_transaction_atomically_commits_every_public_model_and_replays_after_rest
 }
 
 #[test]
-fn authenticated_estate_read_returns_the_public_snapshot_only() {
+fn authenticated_engram_read_returns_the_public_snapshot_only() {
     let temporary = tempfile::tempdir().unwrap();
     let root = temporary.path().join("instance");
     {
         let engine = RrflowKvStore::open(&root).unwrap();
         let repository =
-            rrd_estate::EstateRepository::new(&engine, CanonicalId::new("estate-a").unwrap());
+            rrd_engram::engramRepository::new(&engine, CanonicalId::new("engram-a").unwrap());
         repository
-            .create(&estate_context(10, "create-estate"))
+            .create(&engram_context(10, "create-engram"))
             .unwrap();
         repository
-            .set_desired(&rrd_estate::SetDesired {
-                context: estate_context(20, "deploy-project-a"),
+            .set_desired(&rrd_engram::SetDesired {
+                context: engram_context(20, "deploy-project-a"),
                 instance_id: CanonicalId::new("project-a").unwrap(),
                 idempotency_key: "deploy-project-a".into(),
-                target: rrd_estate::DesiredTarget {
-                    phase: rrd_estate::DesiredPhase::Running,
+                target: rrd_engram::DesiredTarget {
+                    phase: rrd_engram::DesiredPhase::Running,
                     deployment_ref: CanonicalId::new("local-rrd").unwrap(),
                     version: "1.0.0".into(),
                     configuration_sha256: "a".repeat(64),
@@ -2585,7 +2585,7 @@ fn authenticated_estate_read_returns_the_public_snapshot_only() {
                 "max_open_transactions": 2,
             }
         }),
-        Some("estate-session"),
+        Some("engram-session"),
         None,
     );
     let (status, created) = post(&server, "/v1/sessions", &create, None);
@@ -2595,21 +2595,21 @@ fn authenticated_estate_read_returns_the_public_snapshot_only() {
 
     let mut read = envelope(json!({}), None, None);
     read["resource"]["segments"] = json!([
-        {"kind": "estate", "id": "estate-a"},
+        {"kind": "engram", "id": "engram-a"},
         {"kind": "instance", "id": "socket-test"}
     ]);
-    let (status, denied) = post(&server, "/v1/estates/estate-a/read", &read, None);
+    let (status, denied) = post(&server, "/v1/engrams/engram-a/read", &read, None);
     assert_eq!(status, 401);
     assert_eq!(denied["outcome"]["error"]["code"], "unauthenticated");
 
     let (status, response) = post(
         &server,
-        "/v1/estates/estate-a/read",
+        "/v1/engrams/engram-a/read",
         &read,
         Some((session_id, token)),
     );
     assert_eq!(status, 200, "{response}");
-    assert_eq!(payload(&response)["id"], "estate-a");
+    assert_eq!(payload(&response)["id"], "engram-a");
     assert_eq!(payload(&response)["revision"], 2);
     assert_eq!(payload(&response)["instances"][0]["id"], "project-a");
     assert_eq!(payload(&response)["operations"][0]["state"], "pending");
@@ -2618,7 +2618,7 @@ fn authenticated_estate_read_returns_the_public_snapshot_only() {
 
     let (status, mismatch) = post(
         &server,
-        "/v1/estates/other-estate/read",
+        "/v1/engrams/other-engram/read",
         &read,
         Some((session_id, token)),
     );
@@ -2747,7 +2747,7 @@ fn standalone_daemon_process_passes_the_shared_corpus_and_exclusively_owns_its_r
         "loopback_http_websocket"
     );
     assert_eq!(
-        payload(&capabilities)["installed_estate"]["instance_id"],
+        payload(&capabilities)["installed_engram"]["instance_id"],
         instance.as_str()
     );
 
@@ -3935,7 +3935,7 @@ fn installed_endpoint_configuration_http_flow_survives_restart_and_revocation() 
     }
     let reopened = RrdEngine::open_installed(&project, &executable).unwrap();
     assert_eq!(
-        reopened.installed_estate_identity(),
+        reopened.installed_engram_identity(),
         Some(&installation.installation.target)
     );
 }

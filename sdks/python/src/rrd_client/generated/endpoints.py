@@ -36,7 +36,7 @@ OperationId = Literal[
     "endpoint-configuration-apply",
     "endpoint-configuration-preview",
     "endpoint-configuration-read",
-    "estate-read",
+    "engram-read",
     "flight-launch",
     "flight-list",
     "flight-read",
@@ -271,11 +271,11 @@ ENDPOINTS: Final[dict[OperationId, Endpoint]] = {
         "mutation": False,
         "path": "/v1/configuration/endpoints/read",
     },
-    "estate-read": {
+    "engram-read": {
         "authentication": "session_bearer",
         "method": "POST",
         "mutation": False,
-        "path": "/v1/estates/{estate}/read",
+        "path": "/v1/engrams/{engram}/read",
     },
     "flight-launch": {
         "authentication": "session_bearer",

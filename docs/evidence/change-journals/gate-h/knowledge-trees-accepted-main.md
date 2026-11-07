@@ -72,7 +72,7 @@ current transaction admission, installation signatures, invocation/HTTP/client
 deltas, generator sources and every changed conflict. Full diff review preserves
 current main's policy/runtime behavior. No new external research or runtime trace
 is needed for this integration; the existing bounded audit/receipt paths remain.
-No external provider, original user estate or private cloud account is invoked.
+No external provider, original user engram or private cloud account is invoked.
 
 Initial failures were the retired mutex API, PathBuf versus AnchoredPath,
 incorrect direct `rrd_lsm` import (corrected to the store's exported boundary),

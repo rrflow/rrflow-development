@@ -47,7 +47,7 @@ unseen benchmark or an independently reviewed correctness outcome.
 ## Actual local receiver and correlation
 
 A bounded private harness reused the retained public-operation and owned-process
-helpers to reopen that exact trial estate. It installed an explicitly configured
+helpers to reopen that exact trial engram. It installed an explicitly configured
 local RROFLOW receiver, appended its authenticated observation binding through
 engine configuration preview/apply, and exported the accepted worker attempt.
 It invoked no selector or worker operation. Receiver revision is

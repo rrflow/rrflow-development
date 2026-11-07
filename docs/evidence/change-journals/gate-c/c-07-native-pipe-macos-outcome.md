@@ -17,7 +17,7 @@ protected failure. No conclusion is drawn about a particular command or child.
 
 The [PR208 protected merge group](https://github.com/rrflow/rrflow-development/actions/runs/40996295111)
 subsequently completed with failure. Its macOS domain-crash step had reported
-`command output did not close`; its Windows estate-process step separately
+`command output did not close`; its Windows engram-process step separately
 timed out after five minutes. The targeted macOS diagnostic did not include the
 PR208 candidate and did not test the Windows sweep. Neither is cleared by this
 outcome. Required candidate and protected merge-group checks and C-07 capacity

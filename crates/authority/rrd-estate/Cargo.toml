@@ -1,10 +1,10 @@
 [package]
-name = "rrd-estate"
+name = "rrd-engram"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 publish.workspace = true
-description = "Persistent RRD estate authority and reconciliation contracts."
+description = "Persistent RRD engram authority and reconciliation contracts."
 
 [[bin]]
 name = "rrd-deployment-catalog"

@@ -12,7 +12,7 @@ binds this remaining installed worker acceptance scope. Existing engine tests
 cover completion invalidation, but the installed proof rejected worker fault
 modes. Its first oracle, `--worker --fault-case configuration --output
 target/worker-fault-before-edit-probe`, reported the incompatible-mode error
-before creating an estate or calling a provider.
+before creating an engram or calling a provider.
 
 The existing runner now admits `--worker --fault-case` for configuration,
 session, Stop and disconnected delivery. It relays the actual selector response,
@@ -68,7 +68,7 @@ own qualification obligations.
 Freeze the clean committed runner and use the provenance-bound `e3528330`
 engine, explicit short-worker profile and captured real PR task. Run each
 distinct intervention once, retain any failure, then independently recover
-that estate without provider credentials. Publish actual outcomes separately;
+that engram without provider credentials. Publish actual outcomes separately;
 these seven local tests cannot establish model-backed completion handling.
 
 Checklist: owner and prerequisite bound; before/after oracle recorded; exact

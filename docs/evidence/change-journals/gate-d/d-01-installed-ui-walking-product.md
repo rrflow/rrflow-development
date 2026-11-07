@@ -89,7 +89,7 @@ The following records were read completely before their dependent edits:
   `rrd-store` library 1-98, rrflowKV 1-1804, control repository 1-347, and
   runtime repository 1-557;
 - `rrd-security/src/lib.rs` 1-1338; `rrd-engine` public library, module root,
-  core, token-key, memory-estate, and test roots in full;
+  core, token-key, memory-engram, and test roots in full;
 - `rrflow-cli` manifest, main 1-169, command 1-1347, and development doctor
   1-580; `rrd-client/src/client.rs` 1-87; `rrd-server` public library and HTTP
   server 1-324; and
@@ -130,7 +130,7 @@ Created paths:
 
 Changed paths comprise the declared contract fixture/source/export/test;
 rrd-lsm database/library/manifest; rrd-store library, rrflowKV, control and
-runtime repositories; security library; engine core, memory-estate, module,
+runtime repositories; security library; engine core, memory-engram, module,
 public export, token-key, and test root; client discovery; CLI manifest,
 command, main, and doctor; the cited research record; and the execution
 inventory generator. The Gate D journal index and global file plan are
@@ -251,7 +251,7 @@ The following package suites passed after the focused oracles:
 - `cargo test -p rrd-server --all-targets --locked`; and
 - final `cargo test -p rrflow-cli --all-targets --locked`.
 
-The final workspace run's pre-existing `local_estate_driver` group passed four
+The final workspace run's pre-existing `local_engram_driver` group passed four
 tests in 228.57 seconds. That time is reported separately: it is legacy
 supervisor, marker, process-identity, effect-gap, and bounded-kill regression
 coverage, not evidence for the new installed-product path. In the same final
@@ -271,12 +271,12 @@ executable override. `cargo build --release -p rrflow-cli --bin rrflow
 rebuild. It produced a 125 MiB x86-64 Linux ELF with SHA-256
 `e14506179c72e0bfb1cbd6cc8d7a095d9b8a185e720725427e66ab81238556cd`.
 The optimized build reported one pre-existing unused-import warning in the
-unchanged `engine/estate_control.rs`; it was not hidden or pulled into this
+unchanged `engine/engram_control.rs`; it was not hidden or pulled into this
 planned package. The resulting executable reported 1.0.0, rejected the hidden
 surrogate argument in release mode, emitted two byte-identical no-write plans,
 applied its own executable-bound plan at runtime cursor 2/control sequence 7,
 wrote both credential files at Unix mode 0600, and passed quick verification
-with a current attunement source. The disposable estate was removed afterward.
+with a current attunement source. The disposable engram was removed afterward.
 This locally built ELF is verification input, not a signed or offline-complete
 release candidate.
 
@@ -284,7 +284,7 @@ release candidate.
 
 Remaining product deficiencies include installation crash cleanup
 and resume; adversarial race-free path resolution on each native platform;
-complete estate-directory ACL policy; full verification and
+complete engram-directory ACL policy; full verification and
 repair/restore/salvage/uninstall; executable attunement phases; project
 generator/adapters; release-bundle acquisition, signatures, SBOM, and native
 platform candidates; removal of the legacy supervisor and standalone
@@ -292,7 +292,7 @@ initializers/controllers; streamed rrflowKV-to-Arrow/DataFusion; and the strict
 native storage promotion failure. Quick verification is
 intentionally offline, fails while the writer lock is held, and currently
 hashes the complete reachable physical closure rather than using a mature-
-estate incremental verification index. The bounded project inventory rejects
+engram incremental verification index. The bounded project inventory rejects
 symlinks and projects above 100,000 files or 1 GiB of included source; broader
 inventory policy belongs to the attunement package. Fresh mode requires an
 already-created empty project directory; complete scaffolding is not present.

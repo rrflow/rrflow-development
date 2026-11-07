@@ -47,18 +47,18 @@ macro_rules! http_dispatch_catalogue {
 }
 
 http_dispatch_catalogue! {
-    AttunementCancel => ("attunement-cancel", RrdOperation::EstateAdmin),
-    AttunementRead => ("attunement-read", RrdOperation::EstateRead),
-    AttunementJobList => ("attunement-job-list", RrdOperation::EstateRead),
-    AttunementReceiptRead => ("attunement-receipt-read", RrdOperation::EstateRead),
-    AttunementStart => ("attunement-start", RrdOperation::EstateAdmin),
-    AttunementStep => ("attunement-step", RrdOperation::EstateAdmin),
+    AttunementCancel => ("attunement-cancel", RrdOperation::engramAdmin),
+    AttunementRead => ("attunement-read", RrdOperation::engramRead),
+    AttunementJobList => ("attunement-job-list", RrdOperation::engramRead),
+    AttunementReceiptRead => ("attunement-receipt-read", RrdOperation::engramRead),
+    AttunementStart => ("attunement-start", RrdOperation::engramAdmin),
+    AttunementStep => ("attunement-step", RrdOperation::engramAdmin),
     AttunementReplanPreview => ("attunement-replan-preview", RrdOperation::AttunementReplanPreview),
-    AttunementReplanAccept => ("attunement-replan-accept", RrdOperation::EstateAdmin),
-    AttunementReplanReceiptRead => ("attunement-replan-receipt-read", RrdOperation::EstateRead),
-    AttunementPause => ("attunement-pause", RrdOperation::EstateAdmin),
-    AttunementRecoverExpired => ("attunement-recover-expired", RrdOperation::EstateAdmin),
-    AttunementResume => ("attunement-resume", RrdOperation::EstateAdmin),
+    AttunementReplanAccept => ("attunement-replan-accept", RrdOperation::engramAdmin),
+    AttunementReplanReceiptRead => ("attunement-replan-receipt-read", RrdOperation::engramRead),
+    AttunementPause => ("attunement-pause", RrdOperation::engramAdmin),
+    AttunementRecoverExpired => ("attunement-recover-expired", RrdOperation::engramAdmin),
+    AttunementResume => ("attunement-resume", RrdOperation::engramAdmin),
     AuditExport => ("audit-export", RrdOperation::AuditExport),
     AuditRead => ("audit-read", RrdOperation::AuditRead),
     BackupCreate => ("backup-create", RrdOperation::BackupCreate),
@@ -75,10 +75,10 @@ http_dispatch_catalogue! {
     FlightList => ("flight-list", RrdOperation::FlightRead),
     FlightRead => ("flight-read", RrdOperation::FlightRead),
     EndpointCatalogue => ("endpoint-catalogue", RrdOperation::ServiceInspect),
-    EndpointConfigurationRead => ("endpoint-configuration-read", RrdOperation::EstateRead),
+    EndpointConfigurationRead => ("endpoint-configuration-read", RrdOperation::engramRead),
     EndpointConfigurationPreview => ("endpoint-configuration-preview", RrdOperation::EndpointConfigurationPreview),
-    EndpointConfigurationApply => ("endpoint-configuration-apply", RrdOperation::EstateAdmin),
-    EstateRead => ("estate-read", RrdOperation::EstateRead),
+    EndpointConfigurationApply => ("endpoint-configuration-apply", RrdOperation::engramAdmin),
+    engramRead => ("engram-read", RrdOperation::engramRead),
     HealthLive => ("health-live", RrdOperation::ServiceInspect),
     HealthReady => ("health-ready", RrdOperation::ServiceInspect),
     KnowledgeTreeList => ("knowledge-tree-list", RrdOperation::KnowledgeTreeRead),
@@ -396,7 +396,7 @@ impl AppState {
                 self.retire_vector_quantization(&headers, &body, now)
             }
             Some(HttpDispatch::VectorSearch) => self.search_vectors(&headers, &body, now),
-            Some(HttpDispatch::EstateRead) => self.read_estate(&headers, &body, &path, now),
+            Some(HttpDispatch::engramRead) => self.read_engram(&headers, &body, &path, now),
             Some(HttpDispatch::TransactionPreview) => {
                 self.preview_transaction(&headers, &body, &path, now)
             }
@@ -486,8 +486,8 @@ mod tests {
     fn route_resolution_rejects_unknown_methods_paths_and_empty_parameters() {
         assert!(HttpDispatch::resolve(&Method::PUT, "/v1/query").is_none());
         assert!(HttpDispatch::resolve(&Method::GET, "/v1/not-real").is_none());
-        assert!(HttpDispatch::resolve(&Method::POST, "/v1/estates//read").is_none());
-        assert!(HttpDispatch::resolve(&Method::POST, "/v1/estates/a/b/read").is_none());
+        assert!(HttpDispatch::resolve(&Method::POST, "/v1/engrams//read").is_none());
+        assert!(HttpDispatch::resolve(&Method::POST, "/v1/engrams/a/b/read").is_none());
     }
 
     fn concrete_path(template: &str) -> String {

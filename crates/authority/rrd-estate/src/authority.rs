@@ -1,13 +1,13 @@
 use super::{
     require_time, validate_ascii_key, validate_error, validate_id_key, validate_sha256, Error,
-    EstateDocument, MutationContext, Result,
+    engramDocument, MutationContext, Result,
 };
 use rrd_contract::CanonicalId;
 use rrd_core::digest;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
-pub const ESTATE_AUTHORITY_FORMAT: u16 = 1;
+pub const engram_AUTHORITY_FORMAT: u16 = 1;
 pub const MAX_AUTHORITY_RESOURCES: usize = 16_384;
 pub const MAX_AUTHORITY_RECEIPTS: usize = 65_536;
 pub const MAX_AUTHORITY_IDEMPOTENCY_BINDINGS: usize = 16_384;
@@ -70,7 +70,7 @@ pub struct AuthorityObservedState {
     pub error: Option<String>,
 }
 
-/// One provider-neutral estate identity. Resource kinds retain strict parent
+/// One provider-neutral engram identity. Resource kinds retain strict parent
 /// rules while sharing the same monotonic desired/observed state contract.
 /// Secret references contain only a content-addressed locator digest in
 /// `spec_sha256`; secret material and raw locators never enter RRD.
@@ -117,17 +117,17 @@ pub struct AuthorityIdempotencyBinding {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct EstateAuthorityState {
+pub struct engramAuthorityState {
     pub format: u16,
     pub resources: BTreeMap<String, AuthorityResource>,
     pub receipts: BTreeMap<String, AuthorityReceipt>,
     pub idempotency: BTreeMap<String, AuthorityIdempotencyBinding>,
 }
 
-impl Default for EstateAuthorityState {
+impl Default for engramAuthorityState {
     fn default() -> Self {
         Self {
-            format: ESTATE_AUTHORITY_FORMAT,
+            format: engram_AUTHORITY_FORMAT,
             resources: BTreeMap::new(),
             receipts: BTreeMap::new(),
             idempotency: BTreeMap::new(),
@@ -145,21 +145,21 @@ pub struct ApplyAuthority {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AuthorityMutationOutcome {
-    pub document: EstateDocument,
+    pub document: engramDocument,
     pub idempotent_replay: bool,
 }
 
-impl EstateAuthorityState {
+impl engramAuthorityState {
     pub fn validate(&self) -> Result<()> {
-        if self.format != ESTATE_AUTHORITY_FORMAT {
-            return Err(Error::Invalid("unsupported estate authority format".into()));
+        if self.format != engram_AUTHORITY_FORMAT {
+            return Err(Error::Invalid("unsupported engram authority format".into()));
         }
         if self.resources.len() > MAX_AUTHORITY_RESOURCES
             || self.receipts.len() > MAX_AUTHORITY_RECEIPTS
             || self.idempotency.len() > MAX_AUTHORITY_IDEMPOTENCY_BINDINGS
         {
             return Err(Error::Invalid(
-                "estate authority cardinality exceeded".into(),
+                "engram authority cardinality exceeded".into(),
             ));
         }
         for (key, resource) in &self.resources {
@@ -262,7 +262,7 @@ impl EstateAuthorityState {
             validate_observation_advance(previous.observed.as_ref(), resource.observed.as_ref())?;
         } else if self.resources.len() == MAX_AUTHORITY_RESOURCES {
             return Err(Error::Invalid(
-                "estate authority resource limit exceeded".into(),
+                "engram authority resource limit exceeded".into(),
             ));
         }
         self.resources.insert(resource.id.to_string(), resource);
@@ -389,7 +389,7 @@ fn validate_resource_relationships(
                 AuthorityResourceKind::Health | AuthorityResourceKind::SecretReference
             ) {
                 return Err(Error::Invalid(
-                    "health must describe a non-health estate resource".into(),
+                    "health must describe a non-health engram resource".into(),
                 ));
             }
         }

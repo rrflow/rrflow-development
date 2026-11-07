@@ -1,7 +1,7 @@
 use rrd_contract::CanonicalId;
-use rrd_estate::{
-    public_backup_jobs, BackupJobState, DesiredPhase, DesiredTarget, Error, EstateDocument,
-    EstateRepository, LeaseRequest, MutationContext, ObservationRequest, ObservedPhase,
+use rrd_engram::{
+    public_backup_jobs, BackupJobState, DesiredPhase, DesiredTarget, Error, engramDocument,
+    engramRepository, LeaseRequest, MutationContext, ObservationRequest, ObservedPhase,
     ReceiptBoundary, ReceiptRequest, ScheduleBackup, SetDesired,
 };
 use rrd_store::{RrflowKvStore, RrflowMxStore, StorageEngine};
@@ -20,9 +20,9 @@ fn context(at: u64, request: &str, operation: &str) -> MutationContext {
 }
 
 fn prepare_stopped_instance<E: StorageEngine>(engine: &E) {
-    let repository = EstateRepository::new(engine, id("estate-a"));
+    let repository = engramRepository::new(engine, id("engram-a"));
     repository
-        .create(&context(10, "create-estate", "create-estate"))
+        .create(&context(10, "create-engram", "create-engram"))
         .unwrap();
     repository
         .set_desired(&SetDesired {
@@ -100,34 +100,34 @@ fn backup_request() -> ScheduleBackup {
 #[test]
 fn backup_schedule_is_quiescence_bound_and_durably_idempotent() {
     let root = tempfile::tempdir().unwrap();
-    let database = root.path().join("estate-native");
+    let database = root.path().join("engram-native");
     {
         let engine = RrflowKvStore::open(&database).unwrap();
         prepare_stopped_instance(&engine);
-        let repository = EstateRepository::new(&engine, id("estate-a"));
+        let repository = engramRepository::new(&engine, id("engram-a"));
         let accepted = repository.schedule_backup(&backup_request()).unwrap();
         assert!(!accepted.idempotent_replay);
         assert_eq!(accepted.job.state, BackupJobState::Pending);
         assert_eq!(accepted.job.source_generation, 1);
         assert_eq!(accepted.document.revision, 8);
         let public = public_backup_jobs(&accepted.document);
-        assert_eq!(public.estate_revision, 8);
+        assert_eq!(public.engram_revision, 8);
         assert_eq!(public.jobs.len(), 1);
         assert_eq!(public.jobs[0].label, "daily.0001");
     }
 
     let engine = RrflowKvStore::open(&database).unwrap();
-    let repository = EstateRepository::new(&engine, id("estate-a"));
+    let repository = engramRepository::new(&engine, id("engram-a"));
     let replay = repository.schedule_backup(&backup_request()).unwrap();
     assert!(replay.idempotent_replay);
     assert_eq!(replay.document.revision, 8);
     assert_eq!(replay.document.backup_jobs.len(), 1);
     let journal = engine.control().journal_since(0, 32).unwrap();
-    assert_eq!(journal.last().unwrap().action, "estate.backup.schedule");
+    assert_eq!(journal.last().unwrap().action, "engram.backup.schedule");
     assert_eq!(
         journal
             .iter()
-            .filter(|entry| entry.action == "estate.backup.schedule")
+            .filter(|entry| entry.action == "engram.backup.schedule")
             .count(),
         1
     );
@@ -143,9 +143,9 @@ fn backup_schedule_is_quiescence_bound_and_durably_idempotent() {
 #[test]
 fn backup_schedule_denies_an_unobserved_or_running_instance() {
     let engine = RrflowMxStore::new();
-    let repository = EstateRepository::new(&engine, id("estate-a"));
+    let repository = engramRepository::new(&engine, id("engram-a"));
     repository
-        .create(&context(10, "create-estate", "create-estate"))
+        .create(&context(10, "create-engram", "create-engram"))
         .unwrap();
     repository
         .set_desired(&SetDesired {
@@ -168,8 +168,8 @@ fn backup_schedule_denies_an_unobserved_or_running_instance() {
 }
 
 #[test]
-fn canonical_estate_document_requires_authority_backup_and_recovery_fields() {
-    let document = EstateDocument::new(id("estate-a"), 10).unwrap();
+fn canonical_engram_document_requires_authority_backup_and_recovery_fields() {
+    let document = engramDocument::new(id("engram-a"), 10).unwrap();
     let encoded = serde_json::to_value(&document).unwrap();
     for field in [
         "authority",
@@ -189,12 +189,12 @@ fn canonical_estate_document_requires_authority_backup_and_recovery_fields() {
         let mut incomplete = encoded.clone();
         incomplete.as_object_mut().unwrap().remove(field);
         assert!(
-            serde_json::from_value::<EstateDocument>(incomplete).is_err(),
-            "estate document accepted missing field {field}"
+            serde_json::from_value::<engramDocument>(incomplete).is_err(),
+            "engram document accepted missing field {field}"
         );
     }
 
-    let decoded: EstateDocument = serde_json::from_value(encoded).unwrap();
+    let decoded: engramDocument = serde_json::from_value(encoded).unwrap();
     assert_eq!(decoded, document);
     decoded.validate().unwrap();
 }

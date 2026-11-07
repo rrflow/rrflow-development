@@ -19,7 +19,7 @@ turnkey/competitor/effort/service questions, not a new roadmap.
 
 | Requested behavior | Inspected evidence | Conclusion and owner |
 |---|---|---|
-| Add project and provision DB/KV/QL | Accepted D-01 installation owner; current Connectome workbench contract and native SDK pin; child CI confirmed below. | Installed estate creation and UI project management exist in bounded profiles. rrflowDB is the logical estate, rrflowKV its persistence and rrflowQL its query interface, not three servers. Current-engine turnkey integration remains H-06 work. |
+| Add project and provision DB/KV/QL | Accepted D-01 installation owner; current Connectome workbench contract and native SDK pin; child CI confirmed below. | Installed engram creation and UI project management exist in bounded profiles. rrflowDB is the logical engram, rrflowKV its persistence and rrflowQL its query interface, not three servers. Current-engine turnkey integration remains H-06 work. |
 | Automatically index project source into graph/vector knowledge | `connectome/src/rrflow/attunement.ts` marks inventory through verify contract-pending. Engine attunement handlers remain absent in the prior code-grounded audit; installation persists the pending job. | Not demonstrated. D-02/D-03/D-04/D-05 plus consumed E/F paths must execute and retain real source/model/readback evidence. Manually seeded vectors do not prove it. |
 | Clear progressive UI with current engine | `workspace.tsx` has nested project workspaces and explicitly unavailable connector, replay, learning and cloud controls. `src-tauri/Cargo.toml` still pins the older engine/contract. | Existing navigation/data lenses are real source, but the current engine/SDK/install adapter must be qualified together. No live desktop was driven in this audit. |
 | Effort and AI inheritance | `engine/reasoning_budget.rs`, contract and socket evidence in G-02a; `lfg-swag.md` exposes task configure/read/execute/Stop/attempt-read. | Bounded task embedding and durable Stop exist; complete AI/global/project preference inheritance, governed reasoning and consuming Connectome controls are not proven. FeatureHash is a CPU reference baseline, not an LLM. |
@@ -53,7 +53,7 @@ No all-green current-product inference is made from merged source or prior CI.
 
 The existing Connectome contract now defines minimum input (project source,
 reviewed defaults/effects and only necessary missing decisions), automatic
-estate/schema/model-bound collection provisioning, and the nested basic-to-
+engram/schema/model-bound collection provisioning, and the nested basic-to-
 advanced views. Installation, indexing, retrieval and learning must have separate
 truthful readiness evidence. The first demonstration must begin with source,
 not manual data seeding, and include Stop, edit/delete, restart and isolation.

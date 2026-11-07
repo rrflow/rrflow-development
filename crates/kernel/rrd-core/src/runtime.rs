@@ -2383,7 +2383,7 @@ fn encode_schema(out: &mut Vec<u8>, registry: &RuntimeSchemaRegistry) {
         out.push(u8::from(schema.allow_additional_properties));
     }
     out.extend_from_slice(b"rrflow-unified-catalogue-v1\0");
-    // The v1 encoding's former namespace/database slot. Estate organisation
+    // The v1 encoding's former namespace/database slot. engram organisation
     // retired that label, and the slot keeps its only value so every registry
     // already committed keeps its digest.
     text(out, "default");
@@ -2423,9 +2423,9 @@ fn encode_schema(out: &mut Vec<u8>, registry: &RuntimeSchemaRegistry) {
 /// Appended only when the organisation is not the default. What can follow a
 /// schema in a commit or change encoding is a mutation tag or an optional-text
 /// flag, both below 0x20, so the 0xFF marker keeps the encoding unambiguous.
-fn encode_organisation(out: &mut Vec<u8>, organisation: &crate::RuntimeEstateOrganisation) {
+fn encode_organisation(out: &mut Vec<u8>, organisation: &crate::RuntimeengramOrganisation) {
     out.push(0xFF);
-    out.extend_from_slice(b"rrflow-estate-organisation-v1\0");
+    out.extend_from_slice(b"rrflow-engram-organisation-v1\0");
     out.extend_from_slice(&(organisation.domains.len() as u64).to_be_bytes());
     for (id, domain) in &organisation.domains {
         text(out, id.as_str());

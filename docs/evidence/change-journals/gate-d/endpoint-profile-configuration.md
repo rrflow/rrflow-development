@@ -41,7 +41,7 @@ existing profile publication boundary without moving the dependency spine or
 claiming qualified discovery, activation, source ingestion, training, or sync.
 
 The engine now reads, previews and applies one endpoint profile per installed
-project/estate/instance through the existing control compare-and-swap owner.
+project/engram/instance through the existing control compare-and-swap owner.
 Expected revision and prior-state digest reject stale plans. Exact approved
 plan digests bind content and five-minute expiry. A null profile publishes a
 revisioned removal; it does not reset the sequence. A lost-response retry may
@@ -50,12 +50,12 @@ The existing bounded transaction admission covers publication. Profile and
 field limits remain canonical; a 1-MiB wire/state ceiling bounds serialization.
 Digest shape is checked before serializing a submitted plan.
 
-`EstateRead` gates reads; `EstateAdmin` gates preview/apply. Preview has a
+`engramRead` gates reads; `engramAdmin` gates preview/apply. Preview has a
 non-mutating invocation identity, so transport parsing does not demand a
 mutation key or grant write admission to preview. Ordinary authentication and
 audit still run. No external network, secret resolution, process launch or
 provider availability is implied. Configuring a binding does not change the
-immutable installed estate resource configuration or installation locator.
+immutable installed engram resource configuration or installation locator.
 
 The executable catalogue owns three new HTTP descriptors and their schemas.
 The server, Rust methods and generated TypeScript/Python/Go/Java/.NET projections
@@ -132,7 +132,7 @@ caught the deliberately changed fingerprint and 44-operation expectations;
 canonical generation and explicit review corrected them. The first broad
 engine run rejected the new test target while it was still untracked; staging
 the new repository source and rerunning the full package passed. Review also
-separated preview's non-mutating invocation from the existing mutating estate
+separated preview's non-mutating invocation from the existing mutating engram
 administration identity and tightened digest validation before serialization.
 
 The Windows pnpm shim failed; the installed pinned pnpm entry point successfully

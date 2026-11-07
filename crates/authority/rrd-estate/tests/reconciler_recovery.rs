@@ -1,8 +1,8 @@
 use rrd_contract::CanonicalId;
 use rrd_core::digest;
-use rrd_estate::{
+use rrd_engram::{
     DesiredPhase, DesiredTarget, DriverEffect, DriverError, DriverObservation, DriverRequest,
-    EstateDriver, EstateRepository, MutationContext, ObservedPhase, OperationState,
+    engramDriver, engramRepository, MutationContext, ObservedPhase, OperationState,
     ReconcileBoundary, ReconcileOutcome, Reconciler, SetDesired,
 };
 use rrd_store::{RrflowKvStore, StorageEngine};
@@ -17,7 +17,7 @@ fn id(value: &str) -> CanonicalId {
 fn context(at: u64, request: &str, operation: &str) -> MutationContext {
     MutationContext {
         at,
-        actor: "rrd-estate".into(),
+        actor: "rrd-engram".into(),
         request_id: request.into(),
         operation_id: id(operation),
     }
@@ -69,7 +69,7 @@ impl DurableFakeDriver {
     }
 }
 
-impl EstateDriver for DurableFakeDriver {
+impl engramDriver for DurableFakeDriver {
     fn apply(&mut self, request: &DriverRequest) -> std::result::Result<DriverEffect, DriverError> {
         let mut world = self.load();
         let operation = request.operation_id.to_string();
@@ -127,7 +127,7 @@ fn run_one_step(
     let engine = RrflowKvStore::open(database).unwrap();
     let mut reconciler = Reconciler::new(
         &engine,
-        id("estate-a"),
+        id("engram-a"),
         id(worker),
         1_000,
         DurableFakeDriver::new(world, inject_lost_acknowledgement),
@@ -146,13 +146,13 @@ fn assert_boundary(outcome: ReconcileOutcome, expected: ReconcileBoundary) {
 #[test]
 fn reopen_between_every_boundary_converges_and_deduplicates_a_lost_ack() {
     let directory = tempfile::tempdir().unwrap();
-    let database = directory.path().join("estate-native");
+    let database = directory.path().join("engram-native");
     let world = directory.path().join("fake-world.json");
     {
         let engine = RrflowKvStore::open(&database).unwrap();
-        let repository = EstateRepository::new(&engine, id("estate-a"));
+        let repository = engramRepository::new(&engine, id("engram-a"));
         repository
-            .create(&context(10, "create-estate", "create-estate"))
+            .create(&context(10, "create-engram", "create-engram"))
             .unwrap();
         repository
             .set_desired(&desired(20, "deploy-project-a", "1.0.0"))
@@ -193,7 +193,7 @@ fn reopen_between_every_boundary_converges_and_deduplicates_a_lost_ack() {
     assert_eq!(fake_world.effects.get("deploy-project-a"), Some(&1));
 
     let reopened = RrflowKvStore::open(&database).unwrap();
-    let repository = EstateRepository::new(&reopened, id("estate-a"));
+    let repository = engramRepository::new(&reopened, id("engram-a"));
     let document = repository.load().unwrap().unwrap();
     let operation = document.operation(&id("deploy-project-a")).unwrap();
     assert_eq!(operation.state, OperationState::Succeeded);
@@ -209,13 +209,13 @@ fn reopen_between_every_boundary_converges_and_deduplicates_a_lost_ack() {
             .map(|entry| entry.action.as_str())
             .collect::<Vec<_>>(),
         vec![
-            "estate.create",
-            "estate.desired.set",
-            "estate.operation.lease",
-            "estate.operation.receipt",
-            "estate.operation.receipt",
-            "estate.instance.observe",
-            "estate.operation.receipt",
+            "engram.create",
+            "engram.desired.set",
+            "engram.operation.lease",
+            "engram.operation.receipt",
+            "engram.operation.receipt",
+            "engram.instance.observe",
+            "engram.operation.receipt",
         ]
     );
     assert!(journal
@@ -226,13 +226,13 @@ fn reopen_between_every_boundary_converges_and_deduplicates_a_lost_ack() {
 #[test]
 fn takeover_waits_for_expiry_and_preserves_the_prepared_boundary() {
     let directory = tempfile::tempdir().unwrap();
-    let database = directory.path().join("estate-native");
+    let database = directory.path().join("engram-native");
     let world = directory.path().join("fake-world.json");
     {
         let engine = RrflowKvStore::open(&database).unwrap();
-        let repository = EstateRepository::new(&engine, id("estate-a"));
+        let repository = engramRepository::new(&engine, id("engram-a"));
         repository
-            .create(&context(10, "create-estate", "create-estate"))
+            .create(&context(10, "create-engram", "create-engram"))
             .unwrap();
         repository
             .set_desired(&desired(20, "deploy-project-a", "1.0.0"))
@@ -259,7 +259,7 @@ fn takeover_waits_for_expiry_and_preserves_the_prepared_boundary() {
     );
 
     let engine = RrflowKvStore::open(&database).unwrap();
-    let repository = EstateRepository::new(&engine, id("estate-a"));
+    let repository = engramRepository::new(&engine, id("engram-a"));
     let document = repository.load().unwrap().unwrap();
     let operation = document.operation(&id("deploy-project-a")).unwrap();
     assert_eq!(operation.state, OperationState::Prepared);
@@ -280,13 +280,13 @@ fn takeover_waits_for_expiry_and_preserves_the_prepared_boundary() {
 #[test]
 fn a_new_desired_generation_supersedes_unfinished_work() {
     let directory = tempfile::tempdir().unwrap();
-    let database = directory.path().join("estate-native");
+    let database = directory.path().join("engram-native");
     let world = directory.path().join("fake-world.json");
     {
         let engine = RrflowKvStore::open(&database).unwrap();
-        let repository = EstateRepository::new(&engine, id("estate-a"));
+        let repository = engramRepository::new(&engine, id("engram-a"));
         repository
-            .create(&context(10, "create-estate", "create-estate"))
+            .create(&context(10, "create-engram", "create-engram"))
             .unwrap();
         repository
             .set_desired(&desired(20, "deploy-v1", "1.0.0"))

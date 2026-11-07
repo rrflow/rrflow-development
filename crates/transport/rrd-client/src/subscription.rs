@@ -14,7 +14,7 @@ use rrd_contract::{
     SubscriptionLeaseCoordinate, SubscriptionResume, SubscriptionSnapshot,
     WebSocketBackpressureTarget, WebSocketCancel, WebSocketCancellationDisposition,
     WebSocketErrorTarget, WebSocketFrame, WebSocketHeartbeat, WebSocketLimits, WebSocketPayload,
-    WebSocketPeer, WebSocketReceiveState, WebSocketRequest, WebSocketRequestTarget,
+    WebSocketPeer, WebSocketReceivengram, WebSocketRequest, WebSocketRequestTarget,
     WebSocketSendState, WebSocketSubscribe, WebSocketUnsubscribe,
 };
 use std::collections::{BTreeMap, BTreeSet};
@@ -55,7 +55,7 @@ pub struct RrdWebSocket {
     session_id: CorrelationId,
     limits: WebSocketLimits,
     sender: WebSocketSendState,
-    receiver: WebSocketReceiveState,
+    receiver: WebSocketReceivengram,
     pending_requests: BTreeMap<WebSocketRequestTarget, WebSocketRequest>,
     pending_cancellations: BTreeMap<CorrelationId, WebSocketCancel>,
     pending_subscriptions: BTreeMap<CorrelationId, SubscriptionResume>,
@@ -152,7 +152,7 @@ impl RrdClient {
         .map_err(|_| Error::Timeout)?
         .map_err(websocket_connect_error)?;
         let mut stream = connected.0;
-        let mut receiver = WebSocketReceiveState::awaiting_server(admission).map_err(contract)?;
+        let mut receiver = WebSocketReceivengram::awaiting_server(admission).map_err(contract)?;
         let first = receive_initial(
             &mut stream,
             &mut receiver,
@@ -693,7 +693,7 @@ fn acknowledgement_key(acknowledgement: &SubscriptionAcknowledgement) -> Acknowl
 
 async fn receive_initial(
     stream: &mut WebSocketStream<MaybeTlsStream<TcpStream>>,
-    receiver: &mut WebSocketReceiveState,
+    receiver: &mut WebSocketReceivengram,
     deadline: Instant,
 ) -> Result<WebSocketFrame> {
     loop {

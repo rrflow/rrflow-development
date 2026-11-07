@@ -33,12 +33,12 @@ Parse draft. The Connectome worktree inspected in another checkout was at
 the pin. A pinned-revision client audit remains necessary.
 
 Subsequently inspected `src/rrflow/attunement.ts` and targeted project,
-native SDK client and estate source at the exact pin, via GitHub's contents
+native SDK client and engram source at the exact pin, via GitHub's contents
 API and `git grep` against the existing submodule object. The phase module
 defines eleven static views and a 30–45 minute estimate; searches for the two
 constant names found only their definitions and a module-import search found no
 matches. The native client has authenticated SDK session/query code and the
-estate source has preview and digest-bound installation. These observations
+engram source has preview and digest-bound installation. These observations
 do not establish an end-to-end desktop test or a complete UI audit.
 
 Main advanced to `3622fa211a933bd05d9287c366da489c29b20b09`, merging PR 239
@@ -46,7 +46,7 @@ and pinning Connectome `c1cbff203ecee89013878609d11aed04e89d0e71`. The
 conflict inspector reported a clean merge; it was integrated by an ordinary
 merge. `git diff` of the old and new pins shows the phase module unchanged;
 `git grep` found the two declarations but no references to them or module
-imports at the new pin. The native client and estate files changed, so the
+imports at the new pin. The native client and engram files changed, so the
 older targeted inspection cannot qualify their current behavior; separate
 inspection of the newer checkout found SDK session/query and preview/apply
 paths. No actual desktop acceptance follows.
@@ -78,7 +78,7 @@ receipt/trace/resource evidence; no runtime instrumentation was added.
   results recorded below before commit.
 - Tests not run: engine, native process, Connectome, PostgreSQL, C-07 capacity
   and soak. This documentation-only package cannot establish their results.
-- Remaining: exact existing-estate compatibility decision, capability-owner
+- Remaining: exact existing-engram compatibility decision, capability-owner
   design, safe parser execution, pinned UI audit, and implementation/real
   process acceptance. No roadmap or POA&M completion status changes.
 

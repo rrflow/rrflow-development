@@ -41,7 +41,7 @@ submodule were fetched into a new clean checkout. Preparation service
 `rrflow-c07-desktop-prep-7c329d49` started at 2026-10-26 13:31:54 UTC. Locked
 offline release primary/harness compilation completed in 7m11s. Installation,
 authenticated storage observation and campaign validation succeeded; the
-preparation service exited zero. No failed estate was reused or deleted.
+preparation service exited zero. No failed engram was reused or deleted.
 
 The reviewed launcher started `rrflow-c07-desktop-integrated-7c329d49` at
 2026-10-26 13:40:06 UTC, with a 15150-second outer limit. Read-only inspection
@@ -57,7 +57,7 @@ Retained guest root:
 `/home/devcontainers/rrflow-c07-native-79663cdd/desktop-integrated-preflight-7c329d49/`.
 It contains campaign/configuration/build/installation identities,
 `service-launch.json`, `evidence/progress.jsonl` and launcher output. The fresh
-estate parent is `desktop-integrated-files-7c329d49`. Build log is the sibling
+engram parent is `desktop-integrated-files-7c329d49`. Build log is the sibling
 `desktop-preparation-7c329d49.log`. Local observations are retained as
 `target/c07-indexed-launch-inspection.log` and
 `target/c07-indexed-resource-inspection.log`. Terminal result and cleanup

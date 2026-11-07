@@ -39,7 +39,7 @@ record is required. Bootstrap, change-authoring, Gate D/evidence, POAM-006
 and the native secret-boundary journal were read completely; other owner
 reads focused on the applicable identity, outcome and acceptance sections.
 
-Complete implementation-file reads: engine `estate_layout.rs`,
+Complete implementation-file reads: engine `engram_layout.rs`,
 `installation/recovery.rs`, and `assets/install/default-profile-v1.json`.
 Targeted reads: `installation.rs` profile/configuration/preview types,
 `plan_installation`, `apply_installation_with_observer`, publication/cleanup

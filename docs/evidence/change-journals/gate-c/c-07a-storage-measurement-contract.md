@@ -42,7 +42,7 @@ dependency-spine current order, J-04 measurement structure, CI topology and
 verification commands, LSM `MaintenancePolicy`, `CompactionPolicy`,
 `DatabaseOptions`, `Durability` and WAL payload limit; store
 `physical_store_evidence`; engine `rrflow_kv_snapshot`; public
-`DiagnosticStorageSnapshot` and nested policy types, `EstateConfiguration`
+`DiagnosticStorageSnapshot` and nested policy types, `engramConfiguration`
 validation/default, endpoint catalogue and capability types; workspace
 architecture dependency checks and the existing provider evidence header.
 These larger engine/contract/test files were not read in full or changed.
@@ -63,7 +63,7 @@ All structures reject unknown fields. Identifiers/digests and finite positive
 limits have validated scalar domains; generated schema assertions retain
 those constraints. Input/output is at most 8 MiB; cases/bindings at most 256;
 attempts at most 10,000 across the result. Disjoint memory reservations fit
-the process allocation, estate allocations fit host memory, atomic work fits
+the process allocation, engram allocations fit host memory, atomic work fits
 its reservations, disk preserves temporary/recovery space, and deadlines fit
 the run. Timing uses JSON-exact bounded client monotonic nanosecond offsets.
 

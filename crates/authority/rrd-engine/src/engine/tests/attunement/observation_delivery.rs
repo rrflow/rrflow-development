@@ -674,7 +674,7 @@ fn observation_delivery_current_source_and_export_permissions_are_required() {
         SecurityAction::ObservationPrepare,
         SecurityAction::ObservationDeliver,
         SecurityAction::ObservationRead,
-        SecurityAction::EstateRead,
+        SecurityAction::engramRead,
     ] {
         let (_installed, engine, session, request) = setup(2);
         let first = prepare(&engine, &session, &request, BASE + 300).unwrap();

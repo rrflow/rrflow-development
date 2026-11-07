@@ -16,7 +16,7 @@ No measured segment or actual 24-hour soak started. The engine's exit cause
 was not captured; this repair does not establish or fix that cause.
 
 `tests/support/process.rs::Process::finish` previously returned on the first
-stdout-capture error before collecting stderr. `Estate::start_for` panicked
+stdout-capture error before collecting stderr. `engram::start_for` panicked
 before calling finish when the readiness channel disconnected. The same
 bounded capture now drains both streams, preserves capture failure, reaps the
 owned child and reports status plus at most the last 2 KiB of captured stderr.
@@ -37,7 +37,7 @@ corpus and lifecycle-process tests. Also read sustained lifecycle backup/reopen
 flow, native launcher/progress receipts, README/AGENTS, C-07, POAM035 and the
 change-authoring routine. This is a local failure-capture defect; no external
 algorithm or dependency is adapted. Existing capped process diagnostics are
-the debugging boundary. Captures are from test-owned synthetic estates, not
+the debugging boundary. Captures are from test-owned synthetic engrams, not
 user projects. The old early-return behavior maps directly to the same finish
 method; deadline/flood/readiness/finite-output tests characterize its limits.
 

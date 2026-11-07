@@ -30,7 +30,7 @@ the following packages.
 
 | Prior behavior | Canonical replacement | Evidence boundary |
 |---|---|---|
-| Managed paths are checked and returned as names | `estate_layout::EstateFilesystem` retains project and private-directory capabilities; `safe_join` returns `AnchoredPath` | Real installation root replacement at intent, directory and locator stages |
+| Managed paths are checked and returned as names | `engram_layout::engramFilesystem` retains project and private-directory capabilities; `safe_join` returns `AnchoredPath` | Real installation root replacement at intent, directory and locator stages |
 | Manifest, WAL, segment and inspection owners reopen ambient paths | `rrd-lsm::filesystem` supplies relative traversal, native mount/object admission, publication and cleanup; owners retain the capabilities | Manifest escape regression, filesystem fixtures and physical storage suites |
 | WAL recovery and segment authentication reopen their validated files | Replay/writer and header/digest/decode use the same file; successor WAL admission requires an empty valid stream | Existing crash, torn-tail, flush and snapshot suites |
 | Object verification returns a pathname | `verified_file` returns the authenticated handle; vector mapping and cluster transport consume it | Object leaf replacement preserves original bytes; vector and OpenRaft conformance |
@@ -47,7 +47,7 @@ The public source diff and generated file inventory bind exact changed paths.
 
 Affected existing files: LSM database, manifest, WAL, inspection, segment,
 snapshot and exports; store rrflowKV, object, backup and five archive modules;
-engine core, estate layout/control, installation/inventory/recovery, private
+engine core, engram layout/control, installation/inventory/recovery, private
 objects, backup/restore, operator and vector catalogue; vector compact,
 quantized, TurboQuant and runtime; cluster adapter and transport. Existing
 tests adapt explicit capability inputs without removing their assertions.
@@ -180,8 +180,8 @@ the complete pipeline; neither the empty anchor nor PR 48's CI qualifies it.
 - `crates/authority/rrd-engine/Cargo.toml`
 - `crates/authority/rrd-engine/src/engine/backup.rs`
 - `crates/authority/rrd-engine/src/engine/core.rs`
-- `crates/authority/rrd-engine/src/engine/estate_control.rs`
-- `crates/authority/rrd-engine/src/engine/estate_layout.rs`
+- `crates/authority/rrd-engine/src/engine/engram_control.rs`
+- `crates/authority/rrd-engine/src/engine/engram_layout.rs`
 - `crates/authority/rrd-engine/src/engine/installation.rs`
 - `crates/authority/rrd-engine/src/engine/installation/inventory.rs`
 - `crates/authority/rrd-engine/src/engine/installation/recovery.rs`

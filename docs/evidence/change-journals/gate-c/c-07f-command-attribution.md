@@ -30,7 +30,7 @@ Only a closed enum enters phase records; argument vectors, paths, digests,
 credentials and captured stdout are excluded. Repair-plan success/denial stays
 separate from explicitly authorized repair application.
 
-Traceability: `Estate::invoke` keeps all existing callers and assertions;
+Traceability: `engram::invoke` keeps all existing callers and assertions;
 `capacity_case` keeps the same repair plan/apply, independent history/readback
 and retry-receipt proof. The common wrapper replaces only duplicated process
 invocation. No runtime or recovery policy moves. Stop on widened deadlines,
@@ -61,8 +61,8 @@ the call-site trace against the source used by both reports.
   repair is not evidence that this failure is fixed.
 - [PR23, run 40121518000](https://github.com/rrflow/rrflow-development/actions/runs/40121518000):
   the fresh ext4 WAL case filled 242651136 bytes, obtained native code 28 and
-  returned `api-Internal`. The subsequent `Estate::invoke` exceeded 120 seconds.
-  The stack names `capacity_case`'s async closure; its sole `Estate::invoke`
+  returned `api-Internal`. The subsequent `engram::invoke` exceeded 120 seconds.
+  The stack names `capacity_case`'s async closure; its sole `engram::invoke`
   call applies the repair plan. Thus command attribution is `repair apply`,
   while the expensive/stalled subphase and cause are unknown. Hashing, copy,
   replay and publication remain possibilities, not measured diagnoses.

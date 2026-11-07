@@ -26,7 +26,7 @@ remaining known errors and owner: moving the TypeScript SDK to TypeScript 7 wait
 full-file reread and diff review: complete for every changed authored file before commit.
 change checklist: complete — owner chain, required documentation owners, link closure, generated indexes, unchanged runtime and generated surfaces, and floors matching candidate CI reconciled.
 roadmap/POA&M status change, or explicit none: none.
-pull request, CI run, and merge evidence: pull request #2 carries the candidate CI runs and the merge; this record does not restate them.
+pull request, CI run, and merge evidence: pull request #2 carries the candidate CI runs and the merge; this record does not rengram them.
 ```
 
 ## Links

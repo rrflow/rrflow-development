@@ -1,6 +1,6 @@
 use super::{
     encode, validate_ascii_key, validate_context, validate_error, validate_id_key, validate_sha256,
-    Error, EstateDocument, EstateRepository, MutationContext, ObservedPhase, OperationLease,
+    Error, engramDocument, engramRepository, MutationContext, ObservedPhase, OperationLease,
     Result,
 };
 use rrd_contract::CanonicalId;
@@ -48,7 +48,7 @@ pub struct BackupJobReceipt {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct EstateBackupJob {
+pub struct engramBackupJob {
     pub id: CanonicalId,
     pub instance_id: CanonicalId,
     pub source_generation: u64,
@@ -101,8 +101,8 @@ pub struct ScheduleBackup {
 
 #[derive(Debug, Clone)]
 pub struct BackupScheduleOutcome {
-    pub document: EstateDocument,
-    pub job: EstateBackupJob,
+    pub document: engramDocument,
+    pub job: engramBackupJob,
     pub idempotent_replay: bool,
 }
 
@@ -146,13 +146,13 @@ pub struct BackupFailRequest {
     pub error: String,
 }
 
-impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
+impl<'a, E: StorageEngine + ?Sized> engramRepository<'a, E> {
     pub fn schedule_backup(&self, request: &ScheduleBackup) -> Result<BackupScheduleOutcome> {
         validate_context(&request.context)?;
         validate_ascii_key(&request.idempotency_key, "backup idempotency key")?;
         validate_backup_label(&request.label)?;
         let Some(current_bytes) = self.engine.control().get(&self.key)? else {
-            return Err(Error::NotFound(self.estate_id.to_string()));
+            return Err(Error::NotFound(self.engram_id.to_string()));
         };
         let mut document = super::decode(&current_bytes)?;
 
@@ -192,7 +192,7 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
             || document.backup_idempotency.len() == MAX_BACKUP_IDEMPOTENCY_BINDINGS
         {
             return Err(Error::Invalid(
-                "estate backup job history is at its v1 bound".into(),
+                "engram backup job history is at its v1 bound".into(),
             ));
         }
         let source_generation = {
@@ -231,7 +231,7 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
             &request.label,
             &recovery_policy,
         );
-        let job = EstateBackupJob {
+        let job = engramBackupJob {
             id: request.context.operation_id.clone(),
             instance_id: request.instance_id.clone(),
             source_generation,
@@ -262,7 +262,7 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
             current_bytes,
             document,
             &request.context,
-            "estate.backup.schedule",
+            "engram.backup.schedule",
         )?;
         Ok(BackupScheduleOutcome {
             document,
@@ -271,14 +271,14 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
         })
     }
 
-    pub fn acquire_backup_lease(&self, request: &BackupLeaseRequest) -> Result<EstateDocument> {
+    pub fn acquire_backup_lease(&self, request: &BackupLeaseRequest) -> Result<engramDocument> {
         validate_context(&request.context)?;
         if !(1_000..=3_600_000).contains(&request.lease_ms) {
             return Err(Error::Invalid(
                 "backup lease_ms must be in 1000..=3600000".into(),
             ));
         }
-        self.update(&request.context, "estate.backup.lease", |document| {
+        self.update(&request.context, "engram.backup.lease", |document| {
             let job = backup_job_mut(document, &request.context.operation_id)?;
             if job.state.is_terminal() {
                 return Err(Error::Invalid(
@@ -328,10 +328,10 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
     pub fn record_backup_prepared(
         &self,
         request: &BackupPreparedRequest,
-    ) -> Result<EstateDocument> {
+    ) -> Result<engramDocument> {
         validate_context(&request.context)?;
         validate_sha256(&request.evidence_sha256, "backup prepared evidence")?;
-        self.update(&request.context, "estate.backup.prepared", |document| {
+        self.update(&request.context, "engram.backup.prepared", |document| {
             let job = backup_job_mut(document, &request.context.operation_id)?;
             if let Some(existing) = job.receipts.iter().find(|receipt| {
                 receipt.boundary == BackupReceiptBoundary::Prepared
@@ -371,10 +371,10 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
     pub fn record_backup_completed(
         &self,
         request: &BackupCompleteRequest,
-    ) -> Result<EstateDocument> {
+    ) -> Result<engramDocument> {
         validate_context(&request.context)?;
         validate_backup_result_fields(&request.result)?;
-        self.update(&request.context, "estate.backup.completed", |document| {
+        self.update(&request.context, "engram.backup.completed", |document| {
             let instance_id = document
                 .backup_jobs
                 .get(request.context.operation_id.as_str())
@@ -430,11 +430,11 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
         })
     }
 
-    pub fn record_backup_failed(&self, request: &BackupFailRequest) -> Result<EstateDocument> {
+    pub fn record_backup_failed(&self, request: &BackupFailRequest) -> Result<engramDocument> {
         validate_context(&request.context)?;
         validate_sha256(&request.evidence_sha256, "backup failure evidence")?;
         validate_error(Some(&request.error))?;
-        self.update(&request.context, "estate.backup.failed", |document| {
+        self.update(&request.context, "engram.backup.failed", |document| {
             let job = backup_job_mut(document, &request.context.operation_id)?;
             validate_backup_lease(
                 job,
@@ -464,19 +464,19 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
     fn commit_backup_schedule(
         &self,
         expected: Vec<u8>,
-        mut document: EstateDocument,
+        mut document: engramDocument,
         context: &MutationContext,
         action: &str,
-    ) -> Result<EstateDocument> {
+    ) -> Result<engramDocument> {
         if context.at < document.updated_at {
             return Err(Error::Invalid(
-                "mutation timestamp precedes the estate revision".into(),
+                "mutation timestamp precedes the engram revision".into(),
             ));
         }
         document.revision = document
             .revision
             .checked_add(1)
-            .ok_or_else(|| Error::Invalid("estate revision overflow".into()))?;
+            .ok_or_else(|| Error::Invalid("engram revision overflow".into()))?;
         document.updated_at = context.at;
         document.validate()?;
         self.engine.control().commit(&ControlTransition {
@@ -493,10 +493,10 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
     }
 }
 
-pub fn public_backup_jobs(document: &EstateDocument) -> rrd_contract::EstateBackupJobsSnapshot {
-    rrd_contract::EstateBackupJobsSnapshot {
-        estate_id: document.id.clone(),
-        estate_revision: document.revision,
+pub fn public_backup_jobs(document: &engramDocument) -> rrd_contract::engramBackupJobsSnapshot {
+    rrd_contract::engramBackupJobsSnapshot {
+        engram_id: document.id.clone(),
+        engram_revision: document.revision,
         jobs: document
             .backup_jobs
             .values()
@@ -505,19 +505,19 @@ pub fn public_backup_jobs(document: &EstateDocument) -> rrd_contract::EstateBack
     }
 }
 
-pub fn public_backup_job(job: &EstateBackupJob) -> rrd_contract::EstateBackupJobSnapshot {
-    rrd_contract::EstateBackupJobSnapshot {
+pub fn public_backup_job(job: &engramBackupJob) -> rrd_contract::engramBackupJobSnapshot {
+    rrd_contract::engramBackupJobSnapshot {
         id: job.id.clone(),
         instance_id: job.instance_id.clone(),
         source_generation: job.source_generation,
         label: job.label.clone(),
         request_sha256: job.request_sha256.clone(),
         state: match job.state {
-            BackupJobState::Pending => rrd_contract::EstateBackupJobState::Pending,
-            BackupJobState::Leased => rrd_contract::EstateBackupJobState::Leased,
-            BackupJobState::Prepared => rrd_contract::EstateBackupJobState::Prepared,
-            BackupJobState::Succeeded => rrd_contract::EstateBackupJobState::Succeeded,
-            BackupJobState::Failed => rrd_contract::EstateBackupJobState::Failed,
+            BackupJobState::Pending => rrd_contract::engramBackupJobState::Pending,
+            BackupJobState::Leased => rrd_contract::engramBackupJobState::Leased,
+            BackupJobState::Prepared => rrd_contract::engramBackupJobState::Prepared,
+            BackupJobState::Succeeded => rrd_contract::engramBackupJobState::Succeeded,
+            BackupJobState::Failed => rrd_contract::engramBackupJobState::Failed,
         },
         attempts: job.attempts,
         created_at_unix_ms: job.created_at,
@@ -525,7 +525,7 @@ pub fn public_backup_job(job: &EstateBackupJob) -> rrd_contract::EstateBackupJob
         lease: job
             .lease
             .as_ref()
-            .map(|lease| rrd_contract::EstateLeaseSnapshot {
+            .map(|lease| rrd_contract::engramLeaseSnapshot {
                 owner: lease.owner.clone(),
                 epoch: lease.epoch,
                 acquired_at_unix_ms: lease.acquired_at,
@@ -534,16 +534,16 @@ pub fn public_backup_job(job: &EstateBackupJob) -> rrd_contract::EstateBackupJob
         receipts: job
             .receipts
             .iter()
-            .map(|receipt| rrd_contract::EstateBackupReceiptSnapshot {
+            .map(|receipt| rrd_contract::engramBackupReceiptSnapshot {
                 boundary: match receipt.boundary {
                     BackupReceiptBoundary::Prepared => {
-                        rrd_contract::EstateBackupReceiptBoundary::Prepared
+                        rrd_contract::engramBackupReceiptBoundary::Prepared
                     }
                     BackupReceiptBoundary::Completed => {
-                        rrd_contract::EstateBackupReceiptBoundary::Completed
+                        rrd_contract::engramBackupReceiptBoundary::Completed
                     }
                     BackupReceiptBoundary::Failed => {
-                        rrd_contract::EstateBackupReceiptBoundary::Failed
+                        rrd_contract::engramBackupReceiptBoundary::Failed
                     }
                 },
                 lease_epoch: receipt.lease_epoch,
@@ -555,7 +555,7 @@ pub fn public_backup_job(job: &EstateBackupJob) -> rrd_contract::EstateBackupJob
         archive_sha256: job.archive_sha256.clone(),
         catalogue_sha256: job.catalogue_sha256.clone(),
         error: job.error.clone(),
-        recovery_policy: rrd_contract::EstateBackupRecoveryPolicySnapshot {
+        recovery_policy: rrd_contract::engramBackupRecoveryPolicySnapshot {
             revision: job.recovery_policy.revision,
             max_rpo_ms: job.recovery_policy.max_rpo_ms,
             max_rto_ms: job.recovery_policy.max_rto_ms,
@@ -565,12 +565,12 @@ pub fn public_backup_job(job: &EstateBackupJob) -> rrd_contract::EstateBackupJob
     }
 }
 
-pub(crate) fn validate_backup_state(document: &EstateDocument) -> Result<()> {
+pub(crate) fn validate_backup_state(document: &engramDocument) -> Result<()> {
     if document.backup_jobs.len() > MAX_BACKUP_JOBS
         || document.backup_idempotency.len() > MAX_BACKUP_IDEMPOTENCY_BINDINGS
     {
         return Err(Error::Invalid(
-            "estate backup job cardinality exceeded".into(),
+            "engram backup job cardinality exceeded".into(),
         ));
     }
     for (key, job) in &document.backup_jobs {
@@ -638,7 +638,7 @@ pub(crate) fn validate_backup_state(document: &EstateDocument) -> Result<()> {
     Ok(())
 }
 
-fn validate_backup_result(job: &EstateBackupJob) -> Result<()> {
+fn validate_backup_result(job: &engramBackupJob) -> Result<()> {
     let result_count = [
         job.backup_id.as_deref(),
         job.archive_sha256.as_deref(),
@@ -717,9 +717,9 @@ fn validate_backup_result(job: &EstateBackupJob) -> Result<()> {
 }
 
 fn backup_job_mut<'a>(
-    document: &'a mut EstateDocument,
+    document: &'a mut engramDocument,
     id: &CanonicalId,
-) -> Result<&'a mut EstateBackupJob> {
+) -> Result<&'a mut engramBackupJob> {
     document
         .backup_jobs
         .get_mut(id.as_str())
@@ -727,7 +727,7 @@ fn backup_job_mut<'a>(
 }
 
 fn validate_backup_lease(
-    job: &EstateBackupJob,
+    job: &engramBackupJob,
     worker: &CanonicalId,
     epoch: u64,
     at: u64,
@@ -743,7 +743,7 @@ fn validate_backup_lease(
 }
 
 fn push_backup_receipt(
-    job: &mut EstateBackupJob,
+    job: &mut engramBackupJob,
     boundary: BackupReceiptBoundary,
     lease_epoch: u64,
     at: u64,
@@ -791,7 +791,7 @@ fn backup_request_sha256(
 ) -> String {
     digest::sha256_hex(
         &serde_json::to_vec(&(
-            "rrd-estate-backup-create-v1",
+            "rrd-engram-backup-create-v1",
             instance_id,
             source_generation,
             label,
@@ -801,7 +801,7 @@ fn backup_request_sha256(
     )
 }
 
-pub(crate) fn empty_backup_jobs() -> BTreeMap<String, EstateBackupJob> {
+pub(crate) fn empty_backup_jobs() -> BTreeMap<String, engramBackupJob> {
     BTreeMap::new()
 }
 

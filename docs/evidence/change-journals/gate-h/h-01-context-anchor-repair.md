@@ -58,7 +58,7 @@ Native Windows, pinned Rust 1.99.1; Cargo commands use
   unused import/helper warnings result from that gating; these are not hidden
   as clean Windows lifecycle proof or repaired by this package.
 - `cargo build --locked -p rrd-client --example rrflowdb`: passed.
-- `python ../rrflow-reasoning-installed-smoke.py`: a fresh Windows estate used
+- `python ../rrflow-reasoning-installed-smoke.py`: a fresh Windows engram used
   the rebuilt real `rrflow.exe` and native HTTP example client. Exact installation,
   authenticated readiness, related-record creation, commit/update, transaction
   abort, process termination, offline quick verification and reopen passed.

@@ -227,11 +227,11 @@ ownership receipt remain in this campaign's directory; no host policy changed.
 
 The 10k diagnostic finished in 517.08 seconds with all 10,000 writes acknowledged
 and all 10,000 independent corpus verifications recorded, then failed the first
-forced restart at `installed_reopen.rs::Estate::start_for`: readiness channel
+forced restart at `installed_reopen.rs::engram::start_for`: readiness channel
 `Disconnected`. Zero measured segments were produced; the failed campaign is
 `b924beb05732bcda541228c24de6d0bc09d8aaa53792a1458cd389849b0a8d7f`.
 Launcher exit 101 and confirmed owned cleanup are retained. Test-owned temporary
-estate files were removed by the existing guard; this does not prove the cause
+engram files were removed by the existing guard; this does not prove the cause
 of startup exit. Capture discarded stderr before the panic, so the actual engine
 error remains unknown. Preserve this failed result; neither cache sizing nor
 the backup repair is full growth acceptance. The

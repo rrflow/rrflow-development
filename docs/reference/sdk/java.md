@@ -317,7 +317,7 @@ safe causes are retained without embedding arbitrary messages, URLs, headers,
 or transport dumps in public error text.
 
 Every operation propagates canonical request and operation IDs plus valid W3C
-`traceparent`/`tracestate`. Logical attempts are children of one semantic
+`traceparent`/`tracengram`. Logical attempts are children of one semantic
 operation; executor wait, DNS, connect, TLS, pool, headers, body, reconnect,
 and endpoint rotation are bounded attributes or causal links. Java Flight
 Recorder, OpenTelemetry, or application logging may observe those facts only
@@ -418,7 +418,7 @@ Current evidence is deliberately bounded:
 The live corpus currently exercises capability retry/version rejection,
 catalogue count, one authentication denial, session create/renew/close, vector
 ensure/search, transaction begin/preview/abort/commit, one query, changefeed
-read/follow/local timeout, backup create/list, and estate read. Its declared
+read/follow/local timeout, backup create/list, and engram read. Its declared
 domain labels overstate CRUD, backup/restore, vector, live delivery,
 typed-error, retry/failure, cancellation, and version/artifact coverage as
 catalogued in the [Rust reference](rust.md#conformance-that-actually-counts).
@@ -541,5 +541,5 @@ The dependency order is:
   require protection against oversized frames and reassembled messages; B-04
   defines RRFlow queue, identity, cursor, generation, and backpressure bounds.
 - [W3C Trace Context](https://www.w3.org/TR/trace-context/) defines
-  `traceparent` and `tracestate`; RRFlow owns validation, causal links,
+  `traceparent` and `tracengram`; RRFlow owns validation, causal links,
   redaction, and evidence meaning.

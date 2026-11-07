@@ -41,7 +41,7 @@ Implementation inspection was targeted, not a complete Rust source audit:
 | `rrd-inference/src/lib.rs::RouterModelArtifacts`, `verify_router_model_before_load`, `load_router_model_after_handshake` | Retain the existing compute boundary and byte admission. No replacement or relocation. |
 | `rrd-inference/tests/pipeline.rs` router admission and corruption/drift rejection tests | Preserve rejection before the loader. These tests were read, not run locally for a documentation-only change. |
 | `rrd-engine/src/engine/inference.rs` admission/catalogue/generation excerpts | Preserve engine authority; G-01a already owns registry-lock correction. Training must not bypass it with another executor. |
-| Existing `EstateConfiguration` and `EndpointProfile` declarations and endpoint/hardware validation excerpts | Extend existing configuration owners in future D-06/G-01b work; global preferences are explicitly accepted per estate. |
+| Existing `engramConfiguration` and `EndpointProfile` declarations and endpoint/hardware validation excerpts | Extend existing configuration owners in future D-06/G-01b work; global preferences are explicitly accepted per engram. |
 
 No source behavior, caller, wire schema, persistence format or test is removed
 or rewritten. Therefore no replacement-equivalence evidence is claimed.

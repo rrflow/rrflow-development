@@ -1,6 +1,6 @@
 //! The single RRFlow engine composition root.
 //!
-//! Physical storage, query, vector, estate, and security components are
+//! Physical storage, query, vector, engram, and security components are
 //! composed here. Daemon and embedded faces consume this API instead of
 //! constructing those components independently.
 
@@ -22,15 +22,15 @@ pub use capabilities::product_capability_catalogue;
 pub use edge::{OfflineDocument, OfflineEdgeConfig, OfflineEdgeIndex, OfflineQueryResult};
 #[cfg(feature = "full")]
 pub use engine::{
-    attunement_proposal_schema, load_attunement_proposal, load_estate_configuration,
+    attunement_proposal_schema, load_attunement_proposal, load_engram_configuration,
     AttunementCommand, AttunementControlResult, AttunementProposal, AttunementProposalStep,
     AttunementReceiptView, AttunementReplanPreview, AttunementReplanReceiptView,
     AttunementReplanResult, AuthorizedInvocation, ClockAssessment, ClockAssessmentStatus,
     ClockObservation, ClockObservationFailure, ClockSourceKind, ClockTrustLevel,
     DefaultAttunementPhase, DefaultInstallProfile, DistributedAuthorityRead, DistributedReadRoute,
-    EndpointCredentials, EstateAdminAction, EstateAdminResult, EstateBackupReconcileOutcome,
-    EstateReconcileOutcome, InstallationPreview, InstallationVerificationCheck,
-    InstallationVerificationReport, InstallationVerificationStatus, InstalledEstateRecord,
+    EndpointCredentials, engramAdminAction, engramAdminResult, engramBackupReconcileOutcome,
+    engramReconcileOutcome, InstallationPreview, InstallationVerificationCheck,
+    InstallationVerificationReport, InstallationVerificationStatus, InstalledengramRecord,
     InstalledTailRepairPlan, InstalledTailRepairReceipt, Invocation, InvocationCompletion,
     InvocationCredential, PreparedDistributedAuthority, ProjectLocator, ProjectMapSummary,
     ReasoningBudgetStop, Result, RrdEngine, RrdOperation, ServiceError, ServiceErrorKind,

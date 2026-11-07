@@ -177,7 +177,7 @@ The owner directed rrflowQL to remain relational; canonical relationships and
 dynamically selected graph-shaped views share the rrflowDB transaction. The
 target now requires native ordered adjacency, the C-06g-derived stamped
 projected stream, the configured physical page cache, bounded memtable merge
-and mapped-buffer lifetime, with no raw-pointer bypass. An estate-scoped
+and mapped-buffer lifetime, with no raw-pointer bypass. An engram-scoped
 (table, ID) remains the record identity for structured and schemaless records.
 The current executor uses `AdjacencyExpansion` and
 `read_versioned_expanding`. Tracing the repository transaction further shows

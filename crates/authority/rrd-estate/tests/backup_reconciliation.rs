@@ -1,9 +1,9 @@
 use rrd_contract::CanonicalId;
 use rrd_core::digest;
-use rrd_estate::{
+use rrd_engram::{
     BackupCompleteRequest, BackupDriverRequest, BackupJobState, BackupLeaseRequest,
     BackupReconcileBoundary, BackupReconcileOutcome, BackupReconciler, BackupResult, DesiredPhase,
-    DesiredTarget, DriverError, Error, EstateBackupDriver, EstateRepository, LeaseRequest,
+    DesiredTarget, DriverError, Error, engramBackupDriver, engramRepository, LeaseRequest,
     MutationContext, ObservationRequest, ObservedPhase, ReceiptBoundary, ReceiptRequest,
     ScheduleBackup, SetDesired,
 };
@@ -25,9 +25,9 @@ fn context(at: u64, request: &str, operation: &str) -> MutationContext {
 }
 
 fn prepare_backup_job<E: StorageEngine>(engine: &E) {
-    let repository = EstateRepository::new(engine, id("estate-a"));
+    let repository = engramRepository::new(engine, id("engram-a"));
     repository
-        .create(&context(10, "create-estate", "create-estate"))
+        .create(&context(10, "create-engram", "create-engram"))
         .unwrap();
     repository
         .set_desired(&SetDesired {
@@ -121,7 +121,7 @@ impl LostAckDriver {
     }
 }
 
-impl EstateBackupDriver for LostAckDriver {
+impl engramBackupDriver for LostAckDriver {
     fn create(
         &mut self,
         request: &BackupDriverRequest,
@@ -140,14 +140,14 @@ impl EstateBackupDriver for LostAckDriver {
 #[test]
 fn prepared_job_replays_one_durable_effect_after_reopen() {
     let temporary = tempfile::tempdir().unwrap();
-    let database = temporary.path().join("estate-native");
+    let database = temporary.path().join("engram-native");
     let marker = temporary.path().join("effect.marker");
     {
         let engine = RrflowKvStore::open(&database).unwrap();
         prepare_backup_job(&engine);
         let mut reconciler = BackupReconciler::new(
             &engine,
-            id("estate-a"),
+            id("engram-a"),
             id("backup-worker"),
             1_000,
             LostAckDriver {
@@ -168,7 +168,7 @@ fn prepared_job_replays_one_durable_effect_after_reopen() {
             BackupReconcileOutcome::Deferred { .. }
         ));
         assert!(marker.is_file());
-        let document = EstateRepository::new(&engine, id("estate-a"))
+        let document = engramRepository::new(&engine, id("engram-a"))
             .load()
             .unwrap()
             .unwrap();
@@ -181,7 +181,7 @@ fn prepared_job_replays_one_durable_effect_after_reopen() {
     let engine = RrflowKvStore::open(&database).unwrap();
     let mut reconciler = BackupReconciler::new(
         &engine,
-        id("estate-a"),
+        id("engram-a"),
         id("backup-worker"),
         1_000,
         LostAckDriver {
@@ -198,7 +198,7 @@ fn prepared_job_replays_one_durable_effect_after_reopen() {
         BackupReconcileOutcome::Idle
     ));
     assert_eq!(fs::read_to_string(marker).unwrap().len(), 64);
-    let job = &EstateRepository::new(&engine, id("estate-a"))
+    let job = &engramRepository::new(&engine, id("engram-a"))
         .load()
         .unwrap()
         .unwrap()
@@ -211,7 +211,7 @@ fn prepared_job_replays_one_durable_effect_after_reopen() {
 fn expired_prepared_lease_is_taken_over_and_stale_worker_is_fenced() {
     let engine = rrd_store::RrflowMxStore::new();
     prepare_backup_job(&engine);
-    let repository = EstateRepository::new(&engine, id("estate-a"));
+    let repository = engramRepository::new(&engine, id("engram-a"));
     repository
         .acquire_backup_lease(&BackupLeaseRequest {
             context: context(90, "lease-backup-one", "backup-daily"),
@@ -220,7 +220,7 @@ fn expired_prepared_lease_is_taken_over_and_stale_worker_is_fenced() {
         })
         .unwrap();
     repository
-        .record_backup_prepared(&rrd_estate::BackupPreparedRequest {
+        .record_backup_prepared(&rrd_engram::BackupPreparedRequest {
             context: context(100, "prepare-backup-one", "backup-daily"),
             worker: id("worker-one"),
             lease_epoch: 1,

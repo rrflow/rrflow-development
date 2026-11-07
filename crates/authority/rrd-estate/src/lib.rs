@@ -1,4 +1,4 @@
-//! Persistent estate authority for RRD.
+//! Persistent engram authority for RRD.
 //!
 //! This crate owns transport-neutral desired/observed state and durable
 //! reconciliation boundaries. Connectome is a projection of these records,
@@ -15,22 +15,22 @@ mod recovery;
 pub use authority::{
     ApplyAuthority, AuthorityDesiredState, AuthorityIdempotencyBinding, AuthorityMutationOutcome,
     AuthorityObservedState, AuthorityReceipt, AuthorityReceiptBoundary, AuthorityResource,
-    AuthorityResourceKind, AuthorityStatus, EstateAuthorityState, ESTATE_AUTHORITY_FORMAT,
+    AuthorityResourceKind, AuthorityStatus, engramAuthorityState, engram_AUTHORITY_FORMAT,
     MAX_AUTHORITY_IDEMPOTENCY_BINDINGS, MAX_AUTHORITY_RECEIPTS, MAX_AUTHORITY_RESOURCES,
 };
 pub use backup_job::{
     public_backup_job, public_backup_jobs, BackupCompleteRequest, BackupFailRequest,
     BackupIdempotencyBinding, BackupJobReceipt, BackupJobState, BackupLeaseRequest,
     BackupPreparedRequest, BackupReceiptBoundary, BackupRecoveryPolicySnapshot, BackupResult,
-    BackupScheduleOutcome, EstateBackupJob, ScheduleBackup, MAX_BACKUP_IDEMPOTENCY_BINDINGS,
+    BackupScheduleOutcome, engramBackupJob, ScheduleBackup, MAX_BACKUP_IDEMPOTENCY_BINDINGS,
     MAX_BACKUP_JOBS, MAX_BACKUP_RECEIPTS_PER_JOB,
 };
 pub use backup_reconcile::{
     BackupDriverRequest, BackupReconcileBoundary, BackupReconcileOutcome, BackupReconciler,
-    EstateBackupDriver,
+    engramBackupDriver,
 };
 pub use local_authorization::{
-    LocalEstatePermission, LocalOperatorAuthorization, LocalOperatorPolicy,
+    LocalengramPermission, LocalOperatorAuthorization, LocalOperatorPolicy,
     LOCAL_OPERATOR_POLICY_FORMAT,
 };
 pub use local_process::{
@@ -38,13 +38,13 @@ pub use local_process::{
     LocalShutdown, LOCAL_DEPLOYMENT_FORMAT,
 };
 pub use reconcile::{
-    DriverEffect, DriverError, DriverErrorKind, DriverObservation, DriverRequest, EstateDriver,
+    DriverEffect, DriverError, DriverErrorKind, DriverObservation, DriverRequest, engramDriver,
     ReconcileBoundary, ReconcileOutcome, Reconciler,
 };
 pub use recovery::{
     public_recovery_snapshot, public_retention_decision, retention_decision, CompleteRecoveryPrune,
-    EstateRecoveryPoint, EstateRecoveryPolicy, EstateRecoveryPruneIntent, EstateRestoreEvidence,
-    EstateRetentionDecision, EstateRetentionPin, EstateRetentionPinKind, PinRecoveryPoint,
+    engramRecoveryPoint, engramRecoveryPolicy, engramRecoveryPruneIntent, engramRestoreEvidence,
+    engramRetentionDecision, engramRetentionPin, engramRetentionPinKind, PinRecoveryPoint,
     PrepareRecoveryPrune, RecordRestoreEvidence, RecoveryIdempotencyBinding,
     RecoveryMutationOutcome, ReleaseRecoveryPin, SetRecoveryPolicy,
     MAX_RECOVERY_IDEMPOTENCY_BINDINGS, MAX_RECOVERY_PINS, MAX_RECOVERY_POINTS,
@@ -58,7 +58,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fmt;
 
-pub const ESTATE_FORMAT: u16 = 1;
+pub const engram_FORMAT: u16 = 1;
 pub const MAX_INSTANCES: usize = 1_024;
 pub const MAX_OPERATIONS: usize = 4_096;
 pub const MAX_IDEMPOTENCY_BINDINGS: usize = 4_096;
@@ -81,18 +81,18 @@ pub enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Store(error) => write!(formatter, "estate storage failed: {error}"),
-            Self::Invalid(message) => write!(formatter, "invalid estate state: {message}"),
-            Self::NotFound(id) => write!(formatter, "estate resource not found: {id}"),
-            Self::AlreadyExists(id) => write!(formatter, "estate already exists: {id}"),
+            Self::Store(error) => write!(formatter, "engram storage failed: {error}"),
+            Self::Invalid(message) => write!(formatter, "invalid engram state: {message}"),
+            Self::NotFound(id) => write!(formatter, "engram resource not found: {id}"),
+            Self::AlreadyExists(id) => write!(formatter, "engram already exists: {id}"),
             Self::IdempotencyConflict(key) => {
-                write!(formatter, "estate idempotency key was rebound: {key}")
+                write!(formatter, "engram idempotency key was rebound: {key}")
             }
             Self::LeaseBusy(operation) => {
-                write!(formatter, "estate operation lease is held: {operation}")
+                write!(formatter, "engram operation lease is held: {operation}")
             }
             Self::StaleLease(operation) => {
-                write!(formatter, "estate operation lease is stale: {operation}")
+                write!(formatter, "engram operation lease is stale: {operation}")
             }
         }
     }
@@ -291,7 +291,7 @@ pub struct OperationReceipt {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct EstateOperation {
+pub struct engramOperation {
     pub id: CanonicalId,
     pub instance_id: CanonicalId,
     pub kind: OperationKind,
@@ -319,38 +319,38 @@ pub struct IdempotencyBinding {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct EstateDocument {
+pub struct engramDocument {
     pub format: u16,
     pub id: CanonicalId,
     pub revision: u64,
     pub created_at: u64,
     pub updated_at: u64,
     pub activity_policy: ActivityPolicy,
-    pub authority: EstateAuthorityState,
+    pub authority: engramAuthorityState,
     pub instances: BTreeMap<String, ManagedInstance>,
-    pub operations: BTreeMap<String, EstateOperation>,
+    pub operations: BTreeMap<String, engramOperation>,
     pub idempotency: BTreeMap<String, IdempotencyBinding>,
-    pub backup_jobs: BTreeMap<String, EstateBackupJob>,
+    pub backup_jobs: BTreeMap<String, engramBackupJob>,
     pub backup_idempotency: BTreeMap<String, BackupIdempotencyBinding>,
-    pub recovery_policies: BTreeMap<String, EstateRecoveryPolicy>,
-    pub recovery_points: BTreeMap<String, EstateRecoveryPoint>,
-    pub recovery_pins: BTreeMap<String, EstateRetentionPin>,
-    pub restore_evidence: BTreeMap<String, EstateRestoreEvidence>,
+    pub recovery_policies: BTreeMap<String, engramRecoveryPolicy>,
+    pub recovery_points: BTreeMap<String, engramRecoveryPoint>,
+    pub recovery_pins: BTreeMap<String, engramRetentionPin>,
+    pub restore_evidence: BTreeMap<String, engramRestoreEvidence>,
     pub recovery_idempotency: BTreeMap<String, RecoveryIdempotencyBinding>,
-    pub recovery_prune_intents: BTreeMap<String, EstateRecoveryPruneIntent>,
+    pub recovery_prune_intents: BTreeMap<String, engramRecoveryPruneIntent>,
 }
 
-impl EstateDocument {
+impl engramDocument {
     pub fn new(id: CanonicalId, at: u64) -> Result<Self> {
         require_time(at)?;
         Ok(Self {
-            format: ESTATE_FORMAT,
+            format: engram_FORMAT,
             id,
             revision: 1,
             created_at: at,
             updated_at: at,
             activity_policy: ActivityPolicy::default(),
-            authority: EstateAuthorityState::default(),
+            authority: engramAuthorityState::default(),
             instances: BTreeMap::new(),
             operations: BTreeMap::new(),
             idempotency: BTreeMap::new(),
@@ -366,16 +366,16 @@ impl EstateDocument {
     }
 
     pub fn validate(&self) -> Result<()> {
-        if self.format != ESTATE_FORMAT || self.revision == 0 {
+        if self.format != engram_FORMAT || self.revision == 0 {
             return Err(Error::Invalid(
-                "unsupported estate format or revision".into(),
+                "unsupported engram format or revision".into(),
             ));
         }
         require_time(self.created_at)?;
         require_time(self.updated_at)?;
         if self.updated_at < self.created_at {
             return Err(Error::Invalid(
-                "estate updated_at precedes created_at".into(),
+                "engram updated_at precedes created_at".into(),
             ));
         }
         self.activity_policy.validate()?;
@@ -385,7 +385,7 @@ impl EstateDocument {
             || self.idempotency.len() > MAX_IDEMPOTENCY_BINDINGS
         {
             return Err(Error::Invalid(
-                "estate aggregate cardinality exceeded".into(),
+                "engram aggregate cardinality exceeded".into(),
             ));
         }
         for (key, instance) in &self.instances {
@@ -474,30 +474,30 @@ impl EstateDocument {
         self.instances.get(id.as_str())
     }
 
-    pub fn operation(&self, id: &CanonicalId) -> Option<&EstateOperation> {
+    pub fn operation(&self, id: &CanonicalId) -> Option<&engramOperation> {
         self.operations.get(id.as_str())
     }
 }
 
-pub fn public_snapshot(document: &EstateDocument) -> rrd_contract::EstateSnapshot {
-    rrd_contract::EstateSnapshot {
+pub fn public_snapshot(document: &engramDocument) -> rrd_contract::engramSnapshot {
+    rrd_contract::engramSnapshot {
         format_version: document.format,
         id: document.id.clone(),
         revision: document.revision,
         created_at_unix_ms: document.created_at,
         updated_at_unix_ms: document.updated_at,
-        activity_policy: rrd_contract::EstateActivityPolicySnapshot {
+        activity_policy: rrd_contract::engramActivityPolicySnapshot {
             idle_after_ms: document.activity_policy.idle_after_ms,
             stale_after_ms: document.activity_policy.stale_after_ms,
             neglected_after_ms: document.activity_policy.neglected_after_ms,
         },
-        authority: rrd_contract::EstateAuthoritySnapshot {
+        authority: rrd_contract::engramAuthoritySnapshot {
             catalogue_sha256: document.authority.catalogue_sha256(),
             resources: document
                 .authority
                 .resources
                 .values()
-                .map(|resource| rrd_contract::EstateAuthorityResourceSnapshot {
+                .map(|resource| rrd_contract::engramAuthorityResourceSnapshot {
                     id: resource.id.clone(),
                     kind: public_authority_kind(resource.kind),
                     parent_ids: resource
@@ -509,14 +509,14 @@ pub fn public_snapshot(document: &EstateDocument) -> rrd_contract::EstateSnapsho
                     name: resource.name.clone(),
                     spec_sha256: resource.spec_sha256.clone(),
                     desired: resource.desired.as_ref().map(|state| {
-                        rrd_contract::EstateAuthorityDesiredSnapshot {
+                        rrd_contract::engramAuthorityDesiredSnapshot {
                             generation: state.generation,
                             spec_sha256: state.spec_sha256.clone(),
                             updated_at_unix_ms: state.updated_at,
                         }
                     }),
                     observed: resource.observed.as_ref().map(|state| {
-                        rrd_contract::EstateAuthorityObservedSnapshot {
+                        rrd_contract::engramAuthorityObservedSnapshot {
                             generation: state.generation,
                             status: public_authority_status(state.status),
                             observed_at_unix_ms: state.observed_at,
@@ -533,7 +533,7 @@ pub fn public_snapshot(document: &EstateDocument) -> rrd_contract::EstateSnapsho
                 .authority
                 .receipts
                 .values()
-                .map(|receipt| rrd_contract::EstateAuthorityReceiptSnapshot {
+                .map(|receipt| rrd_contract::engramAuthorityReceiptSnapshot {
                     id: receipt.id.clone(),
                     resource_id: receipt.resource_id.clone(),
                     operation_id: receipt.operation_id.clone(),
@@ -549,21 +549,21 @@ pub fn public_snapshot(document: &EstateDocument) -> rrd_contract::EstateSnapsho
         instances: document
             .instances
             .values()
-            .map(|instance| rrd_contract::EstateInstanceSnapshot {
+            .map(|instance| rrd_contract::engramInstanceSnapshot {
                 id: instance.id.clone(),
-                desired: rrd_contract::EstateDesiredSnapshot {
+                desired: rrd_contract::engramDesiredSnapshot {
                     generation: instance.desired.generation,
                     phase: match instance.desired.phase {
-                        DesiredPhase::Running => rrd_contract::EstateDesiredPhase::Running,
-                        DesiredPhase::Stopped => rrd_contract::EstateDesiredPhase::Stopped,
-                        DesiredPhase::Absent => rrd_contract::EstateDesiredPhase::Absent,
+                        DesiredPhase::Running => rrd_contract::engramDesiredPhase::Running,
+                        DesiredPhase::Stopped => rrd_contract::engramDesiredPhase::Stopped,
+                        DesiredPhase::Absent => rrd_contract::engramDesiredPhase::Absent,
                     },
                     deployment_ref: instance.desired.deployment_ref.clone(),
                     version: instance.desired.version.clone(),
                     configuration_sha256: instance.desired.configuration_sha256.clone(),
                     updated_at_unix_ms: instance.desired.updated_at,
                 },
-                observed: rrd_contract::EstateObservedSnapshot {
+                observed: rrd_contract::engramObservedSnapshot {
                     generation: instance.observed.generation,
                     phase: public_observed_phase(instance.observed.phase),
                     version: instance.observed.version.clone(),
@@ -572,17 +572,17 @@ pub fn public_snapshot(document: &EstateDocument) -> rrd_contract::EstateSnapsho
                     evidence_sha256: instance.observed.evidence_sha256.clone(),
                     error: instance.observed.error.clone(),
                 },
-                activity: rrd_contract::EstateActivitySnapshot {
+                activity: rrd_contract::engramActivitySnapshot {
                     last_meaningful_runtime_at_unix_ms: instance
                         .activity
                         .last_meaningful_runtime_at,
                     last_heartbeat_at_unix_ms: instance.activity.last_heartbeat_at,
                     class: match instance.activity.class {
-                        ActivityClass::Unknown => rrd_contract::EstateActivityClass::Unknown,
-                        ActivityClass::Active => rrd_contract::EstateActivityClass::Active,
-                        ActivityClass::Idle => rrd_contract::EstateActivityClass::Idle,
-                        ActivityClass::Stale => rrd_contract::EstateActivityClass::Stale,
-                        ActivityClass::Neglected => rrd_contract::EstateActivityClass::Neglected,
+                        ActivityClass::Unknown => rrd_contract::engramActivityClass::Unknown,
+                        ActivityClass::Active => rrd_contract::engramActivityClass::Active,
+                        ActivityClass::Idle => rrd_contract::engramActivityClass::Idle,
+                        ActivityClass::Stale => rrd_contract::engramActivityClass::Stale,
+                        ActivityClass::Neglected => rrd_contract::engramActivityClass::Neglected,
                     },
                     evaluated_at_unix_ms: instance.activity.evaluated_at,
                 },
@@ -591,27 +591,27 @@ pub fn public_snapshot(document: &EstateDocument) -> rrd_contract::EstateSnapsho
         operations: document
             .operations
             .values()
-            .map(|operation| rrd_contract::EstateOperationSnapshot {
+            .map(|operation| rrd_contract::engramOperationSnapshot {
                 id: operation.id.clone(),
                 instance_id: operation.instance_id.clone(),
                 kind: match operation.kind {
-                    OperationKind::Provision => rrd_contract::EstateOperationKind::Provision,
-                    OperationKind::Start => rrd_contract::EstateOperationKind::Start,
-                    OperationKind::Stop => rrd_contract::EstateOperationKind::Stop,
-                    OperationKind::Restart => rrd_contract::EstateOperationKind::Restart,
-                    OperationKind::Upgrade => rrd_contract::EstateOperationKind::Upgrade,
-                    OperationKind::Delete => rrd_contract::EstateOperationKind::Delete,
+                    OperationKind::Provision => rrd_contract::engramOperationKind::Provision,
+                    OperationKind::Start => rrd_contract::engramOperationKind::Start,
+                    OperationKind::Stop => rrd_contract::engramOperationKind::Stop,
+                    OperationKind::Restart => rrd_contract::engramOperationKind::Restart,
+                    OperationKind::Upgrade => rrd_contract::engramOperationKind::Upgrade,
+                    OperationKind::Delete => rrd_contract::engramOperationKind::Delete,
                 },
                 desired_generation: operation.desired_generation,
                 request_sha256: operation.request_sha256.clone(),
                 state: match operation.state {
-                    OperationState::Pending => rrd_contract::EstateOperationState::Pending,
-                    OperationState::Leased => rrd_contract::EstateOperationState::Leased,
-                    OperationState::Prepared => rrd_contract::EstateOperationState::Prepared,
-                    OperationState::Applied => rrd_contract::EstateOperationState::Applied,
-                    OperationState::Succeeded => rrd_contract::EstateOperationState::Succeeded,
-                    OperationState::Failed => rrd_contract::EstateOperationState::Failed,
-                    OperationState::Superseded => rrd_contract::EstateOperationState::Superseded,
+                    OperationState::Pending => rrd_contract::engramOperationState::Pending,
+                    OperationState::Leased => rrd_contract::engramOperationState::Leased,
+                    OperationState::Prepared => rrd_contract::engramOperationState::Prepared,
+                    OperationState::Applied => rrd_contract::engramOperationState::Applied,
+                    OperationState::Succeeded => rrd_contract::engramOperationState::Succeeded,
+                    OperationState::Failed => rrd_contract::engramOperationState::Failed,
+                    OperationState::Superseded => rrd_contract::engramOperationState::Superseded,
                 },
                 attempts: operation.attempts,
                 created_at_unix_ms: operation.created_at,
@@ -619,7 +619,7 @@ pub fn public_snapshot(document: &EstateDocument) -> rrd_contract::EstateSnapsho
                 lease: operation
                     .lease
                     .as_ref()
-                    .map(|lease| rrd_contract::EstateLeaseSnapshot {
+                    .map(|lease| rrd_contract::engramLeaseSnapshot {
                         owner: lease.owner.clone(),
                         epoch: lease.epoch,
                         acquired_at_unix_ms: lease.acquired_at,
@@ -628,18 +628,18 @@ pub fn public_snapshot(document: &EstateDocument) -> rrd_contract::EstateSnapsho
                 receipts: operation
                     .receipts
                     .iter()
-                    .map(|receipt| rrd_contract::EstateReceiptSnapshot {
+                    .map(|receipt| rrd_contract::engramReceiptSnapshot {
                         boundary: match receipt.boundary {
                             ReceiptBoundary::Prepared => {
-                                rrd_contract::EstateReceiptBoundary::Prepared
+                                rrd_contract::engramReceiptBoundary::Prepared
                             }
                             ReceiptBoundary::Applied => {
-                                rrd_contract::EstateReceiptBoundary::Applied
+                                rrd_contract::engramReceiptBoundary::Applied
                             }
                             ReceiptBoundary::Completed => {
-                                rrd_contract::EstateReceiptBoundary::Completed
+                                rrd_contract::engramReceiptBoundary::Completed
                             }
-                            ReceiptBoundary::Failed => rrd_contract::EstateReceiptBoundary::Failed,
+                            ReceiptBoundary::Failed => rrd_contract::engramReceiptBoundary::Failed,
                         },
                         lease_epoch: receipt.lease_epoch,
                         at_unix_ms: receipt.at,
@@ -650,21 +650,21 @@ pub fn public_snapshot(document: &EstateDocument) -> rrd_contract::EstateSnapsho
             })
             .collect(),
         idempotency_binding_count: u32::try_from(document.idempotency.len())
-            .expect("bounded estate idempotency count fits u32"),
+            .expect("bounded engram idempotency count fits u32"),
     }
 }
 
-fn public_observed_phase(phase: ObservedPhase) -> rrd_contract::EstateObservedPhase {
+fn public_observed_phase(phase: ObservedPhase) -> rrd_contract::engramObservedPhase {
     match phase {
-        ObservedPhase::Unknown => rrd_contract::EstateObservedPhase::Unknown,
-        ObservedPhase::Provisioning => rrd_contract::EstateObservedPhase::Provisioning,
-        ObservedPhase::Starting => rrd_contract::EstateObservedPhase::Starting,
-        ObservedPhase::Running => rrd_contract::EstateObservedPhase::Running,
-        ObservedPhase::Stopping => rrd_contract::EstateObservedPhase::Stopping,
-        ObservedPhase::Stopped => rrd_contract::EstateObservedPhase::Stopped,
-        ObservedPhase::Deleting => rrd_contract::EstateObservedPhase::Deleting,
-        ObservedPhase::Absent => rrd_contract::EstateObservedPhase::Absent,
-        ObservedPhase::Failed => rrd_contract::EstateObservedPhase::Failed,
+        ObservedPhase::Unknown => rrd_contract::engramObservedPhase::Unknown,
+        ObservedPhase::Provisioning => rrd_contract::engramObservedPhase::Provisioning,
+        ObservedPhase::Starting => rrd_contract::engramObservedPhase::Starting,
+        ObservedPhase::Running => rrd_contract::engramObservedPhase::Running,
+        ObservedPhase::Stopping => rrd_contract::engramObservedPhase::Stopping,
+        ObservedPhase::Stopped => rrd_contract::engramObservedPhase::Stopped,
+        ObservedPhase::Deleting => rrd_contract::engramObservedPhase::Deleting,
+        ObservedPhase::Absent => rrd_contract::engramObservedPhase::Absent,
+        ObservedPhase::Failed => rrd_contract::engramObservedPhase::Failed,
     }
 }
 
@@ -694,14 +694,14 @@ pub struct SetDesired {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DesiredOutcome {
-    pub document: EstateDocument,
-    pub operation: EstateOperation,
+    pub document: engramDocument,
+    pub operation: engramOperation,
     pub idempotent_replay: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CreateOutcome {
-    pub document: EstateDocument,
+    pub document: engramDocument,
     pub idempotent_replay: bool,
 }
 
@@ -742,30 +742,30 @@ pub struct ActivityEvidence {
     pub heartbeat_at: Option<u64>,
 }
 
-pub struct EstateRepository<'a, E: StorageEngine + ?Sized> {
+pub struct engramRepository<'a, E: StorageEngine + ?Sized> {
     engine: &'a E,
-    estate_id: CanonicalId,
+    engram_id: CanonicalId,
     key: String,
 }
 
-impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
-    pub fn new(engine: &'a E, estate_id: CanonicalId) -> Self {
-        let key = format!("server/state/estate/{estate_id}/document");
+impl<'a, E: StorageEngine + ?Sized> engramRepository<'a, E> {
+    pub fn new(engine: &'a E, engram_id: CanonicalId) -> Self {
+        let key = format!("server/state/engram/{engram_id}/document");
         Self {
             engine,
-            estate_id,
+            engram_id,
             key,
         }
     }
 
-    pub fn create(&self, context: &MutationContext) -> Result<EstateDocument> {
+    pub fn create(&self, context: &MutationContext) -> Result<engramDocument> {
         self.create_idempotent(context)
             .map(|outcome| outcome.document)
     }
 
     pub fn create_idempotent(&self, context: &MutationContext) -> Result<CreateOutcome> {
         validate_context(context)?;
-        let document = EstateDocument::new(self.estate_id.clone(), context.at)?;
+        let document = engramDocument::new(self.engram_id.clone(), context.at)?;
         let replacement = encode(&document)?;
         let transition = ControlTransition {
             key: self.key.clone(),
@@ -773,7 +773,7 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
             replacement: Some(replacement),
             at: context.at,
             actor: context.actor.clone(),
-            action: "estate.create".into(),
+            action: "engram.create".into(),
             request_id: context.request_id.clone(),
             operation_id: context.operation_id.to_string(),
         };
@@ -784,7 +784,7 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
             }),
             Err(rrd_store::Error::ControlConflict(_)) => {
                 let existing = self.load()?.ok_or_else(|| {
-                    Error::Invalid("estate create conflicted without state".into())
+                    Error::Invalid("engram create conflicted without state".into())
                 })?;
                 let mut after = 0;
                 let mut scanned = 0;
@@ -793,7 +793,7 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
                     scanned += page.len();
                     if page.iter().any(|entry| {
                         entry.key == self.key
-                            && entry.action == "estate.create"
+                            && entry.action == "engram.create"
                             && entry.actor == context.actor
                             && entry.request_id == context.request_id
                             && entry.operation_id == context.operation_id.as_str()
@@ -813,17 +813,17 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
                     }
                     if scanned >= MAX_CREATE_REPLAY_JOURNAL_ENTRIES {
                         return Err(Error::Invalid(
-                            "estate create replay is outside the bounded journal window".into(),
+                            "engram create replay is outside the bounded journal window".into(),
                         ));
                     }
                 }
-                Err(Error::AlreadyExists(self.estate_id.to_string()))
+                Err(Error::AlreadyExists(self.engram_id.to_string()))
             }
             Err(error) => Err(error.into()),
         }
     }
 
-    pub fn load(&self) -> Result<Option<EstateDocument>> {
+    pub fn load(&self) -> Result<Option<engramDocument>> {
         self.engine
             .control()
             .get(&self.key)?
@@ -836,7 +836,7 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
         validate_ascii_key(&request.idempotency_key, "authority idempotency key")?;
         let request_sha256 = authority::authority_request_sha256(request);
         let Some(current_bytes) = self.engine.control().get(&self.key)? else {
-            return Err(Error::NotFound(self.estate_id.to_string()));
+            return Err(Error::NotFound(self.engram_id.to_string()));
         };
         let mut document = decode(&current_bytes)?;
         if let Some(binding) = document.authority.idempotency.get(&request.idempotency_key) {
@@ -862,7 +862,7 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
         }
         if document.authority.idempotency.len() == MAX_AUTHORITY_IDEMPOTENCY_BINDINGS {
             return Err(Error::Invalid(
-                "estate authority idempotency limit exceeded".into(),
+                "engram authority idempotency limit exceeded".into(),
             ));
         }
         document.authority.apply_batch(request)?;
@@ -878,7 +878,7 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
             current_bytes,
             document,
             &request.context,
-            "estate.authority.apply",
+            "engram.authority.apply",
         )
         .map(|document| AuthorityMutationOutcome {
             document,
@@ -892,7 +892,7 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
         validate_target(&request.target)?;
         let request_sha256 = desired_request_sha256(request);
         let Some(current_bytes) = self.engine.control().get(&self.key)? else {
-            return Err(Error::NotFound(self.estate_id.to_string()));
+            return Err(Error::NotFound(self.engram_id.to_string()));
         };
         let mut document = decode(&current_bytes)?;
 
@@ -923,7 +923,7 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
         if document.idempotency.len() == MAX_IDEMPOTENCY_BINDINGS
             || document.operations.len() == MAX_OPERATIONS
         {
-            return Err(Error::Invalid("estate history is at its v1 bound".into()));
+            return Err(Error::Invalid("engram history is at its v1 bound".into()));
         }
 
         let previous = document.instances.get(request.instance_id.as_str());
@@ -931,7 +931,7 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
             return Err(Error::Invalid("desired target is unchanged".into()));
         }
         if previous.is_none() && document.instances.len() == MAX_INSTANCES {
-            return Err(Error::Invalid("estate instance limit exceeded".into()));
+            return Err(Error::Invalid("engram instance limit exceeded".into()));
         }
         let generation = previous
             .map(|instance| instance.desired.generation)
@@ -985,7 +985,7 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
                 request.context.operation_id
             ));
         }
-        let operation = EstateOperation {
+        let operation = engramOperation {
             id: request.context.operation_id.clone(),
             instance_id: request.instance_id.clone(),
             kind,
@@ -1014,7 +1014,7 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
             current_bytes,
             document,
             &request.context,
-            "estate.desired.set",
+            "engram.desired.set",
         )
         .map(|document| DesiredOutcome {
             document,
@@ -1023,12 +1023,12 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
         })
     }
 
-    pub fn acquire_lease(&self, request: &LeaseRequest) -> Result<EstateDocument> {
+    pub fn acquire_lease(&self, request: &LeaseRequest) -> Result<engramDocument> {
         validate_context(&request.context)?;
         if !(1_000..=3_600_000).contains(&request.lease_ms) {
             return Err(Error::Invalid("lease_ms must be in 1000..=3600000".into()));
         }
-        self.update(&request.context, "estate.operation.lease", |document| {
+        self.update(&request.context, "engram.operation.lease", |document| {
             let operation = operation_mut(document, &request.context.operation_id)?;
             if operation.state.is_terminal() {
                 return Err(Error::Invalid("terminal operation cannot be leased".into()));
@@ -1073,11 +1073,11 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
         })
     }
 
-    pub fn record_receipt(&self, request: &ReceiptRequest) -> Result<EstateDocument> {
+    pub fn record_receipt(&self, request: &ReceiptRequest) -> Result<engramDocument> {
         validate_context(&request.context)?;
         validate_sha256(&request.evidence_sha256, "receipt evidence")?;
         validate_error(request.error.as_deref())?;
-        self.update(&request.context, "estate.operation.receipt", |document| {
+        self.update(&request.context, "engram.operation.receipt", |document| {
             let operation = operation_mut(document, &request.context.operation_id)?;
             let target = match request.boundary {
                 ReceiptBoundary::Prepared => OperationState::Prepared,
@@ -1116,12 +1116,12 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
         })
     }
 
-    pub fn record_observation(&self, request: &ObservationRequest) -> Result<EstateDocument> {
+    pub fn record_observation(&self, request: &ObservationRequest) -> Result<engramDocument> {
         validate_context(&request.context)?;
         validate_sha256(&request.evidence_sha256, "observation evidence")?;
         validate_version(request.version.as_deref())?;
         validate_error(request.error.as_deref())?;
-        self.update(&request.context, "estate.instance.observe", |document| {
+        self.update(&request.context, "engram.instance.observe", |document| {
             let operation = document
                 .operation(&request.context.operation_id)
                 .cloned()
@@ -1157,9 +1157,9 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
         })
     }
 
-    pub fn record_activity(&self, evidence: &ActivityEvidence) -> Result<EstateDocument> {
+    pub fn record_activity(&self, evidence: &ActivityEvidence) -> Result<engramDocument> {
         validate_context(&evidence.context)?;
-        self.update(&evidence.context, "estate.instance.activity", |document| {
+        self.update(&evidence.context, "engram.instance.activity", |document| {
             let instance = document
                 .instances
                 .get_mut(evidence.instance_id.as_str())
@@ -1179,9 +1179,9 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
         })
     }
 
-    pub fn refresh_activity(&self, context: &MutationContext) -> Result<EstateDocument> {
+    pub fn refresh_activity(&self, context: &MutationContext) -> Result<engramDocument> {
         validate_context(context)?;
-        self.update(context, "estate.activity.refresh", |document| {
+        self.update(context, "engram.activity.refresh", |document| {
             for instance in document.instances.values_mut() {
                 instance.activity.class = document
                     .activity_policy
@@ -1196,10 +1196,10 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
         &self,
         context: &MutationContext,
         action: &str,
-        mutate: impl FnOnce(&mut EstateDocument) -> Result<()>,
-    ) -> Result<EstateDocument> {
+        mutate: impl FnOnce(&mut engramDocument) -> Result<()>,
+    ) -> Result<engramDocument> {
         let Some(current_bytes) = self.engine.control().get(&self.key)? else {
-            return Err(Error::NotFound(self.estate_id.to_string()));
+            return Err(Error::NotFound(self.engram_id.to_string()));
         };
         let mut document = decode(&current_bytes)?;
         mutate(&mut document)?;
@@ -1209,19 +1209,19 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
     fn commit(
         &self,
         expected: Vec<u8>,
-        mut document: EstateDocument,
+        mut document: engramDocument,
         context: &MutationContext,
         action: &str,
-    ) -> Result<EstateDocument> {
+    ) -> Result<engramDocument> {
         if context.at < document.updated_at {
             return Err(Error::Invalid(
-                "mutation timestamp precedes the estate revision".into(),
+                "mutation timestamp precedes the engram revision".into(),
             ));
         }
         document.revision = document
             .revision
             .checked_add(1)
-            .ok_or_else(|| Error::Invalid("estate revision overflow".into()))?;
+            .ok_or_else(|| Error::Invalid("engram revision overflow".into()))?;
         document.updated_at = context.at;
         document.validate()?;
         let replacement = encode(&document)?;
@@ -1251,59 +1251,59 @@ fn desired_request_sha256(request: &SetDesired) -> String {
     digest::sha256_hex(&bytes)
 }
 
-fn public_authority_kind(kind: AuthorityResourceKind) -> rrd_contract::EstateAuthorityResourceKind {
+fn public_authority_kind(kind: AuthorityResourceKind) -> rrd_contract::engramAuthorityResourceKind {
     match kind {
         AuthorityResourceKind::Organisation => {
-            rrd_contract::EstateAuthorityResourceKind::Organisation
+            rrd_contract::engramAuthorityResourceKind::Organisation
         }
-        AuthorityResourceKind::Account => rrd_contract::EstateAuthorityResourceKind::Account,
+        AuthorityResourceKind::Account => rrd_contract::engramAuthorityResourceKind::Account,
         AuthorityResourceKind::Entitlement => {
-            rrd_contract::EstateAuthorityResourceKind::Entitlement
+            rrd_contract::engramAuthorityResourceKind::Entitlement
         }
-        AuthorityResourceKind::Project => rrd_contract::EstateAuthorityResourceKind::Project,
+        AuthorityResourceKind::Project => rrd_contract::engramAuthorityResourceKind::Project,
         AuthorityResourceKind::Environment => {
-            rrd_contract::EstateAuthorityResourceKind::Environment
+            rrd_contract::engramAuthorityResourceKind::Environment
         }
-        AuthorityResourceKind::Instance => rrd_contract::EstateAuthorityResourceKind::Instance,
-        AuthorityResourceKind::Node => rrd_contract::EstateAuthorityResourceKind::Node,
-        AuthorityResourceKind::Shard => rrd_contract::EstateAuthorityResourceKind::Shard,
-        AuthorityResourceKind::Job => rrd_contract::EstateAuthorityResourceKind::Job,
-        AuthorityResourceKind::Assignment => rrd_contract::EstateAuthorityResourceKind::Assignment,
-        AuthorityResourceKind::Health => rrd_contract::EstateAuthorityResourceKind::Health,
+        AuthorityResourceKind::Instance => rrd_contract::engramAuthorityResourceKind::Instance,
+        AuthorityResourceKind::Node => rrd_contract::engramAuthorityResourceKind::Node,
+        AuthorityResourceKind::Shard => rrd_contract::engramAuthorityResourceKind::Shard,
+        AuthorityResourceKind::Job => rrd_contract::engramAuthorityResourceKind::Job,
+        AuthorityResourceKind::Assignment => rrd_contract::engramAuthorityResourceKind::Assignment,
+        AuthorityResourceKind::Health => rrd_contract::engramAuthorityResourceKind::Health,
         AuthorityResourceKind::SecretReference => {
-            rrd_contract::EstateAuthorityResourceKind::SecretReference
+            rrd_contract::engramAuthorityResourceKind::SecretReference
         }
     }
 }
 
-fn public_authority_status(status: AuthorityStatus) -> rrd_contract::EstateAuthorityStatus {
+fn public_authority_status(status: AuthorityStatus) -> rrd_contract::engramAuthorityStatus {
     match status {
-        AuthorityStatus::Pending => rrd_contract::EstateAuthorityStatus::Pending,
-        AuthorityStatus::Ready => rrd_contract::EstateAuthorityStatus::Ready,
-        AuthorityStatus::Degraded => rrd_contract::EstateAuthorityStatus::Degraded,
-        AuthorityStatus::Failed => rrd_contract::EstateAuthorityStatus::Failed,
-        AuthorityStatus::Retired => rrd_contract::EstateAuthorityStatus::Retired,
+        AuthorityStatus::Pending => rrd_contract::engramAuthorityStatus::Pending,
+        AuthorityStatus::Ready => rrd_contract::engramAuthorityStatus::Ready,
+        AuthorityStatus::Degraded => rrd_contract::engramAuthorityStatus::Degraded,
+        AuthorityStatus::Failed => rrd_contract::engramAuthorityStatus::Failed,
+        AuthorityStatus::Retired => rrd_contract::engramAuthorityStatus::Retired,
     }
 }
 
 fn public_authority_receipt_boundary(
     boundary: AuthorityReceiptBoundary,
-) -> rrd_contract::EstateAuthorityReceiptBoundary {
+) -> rrd_contract::engramAuthorityReceiptBoundary {
     match boundary {
         AuthorityReceiptBoundary::DesiredAccepted => {
-            rrd_contract::EstateAuthorityReceiptBoundary::DesiredAccepted
+            rrd_contract::engramAuthorityReceiptBoundary::DesiredAccepted
         }
         AuthorityReceiptBoundary::Assigned => {
-            rrd_contract::EstateAuthorityReceiptBoundary::Assigned
+            rrd_contract::engramAuthorityReceiptBoundary::Assigned
         }
-        AuthorityReceiptBoundary::Applied => rrd_contract::EstateAuthorityReceiptBoundary::Applied,
+        AuthorityReceiptBoundary::Applied => rrd_contract::engramAuthorityReceiptBoundary::Applied,
         AuthorityReceiptBoundary::Observed => {
-            rrd_contract::EstateAuthorityReceiptBoundary::Observed
+            rrd_contract::engramAuthorityReceiptBoundary::Observed
         }
         AuthorityReceiptBoundary::Completed => {
-            rrd_contract::EstateAuthorityReceiptBoundary::Completed
+            rrd_contract::engramAuthorityReceiptBoundary::Completed
         }
-        AuthorityReceiptBoundary::Failed => rrd_contract::EstateAuthorityReceiptBoundary::Failed,
+        AuthorityReceiptBoundary::Failed => rrd_contract::engramAuthorityReceiptBoundary::Failed,
     }
 }
 
@@ -1338,9 +1338,9 @@ fn target_matches(desired: &DesiredInstance, target: &DesiredTarget) -> bool {
 }
 
 fn operation_mut<'a>(
-    document: &'a mut EstateDocument,
+    document: &'a mut engramDocument,
     id: &CanonicalId,
-) -> Result<&'a mut EstateOperation> {
+) -> Result<&'a mut engramOperation> {
     document
         .operations
         .get_mut(id.as_str())
@@ -1348,7 +1348,7 @@ fn operation_mut<'a>(
 }
 
 fn validate_lease(
-    operation: &EstateOperation,
+    operation: &engramOperation,
     worker: &CanonicalId,
     epoch: u64,
     at: u64,
@@ -1482,13 +1482,13 @@ fn max_option(left: Option<u64>, right: Option<u64>) -> Option<u64> {
     }
 }
 
-fn encode(document: &EstateDocument) -> Result<Vec<u8>> {
+fn encode(document: &engramDocument) -> Result<Vec<u8>> {
     document.validate()?;
     serde_json::to_vec(document).map_err(|error| Error::Invalid(error.to_string()))
 }
 
-fn decode(bytes: &[u8]) -> Result<EstateDocument> {
-    let document: EstateDocument =
+fn decode(bytes: &[u8]) -> Result<engramDocument> {
+    let document: engramDocument =
         serde_json::from_slice(bytes).map_err(|error| Error::Invalid(error.to_string()))?;
     document.validate()?;
     Ok(document)

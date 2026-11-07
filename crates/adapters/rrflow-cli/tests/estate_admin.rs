@@ -1,6 +1,6 @@
 use rrd_contract::CanonicalId;
-use rrd_estate::{
-    EstateRepository, LeaseRequest, LocalEstatePermission, LocalOperatorPolicy, MutationContext,
+use rrd_engram::{
+    engramRepository, LeaseRequest, LocalengramPermission, LocalOperatorPolicy, MutationContext,
     ObservationRequest, ObservedPhase, ReceiptBoundary, ReceiptRequest,
     LOCAL_OPERATOR_POLICY_FORMAT,
 };
@@ -11,7 +11,7 @@ use std::path::Path;
 use std::process::{Command, Output};
 
 fn invoke(arguments: Vec<String>) -> Output {
-    Command::new(env!("CARGO_BIN_EXE_rrd-estate-admin"))
+    Command::new(env!("CARGO_BIN_EXE_rrd-engram-admin"))
         .args(arguments)
         .output()
         .unwrap()
@@ -23,7 +23,7 @@ fn arguments(
     database: &Path,
     policy: &Path,
     key: &Path,
-    estate: &str,
+    engram: &str,
     at: u64,
     request: &str,
     operation: &str,
@@ -33,13 +33,13 @@ fn arguments(
         "--db".into(),
         database.display().to_string(),
         "--authority-instance".into(),
-        "estate-control-instance".into(),
+        "engram-control-instance".into(),
         "--policy".into(),
         policy.display().to_string(),
         "--key".into(),
         key.display().to_string(),
-        "--estate".into(),
-        estate.into(),
+        "--engram".into(),
+        engram.into(),
         "--at".into(),
         at.to_string(),
         "--request".into(),
@@ -87,13 +87,13 @@ fn authorized_admin_mutations_replay_reopen_and_journal_exact_identity() {
             .collect(),
         not_before_unix_ms: 10,
         expires_at_unix_ms: 1_000,
-        estates: BTreeMap::from([(
-            "estate-a".into(),
+        engrams: BTreeMap::from([(
+            "engram-a".into(),
             BTreeSet::from([
-                LocalEstatePermission::Create,
-                LocalEstatePermission::ManageRecoveryPolicy,
-                LocalEstatePermission::ScheduleBackup,
-                LocalEstatePermission::SetDesired,
+                LocalengramPermission::Create,
+                LocalengramPermission::ManageRecoveryPolicy,
+                LocalengramPermission::ScheduleBackup,
+                LocalengramPermission::SetDesired,
             ]),
         )]),
     };
@@ -105,10 +105,10 @@ fn authorized_admin_mutations_replay_reopen_and_journal_exact_identity() {
         &denied_database,
         &policy_path,
         &key_path,
-        "estate-b",
+        "engram-b",
         20,
         "create-request",
-        "create-estate",
+        "create-engram",
     ));
     assert!(!denied.status.success());
     assert!(!denied_database.exists());
@@ -118,10 +118,10 @@ fn authorized_admin_mutations_replay_reopen_and_journal_exact_identity() {
         &database,
         &policy_path,
         &key_path,
-        "estate-a",
+        "engram-a",
         20,
         "create-request",
-        "create-estate",
+        "create-engram",
     );
     assert_eq!(value(&invoke(create.clone()))["idempotent_replay"], false);
     assert_eq!(value(&invoke(create))["idempotent_replay"], true);
@@ -131,7 +131,7 @@ fn authorized_admin_mutations_replay_reopen_and_journal_exact_identity() {
         &database,
         &policy_path,
         &key_path,
-        "estate-a",
+        "engram-a",
         30,
         "desired-request",
         "start-project",
@@ -158,17 +158,17 @@ fn authorized_admin_mutations_replay_reopen_and_journal_exact_identity() {
     assert_eq!(value(&invoke(desired))["idempotent_replay"], true);
 
     let engine = RrflowKvStore::open(&database).unwrap();
-    let repository = EstateRepository::new(&engine, CanonicalId::new("estate-a").unwrap());
+    let repository = engramRepository::new(&engine, CanonicalId::new("engram-a").unwrap());
     let transition_context = |at, request: &str| MutationContext {
         at,
-        actor: "estate-worker".into(),
+        actor: "engram-worker".into(),
         request_id: request.into(),
         operation_id: CanonicalId::new("start-project").unwrap(),
     };
     repository
         .acquire_lease(&LeaseRequest {
             context: transition_context(40, "lease-stop"),
-            worker: CanonicalId::new("estate-worker").unwrap(),
+            worker: CanonicalId::new("engram-worker").unwrap(),
             lease_ms: 1_000,
         })
         .unwrap();
@@ -179,7 +179,7 @@ fn authorized_admin_mutations_replay_reopen_and_journal_exact_identity() {
         repository
             .record_receipt(&ReceiptRequest {
                 context: transition_context(at, request),
-                worker: CanonicalId::new("estate-worker").unwrap(),
+                worker: CanonicalId::new("engram-worker").unwrap(),
                 lease_epoch: 1,
                 boundary,
                 evidence_sha256: evidence.repeat(64),
@@ -190,7 +190,7 @@ fn authorized_admin_mutations_replay_reopen_and_journal_exact_identity() {
     repository
         .record_observation(&ObservationRequest {
             context: transition_context(70, "observe-stop"),
-            worker: CanonicalId::new("estate-worker").unwrap(),
+            worker: CanonicalId::new("engram-worker").unwrap(),
             lease_epoch: 1,
             phase: ObservedPhase::Stopped,
             version: None,
@@ -202,7 +202,7 @@ fn authorized_admin_mutations_replay_reopen_and_journal_exact_identity() {
     repository
         .record_receipt(&ReceiptRequest {
             context: transition_context(80, "complete-stop"),
-            worker: CanonicalId::new("estate-worker").unwrap(),
+            worker: CanonicalId::new("engram-worker").unwrap(),
             lease_epoch: 1,
             boundary: ReceiptBoundary::Completed,
             evidence_sha256: "e".repeat(64),
@@ -216,7 +216,7 @@ fn authorized_admin_mutations_replay_reopen_and_journal_exact_identity() {
         &database,
         &policy_path,
         &key_path,
-        "estate-a",
+        "engram-a",
         85,
         "recovery-policy-request",
         "recovery-policy-operation",
@@ -249,7 +249,7 @@ fn authorized_admin_mutations_replay_reopen_and_journal_exact_identity() {
         &database,
         &policy_path,
         &key_path,
-        "estate-a",
+        "engram-a",
         90,
         "backup-request",
         "backup-daily",
@@ -273,21 +273,21 @@ fn authorized_admin_mutations_replay_reopen_and_journal_exact_identity() {
     assert_eq!(value(&invoke(backup))["idempotent_replay"], true);
 
     let engine = RrflowKvStore::open(&database).unwrap();
-    let repository = EstateRepository::new(&engine, CanonicalId::new("estate-a").unwrap());
+    let repository = engramRepository::new(&engine, CanonicalId::new("engram-a").unwrap());
     let document = repository.load().unwrap().unwrap();
     assert_eq!(document.revision, 9);
     assert_eq!(document.instances.len(), 1);
     assert_eq!(document.backup_jobs.len(), 1);
     let journal = engine.control().journal_since(0, 64).unwrap();
     assert!(journal.iter().any(|entry| entry.action == "security.audit"));
-    let estate_journal = journal
+    let engram_journal = journal
         .iter()
-        .filter(|entry| entry.action.starts_with("estate."))
+        .filter(|entry| entry.action.starts_with("engram."))
         .collect::<Vec<_>>();
-    assert_eq!(estate_journal.len(), 9);
-    assert_eq!(estate_journal[0].action, "estate.create");
-    assert_eq!(estate_journal[1].action, "estate.desired.set");
-    assert_eq!(estate_journal[7].action, "estate.recovery.policy.set");
-    assert_eq!(estate_journal[8].action, "estate.backup.schedule");
-    assert_eq!(estate_journal[8].actor, "operator-one");
+    assert_eq!(engram_journal.len(), 9);
+    assert_eq!(engram_journal[0].action, "engram.create");
+    assert_eq!(engram_journal[1].action, "engram.desired.set");
+    assert_eq!(engram_journal[7].action, "engram.recovery.policy.set");
+    assert_eq!(engram_journal[8].action, "engram.backup.schedule");
+    assert_eq!(engram_journal[8].actor, "operator-one");
 }

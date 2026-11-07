@@ -10,7 +10,7 @@ Starting revision: `9bcc6154e9ee48f3ad8d28786a6abe75689e371d` on development
 main. The owner clarified that rrflowDB is intended to be the pure Rust,
 PostgreSQL-inspired database dedicated to AI and written for AI while
 compatible with PostgreSQL. The existing description as a persistent logical
-estate understated that identity. This documentation-only package records the
+engram understated that identity. This documentation-only package records the
 target in README and its existing architecture owner; it adds the unqualified
 compatibility gap to POAM-011 under OBJ-09/H-04 without selecting a protocol
 version, limiting the owner's intended compatibility scope, or claiming

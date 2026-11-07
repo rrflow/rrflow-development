@@ -8,7 +8,7 @@
 
 Baseline 470594178d25f1bf12d3ec6d9041488817a9e931. The owner requested work in
 D:\localdev\rrflow while C: is copied, preserving the authored Connectome UI,
-original estate and all unrelated changes. The local pre-effect brief is
+original engram and all unrelated changes. The local pre-effect brief is
 .tools/knowledge-path-change-brief.md. The development branch and later draft
 PR provide review; this record is not a merge, candidate-CI or release receipt.
 
@@ -55,7 +55,7 @@ qualified SDK integration, not part of this completed engine proof.
 - Authored Connectome source adds capability-gated editing and native session
   requests, with immutable identities, retained drafts, 3-way conflict handling
   and structural repair. Native SDK integration/live UI CRUD remains separate
-  evidence. Older4705941 estates issue no new tree route calls.
+  evidence. Older4705941 engrams issue no new tree route calls.
 - Knowledge/provider and inference-extension references record the owner's
   HydraDB-first/Nexus-next selection, SWAG System One role, LFG classifier and
   governed recursive-learning track. Gate G wording and G-07/G-08 now name
@@ -92,7 +92,7 @@ on D: rather than claiming a cache/source-only substitute.
   —1 passed, zero failed/ignored. Real authenticated HTTP against an explicitly
   disposable installed engine proves descriptor/product rows, exact project,
   read/write denials, CAS, exact replay, idempotency conflict and engine/HTTP
-  restart persistence. It does not seed or use the owner's original9477 estate
+  restart persistence. It does not seed or use the owner's original9477 engram
   and does not claim a launched release binary or external provider test.
 - Existing server: --lib --test http_process —19 passed. Existing client:
   --lib --test real_server --test transport_faults —7 passed; includes real

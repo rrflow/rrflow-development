@@ -26,7 +26,7 @@ logical sequence, active WAL generation and the mutable tail remain unchanged.
 `rrd-store/src/rrflow_kv.rs::try_maintenance_step` uses the existing database
 mutex with nonblocking admission. A busy owner skips that offer; poisoning is
 an error. `rrd-engine/src/engine/maintenance.rs` composes this physical capability
-and returns no work for a volatile estate. Neither method opens another store,
+and returns no work for a volatile engram. Neither method opens another store,
 creates a semantic transaction nor invokes an external capability.
 
 `rrd-server/src/http/maintenance.rs` owns one joined thread, driven only by the

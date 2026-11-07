@@ -57,7 +57,7 @@ passages. These were discovery errors, not engine test failures.
 No Cargo/native tests, live login, sync transfer, UI launch or new soak was run:
 no runtime changed and the owner's planning hold remains. Documentation checks
 below validate context consistency only. H-07a resolves the Nomen contract;
-H-07b/c/d/g implement and qualify actual account/estate binding, two-way transfer,
+H-07b/c/d/g implement and qualify actual account/engram binding, two-way transfer,
 revocation and offline recovery. No status in the roadmap or POA&M is closed.
 PR137 remains draft and unmerged; no candidate-CI or product-pass claim.
 

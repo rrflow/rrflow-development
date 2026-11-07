@@ -373,7 +373,7 @@ material in memory, a local file, or a crash dump.
 ### One operation, several projections
 
 OpenTelemetry spans represent operations with context, events, links, status,
-and duration.[^6] W3C `traceparent`/`tracestate` supplies interoperable
+and duration.[^6] W3C `traceparent`/`tracengram` supplies interoperable
 transport continuation but warns that trace context is not a place for PII and
 may need explicit restart at a security boundary.[^7] RRFlow should adapt this
 as follows:
@@ -427,7 +427,7 @@ Implementation rules:
   from execution;
 - aggregate successful, denied, cancelled, uncertain, and failed outcomes
   without hiding failed latency;
-- never put estate, actor, request, trace, query, record, path, provider, model,
+- never put engram, actor, request, trace, query, record, path, provider, model,
   error message, or user data in labels;
 - use an explicit overflow series when the configured cardinality limit is
   reached;
@@ -706,7 +706,7 @@ evidence.
 3. Add bounded W3C parsing/serialization at server/client edges.
 4. Model asynchronous work with links and record incomplete durable starts
    across crash/reopen.
-5. Prove cross-request, cross-estate, and invalid-context isolation.
+5. Prove cross-request, cross-engram, and invalid-context isolation.
 
 ### H-05c: correlated diagnostics
 

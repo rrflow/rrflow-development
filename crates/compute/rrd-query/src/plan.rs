@@ -500,7 +500,7 @@ pub fn plan(bound: &BoundQuery) -> Result<PhysicalPlan> {
                 name: "versioned_source_read".into(),
                 selected: false,
                 exact: true,
-                reason: "rejected: relation and record family ranges grow with the estate, not with the visited neighbourhood".into(),
+                reason: "rejected: relation and record family ranges grow with the engram, not with the visited neighbourhood".into(),
             },
             CandidatePath {
                 name: "derived_projection".into(),

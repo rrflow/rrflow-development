@@ -13,7 +13,7 @@ The PR description bound this package before implementation. Version stays
 1.0.0. No release or objective status changes.
 
 `RrdEngine::retrieve_vector_points` previously read every vector version in
-the estate before selecting requested references. It also filtered collection
+the engram before selecting requested references. It also filtered collection
 and name before temporal identity materialization, which could expose an old
 address after the identity moved to another collection. Named reads now select
 the existing authenticated `RuntimeVersionedSource::Identity` ranges at one

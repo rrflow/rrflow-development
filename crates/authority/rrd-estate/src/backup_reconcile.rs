@@ -1,7 +1,7 @@
 use crate::{
     BackupCompleteRequest, BackupFailRequest, BackupJobState, BackupLeaseRequest,
     BackupPreparedRequest, BackupResult, DesiredPhase, DriverError, DriverErrorKind, Error,
-    EstateBackupJob, EstateDocument, EstateRepository, MutationContext, ObservedPhase, Result,
+    engramBackupJob, engramDocument, engramRepository, MutationContext, ObservedPhase, Result,
 };
 use rrd_contract::CanonicalId;
 use rrd_core::digest;
@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct BackupDriverRequest {
-    pub estate_id: CanonicalId,
+    pub engram_id: CanonicalId,
     pub job_id: CanonicalId,
     pub instance_id: CanonicalId,
     pub source_generation: u64,
@@ -27,7 +27,7 @@ impl BackupDriverRequest {
     }
 }
 
-pub trait EstateBackupDriver {
+pub trait engramBackupDriver {
     fn create(
         &mut self,
         request: &BackupDriverRequest,
@@ -62,18 +62,18 @@ pub enum BackupReconcileOutcome {
     },
 }
 
-pub struct BackupReconciler<'a, E: StorageEngine + ?Sized, D: EstateBackupDriver> {
-    repository: EstateRepository<'a, E>,
-    estate_id: CanonicalId,
+pub struct BackupReconciler<'a, E: StorageEngine + ?Sized, D: engramBackupDriver> {
+    repository: engramRepository<'a, E>,
+    engram_id: CanonicalId,
     worker: CanonicalId,
     lease_ms: u64,
     driver: D,
 }
 
-impl<'a, E: StorageEngine + ?Sized, D: EstateBackupDriver> BackupReconciler<'a, E, D> {
+impl<'a, E: StorageEngine + ?Sized, D: engramBackupDriver> BackupReconciler<'a, E, D> {
     pub fn new(
         engine: &'a E,
-        estate_id: CanonicalId,
+        engram_id: CanonicalId,
         worker: CanonicalId,
         lease_ms: u64,
         driver: D,
@@ -84,8 +84,8 @@ impl<'a, E: StorageEngine + ?Sized, D: EstateBackupDriver> BackupReconciler<'a, 
             ));
         }
         Ok(Self {
-            repository: EstateRepository::new(engine, estate_id.clone()),
-            estate_id,
+            repository: engramRepository::new(engine, engram_id.clone()),
+            engram_id,
             worker,
             lease_ms,
             driver,
@@ -113,10 +113,10 @@ impl<'a, E: StorageEngine + ?Sized, D: EstateBackupDriver> BackupReconciler<'a, 
         let document = self
             .repository
             .load()?
-            .ok_or_else(|| Error::NotFound(self.estate_id.to_string()))?;
+            .ok_or_else(|| Error::NotFound(self.engram_id.to_string()))?;
         if at < document.updated_at {
             return Err(Error::Invalid(
-                "backup reconcile timestamp precedes estate authority".into(),
+                "backup reconcile timestamp precedes engram authority".into(),
             ));
         }
         let Some(job) = select_backup_job(&document, &self.worker, at) else {
@@ -258,10 +258,10 @@ impl<'a, E: StorageEngine + ?Sized, D: EstateBackupDriver> BackupReconciler<'a, 
 }
 
 fn select_backup_job(
-    document: &EstateDocument,
+    document: &engramDocument,
     worker: &CanonicalId,
     at: u64,
-) -> Option<EstateBackupJob> {
+) -> Option<engramBackupJob> {
     document
         .backup_jobs
         .values()
@@ -275,7 +275,7 @@ fn select_backup_job(
         .cloned()
 }
 
-fn oldest_open_backup_job(document: &EstateDocument) -> Option<&EstateBackupJob> {
+fn oldest_open_backup_job(document: &engramDocument) -> Option<&engramBackupJob> {
     document
         .backup_jobs
         .values()
@@ -284,8 +284,8 @@ fn oldest_open_backup_job(document: &EstateDocument) -> Option<&EstateBackupJob>
 }
 
 fn backup_driver_request(
-    document: &EstateDocument,
-    job: &EstateBackupJob,
+    document: &engramDocument,
+    job: &engramBackupJob,
 ) -> Result<BackupDriverRequest> {
     let instance = document
         .instance(&job.instance_id)
@@ -302,7 +302,7 @@ fn backup_driver_request(
         )));
     }
     Ok(BackupDriverRequest {
-        estate_id: document.id.clone(),
+        engram_id: document.id.clone(),
         job_id: job.id.clone(),
         instance_id: job.instance_id.clone(),
         source_generation: job.source_generation,

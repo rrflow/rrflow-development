@@ -50,14 +50,14 @@ backup intentionally reads one native transaction without that flush side effect
 
 `support/sustained/damage.rs::run` now creates a typed TOML fixture policy from
 the bundled defaults, changes only its soft WAL flush threshold to one byte,
-and uses `Estate::install_configured` with explicit plan/apply digest binding.
+and uses `engram::install_configured` with explicit plan/apply digest binding.
 It asserts the effective installed threshold. Ordinary writes publish genuinely
 reachable segments. `target` still selects them from the physical inspector;
 no file is fabricated and no missing/corrupt-byte case is skipped. Production
 defaults, hard caps, read-only backup behavior, inventory equality, denial,
 restoration and exact receipt replay remain unchanged.
 
-Reviewed: full damage driver, Estate installation/start, workload diagnostics
+Reviewed: full damage driver, engram installation/start, workload diagnostics
 and maintenance branch, service/store error mappings and display, transaction
 rejection/abort handling, default configuration, existing crash fixture policy,
 raw failed segments and the named CI logs. Existing behavior is retained at its

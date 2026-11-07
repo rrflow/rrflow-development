@@ -28,7 +28,7 @@ or a materially different repair. No alpha or C-07 completion is inferred.
 
 `installed_reopen.rs` freezes all 100 two-claim requests and expected effect
 digests before the first request. Every new ACK is followed by termination
-of the exact owned child and a new ordinary server for the same estate.
+of the exact owned child and a new ordinary server for the same engram.
 Full independent data readback precedes retry, so a retry cannot conceal
 missing acknowledged state. Every earlier transaction is retried after every
 restart; receipts stay exact after normalizing only `idempotent_replay`.
@@ -111,7 +111,7 @@ Existing receipt: 1,669,091 bytes, SHA-256
 `309b156bb9f5ecf6327d02894ee99294fa2f3dbb6cf63fd0edf0f03ec9641937`.
 The actual inline candidate collector accepted both files. A local extracted
 collector rehearsal (`python -X utf8 target/c07c-check-reopen-receipts.py`)
-also rejected six separately mutated fixtures: missing estate, missing cycle,
+also rejected six separately mutated fixtures: missing engram, missing cycle,
 changed attempt count, debug artifact, broken process chain and wrong cleanup
 PID. An initial local extraction used the wrong heredoc indentation and failed
 with `IndentationError`; delimiter-aware extraction fixed the rehearsal. The

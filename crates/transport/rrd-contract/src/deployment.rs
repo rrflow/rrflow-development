@@ -1,4 +1,4 @@
-//! Canonical installed-estate, deployment, and operator-configuration contracts.
+//! Canonical installed-engram, deployment, and operator-configuration contracts.
 //!
 //! These values separate durable identity and resource policy from adapter
 //! topology. They govern durable effects; they do not describe or constrain a
@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 
 pub const DEPLOYMENT_PROFILE_CONTRACT_VERSION: u16 = 1;
-pub const ESTATE_CONFIGURATION_FORMAT_VERSION: u16 = 3;
+pub const engram_CONFIGURATION_FORMAT_VERSION: u16 = 3;
 pub const MAX_CLOCK_ROLLBACK_MS: u64 = 3_600_000;
 pub const MAX_REASONING_RUN_ELAPSED_MS: u64 = 3_600_000;
 pub const MAX_REASONING_STEPS: u64 = 10_000;
@@ -23,30 +23,30 @@ pub const MAX_REASONING_STEP_ELAPSED_MS: u64 = 300_000;
 /// local installation must not fabricate a tenant merely to address itself.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct InstalledEstateIdentity {
+pub struct InstalledengramIdentity {
     pub project_id: CanonicalId,
-    pub estate_id: CanonicalId,
+    pub engram_id: CanonicalId,
     pub instance_id: CanonicalId,
 }
 
-impl InstalledEstateIdentity {
+impl InstalledengramIdentity {
     pub fn validate(&self) -> Result<()> {
-        if self.project_id == self.estate_id
+        if self.project_id == self.engram_id
             || self.project_id == self.instance_id
-            || self.estate_id == self.instance_id
+            || self.engram_id == self.instance_id
         {
-            return invalid("installed project, estate, and instance ids must be distinct");
+            return invalid("installed project, engram, and instance ids must be distinct");
         }
         Ok(())
     }
 }
 
-impl fmt::Display for InstalledEstateIdentity {
+impl fmt::Display for InstalledengramIdentity {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             formatter,
             "{}/{}/{}",
-            self.project_id, self.estate_id, self.instance_id
+            self.project_id, self.engram_id, self.instance_id
         )
     }
 }
@@ -515,7 +515,7 @@ impl StorageLimits {
 /// so neither can be forged or silently retained across an edit.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct EstateConfigurationInput {
+pub struct engramConfigurationInput {
     pub format_version: u16,
     pub clock: ClockPolicy,
     pub storage: StorageLimits,
@@ -524,11 +524,11 @@ pub struct EstateConfigurationInput {
     pub query: QueryBudget,
 }
 
-impl EstateConfigurationInput {
+impl engramConfigurationInput {
     pub fn validate(&self) -> Result<()> {
-        if self.format_version != ESTATE_CONFIGURATION_FORMAT_VERSION {
+        if self.format_version != engram_CONFIGURATION_FORMAT_VERSION {
             return invalid(format!(
-                "estate configuration format version must be {ESTATE_CONFIGURATION_FORMAT_VERSION}"
+                "engram configuration format version must be {engram_CONFIGURATION_FORMAT_VERSION}"
             ));
         }
         self.clock.validate()?;
@@ -544,7 +544,7 @@ impl EstateConfigurationInput {
 /// configure-plan/configure-apply operation.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct EstateConfiguration {
+pub struct engramConfiguration {
     pub format_version: u16,
     pub revision: u64,
     pub clock: ClockPolicy,
@@ -555,11 +555,11 @@ pub struct EstateConfiguration {
     pub configuration_sha256: String,
 }
 
-impl EstateConfiguration {
-    pub fn from_input(revision: u64, input: EstateConfigurationInput) -> Result<Self> {
+impl engramConfiguration {
+    pub fn from_input(revision: u64, input: engramConfigurationInput) -> Result<Self> {
         input.validate()?;
         if revision == 0 {
-            return invalid("estate configuration revision must be greater than zero");
+            return invalid("engram configuration revision must be greater than zero");
         }
         let mut configuration = Self {
             format_version: input.format_version,
@@ -571,12 +571,12 @@ impl EstateConfiguration {
             query: input.query,
             configuration_sha256: String::new(),
         };
-        configuration.configuration_sha256 = estate_configuration_sha256(&configuration)?;
+        configuration.configuration_sha256 = engram_configuration_sha256(&configuration)?;
         Ok(configuration)
     }
 
     pub fn validate(&self) -> Result<()> {
-        EstateConfigurationInput {
+        engramConfigurationInput {
             format_version: self.format_version,
             clock: self.clock.clone(),
             storage: self.storage.clone(),
@@ -586,10 +586,10 @@ impl EstateConfiguration {
         }
         .validate()?;
         if self.revision == 0 {
-            return invalid("estate configuration revision must be greater than zero");
+            return invalid("engram configuration revision must be greater than zero");
         }
-        if self.configuration_sha256 != estate_configuration_sha256(self)? {
-            return invalid("estate configuration digest does not match its content");
+        if self.configuration_sha256 != engram_configuration_sha256(self)? {
+            return invalid("engram configuration digest does not match its content");
         }
         Ok(())
     }
@@ -640,12 +640,12 @@ impl EstateConfiguration {
     }
 }
 
-impl Default for EstateConfiguration {
+impl Default for engramConfiguration {
     fn default() -> Self {
         Self::from_input(
             1,
-            EstateConfigurationInput {
-                format_version: ESTATE_CONFIGURATION_FORMAT_VERSION,
+            engramConfigurationInput {
+                format_version: engram_CONFIGURATION_FORMAT_VERSION,
                 clock: ClockPolicy {
                     maximum_rollback_ms: 0,
                 },
@@ -664,11 +664,11 @@ impl Default for EstateConfiguration {
                 query: QueryBudget::default(),
             },
         )
-        .expect("default estate configuration is valid")
+        .expect("default engram configuration is valid")
     }
 }
 
-pub fn estate_configuration_sha256(configuration: &EstateConfiguration) -> Result<String> {
+pub fn engram_configuration_sha256(configuration: &engramConfiguration) -> Result<String> {
     let encoded = serde_json::to_vec(&(
         configuration.format_version,
         configuration.revision,
@@ -682,7 +682,7 @@ pub fn estate_configuration_sha256(configuration: &EstateConfiguration) -> Resul
         crate::ContractError(format!("configuration digest encoding failed: {error}"))
     })?;
     let mut bytes = Vec::with_capacity(40 + encoded.len());
-    bytes.extend_from_slice(b"rrflow-estate-configuration-v3\0");
+    bytes.extend_from_slice(b"rrflow-engram-configuration-v3\0");
     bytes.extend_from_slice(&encoded);
     Ok(sha256_bytes(&bytes))
 }

@@ -8,7 +8,7 @@ This file is deliberately a link portal. The
 [RRFlow 1.0 roadmap](rrflow-1.0.md) owns dependency order, requirements, and
 completion. The [alpha POA&M](../poam/rrflow-1.0-alpha.md) owns verified gap
 status. Architecture and reference records own product semantics. This portal
-cannot mark a release gate complete or restate those authorities.
+cannot mark a release gate complete or rengram those authorities.
 
 ## How to execute this map
 

@@ -102,7 +102,7 @@ suite provide the implementation oracle. No upstream source is adapted.
 
 CLI `tests/support/sustained.rs` now stops and collects the owned server after
 the supplemental setup-failure observation, then retains the original private
-estate through the existing `OwnedDirectory` helper. It emits only the retained
+engram through the existing `OwnedDirectory` helper. It emits only the retained
 path/privacy marker and still returns the original setup failure. It does not
 upload credentials or treat retained state as completed acceptance. Successful
 campaign cleanup is unchanged.

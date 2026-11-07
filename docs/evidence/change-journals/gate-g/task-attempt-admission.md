@@ -58,7 +58,7 @@ invented observations or bypassed checks.
 The new tests read the actual PR198 maintenance task and captured controller request
 under `rrd-contract/tests/fixtures/endpoint-selection-observed/available/`.
 Both files are checked against their retained SHA-256 index. A fresh embedded
-engine/store opens that real task text; its test estate/session identity does not
+engine/store opens that real task text; its test engram/session identity does not
 claim to be the captured deployment. No provider is installed or called.
 
 A reservation survives close/reopen unchanged. Repeating its identity reports

@@ -94,7 +94,7 @@ cargo test -p rrflow-cli --test installed_crash --features crash-test --locked -
 ```
 
 Windows x86_64, Rust 1.99.1: **3 passed, 0 failed, 0 ignored**, 440.31 seconds.
-Both estate histories contain six logical calls, 21 attempts, 16 ACKs, five
+Both engram histories contain six logical calls, 21 attempts, 16 ACKs, five
 uncertain outcomes, six resolved-present operations and zero violations or
 unresolved outcomes. Each has ten validated domain/recovery hits. The third
 parent rejects six invalid schedules and commits an unrelated operation without

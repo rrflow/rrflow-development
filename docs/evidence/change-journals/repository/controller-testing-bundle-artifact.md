@@ -44,7 +44,7 @@ declared contract helper, validating the actual inputs and publishing exclusivel
 The archive is 33,850,986 bytes, SHA256
 `46b85f824d712cd8e8cceda4a6b0cd01bb1585f3f25a1f8c64ef8b7657f05b6f`.
 Its nine payload files plus manifest contain no model weights, profile, task,
-credentials or estate. The local filename is
+credentials or engram. The local filename is
 `rrflow-controller-trial-windows-x64-54fb845d.zip`; no hosted release is claimed.
 
 ## Acceptance at the actual artifact
@@ -91,7 +91,7 @@ and conservative execution uncertainty. It made no model call. The packaged
 recovery command reads the original request's attempt; it does not separately
 read the successor attempt in this case. The actual second response/error and
 current budget are retained. The remaining three independent cases ran in new
-estates; the failed estate was preserved. Six release-trial provider calls in
+engrams; the failed engram was preserved. Six release-trial provider calls in
 total created no training labels or permission.
 
 ## Evidence, research and remaining gates
@@ -99,7 +99,7 @@ total created no training labels or permission.
 [Receipt manifest](controller-trial-receipts/manifest.json) binds 14 exact copies,
 including archive/build identities, all actual check results, the invalid model
 response and recovery state. Provider secret values and token/secret fields were
-checked absent. Original logs and estates remain in the operator's SWAG evidence
+checked absent. Original logs and engrams remain in the operator's SWAG evidence
 directory. Local `.gitattributes` preserves receipt bytes/CRLF. Source, hashes,
 public operations and retained failures supply the trace; no new runtime logger.
 

@@ -47,7 +47,7 @@ counters and times. A lane only qualifies with an overlapping acknowledged
 mixed write and observed automatic flush/compaction. Receipt hashes are bound
 to bounded raw-progress hash chains; declarations without these observations
 cannot qualify the lane. This does not manufacture GC or process RSS proof.
-Single-estate qualification execution now requires a validated native allocation
+Single-engram qualification execution now requires a validated native allocation
 receipt and verified child/harness membership before corpus seeding. Unsupported
 platform cold control and fleet execution remain refused. The strict 24-hour,
 profile, seed, reopen, lane, metrics and drain acceptance reducers remain binding.

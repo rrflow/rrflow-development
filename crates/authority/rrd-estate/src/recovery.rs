@@ -1,6 +1,6 @@
 use super::{
-    validate_ascii_key, validate_context, validate_id_key, validate_sha256, Error, EstateDocument,
-    EstateRepository, MutationContext, Result,
+    validate_ascii_key, validate_context, validate_id_key, validate_sha256, Error, engramDocument,
+    engramRepository, MutationContext, Result,
 };
 use rrd_contract::CanonicalId;
 use rrd_core::digest;
@@ -21,7 +21,7 @@ const MAX_RETENTION_MS: u64 = 10 * 365 * 24 * 60 * 60 * 1_000;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct EstateRecoveryPolicy {
+pub struct engramRecoveryPolicy {
     pub instance_id: CanonicalId,
     pub revision: u64,
     pub max_rpo_ms: u64,
@@ -31,7 +31,7 @@ pub struct EstateRecoveryPolicy {
     pub updated_at: u64,
 }
 
-impl EstateRecoveryPolicy {
+impl engramRecoveryPolicy {
     pub(crate) fn default_for(instance_id: CanonicalId, at: u64) -> Self {
         Self {
             instance_id,
@@ -64,7 +64,7 @@ impl EstateRecoveryPolicy {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct EstateRecoveryPoint {
+pub struct engramRecoveryPoint {
     pub backup_id: String,
     pub instance_id: CanonicalId,
     pub backup_job_id: CanonicalId,
@@ -82,17 +82,17 @@ pub struct EstateRecoveryPoint {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub enum EstateRetentionPinKind {
+pub enum engramRetentionPinKind {
     Policy,
     ExplicitHold,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct EstateRetentionPin {
+pub struct engramRetentionPin {
     pub id: CanonicalId,
     pub backup_id: String,
-    pub kind: EstateRetentionPinKind,
+    pub kind: engramRetentionPinKind,
     pub created_at: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub expires_at: Option<u64>,
@@ -100,7 +100,7 @@ pub struct EstateRetentionPin {
     pub released_at: Option<u64>,
 }
 
-impl EstateRetentionPin {
+impl engramRetentionPin {
     pub fn is_live(&self, at: u64) -> bool {
         self.released_at.is_none() && self.expires_at.is_none_or(|expires| expires > at)
     }
@@ -108,7 +108,7 @@ impl EstateRetentionPin {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct EstateRestoreEvidence {
+pub struct engramRestoreEvidence {
     pub restore_id: CanonicalId,
     pub instance_id: CanonicalId,
     pub backup_id: String,
@@ -134,10 +134,10 @@ pub struct RecoveryIdempotencyBinding {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct EstateRecoveryPruneIntent {
+pub struct engramRecoveryPruneIntent {
     pub id: CanonicalId,
     pub instance_id: CanonicalId,
-    pub based_on_estate_revision: u64,
+    pub based_on_engram_revision: u64,
     pub evaluated_at: u64,
     pub expected_catalogue_sha256: String,
     pub retained_backup_ids: Vec<String>,
@@ -190,7 +190,7 @@ pub struct PrepareRecoveryPrune {
     pub context: MutationContext,
     pub idempotency_key: String,
     pub instance_id: CanonicalId,
-    pub expected_estate_revision: u64,
+    pub expected_engram_revision: u64,
     pub evaluated_at: u64,
     pub expected_catalogue_sha256: String,
     pub retained_backup_ids: Vec<String>,
@@ -207,25 +207,25 @@ pub struct CompleteRecoveryPrune {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RecoveryMutationOutcome {
-    pub document: EstateDocument,
+    pub document: engramDocument,
     pub idempotent_replay: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct EstateRetentionDecision {
-    pub estate_revision: u64,
+pub struct engramRetentionDecision {
+    pub engram_revision: u64,
     pub instance_id: CanonicalId,
     pub evaluated_at: u64,
     pub retained_backup_ids: Vec<String>,
     pub prune_candidate_backup_ids: Vec<String>,
 }
 
-impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
+impl<'a, E: StorageEngine + ?Sized> engramRepository<'a, E> {
     pub fn set_recovery_policy(
         &self,
         request: &SetRecoveryPolicy,
     ) -> Result<RecoveryMutationOutcome> {
-        let candidate = EstateRecoveryPolicy {
+        let candidate = engramRecoveryPolicy {
             instance_id: request.instance_id.clone(),
             revision: 1,
             max_rpo_ms: request.max_rpo_ms,
@@ -247,7 +247,7 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
             &request.context,
             &request.idempotency_key,
             request_sha256,
-            "estate.recovery.policy.set",
+            "engram.recovery.policy.set",
             |document| {
                 if !document
                     .instances
@@ -295,7 +295,7 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
             &request.context,
             &request.idempotency_key,
             request_sha256,
-            "estate.recovery.pin.created",
+            "engram.recovery.pin.created",
             |document| {
                 let point = document
                     .recovery_points
@@ -308,10 +308,10 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
                     ));
                 }
                 deny_active_recovery_prune(document, &instance_id)?;
-                let pin = EstateRetentionPin {
+                let pin = engramRetentionPin {
                     id: request.context.operation_id.clone(),
                     backup_id: request.backup_id.clone(),
-                    kind: EstateRetentionPinKind::ExplicitHold,
+                    kind: engramRetentionPinKind::ExplicitHold,
                     created_at: request.context.at,
                     expires_at: request.expires_at,
                     released_at: None,
@@ -334,7 +334,7 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
             &request.context,
             &request.idempotency_key,
             request_sha256,
-            "estate.recovery.pin.released",
+            "engram.recovery.pin.released",
             |document| {
                 let instance_id = document
                     .recovery_pins
@@ -347,7 +347,7 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
                     .recovery_pins
                     .get_mut(request.pin_id.as_str())
                     .ok_or_else(|| Error::NotFound(request.pin_id.to_string()))?;
-                if pin.kind == EstateRetentionPinKind::Policy {
+                if pin.kind == engramRetentionPinKind::Policy {
                     return Err(Error::Invalid(
                         "policy recovery pins expire through policy, not manual release".into(),
                     ));
@@ -388,7 +388,7 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
             &request.context,
             &request.idempotency_key,
             request_sha256,
-            "estate.recovery.restore.verified",
+            "engram.recovery.restore.verified",
             |document| {
                 let point = document
                     .recovery_points
@@ -406,7 +406,7 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
                     .started_at
                     .checked_sub(point.source_cut_at)
                     .ok_or_else(|| Error::Invalid("restore predates its recovery point".into()))?;
-                let evidence = EstateRestoreEvidence {
+                let evidence = engramRestoreEvidence {
                     restore_id: request.restore_id.clone(),
                     instance_id: request.instance_id.clone(),
                     backup_id: request.backup_id.clone(),
@@ -449,7 +449,7 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
             "recovery prune catalogue",
         )?;
         if request.prune_candidate_backup_ids.is_empty()
-            || request.expected_estate_revision == 0
+            || request.expected_engram_revision == 0
             || request.evaluated_at == 0
             || request.evaluated_at > request.context.at
         {
@@ -458,7 +458,7 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
         let request_sha256 = recovery_request_sha256(&(
             "recovery-prune-prepare-v1",
             &request.instance_id,
-            request.expected_estate_revision,
+            request.expected_engram_revision,
             request.evaluated_at,
             &request.expected_catalogue_sha256,
             &request.retained_backup_ids,
@@ -468,11 +468,11 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
             &request.context,
             &request.idempotency_key,
             request_sha256,
-            "estate.recovery.prune.prepared",
+            "engram.recovery.prune.prepared",
             |document| {
-                if document.revision != request.expected_estate_revision {
+                if document.revision != request.expected_engram_revision {
                     return Err(Error::Invalid(
-                        "recovery prune estate revision is stale".into(),
+                        "recovery prune engram revision is stale".into(),
                     ));
                 }
                 deny_active_recovery_prune(document, &request.instance_id)?;
@@ -482,7 +482,7 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
                     || decision.prune_candidate_backup_ids != request.prune_candidate_backup_ids
                 {
                     return Err(Error::Invalid(
-                        "recovery prune decision no longer matches estate policy".into(),
+                        "recovery prune decision no longer matches engram policy".into(),
                     ));
                 }
                 if document.recovery_prune_intents.len() == MAX_RECOVERY_PRUNE_INTENTS {
@@ -490,10 +490,10 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
                         "recovery prune intent history is at its v1 bound".into(),
                     ));
                 }
-                let intent = EstateRecoveryPruneIntent {
+                let intent = engramRecoveryPruneIntent {
                     id: request.context.operation_id.clone(),
                     instance_id: request.instance_id.clone(),
-                    based_on_estate_revision: request.expected_estate_revision,
+                    based_on_engram_revision: request.expected_engram_revision,
                     evaluated_at: request.evaluated_at,
                     expected_catalogue_sha256: request.expected_catalogue_sha256.clone(),
                     retained_backup_ids: request.retained_backup_ids.clone(),
@@ -525,7 +525,7 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
             &request.context,
             &request.idempotency_key,
             request_sha256,
-            "estate.recovery.prune.completed",
+            "engram.recovery.prune.completed",
             |document| {
                 let intent = document
                     .recovery_prune_intents
@@ -560,12 +560,12 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
         idempotency_key: &str,
         request_sha256: String,
         action: &str,
-        mutate: impl FnOnce(&mut EstateDocument) -> Result<()>,
+        mutate: impl FnOnce(&mut engramDocument) -> Result<()>,
     ) -> Result<RecoveryMutationOutcome> {
         validate_context(context)?;
         validate_ascii_key(idempotency_key, "recovery idempotency key")?;
         let Some(current_bytes) = self.engine.control().get(&self.key)? else {
-            return Err(Error::NotFound(self.estate_id.to_string()));
+            return Err(Error::NotFound(self.engram_id.to_string()));
         };
         let mut document = super::decode(&current_bytes)?;
         if let Some(binding) = document.recovery_idempotency.get(idempotency_key) {
@@ -610,10 +610,10 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
 }
 
 pub fn retention_decision(
-    document: &EstateDocument,
+    document: &engramDocument,
     instance_id: &CanonicalId,
     at: u64,
-) -> Result<EstateRetentionDecision> {
+) -> Result<engramRetentionDecision> {
     if at == 0 {
         return Err(Error::Invalid(
             "retention evaluation time must be non-zero".into(),
@@ -659,8 +659,8 @@ pub fn retention_decision(
         .map(|point| point.backup_id.clone())
         .collect::<Vec<_>>();
     prune_candidate_backup_ids.sort();
-    Ok(EstateRetentionDecision {
-        estate_revision: document.revision,
+    Ok(engramRetentionDecision {
+        engram_revision: document.revision,
         instance_id: instance_id.clone(),
         evaluated_at: at,
         retained_backup_ids,
@@ -668,14 +668,14 @@ pub fn retention_decision(
     })
 }
 
-pub fn public_recovery_snapshot(document: &EstateDocument) -> rrd_contract::EstateRecoverySnapshot {
-    rrd_contract::EstateRecoverySnapshot {
-        estate_id: document.id.clone(),
-        estate_revision: document.revision,
+pub fn public_recovery_snapshot(document: &engramDocument) -> rrd_contract::engramRecoverySnapshot {
+    rrd_contract::engramRecoverySnapshot {
+        engram_id: document.id.clone(),
+        engram_revision: document.revision,
         policies: document
             .recovery_policies
             .values()
-            .map(|policy| rrd_contract::EstateRecoveryPolicySnapshot {
+            .map(|policy| rrd_contract::engramRecoveryPolicySnapshot {
                 instance_id: policy.instance_id.clone(),
                 revision: policy.revision,
                 max_rpo_ms: policy.max_rpo_ms,
@@ -688,7 +688,7 @@ pub fn public_recovery_snapshot(document: &EstateDocument) -> rrd_contract::Esta
         recovery_points: document
             .recovery_points
             .values()
-            .map(|point| rrd_contract::EstateRecoveryPointSnapshot {
+            .map(|point| rrd_contract::engramRecoveryPointSnapshot {
                 backup_sha256: point.backup_id.clone(),
                 instance_id: point.instance_id.clone(),
                 backup_job_id: point.backup_job_id.clone(),
@@ -706,15 +706,15 @@ pub fn public_recovery_snapshot(document: &EstateDocument) -> rrd_contract::Esta
         retention_pins: document
             .recovery_pins
             .values()
-            .map(|pin| rrd_contract::EstateRetentionPinSnapshot {
+            .map(|pin| rrd_contract::engramRetentionPinSnapshot {
                 id: pin.id.clone(),
                 backup_sha256: pin.backup_id.clone(),
                 kind: match pin.kind {
-                    EstateRetentionPinKind::Policy => {
-                        rrd_contract::EstateRetentionPinKindSnapshot::Policy
+                    engramRetentionPinKind::Policy => {
+                        rrd_contract::engramRetentionPinKindSnapshot::Policy
                     }
-                    EstateRetentionPinKind::ExplicitHold => {
-                        rrd_contract::EstateRetentionPinKindSnapshot::ExplicitHold
+                    engramRetentionPinKind::ExplicitHold => {
+                        rrd_contract::engramRetentionPinKindSnapshot::ExplicitHold
                     }
                 },
                 created_at_unix_ms: pin.created_at,
@@ -725,7 +725,7 @@ pub fn public_recovery_snapshot(document: &EstateDocument) -> rrd_contract::Esta
         restore_evidence: document
             .restore_evidence
             .values()
-            .map(|evidence| rrd_contract::EstateRestoreEvidenceSnapshot {
+            .map(|evidence| rrd_contract::engramRestoreEvidenceSnapshot {
                 restore_id: evidence.restore_id.clone(),
                 instance_id: evidence.instance_id.clone(),
                 backup_sha256: evidence.backup_id.clone(),
@@ -744,10 +744,10 @@ pub fn public_recovery_snapshot(document: &EstateDocument) -> rrd_contract::Esta
         prune_intents: document
             .recovery_prune_intents
             .values()
-            .map(|intent| rrd_contract::EstateRecoveryPruneIntentSnapshot {
+            .map(|intent| rrd_contract::engramRecoveryPruneIntentSnapshot {
                 id: intent.id.clone(),
                 instance_id: intent.instance_id.clone(),
-                based_on_estate_revision: intent.based_on_estate_revision,
+                based_on_engram_revision: intent.based_on_engram_revision,
                 evaluated_at_unix_ms: intent.evaluated_at,
                 expected_catalogue_sha256: intent.expected_catalogue_sha256.clone(),
                 retained_backup_ids: intent.retained_backup_ids.clone(),
@@ -759,10 +759,10 @@ pub fn public_recovery_snapshot(document: &EstateDocument) -> rrd_contract::Esta
 }
 
 pub fn public_retention_decision(
-    decision: &EstateRetentionDecision,
-) -> rrd_contract::EstateRetentionDecisionSnapshot {
-    rrd_contract::EstateRetentionDecisionSnapshot {
-        estate_revision: decision.estate_revision,
+    decision: &engramRetentionDecision,
+) -> rrd_contract::engramRetentionDecisionSnapshot {
+    rrd_contract::engramRetentionDecisionSnapshot {
+        engram_revision: decision.engram_revision,
         instance_id: decision.instance_id.clone(),
         evaluated_at_unix_ms: decision.evaluated_at,
         retained_backup_ids: decision.retained_backup_ids.clone(),
@@ -771,17 +771,17 @@ pub fn public_retention_decision(
 }
 
 pub(crate) fn ensure_recovery_policy(
-    document: &mut EstateDocument,
+    document: &mut engramDocument,
     instance_id: &CanonicalId,
     at: u64,
-) -> Result<EstateRecoveryPolicy> {
+) -> Result<engramRecoveryPolicy> {
     if let Some(policy) = document.recovery_policies.get(instance_id.as_str()) {
         return Ok(policy.clone());
     }
     if document.recovery_policies.len() == MAX_RECOVERY_POLICIES {
         return Err(Error::Invalid("recovery policy limit exceeded".into()));
     }
-    let policy = EstateRecoveryPolicy::default_for(instance_id.clone(), at);
+    let policy = engramRecoveryPolicy::default_for(instance_id.clone(), at);
     document
         .recovery_policies
         .insert(instance_id.to_string(), policy.clone());
@@ -789,7 +789,7 @@ pub(crate) fn ensure_recovery_policy(
 }
 
 pub(crate) fn deny_active_recovery_prune(
-    document: &EstateDocument,
+    document: &engramDocument,
     instance_id: &CanonicalId,
 ) -> Result<()> {
     if document
@@ -805,7 +805,7 @@ pub(crate) fn deny_active_recovery_prune(
 }
 
 pub(crate) fn record_completed_recovery_point(
-    document: &mut EstateDocument,
+    document: &mut engramDocument,
     job_id: &CanonicalId,
     completed_at: u64,
 ) -> Result<()> {
@@ -826,7 +826,7 @@ pub(crate) fn record_completed_recovery_point(
         .clone()
         .ok_or_else(|| Error::Invalid("completed backup has no catalogue".into()))?;
     let policy = &job.recovery_policy;
-    let point = EstateRecoveryPoint {
+    let point = engramRecoveryPoint {
         backup_id: backup_id.clone(),
         instance_id: job.instance_id.clone(),
         backup_job_id: job.id.clone(),
@@ -861,10 +861,10 @@ pub(crate) fn record_completed_recovery_point(
     document.recovery_points.insert(backup_id.clone(), point);
     document.recovery_pins.insert(
         pin_id.to_string(),
-        EstateRetentionPin {
+        engramRetentionPin {
             id: pin_id,
             backup_id,
-            kind: EstateRetentionPinKind::Policy,
+            kind: engramRetentionPinKind::Policy,
             created_at: completed_at,
             expires_at: Some(expires_at),
             released_at: None,
@@ -873,7 +873,7 @@ pub(crate) fn record_completed_recovery_point(
     Ok(())
 }
 
-pub(crate) fn validate_recovery_state(document: &EstateDocument) -> Result<()> {
+pub(crate) fn validate_recovery_state(document: &engramDocument) -> Result<()> {
     if document.recovery_policies.len() > MAX_RECOVERY_POLICIES
         || document.recovery_points.len() > MAX_RECOVERY_POINTS
         || document.recovery_pins.len() > MAX_RECOVERY_PINS
@@ -882,7 +882,7 @@ pub(crate) fn validate_recovery_state(document: &EstateDocument) -> Result<()> {
         || document.recovery_prune_intents.len() > MAX_RECOVERY_PRUNE_INTENTS
     {
         return Err(Error::Invalid(
-            "estate recovery cardinality exceeded".into(),
+            "engram recovery cardinality exceeded".into(),
         ));
     }
     for (key, policy) in &document.recovery_policies {
@@ -966,7 +966,7 @@ pub(crate) fn validate_recovery_state(document: &EstateDocument) -> Result<()> {
             .recovery_pins
             .values()
             .filter(|pin| {
-                pin.backup_id == point.backup_id && pin.kind == EstateRetentionPinKind::Policy
+                pin.backup_id == point.backup_id && pin.kind == engramRetentionPinKind::Policy
             })
             .collect::<Vec<_>>();
         let job = &document.backup_jobs[point.backup_job_id.as_str()];
@@ -1032,7 +1032,7 @@ pub(crate) fn validate_recovery_state(document: &EstateDocument) -> Result<()> {
             &intent.prune_candidate_backup_ids,
             "recovery prune candidate",
         )?;
-        if intent.based_on_estate_revision == 0
+        if intent.based_on_engram_revision == 0
             || intent.evaluated_at == 0
             || intent.created_at < intent.evaluated_at
             || intent.prune_candidate_backup_ids.is_empty()
@@ -1073,19 +1073,19 @@ fn validate_ordered_backup_ids(values: &[String], name: &str) -> Result<()> {
     Ok(())
 }
 
-pub(crate) fn empty_recovery_policies() -> BTreeMap<String, EstateRecoveryPolicy> {
+pub(crate) fn empty_recovery_policies() -> BTreeMap<String, engramRecoveryPolicy> {
     BTreeMap::new()
 }
 
-pub(crate) fn empty_recovery_points() -> BTreeMap<String, EstateRecoveryPoint> {
+pub(crate) fn empty_recovery_points() -> BTreeMap<String, engramRecoveryPoint> {
     BTreeMap::new()
 }
 
-pub(crate) fn empty_recovery_pins() -> BTreeMap<String, EstateRetentionPin> {
+pub(crate) fn empty_recovery_pins() -> BTreeMap<String, engramRetentionPin> {
     BTreeMap::new()
 }
 
-pub(crate) fn empty_restore_evidence() -> BTreeMap<String, EstateRestoreEvidence> {
+pub(crate) fn empty_restore_evidence() -> BTreeMap<String, engramRestoreEvidence> {
     BTreeMap::new()
 }
 
@@ -1093,6 +1093,6 @@ pub(crate) fn empty_recovery_idempotency() -> BTreeMap<String, RecoveryIdempoten
     BTreeMap::new()
 }
 
-pub(crate) fn empty_recovery_prune_intents() -> BTreeMap<String, EstateRecoveryPruneIntent> {
+pub(crate) fn empty_recovery_prune_intents() -> BTreeMap<String, engramRecoveryPruneIntent> {
     BTreeMap::new()
 }

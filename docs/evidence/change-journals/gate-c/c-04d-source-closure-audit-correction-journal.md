@@ -6,7 +6,7 @@
 
 This record reports one bounded package. It reopens C-04, whose accepted
 closure claim does not hold for the vector catalogues, and records three
-verified engine deficiencies that driving Connectome against a real estate
+verified engine deficiencies that driving Connectome against a real engram
 exposed: POAM-028, POAM-029, and POAM-030. Each deficiency is characterized
 by a test that passes while the defect exists and fails once it is fixed. The
 package fixes none of them. The [Gate C owner](../../../roadmap/rrflow-1.0/gate-c.md)
@@ -30,7 +30,7 @@ remaining known errors and owner: POAM-028 (C-04, E-04); POAM-029 (H-05); POAM-0
 full-file reread and diff review: complete for every changed authored file before commit.
 change checklist: complete — owner chain, POA&M ledger and detail records, roadmap chapter and parent checklist agreement, documentation policy, link closure, generated indexes, knowledge package, and execution inventory reconciled.
 roadmap/POA&M status change, or explicit none: C-04 is unchecked in gate-c.md and the parent checklist, with a dated correction in gate-c-evidence.md. New rows: POAM-028 (High, Open), POAM-029 (High, Sequenced), POAM-030 (High, Sequenced).
-pull request, CI run, and merge evidence: pull request #4 carries the candidate CI runs and the merge; this record does not restate them.
+pull request, CI run, and merge evidence: pull request #4 carries the candidate CI runs and the merge; this record does not rengram them.
 ```
 
 ## Links

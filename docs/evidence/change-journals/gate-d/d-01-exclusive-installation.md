@@ -35,7 +35,7 @@ The installation-owned read branches in
 `installation.rs::apply_installation_with_observer` move to
 `installation/admission.rs::inspect`: completed replay, existing intent with
 clock/inventory checks, and new-install preconditions. They keep the same
-engine lifecycle and durable records. `EstateFilesystem` discovers missing
+engine lifecycle and durable records. `engramFilesystem` discovers missing
 private descendants after acquisition while validating and preserving every
 previously retained directory capability. Storage writer locks, secrets,
 initial policy, checkpoint, audit and locator publication remain at their
@@ -66,7 +66,7 @@ Complete changed-file reads and final diff review cover:
 
 - `crates/authority/rrd-engine/src/engine/installation.rs`,
   `installation/admission.rs`, `installation/lease.rs`,
-  `installation/inventory.rs`, `installation/recovery.rs`, `estate_layout.rs`;
+  `installation/inventory.rs`, `installation/recovery.rs`, `engram_layout.rs`;
 - `crates/authority/rrd-engine/src/engine/token_key.rs`,
   `token_key/private_file.rs`, `token_key/private_file/unix.rs`,
   `token_key/private_file/windows.rs`;

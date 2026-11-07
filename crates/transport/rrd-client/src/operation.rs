@@ -12,13 +12,13 @@ use rrd_contract::{
     CreateInstanceBackup, CreateInstanceBackupResult, DeleteVectorPayloadIndex,
     DeleteVectorPayloadIndexResult, DiagnosticSnapshot, EnsureVectorCollection,
     EnsureVectorCollectionResult, EnsureVectorIndex, EnsureVectorIndexResult,
-    EnsureVectorPayloadIndex, EnsureVectorPayloadIndexResult, EstateSnapshot, ExecuteQuery,
+    EnsureVectorPayloadIndex, EnsureVectorPayloadIndexResult, engramSnapshot, ExecuteQuery,
     ExportAudit, FollowChangefeed, InstanceBackupCatalogueSnapshot, KnowledgeTreeCatalogue,
     LaunchPromptFlight, LaunchPromptFlightResult, ListInstanceBackups, ListKnowledgeTrees,
     ListPromptFlights, ListTasks, ListVectorCollections, ListVectorQuantizationArtifacts,
     ListVectorQuantizationArtifactsResult, OpenTask, PreviewTransaction, PromptFlightPage,
     PromptFlightReadResult, QueryResult, ReadAudit, ReadChangefeed, ReadDiagnosticSnapshot,
-    ReadEstate, ReadPromptFlight, ReadTask, ReplaceKnowledgeTrees, ReplaceKnowledgeTreesResult,
+    Readengram, ReadPromptFlight, ReadTask, ReplaceKnowledgeTrees, ReplaceKnowledgeTreesResult,
     RequestContext, RequestEnvelope, ResourceId, ResourceKind, ResourcePath, ResponseEnvelope,
     ResponseOutcome, RestoreInstanceBackup, RestoreInstanceBackupResult,
     RetireVectorQuantizationArtifact, RetireVectorQuantizationArtifactResult, RetrieveVectorPoints,
@@ -748,16 +748,16 @@ impl RrdClient {
         .await
     }
 
-    pub async fn read_estate(
+    pub async fn read_engram(
         &self,
         session: &Session,
-        estate: CanonicalId,
-        request: ReadEstate,
+        engram: CanonicalId,
+        request: Readengram,
         options: RequestOptions,
-    ) -> Result<EstateSnapshot> {
+    ) -> Result<engramSnapshot> {
         let resource = ResourcePath {
             segments: vec![
-                ResourceId::new(ResourceKind::Estate, estate.as_str().to_owned())
+                ResourceId::new(ResourceKind::engram, engram.as_str().to_owned())
                     .map_err(contract)?,
                 ResourceId::new(ResourceKind::Instance, self.instance.as_str().to_owned())
                     .map_err(contract)?,
@@ -765,7 +765,7 @@ impl RrdClient {
         };
         self.session_call_resource(
             Method::POST,
-            &format!("/v1/estates/{estate}/read"),
+            &format!("/v1/engrams/{engram}/read"),
             session,
             resource,
             request,

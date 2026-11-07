@@ -20,7 +20,7 @@ and their startup, controller and native-client reconciliation journals.
 `git diff --exit-code a3068cf67e3c7afbd75a01ac85662d5afd244483 HEAD -- . ':!docs'`
 passes. No engine, transport, contract, policy, credential, SDK, lockfile or
 proof-runner behavior changes. Existing model/native receipts and failed
-estates keep their original source and artifact attribution.
+engrams keep their original source and artifact attribution.
 
 Reviewed README/AGENTS ownership, the current brief and prior worker
 admission/native evidence, all three incoming reconciliation records, the

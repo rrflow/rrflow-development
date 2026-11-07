@@ -560,8 +560,8 @@ fn inventory_larger_than_one_physical_batch_publishes_and_reopens() {
 
 #[test]
 fn inventory_output_bound_preserves_runtime_checkpoint_and_head_after_reopen() {
-    let defaults = rrd_contract::EstateConfiguration::default();
-    let input = rrd_contract::EstateConfigurationInput {
+    let defaults = rrd_contract::engramConfiguration::default();
+    let input = rrd_contract::engramConfigurationInput {
         format_version: defaults.format_version,
         clock: defaults.clock,
         storage: rrd_contract::StorageLimits {
@@ -707,7 +707,7 @@ fn partial_inventory_recovery(edit_source: bool) {
                         attempt: 1,
                         request_sha256: digest::sha256_hex(&serde_json::to_vec(&command).unwrap()),
                     },
-                    RrdOperation::EstateAdmin,
+                    RrdOperation::engramAdmin,
                     InvocationCredential::Session {
                         session_id: &session.session_id,
                         token: &session.token,
@@ -2159,7 +2159,7 @@ fn replan_receipt_is_not_visible_to_another_authorized_principal() {
             expires_at_unix_ms: u64::MAX,
             disabled: false,
             role_ids: Default::default(),
-            grants: [SecurityAction::SessionCreate, SecurityAction::EstateRead]
+            grants: [SecurityAction::SessionCreate, SecurityAction::engramRead]
                 .into_iter()
                 .map(|action| ResourceGrant {
                     action,
@@ -2369,7 +2369,7 @@ fn attunement_receipt_readback_is_principal_scoped_and_authorized() {
         }];
         if read {
             grants.push(ResourceGrant {
-                action: SecurityAction::EstateRead,
+                action: SecurityAction::engramRead,
                 resource_prefix: resource.clone(),
                 data_policy: None,
             });
