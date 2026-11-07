@@ -10,13 +10,13 @@ independently.
 
 ## Observed deficiency
 
-The [selected-source worker package](../../evidence/change-journals/gate-g/task-worker-selected-source.md)
-adds an explicit one-file inventory selection to existing worker admission and
-protects source-derived attempt and observation readback. Local engine,
-contract/client/server, SDK and strict-lint checks pass. Candidate/protected CI
-and the matching Connectome consumer remain pending.
-This does not establish a source-grounded live model result, verified project
-effects, generic binary/score/choice assessment or reviewed learning.
+The [controller-assessment package](../../evidence/change-journals/gate-g/task-controller-assessments.md)
+records the landed selected-source prerequisites and actual matching desktop
+recovery. A real source-bound BF16 worker response and correlated metadata
+delivery were observed; this is not correctness or comparative training evidence.
+Strict binary/score/choice assessment is being added under PR292, with its engine
+behavioral tests and subsequent Tasks consumer still incomplete. Governed project
+effects, bounded LFG/SWAG cycles and independently reviewed learning remain open.
 
 The [reconciled installed recovery trial](../../evidence/change-journals/gate-g/task-budget-resume-current-installed.md)
 proves explicit same-task resume on clean source `a99d577a`: four actual provider

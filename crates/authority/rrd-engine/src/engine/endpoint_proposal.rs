@@ -382,7 +382,9 @@ impl RrdEngine {
             &context,
         )? {
             TaskAttemptOutput::EndpointProposal(proposal) => Ok(*proposal),
-            TaskAttemptOutput::Embedding(_) | TaskAttemptOutput::Worker(_) => {
+            TaskAttemptOutput::Embedding(_)
+            | TaskAttemptOutput::Worker(_)
+            | TaskAttemptOutput::Assessment(_) => {
                 Err(ServiceError::Storage("unexpected task output kind".into()))
             }
         }

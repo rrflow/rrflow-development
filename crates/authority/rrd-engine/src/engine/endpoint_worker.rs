@@ -37,19 +37,19 @@ struct WorkerPacket {
 }
 
 #[derive(Clone, Serialize)]
-struct WorkerSourcePacket {
-    content: String,
-    provenance: TaskWorkerSourceProvenance,
+pub(super) struct WorkerSourcePacket {
+    pub(super) content: String,
+    pub(super) provenance: TaskWorkerSourceProvenance,
 }
 
-struct WorkerSourceCapture {
-    packet: WorkerSourcePacket,
-    head_key: String,
-    head_bytes: Vec<u8>,
+pub(super) struct WorkerSourceCapture {
+    pub(super) packet: WorkerSourcePacket,
+    pub(super) head_key: String,
+    pub(super) head_bytes: Vec<u8>,
 }
 
 impl WorkerSourceCapture {
-    fn provenance(&self) -> &TaskWorkerSourceProvenance {
+    pub(super) fn provenance(&self) -> &TaskWorkerSourceProvenance {
         &self.packet.provenance
     }
 }
@@ -67,6 +67,47 @@ impl RrdEngine {
         now: u64,
         request_id: &str,
         operation_id: &str,
+    ) -> Result<()> {
+        self.authorize_selected_source_readback(
+            session,
+            token,
+            source,
+            now,
+            request_id,
+            operation_id,
+            false,
+        )
+    }
+
+    pub(in crate::engine) fn authorize_assessment_source_readback(
+        &self,
+        session: &CorrelationId,
+        token: &CorrelationId,
+        source: &TaskWorkerSourceProvenance,
+        now: u64,
+        request_id: &str,
+        operation_id: &str,
+    ) -> Result<()> {
+        self.authorize_selected_source_readback(
+            session,
+            token,
+            source,
+            now,
+            request_id,
+            operation_id,
+            true,
+        )
+    }
+
+    fn authorize_selected_source_readback(
+        &self,
+        session: &CorrelationId,
+        token: &CorrelationId,
+        source: &TaskWorkerSourceProvenance,
+        now: u64,
+        request_id: &str,
+        operation_id: &str,
+        assessment: bool,
     ) -> Result<()> {
         let resource =
             worker_source_resource(&self.instance, &source.project_id, &source.entry_identity)?;
@@ -90,12 +131,19 @@ impl RrdEngine {
         )?;
 
         let configuration = self.load_endpoint_configuration()?.1;
-        if !configuration
-            .profile
-            .as_ref()
-            .and_then(|profile| profile.worker_policy.as_ref())
-            .is_some_and(|policy| policy.allow_context_export && policy.allow_source_export)
-        {
+        let allowed =
+            configuration.profile.as_ref().is_some_and(|profile| {
+                if assessment {
+                    profile.assessment_policy.as_ref().is_some_and(|policy| {
+                        policy.allow_context_export && policy.allow_source_export
+                    })
+                } else {
+                    profile.worker_policy.as_ref().is_some_and(|policy| {
+                        policy.allow_context_export && policy.allow_source_export
+                    })
+                }
+            });
+        if !allowed {
             return Err(ServiceError::PermissionDenied);
         }
 
@@ -139,7 +187,7 @@ impl RrdEngine {
         )
     }
 
-    fn capture_worker_source(
+    pub(super) fn capture_worker_source(
         &self,
         request: &TaskWorkerSourceRequest,
         maximum_input_bytes: u64,
@@ -803,7 +851,7 @@ fn worker_task_read(request: &TaskWorkerRequest) -> ReadTask {
     }
 }
 
-fn context_read_stamp(read: &ReadStamp) -> ContextReadStamp {
+pub(super) fn context_read_stamp(read: &ReadStamp) -> ContextReadStamp {
     ContextReadStamp {
         runtime_manifest_sha256: read.manifest_id.clone(),
         runtime_cursor: read.commit_cursor,
@@ -812,7 +860,7 @@ fn context_read_stamp(read: &ReadStamp) -> ContextReadStamp {
     }
 }
 
-fn worker_source_resource(
+pub(super) fn worker_source_resource(
     instance: &CanonicalId,
     project: &CanonicalId,
     entry_identity: &str,
@@ -829,7 +877,7 @@ fn worker_source_resource(
     })
 }
 
-fn equivalent_worker_source(
+pub(super) fn equivalent_worker_source(
     captured: &TaskWorkerSourceProvenance,
     validated: &TaskWorkerSourceProvenance,
 ) -> bool {
