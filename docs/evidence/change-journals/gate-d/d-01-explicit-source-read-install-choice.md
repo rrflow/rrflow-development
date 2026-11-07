@@ -1,7 +1,7 @@
 # D-01 explicit source-read install choice
 
-**Status:** active implementation evidence; dependent native integration and candidate CI remain pending  
-**Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/gate-d/d-01-explicit-source-read-install-choice`  
+**Status:** active implementation evidence; dependent native integration and candidate CI remain pending
+**Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/gate-d/d-01-explicit-source-read-install-choice`
 **Owner:** PR291 native install source-read option
 
 ## Gate/package outcome

@@ -21,6 +21,13 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+const LOOPBACK_CONFIGURATION_BYTES: &[u8] = include_bytes!(
+    "../../../transport/rrd-contract/tests/fixtures/endpoint-selection-observed/available/configuration.json"
+);
+const LOOPBACK_ALLOWANCE_BYTES: &[u8] = include_bytes!(
+    "../../../transport/rrd-contract/tests/fixtures/endpoint-selection-observed/available/allowance.json"
+);
+
 #[path = "support/process.rs"]
 mod process;
 #[path = "support/storage_history.rs"]
@@ -1397,14 +1404,10 @@ fn loopback_worker_profile(
     allow_context_export: bool,
     allow_source_export: bool,
 ) -> rrd_contract::EndpointProfileInput {
-    let fixture_root = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../transport/rrd-contract/tests/fixtures/endpoint-selection-observed/available");
     let mut configuration: rrd_contract::EndpointConfiguration =
-        serde_json::from_slice(&std::fs::read(fixture_root.join("configuration.json")).unwrap())
-            .unwrap();
+        serde_json::from_slice(LOOPBACK_CONFIGURATION_BYTES).unwrap();
     let allowance: rrd_contract::EndpointSelectionAllowance =
-        serde_json::from_slice(&std::fs::read(fixture_root.join("allowance.json")).unwrap())
-            .unwrap();
+        serde_json::from_slice(LOOPBACK_ALLOWANCE_BYTES).unwrap();
     let profile = configuration.profile.take().unwrap();
     let mut bindings = profile.bindings;
     let controller_service = bindings[0].service_id.clone();
