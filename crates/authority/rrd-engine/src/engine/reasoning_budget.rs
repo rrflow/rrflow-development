@@ -8,6 +8,7 @@ use rrd_inference::{EmbeddingCancellation, EmbeddingExecutionControl};
 mod persistence;
 mod public;
 mod repetition;
+mod resume;
 
 pub use rrd_contract::{ReasoningBudgetStop, TaskReasoningBudget};
 

@@ -272,7 +272,7 @@ use std::fmt;
 pub const PROTOCOL: &str = "rrd";
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const OPENAPI_DOCUMENT_SHA256: &str =
-    "4186a8f279fd213b592d54d5061717a8f27ce0a85aeba145aeda5ef24c025f2e";
+    "e6bd6b60e12398a5ee5ddaf23f846e74288bc128f91acc561d9099381072d80f";
 pub const MAX_ID_BYTES: usize = 128;
 pub const MAX_MESSAGE_BYTES: usize = 4_096;
 pub const MAX_CAPABILITIES: usize = 512;
@@ -4145,6 +4145,16 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             "TaskBudgetView",
         ),
         endpoint(
+            "task-budget-resume",
+            HttpMethod::Post,
+            "/v1/tasks/budget/resume",
+            EndpointAuthentication::SessionBearer,
+            true,
+            SecurityAction::ReasoningWrite,
+            "ResumeTaskBudget",
+            "TaskBudgetView",
+        ),
+        endpoint(
             "task-budget-stop",
             HttpMethod::Post,
             "/v1/tasks/budget/stop",
@@ -4760,6 +4770,7 @@ fn request_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "ReadTaskAttempt" => schema_json::<RequestEnvelope<ReadTaskAttempt>>(),
         "ReadTaskBudget" => schema_json::<RequestEnvelope<ReadTaskBudget>>(),
         "StopTaskBudget" => schema_json::<RequestEnvelope<StopTaskBudget>>(),
+        "ResumeTaskBudget" => schema_json::<RequestEnvelope<ResumeTaskBudget>>(),
         "AbortTransaction" => schema_json::<RequestEnvelope<AbortTransaction>>(),
         "AssembleContext" => schema_json::<RequestEnvelope<AssembleContext>>(),
         "BeginTransaction" => schema_json::<RequestEnvelope<BeginTransaction>>(),

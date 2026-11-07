@@ -10,6 +10,20 @@ independently.
 
 ## Observed deficiency
 
+The [reconciled installed recovery trial](../../evidence/change-journals/gate-g/task-budget-resume-current-installed.md)
+proves explicit same-task resume on clean source `a99d577a`: four actual provider
+responses, preserved original effort/deadline/history and independent credential-free
+readback. An earlier disconnected attempt remains stopped with unknown execution;
+it was not retried or cleared. Native candidate/protected CI, UI PR29/PR30,
+source-grounded context, project effects and reviewed learning remain required.
+
+The [explicit budget-resume increment](../../evidence/change-journals/gate-g/task-budget-resume.md)
+adds the existing engine's authenticated transition for safely completed stopped
+work while retaining original effort/deadline and attempt history. Unknown or
+active work remains denied. Installed same-task BF16 recovery, UI composition,
+candidate/dependency landing and the broader project workflow remain required;
+this does not qualify automatic retry or unknown-outcome reconciliation.
+
 The [current installed worker trial](../../evidence/change-journals/gate-g/task-worker-main-installed-live-20261106.md)
 uses real model responses on reconciled source `604c196d`, with native selection
 and worker calls, restart/replay checks and independent recovery without provider

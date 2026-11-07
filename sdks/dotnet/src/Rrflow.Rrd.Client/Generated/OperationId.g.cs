@@ -1,5 +1,5 @@
 // Generated from rrd-contract; do not edit.
-// OpenAPI SHA-256: 4186a8f279fd213b592d54d5061717a8f27ce0a85aeba145aeda5ef24c025f2e
+// OpenAPI SHA-256: e6bd6b60e12398a5ee5ddaf23f846e74288bc128f91acc561d9099381072d80f
 namespace Rrflow.Rrd;
 
 public enum OperationId
@@ -59,6 +59,7 @@ public enum OperationId
     TaskAttemptRead,
     TaskBudgetConfigure,
     TaskBudgetRead,
+    TaskBudgetResume,
     TaskBudgetStop,
     TaskClose,
     TaskEmbeddingExecute,
@@ -101,8 +102,8 @@ public sealed record Endpoint(
 
 public static class EndpointCatalog
 {
-    public const string OpenApiDocumentSha256 = "4186a8f279fd213b592d54d5061717a8f27ce0a85aeba145aeda5ef24c025f2e";
-    public const int Count = 79;
+    public const string OpenApiDocumentSha256 = "e6bd6b60e12398a5ee5ddaf23f846e74288bc128f91acc561d9099381072d80f";
+    public const int Count = 80;
 
     public static Endpoint Get(OperationId operation) => operation switch
     {
@@ -161,6 +162,7 @@ public static class EndpointCatalog
         OperationId.TaskAttemptRead => new("task-attempt-read", "POST", "/v1/tasks/attempt/read", Authentication.SessionBearer, false),
         OperationId.TaskBudgetConfigure => new("task-budget-configure", "POST", "/v1/tasks/budget/configure", Authentication.SessionBearer, true),
         OperationId.TaskBudgetRead => new("task-budget-read", "POST", "/v1/tasks/budget/read", Authentication.SessionBearer, false),
+        OperationId.TaskBudgetResume => new("task-budget-resume", "POST", "/v1/tasks/budget/resume", Authentication.SessionBearer, true),
         OperationId.TaskBudgetStop => new("task-budget-stop", "POST", "/v1/tasks/budget/stop", Authentication.SessionBearer, true),
         OperationId.TaskClose => new("task-close", "POST", "/v1/tasks/close", Authentication.SessionBearer, true),
         OperationId.TaskEmbeddingExecute => new("task-embedding-execute", "POST", "/v1/tasks/embedding/execute", Authentication.SessionBearer, true),

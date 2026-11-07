@@ -4,6 +4,32 @@ use rrd_contract::{
     ReadTaskBudget, StopTaskBudget,
 };
 impl AppState {
+    pub(in crate::http) fn resume_task_budget(
+        &self,
+        headers: &HeaderMap,
+        body: &[u8],
+        now: u64,
+    ) -> HttpResponse {
+        self.with_authenticated_envelope::<rrd_contract::ResumeTaskBudget, _, _>(
+            headers,
+            body,
+            now,
+            RrdOperation::ReasoningWrite,
+            None,
+            |envelope, session, token| {
+                self.service
+                    .resume_task_budget(
+                        session,
+                        token,
+                        &envelope.payload,
+                        envelope.context.request_id.as_str(),
+                        envelope.context.operation_id.as_str(),
+                    )
+                    .map_err(api_error)
+            },
+        )
+    }
+
     pub(in crate::http) fn execute_task_worker(
         &self,
         headers: &HeaderMap,
