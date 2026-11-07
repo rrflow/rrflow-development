@@ -8,6 +8,16 @@ This detail record is part of the canonical RRFlow 1.0 alpha POA&M. The parent
 ledger owns priority and lifecycle status; this file cannot change either
 independently.
 
+## Current state after public operation landing
+
+The absence described below was observed at the earlier revision. Current main
+exposes the public operations and has a real-server client test; see the
+[H-04 public index evidence](../../evidence/change-journals/gate-h/h-04-vector-index-operations.md).
+The lab's integration and its installed-engine closure evidence remain under
+review in PR #253. Do not treat the historical observations below as a claim
+that current main lacks these operations. The parent ledger remains open until
+the closure evidence is met and reviewed.
+
 ## Observed deficiency
 
 Found while building the [comparison lab](../../../eval/lab/README.md), and

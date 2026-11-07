@@ -3,7 +3,9 @@
 use rrflow_eval::lab::adapter::{CollectionSpec, PointBatch, SearchRequest, SystemAdapter};
 use rrflow_eval::lab::corpus::{exact_answers, generate, read_imported, GroundTruth, VectorSet};
 use rrflow_eval::lab::custom::CustomProtocol;
-use rrflow_eval::lab::driver::{combine, prepare_inputs, run_system, Inputs, SystemRun};
+use rrflow_eval::lab::driver::{
+    combine, prepare_inputs, run_system, run_system_with_progress, Inputs, LabProgress, SystemRun,
+};
 use rrflow_eval::lab::manifest::{
     Availability, CorpusSource, CorpusSpec, CredentialReferences, IndexSpec, LabMetric,
     QualitySpec, SearchSetting, SystemBinding, SystemKind, SystemLocation,
@@ -37,6 +39,7 @@ fn binding(name: &str) -> SystemBinding {
         storage_profile: "memory".into(),
         availability: Availability::Available,
         index: IndexSpec::Exact,
+        rrflow_hnsw: None,
         search_ladder: vec![SearchSetting {
             id: id("default"),
             ef: None,
@@ -228,6 +231,65 @@ fn run_with(
 ) -> SystemRun {
     let binding = manifest.binding(system).unwrap();
     run_system(manifest, binding, adapter, inputs, BTreeMap::new()).0
+}
+
+#[test]
+fn progress_reports_completed_work_and_never_invents_failed_stages() {
+    let manifest = manifest(vec![binding("progress")]);
+    let inputs = prepare_inputs(&manifest).unwrap();
+    let binding = manifest.binding("progress").unwrap();
+    let mut events = Vec::new();
+    let (run, _) = run_system_with_progress(
+        &manifest,
+        binding,
+        &PerfectSystem::new(),
+        &inputs,
+        BTreeMap::new(),
+        &mut |event| events.push(event),
+    );
+    assert_eq!(run.status, SystemStatus::Completed);
+    assert_eq!(events.first(), Some(&LabProgress::Prepared));
+    let completed: Vec<_> = events
+        .iter()
+        .filter_map(|event| match event {
+            LabProgress::IngestBatchCompleted {
+                completed, total, ..
+            } => Some((*completed, *total)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        completed,
+        vec![(64, 200), (128, 200), (192, 200), (200, 200)]
+    );
+    assert!(events
+        .iter()
+        .any(|event| matches!(event, LabProgress::IndexReady { .. })));
+    let cases: Vec<_> = events
+        .iter()
+        .filter_map(|event| match event {
+            LabProgress::CaseCompleted {
+                succeeded, errors, ..
+            } => Some((*succeeded, *errors)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(cases, vec![(16, 0); 4]);
+
+    let mut failed_events = Vec::new();
+    let (failed, _) = run_system_with_progress(
+        &manifest,
+        binding,
+        &FailingSystem::new(true, 0),
+        &inputs,
+        BTreeMap::new(),
+        &mut |event| failed_events.push(event),
+    );
+    assert_eq!(failed.status, SystemStatus::Failed);
+    assert!(
+        failed_events.is_empty(),
+        "a refused prepare completed no stage"
+    );
 }
 
 fn verdict(report: &LabReport, verdict_id: &str) -> VerdictOutcome {
@@ -719,7 +781,7 @@ fn manifests_refuse_what_would_make_a_result_misleading_or_unsafe() {
         };
         m.systems[0].search_ladder[0].ef = Some(32);
     })
-    .contains("no public operation"));
+    .contains("native HNSW"));
     assert!(refused(|m| {
         m.systems[0].index = IndexSpec::Hnsw {
             m: 16,
@@ -918,4 +980,169 @@ fn index_evidence_travels_into_the_report() {
             .map(String::as_str),
         Some("0 of 200 points indexed")
     );
+}
+
+/// The real RRFlow smoke answered unfiltered searches but refused filtered searches.
+struct FilterRefusal(PerfectSystem);
+impl SystemAdapter for FilterRefusal {
+    fn observed_version(&self) -> Result<String> {
+        self.0.observed_version()
+    }
+    fn prepare(&self, spec: &CollectionSpec<'_>) -> Result<()> {
+        self.0.prepare(spec)
+    }
+    fn ingest(&self, batch: &PointBatch<'_>) -> Result<()> {
+        self.0.ingest(batch)
+    }
+    fn finish_ingest(&self, deadline: Instant) -> Result<()> {
+        self.0.finish_ingest(deadline)
+    }
+    fn search(&self, request: &SearchRequest<'_>) -> Result<Vec<u64>> {
+        if request.category.is_some() {
+            Err("filtered path refused".into())
+        } else {
+            self.0.search(request)
+        }
+    }
+    fn teardown(&self) -> Result<()> {
+        self.0.teardown()
+    }
+}
+
+#[test]
+fn a_partial_run_is_not_reported_as_complete_and_preserves_the_failure() {
+    let m = manifest(vec![binding("partial")]);
+    let inputs = prepare_inputs(&m).unwrap();
+    let run = run_with(&m, "partial", &FilterRefusal(PerfectSystem::new()), &inputs);
+    assert_eq!(serde_json::to_value(run.status).unwrap(), json!("partial"));
+    assert!(run
+        .reason
+        .as_deref()
+        .unwrap()
+        .contains("filtered path refused"));
+    let report = combine(&m, std::slice::from_ref(&run), Vec::new()).unwrap();
+    assert_eq!(
+        serde_json::to_value(report.systems[0].status).unwrap(),
+        json!("partial")
+    );
+    assert!(report
+        .observations
+        .iter()
+        .any(|o| o.metric.as_str() == "search_errors"
+            && o.case.get("filter").is_some_and(|v| v == "category")
+            && o.value == 16.0));
+    assert_eq!(
+        verdict(&report, "filtered-recall-partial"),
+        VerdictOutcome::NotRun
+    );
+    assert!(!report
+        .observations
+        .iter()
+        .any(|o| o.metric.as_str() == "queries_per_second"
+            && o.case.get("filter").is_some_and(|v| v == "category")));
+    assert!(report
+        .observations
+        .iter()
+        .any(|o| o.metric.as_str() == "case_attempted"
+            && o.case.get("filter").is_some_and(|v| v == "category")
+            && o.value == 16.0));
+    // Old retained runs may have called the same partial result completed.
+    let mut retained = run;
+    retained.status = SystemStatus::Completed;
+    retained.reason = None;
+    let replayed = combine(&m, &[retained], Vec::new()).unwrap();
+    assert_eq!(
+        serde_json::to_value(replayed.systems[0].status).unwrap(),
+        json!("partial")
+    );
+}
+
+#[test]
+fn a_truncated_case_cannot_claim_recall_or_matched_quality() {
+    let mut m = manifest(vec![binding("limited")]);
+    m.workload.concurrency = vec![1];
+    m.workload.filtered = false;
+    let inputs = prepare_inputs(&m).unwrap();
+    let mut run = run_with(&m, "limited", &PerfectSystem::new(), &inputs);
+    run.cases[0].truncated = true;
+    let report = combine(&m, &[run], Vec::new()).unwrap();
+    assert_eq!(
+        verdict(&report, "unfiltered-recall-limited"),
+        VerdictOutcome::NotRun
+    );
+    assert!(!report
+        .observations
+        .iter()
+        .any(|o| o.metric.as_str() == "qps_at_recall_target"));
+    assert!(report
+        .observations
+        .iter()
+        .any(|o| o.metric.as_str() == "case_truncated" && o.value == 1.0));
+}
+
+#[test]
+fn matching_client_metadata_never_proves_server_resource_equivalence() {
+    let m = manifest(vec![binding("a"), binding("b")]);
+    let inputs = prepare_inputs(&m).unwrap();
+    let a = run_with(&m, "a", &PerfectSystem::new(), &inputs);
+    let b = run_with(&m, "b", &PerfectSystem::new(), &inputs);
+    let report = combine(&m, &[a, b], Vec::new()).unwrap();
+    assert_eq!(
+        verdict(&report, "server-resource-equivalence"),
+        VerdictOutcome::NotRun
+    );
+    let item = report
+        .verdicts
+        .iter()
+        .find(|v| v.id.as_str() == "same-environment")
+        .unwrap();
+    assert!(item.question.contains("client metadata"));
+}
+
+#[test]
+fn raw_samples_include_each_failure_and_its_duration() {
+    let m = manifest(vec![binding("partial")]);
+    let inputs = prepare_inputs(&m).unwrap();
+    let adapter = FilterRefusal(PerfectSystem::new());
+    let (run, raw) = run_system(
+        &m,
+        m.binding("partial").unwrap(),
+        &adapter,
+        &inputs,
+        BTreeMap::new(),
+    );
+    assert_eq!(run.cases.len(), raw.len());
+    for (case, samples) in run.cases.iter().zip(raw.iter()) {
+        assert_eq!(samples.latency_ns.len() as u64, case.succeeded);
+        assert_eq!(samples.failures.len() as u64, case.errors);
+        assert!(samples
+            .failures
+            .iter()
+            .all(|failure| failure.category == "request_failed"));
+    }
+}
+
+#[test]
+fn rrflow_hnsw_requires_explicit_native_build_parameters() {
+    let mut value = serde_json::to_value(manifest(vec![binding("native-hnsw")])).unwrap();
+    value["systems"][0]["kind"] = json!("rrflow");
+    value["systems"][0]["index"] = json!({"index":"hnsw", "m":16, "ef_construction":100});
+    value["systems"][0]["search_ladder"][0]["ef"] = json!(32);
+    value["systems"][0]["rrflow_hnsw"] =
+        json!({"max_level":12, "seed":7, "build_policy":{"kind":"cpu"}});
+    let parsed: VectorComparisonManifest = serde_json::from_value(value.clone()).unwrap();
+    parsed.validate().unwrap();
+    let mut invalid = value.clone();
+    invalid["systems"][0]["rrflow_hnsw"]["max_level"] = json!(0);
+    let invalid: VectorComparisonManifest = serde_json::from_value(invalid).unwrap();
+    assert!(invalid
+        .validate()
+        .unwrap_err()
+        .contains("outside engine bounds"));
+    value["systems"][0]
+        .as_object_mut()
+        .unwrap()
+        .remove("rrflow_hnsw");
+    let missing: VectorComparisonManifest = serde_json::from_value(value).unwrap();
+    assert!(missing.validate().unwrap_err().contains("native HNSW"));
 }

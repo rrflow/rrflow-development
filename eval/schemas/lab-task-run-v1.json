@@ -36,6 +36,9 @@
           "minimum": 0,
           "type": "integer"
         },
+        "matches_file_threshold": {
+          "type": "boolean"
+        },
         "records_cited": {
           "format": "uint64",
           "minimum": 0,
@@ -45,9 +48,6 @@
           "format": "uint64",
           "minimum": 0,
           "type": "integer"
-        },
-        "solved": {
-          "type": "boolean"
         }
       },
       "required": [
@@ -58,7 +58,7 @@
         "file_precision",
         "records_cited",
         "records_expected",
-        "solved"
+        "matches_file_threshold"
       ],
       "type": "object"
     },
@@ -112,17 +112,17 @@
         },
         {
           "const": "no_plan",
-          "description": "It replied without a readable plan, which counts as not solved.",
+          "description": "It replied without a readable plan, which does not match the file threshold.",
           "type": "string"
         },
         {
           "const": "timed_out",
-          "description": "It hit its time limit, which counts as not solved.",
+          "description": "It hit its time limit, so the comparison is incomplete.",
           "type": "string"
         },
         {
           "const": "provider_failed",
-          "description": "The provider failed, which counts as not solved and stays visible.",
+          "description": "The provider failed, so the comparison is incomplete and stays visible.",
           "type": "string"
         },
         {

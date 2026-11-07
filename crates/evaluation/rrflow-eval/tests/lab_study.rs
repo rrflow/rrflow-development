@@ -76,7 +76,7 @@ fn catalog() -> TaskComparisonManifest {
             alpha: 0.05,
             min_file_recall: 0.5,
             min_file_precision: 0.5,
-            max_floor_solve_rate: 0.1,
+            max_floor_file_match_rate: 0.1,
             stage: StudyStage::Confirmatory,
             required_captures: Vec::new(),
         },
@@ -498,7 +498,7 @@ fn a_run_whose_mcp_server_never_connected_says_nothing_about_the_arm() {
         let (run, _) = run_key(&plan, &provider, &helper).unwrap();
         assert_eq!(run.outcome, TaskRunOutcome::ToolingFailed);
         assert!(run.reason.as_deref().unwrap().contains("rrflow"));
-        assert!(!run.score.solved);
+        assert!(!run.score.matches_file_threshold);
     }
 
     // The arm's only runs never came up, so the verdict has no pairs to judge.
@@ -682,6 +682,35 @@ fn a_finished_run_missing_any_required_field_fails_the_audit_and_does_not_count(
 }
 
 #[test]
+fn missing_capture_in_one_scheduled_run_keeps_the_system_partial() {
+    let plan = planned(&pilot());
+    let mut runs = run_all(&plan, |_| GOOD);
+    let damaged = runs
+        .iter_mut()
+        .find(|run| run.arm.as_str() == "helper")
+        .unwrap();
+    damaged.cost_usd = None;
+    let report = combine_task_runs(&plan, &runs, Vec::new(), 1).unwrap();
+    let system = report
+        .systems
+        .iter()
+        .find(|system| system.id.as_str() == "helper.sonnet")
+        .unwrap();
+    assert_eq!(system.status, SystemStatus::Partial);
+    let verdict = report
+        .verdicts
+        .iter()
+        .find(|verdict| verdict.id.as_str() == "helps-helper.sonnet")
+        .unwrap();
+    assert_eq!(
+        verdict.outcome,
+        VerdictOutcome::NotRun,
+        "pilots cannot claim a win"
+    );
+    assert!(verdict.basis.contains("4 of 5 scheduled pairs"));
+}
+
+#[test]
 fn a_different_model_answering_fails_the_audit() {
     let plan = planned(&pilot());
     let mut provider = Scripted::replying(GOOD);
@@ -790,6 +819,22 @@ fn a_capture_proof_has_to_cover_the_confirmatory_study_it_is_named_by() {
 }
 
 #[test]
+fn repeated_tasks_cannot_claim_confirmatory_significance_without_clustered_analysis() {
+    let mut config = pilot();
+    config.stage = StudyStage::Confirmatory;
+    config.tasks = TaskSelection::All;
+    config.repetitions = 2;
+    config.spend.as_mut().unwrap().max_usd_total = 360.0;
+    let check = check_study(&config, &catalog(), &requirements(), None).unwrap();
+    assert!(!check.can_reach_significance);
+    assert_eq!(
+        status(&check, "can-reach-significance"),
+        RequirementStatus::NotMet
+    );
+    assert!(!check.ready);
+}
+
+#[test]
 fn a_study_goes_from_its_choices_to_a_report_with_no_provider_process() {
     let plan = planned(&pilot());
     let runs = run_all(&plan, |arm| if arm == "floor" { WRONG } else { GOOD });
@@ -811,7 +856,7 @@ fn a_study_goes_from_its_choices_to_a_report_with_no_provider_process() {
     let floor = report
         .verdicts
         .iter()
-        .find(|verdict| verdict.id.as_str() == "no-leak-sonnet")
+        .find(|verdict| verdict.id.as_str() == "floor-match-sonnet")
         .unwrap();
     assert_eq!(floor.outcome, VerdictOutcome::Met);
     assert!(

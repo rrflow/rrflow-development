@@ -805,7 +805,7 @@ mod tests {
         let mut runtime = VectorRuntime::new(values.clone()).unwrap();
         let hnsw = HnswIndex::build(
             HnswConfig {
-                id: ProjectionId::new("vector:hnsw:body").unwrap(),
+                id: ProjectionId::new("vector-hnsw-body").unwrap(),
                 scope: scope.clone(),
                 field: "body".into(),
                 dimensions: 2,
@@ -842,7 +842,8 @@ mod tests {
 
         let exact = ImmutableVectorSegment::build(
             VectorSegmentConfig {
-                id: ProjectionId::new("vector:exact:body").unwrap(),
+                // Equal cost breaks by name, and this sorts after the exact scan's.
+                id: ProjectionId::new("vector-exact-segment-body").unwrap(),
                 scope: scope.clone(),
                 field: "body".into(),
                 dimensions: 2,
@@ -886,7 +887,7 @@ mod tests {
             canonical[3].clone(),
         ];
         let segment = VectorSegmentConfig {
-            id: ProjectionId::new("vector:exact:moves").unwrap(),
+            id: ProjectionId::new("vector-exact-moves").unwrap(),
             scope: scope.clone(),
             field: "body".into(),
             dimensions: 2,
@@ -912,7 +913,7 @@ mod tests {
             (
                 HnswIndex::build(
                     HnswConfig {
-                        id: ProjectionId::new("vector:hnsw:moves").unwrap(),
+                        id: ProjectionId::new("vector-hnsw-moves").unwrap(),
                         scope: scope.clone(),
                         field: "body".into(),
                         dimensions: 2,
@@ -962,7 +963,7 @@ mod tests {
             candidate(&scope, 2, "b", vec![0.0, 1.0]),
         ];
         let segment_config = VectorSegmentConfig {
-            id: ProjectionId::new("vector:exact:codec").unwrap(),
+            id: ProjectionId::new("vector-exact-codec").unwrap(),
             scope: scope.clone(),
             field: "body".into(),
             dimensions: 2,
@@ -979,7 +980,7 @@ mod tests {
         let hnsw = VectorArtifact::from(
             HnswIndex::build(
                 HnswConfig {
-                    id: ProjectionId::new("vector:hnsw:codec").unwrap(),
+                    id: ProjectionId::new("vector-hnsw-codec").unwrap(),
                     scope: scope.clone(),
                     field: "body".into(),
                     dimensions: 2,
@@ -1000,7 +1001,7 @@ mod tests {
         let turboquant = VectorArtifact::from(
             TurboQuantSegment::build(
                 TurboQuantSegmentConfig {
-                    id: ProjectionId::new("vector:turbo:codec").unwrap(),
+                    id: ProjectionId::new("vector-turbo-codec").unwrap(),
                     scope,
                     field: "body".into(),
                     dimensions: 2,
@@ -1038,7 +1039,7 @@ mod tests {
         let mut runtime = VectorRuntime::new(values.clone()).unwrap();
         let artifact = TurboQuantSegment::build(
             TurboQuantSegmentConfig {
-                id: ProjectionId::new("vector:turbo:runtime").unwrap(),
+                id: ProjectionId::new("vector-turbo-runtime").unwrap(),
                 scope: scope.clone(),
                 field: "body".into(),
                 dimensions: 2,
@@ -1078,7 +1079,7 @@ mod tests {
         let mut runtime = VectorRuntime::new(values.clone()).unwrap();
         let artifact = TurboQuantSegment::build(
             TurboQuantSegmentConfig {
-                id: ProjectionId::new("quant-turbo:generic-denial").unwrap(),
+                id: ProjectionId::new("quant-turbo-generic-denial").unwrap(),
                 scope,
                 field: "body".into(),
                 dimensions: 2,
@@ -1111,7 +1112,7 @@ mod tests {
         let mut runtime = VectorRuntime::new(values.clone()).unwrap();
         let hnsw = HnswIndex::build(
             HnswConfig {
-                id: ProjectionId::new("vector:hnsw:authority").unwrap(),
+                id: ProjectionId::new("vector-hnsw-authority").unwrap(),
                 scope: scope.clone(),
                 field: "body".into(),
                 dimensions: 2,
@@ -1131,7 +1132,7 @@ mod tests {
         assert_eq!(runtime.publish(0, hnsw).unwrap(), 1);
         let rejected_generic = TurboQuantSegment::build(
             TurboQuantSegmentConfig {
-                id: ProjectionId::new("vector:generic-turbo:authority").unwrap(),
+                id: ProjectionId::new("vector-generic-turbo-authority").unwrap(),
                 scope: scope.clone(),
                 field: "body".into(),
                 dimensions: 2,
@@ -1152,7 +1153,7 @@ mod tests {
 
         let lifecycle = TurboQuantSegment::build(
             TurboQuantSegmentConfig {
-                id: ProjectionId::new("quant-turbo:authority").unwrap(),
+                id: ProjectionId::new("quant-turbo-authority").unwrap(),
                 scope: scope.clone(),
                 field: "body".into(),
                 dimensions: 2,
@@ -1178,7 +1179,7 @@ mod tests {
 
         let exact = ImmutableVectorSegment::build(
             VectorSegmentConfig {
-                id: ProjectionId::new("vector:exact:authority").unwrap(),
+                id: ProjectionId::new("vector-exact-authority").unwrap(),
                 scope,
                 field: "body".into(),
                 dimensions: 2,

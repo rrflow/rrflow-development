@@ -51,7 +51,7 @@ pub struct AnalysisChoices {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub min_file_precision: Option<f64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub max_floor_solve_rate: Option<f64>,
+    pub max_floor_file_match_rate: Option<f64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub order_seed: Option<u64>,
 }
@@ -78,7 +78,7 @@ pub struct StudyConfig {
     pub credential_env: Option<String>,
     #[serde(default)]
     pub analysis: AnalysisChoices,
-    /// The audit proving capture on a real run, which a confirmatory study must have.
+    /// The audit reporting capture coverage; it does not authenticate run provenance.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub capture_proof_sha256: Option<Digest>,
 }
@@ -336,9 +336,9 @@ pub fn resolve_study(
     preregistration.min_file_precision = choices
         .min_file_precision
         .unwrap_or(preregistration.min_file_precision);
-    preregistration.max_floor_solve_rate = choices
-        .max_floor_solve_rate
-        .unwrap_or(preregistration.max_floor_solve_rate);
+    preregistration.max_floor_file_match_rate = choices
+        .max_floor_file_match_rate
+        .unwrap_or(preregistration.max_floor_file_match_rate);
     preregistration.order_seed = choices.order_seed.unwrap_or(preregistration.order_seed);
     let mut test = catalog.test.clone();
     test.id = config.id.clone();
@@ -438,7 +438,7 @@ fn evaluate(
             Ok(format!(
                 "{}, which may solve at most {} of tasks.",
                 arm.id.as_str(),
-                rules.max_floor_solve_rate
+                rules.max_floor_file_match_rate
             ))
         }
         RequirementCheck::ComparedArm => {
@@ -526,6 +526,9 @@ fn evaluate(
             ),
         },
         RequirementCheck::CanReachSignificance => {
+            if rules.repetitions > 1 {
+                return Err("Repeated runs of a task are correlated; a clustered significance test is not implemented.".to_string());
+            }
             let needed = discordant_pairs_needed(rules.alpha);
             let tasks = manifest.tasks.len() as u64;
             if tasks < needed {
@@ -551,7 +554,7 @@ fn evaluate(
             if let Some(gap) = proof_gap(manifest, proof) {
                 return Err(format!("The audit does not cover this study: {gap}."));
             }
-            Ok("A real run in every arm passed the audit.".to_string())
+            Ok("The supplied audit reports capture coverage for every arm; run provenance is not authenticated.".to_string())
         }
     }
 }
@@ -631,7 +634,7 @@ pub fn check_study(
             .as_ref()
             .map(|spend| planned_runs(&manifest) as f64 * spend.max_usd_per_run),
         discordant_pairs_needed: needed,
-        can_reach_significance: manifest.tasks.len() as u64 >= needed,
+        can_reach_significance: rules.repetitions == 1 && manifest.tasks.len() as u64 >= needed,
         ready,
         outcomes,
     })

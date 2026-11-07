@@ -68,7 +68,7 @@ fn manifest() -> TaskComparisonManifest {
             alpha: 0.05,
             min_file_recall: 0.5,
             min_file_precision: 0.5,
-            max_floor_solve_rate: 0.1,
+            max_floor_file_match_rate: 0.1,
             stage: StudyStage::Confirmatory,
             required_captures: vec![CaptureField::Cost],
         },
@@ -164,11 +164,11 @@ fn a_plan_is_scored_on_what_it_names() {
     };
     let both = score_plan(&task, &plan(&["src/search.rs", "tests/search.rs"]), rules);
     assert_eq!((both.file_recall, both.file_precision), (1.0, 1.0));
-    assert!(both.solved);
+    assert!(both.matches_file_threshold);
 
     let half = score_plan(&task, &plan(&["src/search.rs"]), rules);
     assert_eq!((half.file_recall, half.file_precision), (0.5, 1.0));
-    assert!(half.solved, "the thresholds are inclusive");
+    assert!(half.matches_file_threshold, "the thresholds are inclusive");
 
     let padded = score_plan(
         &task,
@@ -176,15 +176,21 @@ fn a_plan_is_scored_on_what_it_names() {
         rules,
     );
     assert_eq!(padded.file_precision, 0.2);
-    assert!(!padded.solved, "naming everything cannot solve a task");
+    assert!(
+        !padded.matches_file_threshold,
+        "naming everything cannot solve a task"
+    );
 
     let directory = score_plan(&task, &plan(&["src/", "tests/"]), rules);
     assert_eq!(directory.files_matched, 0);
-    assert!(!directory.solved, "a directory is not the file");
+    assert!(
+        !directory.matches_file_threshold,
+        "a directory is not the file"
+    );
 
     let empty = score_plan(&task, &plan(&[]), rules);
     assert_eq!(empty.file_precision, 0.0);
-    assert!(!empty.solved);
+    assert!(!empty.matches_file_threshold);
 }
 
 #[test]
@@ -416,18 +422,22 @@ fn a_report_says_whether_an_arm_helped_only_from_paired_runs() {
     let helps = verdict("helps-helper.model-a");
     assert_eq!(
         helps.outcome,
-        VerdictOutcome::NotMet,
+        VerdictOutcome::Inconclusive,
         "2 discordant pairs cannot be significant"
     );
-    assert!(helps.basis.contains("4 pairs"), "{}", helps.basis);
-    assert!(helps.basis.contains("does not show the arm has no effect"));
-    assert_eq!(verdict("no-leak-model-a").outcome, VerdictOutcome::Met);
+    assert!(
+        helps.basis.contains("4 of 4 scheduled pairs"),
+        "{}",
+        helps.basis
+    );
+    assert!(helps.basis.contains("not independent"));
+    assert_eq!(verdict("floor-match-model-a").outcome, VerdictOutcome::Met);
 
     let solved = report
         .observations
         .iter()
         .find(|entry| {
-            entry.metric.as_str() == "solve_rate"
+            entry.metric.as_str() == "file_match_rate"
                 && entry.system.as_str() == "helper.model-a"
                 && entry.case.is_empty()
         })
@@ -439,6 +449,66 @@ fn a_report_says_whether_an_arm_helped_only_from_paired_runs() {
         .observations
         .iter()
         .any(|entry| entry.metric.as_str() == "cost_usd"));
+}
+
+#[test]
+fn missing_or_failed_pairs_and_unknown_coordinates_cannot_claim_a_win() {
+    let mut manifest = manifest();
+    manifest.tasks = (0..12).map(|index| task(&format!("t{index}"))).collect();
+    manifest.preregistration.repetitions = 1;
+    let mut runs = Vec::new();
+    for task in &manifest.tasks {
+        let name = task.id.as_str().to_string();
+        for (arm_id, text) in [("alone", WRONG), ("helper", GOOD)] {
+            runs.push(run_with(
+                &manifest,
+                &Scripted::replying(text),
+                &key(&name, arm_id, 1),
+            ));
+        }
+    }
+    let paired_outcome = |runs: &[TaskRun]| {
+        let report = combine_task_runs(&manifest, runs, Vec::new(), 1).unwrap();
+        report
+            .verdicts
+            .iter()
+            .find(|v| v.id.as_str() == "helps-helper.model-a")
+            .unwrap()
+            .outcome
+    };
+    assert_eq!(paired_outcome(&runs), VerdictOutcome::Met);
+    let mut incomplete = runs.clone();
+    incomplete.pop();
+    assert_eq!(paired_outcome(&incomplete), VerdictOutcome::Inconclusive);
+    let mut failed = runs.clone();
+    failed.last_mut().unwrap().outcome = TaskRunOutcome::ProviderFailed;
+    assert_eq!(paired_outcome(&failed), VerdictOutcome::Inconclusive);
+    let report = combine_task_runs(&manifest, &failed, Vec::new(), 1).unwrap();
+    assert_eq!(
+        report
+            .systems
+            .iter()
+            .find(|s| s.id.as_str() == "helper.model-a")
+            .unwrap()
+            .status,
+        SystemStatus::Partial
+    );
+    assert_eq!(
+        report
+            .observations
+            .iter()
+            .find(|o| o.system.as_str() == "helper.model-a"
+                && o.metric.as_str() == "file_match_rate"
+                && o.case.is_empty())
+            .unwrap()
+            .samples,
+        11
+    );
+    let mut forged = runs;
+    forged[0].task = id("unknown-task");
+    assert!(combine_task_runs(&manifest, &forged, Vec::new(), 1)
+        .unwrap_err()
+        .contains("outside the frozen design"));
 }
 
 #[test]
@@ -464,7 +534,7 @@ fn a_large_paired_difference_can_be_significant() {
     let floor = report
         .verdicts
         .iter()
-        .find(|verdict| verdict.id.as_str() == "no-leak-model-a")
+        .find(|verdict| verdict.id.as_str() == "floor-match-model-a")
         .unwrap();
     assert_eq!(floor.outcome, VerdictOutcome::NotRun);
 }
@@ -477,7 +547,7 @@ fn leaking_tasks_show_up_in_the_floor_verdict() {
     let floor = report
         .verdicts
         .iter()
-        .find(|verdict| verdict.id.as_str() == "no-leak-model-a")
+        .find(|verdict| verdict.id.as_str() == "floor-match-model-a")
         .unwrap();
     assert_eq!(floor.outcome, VerdictOutcome::NotMet);
 }
@@ -534,7 +604,7 @@ fn a_reply_without_a_plan_or_a_failed_run_stays_visible_and_unsolved() {
         &key("t1", "alone", 1),
     );
     assert_eq!(refusal.outcome, TaskRunOutcome::NoPlan);
-    assert!(!refusal.score.solved);
+    assert!(!refusal.score.matches_file_threshold);
     assert_eq!(refusal.score.files_expected, 2);
     assert!(refusal.reply_sha256.is_some());
 
@@ -543,7 +613,7 @@ fn a_reply_without_a_plan_or_a_failed_run_stays_visible_and_unsolved() {
     let failed = run_with(&manifest, &failing, &key("t1", "alone", 1));
     assert_eq!(failed.outcome, TaskRunOutcome::ProviderFailed);
     assert!(
-        !failed.score.solved,
+        !failed.score.matches_file_threshold,
         "a good plan from a failed run does not count"
     );
 
@@ -551,7 +621,7 @@ fn a_reply_without_a_plan_or_a_failed_run_stays_visible_and_unsolved() {
     slow.reply.timed_out = true;
     let timed_out = run_with(&manifest, &slow, &key("t1", "alone", 1));
     assert_eq!(timed_out.outcome, TaskRunOutcome::TimedOut);
-    assert!(!timed_out.score.solved);
+    assert!(!timed_out.score.matches_file_threshold);
 }
 
 #[test]

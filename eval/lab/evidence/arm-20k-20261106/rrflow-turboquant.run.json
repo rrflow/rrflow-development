@@ -1,0 +1,72 @@
+{
+  "cases": [
+    {
+      "attempted": 100,
+      "concurrency": 1,
+      "errors": 0,
+      "filtered": false,
+      "latency_max_ms": 590.533164,
+      "latency_p50_ms": 59.968723,
+      "latency_p95_ms": 62.226478,
+      "latency_p99_ms": 66.305039,
+      "queries_per_second": 15.323435761090764,
+      "recall_high": 0.9925654451023033,
+      "recall_low": 0.9774345548976974,
+      "recall_mean": 0.9850000000000003,
+      "recall_min": 0.8,
+      "setting": "rerank-40",
+      "succeeded": 100,
+      "truncated": false,
+      "wall_seconds": 6.525951592
+    },
+    {
+      "attempted": 100,
+      "concurrency": 1,
+      "errors": 0,
+      "filtered": true,
+      "latency_max_ms": 35.522809,
+      "latency_p50_ms": 31.403817,
+      "latency_p95_ms": 33.194349,
+      "latency_p99_ms": 35.313799,
+      "queries_per_second": 31.81066063716123,
+      "recall_high": 1.0,
+      "recall_low": 1.0,
+      "recall_mean": 1.0,
+      "recall_min": 1.0,
+      "setting": "rerank-40",
+      "succeeded": 100,
+      "truncated": false,
+      "wall_seconds": 3.143600227
+    }
+  ],
+  "disk_bytes": 269441016,
+  "environment": {
+    "architecture": "aarch64",
+    "logical_cpus": "10",
+    "memory_total_bytes": "130592624640",
+    "note.client_cpuset": "0-4,10-14",
+    "note.server_cpuset": "5-9,15-19",
+    "os": "linux"
+  },
+  "finished_at_unix_ms": 1794007438054,
+  "identities": {
+    "filtered_truth": "bb25dd7341029b89df1a374ac43ecb08a5aac8a3fa82c082eda2bb9a65a64962",
+    "manifest": "7859639965b045c230d6ba7c9b6ef3e661396a32d11a974b7590a149e4f1da3f",
+    "points": "3f0e6e665fe38454335671c13f745ed6db04a7969d01d8b6252074c71de31286",
+    "queries": "747fd92695d4b5f6c8654d21a678f2a9e7e24aae2acba306e847d1a078d674a3",
+    "truth": "b9540c373952428a255a5c5cf00788ca8bb7603f91e3738d89f9c166fdc3a6b8"
+  },
+  "index_evidence": "access paths the engine reported: turboquant",
+  "ingest": {
+    "points": 20000,
+    "points_per_second": 882.0141632460155,
+    "ready_seconds": 1.857651979,
+    "seconds": 22.675372838
+  },
+  "memory_bytes": 320761856,
+  "observed_version": "rrflow 1.0.0",
+  "schema_version": 1,
+  "started_at_unix_ms": 1794007402345,
+  "status": "completed",
+  "system": "rrflow-turboquant"
+}

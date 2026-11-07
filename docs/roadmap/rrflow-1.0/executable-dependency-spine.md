@@ -20,12 +20,20 @@ There is one pre-release engine and the existing public API remains unchanged.
 | 1 | Accepted A/B, C-01 through C-06 foundations and D-01; retain open C-04 obligations | Preserve accepted evidence and the installed transaction, authorization and read-stamp boundaries. Open subrequirements do not become completed by this ordering. |
 | 2 | D-02 durable attunement execution and effective configuration | An authorized installed project advances a real job through durable transitions; resume/cancel/leases and phase digests survive restart. Global defaults and project overrides resolve at one engine owner with field origins, limits and an effective digest. No UI or worker becomes lifecycle authority. |
 | 3 | D-03 committed inventory, then D-04 incremental parsing | A real authorized source tree yields a committed snapshot, bounded chunks/symbols and source spans. Edit/delete, exclusion, cancellation and restart are proven; unchanged inputs do not trigger full work. |
-| 4 | H-11a estate organisation contract, then D-05 phases with the specific E-01 through E-05 and F-01 through F-05 capabilities each consumes | Normalize, link, index, embed, graph, ground and verify against canonical persistent access paths. Implement missing selective/incremental access and bounded streaming where consumed; no temporary index or second store. rrflowQL returns source-grounded graph/lexical/vector results from the project's rrflowDB/rrflowKV at one read stamp. Ingested kinds and collections belong to domains of the H-11a registry organisation. Remaining E/F qualification stays open. |
+| 4 | H-11a estate organisation contract, then D-05 capabilities with the specific E/F paths each consumes | Select available normalize, link, index, embed, graph, ground and verification work from actual need and policy; their names do not define a mandatory runtime sequence. Use canonical persistent paths, incremental access and bounded streaming where consumed. rrflowQL returns authorized source-grounded results at one read stamp. Ingested kinds and collections belong to the H-11a organisation. Remaining E/F qualification stays open. |
 | 5 | H-06 incremental project controls and evidence through H-04 public contracts, with H-11b to H-11e estate organisation; bounded C-07 correctness throughout orders 2-5 | Add/reopen two real projects, inspect effective settings and real stored source relationships/vectors, query, edit/delete/reindex and restart without cross-project leakage. Domain and tag scopes, isolation and per-domain evidence are served by the engine and shown by the client. Missing phases remain explicitly unavailable. Client projections accompany each supported engine behavior; full H-04/H-06 acceptance is not inferred. |
 | 6 | C-07 growth and final sustained qualification; complete remaining E/F requirements | First matched real-project ingestion/index/query characterization, then the unchanged full profile/repetition and actual 24-hour matrix on a frozen integrated candidate. Retain all crash, disk-full, resource, acknowledged-write, readback and isolation oracles. Synthetic storage evidence is not project ingestion proof. |
 | 7 | D-06 through D-11, KB-06/07 and remaining H capabilities in their explicit dependency order | Typed opt-in knowledge paths, placement/accounting, operational lifecycle, dynamic context and public surfaces use the same authority. KB import survives readback/recovery. H-08 PostgreSQL and H-07 remote work retain their own prerequisite DAGs; neither is required for default readiness. |
 | 8 | G-01 through G-06 and I-01 through I-07, with remaining H integration | Optional LFG/SWAG, model routing and learning proposals compose through governed effects, bounded inference and explicit durable capabilities. Evaluation preparation may proceed earlier; claims require the actual behavior and held-out evidence. |
 | 9 | J-01 through J-03, KB-08, J-04 and J-05 | Complete native qualification, matched comparative evidence and signed distribution; all required C/D/E/F/G/H/I exits still apply. No abbreviated run qualifies release. |
+
+Relational SQL work under H-08/H-12 and Parquet cold-storage work under F-06
+may be researched and implemented alongside the project journey when their
+actual shared source, transaction and read dependencies are available. They
+are full alpha targets, not substitutes for the first working project cycle.
+The list above orders engineering dependencies; it is not a runtime reasoning
+plan, a fixed number of steps per prompt, or a requirement to delay independent
+safe work until unrelated benchmarks finish.
 
 D-02a/b now has an embedded engine implementation for authenticated job
 control, bounded Connect execution, durable receipts and lease fencing. Its
@@ -204,8 +212,9 @@ the final integration wave.
 The owner-directed [rrflowDB compatibility plan](../../reference/protocol/postgresql.md)
 adds H-08 without reopening accepted storage-format work or bypassing unfinished
 native gates. H-08a can establish reference fixtures now. H-08b/H-08c extend
-native types and transactions only after D-01 and C-04/C-07 evidence; their
-accepted work may then precede the remaining H packages. H-08d additionally
+native types and transactions with D-01 and the C-04/C-07 correctness evidence
+their changed boundaries consume; full capacity/soak is not a prerequisite to
+begin safe implementation. Their accepted work may precede remaining H packages. H-08d additionally
 requires E/F access and streaming/budget evidence; H-08e requires the H-04
 public-capability foundation. The [H-08 package table](gate-h.md#h-08-postgresql-compatibility-packages)
 owns the remaining dependencies. A wire-only server cannot skip those exits.
@@ -215,9 +224,11 @@ its [durability and growth requirements](gate-c-07.md#ordered-implementation-pac
 and [staged qualification](gate-c-07.md#execution-reset-after-the-failed-desktop-corpus).
 Its historical component receipts remain valid only for their stated behavior
 and candidate. Full qualification cannot establish an absent ingestion executor.
-The [DuckDB interoperability packages](gate-d.md#duckdb-interoperability-packages)
-retain their explicit prerequisites; export does not imply import or native
-persistence. DuckDB never becomes default readiness.
+The earlier DuckDB interoperability packages were withdrawn by the owner.
+[Native analytical database research](../../reference/data/duckdb.md) informs
+rrflowDB work under its existing owners; Parquet export does not prove cold
+compaction, import, streaming, or database performance. F-06 owns cold-tier
+publication and readback; H-12 owns a separate SQLite compatibility profile.
 
 D-01 has [accepted installed-foundation evidence](gate-d-evidence.md#d-01-accepted-installed-foundation-2026-10-21)
 through the actual primary executable on Linux, macOS and Windows. Accepted C-06 replaced

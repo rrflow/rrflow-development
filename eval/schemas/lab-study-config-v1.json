@@ -11,7 +11,7 @@
             "null"
           ]
         },
-        "max_floor_solve_rate": {
+        "max_floor_file_match_rate": {
           "format": "double",
           "type": [
             "number",
@@ -224,7 +224,7 @@
           "type": "null"
         }
       ],
-      "description": "The audit proving capture on a real run, which a confirmatory study must have."
+      "description": "The audit reporting capture coverage; it does not authenticate run provenance."
     },
     "catalog": {
       "$ref": "#/$defs/CatalogReference"

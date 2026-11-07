@@ -69,6 +69,10 @@
         }
       ]
     },
+    "CanonicalId": {
+      "description": "A canonical public identifier component.\n\nIDs are lowercase ASCII and intentionally URL/path safe. Human-facing\nlabels are separate data and may use arbitrary Unicode.",
+      "type": "string"
+    },
     "CorpusSource": {
       "description": "Generated from fixed arithmetic so its digest matches on every platform.",
       "oneOf": [
@@ -320,6 +324,32 @@
       ],
       "type": "object"
     },
+    "RrflowHnswParameters": {
+      "additionalProperties": false,
+      "description": "RRFlow-specific HNSW build parameters, supplied explicitly by the workload.",
+      "properties": {
+        "build_policy": {
+          "$ref": "#/$defs/VectorIndexBuildPolicy"
+        },
+        "max_level": {
+          "format": "uint8",
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "seed": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "max_level",
+        "seed",
+        "build_policy"
+      ],
+      "type": "object"
+    },
     "SearchSetting": {
       "additionalProperties": false,
       "properties": {
@@ -424,6 +454,17 @@
             "null"
           ]
         },
+        "rrflow_hnsw": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RrflowHnswParameters"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Required for an available RRFlow HNSW arm; other systems do not use it."
+        },
         "search_ladder": {
           "items": {
             "$ref": "#/$defs/SearchSetting"
@@ -492,6 +533,61 @@
         "revision"
       ],
       "type": "object"
+    },
+    "VectorIndexBuildPolicy": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "cpu",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "allow_cpu_fallback": {
+              "type": "boolean"
+            },
+            "backend_id": {
+              "$ref": "#/$defs/CanonicalId"
+            },
+            "kind": {
+              "const": "prefer_gpu",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "backend_id",
+            "allow_cpu_fallback"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "backend_id": {
+              "$ref": "#/$defs/CanonicalId"
+            },
+            "kind": {
+              "const": "require_gpu",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "backend_id"
+          ],
+          "type": "object"
+        }
+      ]
     },
     "WorkloadSpec": {
       "additionalProperties": false,

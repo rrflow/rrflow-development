@@ -104,7 +104,7 @@
     {
       "id": "can-reach-significance",
       "title": "Enough tasks to answer the question",
-      "statement": "There are enough distinct tasks for exact McNemar to reach the study's alpha. Repeating a task does not add a task.",
+      "statement": "There are enough distinct tasks for exact McNemar to reach the study's alpha. Repeated runs need a clustered significance test, which is not yet implemented.",
       "why": "rea-lab found that most pairs agree, so a small study can only detect a large effect. Below this number it cannot detect anything, and a pilot says so in its report.",
       "sources": ["rea-lab"],
       "records": ["J-04"],
