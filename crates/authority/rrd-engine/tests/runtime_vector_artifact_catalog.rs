@@ -118,7 +118,7 @@ fn metadata_manifest_exposes_only_the_active_projection_generation() {
 fn turboquant(candidates: Vec<VectorCandidate>) -> TurboQuantSegment {
     TurboQuantSegment::build(
         TurboQuantSegmentConfig {
-            id: ProjectionId::new("vector:turboquant:body").unwrap(),
+            id: ProjectionId::new("vector-turboquant-body").unwrap(),
             scope: scope(),
             field: "body".into(),
             dimensions: 2,
@@ -332,44 +332,49 @@ fn publication_refuses_an_identity_the_public_changefeed_cannot_project() {
         LocalObjectStore::open(object_dir.path()).unwrap(),
     );
     let canonical = candidates();
-    let mut runtime = VectorRuntime::new(canonical.clone()).unwrap();
-    let artifact = HnswIndex::build(
-        HnswConfig {
-            id: ProjectionId::new("vector:not:public").unwrap(),
-            scope: scope(),
-            field: "body".into(),
-            dimensions: 2,
-            metric: ScoreMetric::Dot,
-            embedding_model: None,
-            m: 2,
-            ef_construction: 4,
-            max_level: 3,
-            seed: 7,
-            filter_properties: BTreeSet::new(),
-        },
-        1,
-        3,
-        canonical,
-    )
-    .unwrap();
+    // The grammar is in the type, so what is left to refuse is a projection id that is canonical
+    // alone and too long once publication adds to it: first its object's name, then its record's.
+    assert!(ProjectionId::new("vector:not:public").is_err());
+    for length in [120, 128] {
+        let mut runtime = VectorRuntime::new(canonical.clone()).unwrap();
+        let artifact = HnswIndex::build(
+            HnswConfig {
+                id: ProjectionId::new("a".repeat(length)).unwrap(),
+                scope: scope(),
+                field: "body".into(),
+                dimensions: 2,
+                metric: ScoreMetric::Dot,
+                embedding_model: None,
+                m: 2,
+                ef_construction: 4,
+                max_level: 3,
+                seed: 7,
+                filter_properties: BTreeSet::new(),
+            },
+            1,
+            3,
+            canonical.clone(),
+        )
+        .unwrap();
 
-    let error = publish_traced_vector_artifact(
-        &data,
-        &mut runtime,
-        0,
-        artifact.into(),
-        "operator:catalog-test",
-        100,
-    )
-    .unwrap_err()
-    .to_string();
+        let error = publish_traced_vector_artifact(
+            &data,
+            &mut runtime,
+            0,
+            artifact.into(),
+            "operator:catalog-test",
+            100,
+        )
+        .unwrap_err()
+        .to_string();
 
-    assert!(error.contains("is not public"), "{error}");
-    assert!(vector_artifact_catalog_entries(data.engine(), &scope())
-        .unwrap()
-        .is_empty());
-    let stored = stored_files(object_dir.path());
-    assert!(stored.is_empty(), "bytes were stored: {stored:?}");
+        assert!(error.contains("canonical id length"), "{error}");
+        assert!(vector_artifact_catalog_entries(data.engine(), &scope())
+            .unwrap()
+            .is_empty());
+        let stored = stored_files(object_dir.path());
+        assert!(stored.is_empty(), "bytes were stored: {stored:?}");
+    }
 }
 
 fn stored_files(root: &std::path::Path) -> Vec<std::path::PathBuf> {

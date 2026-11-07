@@ -10,6 +10,13 @@ independently.
 
 ## Observed deficiency
 
+The [current installed worker trial](../../evidence/change-journals/gate-g/task-worker-main-installed-live-20261106.md)
+uses real model responses on reconciled source `604c196d`, with native selection
+and worker calls, restart/replay checks and independent recovery without provider
+dispatch. Candidate/protected CI and public UI prompt binding remain open. It
+does not establish source-edit replanning, verified project effects or model
+quality; earlier receipts retain their original source identities.
+
 The [worker/observation reconciliation](../../evidence/change-journals/gate-g/task-worker-observation-main.md)
 composes the worker candidate with landed observation delivery and discovery.
 It retains both configuration policies and native operations. The

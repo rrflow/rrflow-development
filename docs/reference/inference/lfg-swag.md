@@ -1,6 +1,6 @@
 # LFG analysis and SWAG controller
 
-**Status:** active target contract; experimental LFG-admitted selection and selected-worker drafts exist in an unmerged integration candidate; the full LFG/SWAG journey remains incomplete
+**Status:** active target contract; selected-worker execution is merged; LFG-admitted selection is an unmerged draft; the full LFG/SWAG journey remains incomplete
 **Coordinate:** `rrflow://rrflow-instance/data/reference/inference/lfg-swag`
 **Owner:** configurable CPU prompt analysis, System One selection, model dispatch, and inference-cache identity
 

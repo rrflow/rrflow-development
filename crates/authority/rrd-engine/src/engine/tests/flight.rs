@@ -20,7 +20,7 @@ fn unrepresentable_context_reference_denies_flight_before_runtime_publication() 
     let (_root, engine) = isolated_engine();
     let mut registry = RuntimeSchemaRegistry::empty(1, "flight identity fixture");
     registry.tables.insert(
-        RuntimeType::new("native:note").unwrap(),
+        RuntimeType::new("native-note").unwrap(),
         RuntimeTableSchema::schemaless(RuntimeLogicalModel::Relational),
     );
     engine
@@ -35,7 +35,8 @@ fn unrepresentable_context_reference_denies_flight_before_runtime_publication() 
                 RuntimeMutation::Schema { registry },
                 RuntimeMutation::Record {
                     record: RuntimeRecord {
-                        reference: RuntimeRef::new("native:note", "alpha").unwrap(),
+                        // An event identity is the one thing a canonical id cannot hold.
+                        reference: RuntimeRef::event(RuntimeType::new("native-note").unwrap(), 7),
                         valid_from: 10,
                         valid_to: None,
                         properties: BTreeMap::from([(

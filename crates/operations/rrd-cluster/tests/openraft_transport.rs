@@ -278,7 +278,7 @@ fn mutual_tls_transport_replicates_and_denies_identity_confusion() {
             assert_eq!(replica.sha256, staged.sha256);
         }
         let artifact = ObjectReference::for_bytes(
-            "vector:hnsw:tls-fixture@1:bytes",
+            "vector-hnsw-tls-fixture.1.vector-bytes",
             None,
             "application/vnd.rrflow.vector-hnsw+json",
             &artifact_bytes,

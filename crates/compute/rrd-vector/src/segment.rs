@@ -310,7 +310,7 @@ mod tests {
 
     fn config(scope: &ScopeId) -> VectorSegmentConfig {
         VectorSegmentConfig {
-            id: ProjectionId::new("vector:body").unwrap(),
+            id: ProjectionId::new("vector-body").unwrap(),
             scope: scope.clone(),
             field: "body".into(),
             dimensions: 2,
