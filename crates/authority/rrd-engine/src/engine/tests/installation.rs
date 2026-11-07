@@ -279,7 +279,13 @@ fn planning_is_byte_identical_and_has_no_project_effect() {
     let before = inventory(project.path());
     let first = plan(project.path());
     let second = plan(project.path());
-    assert_eq!(first.installation.initial_grants, SecurityAction::ALL);
+    assert_eq!(
+        first.installation.initial_grants,
+        SecurityAction::ALL
+            .into_iter()
+            .filter(|action| *action != SecurityAction::ProjectSourceRead)
+            .collect::<Vec<_>>()
+    );
     assert_eq!(first.installation.managed_paths.len(), 13);
     assert!(serde_json::to_value(&first.installation)
         .unwrap()

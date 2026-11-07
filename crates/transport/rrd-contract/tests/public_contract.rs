@@ -2691,7 +2691,7 @@ fn prompt_flight_contract_is_bounded_strict_and_separately_authorized() {
             Some(rrd_contract::SecurityAction::FlightRead)
         );
     }
-    assert_eq!(rrd_contract::SecurityAction::ALL.len(), 58);
+    assert_eq!(rrd_contract::SecurityAction::ALL.len(), 59);
 }
 
 fn task_record() -> rrd_contract::TaskRecord {

@@ -20,7 +20,8 @@ pub use endpoint_generation::{
 };
 pub use endpoint_worker::{
     EndpointWorkerBinding, EndpointWorkerPolicy, TaskWorkerContext, TaskWorkerOutput,
-    TaskWorkerRequest, ENDPOINT_WORKER_VERSION,
+    TaskWorkerRequest, TaskWorkerSourceProvenance, TaskWorkerSourceRequest,
+    ENDPOINT_WORKER_VERSION, TASK_WORKER_SOURCE_VERSION,
 };
 mod endpoint_policy;
 mod endpoint_proposal;
@@ -272,7 +273,7 @@ use std::fmt;
 pub const PROTOCOL: &str = "rrd";
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const OPENAPI_DOCUMENT_SHA256: &str =
-    "e6bd6b60e12398a5ee5ddaf23f846e74288bc128f91acc561d9099381072d80f";
+    "5a14cb9e11a001542a863b295990e27d58a21b0b5d98da183189f09d5869d817";
 pub const MAX_ID_BYTES: usize = 128;
 pub const MAX_MESSAGE_BYTES: usize = 4_096;
 pub const MAX_CAPABILITIES: usize = 512;
@@ -3121,6 +3122,7 @@ pub enum SecurityAction {
     ReasoningWrite,
     EndpointPropose,
     WorkerExecute,
+    ProjectSourceRead,
     ObservationPrepare,
     ObservationDeliver,
     ObservationRead,
@@ -3131,7 +3133,7 @@ pub enum SecurityAction {
 impl SecurityAction {
     /// Canonical policy-action catalogue. Installation profiles and other
     /// projections consume this list instead of maintaining parallel copies.
-    pub const ALL: [Self; 58] = [
+    pub const ALL: [Self; 59] = [
         Self::ServiceInspect,
         Self::UnknownRequest,
         Self::SessionCreate,
@@ -3185,6 +3187,7 @@ impl SecurityAction {
         Self::ReasoningWrite,
         Self::EndpointPropose,
         Self::WorkerExecute,
+        Self::ProjectSourceRead,
         Self::ObservationPrepare,
         Self::ObservationDeliver,
         Self::ObservationRead,

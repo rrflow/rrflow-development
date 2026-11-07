@@ -6,6 +6,45 @@ mod publication;
 mod records;
 mod reuse;
 
+#[cfg(test)]
+pub(crate) use records::LegacySourceFileProjectionGuard;
+
+pub(in crate::engine) struct AcceptedInventory {
+    pub head_bytes: Vec<u8>,
+    pub project_id: CanonicalId,
+    pub proposal_sha256: String,
+    pub read: ReadStamp,
+    pub proposal: Proposal,
+}
+
+pub(in crate::engine) fn load_accepted_source(
+    engine: &RrdEngine,
+    project_id: &CanonicalId,
+    max_bytes: u64,
+    max_entries: u64,
+) -> Result<AcceptedInventory> {
+    let mut remaining_keys = engine.estate_configuration.query.max_storage_keys;
+    let (head_bytes, head, proposal) = records::load_accepted(
+        engine,
+        project_id,
+        max_bytes,
+        max_entries,
+        &mut remaining_keys,
+    )?
+    .ok_or(ServiceError::ProjectBindingMismatch)?;
+    Ok(AcceptedInventory {
+        head_bytes,
+        project_id: head.project_id,
+        proposal_sha256: head.proposal_sha256,
+        read: head.read,
+        proposal,
+    })
+}
+
+pub(in crate::engine) fn source_head_key(instance: &CanonicalId) -> String {
+    records::head_key(instance)
+}
+
 pub(super) struct Work<'a> {
     pub session: &'a CorrelationId,
     pub token: &'a CorrelationId,

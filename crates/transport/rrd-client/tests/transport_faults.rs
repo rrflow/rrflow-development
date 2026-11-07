@@ -369,6 +369,7 @@ async fn worker_call_does_not_repeat_after_retryable_transport_failure() {
         expected_configuration_sha256: "3".repeat(64),
         max_storage_keys: 100,
         context: None,
+        source: None,
     };
     let error = client
         .execute_task_worker(

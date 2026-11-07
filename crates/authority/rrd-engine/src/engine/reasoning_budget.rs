@@ -153,6 +153,7 @@ pub(super) struct TaskCompletionAdmission {
     pub guards: Vec<AttemptAuthorityGuard>,
     pub writes: Vec<AttemptControlWrite>,
     pub invalidation: Option<rrd_contract::TaskAttemptInvalidation>,
+    pub worker_source: Option<rrd_contract::TaskWorkerSourceProvenance>,
 }
 
 pub(super) struct Reservation {
@@ -543,6 +544,23 @@ impl RrdEngine {
             // Cleanup also runs for known failures. If admission cannot be read,
             // leave the reservation unresolved rather than releasing capacity.
             let admission = admit_completion(&read)?;
+            if let Some(source) = admission.worker_source.clone() {
+                if let Ok(output) = &mut result {
+                    match output {
+                        TaskAttemptOutput::Worker(output) => output.source = Some(source),
+                        _ => {
+                            result = Err(ServiceError::Storage(
+                                "worker source admission returned for a non-worker attempt".into(),
+                            ));
+                        }
+                    }
+                }
+            }
+            if let Ok(output) = &result {
+                if let Err(error) = output.validate_for(&reserved, &attempt) {
+                    result = Err(error);
+                }
+            }
             if result.is_ok() {
                 if let Some(reason) = admission.invalidation {
                     result = Err(ServiceError::TaskAttemptInvalidated(reason));

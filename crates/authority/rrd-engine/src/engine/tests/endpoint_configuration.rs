@@ -169,6 +169,7 @@ fn configuration_policy_reopens(include_worker: bool, include_observation: bool)
             contract_version: rrd_contract::ENDPOINT_WORKER_VERSION,
             allow_network: true,
             allow_context_export: true,
+            allow_source_export: false,
             allow_unverified_identity: true,
             maximum_concurrent_calls: 1,
             bindings: vec![rrd_contract::EndpointWorkerBinding {
