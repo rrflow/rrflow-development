@@ -1,7 +1,7 @@
 # C-07: transaction-begin diagnostic implementation
 
-**Status:** active draft prerequisite; no C-07 or alpha gate passed  
-**Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/gate-c/c-07-transaction-begin-diagnostic-20261107`  
+**Status:** active draft prerequisite; no C-07 or alpha gate passed
+**Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/gate-c/c-07-transaction-begin-diagnostic-20261107`
 **Owner:** C-07g, OBJ-10/11, [POAM-035](../../../poam/rrflow-1.0-alpha/poam-035.md); [PR #295](https://github.com/rrflow/rrflow-development/pull/295).
 
 Starting revision `d21a1556657fb17e783a4396368250459e03a2e8`, tree `fd041325a1861ad3c7180541c0e563a02ab6b31c`. The retained failed ARM campaign and selected samples are in [the preceding evidence record](c-07-arm-begin-phase-evidence-20261107.md). This package adds optional, non-durable `rrd_engine::transaction_diagnostic` timing to transaction begin, behind the existing tracing filter. It hashes the request ID, records phase durations and created/replayed/error outcome, and emits after the transaction permit is dropped by local variable drop order. It does not change the transaction's canonical mutations, authorization, admission or replay logic. The hash is still potentially guessable, and an enabled sink can affect caller latency. Zero can indicate an unreached phase; the event is not an audit or a benchmark result.
@@ -31,3 +31,5 @@ After that cleanup a new non-incremental test build without test debuginfo was c
 On the same Windows working tree and non-incremental no-debuginfo test build, `cargo test --offline --locked -p rrd-engine --lib blocked_begin_trace_does_not_hold_transaction_admission -- --nocapture` passed one test. It holds the first transaction trace writer while a second transaction begins on another thread, requires the second to finish before releasing the writer, and verifies the runtime cursor. The subsequent `cargo test --offline --locked -p rrd-engine --lib` passed 393 tests with four ignored. This checks the engine admission permit, not whether a blocked subscriber can delay a single-threaded HTTP executor.
 
 With `CARGO_INCREMENTAL=0`, `CARGO_PROFILE_DEV_DEBUG=0`, and `CARGO_PROFILE_TEST_DEBUG=0`, the following strict checks passed: `cargo clippy --offline --locked -p rrd-engine --lib --tests -- -D warnings`, `cargo clippy --offline --locked -p rrd-server --test http_process -- -D warnings`, and `cargo clippy --offline --locked -p rrflow-cli --test installed_reopen -- -D warnings`. The operational risk is still that an enabled synchronous subscriber can delay a caller or a single-threaded executor even after admission release; the concurrency test does not measure that overhead.
+
+The pre-commit `git diff --cached --check` exposed trailing spaces in the new untracked journal. The PowerShell command did not stop on that native command failure, so the code commit was created before correction. This follow-up removes those spaces and reruns the staged check; no source behavior changed.
