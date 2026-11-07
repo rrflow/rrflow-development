@@ -56,6 +56,15 @@ retain the failing oracle. D-03 owns the repair; D-04 must not treat an
 unqualified head query as a complete source snapshot. This does not establish
 that a checkpoint-pinned read is broken or close any roadmap item.
 
+The same real-engine interrupted-refresh fixture, reconciled with public main
+`d21a1556657fb17e783a4396368250459e03a2e8`, now also demonstrates that the
+public all-model `read_data_snapshot` returns the partially refreshed root
+before and after reopen while the completed head remains unchanged. An
+unrelated newer claim remained visible through rrflowQL. The [cross-consumer
+record](../../evidence/change-journals/gate-d/d-03-snapshot-consumer-20261107.md)
+retains the failing test and precise limits. A query-only filter would not fix
+this second read path; a global rollback would lose the newer unrelated claim.
+
 The [selection-index fault characterization](../../evidence/change-journals/gate-d/d-03-interrupted-refresh-visibility.md#selection-index-omission-fault-injection-2026-11-03)
 deliberately removed a newer selection-like event's semantic index entry while
 leaving its log and accumulator intact. The current stamped reader returned an

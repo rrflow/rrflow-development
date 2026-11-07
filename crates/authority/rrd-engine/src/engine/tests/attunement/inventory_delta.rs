@@ -237,6 +237,41 @@ fn interrupted_refresh_does_not_expose_partial_facts_as_completed_snapshot() {
         );
     };
     read_unrelated(&engine, &session, unrelated_at + 2, "before-reopen");
+    // The all-model public snapshot has its own storage consumer. Capturing it
+    // separately prevents a query-only fix from masking a mixed source view.
+    let read_snapshot_root =
+        |engine: &RrdEngine, session: &SessionLease, now: u64, suffix: &str| {
+            let snapshot = engine
+                .read_data_snapshot(
+                    &session.session_id,
+                    &session.token,
+                    &rrd_contract::ReadDataSnapshot {
+                        valid_at: unrelated_at,
+                        max_storage_keys: rrd_contract::MAX_DATA_SNAPSHOT_STORAGE_KEYS,
+                    },
+                    now,
+                    &format!("request-visibility-snapshot-{suffix}"),
+                    &format!("operation-visibility-snapshot-{suffix}"),
+                )
+                .unwrap();
+            snapshot
+                .entries
+                .into_iter()
+                .find_map(|entry| match entry.value {
+                    rrd_contract::TransactionMutation::PutRecord {
+                        reference,
+                        properties,
+                        ..
+                    } if reference.kind.as_str() == "source-tree-entry"
+                        && reference.id.as_str() == root_record.reference.id.as_str() =>
+                    {
+                        properties.get("subtree_sha256").cloned()
+                    }
+                    _ => None,
+                })
+                .expect("completed source root in public data snapshot")
+        };
+    let snapshot_root = read_snapshot_root(&engine, &session, at + 30_003, "before-reopen");
     let query = format!("FROM record:source-tree-entry AT VALID {} KNOWN HEAD WHERE id = \"{}\" PROJECT path, subtree_sha256", at + 30_000, root_record.reference.id);
     let result = engine
         .execute_query(
@@ -298,6 +333,8 @@ fn interrupted_refresh_does_not_expose_partial_facts_as_completed_snapshot() {
     let reopened = installed.reopen(at + 30_006);
     let reopened_session = installed.session(&reopened, "visibility-reopened", at + 30_007);
     read_unrelated(&reopened, &reopened_session, at + 30_008, "after-reopen");
+    let reopened_snapshot_root =
+        read_snapshot_root(&reopened, &reopened_session, at + 30_008, "after-reopen");
     assert_eq!(
         reopened.storage.control().get(&head_key).unwrap().unwrap(),
         first_head
@@ -443,6 +480,14 @@ fn interrupted_refresh_does_not_expose_partial_facts_as_completed_snapshot() {
         assert_eq!(value.rows.len(), 1);
         assert_eq!(value.rows[0].values.get("subtree_sha256"), wanted);
     }
+    assert_eq!(
+        reopened_snapshot_root, snapshot_root,
+        "the interrupted snapshot root must survive reopen unchanged"
+    );
+    assert_eq!(
+        snapshot_root, expected,
+        "a completed snapshot must not expose an incomplete refresh's root through data snapshot"
+    );
     assert_eq!(
         result.rows[0].values.get("subtree_sha256"),
         Some(&expected),
