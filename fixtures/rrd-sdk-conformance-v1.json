@@ -319,7 +319,7 @@
   },
   "estate": {},
   "expected": {
-    "endpoint_count": 78,
+    "endpoint_count": 80,
     "query_identity": "record:document:sdk-conformance",
     "vector_reference": "embedding:sdk-conformance-title",
     "quantized_access_path": "turboquant",

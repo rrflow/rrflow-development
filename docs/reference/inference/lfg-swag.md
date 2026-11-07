@@ -1,6 +1,6 @@
 # LFG analysis and SWAG controller
 
-**Status:** active target contract; an experimental task-bound endpoint proposal operation exists; LFG observation admission and the full LFG/SWAG execution path remain unimplemented
+**Status:** active target contract; experimental engine-admitted selection and worker drafts exist; full LFG/SWAG journey remains incomplete
 **Coordinate:** `rrflow://rrflow-instance/data/reference/inference/lfg-swag`
 **Owner:** configurable CPU prompt analysis, System One selection, model dispatch, and inference-cache identity
 
@@ -56,17 +56,48 @@ router execution port to the SWAG path.
 
 ## Endpoint-selection capability decision
 
-PR206 implemented the experimental engine-owned `TaskEndpointPropose` operation
-and PR222 added its native client binding. The operation proposes an endpoint;
-it does not establish LFG observation admission, selected-worker dispatch, or
-model quality. Embedding execution and `RouteStepDecision` remain separate;
-the three recipe/branch/context decisions are unchanged.
+The G-01b controller operation `task-endpoint-propose` invokes the configured
+selector under initialized authority and the existing task budget. The selected
+worker operation `task-worker-execute` separately authorizes a bounded model
+call. Endpoint configuration reads and preview/apply do not invoke either.
+Embedding execution and `RouteStepDecision` cannot be overloaded to fill that
+gap. Keep the three recipe/branch/context decisions unchanged.
 
-The **propose endpoint selection** capability is owned by `RrdEngine` and
-exposed through the executable operation catalogue. Its semantic types are
-`EndpointSelectionRequest`, `EndpointSelectionPacket` and
-`EndpointSelectionProposal`; task-attempt readback exposes the proposal.
-A separate admitted external activity is needed to execute a selected provider.
+The public capability **propose endpoint selection** is owned by
+`RrdEngine` and exposed through the executable operation catalogue with its
+handler and authorization. Its semantic
+types are `EndpointSelectionRequest`, `EndpointSelectionPacket` and
+`EndpointSelectionProposal`. Their Rust validators are implemented; the proposal
+schema is exposed by existing task-attempt readback. `TaskWorkerRequest` names
+the exact accepted selection receipt and current task/configuration digests.
+The engine resolves the selected binding and configured effort mapping, assembles
+optional authorized context, reserves the same task budget and shared endpoint
+capacity, then guards completion against current task/configuration/authority.
+`TaskWorkerOutput` is retained draft text, not an accepted project edit, task
+success, provider qualification or training consent. Historical context stamps
+do not attest current project-file freshness. Worker readback requires TaskRead
+and, for context-derived drafts, current MemoryContextRead permission.
+The [worker activity journal](../../evidence/change-journals/gate-g/task-worker-model-admission.md)
+separates local protocol checks from installed provider and public-release proof.
+The [installed worker journal](../../evidence/change-journals/gate-g/task-worker-installed-live.md)
+retains a real configured selector/worker draft, credential denials, restart and
+replay checks, alongside the first rejected model choice. Run the existing
+`scripts/inference/installed_controller_proof.py --worker` with its explicit
+build receipt, contract example, profile, actual task source and private credential
+inputs. Worker mode requires an explicit worker policy and excludes selector fault
+and admission-only modes. `--recover-proof` reads both retained attempts without
+provider credentials or dispatch. A successful trial is not a quality label or
+permission to mutate a project.
+The native proof mode uses the `task_model_call` Rust example for both the
+proposal and selected worker. Its typed worker wrapper shares the catalogue
+call's one-attempt transport and contract-owned identity checks. The example
+receives an explicit engine operation and installed project; it never talks
+directly to a model provider. Native-client source and engine artifact identity
+must both accompany any installed trial result.
+The [native installed receipts](../../evidence/change-journals/gate-g/task-worker-native-live.md)
+show accepted and rejected real worker attempts separately, including read-only
+recovery. They prove the named client/engine combination, not the complete UI
+journey, output quality or release readiness.
 Generating the proposal itself may invoke the configured controller, so it
 requires model-call authorization, egress admission and budget reservation;
 it must never masquerade as a free configuration read.
@@ -85,9 +116,10 @@ Unknown effort support cannot silently become permission to omit effort.
 unknown fields, foreign bindings, changed configuration, unsupported effort and
 contradictory no-candidate abstention. Supplied capability evidence digests are
 identifiers, not verified attestations. These pure types perform no network call
-and grant no authority. The experimental engine operation supplies task binding
-and authenticated admission; it does not establish descriptor verification or
-selected-worker dispatch.
+and grant no authority. The engine supplies configured eligibility, task identity,
+authenticated admission and bounded dispatch. Loaded-weight/descriptor verification,
+current project-source effects and comparative routing qualification remain open.
+The existing three reasoning-tree decisions are unchanged.
 
 The offline `endpoint_selection` example provides `schema`,
 `configuration-sha256 CONFIGURATION` and
@@ -133,12 +165,11 @@ provider execution or model-quality claim follows from those checks.
 
 ### Durable proposal completion in progress
 
-The existing task-attempt ledger can now retain a bounded typed proposal or
+The existing task-attempt ledger retains a bounded typed proposal, worker draft or
 embedding output, with an exclusive kind and exact outcome digest. Its public
 readback validates scope/task/attempt identity. Reopening the estate preserves
 the output and original consumed budget; replay cannot reserve the same attempt
-again. The experimental public proposal operation uses this completion support;
-it does not itself execute the selected worker.
+again. Both public model operations compose this same completion owner.
 
 Completion rechecks its supplied authority at the current runtime read stamp.
 Engine-owned control guards compare exact authority bytes atomically with the
@@ -466,8 +497,8 @@ until replay, prior-stop and allowance checks permit it. Identity preparation
 retains the original monotonic start. Invalid request/equivalence digests fail
 before budget publication. This internal input is neither serializable nor a
 public authorization API. Existing durable keys, records, completion type and
-Stop behavior remain unchanged; typed controller completion and dispatch still
-require implementation. The [shared-admission journal](../../evidence/change-journals/gate-g/task-attempt-admission.md)
+Stop behavior remain shared; typed controller and worker completion compose this
+owner. The [shared-admission journal](../../evidence/change-journals/gate-g/task-attempt-admission.md)
 records retained-input reservation/reopen evidence, not a controller call.
 
 The first admitted attempt fixes the configuration digest, original host-clock
@@ -683,6 +714,23 @@ Neither mappings nor secret values enter prompts, public configuration or receip
 Capacity admission is committed with the task budget and attempt. Known completed
 or denied calls release their entry at completion; uncertain remote work retains
 capacity across reopen. There is no automatic retry or uncertainty reconciliation.
+A matching bounded response with one assistant choice, terminal generation reason
+(`stop`, `length` or `content_filter`) and no tool/function request distinguishes
+completed generation from a lost outcome. Invalid content remains rejected;
+completion does not imply acceptable output, attested identity or retry permission.
+Malformed, mismatched, oversized and lost responses remain uncertain. A failed
+attempt still spends its step and elapsed effort and stops its task budget.
+This classification applies to newly observed calls, not historical reservations.
+`task-budget-resume` allows an explicit authenticated transition from `cancelled`
+or `attempt_failed` when the task is open, no active or uncertain work remains,
+the estate configuration matches and original time/steps remain available.
+Supply the current `task-budget-read` digest as `expected_budget_sha256`.
+The engine preserves the original deadline, spent effort, repetition history and
+all attempts. Resume dispatches nothing and cannot clear capacity leases. A new
+attempt must separately pass current authorization/input/capacity admission;
+old attempt IDs remain non-replayable. Stale resume requests conflict. After a
+lost acknowledgement read the budget; do not automatically retry or reset it.
+The operation does not reconcile unknown provider outcomes or extend deadlines.
 Read `task-attempt-read` to recover a receipt without calling the provider again.
 Changed authority/configuration/task inputs invalidate accepted-output publication
 while retaining consumed effort. Ordinary repository-edit successor plans are not

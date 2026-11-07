@@ -1,0 +1,9 @@
+{
+  "source_engine_commit": "c75c189612db7e7c8efe016fd92fb1052a3fb056",
+  "source_task_url": "https://github.com/rrflow/rrflow-development/pull/229",
+  "purpose": "Actual installed worker protocol/identity conformance; no quality label or training consent",
+  "files": {
+    "worker-request.json": "68161fff5a81c07c1ab12ef65c6fe4acb63563f21e6803a67d9fe5daee776cb3",
+    "worker-response.json": "6a9902d0f1287298e53a72815ad08991345329540f0582e203d3566dc50c0b5f"
+  }
+}

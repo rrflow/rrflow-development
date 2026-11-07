@@ -1,9 +1,9 @@
 # Generated from rrd-contract; do not edit.
-# OpenAPI SHA-256: c4375b035939ca40618f6e56eb1d52ea11347b742d003508f40df5d73c441d38
+# OpenAPI SHA-256: 5a14cb9e11a001542a863b295990e27d58a21b0b5d98da183189f09d5869d817
 from typing import Final, Literal, TypedDict
 
 ENDPOINT_OPENAPI_DOCUMENT_SHA256: Final[str] = (
-    "c4375b035939ca40618f6e56eb1d52ea11347b742d003508f40df5d73c441d38"
+    "5a14cb9e11a001542a863b295990e27d58a21b0b5d98da183189f09d5869d817"
 )
 
 OperationId = Literal[
@@ -62,6 +62,7 @@ OperationId = Literal[
     "task-attempt-read",
     "task-budget-configure",
     "task-budget-read",
+    "task-budget-resume",
     "task-budget-stop",
     "task-close",
     "task-embedding-execute",
@@ -69,6 +70,7 @@ OperationId = Literal[
     "task-list",
     "task-open",
     "task-read",
+    "task-worker-execute",
     "transaction-abort",
     "transaction-begin",
     "transaction-commit",
@@ -426,6 +428,12 @@ ENDPOINTS: Final[dict[OperationId, Endpoint]] = {
         "mutation": False,
         "path": "/v1/tasks/budget/read",
     },
+    "task-budget-resume": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": True,
+        "path": "/v1/tasks/budget/resume",
+    },
     "task-budget-stop": {
         "authentication": "session_bearer",
         "method": "POST",
@@ -467,6 +475,12 @@ ENDPOINTS: Final[dict[OperationId, Endpoint]] = {
         "method": "POST",
         "mutation": False,
         "path": "/v1/tasks/read",
+    },
+    "task-worker-execute": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": True,
+        "path": "/v1/tasks/worker/execute",
     },
     "transaction-abort": {
         "authentication": "session_bearer",

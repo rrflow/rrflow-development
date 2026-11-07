@@ -19,6 +19,7 @@ pub(super) struct GitInputs {
     pub metadata_bytes: u64,
     metadata_ceiling: u64,
     limits: IgnoreLimits,
+    retry_observed_drift: bool,
 }
 
 impl GitInputs {
@@ -26,6 +27,23 @@ impl GitInputs {
         root: &AnchoredPath,
         policy: &CompiledPolicy<'_>,
         budget: &WorkBudget,
+    ) -> Result<Self> {
+        Self::read_with_drift_mode(root, policy, budget, false)
+    }
+
+    pub fn read_for_selected_path(
+        root: &AnchoredPath,
+        policy: &CompiledPolicy<'_>,
+        budget: &WorkBudget,
+    ) -> Result<Self> {
+        Self::read_with_drift_mode(root, policy, budget, true)
+    }
+
+    fn read_with_drift_mode(
+        root: &AnchoredPath,
+        policy: &CompiledPolicy<'_>,
+        budget: &WorkBudget,
+        retry_observed_drift: bool,
     ) -> Result<Self> {
         let bound = &policy.source.limits;
         let limits = IgnoreLimits {
@@ -50,6 +68,7 @@ impl GitInputs {
             metadata_bytes: 0,
             metadata_ceiling: bound.metadata_bytes,
             limits,
+            retry_observed_drift,
         };
         budget.check()?;
         let marker = root.join(".git");
@@ -103,6 +122,28 @@ impl GitInputs {
         policy: &CompiledPolicy<'_>,
         budget: &WorkBudget,
     ) -> Result<()> {
+        self.enter_with_drift_mode(directory, policy, budget, false)
+    }
+
+    pub fn enter_selected_path_directory(
+        &mut self,
+        directory: &AnchoredPath,
+        policy: &CompiledPolicy<'_>,
+        budget: &WorkBudget,
+    ) -> Result<()> {
+        self.enter_with_drift_mode(directory, policy, budget, true)
+    }
+
+    fn enter_with_drift_mode(
+        &mut self,
+        directory: &AnchoredPath,
+        policy: &CompiledPolicy<'_>,
+        budget: &WorkBudget,
+        retry_observed_drift: bool,
+    ) -> Result<()> {
+        if retry_observed_drift != self.retry_observed_drift {
+            return Err(unsupported("Git input observation mode changed"));
+        }
         if self.config.is_none() {
             return Ok(());
         }
@@ -210,10 +251,45 @@ impl GitInputs {
         Ok(())
     }
 
+    /// Selected-path admission may retry a bounded local re-evaluation when a
+    /// Git input changes during observation. A stable exclusion remains a
+    /// denial; it is never converted into an eligibility retry.
+    pub fn revalidate_selected(&self, budget: &WorkBudget) -> Result<()> {
+        if !self.retry_observed_drift {
+            return Err(unsupported("selected Git validation mode is absent"));
+        }
+        for (path, before) in &self.observations {
+            budget.check()?;
+            if observe(path)? != *before {
+                return Err(ServiceError::AttunementSourceChanged);
+            }
+        }
+        Ok(())
+    }
+
     fn read_optional(
         &mut self,
         path: &AnchoredPath,
         budget: &WorkBudget,
+    ) -> Result<Option<Vec<u8>>> {
+        self.read_optional_after_observation(path, budget, || Ok(()))
+    }
+
+    fn read_optional_after_observation(
+        &mut self,
+        path: &AnchoredPath,
+        budget: &WorkBudget,
+        after_observation: impl FnOnce() -> Result<()>,
+    ) -> Result<Option<Vec<u8>>> {
+        self.read_optional_with_after_open(path, budget, after_observation, || Ok(()))
+    }
+
+    fn read_optional_with_after_open(
+        &mut self,
+        path: &AnchoredPath,
+        budget: &WorkBudget,
+        after_observation: impl FnOnce() -> Result<()>,
+        after_open: impl FnOnce() -> Result<()>,
     ) -> Result<Option<Vec<u8>>> {
         budget.check()?;
         // Missing inputs count too: repeated absent ignore files cannot consume
@@ -223,6 +299,7 @@ impl GitInputs {
         }
         super::account_metadata(path, &mut self.metadata_bytes, self.metadata_ceiling)?;
         let before = observe(path)?;
+        after_observation()?;
         let bytes = match &before {
             None => None,
             Some(SourceLeaf::Ordinary(obs)) if obs.kind() == SourceKind::File => {
@@ -237,32 +314,49 @@ impl GitInputs {
                     .map_err(storage_error)?
                     != *obs
                 {
-                    return Err(ServiceError::ProjectBindingMismatch);
+                    return Err(self.observed_drift_error());
                 }
+                after_open()?;
                 let mut bytes = vec![0; obs.bytes() as usize];
                 // Bound each read and recheck elapsed work between chunks.
                 for chunk in bytes.chunks_mut(64 * 1024) {
                     budget.check()?;
-                    file.read_exact(chunk).map_err(storage_error)?;
+                    if let Err(error) = file.read_exact(chunk) {
+                        // A short read is retryable only when the anchored path
+                        // now positively observes a different Git input. Keep
+                        // stable I/O failures as storage errors.
+                        if observe(path)? != before {
+                            return Err(self.observed_drift_error());
+                        }
+                        return Err(storage_error(error));
+                    }
                 }
                 if path
                     .source_observation_for_file(&file)
                     .map_err(storage_error)?
                     != *obs
                 {
-                    return Err(ServiceError::ProjectBindingMismatch);
+                    return Err(self.observed_drift_error());
                 }
                 Some(bytes)
             }
             _ => return Err(unsupported("Git input is not an admitted ordinary file")),
         };
         if observe(path)? != before {
-            return Err(ServiceError::ProjectBindingMismatch);
+            return Err(self.observed_drift_error());
         }
         self.identities
             .push((normalized(path)?, bytes.as_ref().map(|b| sha256_hex(b))));
         self.observations.push((path.clone(), before));
         Ok(bytes)
+    }
+
+    fn observed_drift_error(&self) -> ServiceError {
+        if self.retry_observed_drift {
+            ServiceError::AttunementSourceChanged
+        } else {
+            ServiceError::ProjectBindingMismatch
+        }
     }
 }
 
@@ -283,4 +377,87 @@ fn normalized(path: &AnchoredPath) -> Result<String> {
 
 fn unsupported(message: &str) -> ServiceError {
     ServiceError::Contract(format!("inventory Git input: {message}"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::{DefaultInstallProfile, WorkBudget};
+    use super::*;
+
+    #[test]
+    fn selected_git_read_observation_drift_is_retryable() {
+        let directory = tempfile::tempdir().unwrap();
+        std::fs::create_dir(directory.path().join(".git")).unwrap();
+        std::fs::write(
+            directory.path().join(".git/config"),
+            b"[core]\nrepositoryFormatVersion=0\n",
+        )
+        .unwrap();
+        std::fs::write(directory.path().join(".gitignore"), b"alpha.txt\n").unwrap();
+        let root = AnchoredPath::open_root(directory.path()).unwrap();
+        let (profile, _) = DefaultInstallProfile::load("default").unwrap();
+        let policy = profile.inventory_policy.compile().unwrap();
+        let budget = WorkBudget::new(policy.source.limits.elapsed_ms);
+        let mut git = GitInputs::read_for_selected_path(&root, &policy, &budget).unwrap();
+        let error = git
+            .read_optional_after_observation(&root.join(".gitignore"), &budget, || {
+                std::fs::write(directory.path().join(".gitignore"), b"alpha.tmp\n").unwrap();
+                Ok(())
+            })
+            .unwrap_err();
+        assert!(matches!(error, ServiceError::AttunementSourceChanged));
+
+        let mut ordinary = GitInputs::read(&root, &policy, &budget).unwrap();
+        let error = ordinary
+            .read_optional_after_observation(&root.join(".gitignore"), &budget, || {
+                std::fs::write(directory.path().join(".gitignore"), b"alpha.bak\n").unwrap();
+                Ok(())
+            })
+            .unwrap_err();
+        assert!(matches!(error, ServiceError::ProjectBindingMismatch));
+    }
+
+    #[test]
+    fn selected_git_short_read_retries_only_after_observed_input_drift() {
+        let directory = tempfile::tempdir().unwrap();
+        std::fs::create_dir(directory.path().join(".git")).unwrap();
+        std::fs::write(
+            directory.path().join(".git/config"),
+            b"[core]\nrepositoryFormatVersion=0\n",
+        )
+        .unwrap();
+        std::fs::write(directory.path().join(".gitignore"), b"alpha.txt\n").unwrap();
+        let root = AnchoredPath::open_root(directory.path()).unwrap();
+        let (profile, _) = DefaultInstallProfile::load("default").unwrap();
+        let policy = profile.inventory_policy.compile().unwrap();
+        let budget = WorkBudget::new(policy.source.limits.elapsed_ms);
+        let mut selected = GitInputs::read_for_selected_path(&root, &policy, &budget).unwrap();
+        let error = selected
+            .read_optional_with_after_open(
+                &root.join(".gitignore"),
+                &budget,
+                || Ok(()),
+                || {
+                    std::fs::write(directory.path().join(".gitignore"), b"").unwrap();
+                    Ok(())
+                },
+            )
+            .unwrap_err();
+        assert!(matches!(error, ServiceError::AttunementSourceChanged));
+
+        std::fs::write(directory.path().join(".gitignore"), b"alpha.txt\n").unwrap();
+        let mut ordinary = GitInputs::read(&root, &policy, &budget).unwrap();
+        let error = ordinary
+            .read_optional_with_after_open(
+                &root.join(".gitignore"),
+                &budget,
+                || Ok(()),
+                || {
+                    std::fs::write(directory.path().join(".gitignore"), b"").unwrap();
+                    Ok(())
+                },
+            )
+            .unwrap_err();
+        assert!(matches!(error, ServiceError::ProjectBindingMismatch));
+    }
 }
