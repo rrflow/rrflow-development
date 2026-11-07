@@ -54,6 +54,20 @@ The [integrated trace journal](../evidence/change-journals/gate-c/c-07g-installe
 records the small installed mixed-family and restart proof; it is not capacity
 or soak qualification.
 
+For transaction-begin attribution, add
+`rrd_engine::transaction_diagnostic=debug` to the process's `RRFLOW_TRACE`
+filter. Each enabled event reports the SHA-256 of the request ID, the outcome
+(`created`, `replayed`, or `error`), the last phase reached, total time and
+elapsed nanoseconds for validation, admission, authentication and policy,
+replay lookup, snapshot preparation, and control-state publication. A zero
+phase may mean it was not reached, not that it was free. Snapshot preparation
+also includes lease checks and transaction-record construction. Time in the
+client and HTTP transport is outside these measurements. Emission occurs after
+the admission permit is released; tracing can nevertheless affect the caller's
+latency. Use a bounded sink and treat the digest as potentially guessable. These
+optional events are not durable audit records, may be filtered or lost, and
+cannot establish a percentile or a capacity qualification by themselves.
+
 ## Candidate chain
 
 RRFlow has one candidate CI chain. The thin caller is

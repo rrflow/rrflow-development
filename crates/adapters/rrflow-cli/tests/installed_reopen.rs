@@ -197,13 +197,23 @@ impl Estate {
         lifetime: Duration,
         trace: bool,
     ) -> (process::Process, RrdClient, Value) {
+        self.start_for_with_filter(
+            clock,
+            lifetime,
+            trace.then_some("rrd_server::diagnostic=debug,rrd_store::diagnostic=debug"),
+        )
+    }
+
+    fn start_for_with_filter(
+        &self,
+        clock: Instant,
+        lifetime: Duration,
+        filter: Option<&str>,
+    ) -> (process::Process, RrdClient, Value) {
         let started_ns = clock.elapsed().as_nanos() as u64;
         let mut command = self.command();
-        if trace {
-            command.env(
-                "RRFLOW_TRACE",
-                "rrd_server::diagnostic=debug,rrd_store::diagnostic=debug",
-            );
+        if let Some(filter) = filter {
+            command.env("RRFLOW_TRACE", filter);
             command.env("RRFLOW_TRACE_FORMAT", "json");
         }
         command
