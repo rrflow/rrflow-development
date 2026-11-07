@@ -49,7 +49,7 @@ impl EstateFilesystem {
         for relative in PRIVATE_ESTATE_DIRECTORIES {
             if let Some(directory) = self.private.get(relative) {
                 super::token_key::pin_private_directory(directory)
-                    .map_err(|error| ServiceError::Storage(error.to_string()))?;
+                    .map_err(|error| estate_directory_error(relative, error))?;
                 continue;
             }
             let path = self.managed(relative)?;
@@ -58,7 +58,7 @@ impl EstateFilesystem {
                     self.private.insert(relative, directory);
                 }
                 Err(error) if allow_missing && error.kind() == std::io::ErrorKind::NotFound => {}
-                Err(error) => return Err(ServiceError::Storage(error.to_string())),
+                Err(error) => return Err(estate_directory_error(relative, error)),
             }
         }
         Ok(())
@@ -98,16 +98,20 @@ impl EstateFilesystem {
         for relative in PRIVATE_ESTATE_DIRECTORIES {
             if let Some(directory) = self.private.get(relative) {
                 super::token_key::pin_private_directory(directory)
-                    .map_err(|error| ServiceError::Storage(error.to_string()))?;
+                    .map_err(|error| estate_directory_error(relative, error))?;
             } else {
                 let directory =
                     super::token_key::create_private_directory_anchored(&self.managed(relative)?)
-                        .map_err(|error| ServiceError::Storage(error.to_string()))?;
+                        .map_err(|error| estate_directory_error(relative, error))?;
                 self.private.insert(relative, directory);
             }
         }
         Ok(())
     }
+}
+
+fn estate_directory_error(relative: &str, error: std::io::Error) -> ServiceError {
+    ServiceError::Storage(format!("estate directory {relative}: {error}"))
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -277,7 +281,7 @@ pub(super) fn validate_estate_directories(
         match project.private.get(relative) {
             Some(directory) => {
                 super::token_key::pin_private_directory(directory)
-                    .map_err(|error| ServiceError::Storage(error.to_string()))?;
+                    .map_err(|error| estate_directory_error(relative, error))?;
             }
             None if allow_missing => {}
             None => return Err(ServiceError::ProjectBindingMismatch),

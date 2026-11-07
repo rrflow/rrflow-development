@@ -68,6 +68,21 @@ impl SourceObservation {
         self.bytes
     }
 
+    /// A host-local object identity, stable across ordinary changes to the
+    /// object's metadata and contents. This is not a content, permission, or
+    /// freshness check; native IDs can be reused after an object is removed.
+    /// Keep the admitted handle alive when identity must survive a mutation.
+    pub fn object_identity_sha256(&self) -> io::Result<String> {
+        let bytes = serde_json::to_vec(&(
+            "rrflow-native-object-identity-v1",
+            self.platform,
+            self.object,
+            self.kind,
+        ))
+        .map_err(io::Error::other)?;
+        Ok(rrd_core::digest::sha256_hex(&bytes))
+    }
+
     /// Observed POSIX execute-mode bits. Windows has no POSIX execute bit;
     /// this does not claim whether a process may execute a file under its ACL.
     pub fn executable_mode(&self) -> bool {
