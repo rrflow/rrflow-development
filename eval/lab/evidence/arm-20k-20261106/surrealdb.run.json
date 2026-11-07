@@ -1,0 +1,72 @@
+{
+  "cases": [
+    {
+      "attempted": 100,
+      "concurrency": 1,
+      "errors": 0,
+      "filtered": false,
+      "latency_max_ms": 17.148932,
+      "latency_p50_ms": 15.544945,
+      "latency_p95_ms": 16.546348,
+      "latency_p99_ms": 16.743615,
+      "queries_per_second": 64.18020005182719,
+      "recall_high": 0.9883626025907721,
+      "recall_low": 0.9696373974092285,
+      "recall_mean": 0.9790000000000003,
+      "recall_min": 0.7,
+      "setting": "ef-32",
+      "succeeded": 100,
+      "truncated": false,
+      "wall_seconds": 1.558112937
+    },
+    {
+      "attempted": 100,
+      "concurrency": 1,
+      "errors": 0,
+      "filtered": true,
+      "latency_max_ms": 30.266744,
+      "latency_p50_ms": 22.752419,
+      "latency_p95_ms": 28.075184,
+      "latency_p99_ms": 30.266536,
+      "queries_per_second": 42.57550937208493,
+      "recall_high": 1.0,
+      "recall_low": 1.0,
+      "recall_mean": 1.0,
+      "recall_min": 1.0,
+      "setting": "ef-32",
+      "succeeded": 100,
+      "truncated": false,
+      "wall_seconds": 2.348768141
+    }
+  ],
+  "disk_bytes": 293243483,
+  "environment": {
+    "architecture": "aarch64",
+    "logical_cpus": "10",
+    "memory_total_bytes": "130592624640",
+    "note.client_cpuset": "0-4,10-14",
+    "note.server_cpuset": "5-9,15-19",
+    "os": "linux"
+  },
+  "finished_at_unix_ms": 1794007457862,
+  "identities": {
+    "filtered_truth": "bb25dd7341029b89df1a374ac43ecb08a5aac8a3fa82c082eda2bb9a65a64962",
+    "manifest": "7859639965b045c230d6ba7c9b6ef3e661396a32d11a974b7590a149e4f1da3f",
+    "points": "3f0e6e665fe38454335671c13f745ed6db04a7969d01d8b6252074c71de31286",
+    "queries": "747fd92695d4b5f6c8654d21a678f2a9e7e24aae2acba306e847d1a078d674a3",
+    "truth": "b9540c373952428a255a5c5cf00788ca8bb7603f91e3738d89f9c166fdc3a6b8"
+  },
+  "index_evidence": "HNSW index state {\"compacting\":false,\"initial\":0,\"pending\":0,\"status\":\"ready\",\"updated\":0}",
+  "ingest": {
+    "points": 20000,
+    "points_per_second": 3598.5903250756196,
+    "ready_seconds": 0.014571222,
+    "seconds": 5.557731832
+  },
+  "memory_bytes": 660707737,
+  "observed_version": "surrealdb-3.3.5",
+  "schema_version": 1,
+  "started_at_unix_ms": 1794007446343,
+  "status": "completed",
+  "system": "surrealdb"
+}

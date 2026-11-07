@@ -1,0 +1,299 @@
+{
+  "$defs": {
+    "CustomHealth": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "protocol_version": {
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "protocol_version",
+        "name",
+        "version"
+      ],
+      "type": "object"
+    },
+    "CustomIngest": {
+      "additionalProperties": false,
+      "properties": {
+        "categories": {
+          "items": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "ids": {
+          "items": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "vectors": {
+          "items": {
+            "items": {
+              "format": "float",
+              "type": "number"
+            },
+            "type": "array"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "ids",
+        "vectors",
+        "categories"
+      ],
+      "type": "object"
+    },
+    "CustomPrepare": {
+      "additionalProperties": false,
+      "properties": {
+        "categories": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "dimensions": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "index": {
+          "$ref": "#/$defs/IndexSpec"
+        },
+        "metric": {
+          "$ref": "#/$defs/LabMetric"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "dimensions",
+        "metric",
+        "categories",
+        "index"
+      ],
+      "type": "object"
+    },
+    "CustomReady": {
+      "additionalProperties": false,
+      "properties": {
+        "ready": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "ready"
+      ],
+      "type": "object"
+    },
+    "CustomSearch": {
+      "additionalProperties": false,
+      "properties": {
+        "category": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "k": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "setting": {
+          "$ref": "#/$defs/SearchSetting"
+        },
+        "vector": {
+          "items": {
+            "format": "float",
+            "type": "number"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "vector",
+        "k",
+        "setting"
+      ],
+      "type": "object"
+    },
+    "CustomSearchResult": {
+      "additionalProperties": false,
+      "properties": {
+        "ids": {
+          "items": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "ids"
+      ],
+      "type": "object"
+    },
+    "Id": {
+      "maxLength": 96,
+      "minLength": 1,
+      "pattern": "^[a-z0-9][a-z0-9_.-]*$",
+      "type": "string"
+    },
+    "IndexSpec": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "index": {
+              "const": "exact",
+              "type": "string"
+            }
+          },
+          "required": [
+            "index"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "ef_construction": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "index": {
+              "const": "hnsw",
+              "type": "string"
+            },
+            "m": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "index",
+            "m",
+            "ef_construction"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "bits": {
+              "type": "string"
+            },
+            "index": {
+              "const": "turbo_quant",
+              "type": "string"
+            },
+            "seed": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "index",
+            "bits",
+            "seed"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "LabMetric": {
+      "enum": [
+        "cosine",
+        "dot",
+        "euclidean"
+      ],
+      "type": "string"
+    },
+    "SearchSetting": {
+      "additionalProperties": false,
+      "properties": {
+        "ef": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "exact_rerank": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "id": {
+          "$ref": "#/$defs/Id"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "The whole protocol in one generated schema.",
+  "properties": {
+    "finish_response": {
+      "$ref": "#/$defs/CustomReady"
+    },
+    "health_response": {
+      "$ref": "#/$defs/CustomHealth"
+    },
+    "ingest_request": {
+      "$ref": "#/$defs/CustomIngest"
+    },
+    "prepare_request": {
+      "$ref": "#/$defs/CustomPrepare"
+    },
+    "search_request": {
+      "$ref": "#/$defs/CustomSearch"
+    },
+    "search_response": {
+      "$ref": "#/$defs/CustomSearchResult"
+    }
+  },
+  "required": [
+    "health_response",
+    "prepare_request",
+    "ingest_request",
+    "finish_response",
+    "search_request",
+    "search_response"
+  ],
+  "title": "CustomProtocol",
+  "type": "object"
+}

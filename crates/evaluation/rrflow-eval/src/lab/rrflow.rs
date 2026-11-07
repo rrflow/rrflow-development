@@ -1,0 +1,698 @@
+//! RRFlow through the public typed client, the same path any application takes.
+//! It never opens storage directly, so the lab measures what a caller gets.
+use super::adapter::{
+    required_credentials, required_instance, split_by_size, CollectionSpec, PointBatch,
+    SearchRequest, SystemAdapter,
+};
+use super::manifest::{IndexSpec, LabMetric, RrflowHnswParameters, SystemBinding, WorkloadSpec};
+use super::Result;
+use rrd_client::{ClientConfig, RequestOptions, RrdClient, Session};
+use rrd_contract::{
+    transaction_operation_sha256, BeginTransaction, BuildVectorQuantizationArtifact, CanonicalId,
+    CommitTransaction, CreateSession, EnsureVectorIndex, EnsureVectorPayloadIndex, ReadDataSchema,
+    SessionLimits, TransactionMutation, VectorIndexConfiguration, VectorPayloadIndexKind,
+    MAX_TRANSACTION_CLAIMS, MAX_VECTOR_STORAGE_KEYS,
+};
+use serde::de::DeserializeOwned;
+use serde_json::{json, Value};
+use std::collections::BTreeSet;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Mutex, OnceLock, RwLock};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use tokio::runtime::Runtime;
+
+const VECTOR_NAME: &str = "lab";
+const VECTOR_FIELD: &str = "lab-embedding";
+/// Each point is a subject record plus its vector, so two mutations.
+const MUTATIONS_PER_POINT: usize = 2;
+/// The server refuses a request body over one MiB, so commits split by encoded size.
+const MAX_COMMIT_BYTES: usize = 960 * 1024;
+const VALID_FROM: u64 = 100;
+const VALID_AT: u64 = 200;
+const SESSION_LEASE_MS: u64 = 3_600_000;
+/// Renewing cannot pass a session's absolute expiry, and it invalidates the token another
+/// client may be about to send. So a long run opens new sessions instead, and each earlier
+/// one stays valid for whatever is still using it.
+const SESSION_REPLACE_AFTER: Duration = Duration::from_secs(1_200);
+
+#[derive(Debug, Clone)]
+struct Prepared {
+    record_table: String,
+    vector_table: String,
+    collection: String,
+    index: IndexSpec,
+    hnsw: Option<RrflowHnswParameters>,
+    filter_categories: bool,
+}
+
+struct Lease {
+    session: Session,
+    opened_at: Instant,
+}
+
+pub struct RrflowAdapter {
+    runtime: Runtime,
+    client: RrdClient,
+    principal: CanonicalId,
+    secret: String,
+    lease: RwLock<Lease>,
+    scope: String,
+    run: String,
+    counter: AtomicU64,
+    prepared: OnceLock<Prepared>,
+    access_paths: Mutex<BTreeSet<String>>,
+    hnsw: Option<RrflowHnswParameters>,
+    filter_categories: bool,
+}
+
+fn decode<T: DeserializeOwned>(value: Value) -> Result<T> {
+    serde_json::from_value(value).map_err(|error| error.to_string())
+}
+
+fn id(text: &str) -> Result<CanonicalId> {
+    CanonicalId::new(text).map_err(|error| error.to_string())
+}
+
+fn open_session(
+    runtime: &Runtime,
+    client: &RrdClient,
+    principal: &CanonicalId,
+    secret: &str,
+    options: RequestOptions,
+) -> Result<Session> {
+    runtime
+        .block_on(client.create_session(
+            principal.clone(),
+            secret,
+            CreateSession {
+                limits: SessionLimits {
+                    idle_timeout_ms: SESSION_LEASE_MS,
+                    absolute_timeout_ms: SESSION_LEASE_MS,
+                    max_open_transactions: 8,
+                },
+            },
+            options,
+        ))
+        .map_err(|error| error.to_string())
+}
+
+/// The point mutations for one commit.
+pub(crate) fn point_mutations(
+    prepared_tables: (&str, &str, &str),
+    batch: &PointBatch<'_>,
+) -> Value {
+    let (record_table, vector_table, collection) = prepared_tables;
+    let mut mutations = Vec::with_capacity(batch.ids.len() * MUTATIONS_PER_POINT);
+    for index in 0..batch.ids.len() {
+        let point = format!("p{}", batch.ids[index]);
+        mutations.push(json!({
+            "mutation": "put_record",
+            "reference": {"kind": record_table, "id": point},
+            "valid_from": VALID_FROM,
+            "properties": {}
+        }));
+        mutations.push(json!({
+            "mutation": "put_vector",
+            "reference": {"kind": vector_table, "id": point},
+            "subject": {"kind": record_table, "id": point},
+            "collection_id": collection,
+            "vector_name": VECTOR_NAME,
+            "field": VECTOR_FIELD,
+            "valid_from": VALID_FROM,
+            "value": {"kind": "dense", "values": batch.vector(index)},
+            "properties": {"category": {"type": "unsigned", "value": batch.categories[index]}}
+        }));
+    }
+    Value::Array(mutations)
+}
+
+pub(crate) fn parse_point(reference: &str) -> Result<u64> {
+    reference
+        .strip_prefix('p')
+        .and_then(|digits| digits.parse().ok())
+        .ok_or_else(|| format!("unexpected point reference {reference}"))
+}
+
+pub(crate) fn search_mode(
+    index: &IndexSpec,
+    ef: Option<u32>,
+    rerank: Option<u32>,
+    k: u32,
+) -> Value {
+    match index {
+        IndexSpec::TurboQuant { .. } | IndexSpec::Hnsw { .. } => {
+            let ef = ef.unwrap_or(k);
+            json!({
+                "mode": "require_approximate",
+                "exact_rerank": rerank.unwrap_or(ef),
+                "ef_search": ef
+            })
+        }
+        _ => json!({"mode": "exact"}),
+    }
+}
+
+fn category_index_request(scope: &str, collection: &str) -> Result<EnsureVectorPayloadIndex> {
+    Ok(EnsureVectorPayloadIndex {
+        scope: scope.to_string(),
+        collection_id: id(collection)?,
+        field: id("category")?,
+        kind: VectorPayloadIndexKind::Unsigned,
+    })
+}
+
+fn quantization_request(
+    scope: &str,
+    prepared: &Prepared,
+) -> Result<BuildVectorQuantizationArtifact> {
+    let IndexSpec::TurboQuant { bits, seed } = &prepared.index else {
+        return Err("TurboQuant build requested with another index type".into());
+    };
+    decode(json!({
+        "scope": scope,
+        "collection_id": prepared.collection,
+        "vector_name": VECTOR_NAME,
+        "method": {"method": "turbo_quant", "bits": bits, "seed": seed},
+        "filter_properties": if prepared.filter_categories { vec!["category"] } else { Vec::<&str>::new() },
+        "max_storage_keys": MAX_VECTOR_STORAGE_KEYS
+    }))
+}
+
+fn hnsw_index_request(scope: &str, prepared: &Prepared) -> Result<EnsureVectorIndex> {
+    let IndexSpec::Hnsw { m, ef_construction } = &prepared.index else {
+        return Err("HNSW index requested with another index type".into());
+    };
+    let native = prepared
+        .hnsw
+        .as_ref()
+        .ok_or("native HNSW parameters are required")?;
+    let filter_properties = if prepared.filter_categories {
+        vec![id("category")?]
+    } else {
+        Vec::new()
+    };
+    Ok(EnsureVectorIndex {
+        scope: scope.to_string(),
+        collection_id: id(&prepared.collection)?,
+        vector_name: id(VECTOR_NAME)?,
+        configuration: VectorIndexConfiguration::Hnsw {
+            m: *m,
+            ef_construction: u64::from(*ef_construction),
+            max_level: native.max_level,
+            seed: native.seed,
+            filter_properties,
+        },
+        build_policy: native.build_policy.clone(),
+        max_storage_keys: MAX_VECTOR_STORAGE_KEYS,
+    })
+}
+
+impl RrflowAdapter {
+    pub fn connect(binding: &SystemBinding, workload: &WorkloadSpec) -> Result<Self> {
+        let (principal, secret) = required_credentials(binding)?;
+        let instance = required_instance(binding)?;
+        let address = binding
+            .endpoint
+            .trim_start_matches("http://")
+            .trim_end_matches('/')
+            .parse()
+            .map_err(|error| format!("RRFlow endpoint must be ADDRESS:PORT: {error}"))?;
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .map_err(|error| error.to_string())?;
+        let instance_id = id(&instance)?;
+        let config = ClientConfig {
+            request_timeout: Duration::from_millis(workload.request_timeout_ms),
+            ..ClientConfig::default()
+        };
+        let client = runtime
+            .block_on(async { RrdClient::connect_local(address, instance_id, config) })
+            .map_err(|error| error.to_string())?;
+        let started = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_err(|error| error.to_string())?
+            .as_nanos();
+        let run = format!("lab-{}-{started}", std::process::id());
+        let options = RequestOptions::mutation(
+            &format!("{run}-session-request"),
+            &format!("{run}-session-operation"),
+            &format!("{run}-session"),
+        )
+        .map_err(|error| error.to_string())?;
+        let principal = id(&principal)?;
+        let session = open_session(&runtime, &client, &principal, &secret, options)?;
+        let scope = format!("instance:{}", client.instance_id());
+        Ok(Self {
+            runtime,
+            client,
+            principal,
+            secret,
+            lease: RwLock::new(Lease {
+                session,
+                opened_at: Instant::now(),
+            }),
+            scope,
+            run,
+            counter: AtomicU64::new(0),
+            prepared: OnceLock::new(),
+            access_paths: Mutex::new(BTreeSet::new()),
+            hnsw: binding.rrflow_hnsw.clone(),
+            filter_categories: workload.filtered,
+        })
+    }
+
+    fn key(&self, label: &str) -> String {
+        let serial = self.counter.fetch_add(1, Ordering::Relaxed);
+        format!("{}-{label}-{serial}", self.run)
+    }
+
+    fn read_options(&self, label: &str) -> Result<RequestOptions> {
+        let key = self.key(label);
+        RequestOptions::read(&format!("{key}-request"), &format!("{key}-operation"))
+            .map_err(|error| error.to_string())
+    }
+
+    fn mutation_options(&self, label: &str) -> Result<RequestOptions> {
+        let key = self.key(label);
+        RequestOptions::mutation(&format!("{key}-request"), &format!("{key}-operation"), &key)
+            .map_err(|error| error.to_string())
+    }
+
+    /// A long ingest or search run can outlive one lease.
+    fn session(&self) -> Result<Session> {
+        {
+            let lease = self.lease.read().map_err(|_| "session lock poisoned")?;
+            if lease.opened_at.elapsed() < SESSION_REPLACE_AFTER {
+                return Ok(lease.session.clone());
+            }
+        }
+        let mut lease = self.lease.write().map_err(|_| "session lock poisoned")?;
+        if lease.opened_at.elapsed() >= SESSION_REPLACE_AFTER {
+            lease.session = open_session(
+                &self.runtime,
+                &self.client,
+                &self.principal,
+                &self.secret,
+                self.mutation_options("session")?,
+            )?;
+            lease.opened_at = Instant::now();
+        }
+        Ok(lease.session.clone())
+    }
+
+    fn prepared(&self) -> Result<&Prepared> {
+        self.prepared
+            .get()
+            .ok_or_else(|| "collection is not prepared".into())
+    }
+
+    fn commit(&self, mutations: Vec<TransactionMutation>) -> Result<()> {
+        let session = self.session()?;
+        let begin = self.mutation_options("begin")?;
+        let transaction = self
+            .runtime
+            .block_on(self.client.begin_transaction(
+                &session,
+                BeginTransaction {
+                    scope: id("data")?,
+                    timeout_ms: 120_000,
+                },
+                begin,
+            ))
+            .map_err(|error| error.to_string())?;
+        let mut options = self.mutation_options("commit")?;
+        options.deadline_unix_ms = Some(transaction.expires_at_unix_ms);
+        self.runtime
+            .block_on(self.client.commit_transaction(
+                &session,
+                &transaction.transaction_id,
+                CommitTransaction {
+                    operation_sha256: transaction_operation_sha256(&mutations),
+                    mutations,
+                },
+                options,
+            ))
+            .map_err(|error| error.to_string())?;
+        Ok(())
+    }
+}
+
+impl SystemAdapter for RrflowAdapter {
+    fn observed_version(&self) -> Result<String> {
+        let capabilities = self
+            .runtime
+            .block_on(self.client.capabilities())
+            .map_err(|error| error.to_string())?;
+        Ok(format!(
+            "{} {}",
+            capabilities.implementation.as_str(),
+            capabilities.implementation_version
+        ))
+    }
+
+    fn prepare(&self, spec: &CollectionSpec<'_>) -> Result<()> {
+        let session = self.session()?;
+        let collection = spec.name.replace('_', "-");
+        let prepared = Prepared {
+            record_table: format!("{}_point", spec.name.replace('-', "_")),
+            vector_table: format!("{}_vector", spec.name.replace('-', "_")),
+            collection: collection.clone(),
+            index: spec.index.clone(),
+            hnsw: self.hnsw.clone(),
+            filter_categories: self.filter_categories,
+        };
+        let installed = self
+            .runtime
+            .block_on(self.client.read_data_schema(
+                &session,
+                ReadDataSchema {
+                    scope: self.scope.clone(),
+                    max_storage_keys: 4_096,
+                },
+                self.read_options("schema")?,
+            ))
+            .map_err(|error| error.to_string())?;
+        let mut registry =
+            serde_json::to_value(installed.schema.ok_or("RRFlow returned no data schema")?)
+                .map_err(|error| error.to_string())?;
+        registry["revision"] = json!(registry["revision"].as_u64().unwrap_or(0) + 1);
+        registry["migration"] = json!(format!("add comparison lab table {collection}"));
+        registry["tables"][&prepared.record_table] =
+            json!({"model": "relational", "mode": "strict"});
+        registry["tables"][&prepared.vector_table] =
+            json!({"model": "vector", "mode": "schemaless"});
+        registry["records"][&prepared.record_table] = json!({
+            "properties": {},
+            "allow_additional_properties": true,
+            "unique_properties": []
+        });
+        let metric = match spec.metric {
+            LabMetric::Cosine => "cosine",
+            LabMetric::Dot => "dot",
+            LabMetric::Euclidean => "euclidean",
+        };
+        let ensure = decode(json!({
+            "scope": self.scope,
+            "collection_id": collection,
+            "vectors": [{
+                "name": VECTOR_NAME,
+                "field": VECTOR_FIELD,
+                "kind": "dense",
+                "dimensions": spec.dimensions,
+                "metric": metric,
+                "memory_tier": "cached"
+            }]
+        }))?;
+        self.runtime
+            .block_on(self.client.ensure_vector_collection(
+                &session,
+                ensure,
+                self.mutation_options("collection")?,
+            ))
+            .map_err(|error| error.to_string())?;
+        self.commit(decode(
+            json!([{"mutation": "put_schema", "registry": registry}]),
+        )?)?;
+        if prepared.filter_categories && !matches!(prepared.index, IndexSpec::Exact) {
+            self.runtime
+                .block_on(self.client.ensure_vector_payload_index(
+                    &session,
+                    category_index_request(&self.scope, &prepared.collection)?,
+                    self.mutation_options("category-index")?,
+                ))
+                .map_err(|error| error.to_string())?;
+        }
+        let _ = self.prepared.set(prepared);
+        Ok(())
+    }
+
+    fn ingest(&self, batch: &PointBatch<'_>) -> Result<()> {
+        let prepared = self.prepared()?;
+        let tables = (
+            prepared.record_table.as_str(),
+            prepared.vector_table.as_str(),
+            prepared.collection.as_str(),
+        );
+        let mut points = Vec::with_capacity(batch.ids.len());
+        let mut sizes = Vec::with_capacity(batch.ids.len());
+        for index in 0..batch.ids.len() {
+            let one = PointBatch {
+                ids: &batch.ids[index..=index],
+                vectors: batch.vector(index),
+                categories: &batch.categories[index..=index],
+                dimensions: batch.dimensions,
+            };
+            let mutations: Vec<TransactionMutation> = decode(point_mutations(tables, &one))?;
+            sizes.push(
+                serde_json::to_vec(&mutations)
+                    .map_err(|error| error.to_string())?
+                    .len(),
+            );
+            points.push(mutations);
+        }
+        let per_commit = MAX_TRANSACTION_CLAIMS / MUTATIONS_PER_POINT;
+        for group in split_by_size(sizes, MAX_COMMIT_BYTES, per_commit) {
+            self.commit(points[group].iter().flatten().cloned().collect())?;
+        }
+        Ok(())
+    }
+
+    fn finish_ingest(&self, _deadline: Instant) -> Result<()> {
+        let prepared = self.prepared()?;
+        let session = self.session()?;
+        if matches!(prepared.index, IndexSpec::Hnsw { .. }) {
+            let request = hnsw_index_request(&self.scope, prepared)?;
+            self.runtime
+                .block_on(self.client.ensure_vector_index(
+                    &session,
+                    request,
+                    self.mutation_options("hnsw")?,
+                ))
+                .map_err(|error| error.to_string())?;
+            return Ok(());
+        }
+        if matches!(prepared.index, IndexSpec::Exact) {
+            return Ok(());
+        }
+        let built = self
+            .runtime
+            .block_on(self.client.build_vector_quantization(
+                &session,
+                quantization_request(&self.scope, prepared)?,
+                self.mutation_options("quantize")?,
+            ))
+            .map_err(|error| error.to_string())?;
+        self.runtime
+            .block_on(self.client.activate_vector_quantization(
+                &session,
+                decode(json!({
+                    "scope": self.scope,
+                    "artifact_id": built.artifact.artifact_id,
+                    "generation": built.artifact.generation
+                }))?,
+                self.mutation_options("activate")?,
+            ))
+            .map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
+    fn search(&self, request: &SearchRequest<'_>) -> Result<Vec<u64>> {
+        let prepared = self.prepared()?;
+        let session = self.session()?;
+        let mut body = json!({
+            "scope": self.scope,
+            "valid_at": VALID_AT,
+            "collection_id": prepared.collection,
+            "vector_name": VECTOR_NAME,
+            "query": {"kind": "dense", "values": request.vector},
+            "top_k": request.k,
+            "mode": search_mode(
+                &prepared.index,
+                request.setting.ef,
+                request.setting.exact_rerank,
+                request.k
+            ),
+            "max_storage_keys": MAX_VECTOR_STORAGE_KEYS
+        });
+        if let Some(category) = request.category {
+            body["filter"] = json!({
+                "kind": "condition",
+                "condition": {
+                    "property": "category",
+                    "operator": {"operator": "equals", "value": {"type": "unsigned", "value": category}}
+                }
+            });
+        }
+        let result = self
+            .runtime
+            .block_on(self.client.search_vectors(
+                &session,
+                decode(body)?,
+                self.read_options("search")?,
+            ))
+            .map_err(|error| error.to_string())?;
+        if let Ok(mut paths) = self.access_paths.lock() {
+            paths.insert(result.access_path.as_str().to_string());
+        }
+        result
+            .hits
+            .iter()
+            .map(|hit| parse_point(hit.reference.id.as_str()))
+            .collect()
+    }
+
+    fn index_evidence(&self) -> Result<Option<String>> {
+        let paths = self.access_paths.lock().map_err(|_| "lock poisoned")?;
+        Ok(Some(format!(
+            "access paths the engine reported: {}",
+            paths.iter().cloned().collect::<Vec<_>>().join(", ")
+        )))
+    }
+
+    fn teardown(&self) -> Result<()> {
+        // RRFlow retains history by design and the lab uses a fresh estate per run,
+        // so there is nothing to remove here.
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rrd_contract::SearchVectors;
+
+    #[test]
+    fn a_replaced_session_outlasts_the_slowest_request_still_using_it() {
+        const SLOWEST_REQUEST: Duration = Duration::from_secs(300);
+        assert!(SESSION_REPLACE_AFTER + SLOWEST_REQUEST < Duration::from_millis(SESSION_LEASE_MS));
+    }
+
+    #[test]
+    fn point_mutations_decode_as_public_transaction_mutations() {
+        let batch = PointBatch {
+            ids: &[7],
+            vectors: &[0.6, 0.8],
+            categories: &[3],
+            dimensions: 2,
+        };
+        let value = point_mutations(("lab_point", "lab_vector", "lab"), &batch);
+        let mutations: Vec<TransactionMutation> = decode(value).unwrap();
+        assert_eq!(mutations.len(), MUTATIONS_PER_POINT);
+        let TransactionMutation::PutVector { properties, .. } = &mutations[1] else {
+            panic!("second mutation should be the vector");
+        };
+        assert_eq!(
+            properties.get("category"),
+            Some(&rrd_contract::QueryValue::Unsigned(3))
+        );
+    }
+
+    #[test]
+    fn point_references_round_trip_and_reject_anything_else() {
+        assert_eq!(parse_point("p42"), Ok(42));
+        assert!(parse_point("q42").is_err());
+        assert!(parse_point("p").is_err());
+    }
+
+    #[test]
+    fn native_hnsw_request_uses_manifest_parameters_and_requested_filter() {
+        let prepared = Prepared {
+            record_table: "lab_point".into(),
+            vector_table: "lab_vector".into(),
+            collection: "lab".into(),
+            index: IndexSpec::Hnsw {
+                m: 12,
+                ef_construction: 90,
+            },
+            hnsw: Some(RrflowHnswParameters {
+                max_level: 9,
+                seed: 123,
+                build_policy: rrd_contract::VectorIndexBuildPolicy::Cpu,
+            }),
+            filter_categories: true,
+        };
+        let request = hnsw_index_request("instance:lab", &prepared).unwrap();
+        request.validate().unwrap();
+        assert_eq!(
+            request.configuration,
+            VectorIndexConfiguration::Hnsw {
+                m: 12,
+                ef_construction: 90,
+                max_level: 9,
+                seed: 123,
+                filter_properties: vec![id("category").unwrap()],
+            }
+        );
+        let payload = category_index_request("instance:lab", "lab").unwrap();
+        payload.validate().unwrap();
+        assert_eq!(payload.kind, VectorPayloadIndexKind::Unsigned);
+        assert_eq!(payload.field, id("category").unwrap());
+        let mut turbo = prepared.clone();
+        turbo.index = IndexSpec::TurboQuant {
+            bits: "bits4".into(),
+            seed: 23,
+        };
+        turbo.hnsw = None;
+        let turbo_request = quantization_request("instance:lab", &turbo).unwrap();
+        turbo_request.validate().unwrap();
+        assert_eq!(
+            turbo_request.filter_properties,
+            vec![id("category").unwrap()]
+        );
+        turbo.filter_categories = false;
+        assert!(quantization_request("instance:lab", &turbo)
+            .unwrap()
+            .filter_properties
+            .is_empty());
+        let mode = search_mode(&prepared.index, Some(40), Some(20), 10);
+        assert_eq!(
+            mode,
+            json!({"mode":"require_approximate", "ef_search":40, "exact_rerank":20})
+        );
+        let mut unfiltered = prepared;
+        unfiltered.filter_categories = false;
+        let request = hnsw_index_request("instance:lab", &unfiltered).unwrap();
+        assert!(
+            matches!(request.configuration, VectorIndexConfiguration::Hnsw { filter_properties, .. } if filter_properties.is_empty())
+        );
+        unfiltered.hnsw = None;
+        assert!(hnsw_index_request("instance:lab", &unfiltered).is_err());
+    }
+
+    #[test]
+    fn exact_and_quantized_search_modes_decode_as_public_requests() {
+        for (index, expected) in [
+            (IndexSpec::Exact, "exact"),
+            (
+                IndexSpec::TurboQuant {
+                    bits: "bits4".into(),
+                    seed: 7,
+                },
+                "require_approximate",
+            ),
+        ] {
+            let mode = search_mode(&index, Some(60), Some(40), 10);
+            assert_eq!(mode["mode"], expected);
+            let request: SearchVectors = decode(json!({
+                "scope": "instance:lab",
+                "valid_at": VALID_AT,
+                "collection_id": "lab",
+                "vector_name": VECTOR_NAME,
+                "query": {"kind": "dense", "values": [1.0, 0.0]},
+                "top_k": 10,
+                "mode": mode,
+                "filter": {
+                    "kind": "condition",
+                    "condition": {
+                        "property": "category",
+                        "operator": {"operator": "equals", "value": {"type": "unsigned", "value": 3}}
+                    }
+                },
+                "max_storage_keys": MAX_VECTOR_STORAGE_KEYS
+            }))
+            .unwrap();
+            request.validate().unwrap();
+        }
+    }
+}
