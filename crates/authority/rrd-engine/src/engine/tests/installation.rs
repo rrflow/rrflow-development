@@ -44,6 +44,22 @@ fn plan(project: &Path) -> InstallationPreview {
     .unwrap()
 }
 
+fn plan_with_source_read(project: &Path, enabled: bool) -> InstallationPreview {
+    RrdEngine::plan_installation_with_options(
+        project,
+        InstallationTargetKind::ExistingProject,
+        &"1".repeat(64),
+        "default",
+        None,
+        crate::InstallationPlanningOptions {
+            attunement_proposal: None,
+            allow_project_source_read: enabled,
+        },
+        &test_executable(),
+    )
+    .unwrap()
+}
+
 fn test_executable() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("Cargo.toml")
 }
@@ -296,7 +312,82 @@ fn planning_is_byte_identical_and_has_no_project_effect() {
         serde_json::to_vec(&first).unwrap(),
         serde_json::to_vec(&second).unwrap()
     );
+    assert!(serde_json::to_value(&first)
+        .unwrap()
+        .get("source_read_resource_scope")
+        .is_none());
     assert_eq!(inventory(project.path()), before);
+}
+
+#[test]
+fn source_read_is_an_explicit_canonical_installation_choice() {
+    let project = tempfile::tempdir().unwrap();
+    std::fs::write(project.path().join("README.md"), "walking product\n").unwrap();
+    let default = plan_with_source_read(project.path(), false);
+    let legacy_default_entrypoint = plan(project.path());
+    let opted_in = plan_with_source_read(project.path(), true);
+    assert_eq!(default, legacy_default_entrypoint);
+    assert_eq!(
+        serde_json::to_vec(&default).unwrap(),
+        serde_json::to_vec(&legacy_default_entrypoint).unwrap()
+    );
+    assert_eq!(
+        default.installation.initial_grants,
+        rrd_contract::installation_initial_grants(false)
+    );
+    assert_eq!(
+        opted_in.installation.initial_grants,
+        rrd_contract::installation_initial_grants(true)
+    );
+    assert!(default.source_read_resource_scope.is_none());
+    assert_eq!(
+        opted_in.source_read_resource_scope.as_deref(),
+        Some("instance_prefix")
+    );
+    assert_ne!(
+        default.installation.plan_sha256,
+        opted_in.installation.plan_sha256
+    );
+    let before = inventory(project.path());
+    assert!(RrdEngine::apply_installation_at(
+        project.path(),
+        InstallationTargetKind::ExistingProject,
+        &opted_in,
+        &"0".repeat(64),
+        1_800_000_000_000,
+        &test_executable()
+    )
+    .is_err());
+    assert_eq!(inventory(project.path()), before);
+
+    let mut forged = opted_in.clone();
+    forged.installation.initial_grants = rrd_contract::installation_initial_grants(false);
+    forged
+        .installation
+        .initial_grants
+        .retain(|action| *action != SecurityAction::ServiceInspect);
+    forged
+        .installation
+        .initial_grants
+        .push(SecurityAction::ProjectSourceRead);
+    forged.installation.initial_grants.sort();
+    forged.installation.initial_grants.dedup();
+    forged.installation.plan_sha256 = installation_plan_sha256(&forged.installation).unwrap();
+    forged.validate().unwrap();
+    assert!(RrdEngine::apply_installation_at(
+        project.path(),
+        InstallationTargetKind::ExistingProject,
+        &forged,
+        &forged.installation.plan_sha256,
+        1_800_000_000_000,
+        &test_executable()
+    )
+    .is_err());
+    assert_eq!(inventory(project.path()), before);
+
+    let mut missing_scope = opted_in;
+    missing_scope.source_read_resource_scope = None;
+    assert!(missing_scope.validate().is_err());
 }
 
 #[test]
