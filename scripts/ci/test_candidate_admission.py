@@ -171,6 +171,22 @@ class StorageContractPreflightTests(unittest.TestCase):
                 with self.assertRaises(PolicyError):
                     verify_storage_contract_preflight(jobs)
 
+    def test_test_step_condition_cannot_skip_oracle(self):
+        jobs = self.jobs.copy()
+        jobs["storage-contract-preflight"] += "\n        if: ${{ false }}\n"
+        with self.assertRaises(PolicyError):
+            verify_storage_contract_preflight(jobs)
+
+    def test_final_test_failure_cannot_be_suppressed(self):
+        jobs = self.jobs.copy()
+        original = "generated_schemas_and_synthetic_receipts_match_goldens -- --exact\n"
+        self.assertIn(original, jobs["storage-contract-preflight"])
+        jobs["storage-contract-preflight"] = jobs["storage-contract-preflight"].replace(
+            original, "generated_schemas_and_synthetic_receipts_match_goldens -- --exact || true\n"
+        )
+        with self.assertRaises(PolicyError):
+            verify_storage_contract_preflight(jobs)
+
     def test_reopen_cannot_bypass_or_omit_dependency(self):
         for mutation in ("omit", "condition", "continue"):
             with self.subTest(mutation=mutation):
@@ -185,6 +201,19 @@ class StorageContractPreflightTests(unittest.TestCase):
                     jobs["installed-reopen"] += "\n    continue-on-error: true\n"
                 with self.assertRaises(PolicyError):
                     verify_storage_contract_preflight(jobs)
+
+    def test_gate_step_condition_cannot_skip_reduction(self):
+        jobs = self.jobs.copy()
+        jobs["ci-gate"] += "\n        if: ${{ false }}\n"
+        with self.assertRaises(PolicyError):
+            verify_storage_contract_preflight(jobs)
+
+    def test_gate_failure_cannot_be_suppressed(self):
+        jobs = self.jobs.copy()
+        original = 'test "$STORAGE_PREFLIGHT_RESULT" = success'
+        jobs["ci-gate"] = jobs["ci-gate"].replace(original, original + " || true")
+        with self.assertRaises(PolicyError):
+            verify_storage_contract_preflight(jobs)
 
     def test_gate_requires_preflight_success(self):
         for old, new in [

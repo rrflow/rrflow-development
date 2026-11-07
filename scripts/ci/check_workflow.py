@@ -815,7 +815,7 @@ def verify_storage_contract_preflight(jobs: dict[str, str]) -> None:
     require(
         "runs-on: ${{ fromJSON(inputs.linux-standard-runner) }}" in preflight
         and "cache-on-failure: false" in preflight
-        and not re.search(r"(?m)^    if:", preflight)
+        and not re.search(r"(?m)^\s+if\s*:", preflight)
         and "continue-on-error:" not in preflight,
         "storage preflight must run on the selected trusted lane without bypass",
     )
@@ -830,12 +830,31 @@ def verify_storage_contract_preflight(jobs: dict[str, str]) -> None:
         "          cargo test --locked -p rrflow-eval --test storage_contract "
         "generated_schemas_and_synthetic_receipts_match_goldens -- --exact"
     )
-    require(preflight.count(command) == 1, "storage preflight must run the exact golden test")
+    require(preflight.count(command + "\n") == 1, "storage preflight must run the exact golden test")
     require(
         re.search(r"(?m)^    needs: storage-contract-preflight\s*$", reopen) is not None
         and not re.search(r"(?m)^    if:", reopen)
         and "continue-on-error:" not in reopen,
         "installed reopen must depend on successful storage preflight without bypass",
+    )
+    step_sections = gate.split("    steps:\n")
+    require(len(step_sections) == 2, "ci-gate must have one steps block")
+    steps = step_sections[1]
+    require(
+        len(re.findall(r"(?m)^      - ", steps)) == 1
+        and not re.search(r"(?m)^        if\s*:", steps),
+        "ci-gate reduction step must be unconditional and unique",
+    )
+    result_variables = re.findall(
+        r"(?m)^          ([A-Z][A-Z0-9_]+):\s+\$\{\{\s*needs\.[a-z0-9-]+\.result\s*}}\s*$",
+        steps,
+    )
+    run_sections = steps.split("        run: |\n")
+    require(len(run_sections) == 2 and result_variables, "ci-gate reduction body is missing")
+    run_lines = [line for line in run_sections[1].splitlines() if line.strip()]
+    require(
+        run_lines == [f'          test "${variable}" = success' for variable in result_variables],
+        "ci-gate reduction must contain only exact success checks",
     )
     require(
         "    if: ${{ always() }}\n" in gate

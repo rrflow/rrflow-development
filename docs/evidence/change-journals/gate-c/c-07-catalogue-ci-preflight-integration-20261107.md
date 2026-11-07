@@ -19,3 +19,9 @@ Read the existing C-07 preflight journal, CI owner and the complete preflight/wo
 ## Checklist and stop
 
 [done] Brief before mutation; baseline and overlapping paths checked; current candidate test and stale-fixture negative oracle run; original fixture restored; no native gates disabled. [open] Regenerate navigation, review staged diff and exact combined tree, reconcile the actual merged main after #292 lands, run candidate and merge-group CI and inspect scheduling. Do not push or mark this draft ready against an unmerged dependency. If #292 changes or fails, reassess the combined tree. No alpha, C-07 capacity or soak status changed.
+
+## Policy bypass repair
+
+After combined-tree review, the PR brief was amended before changing `scripts/ci/check_workflow.py` and `scripts/ci/test_candidate_admission.py`. The first new mutation pair appended a false condition at test-step indentation and appended `|| true` to the final cargo command. The existing checker accepted both; the 17-test suite failed those two new cases. The checker now forbids conditions in the preflight job/steps and matches the final command to its line ending.
+
+A second mutation pair placed a false condition after the aggregate step's run block and appended `|| true` to its preflight success check. The previous checker again accepted both; the 19-test suite failed exactly those two cases. The aggregate policy now requires one unconditional reduction step and an exact run body containing only the declared success checks. The existing job-level `always()` remains required. The same 19-test suite and `python scripts/ci/check_workflow.py` then passed. These are deliberate workflow-policy mutations, not evidence that the checked-in workflow was actually bypassed or that GitHub scheduling has been tested. The workflow itself and its native workloads were not changed by this repair.
