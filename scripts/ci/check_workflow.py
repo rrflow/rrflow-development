@@ -309,6 +309,81 @@ def verify_macos_reopen_cache_warm(workflow: str, reopen: str) -> None:
                 "cache warmer must use the triggering main revision")
 
 
+def verify_windows_reopen_cache_warm(workflow: str, reopen: str) -> None:
+    """Warm only trusted main with the Windows candidate's dependency inputs."""
+    require(re.findall(r"(?m)^([A-Za-z][A-Za-z0-9_-]*):", workflow) ==
+            ["name", "on", "permissions", "concurrency", "env", "jobs"],
+            "Windows cache warmer has unexpected or duplicate top-level settings")
+    trigger = re.search(r"(?ms)^on:\n(.*?)(?=^\S)", workflow)
+    require(trigger is not None and trigger.group(1) == "  workflow_dispatch:\n\n",
+            "Windows cache warmer must be manual-only")
+    permissions = re.search(r"(?ms)^permissions:\n(.*?)(?=^\S)", workflow)
+    require(permissions is not None and permissions.group(1) == "  contents: read\n\n",
+            "Windows cache warmer permissions must be read-only")
+    require("concurrency:\n  group: trusted-windows-reopen-cache-warm\n"
+            "  cancel-in-progress: false\n\n" in workflow,
+            "Windows cache warming must not cancel another warm run")
+    jobs = job_blocks(workflow)
+    job_names = re.findall(r"(?m)^  ([a-z][a-z0-9-]*):\s*$", workflow.split("\njobs:\n", 1)[1])
+    require(job_names == ["cache-reopen"] and set(jobs) == {"cache-reopen"},
+            "Windows cache warmer must have one unique job")
+    job = jobs["cache-reopen"]
+    require(re.findall(r"(?m)^    ([A-Za-z][A-Za-z0-9_-]*):", job) ==
+            ["if", "runs-on", "timeout-minutes", "env", "steps"],
+            "Windows cache warmer has unexpected or duplicate job settings")
+    require(re.findall(r"(?m)^    if: (.+)$", job) == ["${{ github.ref == 'refs/heads/main' }}"],
+            "Windows cache warmer must use the trusted main ref")
+    require("    runs-on: windows-latest\n" in job and "- windows-latest" in reopen,
+            "Windows cache warmer must use the candidate runner")
+    require("    timeout-minutes: 120\n" in job,
+            "Windows cache warmer must have its own finite preparation deadline")
+    root_env = re.search(r"(?ms)^env:\n(.*?)(?=^\S)", workflow)
+    require(root_env is not None and root_env.group(1) ==
+            '  CARGO_INCREMENTAL: "0"\n  CARGO_TERM_COLOR: always\n\n',
+            "Windows cache warmer environment differs from reusable CI")
+    expected_env = ('      CARGO_BUILD_JOBS: "2"\n'
+                    '      CARGO_PROFILE_DEV_DEBUG: "0"\n'
+                    '      CARGO_PROFILE_TEST_DEBUG: "0"\n')
+    env = re.search(r"(?ms)^    env:\n(.*?)(?=^    \S)", job)
+    require(env is not None and env.group(1) == expected_env,
+            "Windows cache warmer job environment differs from the candidate")
+    require("CARGO_BUILD_JOBS: ${{ matrix.os == 'windows-latest' && '2' || '1' }}" in reopen
+            and 'CARGO_PROFILE_DEV_DEBUG: "0"' in reopen
+            and 'CARGO_PROFILE_TEST_DEBUG: "0"' in reopen,
+            "Windows candidate build settings differ")
+    require("shared-key: installed-reopen-windows-latest" in job
+            and "shared-key: installed-reopen-${{ matrix.os }}" in reopen
+            and "cache-on-failure: false" in job and "cache-on-failure: false" in reopen,
+            "Windows cache key or failure handling differs")
+    actions = lambda text: re.findall(r"(?m)^\s*- uses: ([^\s#]+)", text)
+    selected = actions(job)
+    require(selected == actions(reopen)[:3],
+            "Windows cache warmer actions differ from the reopen candidate")
+    require(len(re.findall(r"(?m)^      - (?:uses|name):", job)) == 4,
+            "Windows cache warmer contains unexpected steps")
+    checkout = checkout_steps(workflow)
+    require(len(checkout) == 1
+            and checkout[0][1] == ["with:", "persist-credentials: false", "submodules: recursive"],
+            "Windows cache warmer checkout must use the main revision and recursive submodules")
+    for action, settings in [
+        (selected[1], "        with:\n          components: clippy\n"),
+        (selected[2], "        with:\n          shared-key: installed-reopen-windows-latest\n"
+                      "          cache-on-failure: false\n"),
+    ]:
+        block = re.search(r"(?ms)^      - uses: " + re.escape(action) +
+                          r"(?: #[^\n]*)?\n(.*?)(?=^      - |\Z)", job)
+        require(block is not None and block.group(1) == settings,
+                "Windows cache warmer action settings differ")
+    expected = "cargo test -p rrflow-cli --test installed_reopen --release --locked --no-run"
+    require(re.findall(r"(?m)^\s*(?:-\s*)?run: (.+)$", job) == [expected]
+            and f"run: {expected}" in reopen,
+            "Windows cache warmer build differs from the candidate")
+    require(job.endswith("      - name: Build cache inputs only\n        run: " + expected + "\n"),
+            "Windows cache warmer build step must not add other configuration")
+    require("continue-on-error:" not in job and not re.search(r"(?m)^        if:", job),
+            "Windows cache warmer cannot bypass or condition its steps")
+
+
 def verify_execution_inventory_ci(verify: str) -> None:
     """Keep each retained inventory bound to the clean checked-out revision."""
     marker = "      - name: Enforce exhaustive RRFlow 1.0 file planning\n"
@@ -894,6 +969,9 @@ def main() -> None:
     warmer = workflows.get(WORKFLOW_DIRECTORY / "ci-cache-warm.yml")
     require(warmer is not None, "trusted macOS reopen cache warmer is absent")
     verify_macos_reopen_cache_warm(warmer, jobs["installed-reopen"])
+    windows_warmer = workflows.get(WORKFLOW_DIRECTORY / "ci-windows-cache-warm.yml")
+    require(windows_warmer is not None, "trusted Windows reopen cache warmer is absent")
+    verify_windows_reopen_cache_warm(windows_warmer, jobs["installed-reopen"])
     verify_execution_inventory_ci(jobs["verify"])
     verify_native_sample_worker_ci(jobs["installed-reopen"], jobs["verify"])
     require(

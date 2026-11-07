@@ -108,12 +108,33 @@ Rust cache steps still restore compatible entries on every candidate, but do
 not save new entries from `merge_group` runs. Queue-ref entries are scoped to
 the temporary ref and cannot warm the next candidate's base; disabling those
 saves reduces one source of eviction pressure. Pull-request saves and the
-explicit main-only warmer remain available. Other language caches are unchanged.
+explicit main-only macOS and Windows warmers remain available. Other language
+caches are unchanged.
 This does not create a main cache or guarantee a hit, speedup, or reduced bill.
 GitHub documents [cache scope and eviction](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching);
 the pinned [rust-cache action](https://github.com/Swatinem/rust-cache/blob/6323deb102c322ba6fcbdcafc7e3dddab59af2b6/action.yml)
 documents that `save-if` controls saving, not restore. Inspect later run logs
 and cache usage rather than inferring impact from the workflow text.
+
+The Windows warmer is `.github/workflows/ci-windows-cache-warm.yml`; after
+that file reaches public `main`, an operator can dispatch the main revision:
+
+```sh
+gh workflow run ci-windows-cache-warm.yml --repo rrflow/rrflow-development --ref main
+```
+
+Inspect the resulting run's exact head and cache-save log, then check the next
+candidate's restore log and timing. The manual job uses the candidate's fixed
+Windows runner, toolchain, two Cargo workers, cache key and locked release
+build; its separate 120-minute ceiling does not extend the 90-minute
+candidate job or run the tests. It never qualifies the candidate. Cache
+scopes, eviction, dependency-only caching and runner variability can still
+produce a miss or leave workspace compilation slow. Standard hosted runners
+for this public repository are documented as free by
+[GitHub](https://docs.github.com/en/actions/reference/runners/github-hosted-runners);
+cache storage beyond the included allowance may incur charges depending on
+account settings. Do not add untrusted public jobs to a private self-hosted
+runner to populate this cache.
 
 The reusable workflow reduces every partition into one stable `ci-gate`
 check for branch protection:
