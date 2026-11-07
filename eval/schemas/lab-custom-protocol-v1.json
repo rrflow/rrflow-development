@@ -1,5 +1,18 @@
 {
   "$defs": {
+    "CustomEvidence": {
+      "additionalProperties": false,
+      "description": "What served the searches, in the system's own words. A system without an answer\nreplies 404 to this route, and the report then shows no evidence.",
+      "properties": {
+        "evidence": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "evidence"
+      ],
+      "type": "object"
+    },
     "CustomHealth": {
       "additionalProperties": false,
       "properties": {
@@ -223,6 +236,25 @@
             "seed"
           ],
           "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "index": {
+              "const": "ivf_rq",
+              "type": "string"
+            },
+            "partitions": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "index",
+            "partitions"
+          ],
+          "type": "object"
         }
       ]
     },
@@ -255,6 +287,15 @@
         },
         "id": {
           "$ref": "#/$defs/Id"
+        },
+        "nprobes": {
+          "description": "How many partitions an IVF index probes.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
         }
       },
       "required": [
@@ -267,6 +308,9 @@
   "additionalProperties": false,
   "description": "The whole protocol in one generated schema.",
   "properties": {
+    "evidence_response": {
+      "$ref": "#/$defs/CustomEvidence"
+    },
     "finish_response": {
       "$ref": "#/$defs/CustomReady"
     },
@@ -287,6 +331,7 @@
     }
   },
   "required": [
+    "evidence_response",
     "health_response",
     "prepare_request",
     "ingest_request",

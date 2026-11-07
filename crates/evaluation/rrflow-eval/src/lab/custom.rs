@@ -58,10 +58,19 @@ pub struct CustomSearchResult {
     pub ids: Vec<u64>,
 }
 
+/// What served the searches, in the system's own words. A system without an answer
+/// replies 404 to this route, and the report then shows no evidence.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct CustomEvidence {
+    pub evidence: String,
+}
+
 /// The whole protocol in one generated schema.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct CustomProtocol {
+    pub evidence_response: CustomEvidence,
     pub health_response: CustomHealth,
     pub prepare_request: CustomPrepare,
     pub ingest_request: CustomIngest,
@@ -149,6 +158,20 @@ impl SystemAdapter for CustomAdapter {
             },
         )?;
         Ok(result.ids)
+    }
+
+    fn index_evidence(&self) -> Result<Option<String>> {
+        let (status, text) = self.http.raw("GET", "/evidence", None)?;
+        if status == 404 {
+            return Ok(None);
+        }
+        if !(200..300).contains(&status) {
+            return Err(format!("GET /evidence: HTTP {status}: {text}"));
+        }
+        let value =
+            serde_json::from_str(&text).map_err(|error| format!("protocol violation: {error}"))?;
+        let evidence: CustomEvidence = Self::decode(value)?;
+        Ok(Some(evidence.evidence))
     }
 
     fn teardown(&self) -> Result<()> {

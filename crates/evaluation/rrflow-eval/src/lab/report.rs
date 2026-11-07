@@ -21,12 +21,13 @@ pub struct TestIdentity {
     pub revision: u32,
 }
 
-/// Only diagnostic evidence exists today. J-04 acceptance requires its own
-/// qualification and cannot be claimed through this report.
+/// J-04 acceptance requires its own qualification and cannot be claimed through this
+/// report. Imported evidence was measured by another harness, and this lab only restates it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum LabEvidenceClass {
     Diagnostic,
+    Imported,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]

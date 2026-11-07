@@ -15,6 +15,13 @@ case "$what:$target" in
   disk:rrflow)
     du -sb "$root/project/.rrflow" | cut -f1
     ;;
+  memory:shim)
+    # Resident memory of a system that runs inside its own shim.
+    awk '/^VmRSS:/ {print $2 * 1024}' "/proc/$(cat "$root/shim.pid")/status"
+    ;;
+  disk:shim)
+    du -sb "$root/data" | cut -f1
+    ;;
   memory:*)
     # The container's cgroup usage, which excludes inactive page cache.
     usage=$(docker stats --no-stream --format '{{.MemUsage}}' "$target" | cut -d/ -f1 | tr -d ' ')

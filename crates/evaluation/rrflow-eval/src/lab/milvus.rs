@@ -79,6 +79,9 @@ impl SystemAdapter for MilvusAdapter {
             IndexSpec::TurboQuant { .. } => {
                 return Err("TurboQuant is available only for RRFlow".into())
             }
+            IndexSpec::IvfRq { .. } => {
+                return Err("an IVF index is available only through a custom system".into())
+            }
         };
         self.call(
             "/collections/create",

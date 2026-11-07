@@ -5,6 +5,8 @@ use super::corpus::{exact_answers, generate, GroundTruth, VectorSet};
 use super::manifest::{
     Availability, SearchSetting, SystemBinding, SystemKind, VectorComparisonManifest,
 };
+use super::manifest::{CorpusSource, CorpusSpec, QualitySpec, WorkloadSpec};
+use super::report::TestIdentity;
 use super::report::{
     ArtifactReference, DimensionDefinition, LabEvidenceClass, LabReport, MetricDefinition,
     MetricDirection, Observation, ReportSystem, SystemStatus, Verdict, VerdictOutcome,
@@ -22,6 +24,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 pub const RUN_SCHEMA_VERSION: u16 = 1;
 /// Stop hammering a system that has answered nothing but errors.
 const ERRORS_BEFORE_GIVING_UP: usize = 20;
+const FLOOR_REQUESTS_PER_CLIENT: usize = 32;
 const Z95: f64 = 1.96;
 
 /// Transient operator observations. These are not a durable audit or a run result.
@@ -96,12 +99,24 @@ pub struct CaseResult {
     pub recall_min: f64,
 }
 
+/// What a system's cheapest request costs, the one that reads its version. A search cannot
+/// be faster than this, so a latency close to it measured the transport and not the system.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct RequestFloor {
+    pub clients: u32,
+    pub p50_ms: f64,
+    pub p95_ms: f64,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct SystemRun {
     pub schema_version: u16,
     pub system: Id,
     pub identities: BTreeMap<String, Digest>,
+    /// The binding this run was made under, so a changed binding cannot reuse it.
+    pub binding_sha256: Digest,
     pub environment: BTreeMap<String, String>,
     pub status: SystemStatus,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -118,6 +133,8 @@ pub struct SystemRun {
     /// What served the searches, in the system's own words.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub index_evidence: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub request_floor: Option<RequestFloor>,
     pub started_at_unix_ms: u64,
     pub finished_at_unix_ms: u64,
 }
@@ -155,8 +172,30 @@ fn digest(text: String) -> Result<Digest> {
     Digest::try_from(text)
 }
 
-pub fn manifest_sha256(manifest: &VectorComparisonManifest) -> Result<String> {
-    Ok(sha256_hex(&canonical_json(manifest)?))
+/// What every run in a report must share. Systems stay out of it, so adding one to a
+/// test leaves the runs already made usable. Each run keeps its own binding's digest.
+pub fn test_sha256(manifest: &VectorComparisonManifest) -> Result<String> {
+    #[derive(Serialize)]
+    struct Shared<'a> {
+        schema_version: u16,
+        test: &'a TestIdentity,
+        corpus: &'a CorpusSpec,
+        workload: &'a WorkloadSpec,
+        quality: &'a QualitySpec,
+    }
+    Ok(sha256_hex(&canonical_json(&Shared {
+        schema_version: manifest.schema_version,
+        test: &manifest.test,
+        corpus: &manifest.corpus,
+        workload: &manifest.workload,
+        quality: &manifest.quality,
+    })?))
+}
+
+pub fn binding_sha256(binding: &SystemBinding) -> Digest {
+    // A binding is plain data, so encoding it cannot fail.
+    let encoded = canonical_json(binding).expect("a system binding encodes as JSON");
+    Digest::try_from(sha256_hex(&encoded)).expect("a SHA-256 is a valid digest")
 }
 
 pub fn now_unix_ms() -> u64 {
@@ -168,7 +207,7 @@ pub fn now_unix_ms() -> u64 {
 /// Computed before any system is contacted, so an answer cannot influence its grade.
 pub fn prepare_inputs(manifest: &VectorComparisonManifest) -> Result<Inputs> {
     let threads = std::thread::available_parallelism().map_or(1, |count| count.get());
-    let (points, queries) = generate(&manifest.corpus, manifest.workload.queries);
+    let (points, queries) = generate(&manifest.corpus, manifest.workload.queries)?;
     let k = manifest.workload.k as usize;
     let metric = manifest.corpus.metric;
     let truth = exact_answers(&points, &queries, metric, k, false, threads)?;
@@ -178,7 +217,7 @@ pub fn prepare_inputs(manifest: &VectorComparisonManifest) -> Result<Inputs> {
         None
     };
     let mut identities = BTreeMap::from([
-        ("manifest".to_string(), digest(manifest_sha256(manifest)?)?),
+        ("test".to_string(), digest(test_sha256(manifest)?)?),
         ("points".to_string(), digest(points.digest())?),
         ("queries".to_string(), digest(queries.digest())?),
         ("truth".to_string(), digest(truth.digest())?),
@@ -201,6 +240,38 @@ fn percentile(sorted: &[u64], percent: u64) -> f64 {
     }
     let rank = (sorted.len() as u64 * percent).div_ceil(100).max(1) as usize;
     sorted[rank - 1] as f64 / 1_000_000.0
+}
+
+/// `None` if the system stops answering, which the cases have already recorded.
+fn measure_request_floor(adapter: &dyn SystemAdapter, clients: u32) -> Option<RequestFloor> {
+    let samples = Mutex::new(Vec::new());
+    std::thread::scope(|scope| {
+        for _ in 0..clients {
+            scope.spawn(|| {
+                let mut local = Vec::with_capacity(FLOOR_REQUESTS_PER_CLIENT);
+                for _ in 0..FLOOR_REQUESTS_PER_CLIENT {
+                    let started = Instant::now();
+                    if adapter.observed_version().is_err() {
+                        return;
+                    }
+                    local.push(started.elapsed().as_nanos() as u64);
+                }
+                if let Ok(mut all) = samples.lock() {
+                    all.extend(local);
+                }
+            });
+        }
+    });
+    let mut sorted = samples.into_inner().ok()?;
+    if sorted.is_empty() {
+        return None;
+    }
+    sorted.sort_unstable();
+    Some(RequestFloor {
+        clients,
+        p50_ms: percentile(&sorted, 50),
+        p95_ms: percentile(&sorted, 95),
+    })
 }
 
 struct CaseRequest<'a> {
@@ -482,6 +553,16 @@ fn run_phases(
             }
         }
     }
+    run.request_floor = measure_request_floor(
+        adapter,
+        manifest
+            .workload
+            .concurrency
+            .iter()
+            .copied()
+            .max()
+            .unwrap_or(1),
+    );
     run.index_evidence = match adapter.index_evidence() {
         Ok(evidence) => evidence,
         Err(error) => Some(format!("could not read index evidence: {error}")),
@@ -501,6 +582,7 @@ pub fn empty_run(
         schema_version: RUN_SCHEMA_VERSION,
         system: binding.id.clone(),
         identities: inputs.identities.clone(),
+        binding_sha256: binding_sha256(binding),
         environment,
         status: SystemStatus::Failed,
         reason: None,
@@ -510,6 +592,7 @@ pub fn empty_run(
         memory_bytes: None,
         disk_bytes: None,
         index_evidence: None,
+        request_floor: None,
         started_at_unix_ms: now,
         finished_at_unix_ms: now,
     }
@@ -936,7 +1019,15 @@ fn report_limits(manifest: &VectorComparisonManifest) -> Vec<String> {
         "Cases with errors or truncation cannot qualify for speed at the recall target. Server resource equivalence is not established by matching client metadata.".to_string(),
         "Closed-loop clients: each waits for its reply, so this understates latency under overload and is not an open-loop schedule.".to_string(),
         "Ingest is one sequential writer, which does not show any system's parallel write capacity.".to_string(),
-        "The corpus is a synthetic Gaussian mixture, not embeddings of real content.".to_string(),
+        match &manifest.corpus.source {
+            CorpusSource::GaussianMixture { .. } => {
+                "The corpus is a synthetic Gaussian mixture, not embeddings of real content."
+                    .to_string()
+            }
+            CorpusSource::Imported { origin, license, .. } => format!(
+                "The corpus is {origin}, under {license}. Its filter categories are assigned at random, so a filter here follows no structure in the data."
+            ),
+        },
         "A configured index can go unused at small sizes: check each system's index evidence before reading its result as an index result.".to_string(),
         "Latency is measured in the harness and includes its own request encoding and reply parsing.".to_string(),
         "Memory compares an engine's resident set with a container's cgroup usage.".to_string(),
@@ -950,6 +1041,9 @@ fn report_limits(manifest: &VectorComparisonManifest) -> Vec<String> {
             binding.artifact,
             binding.location
         ));
+        for limit in &binding.limits {
+            limits.push(format!("{}: {limit}", binding.id.as_str()));
+        }
     }
     limits
 }
@@ -960,7 +1054,7 @@ pub fn combine(
     artifacts: Vec<ArtifactReference>,
 ) -> Result<LabReport> {
     manifest.validate()?;
-    let expected = digest(manifest_sha256(manifest)?)?;
+    let expected = digest(test_sha256(manifest)?)?;
     let mut identities: Option<&BTreeMap<String, Digest>> = None;
     for run in runs {
         require(
@@ -968,8 +1062,14 @@ pub fn combine(
             "unsupported run schema version",
         )?;
         require(
-            run.identities.get("manifest") == Some(&expected),
-            &format!("{} ran a different manifest", run.system.as_str()),
+            run.identities.get("test") == Some(&expected),
+            &format!("{} ran a different test", run.system.as_str()),
+        )?;
+        require(
+            manifest
+                .binding(run.system.as_str())
+                .is_ok_and(|binding| binding_sha256(binding) == run.binding_sha256),
+            &format!("{} ran under a different binding", run.system.as_str()),
         )?;
         if let Some(first) = identities {
             require(
@@ -1031,6 +1131,15 @@ pub fn combine(
         ]);
         if let Some(evidence) = run.and_then(|run| run.index_evidence.clone()) {
             configuration.insert("index_evidence".to_string(), evidence);
+        }
+        if let Some(floor) = run.and_then(|run| run.request_floor.as_ref()) {
+            configuration.insert(
+                "request_floor".to_string(),
+                format!(
+                    "p50 {:.2} ms, p95 {:.2} ms at {} clients",
+                    floor.p50_ms, floor.p95_ms, floor.clients
+                ),
+            );
         }
         systems.push(ReportSystem {
             id: binding.id.clone(),

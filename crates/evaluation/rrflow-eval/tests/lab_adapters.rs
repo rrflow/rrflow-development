@@ -123,6 +123,7 @@ fn binding(endpoint: &str, kind: SystemKind, credentials: CredentialReferences) 
         rrflow_hnsw: None,
         search_ladder: Vec::new(),
         engine_settings: Default::default(),
+        limits: Vec::new(),
         credentials,
         memory_probe: None,
         disk_probe: None,
@@ -149,6 +150,7 @@ fn setting() -> SearchSetting {
         id: Id::try_from("ef-32".to_string()).unwrap(),
         ef: Some(32),
         exact_rerank: None,
+        nprobes: None,
     }
 }
 
@@ -614,4 +616,30 @@ fn index_evidence_quotes_what_each_system_reports() {
         adapter.index_evidence().unwrap().unwrap(),
         "0 of 40 points indexed across 8 segments"
     );
+}
+
+#[test]
+fn a_custom_system_may_report_evidence_and_may_decline() {
+    let binding = |endpoint: &str| {
+        binding(
+            endpoint,
+            SystemKind::Custom,
+            CredentialReferences::default(),
+        )
+    };
+    let server = ScriptedServer::start(&[(200, r#"{"evidence":"IVF_RQ: 40 rows indexed"}"#)]);
+    let adapter = CustomAdapter::new(&binding(&server.endpoint), &workload());
+    assert_eq!(
+        adapter.index_evidence().unwrap().as_deref(),
+        Some("IVF_RQ: 40 rows indexed")
+    );
+
+    let server = ScriptedServer::start(&[(404, r#"{"error":"unknown route"}"#)]);
+    let adapter = CustomAdapter::new(&binding(&server.endpoint), &workload());
+    assert_eq!(adapter.index_evidence().unwrap(), None);
+
+    let server = ScriptedServer::start(&[(200, r#"{"unexpected":true}"#)]);
+    let adapter = CustomAdapter::new(&binding(&server.endpoint), &workload());
+    let refused = adapter.index_evidence().unwrap_err();
+    assert!(refused.contains("protocol violation"), "{refused}");
 }

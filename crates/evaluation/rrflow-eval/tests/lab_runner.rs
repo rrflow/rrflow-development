@@ -12,7 +12,7 @@ fn executable(path: &Path, content: &str) {
 
 #[test]
 fn runner_removes_only_the_container_it_created() {
-    for system in ["qdrant", "surrealdb", "milvus"] {
+    for system in ["qdrant", "surrealdb", "surrealdb-4", "milvus"] {
         for mode in ["failure", "invalid", "success"] {
             let temp = tempfile::tempdir().unwrap();
             let bin = temp.path().join("bin");

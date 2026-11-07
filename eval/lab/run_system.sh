@@ -4,9 +4,10 @@
 #
 # Requires RRFLOW_LAB_BIN (rrflow-lab), and for RRFlow arms RRFLOW_BIN (rrflow).
 # Set RRFLOW_LAB_CPUSET to give every system the same cores, RRFLOW_LAB_CLIENT_CPUSET to
-# keep the harness off them, and RRFLOW_LAB_MANIFEST to choose another test. No value
-# here is a secret: SurrealDB's password is generated per run and exists only in this
-# process's environment.
+# keep the harness off them, and RRFLOW_LAB_MANIFEST to choose another test. Set
+# RRFLOW_LAB_VDBBENCH to the vectordbbench command to drive qdrant, milvus or lance-hnsw-sq
+# with that harness instead, as a cross-check on this one. No value here is a secret:
+# SurrealDB's password is generated per run and exists only in this process's environment.
 set -euo pipefail
 system=$1
 run_directory=$(mkdir -p "$2" && cd "$2" && pwd)
@@ -106,9 +107,10 @@ start_rrflow() {
 case "$system" in
   rrflow-*) require_port_free 19477 ;;
   qdrant) require_port_free 16333 ;;
-  surrealdb) require_port_free 18000 ;;
+  surrealdb | surrealdb-4) require_port_free 18000 ;;
   milvus) require_port_free 19530 ;;
   custom-reference) require_port_free 18089 ;;
+  lance-*) require_port_free 18090 ;;
 esac
 
 case "$system" in
@@ -120,14 +122,18 @@ case "$system" in
       qdrant/qdrant@sha256:9bfc89f9914fc14876a88c05270685921a55b8877b254a98bcc1cc2f0a424cd2
     wait_http http://127.0.0.1:16333/ 60
     ;;
-  surrealdb)
+  surrealdb | surrealdb-4)
+    surreal_image=surrealdb/surrealdb@sha256:3db515b88e79737aa828c05fbf1515748004ba57495ff89a013851cc3f1ad4b9
+    if [ "$system" = surrealdb-4 ]; then
+      surreal_image=surrealdb/surrealdb@sha256:c35893410644e65fa90aa1bef446ac9cb0a0c2733b9d405ce3eb56754b85c330
+    fi
     SURREAL_LAB_USER=lab
     SURREAL_LAB_SECRET=$(python3 -c 'import secrets; print(secrets.token_hex(24))')
     export SURREAL_LAB_USER SURREAL_LAB_SECRET
     start_container --name lab-surrealdb "${docker_cpus[@]}" -p 127.0.0.1:18000:8000 \
       -e SURREAL_USER="$SURREAL_LAB_USER" -e SURREAL_PASS="$SURREAL_LAB_SECRET" \
       -e SURREAL_CAPS_ALLOW_ALL=true --user root -v "$work/data:/data" \
-      surrealdb/surrealdb@sha256:3db515b88e79737aa828c05fbf1515748004ba57495ff89a013851cc3f1ad4b9 \
+      "$surreal_image" \
       start surrealkv:///data/lab
     wait_http http://127.0.0.1:18000/version 60
     ;;
@@ -147,6 +153,17 @@ case "$system" in
     background=$!
     wait_http http://127.0.0.1:18089/health 30
     ;;
+  lance-*)
+    # VectorDBBench embeds Lance in its own process, so it needs no server from here.
+    if [ -z "${RRFLOW_LAB_VDBBENCH:-}" ]; then
+      # Lance is embedded, so its shim is its server, on the same cores and disk as the others.
+      : "${RRFLOW_LAB_LANCE_PYTHON:?set RRFLOW_LAB_LANCE_PYTHON to a Python with lance-requirements.txt installed}"
+      "${pinned[@]}" "$RRFLOW_LAB_LANCE_PYTHON" "$here/lance_system.py" 18090 "$work/data" &
+      background=$!
+      echo "$background" > "$work/shim.pid"
+      wait_http http://127.0.0.1:18090/health 60
+    fi
+    ;;
   *)
     echo "unknown system $system; a new custom system adds its own start case here" >&2
     exit 2
@@ -160,9 +177,29 @@ client=()
 host_samples=$run_directory/$system.host.csv
 "${client[@]}" "$here/sample_host.sh" > "$host_samples" &
 sampler=$!
-(cd "$repository" && "${client[@]}" "$RRFLOW_LAB_BIN" run --manifest "$manifest" --system "$system" \
-  --out "$run_directory" --note "server_cpuset=${cpuset:-unpinned}" \
-  --note "client_cpuset=${client_cpuset:-unpinned}") || status=$?
+if [ -n "${RRFLOW_LAB_VDBBENCH:-}" ]; then
+  # Its dataset stays between runs, and each result is kept beside the run for rrflow-lab import.
+  ef=${RRFLOW_LAB_VDBBENCH_EF:-128}
+  case "$system" in
+    qdrant) driver=(qdrantlocal --url http://127.0.0.1:16333 --m 16 --ef-construct 100 --hnsw-ef "$ef") ;;
+    milvus) driver=(milvushnsw --uri http://127.0.0.1:19530 --m 16 --ef-construction 100 --ef-search "$ef") ;;
+    lance-hnsw-sq) driver=(lancedbivfhnswsq --uri "$work/data/vdbbench" --num-partitions 1 --m 16 --ef-construction 100 --ef "$ef") ;;
+    *)
+      echo "no VectorDBBench client is set up for $system" >&2
+      exit 2
+      ;;
+  esac
+  results=$work/vdbbench-results
+  mkdir -p "$results"
+  DATASET_LOCAL_DIR=${RRFLOW_LAB_VDBBENCH_DATASETS:-$HOME/lab-vdbbench-datasets} RESULTS_LOCAL_DIR=$results \
+    "${client[@]}" "$RRFLOW_LAB_VDBBENCH" "${driver[@]}" --case-type "${RRFLOW_LAB_VDBBENCH_CASE:?name a VectorDBBench case}" \
+    --k 10 --num-concurrency 1,8 --concurrency-duration 30 --db-label "lab-$system-ef-$ef" || status=$?
+  find "$results" -name 'result_*.json' -exec cp {} "$run_directory/$system.ef-$ef.vdbbench.json" \;
+else
+  (cd "$repository" && "${client[@]}" "$RRFLOW_LAB_BIN" run --manifest "$manifest" --system "$system" \
+    --out "$run_directory" --note "server_cpuset=${cpuset:-unpinned}" \
+    --note "client_cpuset=${client_cpuset:-unpinned}") || status=$?
+fi
 # Another workload can slow a run without touching its cores, so a busy GPU is reported.
 awk -F, 'NR > 1 && $4 != "" {
     samples++

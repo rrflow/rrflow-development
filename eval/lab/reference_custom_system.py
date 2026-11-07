@@ -55,6 +55,8 @@ ROUTES = {
 
 class Handler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
+    # Headers and body are two writes. With Nagle on, the body waits for a delayed ACK.
+    disable_nagle_algorithm = True
 
     def reply(self, status, value):
         body = json.dumps(value).encode()

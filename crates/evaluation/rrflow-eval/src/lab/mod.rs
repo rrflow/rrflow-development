@@ -7,11 +7,13 @@ pub mod adapter;
 pub mod corpus;
 pub mod custom;
 pub mod driver;
+pub mod import;
 pub mod manifest;
 pub mod milvus;
 pub mod qdrant;
 pub mod report;
 pub mod rrflow;
+pub mod sources;
 pub mod surrealdb;
 
 use serde::Serialize;

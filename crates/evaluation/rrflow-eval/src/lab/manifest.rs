@@ -2,7 +2,7 @@
 //! only by environment variable, so a manifest can be published with its results.
 use super::report::TestIdentity;
 use super::{require, Result};
-use crate::storage::Id;
+use crate::storage::{Digest, Id};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
@@ -32,6 +32,17 @@ pub enum CorpusSource {
         clusters: u32,
         /// Standard deviation around a cluster center, in thousandths.
         spread_milli: u32,
+    },
+    /// Real vectors prepared by `import_corpus.py`, kept outside the repository and named
+    /// by digest. Each file holds little-endian 32-bit floats.
+    Imported {
+        /// Where the data came from, for a reader of the report.
+        origin: String,
+        license: String,
+        points_sha256: Digest,
+        queries_sha256: Digest,
+        /// The data has no filter field, so categories are assigned from this seed.
+        category_seed: u64,
     },
 }
 
@@ -92,6 +103,7 @@ pub enum IndexSpec {
     Exact,
     Hnsw { m: u32, ef_construction: u32 },
     TurboQuant { bits: String, seed: u64 },
+    IvfRq { partitions: u32 },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -102,6 +114,9 @@ pub struct SearchSetting {
     pub ef: Option<u32>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub exact_rerank: Option<u32>,
+    /// How many partitions an IVF index probes.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub nprobes: Option<u32>,
 }
 
 /// A declared gap is reported as such. It can never read as a passing result.
@@ -164,6 +179,9 @@ pub struct SystemBinding {
     /// away from the installed defaults says so in the manifest it is bound to.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub engine_settings: BTreeMap<String, u64>,
+    /// What a reader must know about this system's results, repeated in the report.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub limits: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -296,6 +314,14 @@ impl SystemBinding {
                     &format!("{id} approximate search needs ef"),
                 )?;
             }
+            if let IndexSpec::IvfRq { partitions } = self.index {
+                require(
+                    setting
+                        .nprobes
+                        .is_some_and(|nprobes| (1..=partitions).contains(&nprobes)),
+                    &format!("{id} IVF search needs nprobes within its partitions"),
+                )?;
+            }
         }
         match (&self.kind, &self.index) {
             (SystemKind::Rrflow, IndexSpec::Hnsw { m, ef_construction }) => {
@@ -311,6 +337,13 @@ impl SystemBinding {
                     &format!("{id}: native HNSW parameters are outside engine bounds"),
                 )
             }
+            (SystemKind::Custom, IndexSpec::IvfRq { partitions }) => require(
+                *partitions > 0,
+                &format!("{id} IVF index needs at least one partition"),
+            ),
+            (_, IndexSpec::IvfRq { .. }) => Err(format!(
+                "{id}: an IVF index is available only through a custom system"
+            )),
             (SystemKind::Rrflow, _) | (SystemKind::Custom, _) | (_, IndexSpec::Hnsw { .. }) => {
                 Ok(())
             }
@@ -342,15 +375,22 @@ impl VectorComparisonManifest {
             "corpus dimensions are outside bounds",
         )?;
         require(corpus.categories > 0, "corpus needs at least one category")?;
-        let CorpusSource::GaussianMixture {
-            clusters,
-            spread_milli,
-            ..
-        } = &corpus.source;
-        require(
-            *clusters > 0 && u64::from(*clusters) <= corpus.points && *spread_milli > 0,
-            "corpus mixture is invalid",
-        )?;
+        match &corpus.source {
+            CorpusSource::GaussianMixture {
+                clusters,
+                spread_milli,
+                ..
+            } => require(
+                *clusters > 0 && u64::from(*clusters) <= corpus.points && *spread_milli > 0,
+                "corpus mixture is invalid",
+            )?,
+            CorpusSource::Imported {
+                origin, license, ..
+            } => require(
+                !origin.trim().is_empty() && !license.trim().is_empty(),
+                "an imported corpus must say where it came from and under what license",
+            )?,
+        }
         let workload = &self.workload;
         require(
             (1..=MAX_LAB_QUERIES).contains(&workload.queries),
