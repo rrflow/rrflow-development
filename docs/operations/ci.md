@@ -28,7 +28,10 @@ the harness image is pinned and before the owned job is launched. Observations
 are best-effort, buffered diagnostics, not durable audit, proof of completed
 records, the campaign verifier, or a qualification result. Observer startup
 requires a fresh sidecar path. Its thread is joined on exit; a blocked read is
-reported after a bounded stop wait and may finish after native cleanup.
+reported after a bounded stop wait and may finish after native cleanup. The
+observer runs in the launcher outside the owned native job/cgroup, and its
+reads and sidecar writes add overhead; compare performance only with the same
+observation settings and report them.
 
 ## C-07 storage-diagnostic attribution
 
