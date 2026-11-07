@@ -131,6 +131,13 @@ pub enum Error {
         limit: u64,
         observed: u64,
     },
+    /// A complete log entry cannot fit the declared cold-history input budget.
+    ColdHistorySourceLimit {
+        limit: u64,
+        observed: u64,
+    },
+    /// A cooperative cold-history source scan reached its deadline.
+    ColdHistorySourceDeadline,
     /// Object-tier I/O or capability error.
     Object(String),
     /// A transport-classified remote failure that the bounded object retry
@@ -235,6 +242,11 @@ impl fmt::Display for Error {
                 f,
                 "runtime versioned read exceeded key budget {limit}: observed {observed}"
             ),
+            Error::ColdHistorySourceLimit { limit, observed } => write!(
+                f,
+                "cold history source exceeded serialized-byte budget {limit}: observed {observed}"
+            ),
+            Error::ColdHistorySourceDeadline => write!(f, "cold history source deadline exceeded"),
             Error::Object(message) => write!(f, "object store: {message}"),
             Error::RemoteObjectTransient(message) => {
                 write!(f, "transient remote object store: {message}")

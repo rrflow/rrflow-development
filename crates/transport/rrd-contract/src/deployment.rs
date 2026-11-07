@@ -224,12 +224,85 @@ impl RecallLimits {
     }
 }
 
+/// One admitted cold-history maintenance quantum. This is installed policy;
+/// its presence does not assert that an archive generation is available.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ColdHistoryPolicy {
+    /// Target period between server offers; missed or busy offers are skipped.
+    pub interval_ms: u64,
+    pub max_changes: u64,
+    pub max_input_bytes: u64,
+    pub max_output_bytes: u64,
+    pub max_memory_bytes: u64,
+    pub max_elapsed_ms: u64,
+    pub row_group_rows: u64,
+    pub compression: ColdHistoryCompression,
+    pub dictionary: bool,
+    pub statistics: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+pub enum ColdHistoryCompression {
+    Uncompressed,
+    Zstd { level: u8 },
+}
+
+impl ColdHistoryPolicy {
+    pub fn validate(&self) -> Result<()> {
+        validate_nonzero_max("cold history interval_ms", self.interval_ms, 3_600_000)?;
+        validate_nonzero_max("cold history max_changes", self.max_changes, 65_536)?;
+        validate_nonzero_max(
+            "cold history max_input_bytes",
+            self.max_input_bytes,
+            1_073_741_824,
+        )?;
+        validate_nonzero_max(
+            "cold history max_output_bytes",
+            self.max_output_bytes,
+            1_073_741_824,
+        )?;
+        validate_nonzero_max(
+            "cold history max_memory_bytes",
+            self.max_memory_bytes,
+            4_294_967_296,
+        )?;
+        validate_nonzero_max(
+            "cold history max_elapsed_ms",
+            self.max_elapsed_ms,
+            3_600_000,
+        )?;
+        validate_nonzero_max(
+            "cold history row_group_rows",
+            self.row_group_rows,
+            self.max_changes,
+        )?;
+        if self.max_input_bytes > self.max_memory_bytes
+            || self.max_output_bytes > self.max_memory_bytes
+        {
+            return invalid(
+                "cold history input and output bounds must fit the working-memory budget",
+            );
+        }
+        if let ColdHistoryCompression::Zstd { level } = self.compression {
+            if !(1..=22).contains(&level) {
+                return invalid("cold history zstd level must be in 1..=22");
+            }
+        }
+        Ok(())
+    }
+}
+
 /// Installed native storage limits. These bound separately accounted owners,
 /// not total process RSS. Changing them requires a new governed configuration
 /// and reopening storage; they are never hot-applied by a client.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct StorageLimits {
+    /// Explicitly configured background cold-history work; absent means disabled.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cold_history: Option<ColdHistoryPolicy>,
     /// Named checkpoint-directory entry ceiling; restart required.
     pub checkpoint_entries: u64,
     /// Native transaction owner count and logical buffer capacity; restart required.
@@ -280,6 +353,7 @@ pub struct StorageLimits {
 impl Default for StorageLimits {
     fn default() -> Self {
         Self {
+            cold_history: None,
             checkpoint_entries: 1024,
             native_transactions: 64,
             native_transaction_bytes: 64 * 1024 * 1024,
@@ -323,6 +397,9 @@ impl Default for StorageLimits {
 
 impl StorageLimits {
     pub fn validate(&self) -> Result<()> {
+        if let Some(policy) = &self.cold_history {
+            policy.validate()?;
+        }
         // Fixed protocol ceilings keep admission finite across platforms;
         // the native adapter additionally checks host-size conversion.
         if let Some(limit) = self.segment_open_files {
