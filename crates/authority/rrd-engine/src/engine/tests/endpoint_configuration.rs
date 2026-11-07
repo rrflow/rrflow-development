@@ -154,6 +154,7 @@ fn configuration_policy_reopens(include_worker: bool, include_observation: bool)
         system_prompt: request["messages"][0]["content"].as_str().unwrap().into(),
         maximum_output_tokens: request["max_tokens"].as_u64().unwrap().try_into().unwrap(),
         temperature_milli: (request["temperature"].as_f64().unwrap() * 1000.0) as u16,
+        lfg: None,
     };
     let worker_policy = include_worker.then(|| {
         let candidate = &policy.candidates[0];

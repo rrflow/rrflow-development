@@ -1,0 +1,45 @@
+{
+  "sourceCommit": "0fc8c9759032222fcf9d61777eb493095ab33012",
+  "rustc": "1.99.1 (58cf8f9c3 2026-10-13)",
+  "cargo": "1.99.1 (5f94df478 2026-08-27)",
+  "sccache": "0.18.0",
+  "platform": "Windows x86_64",
+  "configuration": {
+    "localIsolatedCache": true,
+    "incremental": false,
+    "jobs": 2,
+    "baseDirectoryNormalization": true,
+    "targetDirectoriesSeparate": true
+  },
+  "command": "cargo build --offline --locked -j 2 -p rrd-contract --bin rrd-contract-export",
+  "firstBuild": {
+    "elapsedSeconds": 65.109,
+    "cacheCounters": {
+      "compileRequests": 42,
+      "notCacheableRequests": 14,
+      "rustHits": 0,
+      "rustMisses": 27,
+      "compileFails": 1
+    }
+  },
+  "secondBuild": {
+    "elapsedSeconds": 46.403,
+    "cacheCounterDelta": {
+      "compileRequests": 42,
+      "notCacheableRequests": 14,
+      "rustHits": 21,
+      "rustMisses": 6,
+      "compileFails": 1
+    }
+  },
+  "openapiSha256": "7ff11cd88d5fa1e5c1f4b4810b7daeb5f90037de3c801522ce625725a3e79d40",
+  "openapiPathCount": 79,
+  "openapiOutputsEqual": true,
+  "limits": [
+    "Single Windows cold/warm component build; not a benchmark of complete CI or engine runtime.",
+    "OpenAPI output equality does not verify debug paths, embedded env paths, all build scripts, or release provenance.",
+    "No global cache or CI configuration changed.",
+    "One compiler failure counted in each build despite successful Cargo exit; cause unclassified.",
+    "Other machine load and OS caches were not controlled."
+  ]
+}

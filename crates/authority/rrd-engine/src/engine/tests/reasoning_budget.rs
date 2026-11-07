@@ -19,6 +19,7 @@ use std::time::{Duration, Instant};
 const SCOPE: &str = "instance:test-instance";
 
 mod completion;
+mod lfg_flow;
 mod proposal;
 mod worker;
 

@@ -7,6 +7,45 @@ use rrd_contract::{
 use serde_json::Value;
 use std::path::PathBuf;
 
+#[test]
+fn lfg_policy_requires_explicit_bounded_loopback_and_pinned_inputs() {
+    let policy = rrd_contract::LfgAnalysisPolicy {
+        base_url: "http://127.0.0.1:9090".into(),
+        assessment_sha256: "1".repeat(64),
+        rules_sha256: "2".repeat(64),
+        timeout_ms: 5_000,
+        maximum_input_bytes: 4_096,
+        maximum_request_bytes: 8_192,
+        maximum_response_bytes: 8_192,
+    };
+    policy.validate().unwrap();
+    for bad in [
+        "http://example.com:9090",
+        "http://192.0.2.1:9090",
+        "http://127.0.0.1:9090/path",
+        "http://127.0.0.1:0",
+        "https://127.0.0.1:9090",
+    ] {
+        let mut changed = policy.clone();
+        changed.base_url = bad.into();
+        assert!(changed.validate().is_err(), "accepted {bad}");
+    }
+    let mut changed = policy.clone();
+    changed.assessment_sha256 = "unbound".into();
+    assert!(changed.validate().is_err());
+    changed = policy.clone();
+    changed.maximum_response_bytes = 0;
+    assert!(changed.validate().is_err());
+    let (configuration, mut selection) = proposed();
+    selection.lfg = Some(policy);
+    selection.allow_network = false;
+    let bindings = &configuration.profile.as_ref().unwrap().bindings;
+    assert!(selection.validate_for(bindings).is_err());
+    selection.allow_network = true;
+    selection.allow_unverified_identity = false;
+    assert!(selection.validate_for(bindings).is_err());
+}
+
 fn bytes(file: &str) -> Vec<u8> {
     std::fs::read(
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -42,6 +81,7 @@ fn proposed() -> (EndpointConfiguration, EndpointSelectionPolicy) {
         system_prompt: request["messages"][0]["content"].as_str().unwrap().into(),
         maximum_output_tokens: request["max_tokens"].as_u64().unwrap().try_into().unwrap(),
         temperature_milli: (request["temperature"].as_f64().unwrap() * 1000.0) as u16,
+        lfg: None,
     };
     (configuration, policy)
 }
