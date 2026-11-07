@@ -65,6 +65,17 @@ RRFlow itself. These are targets, not implemented or competitive-performance
 claims. The [scale rationale](docs/architecture/engine-scale-and-contracts.md#boundary-based-reasoning-after-the-developer-build)
 records the intended relationship and proof.
 
+The first product proof is one working project and its authenticated daemon,
+including usable Connectome, configured LFG/SWAG, source-grounded retrieval and
+observable results. After that proof, the target is to manage as many separate
+project instances as the operator's configured resources admit, starting and
+stopping owned instances as needed without losing their durable estates. A
+separate optional enterprise control plane is a later cloud/self-hosted
+deployment direction; it is not a prerequisite for the local engine. The owner
+has requested a six-year source-availability direction for that enterprise
+code; its exact licence, distribution and self-hosting grant remain undecided.
+See the [delivery sequence](docs/roadmap/rrflow-1.0.md#product-delivery-path).
+
 ## Engine, UI, cloud, and desktop
 
 RRFlow is the reasoning engine. **Connectome** is its operator and developer
