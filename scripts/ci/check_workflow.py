@@ -806,6 +806,19 @@ def verify_development_container(reusable: str, pgvector_job: str) -> int:
     return len(expected) + len(CONTAINER_CHECKSUMS)
 
 
+def verify_merge_group_rust_cache_scope(reusable: str) -> None:
+    """Keep transient queue-ref Rust caches from evicting reusable entries."""
+    actions = list(re.finditer(r"(?m)^      - uses: Swatinem/rust-cache@[^\n]+\n", reusable))
+    require(actions, "reusable CI must retain its Rust cache actions")
+    expected = "${{ github.event_name != 'merge_group' }}"
+    for action in actions:
+        rest = reusable[action.end():]
+        end = re.search(r"(?m)^(?:      - |  [a-z0-9-]+:)", rest)
+        block = rest[:end.start()] if end else rest
+        conditions = re.findall(r"(?m)^          save-if:\s*(.+)$", block)
+        require(conditions == [expected], "Rust cache must not save merge-group entries")
+
+
 def verify_storage_contract_preflight(jobs: dict[str, str]) -> None:
     """The expensive reopen matrix requires the candidate's synthetic contract."""
     preflight = jobs.get("storage-contract-preflight", "")
@@ -874,6 +887,7 @@ def main() -> None:
     caller = workflows[CALLER]
     reusable = workflows[REUSABLE]
     jobs = job_blocks(reusable)
+    verify_merge_group_rust_cache_scope(reusable)
     verify_storage_contract_preflight(jobs)
     verify_candidate_admission(caller)
     verify_linux_arm64_ci(caller, reusable)

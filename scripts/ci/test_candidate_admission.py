@@ -12,6 +12,7 @@ from check_workflow import (
     PolicyError,
     job_blocks,
     verify_candidate_admission,
+    verify_merge_group_rust_cache_scope,
     verify_storage_contract_preflight,
 )
 
@@ -141,6 +142,28 @@ class CandidateAdmissionTests(unittest.TestCase):
     def test_another_caller_cannot_bypass_admission(self):
         with self.assertRaisesRegex(PolicyError, "one pipeline"):
             verify_candidate_admission(self.caller + "\n  bypass:\n    uses: ./.github/workflows/ci-reusable.yml\n")
+
+
+class MergeGroupCacheScopeTests(unittest.TestCase):
+    def setUp(self):
+        self.reusable = REUSABLE.read_text(encoding="utf-8")
+
+    def test_every_rust_cache_rejects_merge_group_saves(self):
+        verify_merge_group_rust_cache_scope(self.reusable)
+
+    def test_removed_or_weakened_condition_is_rejected(self):
+        action = "      - uses: Swatinem/rust-cache@"
+        expression = "          save-if: ${{ github.event_name != 'merge_group' }}\n"
+        count = self.reusable.count(action)
+        self.assertGreater(count, 0)
+        self.assertEqual(self.reusable.count(expression), count)
+        for index in range(count):
+            for replacement in ("", "          save-if: true\n"):
+                with self.subTest(index=index, replacement=replacement):
+                    parts = self.reusable.split(expression)
+                    modified = expression.join(parts[:index + 1]) + replacement + expression.join(parts[index + 1:])
+                    with self.assertRaises(PolicyError):
+                        verify_merge_group_rust_cache_scope(modified)
 
 
 class StorageContractPreflightTests(unittest.TestCase):
