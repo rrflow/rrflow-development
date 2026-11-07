@@ -236,11 +236,28 @@ impl RrdHttpServer {
     {
         let listener = tokio::net::TcpListener::from_std(self.listener)?;
         let state = self.state;
+        let mut cold_sweep = cold_maintenance_interval(
+            state
+                .service
+                .estate_configuration()
+                .storage
+                .cold_history
+                .as_ref(),
+        )?;
         let maintenance_state = Arc::clone(&state);
-        let maintenance = super::maintenance::MaintenanceWorker::start(move || {
-            if maintenance_state.service.maintain_storage().is_err() {
-                // Existing native counters retain failure counts. Never log
-                // source payloads or make a failed quantum a success receipt.
+        let maintenance = super::maintenance::MaintenanceWorker::start(move |work| {
+            let outcome = match work {
+                super::maintenance::MaintenanceWork::Native => {
+                    maintenance_state.service.maintain_native_storage()
+                }
+                super::maintenance::MaintenanceWork::ColdHistory => {
+                    maintenance_state.service.maintain_cold_history()
+                }
+            };
+            if outcome.is_err() {
+                // Cold failures are recorded in engine status when possible;
+                // native maintenance has separate counters. Never log source
+                // payloads or turn a failed quantum into a success receipt.
                 tracing::warn!(target: "rrd_server::maintenance", "bounded storage maintenance quantum failed");
             }
         })?;
@@ -262,11 +279,33 @@ impl RrdHttpServer {
                 _ = sweep.tick() => {
                     state.service.reap_storage_cursors()
                         .map_err(|error| HttpError::Contract(error.to_string()))?;
-                    maintenance.offer()?;
+                    maintenance.offer(super::maintenance::MaintenanceWork::Native)?;
+                }
+                _ = async {
+                    match cold_sweep.as_mut() {
+                        Some(interval) => { interval.tick().await; }
+                        None => std::future::pending::<()>().await,
+                    }
+                } => {
+                    maintenance.offer(super::maintenance::MaintenanceWork::ColdHistory)?;
                 }
             }
         }
     }
+}
+
+fn cold_maintenance_interval(
+    policy: Option<&rrd_contract::ColdHistoryPolicy>,
+) -> Result<Option<tokio::time::Interval>> {
+    let Some(policy) = policy else {
+        return Ok(None);
+    };
+    policy
+        .validate()
+        .map_err(|error| HttpError::Contract(error.to_string()))?;
+    let mut interval = tokio::time::interval(std::time::Duration::from_millis(policy.interval_ms));
+    interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+    Ok(Some(interval))
 }
 
 async fn serve_mtls<F>(
@@ -320,4 +359,47 @@ where
         connections.abort_all();
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod cold_schedule_tests {
+    use super::*;
+    use std::time::Duration;
+
+    fn policy() -> rrd_contract::ColdHistoryPolicy {
+        rrd_contract::ColdHistoryPolicy {
+            interval_ms: 25,
+            max_changes: 8,
+            max_input_bytes: 1024,
+            max_output_bytes: 1024,
+            max_memory_bytes: 4096,
+            max_elapsed_ms: 1000,
+            row_group_rows: 4,
+            compression: rrd_contract::ColdHistoryCompression::Uncompressed,
+            dictionary: false,
+            statistics: false,
+        }
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn configured_interval_skips_missed_ticks_and_disabled_policy_has_none() {
+        assert!(cold_maintenance_interval(None).unwrap().is_none());
+        let mut invalid = policy();
+        invalid.interval_ms = 0;
+        assert!(cold_maintenance_interval(Some(&invalid)).is_err());
+        let mut interval = cold_maintenance_interval(Some(&policy())).unwrap().unwrap();
+        interval.tick().await;
+        let start = tokio::time::Instant::now();
+        interval.tick().await;
+        let elapsed = tokio::time::Instant::now() - start;
+        assert!(elapsed >= Duration::from_millis(25));
+        assert!(elapsed <= Duration::from_millis(30));
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        interval.tick().await;
+        let after_missed = tokio::time::Instant::now();
+        interval.tick().await;
+        let resumed = tokio::time::Instant::now() - after_missed;
+        assert!(resumed > Duration::ZERO);
+        assert!(resumed <= Duration::from_millis(30));
+    }
 }

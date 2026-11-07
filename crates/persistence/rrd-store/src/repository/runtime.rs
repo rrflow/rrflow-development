@@ -1,6 +1,6 @@
 use crate::access::runtime_state::{
-    authenticated_point_page, change_page, checked_key, get, get_json, read_sequence,
-    read_stamp_with, scan_space, scan_space_from,
+    authenticated_point_page, change_page, change_page_bounded_bytes, checked_key, get, get_json,
+    read_sequence, read_stamp_with, scan_space, scan_space_from,
     validate_read_stamp as validate_runtime_read_stamp,
 };
 use crate::access::{
@@ -227,6 +227,41 @@ impl<'a> RuntimeRepository<'a> {
             Some(&read.scope),
         )?;
         page.validation = validation;
+        Ok(page)
+    }
+
+    /// Read a stamped scope's global cursor interval with a bound on serialized
+    /// log entries retained for this page. The underlying point-read API can
+    /// materialize one full entry before its length is known, and stamp
+    /// validation has separate reads; this is not a total allocation bound.
+    pub fn read_changes_bounded_bytes(
+        &self,
+        read: &ReadStamp,
+        after: u64,
+        limit: usize,
+        max_bytes: u64,
+        deadline: std::time::Instant,
+    ) -> Result<RuntimeChangePage> {
+        if std::time::Instant::now() >= deadline {
+            return Err(Error::ColdHistorySourceDeadline);
+        }
+        if after > read.commit_cursor {
+            return Err(Error::Substrate(
+                "cold history cursor exceeds its read stamp".into(),
+            ));
+        }
+        let transaction = self.storage.begin_transaction()?;
+        let validation = validate_runtime_read_stamp(&*transaction, read)?;
+        let mut page =
+            change_page_bounded_bytes(&*transaction, read, after, limit, max_bytes, deadline)?;
+        page.validation.change_reads = page
+            .validation
+            .change_reads
+            .saturating_add(validation.change_reads);
+        page.validation.proof_nodes = page
+            .validation
+            .proof_nodes
+            .saturating_add(validation.proof_nodes);
         Ok(page)
     }
 
