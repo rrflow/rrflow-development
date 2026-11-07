@@ -21,7 +21,8 @@ import tempfile
 import time
 
 from run_filesystem_containment import detach_owned_image
-from run_offline_lifecycle import CommandOutputNotClosed, filesystem_profile, require, run, sha256
+from run_offline_lifecycle import (CommandDeadlineExceeded, CommandOutputNotClosed,
+                                   filesystem_profile, require, run, sha256)
 
 CASE = "capacity::installed_native_capacity_recovers_acknowledged_history"
 POINTS = ("wal_before_write", "segment_before_create", "manifest_before_create", "current_before_create")
@@ -34,17 +35,18 @@ class NotRun(RuntimeError):
 
 class NativeCommandFailure(RuntimeError):
     """Failure from one owned native command, with bounded diagnostic output."""
-    def __init__(self, tool, verb, result, stdout_open=False, stderr_open=False):
+    def __init__(self, tool, verb, result, stdout_open=False, stderr_open=False, timed_out=False):
         self.tool = tool
         self.verb = verb
         self.returncode = result.returncode
         self.stdout_open = stdout_open
         self.stderr_open = stderr_open
+        self.timed_out = timed_out
         self.stdout_head = result.stdout[:8192]
         self.stdout_tail = result.stdout[-8192:]
         self.stderr_head = result.stderr[:8192]
         self.stderr_tail = result.stderr[-8192:]
-        super().__init__(f"native {tool} failed ({result.returncode}): "
+        super().__init__(f"native {tool} {'timed out' if timed_out else 'failed'} ({result.returncode}): "
                          + result.stderr[-2048:] + result.stdout[-2048:])
 
 
@@ -63,13 +65,14 @@ def retain_native_failure(config, fixture, mode, point, case_index, error):
     require(path.is_dir() and not path.is_symlink(), "invalid capacity diagnostic directory")
     source = error
     seen = set()
+    def closed(value, pattern):
+        return value if isinstance(value, str) and re.fullmatch(pattern, value) else None
+
     for _ in range(4):
         if source is None or id(source) in seen:
             break
         seen.add(id(source))
         if isinstance(source, CommandOutputNotClosed):
-            def closed(value, pattern):
-                return value if isinstance(value, str) and re.fullmatch(pattern, value) else None
             size = config.get("size_mib")
             receipt = {"version": 1, "kind": "command-output-not-closed",
                        "mode": mode if mode in ("fresh", "existing") else "unknown",
@@ -97,12 +100,34 @@ def retain_native_failure(config, fixture, mode, point, case_index, error):
                        "github_run_id": os.environ.get("GITHUB_RUN_ID"),
                        "github_run_attempt": os.environ.get("GITHUB_RUN_ATTEMPT"),
                        "tool": source.tool, "verb": source.verb, "returncode": source.returncode,
+                       "timed_out": source.timed_out,
                        "stdout_head": source.stdout_head, "stdout_tail": source.stdout_tail,
                        "stderr_head": source.stderr_head, "stderr_tail": source.stderr_tail,
                        "stdout_open": source.stdout_open, "stderr_open": source.stderr_open,
                        "cleanup_state": "unknown"}
             encoded = json.dumps(receipt, ensure_ascii=False).encode("utf-8", errors="replace")
             require(len(encoded) <= 256 * 1024, "capacity diagnostic exceeds output bound")
+            with (path / f"failure-{secrets.token_hex(16)}.json").open("xb") as output:
+                output.write(encoded)
+            return
+        if isinstance(source, NativeCommandFailure) and (source.tool, source.verb) == ("hdiutil", "attach"):
+            # Attach output may contain host details. Retain closed metadata
+            # only, including whether an unowned pipe was still open.
+            receipt = {"version": 1, "kind": "native-command-failed",
+                       "mode": mode if mode in ("fresh", "existing") else "unknown",
+                       "point": point if point in POINTS else "unknown",
+                       "case_index": case_index if type(case_index) is int and 0 < case_index <= 1000 else None,
+                       "harness_sha256": closed(config.get("harness_sha256"), r"[0-9a-f]{64}"),
+                       "github_sha": closed(os.environ.get("GITHUB_SHA"), r"[0-9a-f]{40}"),
+                       "github_run_id": closed(os.environ.get("GITHUB_RUN_ID"), r"[0-9]{1,20}"),
+                       "github_run_attempt": closed(os.environ.get("GITHUB_RUN_ATTEMPT"), r"[0-9]{1,8}"),
+                       "command_category": "hdiutil-attach",
+                       "child_returncode": source.returncode,
+                       "timed_out": source.timed_out,
+                       "stdout_open": source.stdout_open, "stderr_open": source.stderr_open,
+                       "cleanup_state": "unknown"}
+            encoded = json.dumps(receipt, ensure_ascii=False).encode("utf-8")
+            require(len(encoded) <= 16 * 1024, "capacity capture diagnostic exceeds output bound")
             with (path / f"failure-{secrets.token_hex(16)}.json").open("xb") as output:
                 output.write(encoded)
             return
@@ -152,8 +177,18 @@ def loop_binding(device: str, image: Path):
 def native_command(*arguments, **kwargs):
     # These are owned-image OS commands only, never credential-bearing product
     # output. Keep the failing tool and bounded native message in CI evidence.
+    # POSIX callers own a fresh process group, so a failed command cannot
+    # leave its subprocesses holding the capture pipe. A successful command
+    # must also finish its owned descendants before it can be accepted.
+    if os.name == "posix":
+        kwargs["process_group"] = True
+        kwargs["require_clean_process_group"] = True
+    kwargs["capture_deadline_output"] = True
     try:
         result = run(*arguments, check=False, **kwargs)
+    except CommandDeadlineExceeded as deadline:
+        raise NativeCommandFailure(arguments[0], arguments[1], deadline.captured,
+                                   timed_out=True) from deadline
     except CommandOutputNotClosed as unclosed:
         # A descendant holding the pipe must not hide this command's own failure.
         if unclosed.captured is None:

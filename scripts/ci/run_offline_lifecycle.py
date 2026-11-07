@@ -288,15 +288,23 @@ class CommandOutputNotClosed(RuntimeError):
         super().__init__("command output did not close")
 
 
-def _await_process_group_exit(group: int, deadline: float, failed: threading.Event) -> None:
+class CommandDeadlineExceeded(RuntimeError):
+    """Deadline failure with bounded captured output that is never rendered."""
+    def __init__(self, captured):
+        self.captured = captured
+        super().__init__("command exceeded its deadline")
+
+
+def _await_process_group_exit(group: int, deadline: float, failed: threading.Event) -> bool:
     while time.monotonic() < deadline and not failed.is_set():
         try:
             os.killpg(group, 0)
         except ProcessLookupError:
-            return
+            return True
         except PermissionError:
             pass  # Darwin reports EPERM while only zombies remain; keep waiting.
         time.sleep(0.01)
+    return False
 
 
 def run(*arguments: str, **kwargs: object) -> subprocess.CompletedProcess:
@@ -312,7 +320,11 @@ def run(*arguments: str, **kwargs: object) -> subprocess.CompletedProcess:
     kwargs.pop("capture_output", None)
     kwargs.pop("text", None)
     process_group = kwargs.pop("process_group", False)
+    require_clean_process_group = kwargs.pop("require_clean_process_group", False)
+    capture_deadline_output = kwargs.pop("capture_deadline_output", False)
     on_completion = kwargs.pop("on_completion", None)
+    require(not require_clean_process_group or process_group,
+            "strict process ownership requires a separate process group")
     if process_group:
         require(os.name == "posix", "native process group is unavailable")
         kwargs["start_new_session"] = True
@@ -342,6 +354,8 @@ def run(*arguments: str, **kwargs: object) -> subprocess.CompletedProcess:
         reader.start()
     deadline = time.monotonic() + timeout
     error = None
+    incomplete_group = False
+    open_before_group_cleanup = (False, False)
     try:
         while child.poll() is None:
             if exceeded.is_set():
@@ -355,12 +369,18 @@ def run(*arguments: str, **kwargs: object) -> subprocess.CompletedProcess:
         if process_group:
             # No owned descendant outlives this call, but a clean exit alone is no
             # reason to kill one mid-work: it gets the output-close bound to finish.
+            group_exited = False
             if child.returncode == 0:
-                _await_process_group_exit(child.pid, min(deadline, time.monotonic() + _OUTPUT_CLOSE_SECONDS), exceeded)
-            try:
-                os.killpg(child.pid, signal.SIGKILL)
-            except ProcessLookupError:
-                pass
+                group_exited = _await_process_group_exit(
+                    child.pid, min(deadline, time.monotonic() + _OUTPUT_CLOSE_SECONDS), exceeded)
+                incomplete_group = require_clean_process_group and not group_exited
+                if incomplete_group:
+                    open_before_group_cleanup = tuple(reader.is_alive() for reader in readers)
+            if not group_exited:
+                try:
+                    os.killpg(child.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
         elif child.poll() is None:
             child.kill()
         child.wait(timeout=10)
@@ -370,6 +390,13 @@ def run(*arguments: str, **kwargs: object) -> subprocess.CompletedProcess:
     result = subprocess.CompletedProcess(arguments, child.returncode,
                                          streams[0].decode("utf-8", errors="replace"),
                                          streams[1].decode("utf-8", errors="replace"))
+    if incomplete_group:
+        if any(open_before_group_cleanup):
+            tool = Path(arguments[0]).name
+            verb = arguments[1] if len(arguments) > 1 else ""
+            category = _CAPTURE_COMMANDS.get((tool, verb), "other")
+            raise CommandOutputNotClosed(category, child.returncode, *open_before_group_cleanup)
+        raise RuntimeError("owned process group did not exit before its deadline")
     if any(open_streams):
         tool = Path(arguments[0]).name
         verb = arguments[1] if len(arguments) > 1 else ""
@@ -378,6 +405,8 @@ def run(*arguments: str, **kwargs: object) -> subprocess.CompletedProcess:
                                      captured=result if child.returncode != 0 else None)
     if on_completion is not None:
         on_completion(result)
+    if capture_deadline_output and error == "command exceeded its deadline":
+        raise CommandDeadlineExceeded(result)
     require(error is None and not exceeded.is_set() and not failures, error or "command output limit exceeded")
     if check:
         require(child.returncode == 0, f"qualification command failed with exit status {child.returncode}")
