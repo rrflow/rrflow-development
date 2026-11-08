@@ -1,5 +1,6 @@
 """Capacity orchestration/cleanup checks; no native disk is created or filled."""
 from contextlib import contextmanager, redirect_stdout, redirect_stderr
+from collections import namedtuple
 import errno
 import io
 import json
@@ -375,19 +376,69 @@ class NativeCapacityCases(unittest.TestCase):
         self.assertEqual(len(receipt["stdout_tail"]), 8192)
         self.assertIn("Resource busy", receipt["stderr_tail"])
 
-    def test_macos_volume_requests_verbose_creation_once_and_propagates_busy(self):
+    def test_macos_volume_retries_retryable_busy_create_and_propagates_when_exhausted(self):
         result = subprocess.CompletedProcess([], 1, "native detail", "Resource busy")
         calls = []
         def native(*args, **kwargs):
             calls.append((args, kwargs))
             raise runner.NativeCommandFailure(args[0], args[1], result)
-        with patch.object(runner.sys, "platform", "darwin"), patch.object(runner, "native_command", side_effect=native):
+        with patch.object(runner.sys, "platform", "darwin"), \
+                patch.object(runner, "native_command", side_effect=native), \
+                patch.object(runner.time, "sleep") as sleep:
             with self.assertRaisesRegex(runner.NativeCommandFailure, "Resource busy"):
                 with runner.volume(self.root, 256):
                     self.fail("failed creation must not yield a volume")
-        self.assertEqual(len(calls), 1)
+        self.assertEqual(len(calls), 5)
         self.assertEqual(calls[0][0][:3], ("hdiutil", "create", "-verbose"))
+        self.assertEqual([call.args[0] for call in sleep.call_args_list], [1, 2, 4, 8])
         self.assertFalse((self.root / "capacity.dmg").exists())
+
+    def test_macos_volume_retries_busy_create_until_success(self):
+        result = subprocess.CompletedProcess([], 1, "native detail", "Resource busy")
+        calls = []
+
+        def native(*args, **kwargs):
+            calls.append((args, kwargs))
+            if args[:2] == ("hdiutil", "create") and len([call for call in calls if call[0][:2] == ("hdiutil", "create")]) < 3:
+                raise runner.NativeCommandFailure(args[0], args[1], result)
+            if args[:2] == ("hdiutil", "attach"):
+                payload = {"system-entities": [{"mount-point": str(self.root / "volume"), "dev-entry": "/dev/disk7s1"}]}
+                return subprocess.CompletedProcess([], 0, plistlib.dumps(payload).decode(), "")
+            if args[:2] == ("diskutil", "info"):
+                payload = {"FilesystemType": "apfs", "DeviceNode": "/dev/disk7s1", "VolumeUUID": "ABC"}
+                return subprocess.CompletedProcess([], 0, plistlib.dumps(payload).decode(), "")
+            return subprocess.CompletedProcess([], 0, "", "")
+        usage = namedtuple("usage", "total used free")
+        stat_result = namedtuple("stat_result", "st_dev")
+        fixture_usage = usage(1024 * 1024 * 1024, 0, 1024 * 1024 * 1024)
+        mounted_usage = usage(256 * 1024 * 1024, 0, 128 * 1024 * 1024)
+
+        def disk_usage(path):
+            return fixture_usage if Path(path) == self.root else mounted_usage
+
+        real_stat = runner.os.stat
+
+        def fake_stat(path, *args, **kwargs):
+            candidate = Path(path)
+            if candidate == self.root:
+                return stat_result(1)
+            if candidate == (self.root / "volume"):
+                return stat_result(2)
+            return real_stat(path, *args, **kwargs)
+
+        with patch.object(runner.sys, "platform", "darwin"), \
+                patch.object(runner, "native_command", side_effect=native), \
+                patch.object(runner, "filesystem_profile", return_value={"type": "apfs"}), \
+                patch.object(runner.os.path, "ismount", return_value=False), \
+                patch.object(runner.os, "stat", side_effect=fake_stat), \
+                patch.object(runner.shutil, "disk_usage", side_effect=disk_usage), \
+                patch.object(runner.time, "sleep") as sleep:
+            with runner.volume(self.root, 256) as (_, identity):
+                self.assertEqual(identity["device"], "/dev/disk7s1")
+
+        create_calls = [call for call in calls if call[0][:2] == ("hdiutil", "create")]
+        self.assertEqual(len(create_calls), 3)
+        self.assertEqual([call.args[0] for call in sleep.call_args_list], [1, 2])
 
     def test_unrelated_error_does_not_save_product_output_and_bad_path_is_refused(self):
         diagnostics = self.root / "rrflow-capacity-diagnostics"
