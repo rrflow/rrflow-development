@@ -23,6 +23,9 @@ use std::time::Instant;
 
 mod discovery;
 mod inventory;
+#[cfg(test)]
+pub(crate) use inventory::LegacySourceFileProjectionGuard;
+pub(in crate::engine) use inventory::{load_accepted_source, source_head_key};
 
 const MAX_CONTROL_BYTES: usize = 64 * 1024;
 const MAX_JOB_TRANSITIONS: u64 = 1024;
@@ -215,7 +218,7 @@ impl RrdEngine {
             .map(Some)
     }
 
-    fn attunement_installed_record(&self) -> Result<InstalledEstateRecord> {
+    pub(in crate::engine) fn attunement_installed_record(&self) -> Result<InstalledEstateRecord> {
         let record: InstalledEstateRecord = decode(
             &self
                 .storage

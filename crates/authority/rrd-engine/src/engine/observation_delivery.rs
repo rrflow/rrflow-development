@@ -54,7 +54,13 @@ impl RrdEngine {
         let (mut index_bytes, mut index) = self.observation_index()?;
         if let Some(entry) = index.entries.get(&key) {
             let (_, record) = self.observation_record(&key, entry)?;
-            self.authorize_observation_source(session, token, &record.snapshot.source, &context)?;
+            self.authorize_observation_source(
+                session,
+                token,
+                &record.snapshot.source,
+                Some(&record.source_json),
+                &context,
+            )?;
             if record.owner != authority.principal || record.request_sha256 != request_sha256 {
                 return Err(ServiceError::IdempotencyConflict);
             }
@@ -230,7 +236,13 @@ impl RrdEngine {
             });
         };
         let (_, record) = self.observation_record(&key, entry)?;
-        self.authorize_observation_source(session, token, &record.snapshot.source, &context)?;
+        self.authorize_observation_source(
+            session,
+            token,
+            &record.snapshot.source,
+            Some(&record.source_json),
+            &context,
+        )?;
         let mut snapshot = record.snapshot;
         if snapshot.state == ObservationDeliveryState::InFlight
             && snapshot
@@ -300,7 +312,13 @@ impl RrdEngine {
             .get(&key)
             .ok_or_else(|| ServiceError::Contract("observation delivery is absent".into()))?;
         let (record_bytes, mut record) = self.observation_record(&key, entry)?;
-        self.authorize_observation_source(session, token, &record.snapshot.source, &context)?;
+        self.authorize_observation_source(
+            session,
+            token,
+            &record.snapshot.source,
+            Some(&record.source_json),
+            &context,
+        )?;
         if record.snapshot.payload_sha256 != request.expected_payload_sha256
             || record.snapshot.configuration_sha256 != request.expected_configuration_sha256
         {
@@ -431,6 +449,7 @@ impl RrdEngine {
             session,
             token,
             &record.snapshot.source,
+            Some(&record.source_json),
             &receipt_context,
         )?;
         if receipt_authority != authority {
