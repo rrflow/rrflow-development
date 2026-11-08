@@ -202,6 +202,15 @@ def native_command(*arguments, **kwargs):
     return result
 
 
+def retryable_busy_hdiutil_create(error: Exception) -> bool:
+    if not isinstance(error, NativeCommandFailure):
+        return False
+    if (error.tool, error.verb) != ("hdiutil", "create"):
+        return False
+    payload = (error.stderr_head + error.stderr_tail + error.stdout_head + error.stdout_tail).lower()
+    return "resource busy" in payload
+
+
 def associated_loops(image):
     # util-linux can return a successful empty stdout when no matching loop
     # remains after autoclear. Only that successful empty result means none.
@@ -258,8 +267,21 @@ def volume(fixture: Path, size: int):
             require(0 < inode_count <= 8192, "owned ext4 inode count exceeds bounded filler")
             identity = {"device": device, "image": str(image), "mount": info[0], "inodes": inode_count}
         elif sys.platform == "darwin":
-            native_command("hdiutil", "create", "-verbose", "-size", f"{size}m", "-fs", "APFS", "-type", "UDIF",
-                "-volname", "RRFlowCapacity", str(image), timeout=120)
+            for attempt in range(3):
+                try:
+                    native_command("hdiutil", "create", "-verbose", "-size", f"{size}m", "-fs", "APFS", "-type", "UDIF",
+                        "-volname", "RRFlowCapacity", str(image), timeout=120)
+                    break
+                except NativeCommandFailure as error:
+                    if attempt == 2 or not retryable_busy_hdiutil_create(error):
+                        raise
+                    if image.exists():
+                        require(image.is_file() and not image.is_symlink() and image.resolve().parent == fixture,
+                                "owned APFS image escaped fixture")
+                        detach_owned_image(image)
+                        if image.exists():
+                            image.unlink()
+                    time.sleep(0.25 * (attempt + 1))
             attach = plistlib.loads(native_command("hdiutil", "attach", "-nobrowse", "-mountpoint", str(root),
                                         "-plist", str(image), timeout=60).stdout.encode())
             attached = True

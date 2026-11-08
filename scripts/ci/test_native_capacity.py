@@ -375,7 +375,7 @@ class NativeCapacityCases(unittest.TestCase):
         self.assertEqual(len(receipt["stdout_tail"]), 8192)
         self.assertIn("Resource busy", receipt["stderr_tail"])
 
-    def test_macos_volume_requests_verbose_creation_once_and_propagates_busy(self):
+    def test_macos_volume_retries_busy_create_and_propagates_failure(self):
         result = subprocess.CompletedProcess([], 1, "native detail", "Resource busy")
         calls = []
         def native(*args, **kwargs):
@@ -385,7 +385,7 @@ class NativeCapacityCases(unittest.TestCase):
             with self.assertRaisesRegex(runner.NativeCommandFailure, "Resource busy"):
                 with runner.volume(self.root, 256):
                     self.fail("failed creation must not yield a volume")
-        self.assertEqual(len(calls), 1)
+        self.assertEqual(len(calls), 3)
         self.assertEqual(calls[0][0][:3], ("hdiutil", "create", "-verbose"))
         self.assertFalse((self.root / "capacity.dmg").exists())
 
