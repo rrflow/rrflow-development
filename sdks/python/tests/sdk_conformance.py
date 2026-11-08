@@ -202,6 +202,41 @@ with RrdClient(str(manifest["base_url"]), str(identity["instance"])) as client:
         == expected["vector_reference"]
         for hit in cast(list[object], quantized["hits"])
     )
+    # The graph index and its payload index. The changefeed read below proves the
+    # scope stays readable with an index in it.
+    index = obj(vector["index"])
+    client.call(
+        "vector-payload-index-ensure",
+        obj(index["payload_index"]),
+        options("payload-index-ensure", session=session, mutation=True),
+    )
+    built_index = client.call(
+        "vector-index-ensure",
+        obj(index["ensure"]),
+        options("index-ensure", session=session, mutation=True),
+    )
+    assert obj(built_index["index"])["kind"] == expected["indexed_access_path"]
+    indexed = client.call(
+        "vector-search",
+        obj(index["search"]),
+        options("indexed-search", session=session),
+    )
+    assert indexed["access_path"] == expected["indexed_access_path"]
+    assert any(
+        f"{obj(obj(hit)['reference'])['kind']}:{obj(obj(hit)['reference'])['id']}"
+        == expected["indexed_reference"]
+        for hit in cast(list[object], indexed["hits"])
+    )
+    client.call(
+        "vector-payload-index-ensure",
+        obj(index["spare_payload_index"]),
+        options("payload-index-spare", session=session, mutation=True),
+    )
+    client.call(
+        "vector-payload-index-delete",
+        obj(index["delete_payload_index"]),
+        options("payload-index-delete", session=session, mutation=True),
+    )
     changes = client.call(
         "changefeed-read", obj(changefeed["read"]), options("changefeed-read", session=session)
     )

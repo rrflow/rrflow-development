@@ -114,6 +114,15 @@ pub enum Availability {
     NotApplicable { reason: String },
 }
 
+/// RRFlow-specific HNSW build parameters, supplied explicitly by the workload.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct RrflowHnswParameters {
+    pub max_level: u8,
+    pub seed: u64,
+    pub build_policy: rrd_contract::VectorIndexBuildPolicy,
+}
+
 /// Environment variable names only. The values never enter a file.
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -140,6 +149,9 @@ pub struct SystemBinding {
     pub storage_profile: String,
     pub availability: Availability,
     pub index: IndexSpec,
+    /// Required for an available RRFlow HNSW arm; other systems do not use it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rrflow_hnsw: Option<RrflowHnswParameters>,
     pub search_ladder: Vec<SearchSetting>,
     #[serde(default)]
     pub credentials: CredentialReferences,
@@ -239,6 +251,11 @@ impl SystemBinding {
                 &format!("{id} credential reference must be an environment variable name"),
             )?;
         }
+        if self.rrflow_hnsw.is_some()
+            && !(self.kind == SystemKind::Rrflow && matches!(self.index, IndexSpec::Hnsw { .. }))
+        {
+            return Err(format!("{id}: native HNSW parameters require RRFlow HNSW"));
+        }
         if let Availability::Unavailable { reason }
         | Availability::Unimplemented { reason }
         | Availability::NotApplicable { reason } = &self.availability
@@ -281,9 +298,19 @@ impl SystemBinding {
             }
         }
         match (&self.kind, &self.index) {
-            (SystemKind::Rrflow, IndexSpec::Hnsw { .. }) => Err(format!(
-                "{id}: RRFlow HNSW has no public operation; declare it unimplemented"
-            )),
+            (SystemKind::Rrflow, IndexSpec::Hnsw { m, ef_construction }) => {
+                let native = self
+                    .rrflow_hnsw
+                    .as_ref()
+                    .ok_or_else(|| format!("{id}: native HNSW parameters are required"))?;
+                require(
+                    (2..=128).contains(m)
+                        && *ef_construction >= *m
+                        && *ef_construction <= 1_000_000
+                        && (1..=32).contains(&native.max_level),
+                    &format!("{id}: native HNSW parameters are outside engine bounds"),
+                )
+            }
             (SystemKind::Rrflow, _) | (SystemKind::Custom, _) | (_, IndexSpec::Hnsw { .. }) => {
                 Ok(())
             }

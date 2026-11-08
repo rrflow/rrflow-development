@@ -1,56 +1,53 @@
-# POAM-056 — storage maintenance stalls every search, and searches cause it
+# POAM-056 — HNSW search reads the vector-version source before traversal
 
 **Status:** active parent-owned POA&M detail
 **Coordinate:** `rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-056`
 **Owner:** [RRFlow 1.0 alpha POA&M](../rrflow-1.0-alpha.md)
 
-This detail record is part of the canonical RRFlow 1.0 alpha POA&M. The parent
-ledger owns priority and lifecycle status; this file cannot change either
-independently.
+The parent ledger owns priority and lifecycle status; this detail cannot change
+those independently.
 
 ## Observed deficiency
 
-Found by the [comparison lab](../../../eval/lab/README.md) on `clyffy-01`, on an
-engine built from `d0e6c7f26e4d`, a tree holding unlanded search packages, on
-default limits with an HNSW index.
+On main `1fd7f163de3448c694e09c916b328540303eab1c`,
+`search_vectors_at` in `crates/authority/rrd-engine/src/engine/vector/search.rs`
+tries the specialized TurboQuant generation path first. When that path does not
+serve a request, the named approximate route invokes `read_versioned` with a
+`Vectors { kind: None }` source and builds candidates from those changes before
+loading and searching HNSW. The read is subject to the request's storage-key
+budget. This is distinct from [POAM-055](poam-055.md), which describes an
+unservable request that is refused only after the vector read.
 
-Searches that take under 12 ms are stalled for 400 to 960 ms, several times in ten
-seconds, on a run that only searches. On COCO at ef-64 with one client, the median
-is 7.87 ms, which implies about 127 searches per second, and the run achieved 92.5.
-The maximum was 711 ms where p99 was 11.36 ms, so the lab's reported percentiles do
-not show it.
-
-`RrflowKvStore` holds its database lock exclusively across a storage flush and a
-compaction step, in `try_maintenance_step` and in a soft write-triggered flush, so
-no read proceeds during either.
-
-Searches cause the work. Each search commits two audit records, and the engine's
-`write_bytes` grew by about 21 KB per search on a run that only searches. That
-figure counts whole pages, so it overstates the logical bytes.
-
-Moving the flush moved the stall. On `vector-small`, raising `wal_flush_target_bytes`
-from 64 MiB to 4 GiB took plain ef-64 with one client from 115.8 to 164.1 searches
-per second and its maximum from 623.6 ms to 9.9 ms. The stall then arrived later, at
-ef-128, with a matching burst of writes. That is one run of each.
+In a single release-build Linux ARM64 diagnostic of 20,000 generated 384-dimensional
+vectors with `ef=32`, the installed RRFlow engine reported the HNSW path, served
+all 100 queries in each of the unfiltered and filtered cases, and reported median
+client latencies of 1,765.8 ms and 1,743.8 ms respectively. The oracle reported
+mean recall of 0.982 and 1.0. The [retained report and samples](../../../eval/lab/evidence/arm-20k-20261106/report.json)
+and [journal](../../evidence/change-journals/gate-j/comparison-lab-public-vector-paths.md)
+state the source, identities, conditions, and limits. The host was shared and
+other work ran during the measurement. No profile attributes the latency to a
+specific function, and this run is not a release qualification or a general
+performance comparison.
 
 ## Impact
 
-Every caller of an engine under read load waits up to about a second, several times
-a minute, with nothing else running. A workload that writes would stall its readers
-the same way. It also makes single runs hard to compare: a stall that lands in one
-run's case and not another's reads as a throughput difference, which was once
-misread here as the cost of a smaller page cache.
+A successful approximate HNSW search still performs a potentially corpus-sized
+versioned read, putting work and storage-budget pressure ahead of graph traversal.
 
 ## Owning gates
 
-E-04 and OBJ-13 (vector search within bounded resources) and OBJ-10 (reproducible
-competitive evidence).
+E-04 and OBJ-13 (bounded vector search with an immutable generation and exact delta overlay).
 
 Roadmap owner: [Gate E](../../roadmap/rrflow-1.0/gate-e.md).
 
 ## Closure evidence
 
-A test shows that a read proceeds while a flush and a compaction step run, and that
-a crash at each new boundary recovers as today's flush does. On `clyffy-01`, a run
-of the same test shows its maximum within a stated multiple of its p99 across a
-flush, and the lab reports a case's maximum beside its percentiles.
+An installed public-engine test proves that a selected HNSW generation and its
+exact delta overlay return the correct visible results for filtered and unfiltered
+queries, updates, deletes, moved vectors, retained read stamps, and reopen. Read
+evidence and multiple corpus sizes show the generation path does not require a
+full vector-version source read on each search. Profile retained requests to
+attribute costs; repeat a pinned, comparable, matched-quality benchmark with
+host interference controlled before claiming improvement. Missing generations,
+stale overlays and exhausted budgets must fail or use an explicitly authorized
+correct fallback without presenting approximate candidates as canonical results.

@@ -24,6 +24,44 @@ pub const RUN_SCHEMA_VERSION: u16 = 1;
 const ERRORS_BEFORE_GIVING_UP: usize = 20;
 const Z95: f64 = 1.96;
 
+/// Transient operator observations. These are not a durable audit or a run result.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "stage", rename_all = "snake_case", deny_unknown_fields)]
+pub enum LabProgress {
+    Prepared,
+    IngestBatchStarted {
+        completed: u64,
+        total: u64,
+    },
+    IngestBatchCompleted {
+        completed: u64,
+        total: u64,
+        elapsed_ms: u64,
+    },
+    IndexBuildStarted,
+    IndexReady {
+        elapsed_ms: u64,
+    },
+    CaseStarted {
+        setting: Id,
+        filtered: bool,
+        concurrency: u32,
+    },
+    CaseCompleted {
+        setting: Id,
+        filtered: bool,
+        concurrency: u32,
+        attempted: u64,
+        succeeded: u64,
+        errors: u64,
+        truncated: bool,
+    },
+}
+
+fn elapsed_ms(started: Instant) -> u64 {
+    u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX)
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct IngestResult {
@@ -93,6 +131,16 @@ pub struct RawCase {
     pub concurrency: u32,
     pub latency_ns: Vec<u64>,
     pub recall: Vec<f64>,
+    /// Every refused or failed request, including its measured duration.
+    pub failures: Vec<RawFailure>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RawFailure {
+    pub latency_ns: u64,
+    /// Fixed category; do not duplicate untrusted server text in each sample.
+    pub category: String,
 }
 
 pub struct Inputs {
@@ -242,6 +290,7 @@ fn measure_case(
     let mut latency_ns = Vec::with_capacity(samples.len());
     let mut recall = Vec::with_capacity(samples.len());
     let mut first_error = None;
+    let mut failures = Vec::new();
     for sample in samples {
         match sample.outcome {
             Ok(value) => {
@@ -249,7 +298,13 @@ fn measure_case(
                 recall.push(value);
             }
             Err(error) => {
-                first_error.get_or_insert(error);
+                // Bound diagnostic text without splitting UTF-8 characters.
+                let error: String = error.chars().take(512).collect();
+                first_error.get_or_insert_with(|| error.clone());
+                failures.push(RawFailure {
+                    latency_ns: sample.latency_ns,
+                    category: "request_failed".to_string(),
+                });
             }
         }
     }
@@ -305,6 +360,7 @@ fn measure_case(
         concurrency: request.concurrency,
         latency_ns,
         recall,
+        failures,
     };
     (case, raw)
 }
@@ -333,6 +389,7 @@ fn run_phases(
     inputs: &Inputs,
     run: &mut SystemRun,
     raw: &mut Vec<RawCase>,
+    progress: &mut dyn FnMut(LabProgress),
 ) -> Result<()> {
     run.observed_version = Some(adapter.observed_version()?);
     adapter.prepare(&CollectionSpec {
@@ -342,6 +399,7 @@ fn run_phases(
         categories: manifest.corpus.categories,
         index: &binding.index,
     })?;
+    progress(LabProgress::Prepared);
     let points = &inputs.points;
     let ids: Vec<u64> = (0..points.len()).map(VectorSet::point_id).collect();
     let batch_size = manifest.workload.ingest_batch as usize;
@@ -349,6 +407,10 @@ fn run_phases(
     let mut start = 0;
     while start < points.len() {
         let end = (start + batch_size).min(points.len());
+        progress(LabProgress::IngestBatchStarted {
+            completed: start as u64,
+            total: points.len() as u64,
+        });
         adapter.ingest(&PointBatch {
             ids: &ids[start..end],
             vectors: &points.values[start * points.dimensions..end * points.dimensions],
@@ -356,9 +418,15 @@ fn run_phases(
             dimensions: points.dimensions,
         })?;
         start = end;
+        progress(LabProgress::IngestBatchCompleted {
+            completed: start as u64,
+            total: points.len() as u64,
+            elapsed_ms: elapsed_ms(started),
+        });
     }
     let seconds = started.elapsed().as_secs_f64();
     let ready_started = Instant::now();
+    progress(LabProgress::IndexBuildStarted);
     let ready = adapter.finish_ingest(
         ready_started + Duration::from_millis(manifest.workload.readiness_timeout_ms),
     );
@@ -370,6 +438,9 @@ fn run_phases(
         ready_seconds: ready_started.elapsed().as_secs_f64(),
     });
     ready?;
+    progress(LabProgress::IndexReady {
+        elapsed_ms: elapsed_ms(ready_started),
+    });
     for setting in &binding.search_ladder {
         for filtered in [false, true] {
             let truth = if filtered {
@@ -381,6 +452,11 @@ fn run_phases(
                 &inputs.truth
             };
             for concurrency in &manifest.workload.concurrency {
+                progress(LabProgress::CaseStarted {
+                    setting: setting.id.clone(),
+                    filtered,
+                    concurrency: *concurrency,
+                });
                 let (case, samples) = measure_case(
                     adapter,
                     manifest,
@@ -392,6 +468,15 @@ fn run_phases(
                         concurrency: *concurrency,
                     },
                 );
+                progress(LabProgress::CaseCompleted {
+                    setting: setting.id.clone(),
+                    filtered,
+                    concurrency: *concurrency,
+                    attempted: case.attempted,
+                    succeeded: case.succeeded,
+                    errors: case.errors,
+                    truncated: case.truncated,
+                });
                 run.cases.push(case);
                 raw.push(samples);
             }
@@ -438,9 +523,23 @@ pub fn run_system(
     inputs: &Inputs,
     environment: BTreeMap<String, String>,
 ) -> (SystemRun, Vec<RawCase>) {
+    run_system_with_progress(manifest, binding, adapter, inputs, environment, &mut |_| {})
+}
+
+/// Progress callbacks run outside measured query cases and must not mutate the system.
+pub fn run_system_with_progress(
+    manifest: &VectorComparisonManifest,
+    binding: &SystemBinding,
+    adapter: &dyn SystemAdapter,
+    inputs: &Inputs,
+    environment: BTreeMap<String, String>,
+    progress: &mut dyn FnMut(LabProgress),
+) -> (SystemRun, Vec<RawCase>) {
     let mut run = empty_run(binding, inputs, environment);
     let mut raw = Vec::new();
-    match run_phases(manifest, binding, adapter, inputs, &mut run, &mut raw) {
+    match run_phases(
+        manifest, binding, adapter, inputs, &mut run, &mut raw, progress,
+    ) {
         Ok(()) if run.cases.iter().all(|case| case.succeeded == 0) => {
             run.status = SystemStatus::Failed;
             run.reason = Some(
@@ -450,19 +549,56 @@ pub fn run_system(
                     .unwrap_or_else(|| "no search succeeded".into()),
             );
         }
-        Ok(()) => run.status = SystemStatus::Completed,
+        Ok(()) => {
+            if let Some(reason) = partial_reason(&run.cases) {
+                run.status = SystemStatus::Partial;
+                run.reason = Some(reason);
+            } else {
+                run.status = SystemStatus::Completed;
+            }
+        }
         Err(error) => {
             run.status = SystemStatus::Failed;
             run.reason = Some(error);
         }
     }
-    if run.status == SystemStatus::Completed {
+    if matches!(run.status, SystemStatus::Completed | SystemStatus::Partial) {
         if let Err(error) = adapter.teardown() {
-            run.reason = Some(format!("teardown failed after a complete run: {error}"));
+            run.status = SystemStatus::Partial;
+            let prior = run
+                .reason
+                .take()
+                .map(|reason| format!("{reason}; "))
+                .unwrap_or_default();
+            run.reason = Some(format!("{prior}teardown failed: {error}"));
         }
     }
     run.finished_at_unix_ms = now_unix_ms();
     (run, raw)
+}
+
+/// Summarize incomplete cases both on new runs and when combining retained
+/// runs whose earlier implementation marked a partial run completed.
+fn partial_reason(cases: &[CaseResult]) -> Option<String> {
+    let incomplete = cases
+        .iter()
+        .filter(|case| case.errors > 0 || case.truncated)
+        .count();
+    if incomplete == 0 {
+        return None;
+    }
+    let errors: u64 = cases.iter().map(|case| case.errors).sum();
+    let truncated = cases.iter().filter(|case| case.truncated).count();
+    let first = cases.iter().find_map(|case| case.first_error.as_deref());
+    let detail = first
+        .map(|error| {
+            format!(
+                "; first error: {}",
+                error.chars().take(512).collect::<String>()
+            )
+        })
+        .unwrap_or_default();
+    Some(format!("{incomplete} incomplete case(s), {errors} failed request(s), {truncated} truncated case(s){detail}"))
 }
 
 fn metric(id: &str, label: &str, unit: &str, better: MetricDirection) -> Result<MetricDefinition> {
@@ -488,7 +624,10 @@ fn report_metrics() -> Result<Vec<MetricDefinition>> {
         metric("latency_p50_ms", "Latency p50", "ms", Lower)?,
         metric("latency_p95_ms", "Latency p95", "ms", Lower)?,
         metric("latency_p99_ms", "Latency p99", "ms", Lower)?,
+        metric("case_attempted", "Searches attempted", "count", Higher)?,
+        metric("case_succeeded", "Searches succeeded", "count", Higher)?,
         metric("search_errors", "Search errors", "count", Lower)?,
+        metric("case_truncated", "Case truncated", "boolean", Lower)?,
         metric(
             "ingest_points_per_second",
             "Ingest rate",
@@ -584,7 +723,10 @@ fn report_views(manifest: &VectorComparisonManifest) -> Result<Vec<ViewDefinitio
             "latency_p50_ms",
             "latency_p95_ms",
             "latency_p99_ms",
+            "case_attempted",
+            "case_succeeded",
             "search_errors",
+            "case_truncated",
         ]
         .into_iter()
         .map(view_id)
@@ -657,7 +799,7 @@ fn case_observations(run: &SystemRun, list: &mut Vec<Observation>) -> Result<()>
             observe(list, system, id, &BTreeMap::new(), value as f64, 1)?;
         }
     }
-    for case in run.cases.iter().filter(|case| case.attempted > 0) {
+    for case in &run.cases {
         let labels = fixed(&[
             (
                 "filter",
@@ -669,12 +811,38 @@ fn case_observations(run: &SystemRun, list: &mut Vec<Observation>) -> Result<()>
         observe(
             list,
             system,
+            "case_attempted",
+            &labels,
+            case.attempted as f64,
+            case.attempted,
+        )?;
+        observe(
+            list,
+            system,
+            "case_succeeded",
+            &labels,
+            case.succeeded as f64,
+            case.attempted,
+        )?;
+        observe(
+            list,
+            system,
             "search_errors",
             &labels,
             case.errors as f64,
             case.attempted,
         )?;
-        if case.succeeded == 0 {
+        observe(
+            list,
+            system,
+            "case_truncated",
+            &labels,
+            if case.truncated { 1.0 } else { 0.0 },
+            case.attempted,
+        )?;
+        // Incomplete cases keep counts and raw samples but must not enter
+        // the normal recall/speed views as if they completed the workload.
+        if case.succeeded == 0 || case.errors > 0 || case.truncated {
             continue;
         }
         list.push(Observation {
@@ -703,7 +871,7 @@ fn case_observations(run: &SystemRun, list: &mut Vec<Observation>) -> Result<()>
 fn matched_quality(run: &SystemRun, target: f64, list: &mut Vec<Observation>) -> Result<()> {
     let mut best: BTreeMap<(bool, u32), &CaseResult> = BTreeMap::new();
     for case in &run.cases {
-        if case.errors > 0 || case.succeeded == 0 || case.recall_mean < target {
+        if case.truncated || case.errors > 0 || case.succeeded == 0 || case.recall_mean < target {
             continue;
         }
         let key = (case.filtered, case.concurrency);
@@ -739,7 +907,9 @@ fn recall_verdict(run: &SystemRun, filtered: bool, target: f64) -> Result<Verdic
     let best = run
         .cases
         .iter()
-        .filter(|case| case.filtered == filtered && case.succeeded > 0 && case.errors == 0)
+        .filter(|case| {
+            case.filtered == filtered && case.succeeded > 0 && case.errors == 0 && !case.truncated
+        })
         .map(|case| case.recall_mean)
         .fold(None, |best: Option<f64>, value| {
             Some(best.map_or(value, |current| current.max(value)))
@@ -763,7 +933,7 @@ fn recall_verdict(run: &SystemRun, filtered: bool, target: f64) -> Result<Verdic
 fn report_limits(manifest: &VectorComparisonManifest) -> Vec<String> {
     let mut limits = vec![
         "Diagnostic evidence for optimization: not J-04 acceptance, and no parity or superiority claim.".to_string(),
-        "Speed is comparable only between cases that met the declared recall target.".to_string(),
+        "Cases with errors or truncation cannot qualify for speed at the recall target. Server resource equivalence is not established by matching client metadata.".to_string(),
         "Closed-loop clients: each waits for its reply, so this understates latency under overload and is not an open-loop schedule.".to_string(),
         "Ingest is one sequential writer, which does not show any system's parallel write capacity.".to_string(),
         "The corpus is a synthetic Gaussian mixture, not embeddings of real content.".to_string(),
@@ -836,6 +1006,12 @@ pub fn combine(
         )?;
         let (status, reason) = match (&declared, run) {
             (Some((status, reason)), _) => (*status, Some(reason.clone())),
+            (None, Some(run))
+                if run.status == SystemStatus::Completed
+                    && partial_reason(&run.cases).is_some() =>
+            {
+                (SystemStatus::Partial, partial_reason(&run.cases))
+            }
             (None, Some(run)) => (run.status, run.reason.clone()),
             (None, None) => (
                 SystemStatus::NotRun,
@@ -883,14 +1059,24 @@ pub fn combine(
         .all(|pair| pair[0].environment == pair[1].environment);
     verdicts.push(Verdict {
         id: Id::try_from("same-environment".to_string())?,
-        question: "Did every completed system run in the same recorded environment?".into(),
+        question: "Did the benchmark client metadata match across runs?".into(),
         system: None,
-        outcome: match (completed.is_empty(), same_environment) {
+        outcome: match (completed.len() < 2, same_environment) {
             (true, _) => VerdictOutcome::NotRun,
             (false, true) => VerdictOutcome::Met,
             (false, false) => VerdictOutcome::NotMet,
         },
-        basis: format!("{} completed run(s) compared", completed.len()),
+        basis: format!(
+            "{} completed run(s); client metadata only, not server resource equivalence",
+            completed.len()
+        ),
+    });
+    verdicts.push(Verdict {
+        id: Id::try_from("server-resource-equivalence".to_string())?,
+        question: "Were the server resource limits and deployment conditions equivalent?".into(),
+        system: None,
+        outcome: VerdictOutcome::NotRun,
+        basis: "Server CPU, memory, storage and deployment equivalence has not been independently established by this report.".into(),
     });
     let environment = completed
         .first()

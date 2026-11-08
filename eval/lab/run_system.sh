@@ -71,6 +71,19 @@ require_port_free() {
   fi
 }
 
+start_container() {
+  local created
+  if created=$(docker run -d "$@"); then
+    if [[ ! $created =~ ^[0-9a-f]{64}$ ]]; then
+      echo "Docker did not return a valid container ID; refusing name-based cleanup" >&2
+      return 1
+    fi
+    container=$created
+  else
+    return $?
+  fi
+}
+
 start_rrflow() {
   : "${RRFLOW_BIN:?set RRFLOW_BIN to the rrflow binary}"
   mkdir -p "$work/project" "$work/bin"
@@ -101,30 +114,29 @@ esac
 case "$system" in
   rrflow-*) start_rrflow ;;
   qdrant)
-    container=lab-qdrant
-    docker run -d --name "$container" "${docker_cpus[@]}" -p 127.0.0.1:16333:6333       -v "$work/data:/qdrant/storage" \
-      qdrant/qdrant@sha256:9bfc89f9914fc14876a88c05270685921a55b8877b254a98bcc1cc2f0a424cd2 > /dev/null
+    # Assign ownership only after Docker reports a successful creation. If the
+    # name is occupied, cleanup must never remove the existing container.
+    start_container --name lab-qdrant "${docker_cpus[@]}" -p 127.0.0.1:16333:6333       -v "$work/data:/qdrant/storage" \
+      qdrant/qdrant@sha256:9bfc89f9914fc14876a88c05270685921a55b8877b254a98bcc1cc2f0a424cd2
     wait_http http://127.0.0.1:16333/ 60
     ;;
   surrealdb)
-    container=lab-surrealdb
     SURREAL_LAB_USER=lab
     SURREAL_LAB_SECRET=$(python3 -c 'import secrets; print(secrets.token_hex(24))')
     export SURREAL_LAB_USER SURREAL_LAB_SECRET
-    docker run -d --name "$container" "${docker_cpus[@]}" -p 127.0.0.1:18000:8000 \
+    start_container --name lab-surrealdb "${docker_cpus[@]}" -p 127.0.0.1:18000:8000 \
       -e SURREAL_USER="$SURREAL_LAB_USER" -e SURREAL_PASS="$SURREAL_LAB_SECRET" \
       -e SURREAL_CAPS_ALLOW_ALL=true --user root -v "$work/data:/data" \
       surrealdb/surrealdb@sha256:3db515b88e79737aa828c05fbf1515748004ba57495ff89a013851cc3f1ad4b9 \
-      start surrealkv:///data/lab > /dev/null
+      start surrealkv:///data/lab
     wait_http http://127.0.0.1:18000/version 60
     ;;
   milvus)
-    container=lab-milvus
-    docker run -d --name "$container" "${docker_cpus[@]}" -e ETCD_USE_EMBED=true \
+    start_container --name lab-milvus "${docker_cpus[@]}" -e ETCD_USE_EMBED=true \
       -e ETCD_DATA_DIR=/var/lib/milvus/etcd -e COMMON_STORAGETYPE=local -e DEPLOY_MODE=STANDALONE \
       -p 127.0.0.1:19530:19530 -p 127.0.0.1:19091:9091 -v "$work/data:/var/lib/milvus" \
       milvusdb/milvus@sha256:b9b79b4a284b41cd12d60abc418310f84621fa4c977d409b38f501519a7ccf8a \
-      milvus run standalone > /dev/null
+      milvus run standalone
     for _ in $(seq 1 180); do
       curl -s --max-time 2 http://127.0.0.1:19091/healthz | grep -q OK && break
       sleep 1

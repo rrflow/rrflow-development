@@ -183,6 +183,7 @@
     "SystemStatus": {
       "enum": [
         "completed",
+        "partial",
         "failed",
         "unavailable",
         "unimplemented",
