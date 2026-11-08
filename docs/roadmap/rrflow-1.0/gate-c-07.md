@@ -599,17 +599,13 @@ a newer candidate needs rerun or explicit validated evidence applicability,
 never an unlabeled union of incompatible revisions. Only then update Gate C
 and POAM-035. Keep parent alpha, C-04 and downstream gates independently open.
 
-### DuckDB dependency boundary
+### Native analytical research boundary
 
-The owner-requested [DuckDB integration](../../reference/data/duckdb.md) follows
-C-07 under [D-06](gate-d.md#duckdb-interoperability-packages). It does not
-replace native durability or postpone c-h. DuckDB export conformance can reuse
-the already bounded Parquet endpoint; larger streaming/import/worker execution
-requires its explicit F/D dependencies. C-07d/e must make resource ownership
-usable by later adapters, but must not add speculative DuckDB configuration
-or a dormant executor. A DuckDB memory setting cannot prove an aggregate
-RRFlow process limit. DuckDB crash/SQL/extension isolation belongs to its
-adapter corpus; native WAL/manifest and buffer proof stays here.
+The earlier DuckDB integration and worker direction was withdrawn. DuckDB and
+ClickHouse may inform native query and storage implementation, but neither
+replaces C-07 durability, recovery, resource ownership or native qualification.
+Parquet exchange remains separately bounded and does not prove WAL or storage
+correctness. See the [research record](../../reference/data/duckdb.md).
 
 ## Required failure and concurrency matrix
 
@@ -759,10 +755,10 @@ flowchart LR
 | Native graph/lexical/vector paths | Durable source/index deltas and safe generations feed E-01 through E-05. Exact adjacency/scalar/BM25 oracles and exact/HNSW filtered recall still require E evidence. |
 | TurboQuant and other compression candidates | E-04 owns authenticated quantized vector candidates with model/space/dimension/seed/config identity, exact rerank and recall/error/memory/latency comparisons. LLM attention KV-cache quantization is a separate inference concern under G, not rrflowKV database compression. No universal quality or speed claim follows from a paper. |
 | HydraDB, Pinecone/Nexus, Qdrant knowledge paths | D-05/D-06 own optional typed knowledge-tree adapters; H-09/H-10 own knowledge families and explicit project links. Pin exact service/product/API, secret reference, scopes, source revision, ACL/freshness, costs, limits, pagination, retries and cancellation. Read-only retrieval comes first; import/remote writes are separate effects. A schema, HTTP client or product logo is not qualified support. |
-| Apache Parquet | The existing bounded query-result export is linked into the Rust binary. F and D own streamed analytical exchange/import with schema, row-group, decode, memory and publication bounds. A Parquet artifact is neither WAL nor a native backup; Arrow-buffer lifetime evidence is a prerequisite to broader streaming. |
+| Apache Parquet | The existing bounded query-result export is linked into the Rust binary. F-06 owns the requested background cold-storage compaction, publication and readback; D-06 owns exchange/import. A Parquet artifact is not the WAL and is not automatically a complete native backup. C-07 must prove acknowledged-write, crash and recovery invariants for any integrated tier. |
 | SWAG/frontier/local model prompt execution | G owns configured routing/model execution; H owns context, evidence, delivery and trace parity; I owns explicit durable routines. Preserve external-call uncertainty and persisted receipts. A finished storage commit cannot establish model quality, successful tool effects or an entire reasoning task. |
 | Connectome, DevPulse, shippin.cloud/homelab | H-04/H-06/H-07 and J retain client, provisioning, sync and signed-delivery qualification. Independent project engines can run in parallel with context isolation; sharing is a separate explicit authorized H-10 link, never a consequence of process placement. |
-| PostgreSQL compatibility | H-08's native type/transaction/SQL/wire/client DAG consumes C-04/C-07. rrflowDB remains Rust-native; passing a PostgreSQL connector test does not make its server PostgreSQL-compatible. |
+| PostgreSQL and SQLite compatibility | H-08 and H-12 define separately qualified SQL/client and other admitted compatibility surfaces over native RRFlow. A connector or import test alone proves neither compatibility profile. |
 
 Remote responses must retain foreign snapshot/freshness semantics rather than
 inventing a local `ReadStamp`. Provider outage, stale ACL, deletion, partial

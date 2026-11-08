@@ -152,9 +152,8 @@ Two things go wrong silently in a shim, and both happened to Lance's:
   [`check_lance_shim.py`](check_lance_shim.py) checks both for Lance against a real install.
 
 If a system lacks a capability, declare that in the binding's `availability`
-with a reason. Do not leave it out, since a gap is a result. RRFlow's own HNSW
-arm is declared `unimplemented` this way, and so is `rrflow-routed`, which would choose
-its capability for each request.
+with a reason. Do not leave it out, since a gap is a result. `rrflow-routed`, which would
+choose its capability for each request, is declared `unimplemented` this way.
 
 Lance is embedded, so run it from a Python holding the locked requirements, and name that
 Python in `RRFLOW_LAB_LANCE_PYTHON`:

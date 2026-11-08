@@ -32,8 +32,8 @@ pub use accelerator::{
 };
 
 pub use catalog::{
-    VectorArtifactCatalogEntry, VectorCatalog, VectorProjectionDescriptor,
-    VECTOR_ARTIFACT_CATALOG_VERSION, VECTOR_ARTIFACT_RECORD_TYPE,
+    VectorArtifactCatalogEntry, VectorArtifactOperationReceipt, VectorCatalog,
+    VectorProjectionDescriptor, VECTOR_ARTIFACT_CATALOG_VERSION, VECTOR_ARTIFACT_RECORD_TYPE,
 };
 pub use collection::{
     CollectionCatalogue, CollectionDeletionReceipt, CollectionEntry, CollectionError,

@@ -271,6 +271,47 @@ async fn rust_sdk_passes_shared_real_daemon_conformance() {
         format!("{}:{}", hit.reference.kind, hit.reference.id) == corpus.expected.vector_reference
     }));
 
+    // The graph index and its payload index. The changefeed read below proves
+    // the scope stays readable with an index in it.
+    let index = &corpus.vector.index;
+    client
+        .ensure_vector_payload_index(
+            &session,
+            index.payload_index.clone(),
+            mutation("payload-index-ensure"),
+        )
+        .await
+        .unwrap();
+    let built_index = client
+        .ensure_vector_index(&session, index.ensure.clone(), mutation("index-ensure"))
+        .await
+        .unwrap();
+    assert_eq!(built_index.index.kind, corpus.expected.indexed_access_path);
+    let indexed = client
+        .search_vectors(&session, index.search.clone(), read("indexed-search"))
+        .await
+        .unwrap();
+    assert_eq!(indexed.access_path, corpus.expected.indexed_access_path);
+    assert!(indexed.hits.iter().any(|hit| {
+        format!("{}:{}", hit.reference.kind, hit.reference.id) == corpus.expected.indexed_reference
+    }));
+    client
+        .ensure_vector_payload_index(
+            &session,
+            index.spare_payload_index.clone(),
+            mutation("payload-index-spare"),
+        )
+        .await
+        .unwrap();
+    client
+        .delete_vector_payload_index(
+            &session,
+            index.delete_payload_index.clone(),
+            mutation("payload-index-delete"),
+        )
+        .await
+        .unwrap();
+
     let changes = client
         .read_changefeed(
             &session,
