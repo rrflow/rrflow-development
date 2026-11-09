@@ -27,7 +27,6 @@ pub enum EndpointWorkerAdapter {
     },
 }
 
-
 impl EndpointWorkerAdapter {
     pub fn validate(&self) -> Result<()> {
         if let Self::Other {

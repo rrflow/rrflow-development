@@ -302,6 +302,17 @@ class OfflineLifecyclePolicyTests(unittest.TestCase):
         summary = f"test result: ok. {len(runner.REQUIRED_CASES)} passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.00s"
         output = "\n".join(lines + [summary])
         self.assertEqual(runner.require_lifecycle_results(output), sorted(runner.REQUIRED_CASES))
+        source_case = "installed_source_read_choice_is_explicit_and_reopens"
+        duplicate_source_result = "\n".join(
+            lines + [f"test {source_case} ... ok", summary]
+        )
+        with self.assertRaisesRegex(RuntimeError, "exactly once"):
+            runner.require_lifecycle_results(duplicate_source_result)
+        missing_source_result = "\n".join(
+            [line for line in lines if line != f"test {source_case} ... ok"] + [summary]
+        )
+        with self.assertRaisesRegex(RuntimeError, "exactly once"):
+            runner.require_lifecycle_results(missing_source_result)
         for invalid in ["", "\n".join(lines), "\n".join(lines[1:] + [summary]),
                         output + "\n" + lines[0], output.replace("0 ignored", "1 ignored"),
                         output.replace("0 filtered out", "1 filtered out"),
@@ -374,6 +385,7 @@ class OfflineLifecyclePolicyTests(unittest.TestCase):
             "fresh_installed_engine_survives_restart_and_restore",
             "installed_engine_plans_applies_serves_discovers_authenticates_and_reopens",
             "a_served_engram_is_found_proved_and_not_served_twice",
+            "installed_source_read_choice_is_explicit_and_reopens",
         }
         runner.require_lifecycle_tests("\n".join(f"{case}: test" for case in sorted(cases)))
         for missing in sorted(cases):
@@ -381,6 +393,12 @@ class OfflineLifecyclePolicyTests(unittest.TestCase):
                 runner.require_lifecycle_tests(
                     "\n".join(f"{case}: test" for case in sorted(cases - {missing}))
                 )
+        source_case = "installed_source_read_choice_is_explicit_and_reopens"
+        duplicate_listing = "\n".join(
+            [f"{case}: test" for case in sorted(cases)] + [f"{source_case}: test"]
+        )
+        with self.assertRaisesRegex(RuntimeError, "exactly the required lifecycle cases"):
+            runner.require_lifecycle_tests(duplicate_listing)
 
     def test_zero_or_partial_lifecycle_corpus_is_not_a_pass(self):
         fresh = "fresh_installed_engine_survives_restart_and_restore: test"

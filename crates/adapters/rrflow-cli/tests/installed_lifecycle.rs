@@ -3736,7 +3736,7 @@ max_elapsed_ms = 20000
 /// another process proves it through `ready` without an address, and a second
 /// serve of the same estate fails before binding.
 #[test]
-fn a_served_estate_is_found_proved_and_not_served_twice() {
+fn a_served_engram_is_found_proved_and_not_served_twice() {
     let root = tempfile::tempdir().unwrap();
     let project = root.path().join("project");
     std::fs::create_dir(&project).unwrap();
