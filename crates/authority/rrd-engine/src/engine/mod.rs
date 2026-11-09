@@ -110,9 +110,9 @@ mod endpoint_proposal;
 mod endpoint_worker;
 pub use endpoint_proposal::EndpointCredentials;
 mod error;
-mod engram;
-mod engram_control;
-mod engram_layout;
+mod estate;
+mod estate_control;
+mod estate_layout;
 mod flight;
 mod function;
 mod inference;
@@ -127,7 +127,7 @@ pub use attunement::{
 mod invocation;
 mod knowledge;
 mod maintenance;
-mod memory_engram;
+mod memory_estate;
 mod model;
 mod query;
 mod query_export;
@@ -163,14 +163,14 @@ pub use distributed::{
     DistributedAuthorityRead, DistributedReadRoute, PreparedDistributedAuthority,
 };
 pub use error::{Result, ServiceError, ServiceErrorKind};
-pub use engram_control::{
-    engramAdminAction, engramAdminResult, engramBackupReconcileOutcome, engramReconcileOutcome,
+pub use estate_control::{
+    EstateAdminAction, EstateAdminResult, EstateBackupReconcileOutcome, EstateReconcileOutcome,
 };
 pub use installation::{
-    attunement_proposal_schema, load_attunement_proposal, load_engram_configuration,
+    attunement_proposal_schema, load_attunement_proposal, load_estate_configuration,
     AttunementProposal, AttunementProposalStep, DefaultAttunementPhase, DefaultInstallProfile,
     InstallationPreview, InstallationVerificationCheck, InstallationVerificationReport,
-    InstallationVerificationStatus, InstalledengramRecord, ProjectLocator,
+    InstallationVerificationStatus, InstalledEstateRecord, ProjectLocator,
     ATTUNEMENT_PROPOSAL_FORMAT_VERSION, INSTALLATION_PREVIEW_FORMAT_VERSION,
 };
 pub use invocation::{
