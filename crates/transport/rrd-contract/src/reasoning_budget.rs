@@ -150,6 +150,40 @@ impl StopTaskBudget {
     }
 }
 
+/// Explicit recovery of known-completed stopped work, never a budget reset or
+/// permission to redispatch a recorded attempt. Read back after a lost reply.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ResumeTaskBudget {
+    pub scope: String,
+    pub task_id: CanonicalId,
+    pub expected_budget_sha256: String,
+}
+impl ResumeTaskBudget {
+    pub fn validate(&self) -> Result<()> {
+        validate_vector_scope(&self.scope)?;
+        validate_sha256(&self.expected_budget_sha256, "expected budget digest")
+    }
+
+    pub fn validate_response(&self, response: &TaskBudgetView) -> Result<()> {
+        response.validate()?;
+        let Some(budget) = &response.budget else {
+            return invalid("resume response has no budget");
+        };
+        if budget.scope != self.scope
+            || budget.task_id != self.task_id
+            || budget.stopped.is_some()
+            || budget.active_attempt.is_some()
+            || budget.execution_may_continue
+            || budget.stop_expected_sha256.is_some()
+            || response.budget_sha256.as_ref() == Some(&self.expected_budget_sha256)
+        {
+            return invalid("resume response identity or state mismatch");
+        }
+        Ok(())
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct TaskBudgetView {
@@ -264,6 +298,8 @@ pub struct TaskAttemptSnapshot {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub endpoint_proposal: Option<crate::EndpointSelectionProposal>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub worker_output: Option<crate::TaskWorkerOutput>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub invalidation: Option<TaskAttemptInvalidation>,
 }
 
@@ -289,7 +325,16 @@ impl TaskAttemptView {
             {
                 return invalid("only invalidated attempts have an invalidation reason");
             }
-            if attempt.result.is_some() && attempt.endpoint_proposal.is_some() {
+            if [
+                attempt.result.is_some(),
+                attempt.endpoint_proposal.is_some(),
+                attempt.worker_output.is_some(),
+            ]
+            .into_iter()
+            .filter(|present| *present)
+            .count()
+                > 1
+            {
                 return invalid("an attempt cannot retain two output kinds");
             }
             if let Some(result) = &attempt.result {
@@ -317,6 +362,19 @@ impl TaskAttemptView {
                     .map_err(|e| crate::ContractError(e.to_string()))?;
                 if attempt.outcome_sha256.as_deref() != Some(crate::sha256_bytes(&bytes).as_str()) {
                     return invalid("retained proposal digest mismatch");
+                }
+            }
+            if let Some(output) = &attempt.worker_output {
+                if attempt.status != TaskAttemptStatus::Accepted
+                    || output.attempt_id != attempt.attempt_id
+                {
+                    return invalid("worker output must belong to its accepted attempt");
+                }
+                output.validate()?;
+                let bytes =
+                    serde_json::to_vec(output).map_err(|e| crate::ContractError(e.to_string()))?;
+                if attempt.outcome_sha256.as_deref() != Some(crate::sha256_bytes(&bytes).as_str()) {
+                    return invalid("retained worker output digest mismatch");
                 }
             }
         }

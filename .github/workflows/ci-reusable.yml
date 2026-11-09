@@ -50,6 +50,7 @@ jobs:
         with:
           shared-key: linux-arm64-native
           cache-on-failure: false
+          save-if: ${{ github.event_name != 'merge_group' }}
       - name: Test native storage and recovery
         run: |
           cargo test -p rrd-lsm --test filesystem --test manifest --locked
@@ -76,6 +77,7 @@ jobs:
         with:
           shared-key: linux-topology
           cache-on-failure: true
+          save-if: ${{ github.event_name != 'merge_group' }}
       - name: Test native filesystem containment and publication
         run: cargo test -p rrd-lsm --test filesystem --test manifest --locked
       - name: Test encoded admission accounting boundaries
@@ -151,7 +153,7 @@ jobs:
         run: python3 scripts/build_rrflow.py --profile dev --output "$RUNNER_TEMP/rrflow-build-receipt.json"
 
   estate-portability:
-    name: estate process (${{ matrix.os }})
+    name: engram process (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 35
     env:
@@ -173,9 +175,10 @@ jobs:
           components: clippy
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
-          shared-key: estate-process-${{ matrix.os }}
+          shared-key: engram-process-${{ matrix.os }}
           cache-on-failure: true
-      - name: Test persistent estate authority and commands
+          save-if: ${{ github.event_name != 'merge_group' }}
+      - name: Test persistent engram authority and commands
         run: cargo test -p rrd-estate --all-targets --locked
       - name: Test RRD daemon process contract
         run: cargo test -p rrd-server --bin rrd-server --locked
@@ -289,6 +292,7 @@ jobs:
         with:
           shared-key: linux-policy-jobs2-test-debug0-lld1
           cache-on-failure: false
+          save-if: ${{ github.event_name != 'merge_group' }}
       - name: Check Rust formatting
         run: cargo fmt --all -- --check
       - name: Enforce owner-controlled release version
@@ -315,6 +319,7 @@ jobs:
           python3 scripts/inference/test_review_outcomes.py
           python3 scripts/inference/test_capture_observations.py
           python3 scripts/inference/test_review_decisions.py
+          python3 scripts/inference/test_installed_controller_fault_relay.py
       - name: Enforce documentation authority and local links
         run: python3 scripts/ci/check_documentation.py
       - name: Enforce knowledge-package drift and reproducibility
@@ -413,6 +418,7 @@ jobs:
         with:
           shared-key: linux-engine-${{ matrix.name }}-test-debug0-lld1
           cache-on-failure: false
+          save-if: ${{ github.event_name != 'merge_group' }}
       - name: Build cross-package controller fixture
         if: ${{ matrix.name == 'service-protocol' }}
         run: cargo build -p rrflow-cli --bin rrd-estate-controller --locked
@@ -439,6 +445,7 @@ jobs:
         with:
           shared-key: linux-sdk-conformance-test-debug0-lld1
           cache-on-failure: false
+          save-if: ${{ github.event_name != 'merge_group' }}
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
         with:
           version: 12.14.0
@@ -532,6 +539,7 @@ jobs:
         with:
           shared-key: linux-feature-${{ matrix.package }}-test-debug0-lld1
           cache-on-failure: false
+          save-if: ${{ github.event_name != 'merge_group' }}
       - name: Test package optional features
         run: cargo test -p ${{ matrix.package }} --all-targets --all-features --locked --no-fail-fast
       - name: Deny package optional-feature warnings
@@ -571,6 +579,7 @@ jobs:
         with:
           shared-key: linux-feature-rrd-operator-knowledge-test-debug0-lld1
           cache-on-failure: false
+          save-if: ${{ github.event_name != 'merge_group' }}
       - name: Test PostgreSQL operator-knowledge feature
         env:
           RRFLOW_PGVECTOR_TEST_URL: postgresql://rrflow_test:rrflow_test_password@127.0.0.1:5432/rrd_operator_knowledge_test?sslmode=disable
@@ -579,8 +588,35 @@ jobs:
       - name: Deny PostgreSQL operator-knowledge warnings
         run: cargo clippy -p rrd-operator-knowledge --all-targets --all-features --locked -- -D warnings
 
+  storage-contract-preflight:
+    name: synthetic storage contract preflight
+    runs-on: ${{ fromJSON(inputs.linux-standard-runner) }}
+    timeout-minutes: 15
+    env:
+      CARGO_BUILD_JOBS: "2"
+      CARGO_PROFILE_TEST_DEBUG: "0"
+      RUSTFLAGS: "-C link-arg=-Wl,--threads=1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          submodules: recursive
+      - uses: dtolnay/rust-toolchain@d124f86f28ff42855784ff3319f48ac182c248f8 # 1.99.1
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          shared-key: linux-storage-contract-test-debug0-lld1
+          cache-on-failure: false
+          save-if: ${{ github.event_name != 'merge_group' }}
+      - name: Validate candidate catalogue and synthetic storage projections
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo test --locked -p rrflow-eval --test storage_contract generated_schemas_and_synthetic_receipts_match_goldens -- --exact --list | grep -Fx 'generated_schemas_and_synthetic_receipts_match_goldens: test'
+          cargo test --locked -p rrflow-eval --test storage_contract generated_schemas_and_synthetic_receipts_match_goldens -- --exact
+
   installed-reopen:
     name: installed 100-cycle reopen (${{ matrix.os }})
+    needs: storage-contract-preflight
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
     strategy:
@@ -614,6 +650,7 @@ jobs:
         with:
           shared-key: installed-reopen-${{ matrix.os }}
           cache-on-failure: false
+          save-if: ${{ github.event_name != 'merge_group' }}
       - name: Build ordinary primary and fixed reopen corpus
         run: cargo test -p rrflow-cli --test installed_reopen --release --locked --no-run
       - name: Exercise installed capacity workload and backup readback
@@ -644,7 +681,7 @@ jobs:
       - name: Correlate installed sampler and storage traces
         timeout-minutes: 10
         run: cargo test -p rrflow-cli --test installed_reopen --release --locked -- sustained::installed_sampler_trace_matches_server_and_store --exact --ignored --nocapture
-      - name: Independent installed estates under concurrent load
+      - name: Independent installed engrams under concurrent load
         run: cargo test -p rrflow-cli --test installed_reopen --release --locked -- sustained::fleet::installed_two_estate_isolation_under_concurrent_load --exact --ignored --nocapture
       - name: Require fresh and existing installed damage denial
         timeout-minutes: 10
@@ -690,7 +727,7 @@ jobs:
               assert previous['ready_ns'] <= receipt['cleanup']['killed_ns'] <= receipt['cleanup']['reaped_ns']
               builds.append(receipt['build'])
           assert builds[0] == builds[1]
-          print('ordinary reopen evidence: 200 cycles, 10300 reconciled attempts, both estates cleaned up')
+          print('ordinary reopen evidence: 200 cycles, 10300 reconciled attempts, both engrams cleaned up')
           PY
       - name: Retain sanitized ordinary reopen receipts
         if: always()
@@ -730,6 +767,7 @@ jobs:
         with:
           shared-key: installed-crash-${{ matrix.os }}
           cache-on-failure: false
+          save-if: ${{ github.event_name != 'merge_group' }}
       - name: Build ordinary primary before diagnostic feature activation
         run: cargo build -p rrflow-cli --bin rrflow --locked
       - name: Verify diagnostic protocol is absent from ordinary artifact
@@ -838,6 +876,7 @@ jobs:
       - optional-features
       - pgvector-feature
       - installed-crash
+      - storage-contract-preflight
       - installed-reopen
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -853,6 +892,7 @@ jobs:
           OPTIONAL_FEATURES_RESULT: ${{ needs.optional-features.result }}
           PGVECTOR_FEATURE_RESULT: ${{ needs.pgvector-feature.result }}
           INSTALLED_CRASH_RESULT: ${{ needs.installed-crash.result }}
+          STORAGE_PREFLIGHT_RESULT: ${{ needs.storage-contract-preflight.result }}
           INSTALLED_REOPEN_RESULT: ${{ needs.installed-reopen.result }}
         run: |
           test "$ARM64_RESULT" = success
@@ -864,4 +904,5 @@ jobs:
           test "$OPTIONAL_FEATURES_RESULT" = success
           test "$PGVECTOR_FEATURE_RESULT" = success
           test "$INSTALLED_CRASH_RESULT" = success
+          test "$STORAGE_PREFLIGHT_RESULT" = success
           test "$INSTALLED_REOPEN_RESULT" = success
