@@ -66,7 +66,7 @@ correctness, sustained throughput or recovery.
 
 Both campaign documents passed the existing canonical validation command.
 The retained evidence and local process were read without modifying the
-running engram. No engine code, deadline, data corpus or gate status changed.
+running estate. No engine code, deadline, data corpus or gate status changed.
 Documentation, generated navigation/inventory and workflow checks passed
 locally; candidate CI is still required. The real 8-GiB-host profile, full
 native matrix, exact-candidate CI, complete readback and 24-hour soak remain

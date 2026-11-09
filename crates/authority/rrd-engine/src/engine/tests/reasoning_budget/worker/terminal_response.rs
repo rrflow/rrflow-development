@@ -7,7 +7,7 @@ fn rejected_terminal_response_releases_capacity_but_lost_response_does_not() {
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         let (root, engine, lease, selection) =
             admitted_fixture(&format!("http://{}/v1", listener.local_addr().unwrap()));
-        let identity = engine.installed_engram.clone();
+        let identity = engine.installed_estate.clone();
         let request = selected_request(&engine, &lease, &listener, &selection, 1_000, false);
         let before = budget(&engine, &lease, &request.task_id);
         let result = std::thread::scope(|scope| {
@@ -86,7 +86,7 @@ fn rejected_terminal_response_releases_capacity_but_lost_response_does_not() {
         assert!(attempt.worker_output.is_none() && attempt.outcome_sha256.is_none());
         drop(engine);
         let mut engine = RrdEngine::open_existing(root.path(), instance(), TOKEN_KEY).unwrap();
-        engine.installed_engram = identity;
+        engine.installed_estate = identity;
         configure(&mut engine, 8);
         assert_eq!(budget(&engine, &lease, &request.task_id), after);
         assert_eq!(
@@ -105,6 +105,48 @@ fn rejected_terminal_response_releases_capacity_but_lost_response_does_not() {
                 )
                 .unwrap(),
             retained
+        );
+        let resume = rrd_contract::ResumeTaskBudget {
+            scope: request.scope.clone(),
+            task_id: request.task_id.clone(),
+            expected_budget_sha256: operation_digest(&after).unwrap(),
+        };
+        let resumed = engine.resume_task_budget_with_clock(
+            &lease.session_id,
+            &lease.token,
+            &resume,
+            "resume",
+            "resume",
+            &FixedClock::at(1_400),
+        );
+        if lost {
+            assert!(matches!(
+                resumed,
+                Err(ServiceError::ReasoningBudgetStopped(
+                    ReasoningBudgetStop::UnresolvedAttempt
+                ))
+            ));
+            assert_eq!(budget(&engine, &lease, &request.task_id), after);
+        } else {
+            let mut expected = after;
+            expected.stopped = None;
+            expected.last_observed_at_unix_ms = 1_400;
+            assert_eq!(resumed.unwrap().budget, Some(expected));
+            assert!(matches!(
+                engine.execute_task_worker_with_clock(
+                    &lease.session_id,
+                    &lease.token,
+                    &request,
+                    "old-worker",
+                    "old-worker",
+                    &FixedClock::at(1_500),
+                ),
+                Err(ServiceError::ReasoningAttemptRecorded { .. })
+            ));
+        }
+        assert_eq!(
+            engine.storage.control().get(&key).unwrap().unwrap(),
+            capacity
         );
     }
 }

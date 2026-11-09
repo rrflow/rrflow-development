@@ -39,9 +39,9 @@ Metadata accounting is logical retained-path accounting, not measured RSS.
 Elapsed checks occur between bounded operations; a blocking native read is not
 interruptible and no hard wall-clock latency guarantee is claimed.
 
-`engramConfiguration`, public operations and authorization remain unchanged.
+`EstateConfiguration`, public operations and authorization remain unchanged.
 POAM-006's broader configuration admission is not bypassed by a new settings API.
-Old binaries, engrams and receipts keep their original identities. This package
+Old binaries, estates and receipts keep their original identities. This package
 neither migrates nor reinstalls them.
 
 ## Traceability, review and decisions

@@ -1,6 +1,6 @@
 //! E-01 acceptance: directed, typed, depth-bounded traversal equals the exact
 //! graph oracle, and its physical evidence follows the visited edges rather
-//! than the engram.
+//! than the estate.
 //!
 //! The oracle is the breadth-first scan of every relation of the traversed
 //! type, in relation-reference order, over the complete authenticated change
@@ -31,7 +31,7 @@ fn mixed_kind_traversal_paths_preserve_component_boundaries_after_reopen() {
     let root = tempfile::tempdir().unwrap();
     let store = RrflowKvStore::open(root.path()).unwrap();
     let mut registry = RuntimeSchemaRegistry::empty(1, "identity traversal");
-    for kind in ["node", "a:b", "a"] {
+    for kind in ["node", "a-b", "a"] {
         registry
             .define_record_table(
                 RuntimeType::new(kind).unwrap(),
@@ -46,7 +46,7 @@ fn mixed_kind_traversal_paths_preserve_component_boundaries_after_reopen() {
             RuntimeRelationSchema {
                 from: BTreeSet::from([RuntimeType::new("node").unwrap()]),
                 to: BTreeSet::from([
-                    RuntimeType::new("a:b").unwrap(),
+                    RuntimeType::new("a-b").unwrap(),
                     RuntimeType::new("a").unwrap(),
                 ]),
                 ..RuntimeRelationSchema::default()
@@ -54,8 +54,9 @@ fn mixed_kind_traversal_paths_preserve_component_boundaries_after_reopen() {
         )
         .unwrap();
     let start = RuntimeRef::new("node", "root").unwrap();
-    let left = RuntimeRef::new("a:b", "c").unwrap();
-    let right = RuntimeRef::new("a", "b:c").unwrap();
+    let left = RuntimeRef::new("a-b", "c").unwrap();
+    // An event identity holds the one colon an identifier can, so a path has to escape it.
+    let right = RuntimeRef::event(RuntimeType::new("a").unwrap(), 9);
     let mut mutations = vec![RuntimeMutation::Schema { registry }];
     mutations.extend(
         [start.clone(), left.clone(), right.clone()]
@@ -94,11 +95,11 @@ fn mixed_kind_traversal_paths_preserve_component_boundaries_after_reopen() {
     assert_eq!(paths.len(), 2);
     assert!(paths.contains(&RuntimeValue::List(vec![
         RuntimeValue::String("node:root".into()),
-        RuntimeValue::String("a%3Ab:c".into())
+        RuntimeValue::String("a-b:c".into())
     ])));
     assert!(paths.contains(&RuntimeValue::List(vec![
         RuntimeValue::String("node:root".into()),
-        RuntimeValue::String("a:b%3Ac".into())
+        RuntimeValue::String("a:cursor%3A9".into())
     ])));
     drop(store);
     let store = RrflowKvStore::open(root.path()).unwrap();
@@ -317,7 +318,7 @@ fn commit_random_graph<E: StorageEngine>(engine: &E, seed: u64) -> Vec<u64> {
     cursors
 }
 
-/// The pre-adjacency semantics, rengramd independently: replay every
+/// The pre-adjacency semantics, restated independently: replay every
 /// version in cursor order, keep what is valid at `valid_at`, then scan all
 /// relations of the type for each dequeued node.
 #[allow(clippy::too_many_arguments)]
@@ -654,10 +655,10 @@ fn traversal_joins_expand_beside_static_family_ranges() {
     assert!(joined_rows > 0);
 }
 
-/// A chain `a -> b -> c -> d` of `link` relations in an engram that also
+/// A chain `a -> b -> c -> d` of `link` relations in an estate that also
 /// holds `noise` disconnected `link` relations, `noise` `other` relations
 /// leaving `a`, and `noise` unrelated nodes.
-fn chain_engram<E: StorageEngine>(engine: &E, noise: usize) -> ReadStamp {
+fn chain_estate<E: StorageEngine>(engine: &E, noise: usize) -> ReadStamp {
     let mut nodes = vec![RuntimeMutation::Schema { registry: schema() }];
     nodes.extend(["a", "b", "c", "d"].map(|id| record(id, None)));
     nodes.extend((0..=noise).map(|index| record(&format!("x{index}"), None)));
@@ -706,15 +707,15 @@ fn path_keys(execution: &QueryExecution, path: RuntimeReadAccessPath) -> u64 {
 }
 
 #[test]
-fn traversal_evidence_follows_visited_edges_not_engram_size() {
+fn traversal_evidence_follows_visited_edges_not_estate_size() {
     const NOISE: usize = 400;
     let text =
         "FROM traverse:link START node:a DIRECTION OUTGOING DEPTH 8 AT VALID 100 KNOWN HEAD PROJECT node_id, depth";
     let small = RrflowMxStore::new();
-    let small_read = chain_engram(&small, 0);
+    let small_read = chain_estate(&small, 0);
     let small_run = run(&small, &small_read, text);
     let large = RrflowMxStore::new();
-    let large_read = chain_engram(&large, NOISE);
+    let large_read = chain_estate(&large, NOISE);
     let large_run = run(&large, &large_read, text);
 
     assert_eq!(rows(&small_run), rows(&large_run));
@@ -782,7 +783,7 @@ fn traversal_evidence_follows_visited_edges_not_engram_size() {
         direct.read_evidence.keys_examined + metadata.read_evidence.keys_examined
     );
 
-    // The family ranges the reader replaced grow with the engram.
+    // The family ranges the reader replaced grow with the estate.
     let family = large
         .runtime()
         .read_versioned(

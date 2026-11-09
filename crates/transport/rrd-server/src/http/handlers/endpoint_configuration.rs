@@ -11,7 +11,7 @@ impl AppState {
             headers,
             body,
             now,
-            RrdOperation::engramRead,
+            RrdOperation::EstateRead,
             None,
             |envelope, session, token| {
                 self.service
@@ -62,7 +62,7 @@ impl AppState {
             headers,
             body,
             now,
-            RrdOperation::engramAdmin,
+            RrdOperation::EstateAdmin,
             None,
             |envelope, session, token| {
                 self.service

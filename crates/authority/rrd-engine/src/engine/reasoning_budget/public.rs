@@ -10,7 +10,7 @@ fn contract(error: rrd_contract::ContractError) -> ServiceError {
     ServiceError::Contract(error.to_string())
 }
 
-fn view(budget: Option<TaskReasoningBudget>) -> Result<TaskBudgetView> {
+pub(super) fn view(budget: Option<TaskReasoningBudget>) -> Result<TaskBudgetView> {
     let budget_sha256 = budget.as_ref().map(operation_digest).transpose()?;
     let result = TaskBudgetView {
         budget,
@@ -39,13 +39,13 @@ impl RrdEngine {
             request_id,
             operation_id,
         )?;
-        let caps = &self.engram_configuration.reasoning;
+        let caps = &self.estate_configuration.reasoning;
         if request.limits.max_run_elapsed_ms > caps.max_run_elapsed_ms
             || request.limits.max_steps > caps.max_steps
             || request.limits.max_step_elapsed_ms > caps.max_step_elapsed_ms
         {
             return Err(ServiceError::ConfigurationLimit(
-                "task limits cannot exceed engram caps".into(),
+                "task limits cannot exceed estate caps".into(),
             ));
         }
         let scope = self.query_scope(&request.scope)?;
@@ -55,7 +55,7 @@ impl RrdEngine {
         if let Some(existing) = existing {
             if existing.limits != request.limits
                 || existing.repetition_policy != request.repetition_policy
-                || existing.configuration_sha256 != self.engram_configuration.configuration_sha256
+                || existing.configuration_sha256 != self.estate_configuration.configuration_sha256
             {
                 return Err(ServiceError::IdempotencyConflict);
             }
@@ -67,7 +67,7 @@ impl RrdEngine {
             instance_id: self.instance.clone(),
             scope: request.scope.clone(),
             task_id: request.task_id.clone(),
-            configuration_sha256: self.engram_configuration.configuration_sha256.clone(),
+            configuration_sha256: self.estate_configuration.configuration_sha256.clone(),
             limits: request.limits.clone(),
             started_at_unix_ms: at,
             deadline_unix_ms: at
@@ -256,30 +256,44 @@ impl RrdEngine {
             operation_id,
         )?;
         self.query_scope(&request.scope)?;
-        let (_, result) = self.read_task_attempt_record(request)?;
-        if let Some(output) = result
-            .attempt
-            .as_ref()
-            .and_then(|attempt| attempt.worker_output.as_ref())
-        {
-            self.authorize(
-                session,
-                token,
-                SecurityAction::TaskRead,
-                now,
-                request_id,
-                operation_id,
-            )?;
-            if output.context.is_some() {
-                self.authorize_resource_without_data_policy(
+        let (_, mut result) = self.read_task_attempt_record(request)?;
+        if let Some(attempt) = result.attempt.as_mut() {
+            if let Some(output) = attempt.worker_output.as_ref() {
+                self.authorize(
                     session,
                     token,
-                    SecurityAction::MemoryContextRead,
-                    &self.instance_resource(),
+                    SecurityAction::TaskRead,
                     now,
                     request_id,
                     operation_id,
                 )?;
+                let source_allowed = if let Some(source) = &output.source {
+                    self.authorize_worker_source_readback(
+                        session,
+                        token,
+                        source,
+                        now,
+                        request_id,
+                        operation_id,
+                    )
+                    .is_ok()
+                } else {
+                    true
+                };
+                if output.source.is_none() && output.context.is_some() {
+                    self.authorize_resource_without_data_policy(
+                        session,
+                        token,
+                        SecurityAction::MemoryContextRead,
+                        &self.instance_resource(),
+                        now,
+                        request_id,
+                        operation_id,
+                    )?;
+                }
+                if !source_allowed {
+                    attempt.worker_output = None;
+                }
             }
         }
         Ok(result)
@@ -311,6 +325,21 @@ impl RrdEngine {
                 })
                 || record.worker_output.as_ref().is_some_and(|output| {
                     output.scope != request.scope || output.task_id != request.task_id
+                })
+                || record.assessment_output.as_ref().is_some_and(|output| {
+                    output.validate().is_err()
+                        || output.scope != request.scope
+                        || output.task_id != request.task_id
+                        || output.attempt_id != request.attempt_id
+                        || record.outcome != super::AttemptOutcome::Accepted
+                        || record.result.is_some()
+                        || record.endpoint_proposal.is_some()
+                        || record.worker_output.is_some()
+                        || serde_json::to_vec(output)
+                            .ok()
+                            .map(|bytes| digest::sha256_hex(&bytes))
+                            .as_deref()
+                            != record.outcome_sha256.as_deref()
                 })
         }) {
             return Err(ServiceError::Storage(

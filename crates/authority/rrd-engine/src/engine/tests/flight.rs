@@ -20,7 +20,7 @@ fn unrepresentable_context_reference_denies_flight_before_runtime_publication() 
     let (_root, engine) = isolated_engine();
     let mut registry = RuntimeSchemaRegistry::empty(1, "flight identity fixture");
     registry.tables.insert(
-        RuntimeType::new("native:note").unwrap(),
+        RuntimeType::new("native-note").unwrap(),
         RuntimeTableSchema::schemaless(RuntimeLogicalModel::Relational),
     );
     engine
@@ -35,7 +35,8 @@ fn unrepresentable_context_reference_denies_flight_before_runtime_publication() 
                 RuntimeMutation::Schema { registry },
                 RuntimeMutation::Record {
                     record: RuntimeRecord {
-                        reference: RuntimeRef::new("native:note", "alpha").unwrap(),
+                        // An event identity is the one thing a canonical id cannot hold.
+                        reference: RuntimeRef::event(RuntimeType::new("native-note").unwrap(), 7),
                         valid_from: 10,
                         valid_to: None,
                         properties: BTreeMap::from([(
@@ -98,7 +99,7 @@ pub(super) fn seed_notes(
             registry: DataSchemaRegistry {
                 revision: 1,
                 migration: "install flight fixture".into(),
-                organisation: DataengramOrganisation::default(),
+                organisation: DataEstateOrganisation::default(),
                 tables: BTreeMap::from([(
                     note.clone(),
                     DataTableSchema {
@@ -642,7 +643,7 @@ fn prompt_flight_operations_require_their_exact_grants() {
 }
 
 #[test]
-fn the_first_flight_on_an_empty_engram_installs_the_flight_tables() {
+fn the_first_flight_on_an_empty_estate_installs_the_flight_tables() {
     let (_root, engine) = isolated_engine();
     let lease = session(&engine, "flight-empty-session");
     let scope = rrd_core::ScopeId::new(INSTANCE_SCOPE).unwrap();
@@ -664,7 +665,7 @@ fn the_first_flight_on_an_empty_engram_installs_the_flight_tables() {
     assert_eq!(record.read.schema_revision, None);
     assert_eq!(record.flight_cursor, 2, "the schema precedes the first row");
     let context = record.context.as_ref().unwrap();
-    assert_eq!(context.items, 0, "an empty engram injects nothing");
+    assert_eq!(context.items, 0, "an empty estate injects nothing");
     assert_eq!(launched.flight.events[1].kind.as_str(), "context_empty");
 
     let schema = engine.storage.runtime().schema(&scope).unwrap().unwrap();
@@ -759,7 +760,7 @@ fn each_prompt_is_a_graph_that_rrflowql_traverses_and_reads_cost_only_the_flight
     );
 
     // A flight read names its record, edges, and events by identity: the
-    // keys it examines do not grow when the engram gains unrelated flights.
+    // keys it examines do not grow when the estate gains unrelated flights.
     let read = |name: &str| {
         engine
             .read_prompt_flight(

@@ -1,6 +1,6 @@
 //! Frozen canonical identities of schema registries that use the default
-//! organisation. They were written before engram organisation existed, so
-//! every registry an engram already persisted keeps its digest, and with it
+//! organisation. They were written before estate organisation existed, so
+//! every registry an estate already persisted keeps its digest, and with it
 //! its commit identities and history proofs. Never regenerate this fixture.
 
 use rrd_core::{
@@ -85,9 +85,9 @@ fn every_model() -> RuntimeSchemaRegistry {
     registry
 }
 
-/// The engine-owned memory engram kinds, which share the `rrflow-` prefix.
+/// The engine-owned memory estate kinds, which share the `rrflow-` prefix.
 fn engine_owned() -> RuntimeSchemaRegistry {
-    let mut registry = RuntimeSchemaRegistry::empty(1, "memory engram bootstrap");
+    let mut registry = RuntimeSchemaRegistry::empty(1, "memory estate bootstrap");
     registry
         .define_record_table(
             kind("rrflow-seat"),
@@ -132,7 +132,7 @@ fn contract() -> serde_json::Value {
     let every_model = every_model();
     let engine_owned = engine_owned();
     serde_json::json!({
-        "comment": "default-organisation registries; written before engram organisation and never regenerated",
+        "comment": "default-organisation registries; written before estate organisation and never regenerated",
         "every_model": {
             "registry": every_model,
             "commit_digest": commit(every_model.clone()).digest(),

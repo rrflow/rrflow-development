@@ -6,7 +6,7 @@ facilities produce not_run. It never changes an existing cgroup or a host cap.
 """
 from __future__ import annotations
 import argparse
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 import hashlib
 import json
 import os
@@ -17,6 +17,7 @@ import sys
 import time
 
 from run_offline_lifecycle import require, run, sha256
+from sustained_progress import ProgressObserver
 
 ROOT = Path(__file__).resolve().parents[2]
 CASE = "sustained::installed_sustained_capacity"
@@ -157,7 +158,11 @@ def main():
     parser.add_argument("--configuration", required=True, type=Path)
     parser.add_argument("--evidence", required=True, type=Path)
     parser.add_argument("--cgroup-parent", type=Path)
+    parser.add_argument("--observe-progress", action="store_true", help="write bounded, non-authoritative progress observations beside evidence")
+    parser.add_argument("--progress-interval-ms", type=int, default=15000)
+    parser.add_argument("--progress-max-bytes", type=int, default=1048576)
     args = parser.parse_args()
+    observer = ProgressObserver(args.evidence.resolve(), None, args.progress_interval_ms, args.progress_max_bytes) if args.observe_progress else None
     campaign = bounded_json(args.campaign)
     validated = run("cargo", "run", "--quiet", "--locked", "-p", "rrflow-eval", "--", "storage", "campaign", "validate", str(args.campaign.resolve()), timeout=1800)
     identity = re.fullmatch(r"valid storage campaign: ([0-9a-f]{64}) purpose=(?:Characterization|Qualification); no workload executed\s*", validated.stdout)
@@ -184,9 +189,9 @@ def main():
         if "cold" in campaign["required_lanes"]:
             duration += schedule["lifecycle_ms"]
         timeout = (duration // 1000 + 600) * len(campaign["points"]) * len(campaign["seeds"])
-        if campaign["allocation"]["engrams"] > 1:
+        if campaign["allocation"]["estates"] > 1:
             timeout *= 3  # quiet, equal and abusive trials, each with full durations
-            timeout += ((campaign["allocation"]["engrams"] - 1) *
+            timeout += ((campaign["allocation"]["estates"] - 1) *
                         (schedule["measured_ms"] + 120_000) // 1000) * len(campaign["points"]) * len(campaign["seeds"])
         require(0 < timeout <= 31 * 86400, "campaign exceeds explicit one-month run bound")
         allocation = campaign["allocation"]
@@ -203,19 +208,23 @@ def main():
                 environment["RRFLOW_SUSTAINED_ALLOCATION_RECEIPT"] = json.dumps(receipt, separators=(",", ":"))
                 print("native_sustained_enforcement=" + json.dumps(receipt), flush=True)
                 state["allocation"] = receipt
-                result = run(sys.executable, str(Path(__file__).resolve()), "--enter-cgroup", str(group), *command,
-                             env=environment, timeout=timeout, process_group=True, check=False)
+                if observer is not None:
+                    observer.group = group
+                with observer if observer is not None else nullcontext():
+                    result = run(sys.executable, str(Path(__file__).resolve()), "--enter-cgroup", str(group), *command,
+                                 env=environment, timeout=timeout, process_group=True, check=False)
             state["cleanup_confirmed"] = True
         elif sys.platform == "win32":
             from owned_windows_process import run_owned
             with windows_allocation_proof(allocation, harness) as (receipt, binding):
                 environment["RRFLOW_SUSTAINED_ALLOCATION_RECEIPT"] = json.dumps(receipt, separators=(",", ":"))
                 state["allocation"] = receipt
-                result = run_owned(command, env=environment, timeout=timeout,
-                                   job_name="Local\\RRFlowCapacity-" + receipt["nonce"],
-                                   cpu_rate=10000 * receipt["vcpus"] // receipt["host_logical_cpus"],
-                                   process_memory_bytes=allocation["engine_bytes"], job_memory_bytes=allocation["engine_bytes"],
-                                   on_bound=lambda: print("native_sustained_enforcement=" + json.dumps(receipt), flush=True))
+                with observer if observer is not None else nullcontext():
+                    result = run_owned(command, env=environment, timeout=timeout,
+                                       job_name="Local\\RRFlowCapacity-" + receipt["nonce"],
+                                       cpu_rate=10000 * receipt["vcpus"] // receipt["host_logical_cpus"],
+                                       process_memory_bytes=allocation["engine_bytes"], job_memory_bytes=allocation["engine_bytes"],
+                                       on_bound=lambda: print("native_sustained_enforcement=" + json.dumps(receipt), flush=True))
             state["cleanup_confirmed"] = True
         else:
             raise NotRun("this platform needs an independently verified native VM memory allocation")

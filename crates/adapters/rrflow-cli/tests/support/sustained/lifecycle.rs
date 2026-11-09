@@ -1,4 +1,4 @@
-//! Native forced-process reopen on the same installed/configured engram used
+//! Native forced-process reopen on the same installed/configured estate used
 //! by offered load. Readback precedes retry, so replay cannot repair lost data.
 use super::*;
 
@@ -61,7 +61,7 @@ pub(super) async fn backup_started(
 }
 
 pub(super) async fn reopens(
-    engram: &engram,
+    estate: &Estate,
     child: &mut Option<super::super::process::Process>,
     work: &mut Workload,
     campaign: &StorageCampaign,
@@ -72,7 +72,7 @@ pub(super) async fn reopens(
     tokio::time::timeout(
         Duration::from_millis(campaign.schedule.lifecycle_ms.get()),
         reopen_inner(
-            engram,
+            estate,
             child,
             work,
             campaign,
@@ -86,7 +86,7 @@ pub(super) async fn reopens(
 }
 
 async fn reopen_inner(
-    engram: &engram,
+    estate: &Estate,
     child: &mut Option<super::super::process::Process>,
     work: &mut Workload,
     campaign: &StorageCampaign,
@@ -130,7 +130,7 @@ async fn reopen_inner(
         progress.writer.checkpoint_progress()?;
         receipts.push(acknowledged.receipt_sha256);
         let killed = super::super::kill(child.take().ok_or("missing owned server")?, clock);
-        let (reopened, client, identity) = engram.start_for(clock, lifetime);
+        let (reopened, client, identity) = estate.start_for(clock, lifetime);
         *child = Some(reopened);
         work.client = client;
         let mut expected = digest("c07g.reopen.expected", &work.seed)?;
@@ -209,7 +209,7 @@ async fn reopen_inner(
     for first in (0..work.records).step_by(clients) {
         // All prior reads have joined before a session can be closed.
         rotate_session(
-            engram,
+            estate,
             work,
             campaign,
             progress.point.clients.get(),

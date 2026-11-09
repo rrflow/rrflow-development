@@ -245,9 +245,7 @@ pub(in crate::engine) fn public_runtime_mutation(
 fn runtime_data_target(target: &DataTarget) -> Result<RuntimeRef> {
     match target {
         DataTarget::Reference { reference } => runtime_ref(reference),
-        DataTarget::Event { kind, cursor } => {
-            RuntimeRef::new(kind.as_str(), format!("cursor:{cursor}")).map_err(core_contract)
-        }
+        DataTarget::Event { kind, cursor } => Ok(RuntimeRef::event(runtime_id(kind)?, *cursor)),
     }
 }
 
@@ -269,15 +267,15 @@ fn runtime_id(id: &CanonicalId) -> Result<RuntimeType> {
 }
 
 fn runtime_organisation(
-    organisation: &DataengramOrganisation,
-) -> Result<rrd_core::RuntimeengramOrganisation> {
+    organisation: &DataEstateOrganisation,
+) -> Result<rrd_core::RuntimeEstateOrganisation> {
     let memberships = |entries: &BTreeMap<CanonicalId, CanonicalId>| {
         entries
             .iter()
             .map(|(identity, domain)| Ok((runtime_id(identity)?, runtime_id(domain)?)))
             .collect::<Result<BTreeMap<_, _>>>()
     };
-    Ok(rrd_core::RuntimeengramOrganisation {
+    Ok(rrd_core::RuntimeEstateOrganisation {
         domains: organisation
             .domains
             .iter()

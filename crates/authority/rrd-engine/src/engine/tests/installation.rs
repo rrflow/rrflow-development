@@ -44,6 +44,22 @@ fn plan(project: &Path) -> InstallationPreview {
     .unwrap()
 }
 
+fn plan_with_source_read(project: &Path, enabled: bool) -> InstallationPreview {
+    RrdEngine::plan_installation_with_options(
+        project,
+        InstallationTargetKind::ExistingProject,
+        &"1".repeat(64),
+        "default",
+        None,
+        crate::InstallationPlanningOptions {
+            attunement_proposal: None,
+            allow_project_source_read: enabled,
+        },
+        &test_executable(),
+    )
+    .unwrap()
+}
+
 fn test_executable() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("Cargo.toml")
 }
@@ -158,7 +174,7 @@ fn independent_installations_do_not_reuse_content_identity() {
         );
         assert_ne!(
             first_plan.installation.target, second_plan.installation.target,
-            "distinct projects with identical content must not share an engram identity"
+            "distinct projects with identical content must not share an estate identity"
         );
         let before = inventory(second.path());
         assert!(matches!(
@@ -189,7 +205,7 @@ fn independent_installations_do_not_reuse_content_identity() {
             .unwrap();
             let reopened = open_at(project, &executable, 1_800_000_000_001).unwrap();
             assert_eq!(
-                reopened.installed_engram_identity(),
+                reopened.installed_estate_identity(),
                 Some(&preview.installation.target)
             );
         }
@@ -279,7 +295,13 @@ fn planning_is_byte_identical_and_has_no_project_effect() {
     let before = inventory(project.path());
     let first = plan(project.path());
     let second = plan(project.path());
-    assert_eq!(first.installation.initial_grants, SecurityAction::ALL);
+    assert_eq!(
+        first.installation.initial_grants,
+        SecurityAction::ALL
+            .into_iter()
+            .filter(|action| *action != SecurityAction::ProjectSourceRead)
+            .collect::<Vec<_>>()
+    );
     assert_eq!(first.installation.managed_paths.len(), 13);
     assert!(serde_json::to_value(&first.installation)
         .unwrap()
@@ -290,7 +312,82 @@ fn planning_is_byte_identical_and_has_no_project_effect() {
         serde_json::to_vec(&first).unwrap(),
         serde_json::to_vec(&second).unwrap()
     );
+    assert!(serde_json::to_value(&first)
+        .unwrap()
+        .get("source_read_resource_scope")
+        .is_none());
     assert_eq!(inventory(project.path()), before);
+}
+
+#[test]
+fn source_read_is_an_explicit_canonical_installation_choice() {
+    let project = tempfile::tempdir().unwrap();
+    std::fs::write(project.path().join("README.md"), "walking product\n").unwrap();
+    let default = plan_with_source_read(project.path(), false);
+    let legacy_default_entrypoint = plan(project.path());
+    let opted_in = plan_with_source_read(project.path(), true);
+    assert_eq!(default, legacy_default_entrypoint);
+    assert_eq!(
+        serde_json::to_vec(&default).unwrap(),
+        serde_json::to_vec(&legacy_default_entrypoint).unwrap()
+    );
+    assert_eq!(
+        default.installation.initial_grants,
+        rrd_contract::installation_initial_grants(false)
+    );
+    assert_eq!(
+        opted_in.installation.initial_grants,
+        rrd_contract::installation_initial_grants(true)
+    );
+    assert!(default.source_read_resource_scope.is_none());
+    assert_eq!(
+        opted_in.source_read_resource_scope.as_deref(),
+        Some("instance_prefix")
+    );
+    assert_ne!(
+        default.installation.plan_sha256,
+        opted_in.installation.plan_sha256
+    );
+    let before = inventory(project.path());
+    assert!(RrdEngine::apply_installation_at(
+        project.path(),
+        InstallationTargetKind::ExistingProject,
+        &opted_in,
+        &"0".repeat(64),
+        1_800_000_000_000,
+        &test_executable()
+    )
+    .is_err());
+    assert_eq!(inventory(project.path()), before);
+
+    let mut forged = opted_in.clone();
+    forged.installation.initial_grants = rrd_contract::installation_initial_grants(false);
+    forged
+        .installation
+        .initial_grants
+        .retain(|action| *action != SecurityAction::ServiceInspect);
+    forged
+        .installation
+        .initial_grants
+        .push(SecurityAction::ProjectSourceRead);
+    forged.installation.initial_grants.sort();
+    forged.installation.initial_grants.dedup();
+    forged.installation.plan_sha256 = installation_plan_sha256(&forged.installation).unwrap();
+    forged.validate().unwrap();
+    assert!(RrdEngine::apply_installation_at(
+        project.path(),
+        InstallationTargetKind::ExistingProject,
+        &forged,
+        &forged.installation.plan_sha256,
+        1_800_000_000_000,
+        &test_executable()
+    )
+    .is_err());
+    assert_eq!(inventory(project.path()), before);
+
+    let mut missing_scope = opted_in;
+    missing_scope.source_read_resource_scope = None;
+    assert!(missing_scope.validate().is_err());
 }
 
 #[test]
@@ -301,11 +398,11 @@ fn configuration_input_rejects_unknown_oversized_and_symbolic_sources() {
         "format_version = 1\nunknown_authority = true\n",
     )
     .unwrap();
-    assert!(crate::load_engram_configuration(Some(invalid.path())).is_err());
+    assert!(crate::load_estate_configuration(Some(invalid.path())).is_err());
 
     let oversized = tempfile::NamedTempFile::new().unwrap();
     std::fs::write(oversized.path(), vec![b' '; 64 * 1024 + 1]).unwrap();
-    assert!(crate::load_engram_configuration(Some(oversized.path())).is_err());
+    assert!(crate::load_estate_configuration(Some(oversized.path())).is_err());
 
     #[cfg(unix)]
     {
@@ -316,7 +413,7 @@ fn configuration_input_rejects_unknown_oversized_and_symbolic_sources() {
         let symbolic = directory.path().join("selected.toml");
         std::fs::write(&target, "format_version = 1\n").unwrap();
         symlink(target, &symbolic).unwrap();
-        assert!(crate::load_engram_configuration(Some(&symbolic)).is_err());
+        assert!(crate::load_estate_configuration(Some(&symbolic)).is_err());
     }
 }
 
@@ -348,7 +445,7 @@ fn exact_apply_reopens_and_quick_verification_changes_no_bytes() {
     let engine = open_at(project.path(), &executable, 1_800_000_000_001).unwrap();
     assert!(engine.security_enforced().unwrap());
     assert_eq!(
-        engine.installed_engram_identity(),
+        engine.installed_estate_identity(),
         Some(&preview.installation.target)
     );
     assert_eq!(
@@ -356,7 +453,7 @@ fn exact_apply_reopens_and_quick_verification_changes_no_bytes() {
         Some(&preview.installation.deployment)
     );
     assert_eq!(
-        engine.engram_configuration(),
+        engine.estate_configuration(),
         &preview.installation.configuration
     );
     assert_eq!(
@@ -837,66 +934,6 @@ fn rehashed_profile_field_forgery_fails_before_any_project_effect() {
 }
 
 #[test]
-fn the_project_map_describes_the_project_and_keeps_the_owners_notes() {
-    let project = tempfile::tempdir().unwrap();
-    let executable = test_executable();
-    let write = |relative: &str, bytes: &[u8]| {
-        let path = project.path().join(relative);
-        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
-        std::fs::write(path, bytes).unwrap();
-    };
-    write(".gitignore", b"node_modules/\n");
-    write("README.md", b"# demo\n");
-    write("package.json", b"{}\n");
-    write("src/app.ts", &[b'x'; 300]);
-    write("src/util.ts", &[b'x'; 100]);
-    write("docs/guide.md", &[b'x'; 50]);
-    write("node_modules/pkg/index.js", b"ignored\n");
-    let preview = plan(project.path());
-    RrdEngine::apply_installation_at(
-        project.path(),
-        InstallationTargetKind::ExistingProject,
-        &preview,
-        &preview.installation.plan_sha256,
-        1_800_000_000_000,
-        &executable,
-    )
-    .unwrap();
-
-    let first = RrdEngine::refresh_project_map(project.path()).unwrap();
-    assert!(first.changed);
-    assert_eq!(first.files, 6);
-    let path = project.path().join(crate::PROJECT_MAP_RELATIVE_PATH);
-    let map = std::fs::read_to_string(&path).unwrap();
-    let name = project.path().file_name().unwrap().to_str().unwrap();
-    assert!(map.starts_with(&format!("# Project map: {name}\n")));
-    assert!(map.contains("- **Kind:** JavaScript/TypeScript (npm)"));
-    assert!(map.contains("- `README.md`: the project's own introduction"));
-    assert!(map.contains("| `src/` | 2 | 400 B | TypeScript |"));
-    assert!(map.contains("| `docs/` | 1 | 50 B | Markdown |"));
-    assert!(!map.contains("node_modules"));
-
-    // The owner's notes survive; an unchanged project is not rewritten.
-    let edited = map.replace(
-        "RRFlow keeps this section exactly as you leave it.",
-        "Ship the checkout flow first.",
-    );
-    std::fs::write(&path, &edited).unwrap();
-    let unchanged = RrdEngine::refresh_project_map(project.path()).unwrap();
-    assert!(!unchanged.changed);
-    assert_eq!(std::fs::read_to_string(&path).unwrap(), edited);
-
-    // The map evolves with the project and still keeps the notes.
-    write("src/cart.ts", &[b'x'; 100]);
-    let evolved = RrdEngine::refresh_project_map(project.path()).unwrap();
-    assert!(evolved.changed);
-    let map = std::fs::read_to_string(&path).unwrap();
-    assert!(map.contains("| `src/` | 3 | 500 B | TypeScript |"));
-    assert!(map.contains("Ship the checkout flow first."));
-    assert!(!project.path().join(".rrflow/.project-map.pending").exists());
-}
-
-#[test]
 fn fresh_project_apply_and_exact_replay_are_supported() {
     let project = tempfile::tempdir().unwrap();
     let executable = test_executable();
@@ -1033,7 +1070,7 @@ max_elapsed_ms = 5000
     )
     .unwrap();
     let engine = open_at(project.path(), &executable, 1_799_999_999_750).unwrap();
-    assert_eq!(engine.engram_configuration().query.max_rows, 9);
+    assert_eq!(engine.estate_configuration().query.max_rows, 9);
     drop(engine);
     let tolerated = inspect_at(project.path(), &executable, 1_799_999_999_750).unwrap();
     assert_eq!(
@@ -1091,7 +1128,7 @@ fn installed_locator_relocates_but_never_walks_ancestors_or_pairs_foreign_state(
     std::fs::rename(&original, &moved).unwrap();
     let relocated = open_at(&moved, &executable, 1_800_000_000_001).unwrap();
     assert_eq!(
-        relocated.installed_engram_identity(),
+        relocated.installed_estate_identity(),
         Some(&preview.installation.target)
     );
     drop(relocated);
@@ -1163,7 +1200,7 @@ fn pre_canonical_rrflow_state_blocks_a_parallel_installation_authority() {
 
 #[test]
 fn installed_backups_and_restore_staging_live_beside_the_storage_roots() {
-    use crate::engine::engram_layout::{validate_recovery_engram, engramLayout};
+    use crate::engine::estate_layout::{validate_recovery_estate, EstateLayout};
     use rrd_contract::{
         CreateInstanceBackup, CreateSession, ListInstanceBackups, RestoreInstanceBackup,
         SessionLimits,
@@ -1284,20 +1321,20 @@ fn installed_backups_and_restore_staging_live_beside_the_storage_roots() {
         !inventory(project.path()).keys().any(|path| path
             .components()
             .any(|component| component.as_os_str() == "rrd-service")),
-        "an installed engram has no rrd-service tree"
+        "an installed estate has no rrd-service tree"
     );
 
     let layout =
-        engramLayout::new(&storage_root_id, &preview.installation.initial_principal_id).unwrap();
-    validate_recovery_engram(
-        &super::super::engram_layout::engramFilesystem::admit(
+        EstateLayout::new(&storage_root_id, &preview.installation.initial_principal_id).unwrap();
+    validate_recovery_estate(
+        &super::super::estate_layout::EstateFilesystem::admit(
             rrd_store::filesystem::AnchoredPath::open_root(project.path()).unwrap(),
             false,
         )
         .unwrap(),
         &layout,
     )
-    .expect("install recovery accepts an engram that holds backups and restore staging");
+    .expect("install recovery accepts an estate that holds backups and restore staging");
 
     let reopened = RrdEngine::open_installed(project.path(), &executable).unwrap();
     assert_eq!(
@@ -1309,7 +1346,7 @@ fn installed_backups_and_restore_staging_live_beside_the_storage_roots() {
     );
 }
 
-struct Installedengram {
+struct InstalledEstate {
     _project: tempfile::TempDir,
     project_path: PathBuf,
     executable: PathBuf,
@@ -1319,7 +1356,7 @@ struct Installedengram {
 
 /// Installs a project, opens it as the product does, and authenticates with
 /// the installed credential. The caller owns the session.
-fn install_and_open() -> (Installedengram, RrdEngine, SessionLease) {
+fn install_and_open() -> (InstalledEstate, RrdEngine, SessionLease) {
     use rrd_contract::{CreateSession, InstallationManagedPathKind, SessionLimits};
 
     let project = tempfile::tempdir().unwrap();
@@ -1353,7 +1390,7 @@ fn install_and_open() -> (Installedengram, RrdEngine, SessionLease) {
             "operation-installed-session",
         )
         .unwrap();
-    let engram = Installedengram {
+    let estate = InstalledEstate {
         project_path: project.path().to_path_buf(),
         active_root: project.path().join(
             &preview
@@ -1365,7 +1402,7 @@ fn install_and_open() -> (Installedengram, RrdEngine, SessionLease) {
         executable,
         instance: preview.installation.target.instance_id.clone(),
     };
-    (engram, engine, lease)
+    (estate, engine, lease)
 }
 
 fn restore(
@@ -1397,7 +1434,7 @@ fn restore(
 fn a_restore_into_an_existing_verified_target_is_recovered_without_a_second_writer() {
     use rrd_contract::CreateInstanceBackup;
 
-    let (engram, engine, lease) = install_and_open();
+    let (estate, engine, lease) = install_and_open();
     let backup = engine
         .create_instance_backup(
             &lease.session_id,
@@ -1423,10 +1460,10 @@ fn a_restore_into_an_existing_verified_target_is_recovered_without_a_second_writ
     )
     .unwrap();
     assert!(!fresh.idempotent_replay);
-    let target = engram
+    let target = estate
         .project_path
         .join(".rrflow/rrd/restores")
-        .join(engram.instance.as_str())
+        .join(estate.instance.as_str())
         .join("restore-one");
     assert!(target.is_dir());
 
@@ -1448,10 +1485,10 @@ fn a_restore_into_an_existing_verified_target_is_recovered_without_a_second_writ
 
     // An existing target that is not a restored store fails closed instead of
     // being created as a new database.
-    let empty = engram
+    let empty = estate
         .project_path
         .join(".rrflow/rrd/restores")
-        .join(engram.instance.as_str())
+        .join(estate.instance.as_str())
         .join("restore-empty");
     std::fs::create_dir_all(&empty).unwrap();
     let refused = restore(
@@ -1486,7 +1523,7 @@ fn control_journal(store: &rrd_store::RrflowKvStore) -> Vec<rrd_store::ControlJo
     }
 }
 
-/// POAM-031 closure, first half: a backup of an installed engram carries the
+/// POAM-031 closure, first half: a backup of an installed estate carries the
 /// installed control state as replayable control-journal entries, so a
 /// restored root holds the installed record, the install checkpoint, the
 /// active configuration, the security policy, and an audit chain that reads
@@ -1498,7 +1535,7 @@ fn control_journal(store: &rrd_store::RrflowKvStore) -> Vec<rrd_store::ControlJo
 fn a_restored_root_carries_the_installed_control_state() {
     use rrd_contract::CreateInstanceBackup;
 
-    let (engram, engine, lease) = install_and_open();
+    let (estate, engine, lease) = install_and_open();
     let backup = engine
         .create_instance_backup(
             &lease.session_id,
@@ -1514,13 +1551,13 @@ fn a_restored_root_carries_the_installed_control_state() {
         )
         .unwrap();
     assert!(backup.backup.application_complete);
-    let families = super::super::backup::installed_control_families(&engram.instance);
+    let families = super::super::backup::installed_control_families(&estate.instance);
     rrd_store::validate_control_families(&families).unwrap();
     let catalogue = rrd_store::load_backup_catalogue(
-        &engram
+        &estate
             .project_path
             .join(".rrflow/rrd/backups")
-            .join(engram.instance.as_str()),
+            .join(estate.instance.as_str()),
     )
     .unwrap();
     assert_eq!(
@@ -1551,20 +1588,20 @@ fn a_restored_root_carries_the_installed_control_state() {
     .unwrap();
     drop(engine);
 
-    let active = rrd_store::RrflowKvStore::open_existing(&engram.active_root).unwrap();
+    let active = rrd_store::RrflowKvStore::open_existing(&estate.active_root).unwrap();
     let restored = rrd_store::RrflowKvStore::open_existing(
-        &engram
+        &estate
             .project_path
             .join(".rrflow/rrd/restores")
-            .join(engram.instance.as_str())
+            .join(estate.instance.as_str())
             .join("restore-one"),
     )
     .unwrap();
 
-    // Installed state that the engram has not changed since install is
+    // Installed state that the estate has not changed since install is
     // byte-identical in the restored root.
-    let configuration_key = format!("server/state/{}/configuration/active", engram.instance);
-    let security_key = format!("server/state/{}/security/policy", engram.instance);
+    let configuration_key = format!("server/state/{}/configuration/active", estate.instance);
+    let security_key = format!("server/state/{}/security/policy", estate.instance);
     for key in [
         "server/state/install/record",
         "server/state/install/checkpoint",
@@ -1611,9 +1648,9 @@ fn a_restored_root_carries_the_installed_control_state() {
         assert_eq!(restored_entry.operation_id, source_entry.operation_id);
     }
     let excluded = [
-        format!("server/state/{}/session/", engram.instance),
-        format!("server/state/{}/backup/", engram.instance),
-        format!("server/state/{}/restore/", engram.instance),
+        format!("server/state/{}/session/", estate.instance),
+        format!("server/state/{}/backup/", estate.instance),
+        format!("server/state/{}/restore/", estate.instance),
     ];
     assert!(
         control_journal(&active)
@@ -1642,13 +1679,13 @@ fn a_restored_root_carries_the_installed_control_state() {
 
     // The audit chain reads back from the restored root and closes on its
     // durable head.
-    let page = SecurityRepository::new(&restored, engram.instance.clone())
+    let page = SecurityRepository::new(&restored, estate.instance.clone())
         .audit_since(0, 64)
         .unwrap();
     let head: serde_json::Value = serde_json::from_slice(
         &restored
             .control()
-            .get(&format!("server/state/{}/audit-head", engram.instance))
+            .get(&format!("server/state/{}/audit-head", estate.instance))
             .unwrap()
             .expect("the restored root holds the audit head"),
     )
@@ -1666,7 +1703,7 @@ fn a_restored_root_carries_the_installed_control_state() {
         head["audit_sha256"].as_str()
     );
     assert!(
-        rrd_security::SecurityRepository::new(&restored, engram.instance.clone())
+        rrd_security::SecurityRepository::new(&restored, estate.instance.clone())
             .is_initialized()
             .unwrap(),
         "the restored root has a security authority"
@@ -1677,10 +1714,10 @@ fn a_restored_root_carries_the_installed_control_state() {
     assert!(progress.complete);
     assert_eq!(progress.applied, archive.entry_count);
     assert!(
-        !engram
+        !estate
             .project_path
             .join(".rrflow/rrd/restores")
-            .join(engram.instance.as_str())
+            .join(estate.instance.as_str())
             .join("restore-one")
             .join("RRD.TOKEN")
             .exists(),
@@ -1689,18 +1726,18 @@ fn a_restored_root_carries_the_installed_control_state() {
     drop(restored);
     drop(active);
     assert!(
-        RrdEngine::open_installed(&engram.project_path, &engram.executable).is_ok(),
-        "the active engram still opens"
+        RrdEngine::open_installed(&estate.project_path, &estate.executable).is_ok(),
+        "the active estate still opens"
     );
 }
 
 /// Installs, backs up, stages a restore of that backup, then performs more
-/// audited work on the active engram so the restored state is visibly older
+/// audited work on the active estate so the restored state is visibly older
 /// than the active one. Returns the backup identity and the restore id.
-fn install_backup_and_stage() -> (Installedengram, String, CanonicalId) {
+fn install_backup_and_stage() -> (InstalledEstate, String, CanonicalId) {
     use rrd_contract::CreateInstanceBackup;
 
-    let (engram, engine, lease) = install_and_open();
+    let (estate, engine, lease) = install_and_open();
     let backup = engine
         .create_instance_backup(
             &lease.session_id,
@@ -1725,7 +1762,7 @@ fn install_backup_and_stage() -> (Installedengram, String, CanonicalId) {
         1_800_000_000_300,
     )
     .unwrap();
-    // Later work on the active engram: another backup, which appends audit
+    // Later work on the active estate: another backup, which appends audit
     // records and operation receipts the restored state must not carry.
     engine
         .create_instance_backup(
@@ -1742,14 +1779,14 @@ fn install_backup_and_stage() -> (Installedengram, String, CanonicalId) {
         )
         .unwrap();
     drop(engine);
-    (engram, backup.backup.backup_sha256, restore_id)
+    (estate, backup.backup.backup_sha256, restore_id)
 }
 
-fn authenticated_readiness(engram: &Installedengram, now: u64) -> rrd_contract::Readiness {
+fn authenticated_readiness(estate: &InstalledEstate, now: u64) -> rrd_contract::Readiness {
     use rrd_contract::{CreateSession, SessionLimits};
 
-    let engine = RrdEngine::open_installed(&engram.project_path, &engram.executable).unwrap();
-    let api_key = RrdEngine::read_installed_api_key(&engram.project_path).unwrap();
+    let engine = RrdEngine::open_installed(&estate.project_path, &estate.executable).unwrap();
+    let api_key = RrdEngine::read_installed_api_key(&estate.project_path).unwrap();
     engine
         .create_authenticated_session(
             &api_key.principal_id,
@@ -1766,54 +1803,54 @@ fn authenticated_readiness(engram: &Installedengram, now: u64) -> rrd_contract::
             "request-published-session",
             "operation-published-session",
         )
-        .expect("the published engram authenticates its operator credential");
+        .expect("the published estate authenticates its operator credential");
     engine.readiness(now).unwrap()
 }
 
 /// POAM-031 closure, second half (Decision 6 A): a verified restore staging
 /// root is published into the storage root's own name, the previous root is
 /// quarantined beside the staging roots, the token key travels with the
-/// engram rather than with the backup, and the published engram opens through
+/// estate rather than with the backup, and the published estate opens through
 /// `open_installed` and reaches authenticated readiness at the backup's state.
 #[test]
-fn a_staged_restore_is_published_in_place_and_the_engram_opens_from_the_backup() {
-    use crate::engine::engram_layout::{validate_recovery_engram, engramLayout};
+fn a_staged_restore_is_published_in_place_and_the_estate_opens_from_the_backup() {
+    use crate::engine::estate_layout::{validate_recovery_estate, EstateLayout};
 
-    let (engram, backup_sha256, restore_id) = install_backup_and_stage();
-    let locator = RrdEngine::read_project_locator(&engram.project_path).unwrap();
-    let candidate = engram
+    let (estate, backup_sha256, restore_id) = install_backup_and_stage();
+    let locator = RrdEngine::read_project_locator(&estate.project_path).unwrap();
+    let candidate = estate
         .project_path
         .join(".rrflow/rrd/restores")
-        .join(engram.instance.as_str())
+        .join(estate.instance.as_str())
         .join(restore_id.as_str());
-    let active_before = rrd_store::RrflowKvInspector::open(&engram.active_root).unwrap();
+    let active_before = rrd_store::RrflowKvInspector::open(&estate.active_root).unwrap();
     let active_control_sequence = active_before.inspection().control_journal_sequence;
     drop(active_before);
 
-    // Planning fails while the engram is served and writes nothing.
-    let served = RrdEngine::open_installed(&engram.project_path, &engram.executable).unwrap();
+    // Planning fails while the estate is served and writes nothing.
+    let served = RrdEngine::open_installed(&estate.project_path, &estate.executable).unwrap();
     assert!(
         RrdEngine::plan_restore_publication(
-            &engram.project_path,
+            &estate.project_path,
             &restore_id,
             &backup_sha256,
-            &engram.executable,
+            &estate.executable,
         )
         .is_err(),
-        "a served engram cannot be published over"
+        "a served estate cannot be published over"
     );
     drop(served);
-    let before = inventory(&engram.project_path);
+    let before = inventory(&estate.project_path);
 
     let plan = RrdEngine::plan_restore_publication(
-        &engram.project_path,
+        &estate.project_path,
         &restore_id,
         &backup_sha256,
-        &engram.executable,
+        &estate.executable,
     )
     .unwrap();
     assert_eq!(
-        inventory(&engram.project_path),
+        inventory(&estate.project_path),
         before,
         "planning has no effect"
     );
@@ -1822,13 +1859,13 @@ fn a_staged_restore_is_published_in_place_and_the_engram_opens_from_the_backup()
     assert_eq!(plan.active_root, locator.storage_root);
     assert_eq!(
         plan.candidate_root,
-        format!(".rrflow/rrd/restores/{}/{}", engram.instance, restore_id)
+        format!(".rrflow/rrd/restores/{}/{}", estate.instance, restore_id)
     );
     assert_eq!(
         plan.quarantine_root,
         format!(
             ".rrflow/rrd/restores/{}/{}.quarantined-{}",
-            engram.instance, restore_id, plan.storage_root_id
+            estate.instance, restore_id, plan.storage_root_id
         )
     );
     assert_eq!(
@@ -1837,36 +1874,36 @@ fn a_staged_restore_is_published_in_place_and_the_engram_opens_from_the_backup()
     );
     assert!(
         plan.active.control_journal_sequence > plan.candidate.control_journal_sequence,
-        "the active engram has moved past the backup"
+        "the active estate has moved past the backup"
     );
     assert_eq!(plan.active.runtime_cursor, plan.candidate.runtime_cursor);
     let replanned = RrdEngine::plan_restore_publication(
-        &engram.project_path,
+        &estate.project_path,
         &restore_id,
         &backup_sha256,
-        &engram.executable,
+        &estate.executable,
     )
     .unwrap();
     assert_eq!(replanned, plan, "planning is deterministic");
     assert!(
         RrdEngine::apply_restore_publication(
-            &engram.project_path,
+            &estate.project_path,
             &plan,
             &"0".repeat(64),
             1_800_000_000_500,
-            &engram.executable,
+            &estate.executable,
         )
         .is_err(),
         "an unaccepted digest applies nothing"
     );
-    assert_eq!(inventory(&engram.project_path), before);
+    assert_eq!(inventory(&estate.project_path), before);
 
     let result = RrdEngine::apply_restore_publication(
-        &engram.project_path,
+        &estate.project_path,
         &plan,
         &plan.plan_sha256,
         1_800_000_000_500,
-        &engram.executable,
+        &estate.executable,
     )
     .unwrap();
     result.validate_for(&plan).unwrap();
@@ -1875,7 +1912,7 @@ fn a_staged_restore_is_published_in_place_and_the_engram_opens_from_the_backup()
     assert_eq!(result.quarantine_root, plan.quarantine_root);
     assert_eq!(result.runtime_cursor, plan.candidate.runtime_cursor);
     assert!(!candidate.exists(), "the candidate moved into roots/");
-    let quarantine = engram.project_path.join(&plan.quarantine_root);
+    let quarantine = estate.project_path.join(&plan.quarantine_root);
     assert!(quarantine.is_dir(), "the previous root is quarantined");
     let quarantined = rrd_store::RrflowKvInspector::open(&quarantine).unwrap();
     assert_eq!(
@@ -1884,57 +1921,57 @@ fn a_staged_restore_is_published_in_place_and_the_engram_opens_from_the_backup()
         "the quarantined root is the previous active root, untouched"
     );
     drop(quarantined);
-    let mut roots = std::fs::read_dir(engram.project_path.join(".rrflow/rrd/roots"))
+    let mut roots = std::fs::read_dir(estate.project_path.join(".rrflow/rrd/roots"))
         .unwrap()
         .map(|entry| entry.unwrap().file_name().into_string().unwrap())
         .collect::<Vec<_>>();
     roots.sort();
     assert_eq!(roots, [plan.storage_root_id.to_string()]);
     assert!(
-        !engram
+        !estate
             .project_path
             .join(".rrflow/rrd/restores")
-            .join(engram.instance.as_str())
+            .join(estate.instance.as_str())
             .join(format!(".publish-{restore_id}.json"))
             .exists(),
         "the intent is acknowledged"
     );
-    let token = std::fs::read(engram.active_root.join("RRD.TOKEN")).unwrap();
+    let token = std::fs::read(estate.active_root.join("RRD.TOKEN")).unwrap();
     assert_eq!(digest::sha256_hex(&token), plan.token_key_sha256);
     assert_eq!(
         std::fs::read(quarantine.join("RRD.TOKEN")).unwrap(),
         token,
-        "the token key travels with the engram"
+        "the token key travels with the estate"
     );
-    let layout = engramLayout::new(
+    let layout = EstateLayout::new(
         &plan.storage_root_id,
-        &RrdEngine::read_installed_api_key(&engram.project_path)
+        &RrdEngine::read_installed_api_key(&estate.project_path)
             .unwrap()
             .principal_id,
     )
     .unwrap();
-    validate_recovery_engram(
-        &super::super::engram_layout::engramFilesystem::admit(
-            rrd_store::filesystem::AnchoredPath::open_root(&engram.project_path).unwrap(),
+    validate_recovery_estate(
+        &super::super::estate_layout::EstateFilesystem::admit(
+            rrd_store::filesystem::AnchoredPath::open_root(&estate.project_path).unwrap(),
             false,
         )
         .unwrap(),
         &layout,
     )
-    .expect("install recovery accepts the published engram");
+    .expect("install recovery accepts the published estate");
 
-    // POAM-031 closure: the published root is the installed engram.
-    let readiness = authenticated_readiness(&engram, 1_800_000_000_600);
+    // POAM-031 closure: the published root is the installed estate.
+    let readiness = authenticated_readiness(&estate, 1_800_000_000_600);
     assert_eq!(readiness.runtime_cursor, plan.candidate.runtime_cursor);
-    let report = RrdEngine::inspect_installed(&engram.project_path, &engram.executable).unwrap();
+    let report = RrdEngine::inspect_installed(&estate.project_path, &estate.executable).unwrap();
     assert_eq!(report.status, InstallationVerificationStatus::Passed);
-    let published = rrd_store::RrflowKvStore::open_existing(&engram.active_root).unwrap();
+    let published = rrd_store::RrflowKvStore::open_existing(&estate.active_root).unwrap();
     assert!(
         published
             .control()
             .get(&format!(
                 "server/state/{}/restore/publication/{}",
-                engram.instance, plan.id
+                estate.instance, plan.id
             ))
             .unwrap()
             .is_some(),
@@ -1950,11 +1987,11 @@ fn a_staged_restore_is_published_in_place_and_the_engram_opens_from_the_backup()
     // Replay returns the recorded receipt; a new plan for the consumed
     // candidate is refused.
     let replay = RrdEngine::apply_restore_publication(
-        &engram.project_path,
+        &estate.project_path,
         &plan,
         &plan.plan_sha256,
         1_800_000_000_700,
-        &engram.executable,
+        &estate.executable,
     )
     .unwrap();
     assert!(replay.idempotent_replay);
@@ -1962,10 +1999,10 @@ fn a_staged_restore_is_published_in_place_and_the_engram_opens_from_the_backup()
     assert_eq!(replay.action_results, result.action_results);
     assert_eq!(replay.applied_at_unix_ms, result.applied_at_unix_ms);
     assert!(RrdEngine::plan_restore_publication(
-        &engram.project_path,
+        &estate.project_path,
         &restore_id,
         &backup_sha256,
-        &engram.executable,
+        &estate.executable,
     )
     .is_err());
 }
@@ -1980,54 +2017,54 @@ fn an_interrupted_publication_resumes_from_its_recorded_stage() {
         PublicationStage::ActiveQuarantined,
         PublicationStage::CandidatePublished,
     ] {
-        let (engram, backup_sha256, restore_id) = install_backup_and_stage();
+        let (estate, backup_sha256, restore_id) = install_backup_and_stage();
         let plan = RrdEngine::plan_restore_publication(
-            &engram.project_path,
+            &estate.project_path,
             &restore_id,
             &backup_sha256,
-            &engram.executable,
+            &estate.executable,
         )
         .unwrap();
         let interrupted = RrdEngine::apply_restore_publication_with_failure(
-            &engram.project_path,
+            &estate.project_path,
             &plan,
             &plan.plan_sha256,
             1_800_000_000_500,
-            &engram.executable,
+            &estate.executable,
             fail_after,
         );
         assert!(interrupted.is_err(), "failpoint after {fail_after:?} fires");
-        let intent = engram
+        let intent = estate
             .project_path
             .join(".rrflow/rrd/restores")
-            .join(engram.instance.as_str())
+            .join(estate.instance.as_str())
             .join(format!(".publish-{restore_id}.json"));
         assert!(intent.is_file(), "the intent survives the interruption");
         assert!(
             RrdEngine::plan_restore_publication(
-                &engram.project_path,
+                &estate.project_path,
                 &restore_id,
                 &backup_sha256,
-                &engram.executable,
+                &estate.executable,
             )
             .is_err(),
             "an in-progress publication refuses a second plan"
         );
 
         let result = RrdEngine::apply_restore_publication(
-            &engram.project_path,
+            &estate.project_path,
             &plan,
             &plan.plan_sha256,
             1_800_000_000_600,
-            &engram.executable,
+            &estate.executable,
         )
         .unwrap_or_else(|error| panic!("resume after {fail_after:?} failed: {error}"));
         result.validate_for(&plan).unwrap();
         assert!(!result.idempotent_replay);
         assert!(!intent.exists());
-        assert!(engram.project_path.join(&plan.quarantine_root).is_dir());
-        assert!(!engram.project_path.join(&plan.candidate_root).exists());
-        let readiness = authenticated_readiness(&engram, 1_800_000_000_700);
+        assert!(estate.project_path.join(&plan.quarantine_root).is_dir());
+        assert!(!estate.project_path.join(&plan.candidate_root).exists());
+        let readiness = authenticated_readiness(&estate, 1_800_000_000_700);
         assert_eq!(readiness.runtime_cursor, plan.candidate.runtime_cursor);
     }
 }

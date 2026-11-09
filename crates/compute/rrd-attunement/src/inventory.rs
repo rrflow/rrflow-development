@@ -14,7 +14,7 @@ const FORMAT_VERSION: u32 = 1;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SourceScope {
-    pub engram: String,
+    pub estate: String,
     pub project: String,
     /// Logical coordinate, never a host-absolute path.
     pub root: String,
@@ -270,6 +270,12 @@ impl Proposal {
     pub fn entries(&self) -> &[Entry] {
         &self.entries
     }
+    pub fn revisions(&self) -> &Revisions {
+        &self.revisions
+    }
+    pub fn scope(&self) -> &SourceScope {
+        &self.scope
+    }
     pub fn changes(&self) -> &Changes {
         &self.changes
     }
@@ -322,7 +328,7 @@ impl<'a> Builder<'a> {
         limits: Limits,
         prior: Option<&'a Proposal>,
     ) -> Result<Self> {
-        if [&scope.engram, &scope.project, &scope.root]
+        if [&scope.estate, &scope.project, &scope.root]
             .iter()
             .any(|s| !identifier(s))
         {

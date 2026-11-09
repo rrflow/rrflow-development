@@ -117,7 +117,7 @@ The current generated projection contains:
   `7efde511a5ba3b1cad630d2c63c473a966fb871182c8bd3a5fb85c3673924a11`.
 
 That audit describes an earlier projection. The current generated OpenAPI
-SHA-256 is `f14071c71318062cd2b1a9fca491a16d91b4481e98c3e0bcefeeaf98359ed580`.
+SHA-256 is `fb09bd98e533e3330b86e461a82ce7a6cd02a1cc0d31888cc72dedbe3f767797`.
 
 It does not generate request models, response models, error-code constraints,
 path-parameter sets, security actions, exact success statuses, media types,
@@ -284,7 +284,7 @@ uncertain observation or mutation outcome. They retain safe bounded causes and
 server details without embedding uncontrolled transport strings or secrets.
 
 Every operation propagates canonical request and operation IDs plus valid W3C
-`traceparent`/`tracengram`. Attempts are child spans of one semantic operation;
+`traceparent`/`tracestate`. Attempts are child spans of one semantic operation;
 reconnects and endpoint rotation are causal links. Trace output is redacted
 and bounded and never becomes completion truth, durable state, or hidden model
 reasoning.
@@ -363,7 +363,7 @@ Current evidence is deliberately bounded:
 The live script currently exercises capability retry/version rejection,
 catalogue count, one authentication denial, session create/renew/close, vector
 ensure/search, transaction begin/preview/abort/commit, one query, changefeed
-read/follow/local deadline, backup create/list, and engram read. Its shared
+read/follow/local deadline, backup create/list, and estate read. Its shared
 domain labels overstate CRUD, backup/restore, vectors, live delivery, typed
 errors, retry/failure gaps, cancellation, and version/package coverage as
 catalogued in the [Rust reference](rust.md#conformance-that-actually-counts).
@@ -458,7 +458,7 @@ The dependency order is:
   distinguishes source and wheel artifacts; RRFlow additionally requires a
   deterministic signed offline dependency closure and network-denied install.
 - [W3C Trace Context](https://www.w3.org/TR/trace-context/) defines
-  `traceparent` and `tracengram`; RRFlow owns its redaction, bounded causal
+  `traceparent` and `tracestate`; RRFlow owns its redaction, bounded causal
   attributes, and evidence semantics.
 - [OWASP logging guidance](https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html#data-to-exclude)
   excludes access tokens, authentication secrets, and session identifiers from

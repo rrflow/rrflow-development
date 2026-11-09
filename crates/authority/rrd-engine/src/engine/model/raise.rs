@@ -158,11 +158,8 @@ pub(in crate::engine) fn public_data_target(
     if model.is_event_like() {
         let cursor = reference
             .id
-            .as_str()
-            .strip_prefix("cursor:")
-            .ok_or_else(|| ServiceError::Changefeed("event identity lacks cursor prefix".into()))?
-            .parse::<u64>()
-            .map_err(|_| ServiceError::Changefeed("event identity has invalid cursor".into()))?;
+            .event_cursor()
+            .ok_or_else(|| ServiceError::Changefeed("event identity lacks a cursor".into()))?;
         Ok(DataTarget::Event {
             kind: public_change_id(reference.kind.as_str())?,
             cursor,
@@ -195,8 +192,8 @@ pub(in crate::engine) fn public_properties(
 }
 
 fn public_organisation(
-    organisation: &rrd_core::RuntimeengramOrganisation,
-) -> Result<DataengramOrganisation> {
+    organisation: &rrd_core::RuntimeEstateOrganisation,
+) -> Result<DataEstateOrganisation> {
     let id = |value: &RuntimeType| public_change_id(value.as_str());
     let memberships = |entries: &BTreeMap<RuntimeType, RuntimeType>| {
         entries
@@ -204,7 +201,7 @@ fn public_organisation(
             .map(|(identity, domain)| Ok((id(identity)?, id(domain)?)))
             .collect::<Result<BTreeMap<_, _>>>()
     };
-    Ok(DataengramOrganisation {
+    Ok(DataEstateOrganisation {
         domains: organisation
             .domains
             .iter()

@@ -161,10 +161,10 @@ impl RrdEngine {
             let retention_sha256 = diagnostic_retention_sha256(&retention)?;
             let query_indexes = diagnostic_query_indexes(self, &scope, &request.scope)?;
             let vector_collections = diagnostic_vector_collections(self, &scope, &request.scope)?;
-            let engram = rrd_engram::engramRepository::new(&self.storage, self.instance.clone())
+            let estate = rrd_estate::EstateRepository::new(&self.storage, self.instance.clone())
                 .load()?
                 .as_ref()
-                .map(rrd_engram::public_snapshot);
+                .map(rrd_estate::public_snapshot);
             let changes = self.read_changefeed_page(&ReadChangefeed {
                 scope: request.scope.clone(),
                 after_cursor: request.changes_after_cursor,
@@ -203,7 +203,7 @@ impl RrdEngine {
                 &vector_artifacts,
                 &query_indexes,
                 &vector_collections,
-                engram.as_ref(),
+                estate.as_ref(),
                 &storage,
                 &changes,
                 &audit,
@@ -234,7 +234,7 @@ impl RrdEngine {
                 vector_artifacts,
                 query_indexes,
                 vector_collections,
-                engram,
+                estate,
                 storage,
                 changes,
                 audit,
@@ -695,7 +695,7 @@ fn diagnostic_sections(
     vector_artifacts: &DiagnosticVectorArtifactCatalogueSnapshot,
     query_indexes: &QueryIndexCatalogueSnapshot,
     vector_collections: &VectorCollectionCatalogueSnapshot,
-    engram: Option<&rrd_contract::engramSnapshot>,
+    estate: Option<&rrd_contract::EstateSnapshot>,
     storage: &DiagnosticStorageSnapshot,
     changes: &ChangefeedPage,
     audit: &AuditPage,
@@ -718,10 +718,10 @@ fn diagnostic_sections(
             Some(changes.requested_after_cursor),
         )?,
         section(
-            "engram",
+            "estate",
             DiagnosticAuthority::Authoritative,
             DiagnosticCoverage::Complete,
-            usize::from(engram.is_some()),
+            usize::from(estate.is_some()),
             known_at_cursor,
             None,
         )?,

@@ -65,6 +65,58 @@ impl ValidatedOperation for crate::operations::TaskWorkerExecute {
         response.validate_request_identity(request)
     }
 }
+
+impl ValidatedOperation for crate::operations::TaskAssessmentExecute {
+    fn validate_request(request: &Self::Request) -> rrd_contract::Result<()> {
+        request.validate()
+    }
+
+    fn validate_response(
+        request: &Self::Request,
+        response: &Self::Response,
+    ) -> rrd_contract::Result<()> {
+        if response.contract_version != rrd_contract::TASK_ASSESSMENT_VERSION
+            || response.scope != request.scope
+            || response.task_id != request.task_id
+            || response.attempt_id != request.attempt_id
+            || response.task_sha256 != request.expected_task_sha256
+            || response.configuration_sha256 != request.expected_configuration_sha256
+            || response.descriptor != request.descriptor
+            || response.practice_identity != request.practice_identity
+            || response.practice_sha256 != request.practice_sha256()?
+            || response.source.entry_identity != request.source.entry_identity
+            || response.source.content_sha256 != request.source.expected_content_sha256
+        {
+            return Err(rrd_contract::ContractError(
+                "task assessment response identity differs from request".into(),
+            ));
+        }
+        response.validate()
+    }
+}
+
+impl ValidatedOperation for crate::operations::TaskAssessmentRead {
+    fn validate_request(request: &Self::Request) -> rrd_contract::Result<()> {
+        request.validate()
+    }
+
+    fn validate_response(
+        request: &Self::Request,
+        response: &Self::Response,
+    ) -> rrd_contract::Result<()> {
+        response.validate()?;
+        if response.assessment.as_ref().is_some_and(|assessment| {
+            assessment.scope != request.scope
+                || assessment.task_id != request.task_id
+                || assessment.attempt_id != request.attempt_id
+        }) {
+            return Err(rrd_contract::ContractError(
+                "task assessment read identity differs from request".into(),
+            ));
+        }
+        Ok(())
+    }
+}
 impl ValidatedOperation for crate::operations::ObservationPrepare {
     fn validate_request(request: &Self::Request) -> rrd_contract::Result<()> {
         request.validate()
@@ -96,6 +148,19 @@ impl ValidatedOperation for crate::operations::ObservationRead {
         response: &Self::Response,
     ) -> rrd_contract::Result<()> {
         response.validate_request_identity(request)
+    }
+}
+
+impl ValidatedOperation for crate::operations::TaskBudgetResume {
+    fn validate_request(request: &Self::Request) -> rrd_contract::Result<()> {
+        request.validate()
+    }
+
+    fn validate_response(
+        request: &Self::Request,
+        response: &Self::Response,
+    ) -> rrd_contract::Result<()> {
+        request.validate_response(response)
     }
 }
 

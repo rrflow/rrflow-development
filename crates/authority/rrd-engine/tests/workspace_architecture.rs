@@ -48,7 +48,7 @@ fn workspace_packages_use_the_canonical_grouped_layout() {
         ("rrd-inference", "crates/compute/rrd-inference/Cargo.toml"),
         ("rrd-attunement", "crates/compute/rrd-attunement/Cargo.toml"),
         ("rrd-security", "crates/authority/rrd-security/Cargo.toml"),
-        ("rrd-engram", "crates/authority/rrd-engram/Cargo.toml"),
+        ("rrd-estate", "crates/authority/rrd-estate/Cargo.toml"),
         ("rrd-engine", "crates/authority/rrd-engine/Cargo.toml"),
         ("rrd-contract", "crates/transport/rrd-contract/Cargo.toml"),
         ("rrd-client", "crates/transport/rrd-client/Cargo.toml"),
@@ -140,7 +140,7 @@ fn engine_has_exact_composition() {
         names(&[
             "rrd-attunement",
             "rrd-contract",
-            "rrd-engram",
+            "rrd-estate",
             "rrd-security",
             "rrd-cluster",
             "rrd-core",
@@ -228,7 +228,7 @@ fn outward_consumers_cannot_bypass_the_engine_boundary() {
     let metadata = workspace_metadata();
     let internal_components = names(&[
         "rrd-attunement",
-        "rrd-engram",
+        "rrd-estate",
         "rrd-security",
         "rrd-cluster",
         "rrd-core",
@@ -260,7 +260,7 @@ fn outward_product_sources_do_not_import_physical_components() {
         "rrd_attunement",
         "rrd_cluster",
         "rrd_core",
-        "rrd_engram",
+        "rrd_estate",
         "rrd_graph",
         "rrd_inference",
         "rrd_lsm",
@@ -410,7 +410,7 @@ fn pre_canonical_startup_authorities_are_absent_from_product_tree() {
         "crates/adapters/rrflow-mcp/src",
         "crates/transport/rrd-server/src",
         "crates/transport/rrd-client/examples",
-        "crates/authority/rrd-engram/src/commands",
+        "crates/authority/rrd-estate/src/commands",
         "crates/operations/rrd-kubernetes/src",
     ] {
         for forbidden in [
@@ -463,19 +463,19 @@ fn pre_canonical_startup_authorities_are_absent_from_product_tree() {
         "Kubernetes startup must use one canonical install apply handoff"
     );
 
-    let engram_control = fs::read_to_string(
+    let estate_control = fs::read_to_string(
         metadata
             .root
-            .join("crates/authority/rrd-engine/src/engine/engram_control.rs"),
+            .join("crates/authority/rrd-engine/src/engine/estate_control.rs"),
     )
-    .expect("engram control source must be readable");
+    .expect("estate control source must be readable");
     assert!(
-        !engram_control.contains("RrdEngine::open(")
-            && !engram_control.contains("RrdEngine::open_existing(")
-            && engram_control.contains("RrdEngine::open_installed(")
-            && !engram_control.contains("join(\"backups\")")
-            && !engram_control.contains("join(\"restores\")"),
-        "the engram controller opens a managed instance only as an installed engram and keeps no catalogue or staging lane outside the instance"
+        !estate_control.contains("RrdEngine::open(")
+            && !estate_control.contains("RrdEngine::open_existing(")
+            && estate_control.contains("RrdEngine::open_installed(")
+            && !estate_control.contains("join(\"backups\")")
+            && !estate_control.contains("join(\"restores\")"),
+        "the estate controller opens a managed instance only as an installed estate and keeps no catalogue or staging lane outside the instance"
     );
 }
 
@@ -950,8 +950,8 @@ fn outward_cli_owns_current_auxiliary_executables_while_physical_crates_own_none
     let metadata = workspace_metadata();
     let product_executables = names(&[
         "rrd-backup-controller",
-        "rrd-engram-admin",
-        "rrd-engram-controller",
+        "rrd-estate-admin",
+        "rrd-estate-controller",
         "rrd-recovery-controller",
     ]);
     let cli_targets = &metadata.packages["rrflow-cli"].targets;
@@ -967,7 +967,7 @@ fn outward_cli_owns_current_auxiliary_executables_while_physical_crates_own_none
         !cli_targets.contains("rrd-security-bootstrap"),
         "standalone security bootstrap must not remain a Cargo target"
     );
-    for package in ["rrd-engram", "rrd-security"] {
+    for package in ["rrd-estate", "rrd-security"] {
         let unexpected = metadata.packages[package]
             .targets
             .intersection(&product_executables)

@@ -926,7 +926,7 @@
         },
         "installed_control": {
           "$ref": "#/$defs/BackupCoverageSnapshot",
-          "description": "The engram's control state outside the catalogues: installed record\nand checkpoint, active configuration, security policy and audit chain,\nattunement plan and job state, and engram documents. `included` means\nthe backup carries them as a replayable control-journal archive; the\ntoken key and operator credential are never carried."
+          "description": "The estate's control state outside the catalogues: installed record\nand checkpoint, active configuration, security policy and audit chain,\nattunement plan and job state, and estate documents. `included` means\nthe backup carries them as a replayable control-journal archive; the\ntoken key and operator credential are never carried."
         },
         "invocation_telemetry": {
           "$ref": "#/$defs/BackupCoverageSnapshot"

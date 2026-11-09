@@ -64,7 +64,7 @@ impl Publication<'_> {
         self.engine.authorize(
             self.work.session,
             self.work.token,
-            SecurityAction::engramAdmin,
+            SecurityAction::EstateAdmin,
             self.at()?,
             self.work.context.request_id.as_str(),
             self.work.context.operation_id.as_str(),
@@ -211,7 +211,7 @@ impl Publication<'_> {
                 permit.charge(
                     &(commit, &transitions),
                     self.engine
-                        .engram_configuration
+                        .estate_configuration
                         .storage
                         .transaction_admission_bytes,
                 )?;
@@ -345,7 +345,7 @@ impl Publication<'_> {
                     permit.charge(
                         &(&commit, &transitions),
                         self.engine
-                            .engram_configuration
+                            .estate_configuration
                             .storage
                             .transaction_admission_bytes,
                     )?;

@@ -2,14 +2,14 @@ use super::*;
 use rrd_contract::{
     ApplyEndpointConfiguration, BindingKind, BindingLimits, CredentialReference, DeclaredFootprint,
     EndpointBinding, EndpointConfiguration, EndpointConfigurationPlan, EndpointLocator,
-    EndpointProfileInput, InstalledengramIdentity, PreviewEndpointConfiguration, SessionLease,
+    EndpointProfileInput, InstalledEstateIdentity, PreviewEndpointConfiguration, SessionLease,
     WorkloadClass,
 };
 
 fn bind(engine: &mut RrdEngine, project: &str) {
-    engine.installed_engram = Some(InstalledengramIdentity {
+    engine.installed_estate = Some(InstalledEstateIdentity {
         project_id: CanonicalId::new(project).unwrap(),
-        engram_id: CanonicalId::new("endpoint-engram").unwrap(),
+        estate_id: CanonicalId::new("endpoint-estate").unwrap(),
         instance_id: instance(),
     });
 }
@@ -20,6 +20,7 @@ fn profile(name: &str) -> EndpointProfileInput {
         selection_policy: None,
         worker_policy: None,
         observation_policy: None,
+        assessment_policy: None,
         bindings: vec![EndpointBinding {
             id: CanonicalId::new("knowledge-source").unwrap(),
             class: WorkloadClass::VectorStore,
@@ -124,7 +125,7 @@ fn worker_and_observation_settings_share_configuration_approval_and_reopen() {
 
 fn configuration_policy_reopens(include_worker: bool, include_observation: bool) {
     // A configuration proposal derived from actual captured settings; this
-    // fresh test engram does not claim to be the captured production identity.
+    // fresh test estate does not claim to be the captured production identity.
     let fixture = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../transport/rrd-contract/tests/fixtures/endpoint-selection-observed/available");
     let configuration: EndpointConfiguration =
@@ -169,13 +170,13 @@ fn configuration_policy_reopens(include_worker: bool, include_observation: bool)
             contract_version: rrd_contract::ENDPOINT_WORKER_VERSION,
             allow_network: true,
             allow_context_export: true,
+            allow_source_export: false,
             allow_unverified_identity: true,
             maximum_concurrent_calls: 1,
             bindings: vec![rrd_contract::EndpointWorkerBinding {
                 binding_id: candidate.binding_id.clone(),
                 // Protocol persistence probe, not a new capability observation.
                 protocol_evidence_sha256: evidence_sha256.clone(),
-                adapter: rrd_contract::EndpointWorkerAdapter::OpenaiChatCompletionsV1,
                 system_prompt: "Return a bounded draft.".into(),
                 generation: rrd_contract::EndpointGenerationSettings {
                     maximum_output_tokens: 256,
@@ -233,6 +234,7 @@ fn configuration_policy_reopens(include_worker: bool, include_observation: bool)
         selection_policy: Some(policy.clone()),
         worker_policy: worker_policy.clone(),
         observation_policy: observation_policy.clone(),
+        assessment_policy: None,
     };
     let (root, mut engine) = isolated_engine();
     bind(&mut engine, "selector-policy-persistence");
@@ -507,7 +509,7 @@ fn endpoint_configuration_read_permission_does_not_allow_preview_or_apply() {
         expires_at_unix_ms: u64::MAX,
         disabled: false,
         role_ids: BTreeSet::new(),
-        grants: [SecurityAction::SessionCreate, SecurityAction::engramRead]
+        grants: [SecurityAction::SessionCreate, SecurityAction::EstateRead]
             .into_iter()
             .map(|action| ResourceGrant {
                 action,

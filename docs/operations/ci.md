@@ -11,6 +11,28 @@ defines risk-based package widening, and the [POA&M](../poam/rrflow-1.0-alpha.md
 owns deficiencies. A green workflow proves only the commands and assertions it
 actually executes.
 
+## C-07 installed campaign progress
+
+The existing `scripts/ci/run_sustained_capacity.py` launcher accepts the opt-in
+`--observe-progress`, `--progress-interval-ms` (1,000–60,000; default 15,000)
+and `--progress-max-bytes` (4,096–16,777,216; default 1,048,576) flags. It
+exclusively creates `<evidence>.observations.jsonl` alongside the campaign
+directory and emits the same bounded, cumulative event-kind counts to stderr.
+No event payload, record ID, prompt or credential is copied. A source-available
+flag distinguishes a not-yet-created stream from zero observed events. Linux
+observations include available owned-cgroup counters; Windows reports these as
+unavailable. The observer stops on malformed, replaced or truncated input or
+when its output limit is reached and reports an error to stderr; the campaign
+continues. It starts after the Linux cgroup is created or, on Windows, after
+the harness image is pinned and before the owned job is launched. Observations
+are best-effort, buffered diagnostics, not durable audit, proof of completed
+records, the campaign verifier, or a qualification result. Observer startup
+requires a fresh sidecar path. Its thread is joined on exit; a blocked read is
+reported after a bounded stop wait and may finish after native cleanup. The
+observer runs in the launcher outside the owned native job/cgroup, and its
+reads and sidecar writes add overhead; compare performance only with the same
+observation settings and report them.
+
 ## C-07 storage-diagnostic attribution
 
 To characterize a slow installed `rrflow` storage-diagnostic request, start the
@@ -54,6 +76,20 @@ The [integrated trace journal](../evidence/change-journals/gate-c/c-07g-installe
 records the small installed mixed-family and restart proof; it is not capacity
 or soak qualification.
 
+For transaction-begin attribution, add
+`rrd_engine::transaction_diagnostic=debug` to the process's `RRFLOW_TRACE`
+filter. Each enabled event reports the SHA-256 of the request ID, the outcome
+(`created`, `replayed`, or `error`), the last phase reached, total time and
+elapsed nanoseconds for validation, admission, authentication and policy,
+replay lookup, snapshot preparation, and control-state publication. A zero
+phase may mean it was not reached, not that it was free. Snapshot preparation
+also includes lease checks and transaction-record construction. Time in the
+client and HTTP transport is outside these measurements. Emission occurs after
+the admission permit is released; tracing can nevertheless affect the caller's
+latency. Use a bounded sink and treat the digest as potentially guessable. These
+optional events are not durable audit records, may be filtered or lost, and
+cannot establish a percentile or a capacity qualification by themselves.
+
 ## Candidate chain
 
 RRFlow has one candidate CI chain. The thin caller is
@@ -81,6 +117,39 @@ the default activity list does not include readiness transitions. The local
 and rejects missing transitions, filters and lost merge/manual coverage; it
 does not emulate GitHub execution. Full checks still run for merge groups.
 No path filter or reduced ready-candidate lane substitutes for acceptance.
+
+Rust cache steps still restore compatible entries on every candidate, but do
+not save new entries from `merge_group` runs. Queue-ref entries are scoped to
+the temporary ref and cannot warm the next candidate's base; disabling those
+saves reduces one source of eviction pressure. Pull-request saves and the
+explicit main-only macOS and Windows warmers remain available. Other language
+caches are unchanged.
+This does not create a main cache or guarantee a hit, speedup, or reduced bill.
+GitHub documents [cache scope and eviction](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching);
+the pinned [rust-cache action](https://github.com/Swatinem/rust-cache/blob/6323deb102c322ba6fcbdcafc7e3dddab59af2b6/action.yml)
+documents that `save-if` controls saving, not restore. Inspect later run logs
+and cache usage rather than inferring impact from the workflow text.
+
+The Windows warmer is `.github/workflows/ci-windows-cache-warm.yml`; after
+that file reaches public `main`, an operator can dispatch the main revision:
+
+```sh
+gh workflow run ci-windows-cache-warm.yml --repo rrflow/rrflow-development --ref main
+```
+
+Inspect the resulting run's exact head and cache-save log, then check the next
+candidate's restore log and timing. The manual job uses the candidate's fixed
+Windows runner, toolchain, two Cargo workers, cache key and locked release
+build; its separate 120-minute ceiling does not extend the 90-minute
+candidate job or run the tests. It never qualifies the candidate. Cache
+scopes, eviction, dependency-only caching and runner variability can still
+produce a miss or leave workspace compilation slow. Standard hosted runners
+for this public repository are documented as free by
+[GitHub](https://docs.github.com/en/actions/reference/runners/github-hosted-runners);
+cache storage beyond the included allowance may incur charges depending on
+account settings. Do not add untrusted public jobs to a private self-hosted
+runner to populate this cache.
+
 The reusable workflow reduces every partition into one stable `ci-gate`
 check for branch protection:
 
@@ -92,6 +161,10 @@ check for branch protection:
   and `product-operations`;
 - one current shared SDK harness, isolated optional-feature checks, and a real
   PostgreSQL/pgvector integration;
+- a synthetic storage-contract preflight on the selected standard Linux runner;
+  the ordinary 100-cycle reopen matrix starts only after this candidate's
+  catalogue and synthetic fixture projections pass. The job first verifies that
+  the named test exists, so an empty test selection cannot pass;
 - installed lifecycle and daemon portability on GitHub-hosted Windows and
   macOS runners;
 - separately identified installed domain-crash diagnostics and ordinary-build
@@ -99,6 +172,14 @@ check for branch protection:
 - ordinary-primary fresh/existing 100-cycle acknowledged kill/reopen histories
   on those same three native platforms; and
 - one always-evaluated gate which fails unless every partition succeeded.
+
+The preflight responds to a candidate whose changed operation catalogue left a
+stale synthetic fixture: the native reopen smoke rejected that identity only
+after its release build. On a valid candidate the added dependency can increase
+wall-clock time; measure the actual preflight and matrix durations before
+claiming a speedup. It does not replace a native smoke, reopen, crash, capacity
+or soak test. The aggregate gate explicitly rejects a skipped, cancelled or
+failed preflight and the same outcomes from every other required partition.
 
 ### Inspect candidate failures while jobs are running
 
@@ -134,11 +215,11 @@ The Linux lifecycle and Windows/macOS portability lanes also build the native
 copies, and run the installed example over authenticated loopback HTTP. The
 runner checks the exact synthetic task and owning relationship at one read
 stamp, changes the task, rejects the old expectation, verifies the stopped
-engram and reads the same state after reopening. It bounds child output and
+estate and reads the same state after reopening. It bounds child output and
 execution, and terminates only its own processes. This is a small fresh-project
 integration corpus, not the complete H-04 SDK matrix or C-07 qualification.
 
-The Linux topology and Windows/macOS engram partitions also require
+The Linux topology and Windows/macOS estate partitions also require
 `projected_lifetime` and `reader::lifetime_tests`: overlapping empty-reader
 admission, mixed generations and terminal source-owner release, with copied
 output surviving database/stream disposal. Weak-owner and registry checks
@@ -228,7 +309,7 @@ no ignored or filtered cases. Fresh/existing receipts bind the actual executable
 build metadata, public-contract and signal digests, installation/restore plans,
 backup, read manifest and asserted durable cursors. Unknown receipt fields are
 rejected. Retained artifacts contain these bounded, non-secret receipts and
-sanitized failure status; raw engrams and credential-bearing output are never
+sanitized failure status; raw estates and credential-bearing output are never
 uploaded. The [D-01 acceptance record](../roadmap/rrflow-1.0/gate-d-evidence.md#d-01-accepted-installed-foundation-2026-10-21)
 binds the first accepted three-platform result to its exact candidate. Later
 changes still require their own candidate CI; this result cannot qualify a
@@ -437,7 +518,7 @@ unchanged.
 ## Presubmit and change-evidence boundary
 
 Repository presubmit is not an RRFlow runtime hook. It cannot create an engine
-event, trigger a persisted routine, resolve a skill, mutate an engram, or claim
+event, trigger a persisted routine, resolve a skill, mutate an estate, or claim
 that an effect completed. Gate I owns those future runtime capabilities.
 
 The portable development control has three layers:
@@ -607,7 +688,7 @@ turn it into performance or competitive evidence.
 The Linux installed lane and Windows/macOS portability lanes run
 `cargo test -p rrd-lsm --lib fault_io --locked -- --nocapture` with a five-minute
 step limit. This C-07b unit corpus wraps native file calls with deterministic
-faults, then reconstructs a temporary engram from an independent stable-byte
+faults, then reconstructs a temporary estate from an independent stable-byte
 and directory-entry model. Logs retain call/case counts and failing ordinals.
 The model has fixed byte/file/event bounds and exercises compound recovery
 failures. It is I/O-model evidence on each host, not native process-death,
@@ -657,8 +738,8 @@ cursors, prior ACK receipts and exact retries reconcile uncertainty without
 double application. Negative controls reject inadmissible schedules and prove
 an unrelated operation cannot trigger the selected boundary.
 
-The two engram histories retain six logical calls and 21 attempts each,
-including five uncertain client results; ten point/recovery hits per engram
+The two estate histories retain six logical calls and 21 attempts each,
+including five uncertain client results; ten point/recovery hits per estate
 bind PID, nonce, point and build identity. The third parent test qualifies
 schedule admission. No parent is ignored. Native stdout/stderr capture is
 bounded to 1 MiB per stream, input to 4 KiB, observed event lines to 64 KiB and
@@ -669,7 +750,7 @@ test step allows 20 minutes and two test threads. Existing ordinary lane
 limits are unchanged. `ci-gate` requires all three diagnostic jobs.
 
 The same required native job now invokes
-`python3 scripts/ci/run_native_capacity.py` for fresh/existing engrams at WAL,
+`python3 scripts/ci/run_native_capacity.py` for fresh/existing estates at WAL,
 segment, manifest and CURRENT-write boundaries. It creates a capped ext4 loop
 image in a private mount namespace, fixed APFS image, or NTFS VHD. The harness
 requires a separately enumerated small volume, an exact owner marker, a private
@@ -692,7 +773,7 @@ retained buffers, real exhaustion, sustained capacity or the 24-hour soak.
 
 The installed domain-crash job also runs the
 [publication and reclamation corpus](../evidence/change-journals/gate-c/c-07c-installed-publication.md)
-separately for fresh/existing engrams. It retains two bounded native receipts,
+separately for fresh/existing estates. It retains two bounded native receipts,
 requires all six maintenance boundaries and their compound manifest-recovery
 kills, and reconciles prior ACKs before retrying each uncertain target. The
 ordinary domain step excludes these cases to avoid duplicate execution. Native

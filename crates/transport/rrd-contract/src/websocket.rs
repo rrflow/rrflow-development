@@ -868,14 +868,14 @@ impl WebSocketSendState {
 /// Transport-local decoder that rejects replay, gaps, cross-connection
 /// substitution, and a server stream that does not begin with `connected`.
 #[derive(Debug, Clone)]
-pub struct WebSocketReceivengram {
+pub struct WebSocketReceiveState {
     sender: WebSocketPeer,
     connection_id: Option<CorrelationId>,
     limits: WebSocketLimits,
     last_sequence: u64,
 }
 
-impl WebSocketReceivengram {
+impl WebSocketReceiveState {
     pub fn awaiting_server(limits: WebSocketLimits) -> Result<Self> {
         limits.validate()?;
         Ok(Self {

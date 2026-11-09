@@ -1,5 +1,6 @@
 //! Explicit configuration perturbations, never provider qualification records.
 use rrd_contract::*;
+use serde::Serialize;
 use serde_json::Value;
 use std::{collections::BTreeMap, path::PathBuf};
 
@@ -37,13 +38,13 @@ fn proposed() -> (EndpointConfiguration, EndpointWorkerPolicy) {
         contract_version: ENDPOINT_WORKER_VERSION,
         allow_network: true,
         allow_context_export: true,
+        allow_source_export: false,
         allow_unverified_identity: true,
         maximum_concurrent_calls: 1,
         bindings: vec![EndpointWorkerBinding {
             binding_id: candidate.binding_id.clone(),
             // Digest-shaped protocol probe, not evidence of worker compatibility.
             protocol_evidence_sha256: evidence_sha256.clone(),
-            adapter: EndpointWorkerAdapter::OpenaiChatCompletionsV1,
             system_prompt: "Return a draft; do not claim project effects.".into(),
             generation: EndpointGenerationSettings {
                 maximum_output_tokens: 256,
@@ -161,31 +162,6 @@ fn configured_effort_mapping_is_exact_and_default_is_never_inferred() {
 }
 
 #[test]
-fn worker_adapter_profiles_are_typed_and_extensible() {
-    let (configuration, policy) = proposed();
-    let profile = configuration.profile.unwrap();
-    let mut swag = policy.clone();
-    swag.bindings[0].adapter = EndpointWorkerAdapter::SwagChatCompletionsV1;
-    swag.validate_for(&profile.bindings, profile.selection_policy.as_ref())
-        .unwrap();
-
-    let mut lfg = policy.clone();
-    lfg.bindings[0].adapter = EndpointWorkerAdapter::LfgChatCompletionsV1;
-    lfg.validate_for(&profile.bindings, profile.selection_policy.as_ref())
-        .unwrap();
-
-    let mut invalid_other = policy;
-    invalid_other.bindings[0].adapter = EndpointWorkerAdapter::Other {
-        adapter_id: CanonicalId::new("future-adapter").unwrap(),
-        request_schema_sha256: "not-a-digest".into(),
-        response_schema_sha256: "2".repeat(64),
-    };
-    assert!(invalid_other
-        .validate_for(&profile.bindings, profile.selection_policy.as_ref())
-        .is_err());
-}
-
-#[test]
 fn worker_operation_has_explicit_authority_and_closed_input_identity() {
     let catalogue = endpoint_catalogue();
     let operation = catalogue
@@ -209,8 +185,45 @@ fn worker_operation_has_explicit_authority_and_closed_input_identity() {
         expected_configuration_sha256: "3".repeat(64),
         max_storage_keys: 10_000,
         context: None,
+        source: None,
     };
     request.validate().unwrap();
+    #[derive(Serialize)]
+    struct LegacyTaskWorkerRequest {
+        scope: String,
+        task_id: CanonicalId,
+        attempt_id: CorrelationId,
+        selection_attempt_id: CorrelationId,
+        expected_selection_sha256: String,
+        expected_task_sha256: String,
+        expected_configuration_sha256: String,
+        max_storage_keys: u64,
+        context: Option<AssembleContext>,
+    }
+    let legacy_serialization = serde_json::to_value(LegacyTaskWorkerRequest {
+        scope: request.scope.clone(),
+        task_id: request.task_id.clone(),
+        attempt_id: request.attempt_id.clone(),
+        selection_attempt_id: request.selection_attempt_id.clone(),
+        expected_selection_sha256: request.expected_selection_sha256.clone(),
+        expected_task_sha256: request.expected_task_sha256.clone(),
+        expected_configuration_sha256: request.expected_configuration_sha256.clone(),
+        max_storage_keys: request.max_storage_keys,
+        context: request.context.clone(),
+    })
+    .unwrap();
+    assert_eq!(
+        serde_json::to_value(&request).unwrap(),
+        legacy_serialization
+    );
+    let mut legacy = serde_json::to_value(&request).unwrap();
+    legacy.as_object_mut().unwrap().remove("source");
+    assert_eq!(
+        serde_json::from_value::<TaskWorkerRequest>(legacy)
+            .unwrap()
+            .source,
+        None
+    );
     let mut value = serde_json::to_value(&request).unwrap();
     value["endpoint"] = "http://127.0.0.1:1".into();
     assert!(serde_json::from_value::<TaskWorkerRequest>(value).is_err());
@@ -229,4 +242,61 @@ fn worker_operation_has_explicit_authority_and_closed_input_identity() {
         max_storage_keys: 100,
     });
     assert!(foreign.validate().is_err());
+}
+
+#[test]
+fn selected_worker_source_is_versioned_bounded_and_export_opt_in_defaults_off() {
+    let source = TaskWorkerSourceRequest {
+        contract_version: TASK_WORKER_SOURCE_VERSION,
+        entry_identity: "5".repeat(64),
+        expected_content_sha256: "6".repeat(64),
+        maximum_input_bytes: 1024,
+    };
+    source.validate().unwrap();
+    for removed_field in ["expected_snapshot_sha256", "expected_policy_sha256"] {
+        let mut legacy = serde_json::to_value(&source).unwrap();
+        legacy[removed_field] = serde_json::Value::String("4".repeat(64));
+        assert!(serde_json::from_value::<TaskWorkerSourceRequest>(legacy).is_err());
+    }
+    let mut invalid = source.clone();
+    invalid.maximum_input_bytes = 0;
+    assert!(invalid.validate().is_err());
+    invalid = source.clone();
+    invalid.contract_version += 1;
+    assert!(invalid.validate().is_err());
+
+    let mut task = TaskWorkerRequest {
+        scope: "instance:worker-test".into(),
+        task_id: CanonicalId::new("worker-test-task").unwrap(),
+        attempt_id: CorrelationId::new("worker-test-attempt").unwrap(),
+        selection_attempt_id: CorrelationId::new("worker-test-selection").unwrap(),
+        expected_selection_sha256: "1".repeat(64),
+        expected_task_sha256: "2".repeat(64),
+        expected_configuration_sha256: "3".repeat(64),
+        max_storage_keys: 10_000,
+        context: None,
+        source: Some(source),
+    };
+    task.validate().unwrap();
+    task.source.as_mut().unwrap().maximum_input_bytes = MAX_ROUTE_REQUEST_BYTES + 1;
+    assert!(task.validate().is_err());
+
+    let (mut configuration, policy) = proposed();
+    assert!(!policy.allow_source_export);
+    let profile = configuration.profile.as_mut().unwrap();
+    profile.worker_policy = Some(policy.clone());
+    profile.profile_sha256 = endpoint_profile_sha256(profile).unwrap();
+    let denied = configuration.sha256().unwrap();
+    let profile = configuration.profile.as_mut().unwrap();
+    profile.worker_policy.as_mut().unwrap().allow_source_export = true;
+    profile.profile_sha256 = endpoint_profile_sha256(profile).unwrap();
+    assert_ne!(configuration.sha256().unwrap(), denied);
+    let mut legacy = serde_json::to_value(policy).unwrap();
+    legacy
+        .as_object_mut()
+        .unwrap()
+        .remove("allow_source_export");
+    let legacy_policy: EndpointWorkerPolicy = serde_json::from_value(legacy.clone()).unwrap();
+    assert!(!legacy_policy.allow_source_export);
+    assert_eq!(serde_json::to_value(legacy_policy).unwrap(), legacy);
 }

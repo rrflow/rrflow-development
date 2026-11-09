@@ -106,7 +106,7 @@ The audited projection contains:
   `7efde511a5ba3b1cad630d2c63c473a966fb871182c8bd3a5fb85c3673924a11`.
 
 That audit describes an earlier projection. The current generated OpenAPI
-SHA-256 is `f14071c71318062cd2b1a9fca491a16d91b4481e98c3e0bcefeeaf98359ed580`.
+SHA-256 is `fb09bd98e533e3330b86e461a82ce7a6cd02a1cc0d31888cc72dedbe3f767797`.
 
 The generated `rrd-openapi.ts` is a compile-time projection of roughly 1.6
 MiB. Its `paths`, `components`, and `operations` types are valuable compile-time
@@ -256,7 +256,7 @@ never headers, credentials, uncontrolled response excerpts, or arbitrary
 transport strings.
 
 Every operation propagates canonical request and operation IDs plus valid W3C
-`traceparent`/`tracengram`. Attempts are child spans of the same semantic
+`traceparent`/`tracestate`. Attempts are child spans of the same semantic
 operation; reconnects and endpoint rotation are causal links. Browser and Node
 telemetry apply the same redaction and bounded-attribute contract. Traces
 observe authoritative engine state and never become completion or hidden
@@ -330,7 +330,7 @@ The current evidence is bounded:
 The live script exercises only capability retry/version rejection, catalogue
 count, one authentication denial, session create/renew/close, vector
 ensure/search, transaction begin/preview/abort/commit, one query, changefeed
-read/follow/local abort, backup create/list, and engram read. Its shared domain
+read/follow/local abort, backup create/list, and estate read. Its shared domain
 labels overstate CRUD, backup/restore, vectors, live delivery, typed errors,
 retry/failure gaps, cancellation, and version/package coverage exactly as
 catalogued in the [Rust reference](rust.md#conformance-that-actually-counts).

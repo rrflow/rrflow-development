@@ -57,14 +57,14 @@ boundary; this single failing test is not complete D-01.4 coverage.
 At the same baseline, run `git -c core.autocrlf=true checkout-index --force
 --prefix=<workspace>/target/d01-bootstrap-checkout/ --
 crates/authority/rrd-engine/assets/install/default-profile-v1.json
-crates/authority/rrd-engine/assets/install/default-engram-configuration-v2.toml`.
+crates/authority/rrd-engine/assets/install/default-estate-configuration-v2.toml`.
 Compare those bytes with `git show HEAD:<path>` using SHA-256. Both differ
 solely by LF-to-CRLF conversion:
 
 | Asset | Git blob bytes / SHA-256 | Converted checkout bytes / SHA-256 |
 |---|---|---|
 | `default-profile-v1.json` | 2211 / `100b5a7a7ea03c37b00ad7334787a49038675b8cf6bf2489d541db53be5aff3c` | 2253 / `d725a0c034d004c3954ee45214af1a92fa1548ec0f62270a20f4a3ee4a361918` |
-| `default-engram-configuration-v2.toml` | 413 / `aed474faf82e0a185b94d972f917170f06f27181d3ab6eafa249abe6a9e85d63` | 437 / `10bcb2cacfefc46fc87a08109892c8f4ce20e863d92f5a7d084df91edf421319` |
+| `default-estate-configuration-v2.toml` | 413 / `aed474faf82e0a185b94d972f917170f06f27181d3ab6eafa249abe6a9e85d63` | 437 / `10bcb2cacfefc46fc87a08109892c8f4ce20e863d92f5a7d084df91edf421319` |
 
 The experiment exited 0 and retained its JSON under ignored
 `target/d01-bootstrap-checkout-evidence.json`. `DefaultInstallProfile::load`
@@ -82,7 +82,7 @@ provenance repair. No upstream database implementation is adapted.
 Owner reads: README, Gate D, agent-bootstrap, installed-lifecycle, POAM-006,
 the change-authoring procedure and CI contract. Implementation reads relevant
 to the brief include installation planning/apply/inspection and admission,
-engram layout, recovery intent publication, current profile/configuration
+estate layout, recovery intent publication, current profile/configuration
 assets, installation contract and fixtures, and CLI dispatch. Targeted reads
 of memory-seat planning and security genesis identify existing transaction
 effects; the final implementation journal must enumerate full changed-file

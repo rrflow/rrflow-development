@@ -1,8 +1,8 @@
 use rrd_contract::{CanonicalId, InstallationTargetKind};
 use rrd_engine::RrdEngine;
-use rrd_engram::{
-    DesiredInstance, DesiredPhase, DesiredTarget, DriverErrorKind, DriverRequest, engramDriver,
-    engramRepository, LocalArgument, LocalDeployment, LocalDeploymentCatalog, LocalProcessDriver,
+use rrd_estate::{
+    DesiredInstance, DesiredPhase, DesiredTarget, DriverErrorKind, DriverRequest, EstateDriver,
+    EstateRepository, LocalArgument, LocalDeployment, LocalDeploymentCatalog, LocalProcessDriver,
     LocalReadiness, LocalShutdown, MutationContext, OperationKind, OperationState,
     ReconcileBoundary, ReconcileOutcome, Reconciler, SetDesired, LOCAL_DEPLOYMENT_FORMAT,
 };
@@ -25,7 +25,7 @@ fn id(value: &str) -> CanonicalId {
 fn context(at: u64, operation: &str) -> MutationContext {
     MutationContext {
         at,
-        actor: "rrd-engram".into(),
+        actor: "rrd-estate".into(),
         request_id: format!("request-{operation}"),
         operation_id: id(operation),
     }
@@ -174,7 +174,7 @@ fn step(database: &Path, state_root: &Path, at: u64) -> ReconcileOutcome {
     let engine = RrflowKvStore::open(database).unwrap();
     let driver = LocalProcessDriver::new(state_root, catalog()).unwrap();
     let mut reconciler =
-        Reconciler::new(&engine, id("engram-a"), id("worker-one"), 30_000, driver).unwrap();
+        Reconciler::new(&engine, id("estate-a"), id("worker-one"), 30_000, driver).unwrap();
     reconciler.step(at).unwrap()
 }
 
@@ -231,26 +231,26 @@ fn run_controller_and_kill(
 ) {
     let marker = marker.with_extension(format!("{at}.held"));
     let hold_variable = if after_effect {
-        "RRD_engram_TEST_HOLD_AFTER_EFFECT_FILE"
+        "RRD_ESTATE_TEST_HOLD_AFTER_EFFECT_FILE"
     } else {
-        "RRD_engram_TEST_HOLD_AFTER_STEP_FILE"
+        "RRD_ESTATE_TEST_HOLD_AFTER_STEP_FILE"
     };
     let deadline = Instant::now() + Duration::from_secs(90);
     'retry: loop {
         let _ = std::fs::remove_file(&marker);
         let _ = std::fs::remove_file(marker.with_extension("new"));
-        let mut child = Command::new(workspace_binary("rrd-engram-controller"))
+        let mut child = Command::new(workspace_binary("rrd-estate-controller"))
             .args([
                 "--db",
                 database.to_str().unwrap(),
                 "--authority-instance",
-                "engram-control-instance",
+                "estate-control-instance",
                 "--state-root",
                 state_root.to_str().unwrap(),
                 "--catalog",
                 catalog_path.to_str().unwrap(),
-                "--engram",
-                "engram-a",
+                "--estate",
+                "estate-a",
                 "--worker",
                 "worker-one",
                 "--lease-ms",
@@ -278,7 +278,7 @@ fn run_controller_and_kill(
                     continue 'retry;
                 }
                 let engine = RrflowKvStore::open(database).unwrap();
-                let repository = engramRepository::new(&engine, id("engram-a"));
+                let repository = EstateRepository::new(&engine, id("estate-a"));
                 let document = repository.load().unwrap().unwrap();
                 let operation_failures = document
                     .operations
@@ -293,12 +293,12 @@ fn run_controller_and_kill(
                 let process_record =
                     std::fs::read_to_string(state_root.join("processes/project-a.json")).ok();
                 panic!(
-                    "engram controller exited before hold marker at {at} ({status}); stdout={output:?}; stderr={error:?}; operation_failures={operation_failures:?}; process_record={process_record:?}"
+                    "estate controller exited before hold marker at {at} ({status}); stdout={output:?}; stderr={error:?}; operation_failures={operation_failures:?}; process_record={process_record:?}"
                 );
             }
             assert!(
                 Instant::now() < deadline,
-                "engram controller did not reach hold boundary at {at}"
+                "estate controller did not reach hold boundary at {at}"
             );
             thread::sleep(Duration::from_millis(10));
         }
@@ -310,7 +310,7 @@ fn run_controller_and_kill(
 
 fn operation_state(database: &Path, operation: &str) -> (OperationState, u64) {
     let engine = RrflowKvStore::open(database).unwrap();
-    let repository = engramRepository::new(&engine, id("engram-a"));
+    let repository = EstateRepository::new(&engine, id("estate-a"));
     let document = repository.load().unwrap().unwrap();
     (
         document.operation(&id(operation)).unwrap().state,
@@ -342,7 +342,7 @@ impl Drop for ProcessCleanup {
 #[test]
 fn real_rrd_child_survives_controller_reopen_and_stops_without_data_deletion() {
     let temporary = tempfile::tempdir().unwrap();
-    let database = temporary.path().join("engram-authority");
+    let database = temporary.path().join("estate-authority");
     let state_root = temporary.path().join("local-processes");
     std::fs::create_dir(&state_root).unwrap();
     let state_root = std::fs::canonicalize(state_root).unwrap();
@@ -352,8 +352,8 @@ fn real_rrd_child_survives_controller_reopen_and_stops_without_data_deletion() {
     install_instance(&state_root, "project-a");
     {
         let engine = RrflowKvStore::open(&database).unwrap();
-        let repository = engramRepository::new(&engine, id("engram-a"));
-        repository.create(&context(10, "create-engram")).unwrap();
+        let repository = EstateRepository::new(&engine, id("estate-a"));
+        repository.create(&context(10, "create-estate")).unwrap();
         repository
             .set_desired(&SetDesired {
                 context: context(20, "start-project-a"),
@@ -377,12 +377,12 @@ fn real_rrd_child_survives_controller_reopen_and_stops_without_data_deletion() {
     assert!(process_exists(started_pid));
 
     let replay_driver = LocalProcessDriver::new(&state_root, catalog()).unwrap();
-    let request = rrd_engram::DriverRequest {
-        engram_id: id("engram-a"),
+    let request = rrd_estate::DriverRequest {
+        estate_id: id("estate-a"),
         instance_id: id("project-a"),
         operation_id: id("start-project-a"),
-        kind: rrd_engram::OperationKind::Provision,
-        desired: rrd_engram::DesiredInstance {
+        kind: rrd_estate::OperationKind::Provision,
+        desired: rrd_estate::DesiredInstance {
             generation: 1,
             phase: DesiredPhase::Running,
             deployment_ref: id("rrd-server"),
@@ -392,7 +392,7 @@ fn real_rrd_child_survives_controller_reopen_and_stops_without_data_deletion() {
         },
     };
     let mut replay_driver = replay_driver;
-    rrd_engram::engramDriver::apply(&mut replay_driver, &request).unwrap();
+    rrd_estate::EstateDriver::apply(&mut replay_driver, &request).unwrap();
     assert_eq!(process_pid(&state_root), Some(started_pid));
     let instance_root = state_root.join("instances/project-a");
     assert!(instance_root.join("RRD.PROCESS.STDOUT.LOG").is_file());
@@ -422,7 +422,7 @@ fn real_rrd_child_survives_controller_reopen_and_stops_without_data_deletion() {
     );
     {
         let engine = RrflowKvStore::open(&database).unwrap();
-        let repository = engramRepository::new(&engine, id("engram-a"));
+        let repository = EstateRepository::new(&engine, id("estate-a"));
         repository
             .set_desired(&SetDesired {
                 context: context(80, "stop-project-a"),
@@ -502,7 +502,7 @@ fn local_driver_refuses_to_signal_a_reused_or_forged_pid_identity() {
     )
     .unwrap();
     let request = DriverRequest {
-        engram_id: id("engram-a"),
+        estate_id: id("estate-a"),
         instance_id: id("project-a"),
         operation_id: id("stop-project-a"),
         kind: OperationKind::Stop,
@@ -553,7 +553,7 @@ fn graceful_timeout_reauthenticates_then_uses_the_bounded_kill_fallback() {
     *watched_request = LocalArgument::InstancePath(PathBuf::from("IGNORED.REQUEST"));
     let mut driver = LocalProcessDriver::new(&state_root, fallback_catalog).unwrap();
     let start = DriverRequest {
-        engram_id: id("engram-a"),
+        estate_id: id("estate-a"),
         instance_id: id("project-a"),
         operation_id: id("start-fallback"),
         kind: OperationKind::Provision,
@@ -592,7 +592,7 @@ fn graceful_timeout_reauthenticates_then_uses_the_bounded_kill_fallback() {
 #[test]
 fn controller_process_kill_matrix_converges_across_start_and_stop_effect_gaps() {
     let temporary = tempfile::tempdir().unwrap();
-    let database = temporary.path().join("engram-authority");
+    let database = temporary.path().join("estate-authority");
     let state_root = temporary.path().join("local-processes");
     std::fs::create_dir(&state_root).unwrap();
     let state_root = std::fs::canonicalize(state_root).unwrap();
@@ -605,8 +605,8 @@ fn controller_process_kill_matrix_converges_across_start_and_stop_effect_gaps() 
     install_instance(&state_root, "project-a");
     {
         let engine = RrflowKvStore::open(&database).unwrap();
-        let repository = engramRepository::new(&engine, id("engram-a"));
-        repository.create(&context(10, "create-engram")).unwrap();
+        let repository = EstateRepository::new(&engine, id("estate-a"));
+        repository.create(&context(10, "create-estate")).unwrap();
         repository
             .set_desired(&SetDesired {
                 context: context(20, "start-project-a"),
@@ -660,7 +660,7 @@ fn controller_process_kill_matrix_converges_across_start_and_stop_effect_gaps() 
 
     {
         let engine = RrflowKvStore::open(&database).unwrap();
-        let repository = engramRepository::new(&engine, id("engram-a"));
+        let repository = EstateRepository::new(&engine, id("estate-a"));
         repository
             .set_desired(&SetDesired {
                 context: context(90, "stop-project-a"),

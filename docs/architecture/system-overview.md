@@ -10,7 +10,7 @@ The repository root [README](../../README.md) is the bootstrap product portal.
 This record is the first architecture destination behind that portal. It tells
 an operator or AI system what every RRFlow component means and where detailed
 architecture lives. The [instance-topology record](instance-topology.md) owns
-project, engram, RRD instance, environment, deployment, and physical-placement
+project, estate, RRD instance, environment, deployment, and physical-placement
 relationships. The [engine data-flow record](engine-data-flow.md) owns the
 complete read, write, Arrow/DataFusion, and context flows; the
 [roadmap](../roadmap/rrflow-1.0.md) owns implementation order and completion.
@@ -23,7 +23,7 @@ RRFlow — AI governance, reasoning, recall, and context platform
 ├── RRD — embedded and daemon runtime
 │   └── RrdEngine — sole semantic, security, and mutation authority
 │
-├── rrflowDB — persistent per-project AI engram
+├── rrflowDB — persistent per-project AI estate
 │   └── rrflowKV — WAL/MVCC/LSM physical persistence
 │       ├── hot mutable memtable
 │       └── immutable key/version and Arrow-compatible segment target
@@ -60,7 +60,7 @@ authoritative databases or engines.
 | **`RrdEngine`** | The only semantic coordinator and mutation authority. | `crates/authority/rrd-engine` |
 | **RRFlow kernel** | Canonical temporal values, identities, read stamps, mutations, and invariants; it defines meaning without owning transport or physical storage. | `rrd-core` |
 | **canonical runtime log** | The ordered source of truth for committed RRFlow changes from which temporal snapshots are resolved. | Semantic types in `rrd-core`, persistence mapping in `rrd-store`, and durable bytes in rrflowKV. |
-| **rrflowDB** | The pure Rust, PostgreSQL-inspired database dedicated to AI and designed for AI use, with PostgreSQL compatibility as a product requirement. Each instance stores a persistent project AI engram containing governed knowledge, reasoning state, evidence, and index definitions. Its configurable prompt graph families, memory contract, and opt-in project links are defined by the [rrflowDB capability record](../reference/data/rrflowdb-capability.md). | Semantic state composed by `RrdEngine`; physical durability supplied by rrflowKV. PostgreSQL compatibility remains unqualified. |
+| **rrflowDB** | The pure Rust, PostgreSQL-inspired database dedicated to AI and designed for AI use, with PostgreSQL compatibility as a product requirement. Each instance stores a persistent project AI estate containing governed knowledge, reasoning state, evidence, and index definitions. Its configurable prompt graph families, memory contract, and opt-in project links are defined by the [rrflowDB capability record](../reference/data/rrflowdb-capability.md). | Semantic state composed by `RrdEngine`; physical durability supplied by rrflowKV. PostgreSQL compatibility remains unqualified. |
 | **rrflowKV** | The durable physical engine beneath rrflowDB: WAL, MVCC, LSM, manifests, snapshots, compaction, and recovery. | `rrd-lsm` through `rrd-store` |
 | **rrflowMX** | RRFlow Memory Execution, the non-durable process-local implementation of the same semantic storage port. | Volatile implementation in `rrd-store`, behind the semantic storage port. |
 | **RRFlow temporal graph** | Typed records and relations resolved from the canonical log at one runtime read stamp and valid-time coordinate; never a separate graph database. | Kernel graph values, persistence adjacency, native query operators, and `RrdEngine` authorization. |
@@ -91,7 +91,7 @@ authoritative databases or engines.
 | **Connectome** | The RRFlow client: a separate operator and developer workbench using public RRD capabilities. The name no longer means a storage substrate; that role is RRFlow's. | Separate repository pinned at `connectome/`; no embedded engine authority. |
 | **shippin.cloud** | Planned hosted RRFlow offering with private development spaces, project execution, UI previews, and web deployment. | Cloud delivery and account services consume explicit public engine and project-execution contracts. |
 | **DevPulse** | The project development application; RRFlow integration targets local VM/container project runtimes and opt-in bidirectional synchronization with shippin.cloud or a homelab. | Runtime provisioning and project transfer use explicit adapters; native data and sync receipts remain under `RrdEngine`. |
-| **workspace** | A set of engrams grouped by an account or client above the engine. It is never an engine scope, resource, or authorization boundary; the [instance-topology record](instance-topology.md#canonical-identities-and-cardinality) owns the relation. | Client and account concern; no engine type. |
+| **workspace** | A set of estates grouped by an account or client above the engine. It is never an engine scope, resource, or authorization boundary; the [instance-topology record](instance-topology.md#canonical-identities-and-cardinality) owns the relation. | Client and account concern; no engine type. |
 
 Product documentation uses the exact spellings **RRFlow**, **RRD**,
 **`RrdEngine`**, **rrflowDB**, **rrflowKV**, **rrflowMX**, **rrflowQL**,
@@ -144,7 +144,7 @@ behind its owning adapter.
 
 ## Persistence and memory boundary
 
-rrflowDB is the database; a persistent project engram is the governed data it
+rrflowDB is the database; a persistent project estate is the governed data it
 holds. Its product target is a pure Rust database engine inspired by PostgreSQL,
 dedicated to AI workloads and designed for AI systems to use. Knowledge,
 temporal memory, reasoning state, graph and vector retrieval, context, and
@@ -248,7 +248,7 @@ owns its source identity and explicit acquisition procedure.
 
 PostgreSQL, Turso, SQLite,
 Dragonfly, object stores, Zuul Zero/shippin.ai meshes, and model providers
-remain optional integrations. None is needed to make a local rrflowKV engram
+remain optional integrations. None is needed to make a local rrflowKV estate
 ready, commit data, close, reopen, recover, or verify itself.
 
 ## Client bootstrap boundary
@@ -296,7 +296,7 @@ that they are available.
 | Homelab | Run the same versioned native engine and supported project runtime on operator-controlled infrastructure; synchronize with DevPulse without a shippin.cloud account. | Explicit endpoint/trust, identity, storage and provider configuration; no alternative persistence or implicit hosted dependency. |
 
 A devspace is the hosted project development environment, distinct from an
-RRD instance or its engram. Running project code uses a configured execution
+RRD instance or its estate. Running project code uses a configured execution
 capability with explicit filesystem/network permissions, resource and time
 budgets, cancellation, and observable results. A private UI preview is scoped
 to its authorized devspace; publishing a web application is a separate,
@@ -304,10 +304,10 @@ explicit deployment effect. A successful build or preview cannot claim that
 the engine's reasoning or persistence gates passed.
 
 DevPulse's local instance and a managed or homelab instance retain their exact project,
-engram, and instance identities. Synchronization needs a versioned public
+estate, and instance identities. Synchronization needs a versioned public
 contract covering selected data, authorization, conflicts, retry uncertainty,
 and receipts. Copying storage files or equating an account/workspace with an
-engram cannot substitute for that contract. The local engine remains usable
+estate cannot substitute for that contract. The local engine remains usable
 without a cloud account or synchronization.
 
 The [Connectome client contract](../reference/client/connectome.md),

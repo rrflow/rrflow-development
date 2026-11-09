@@ -1,5 +1,5 @@
 //! Restore publication: promoting a verified restore staging root into the
-//! installed engram's storage root.
+//! installed estate's storage root.
 //!
 //! The candidate keeps the storage root's own name, so the installed record,
 //! the locator, and the single-root install-recovery rule stay as they are;
@@ -11,14 +11,14 @@
 //! skipping an action; the published root's control journal carries the
 //! publication receipt.
 
-use super::engram_layout::{
-    instance_operation_root, reject_existing_symlink_path, safe_join, engramFilesystem,
+use super::estate_layout::{
+    instance_operation_root, reject_existing_symlink_path, safe_join, EstateFilesystem,
     BACKUPS_DIRECTORY_NAME, RESTORES_DIRECTORY_NAME, STORAGE_DIRECTORY,
 };
 use super::installation::{
-    canonical_prefixed, decode_control, engram_configuration_key, json_sha256, read_locator,
+    canonical_prefixed, decode_control, estate_configuration_key, json_sha256, read_locator,
     require_locator_record_match, runtime_manifest_from_inspection, sha256_file,
-    DefaultInstallProfile, InstallationVerificationStatus, InstalledengramRecord, ProjectLocator,
+    DefaultInstallProfile, InstallationVerificationStatus, InstalledEstateRecord, ProjectLocator,
     INSTALLED_RECORD_KEY,
 };
 use super::token_key::{
@@ -190,7 +190,7 @@ struct PublicationReceipt {
 }
 
 struct PublicationPaths {
-    project: engramFilesystem,
+    project: EstateFilesystem,
     active: AnchoredPath,
     candidate: AnchoredPath,
     quarantine: AnchoredPath,
@@ -203,7 +203,7 @@ impl RrdEngine {
     /// Previews the publication of one staged restore. The plan binds the
     /// candidate, the active root it replaces, the backup that produced the
     /// candidate, and read-only evidence of both roots; `apply` refuses any
-    /// drift from it. Planning writes nothing and fails while the engram is
+    /// drift from it. Planning writes nothing and fails while the estate is
     /// being served.
     pub fn plan_restore_publication(
         project: &Path,
@@ -290,7 +290,7 @@ impl RrdEngine {
                     RestorePublicationActionKind::PublishCandidateRoot => {
                         (candidate.evidence.physical_sha256.clone(), 0)
                     }
-                    RestorePublicationActionKind::OpenPublishedengram => {
+                    RestorePublicationActionKind::OpenPublishedEstate => {
                         (active.installed.record_sha256.clone(), 1_024)
                     }
                 };
@@ -554,7 +554,7 @@ impl RrdEngine {
         }
         outputs.push(plan.candidate.physical_sha256.clone());
 
-        // OpenPublishedengram: the published root opens through the installed
+        // OpenPublishedEstate: the published root opens through the installed
         // engine path, records the receipt, and passes quick verification.
         // The receipt commit below changes the root's bytes, so a resumed run
         // checks the published root by its semantic watermarks and identity.
@@ -614,7 +614,7 @@ impl RrdEngine {
         )?;
         if report.status != InstallationVerificationStatus::Passed {
             return Err(ServiceError::Storage(
-                "published engram failed quick verification".into(),
+                "published estate failed quick verification".into(),
             ));
         }
         let result = build_result(
@@ -633,8 +633,8 @@ impl RrdEngine {
 /// Read-only evidence and installed control state of one storage root.
 struct RootReading {
     evidence: RestoreRootEvidence,
-    installed: InstalledengramRecord,
-    configuration: engramConfiguration,
+    installed: InstalledEstateRecord,
+    configuration: EstateConfiguration,
 }
 
 impl RootReading {
@@ -644,13 +644,13 @@ impl RootReading {
             root,
             super::core::installed_storage_options(&locator.storage)?,
         )?;
-        let installed: InstalledengramRecord =
-            decode_control(&inspector, INSTALLED_RECORD_KEY, "installed engram record")?;
+        let installed: InstalledEstateRecord =
+            decode_control(&inspector, INSTALLED_RECORD_KEY, "installed estate record")?;
         installed.validate()?;
-        let configuration: engramConfiguration = decode_control(
+        let configuration: EstateConfiguration = decode_control(
             &inspector,
-            &engram_configuration_key(&locator.identity.instance_id),
-            "engram configuration",
+            &estate_configuration_key(&locator.identity.instance_id),
+            "estate configuration",
         )?;
         configuration.validate().map_err(contract_error)?;
         if configuration.storage != locator.storage {
@@ -678,7 +678,7 @@ enum TokenKeyState {
 }
 
 fn publication_paths(
-    project: &engramFilesystem,
+    project: &EstateFilesystem,
     locator: &ProjectLocator,
     restore_id: &CanonicalId,
 ) -> Result<PublicationPaths> {
@@ -707,7 +707,7 @@ fn storage_root_id(locator: &ProjectLocator) -> Result<CanonicalId> {
     CanonicalId::new(name).map_err(|_| ServiceError::ProjectBindingMismatch)
 }
 
-fn relative(project: &engramFilesystem, path: &AnchoredPath) -> Result<String> {
+fn relative(project: &EstateFilesystem, path: &AnchoredPath) -> Result<String> {
     path.diagnostic_path()
         .strip_prefix(project.project().diagnostic_path())
         .map_err(|_| ServiceError::ProjectBindingMismatch)?
@@ -767,7 +767,7 @@ fn catalogued_backup(
 
 fn active_token_key_sha256(
     active: &AnchoredPath,
-    installed: &InstalledengramRecord,
+    installed: &InstalledEstateRecord,
 ) -> Result<String> {
     let token_key = read_token_key(&active.join(TOKEN_KEY_FILE)).map_err(storage_error)?;
     let token_key_sha256 = digest::sha256_hex(&token_key);
@@ -827,7 +827,7 @@ fn published_receipt(
     Ok(Some(receipt))
 }
 
-/// A replay re-verifies the published engram the way the first application
+/// A replay re-verifies the published estate the way the first application
 /// did and reports its current coordinates under the recorded receipt.
 fn replay_result(
     paths: &PublicationPaths,
@@ -843,7 +843,7 @@ fn replay_result(
     )?;
     if report.status != InstallationVerificationStatus::Passed {
         return Err(ServiceError::Storage(
-            "published engram failed quick verification".into(),
+            "published estate failed quick verification".into(),
         ));
     }
     build_result(

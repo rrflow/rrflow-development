@@ -99,7 +99,7 @@ owner instructions; an unrelated open question does not block safe work.
 
 [Open Gate C accepted evidence](rrflow-1.0/gate-c-evidence.md)
 
-### Gate D — install, configure, and attune one real engram
+### Gate D — install, configure, and attune one real estate
 
 [Open Gate D](rrflow-1.0/gate-d.md)
 

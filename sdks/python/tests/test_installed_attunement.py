@@ -1,4 +1,4 @@
-"""Optional real-primary Python attunement acceptance on a disposable engram."""
+"""Optional real-primary Python attunement acceptance on a disposable estate."""
 
 from __future__ import annotations
 

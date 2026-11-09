@@ -1,9 +1,9 @@
 # Generated from rrd-contract; do not edit.
-# OpenAPI SHA-256: f14071c71318062cd2b1a9fca491a16d91b4481e98c3e0bcefeeaf98359ed580
+# OpenAPI SHA-256: fb09bd98e533e3330b86e461a82ce7a6cd02a1cc0d31888cc72dedbe3f767797
 from typing import Final, Literal, TypedDict
 
 ENDPOINT_OPENAPI_DOCUMENT_SHA256: Final[str] = (
-    "f14071c71318062cd2b1a9fca491a16d91b4481e98c3e0bcefeeaf98359ed580"
+    "fb09bd98e533e3330b86e461a82ce7a6cd02a1cc0d31888cc72dedbe3f767797"
 )
 
 OperationId = Literal[
@@ -36,7 +36,7 @@ OperationId = Literal[
     "endpoint-configuration-apply",
     "endpoint-configuration-preview",
     "endpoint-configuration-read",
-    "engram-read",
+    "estate-read",
     "flight-launch",
     "flight-list",
     "flight-read",
@@ -59,9 +59,12 @@ OperationId = Literal[
     "session-renew",
     "subscription-close",
     "subscription-open",
+    "task-assessment-execute",
+    "task-assessment-read",
     "task-attempt-read",
     "task-budget-configure",
     "task-budget-read",
+    "task-budget-resume",
     "task-budget-stop",
     "task-close",
     "task-embedding-execute",
@@ -271,11 +274,11 @@ ENDPOINTS: Final[dict[OperationId, Endpoint]] = {
         "mutation": False,
         "path": "/v1/configuration/endpoints/read",
     },
-    "engram-read": {
+    "estate-read": {
         "authentication": "session_bearer",
         "method": "POST",
         "mutation": False,
-        "path": "/v1/engrams/{engram}/read",
+        "path": "/v1/estates/{estate}/read",
     },
     "flight-launch": {
         "authentication": "session_bearer",
@@ -409,6 +412,18 @@ ENDPOINTS: Final[dict[OperationId, Endpoint]] = {
         "mutation": True,
         "path": "/v1/subscriptions/open",
     },
+    "task-assessment-execute": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": True,
+        "path": "/v1/tasks/assessment/execute",
+    },
+    "task-assessment-read": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": False,
+        "path": "/v1/tasks/assessment/read",
+    },
     "task-attempt-read": {
         "authentication": "session_bearer",
         "method": "POST",
@@ -426,6 +441,12 @@ ENDPOINTS: Final[dict[OperationId, Endpoint]] = {
         "method": "POST",
         "mutation": False,
         "path": "/v1/tasks/budget/read",
+    },
+    "task-budget-resume": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": True,
+        "path": "/v1/tasks/budget/resume",
     },
     "task-budget-stop": {
         "authentication": "session_bearer",

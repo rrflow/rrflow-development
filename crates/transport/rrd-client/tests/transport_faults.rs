@@ -5,7 +5,7 @@ use rrd_contract::{
     RequestContext, RequestEnvelope, ResourceId, ResourceKind, ResourcePath, ResponseEnvelope,
     ResponseOutcome, SessionLease, SessionLimits, WebSocketConnected, WebSocketError,
     WebSocketErrorTarget, WebSocketFrame, WebSocketLimits, WebSocketPayload, WebSocketPeer,
-    WebSocketReceivengram, WebSocketRequest, WebSocketResponse, WebSocketSendState, PROTOCOL,
+    WebSocketReceiveState, WebSocketRequest, WebSocketResponse, WebSocketSendState, PROTOCOL,
     PROTOCOL_VERSION, WEBSOCKET_CONTRACT_VERSION,
 };
 use serde_json::json;
@@ -225,7 +225,7 @@ async fn run_fault(fault: ServerFault) -> Error {
                 let Message::Text(text) = message else {
                     panic!("client request was not a text application message");
                 };
-                let mut receiver = WebSocketReceivengram::for_connection(
+                let mut receiver = WebSocketReceiveState::for_connection(
                     WebSocketPeer::Client,
                     server_connection.clone(),
                     server_limits.clone(),
@@ -369,6 +369,7 @@ async fn worker_call_does_not_repeat_after_retryable_transport_failure() {
         expected_configuration_sha256: "3".repeat(64),
         max_storage_keys: 100,
         context: None,
+        source: None,
     };
     let error = client
         .execute_task_worker(

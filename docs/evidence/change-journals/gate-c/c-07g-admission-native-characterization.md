@@ -23,7 +23,7 @@ with 384 dimensions and 10240000 logical source bytes. Four clients offer
 5 requests/second, with a 10-request/second burst and unchanged 500-ms latency
 budget. Warmup/measured/burst/drain/short-endurance durations are respectively
 10/30/10/15/60 seconds. Two configured forced reopens, cold-start checks and
-final restart/readback run on the same engram. This is one seed, not the full
+final restart/readback run on the same estate. This is one seed, not the full
 profile/repetition or 24-hour matrix.
 
 ## Exact result

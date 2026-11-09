@@ -55,7 +55,7 @@ edit, import, build from, commit, or push that checkout.
 At baseline, the installed-lifecycle test installed and started a real RRFlow
 process, authenticated with the public Rust client, committed a claim, queried
 it, killed the process, and then performed only an offline structural verify.
-It did not prove a different process could reopen the same engram and return
+It did not prove a different process could reopen the same estate and return
 the acknowledged semantic state.
 
 At the audited Connectome baseline, the native Tauri layer contained a useful

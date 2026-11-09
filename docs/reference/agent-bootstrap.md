@@ -63,7 +63,7 @@ manifest through `RrdEngine`. Its identity and digest bind:
 
 - the primary RRFlow seat definition and allowed provider-representation
   candidates, without embedding provider credentials;
-- engram, project, instance, source snapshot, schema, catalogue, and policy
+- estate, project, instance, source snapshot, schema, catalogue, and policy
   coordinates;
 - discovered languages, frameworks, build systems, data sources, and verified
   capabilities;
@@ -198,7 +198,7 @@ connect -> inventory -> parse -> normalize -> entity-link
 ```
 
 `initialize_instance` is also the only initial-security bootstrap. Its action
-digest binds the project/engram/instance identity, primary seat definition,
+digest binds the project/estate/instance identity, primary seat definition,
 allowed provider-representation candidates, storage profile, initial
 principals/roles/grants, typed credential-verifier policy, opaque credential
 source or generation action, and the configuration/template/specialization
@@ -210,7 +210,7 @@ security authority, action checkpoint, audit, and commit evidence through
 `RrdEngine`. A provider representation becomes active only after the exact
 provider identity is authenticated and the previewed binding is authorized; no
 credential or plaintext provider subject enters the seat graph. An already
-installed engram requires ordinary authenticated security administration;
+installed estate requires ordinary authenticated security administration;
 missing or damaged policy never re-enables cold start.
 
 Credential values are not installation-plan data. The baseline generates a
@@ -243,8 +243,8 @@ inventory operation directly.
 For a substantial existing project, 30–45 minutes is an installation-planning
 estimate, not a completion guarantee. Preview must derive its estimate from
 the discovered source count, bytes, parser work, model/index work, configured
-resources, and reusable checkpoints. A new or unchanged engram may require
-less work; a larger or resource-constrained engram may require more. Apply
+resources, and reusable checkpoints. A new or unchanged estate may require
+less work; a larger or resource-constrained estate may require more. Apply
 reports phase progress and remains safely resumable rather than racing a fixed
 wall-clock target.
 
@@ -258,7 +258,7 @@ The engine implementation must preserve these rules:
    security authority commit; no unauthenticated network bootstrap exists.
 4. Every phase records a durable, digest-chained checkpoint through
    `RrdEngine`, including an explicit no-work result.
-5. Optional capabilities are selected from verified project signals and engram
+5. Optional capabilities are selected from verified project signals and estate
    policy. Absence of a language, model, database, or provider is ordinary and
    does not fail the whole attunement.
 6. Resume continues the next uncommitted phase. It never infers completion from
@@ -295,7 +295,7 @@ context.
 A routine is optional durable orchestration: a versioned, resumable graph of
 authorized engine operations for repeatable, long-running, or side-effecting
 work. It is not a representation of every cognitive step and does not govern
-unpersisted model reasoning. A generic package is eligible for every engram but
+unpersisted model reasoning. A generic package is eligible for every estate but
 inactive until attunement proves its effecting inputs and policy allows
 activation. Each package declares:
 
@@ -322,7 +322,7 @@ The first generic routine set is deliberately small:
 
 | Routine | Purpose | Activation evidence |
 |---|---|---|
-| `project-inventory` | Produce or refresh the bounded authoritative project-tree snapshot. | Explicit install/refresh intent, or an authenticated filesystem hint accepted under engram policy. |
+| `project-inventory` | Produce or refresh the bounded authoritative project-tree snapshot. | Explicit install/refresh intent, or an authenticated filesystem hint accepted under estate policy. |
 | `change-impact` | Resolve affected symbols, graph neighbors, tests, policies, and documentation. | A committed change set and required graph/index capabilities exist. |
 | `error-resolution` | Correlate diagnostics with code, ownership, prior evidence, and verification commands. | A typed diagnostic event and a supported build/test boundary exist. |
 | `verification` | Run the smallest owning checks, then broaden according to risk and changed boundaries. | A proposed mutation or completed routine requires proof. |

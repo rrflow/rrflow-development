@@ -12,7 +12,7 @@ Starting public main `daec1f1a2959f16ce41da9fb691ab1791ed06db5`, tree
 `refs/heads/agent/rrflowql-inventory-identities`, before implementation so
 the draft PR's change brief could precede code.
 
-The local D-04 installed-engram journey committed an actual Inventory graph.
+The local D-04 installed-estate journey committed an actual Inventory graph.
 Its rrflowQL traversal failed at the source snapshot ID when the digest began
 with a digit: `expected traversal start ID, found 49`. The tokenizer separates
 numeric tokens and the traversal parser accepted only word tokens. Typed
@@ -53,7 +53,7 @@ syntax test passed again. These Windows local results are not candidate CI.
 Strict `cargo clippy --offline --locked -p rrd-query --all-targets -- -D
 warnings` passed. Documentation policy and workflow policy checks passed.
 The exact local query-source patch was also applied temporarily to the dirty
-D-04 worktree: its authenticated embedded installed-engram test reopened an
+D-04 worktree: its authenticated embedded installed-estate test reopened an
 actual Inventory and traversed from the real snapshot digest to the same
 source entry used by Parse input admission. The command was `cargo test
 --offline --locked -p rrd-engine --lib

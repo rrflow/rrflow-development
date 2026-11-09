@@ -25,7 +25,7 @@ real-client transaction/relationship/reopen proof. They are component evidence
 and are not silently rebound to this integrated candidate.
 
 The unchanged Linux `9957ed39` full-corpus preflight remains a separate
-characterization; its running source, owned VM and retained failure engrams
+characterization; its running source, owned VM and retained failure estates
 were not modified. No completed soak is claimed by this integration.
 
 ## Reproduced blocker and current interpretation
@@ -75,7 +75,7 @@ version, external dependency, resource cap or readiness behavior changes.
 
 Read README, AGENTS, change-authoring procedure, relevant C-07/POAM-035 and
 prior attribution/metadata records. Complete function reads covered capacity
-fill/resume/case, engram install/invoke, WAL append/reservation, native file I/O,
+fill/resume/case, Estate install/invoke, WAL append/reservation, native file I/O,
 disk-space admission and installed diagnostic control/error observation.
 The encoder/client deltas, complete new helper and complete change diff were
 reviewed. Owner chapters were read in relevant sections, not claimed as full

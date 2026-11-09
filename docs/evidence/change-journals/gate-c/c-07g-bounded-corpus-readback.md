@@ -74,7 +74,7 @@ Trace/resource/debug decision: preserve bounded native counters, exact frozen
 identities, original deadlines and independent progress receipts. Component
 overlap is not a native throughput claim. A fresh exact-source characterization
 is needed to determine whether full setup now completes; the previous failed
-engram and evidence must remain untouched.
+estate and evidence must remain untouched.
 
 ## Local verification and limitations
 

@@ -6,6 +6,8 @@ mod owned_directory;
 mod process;
 #[path = "support/sustained.rs"]
 mod sustained;
+#[path = "support/transaction_trace.rs"]
+mod transaction_trace;
 
 use rrd_client::{ClientConfig, RequestOptions, RrdClient};
 use rrd_contract::{
@@ -32,7 +34,7 @@ const CYCLES: usize = 100;
 const STREAM_LIMIT: usize = 1024 * 1024;
 const CORPUS_SECONDS: u64 = 3600;
 
-struct engram {
+struct Estate {
     temp: owned_directory::OwnedDirectory,
     binary: PathBuf,
     project: PathBuf,
@@ -41,7 +43,7 @@ struct engram {
     at: u64,
 }
 
-impl engram {
+impl Estate {
     fn command(&self) -> Command {
         let mut command = Command::new(&self.binary);
         command
@@ -122,7 +124,7 @@ impl engram {
         if mode == "existing" {
             std::fs::write(project.join("README.md"), "project-owned\n").unwrap();
         }
-        let mut engram = Self {
+        let mut estate = Self {
             temp: owned_directory::OwnedDirectory::new(temp),
             binary,
             project,
@@ -130,17 +132,17 @@ impl engram {
             plan: Value::Null,
             at: 0,
         };
-        engram.build = engram.invoke(&["--json", "version"])["build"].clone();
+        estate.build = estate.invoke(&["--json", "version"])["build"].clone();
         let artifact_sha256 = artifact_digest
             .finalize()
             .iter()
             .map(|byte| format!("{byte:02x}"))
             .collect::<String>();
         assert_eq!(
-            engram.build["executable_sha256"], artifact_sha256,
+            estate.build["executable_sha256"], artifact_sha256,
             "reported build does not identify the actual staged bytes"
         );
-        let identity = engram.invoke(&["install", "identity"])["installation_identity"]
+        let identity = estate.invoke(&["install", "identity"])["installation_identity"]
             .as_str()
             .unwrap()
             .to_owned();
@@ -152,31 +154,31 @@ impl engram {
             "--mode",
             mode,
             "--project",
-            engram.project.to_str().unwrap(),
+            estate.project.to_str().unwrap(),
         ];
         if let Some(configuration) = configuration {
             arguments.extend(["--configuration", configuration.to_str().unwrap()]);
         }
-        let preview = engram.invoke(&arguments);
-        let path = engram.temp.path().join("plan.json");
+        let preview = estate.invoke(&arguments);
+        let path = estate.temp.path().join("plan.json");
         std::fs::write(&path, serde_json::to_vec(&preview).unwrap()).unwrap();
-        let applied = engram.invoke(&[
+        let applied = estate.invoke(&[
             "--json",
             "install",
             "apply",
             "--mode",
             mode,
             "--project",
-            engram.project.to_str().unwrap(),
+            estate.project.to_str().unwrap(),
             "--plan",
             path.to_str().unwrap(),
             "--expect",
             preview["installation"]["plan_sha256"].as_str().unwrap(),
         ]);
         assert_eq!(applied["runtime_cursor"], 2);
-        engram.at = applied["applied_at_unix_ms"].as_u64().unwrap();
-        engram.plan = preview["installation"].clone();
-        engram
+        estate.at = applied["applied_at_unix_ms"].as_u64().unwrap();
+        estate.plan = preview["installation"].clone();
+        estate
     }
 
     fn start(&self, clock: Instant) -> (process::Process, RrdClient, Value) {
@@ -197,13 +199,33 @@ impl engram {
         lifetime: Duration,
         trace: bool,
     ) -> (process::Process, RrdClient, Value) {
+        self.start_for_with_filter(
+            clock,
+            lifetime,
+            trace.then_some("rrd_server::diagnostic=debug,rrd_store::diagnostic=debug"),
+        )
+    }
+
+    fn start_for_with_filter(
+        &self,
+        clock: Instant,
+        lifetime: Duration,
+        filter: Option<&str>,
+    ) -> (process::Process, RrdClient, Value) {
+        self.start_for_with_capture(clock, lifetime, filter, None)
+    }
+
+    fn start_for_with_capture(
+        &self,
+        clock: Instant,
+        lifetime: Duration,
+        filter: Option<&str>,
+        capture: Option<&transaction_trace::Capture>,
+    ) -> (process::Process, RrdClient, Value) {
         let started_ns = clock.elapsed().as_nanos() as u64;
         let mut command = self.command();
-        if trace {
-            command.env(
-                "RRFLOW_TRACE",
-                "rrd_server::diagnostic=debug,rrd_store::diagnostic=debug",
-            );
+        if let Some(filter) = filter {
+            command.env("RRFLOW_TRACE", filter);
             command.env("RRFLOW_TRACE_FORMAT", "json");
         }
         command
@@ -211,8 +233,18 @@ impl engram {
             .arg(&self.project)
             .args(["--bind", "127.0.0.1:0"]);
         let (send, receive) = mpsc::sync_channel(1);
-        let mut child =
-            process::Process::start(&mut command, lifetime, STREAM_LIMIT, Some(send)).unwrap();
+        let mut child = if let Some(capture) = capture {
+            process::Process::start_with_redacted_stderr(
+                &mut command,
+                lifetime,
+                STREAM_LIMIT,
+                Some(send),
+                capture.observer(),
+            )
+        } else {
+            process::Process::start(&mut command, lifetime, STREAM_LIMIT, Some(send))
+        }
+        .unwrap();
         let readiness = receive
             .recv_timeout(Duration::from_secs(60))
             .map_err(|error| error.to_string())
@@ -232,7 +264,7 @@ impl engram {
             // Child termination and stream collection precede retention. Keep
             // the original private bytes, without copying or uploading them.
             eprintln!(
-                "native_startup_failure_engram={}",
+                "native_startup_failure_estate={}",
                 serde_json::json!({"path": self.temp.retain(), "private_state": true})
             );
             panic!("bounded ordinary startup: {error}; {diagnosis}");
@@ -275,13 +307,108 @@ impl engram {
 fn kill(mut child: process::Process, clock: Instant) -> Value {
     assert!(child.running(), "owned server exited before requested kill");
     let pid = child.id();
+    let stderr_redacted = child.stderr_is_redacted();
     let killed_ns = clock.elapsed().as_nanos() as u64;
     child.terminate();
     let output = child.finish().expect("reap every owned server");
     assert!(!output.status.success());
     assert!(output.stdout.len() <= STREAM_LIMIT && output.stderr.len() <= STREAM_LIMIT);
-    json!({"pid":pid,"killed_ns":killed_ns,"reaped_ns":clock.elapsed().as_nanos() as u64,
-        "exit_status":output.status.to_string(),"stdout_bytes":output.stdout.len(),"stderr_bytes":output.stderr.len()})
+    let mut result = json!({"pid":pid,"killed_ns":killed_ns,"reaped_ns":clock.elapsed().as_nanos() as u64,
+        "exit_status":output.status.to_string(),"stdout_bytes":output.stdout.len(),"stderr_bytes":output.stderr.len()});
+    if stderr_redacted {
+        result["stderr_redacted"] = Value::Bool(true);
+    }
+    result
+}
+
+#[test]
+fn installed_redacted_transaction_capture_survives_restart() {
+    let estate = Estate::install("fresh");
+    let capture = transaction_trace::Capture::new(2).unwrap();
+    let clock = Instant::now();
+    let credential = RrdEngine::read_installed_api_key(&estate.project).unwrap();
+    let begin_options = options("private-redacted-begin");
+    let begin_digest = rrd_core::digest::sha256_hex(begin_options.request_id.as_str().as_bytes());
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+    let filter = Some("rrd_engine::transaction_diagnostic=debug");
+    let (mut first, client, _) =
+        estate.start_for_with_capture(clock, Duration::from_secs(180), filter, Some(&capture));
+    let (session, transaction) = runtime.block_on(async {
+        let session = client
+            .create_session(
+                credential.principal_id.clone(),
+                credential.credential(),
+                CreateSession {
+                    limits: SessionLimits {
+                        idle_timeout_ms: 300_000,
+                        absolute_timeout_ms: 600_000,
+                        max_open_transactions: 2,
+                    },
+                },
+                options("redacted-session"),
+            )
+            .await
+            .unwrap();
+        let transaction = client
+            .begin_transaction(
+                &session,
+                BeginTransaction {
+                    scope: CanonicalId::new("claims").unwrap(),
+                    timeout_ms: 300_000,
+                },
+                begin_options.clone(),
+            )
+            .await
+            .unwrap();
+        (session, transaction)
+    });
+    let first_pid = first.id();
+    first.terminate();
+    let first_output = first.finish().unwrap();
+    assert!(
+        first_output.stderr.is_empty(),
+        "raw stderr must not be retained"
+    );
+
+    let (second, client, _) =
+        estate.start_for_with_capture(clock, Duration::from_secs(180), filter, Some(&capture));
+    let second_pid = second.id();
+    let replay = runtime
+        .block_on(client.begin_transaction(
+            &session,
+            BeginTransaction {
+                scope: CanonicalId::new("claims").unwrap(),
+                timeout_ms: 300_000,
+            },
+            begin_options,
+        ))
+        .unwrap();
+    assert_eq!(replay, transaction);
+    let termination = kill(second, clock);
+    assert_eq!(termination["stderr_redacted"], true);
+    assert_eq!(termination["stderr_bytes"], 0);
+    let report = capture.report();
+    let events = report["events"].as_array().unwrap();
+    assert_eq!(report["valid_events"], 2);
+    assert_eq!(report["dropped_events"], 0);
+    assert_eq!(report["registered_observers"], 2);
+    assert_eq!(report["finished_readers"], 2);
+    assert_eq!(report["failed_readers"], 0);
+    assert!(events
+        .iter()
+        .all(|event| event["request_sha256"] == begin_digest));
+    assert!(events.iter().any(|event| event["pid"] == first_pid
+        && event["observer_ordinal"] == 1
+        && event["outcome"] == "created"));
+    assert!(events.iter().any(|event| event["pid"] == second_pid
+        && event["observer_ordinal"] == 2
+        && event["outcome"] == "replayed"));
+    let output = report.to_string();
+    assert!(!output.contains("private-redacted-begin"));
+    assert!(!output.contains(credential.credential()));
 }
 
 fn options(name: &str) -> RequestOptions {
@@ -401,11 +528,11 @@ async fn read(
 }
 
 fn run(mode: &str) {
-    let engram = engram::install(mode);
-    let credential = RrdEngine::read_installed_api_key(&engram.project).unwrap();
+    let estate = Estate::install(mode);
+    let credential = RrdEngine::read_installed_api_key(&estate.project).unwrap();
     // Freeze every request/effect identity before the first operation.
     let requests = (0..CYCLES)
-        .map(|cycle| request(cycle, engram.at))
+        .map(|cycle| request(cycle, estate.at))
         .collect::<Vec<_>>();
     let mut ledger = AcknowledgementLedger::default();
     for (cycle, request) in requests.iter().enumerate() {
@@ -426,7 +553,7 @@ fn run(mode: &str) {
         .build()
         .unwrap();
     let cleanup = runtime.block_on(async {
-        let (mut child, mut client, initial) = engram.start(clock);
+        let (mut child, mut client, initial) = estate.start(clock);
         let session = client
             .create_session(
                 credential.principal_id.clone(),
@@ -478,11 +605,11 @@ fn run(mode: &str) {
             leases.push(lease);
             let terminated = kill(child, clock);
             assert_eq!(terminated["pid"], previous["pid"]);
-            let (reopened, reconnected, identity) = engram.start(clock);
+            let (reopened, reconnected, identity) = estate.start(clock);
             child = reopened;
             client = reconnected;
             // Read before retry so retry cannot conceal missing persisted effects.
-            let observed = read(&client, &session, engram.at, cycle + 1).await;
+            let observed = read(&client, &session, estate.at, cycle + 1).await;
             for index in 0..=cycle {
                 let started = clock.elapsed().as_nanos() as u64;
                 let replay = client
@@ -502,7 +629,7 @@ fn run(mode: &str) {
                 );
                 record(&mut ledger, index, started, clock, &replay);
             }
-            read(&client, &session, engram.at, cycle + 1).await;
+            read(&client, &session, estate.at, cycle + 1).await;
             ledger.readback.clear();
             for (index, expected_operation) in ledger.expected.iter().take(cycle + 1).enumerate() {
                 let values = expected(index)
@@ -544,14 +671,14 @@ fn run(mode: &str) {
     assert!(report.violations.is_empty(), "{report:?}");
     if mode == "existing" {
         assert_eq!(
-            std::fs::read_to_string(engram.project.join("README.md")).unwrap(),
+            std::fs::read_to_string(estate.project.join("README.md")).unwrap(),
             "project-owned\n"
         );
     }
-    let receipt = serde_json::to_vec(&json!({"instrumentation":"none","mode":mode,"build":engram.build,
+    let receipt = serde_json::to_vec(&json!({"instrumentation":"none","mode":mode,"build":estate.build,
         "native_os":std::env::consts::OS,"native_arch":std::env::consts::ARCH,"forced_reopens":CYCLES,
-        "installation_plan_sha256":engram.plan["plan_sha256"],"expected_sha256":expected_sha256,
-        "profile_id":engram.plan["profile_id"],"deployment":engram.plan["deployment"],"configuration":engram.plan["configuration"],
+        "installation_plan_sha256":estate.plan["plan_sha256"],"expected_sha256":expected_sha256,
+        "profile_id":estate.plan["profile_id"],"deployment":estate.plan["deployment"],"configuration":estate.plan["configuration"],
         "cycles":cycles,"cleanup":cleanup,"ledger":ledger,"report":report})).unwrap();
     assert!(receipt.len() <= 8 * STREAM_LIMIT);
     assert!(!String::from_utf8_lossy(&receipt).contains(credential.credential()));
@@ -568,7 +695,7 @@ fn run(mode: &str) {
         file.sync_all().unwrap();
         println!(
             "installed_reopen_summary={}",
-            json!({"mode":mode,"build":engram.build,"forced_reopens":CYCLES,"report":report})
+            json!({"mode":mode,"build":estate.build,"forced_reopens":CYCLES,"report":report})
         );
     } else {
         println!(

@@ -1,16 +1,16 @@
 use std::collections::BTreeMap;
 
 use rrd_contract::{
-    CanonicalId, DataCategorySchema, DataCategoryTargets, DataDomainSchema, DataengramOrganisation,
+    CanonicalId, DataCategorySchema, DataCategoryTargets, DataDomainSchema, DataEstateOrganisation,
     DataLogicalModel, DataPropertySchema, DataRecordSchema, DataReference, DataSchemaMode,
     DataSchemaRegistry, DataTableSchema, DataTagCardinality, DataTagReference, DataTagSchema,
     DataTarget, DataValueType, DataVectorValue, TransactionMutation,
 };
 
 /// One domain tree, one category and a kind placed and tagged in it.
-fn organised(document: &CanonicalId) -> DataengramOrganisation {
+fn organised(document: &CanonicalId) -> DataEstateOrganisation {
     let id = |value: &str| CanonicalId::new(value).unwrap();
-    DataengramOrganisation {
+    DataEstateOrganisation {
         domains: BTreeMap::from([
             (
                 id("knowledge"),

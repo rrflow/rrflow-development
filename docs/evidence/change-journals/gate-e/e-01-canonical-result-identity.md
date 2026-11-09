@@ -142,7 +142,7 @@ crates/adapters/rrflow-cli/tests/support/capacity.rs
 crates/adapters/rrflow-cli/tests/support/storage_history.rs
 crates/authority/rrd-engine/src/engine/context.rs
 crates/authority/rrd-engine/src/engine/flight.rs
-crates/authority/rrd-engine/src/engine/memory_engram.rs
+crates/authority/rrd-engine/src/engine/memory_estate.rs
 crates/authority/rrd-engine/src/engine/query.rs
 crates/authority/rrd-engine/src/engine/retrieval.rs
 crates/authority/rrd-engine/src/engine/retrieval_query.rs

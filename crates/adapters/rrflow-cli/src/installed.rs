@@ -256,6 +256,7 @@ fn install(action: &InstallAction, json: bool) -> Result<Execution, BoxError> {
             profile,
             configuration,
             attunement_proposal,
+            allow_project_source_read,
             test_distribution_executable,
         } => {
             let started = Instant::now();
@@ -264,13 +265,16 @@ fn install(action: &InstallAction, json: bool) -> Result<Execution, BoxError> {
                 .as_deref()
                 .map(rrd_engine::load_attunement_proposal)
                 .transpose()?;
-            let preview = RrdEngine::plan_installation_with_proposal(
+            let preview = RrdEngine::plan_installation_with_options(
                 project,
                 target_kind(*mode),
                 identity,
                 profile,
                 configuration.as_deref(),
-                proposal.as_ref(),
+                rrd_engine::InstallationPlanningOptions {
+                    attunement_proposal: proposal.as_ref(),
+                    allow_project_source_read: *allow_project_source_read,
+                },
                 &executable,
             )?;
             tracing::info!(
@@ -315,12 +319,11 @@ fn install(action: &InstallAction, json: bool) -> Result<Execution, BoxError> {
                 elapsed_ms = started.elapsed().as_millis() as u64,
                 "installed lifecycle operation completed"
             );
-            let map = project_map_line(project);
             let text = render(
                 &result,
                 json,
                 format!(
-                    "RRFlow installed: {}\ninstance: {}\nruntime cursor: {}\ncontrol journal: {}\nidempotent replay: {}\n{map}",
+                    "RRFlow installed: {}\ninstance: {}\nruntime cursor: {}\ncontrol journal: {}\nidempotent replay: {}",
                     result.plan_sha256,
                     preview.installation.target.instance_id,
                     result.runtime_cursor,
@@ -332,28 +335,6 @@ fn install(action: &InstallAction, json: bool) -> Result<Execution, BoxError> {
                 text,
                 success: true,
             })
-        }
-    }
-}
-
-/// Refresh the project's map and describe the outcome in one line. A map is
-/// a replaceable projection, so a failure is reported and never blocks.
-fn project_map_line(project: &Path) -> String {
-    match RrdEngine::refresh_project_map(project) {
-        Ok(map) => format!(
-            "project map: {} ({} files{})",
-            map.path.display(),
-            map.files,
-            if map.changed { ", updated" } else { "" }
-        ),
-        Err(error) => {
-            tracing::warn!(
-                target: "rrflow::installed",
-                operation = "project_map.refresh",
-                error = %error,
-                "project map was not refreshed"
-            );
-            format!("project map: not refreshed ({error})")
         }
     }
 }
@@ -372,13 +353,11 @@ fn serve(
     #[cfg(feature = "crash-test")]
     rrd_engine::crash_test::configure_from_stdin(&project.join(&locator.storage_root))?;
     let mut engine = RrdEngine::open_installed(project, &executable)
-        .map_err(|error| engram_open_elsewhere(project, error))?;
+        .map_err(|error| estate_open_elsewhere(project, error))?;
     if let Some(path) = endpoint_credentials {
         engine.install_endpoint_credentials(endpoint_credentials::load(path)?)?;
     }
-    // Refreshed under the engram's writer lock; the map is a replaceable view.
-    let map = project_map_line(project);
-    // Issued while this engine holds the engram's writer lock, so a record
+    // Issued while this engine holds the estate's writer lock, so a record
     // found at publication belongs to a process that no longer runs.
     let publisher = engine.serving_publisher()?;
     let server = RrdHttpServer::bind(engine, bind)?;
@@ -402,7 +381,7 @@ fn serve(
         serde_json::to_string(&announcement)?
     } else {
         format!(
-            "RRFlow listening at {}\ninstance: {}\nUI discovery: {}/v1/schema/openapi\n{map}",
+            "RRFlow listening at {}\ninstance: {}\nUI discovery: {}/v1/schema/openapi",
             announcement.url, announcement.instance_id, announcement.url
         )
     };
@@ -442,19 +421,19 @@ fn serve(
     })
 }
 
-/// Another process holds the engram, so this one fails before binding. Name
+/// Another process holds the estate, so this one fails before binding. Name
 /// the endpoint it recorded, if any; only `rrflow ready` can prove it.
-fn engram_open_elsewhere(project: &Path, error: ServiceError) -> BoxError {
-    if !matches!(error, ServiceError::engramInUse(_)) {
+fn estate_open_elsewhere(project: &Path, error: ServiceError) -> BoxError {
+    if !matches!(error, ServiceError::EstateInUse(_)) {
         return error.into();
     }
     match RrdEngine::read_serving_record(project) {
         Ok(Some(record)) => format!(
-            "this project's RRFlow engram is already open in another process; its served endpoint is recorded at {}. Run `rrflow ready --project` to prove it.",
+            "this project's RRFlow estate is already open in another process; its served endpoint is recorded at {}. Run `rrflow ready --project` to prove it.",
             record.url
         )
         .into(),
-        _ => "this project's RRFlow engram is already open in another process".into(),
+        _ => "this project's RRFlow estate is already open in another process".into(),
     }
 }
 

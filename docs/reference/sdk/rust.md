@@ -6,7 +6,7 @@
 
 `rrd-client` is the supported asynchronous Rust client foundation for public
 RRD operations. Its only normal RRFlow dependency is `rrd-contract`; engine,
-storage, query, vector, security, engram, and server crates are confined to
+storage, query, vector, security, estate, and server crates are confined to
 development fixtures. That dependency direction is correct and must remain.
 
 This record does not make the client another engine. Authentication,
@@ -49,8 +49,9 @@ fixed-path session POST operations; there is no separately checked-in Rust
 projection. Generator and compiled-catalogue tests verify complete coverage,
 metadata changes and malformed-input rejection.
 It carries method/path/type/mutation metadata, not semantic validation or engine
-authority. `operations::TaskEndpointPropose` and `operations::TaskWorkerExecute`
-implement the sealed `ValidatedOperation` interface. Other markers cannot be passed to this API;
+authority. `operations::TaskEndpointPropose`, `operations::TaskWorkerExecute`
+and `operations::TaskBudgetResume` implement the sealed `ValidatedOperation`
+interface. Other markers cannot be passed to this API;
 existing legacy methods retain their documented behavior.
 
 ```rust,ignore
@@ -67,6 +68,12 @@ work and checks response scope, task, attempt and expected task/configuration
 digests, protocol/correlation, status and JSON media type. Full candidate/packet
 admission remains in the engine. A successful proposal permits no worker effect.
 Credentials never need to enter the renderer.
+
+For explicit recovery, call `call_operation::<operations::TaskBudgetResume>`
+with `ResumeTaskBudget` and the exact digest returned by `read_task_budget`.
+The contract validates the resumed budget's identity and state. Carriage sends
+once; a lost acknowledgement requires readback. Resume does not dispatch work,
+reset spent effort/deadlines, clear unknown leases or make old attempts replayable.
 
 `client.execute_task_worker(&session, request, options)` is the typed wrapper
 over that same operation carriage. The worker request names the accepted
@@ -302,7 +309,7 @@ for diagnostics, exposes retry classification derived from operation semantics,
 and never turns strings into authorization or completion truth.
 
 Every request carries the canonical request and operation IDs plus W3C
-`traceparent`/`tracengram` when valid. Client attempts are child spans of the
+`traceparent`/`tracestate` when valid. Client attempts are child spans of the
 same operation and transport reconnects are causal links, not new semantic
 operations. Tracing never contains credentials or hidden model reasoning and
 never substitutes for the authoritative response, job, transaction, or
@@ -328,7 +335,7 @@ The current corpus overstates several rows:
 
 The harness now materializes one checked inert distribution-anchor fixture,
 canonically plans/applies an empty temporary project, requires the derived
-instance and engram IDs to equal the checked corpus, and opens the installed
+instance and estate IDs to equal the checked corpus, and opens the installed
 engine. It extends that fixture's schema and security state without replacing
 the installed identity, then starts one real daemon for Rust, TypeScript,
 Python, Go, Java, and .NET. This proves that all six checked SDKs execute the
@@ -418,7 +425,7 @@ The gates then close behavior in dependency order:
   owns TLS server verification and client-credential selection, distinct from
   RRD authorization.
 - [W3C Trace Context](https://www.w3.org/TR/trace-context/) defines interoperable
-  `traceparent` and `tracengram` propagation; RRFlow still owns its bounded
+  `traceparent` and `tracestate` propagation; RRFlow still owns its bounded
   causal attributes and redaction.
 - [OWASP Logging Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html#data-to-exclude)
   identifies access tokens, authentication secrets, and session identifiers as

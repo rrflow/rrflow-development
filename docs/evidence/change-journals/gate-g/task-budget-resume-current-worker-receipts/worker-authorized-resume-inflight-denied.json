@@ -1,0 +1,40 @@
+{
+  "status": 412,
+  "request": {
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "context": {
+      "request_id": "controller-proof-53afa26a17db4a26a712342c5f304918",
+      "operation_id": "controller-proof-53afa26a17db4a26a712342c5f304918",
+      "idempotency_key": "controller-proof-53afa26a17db4a26a712342c5f304918",
+      "deadline_unix_ms": null
+    },
+    "resource": {
+      "segments": [
+        {
+          "kind": "instance",
+          "id": "instance-0976612a58664c75431765c9"
+        }
+      ]
+    },
+    "payload": {
+      "scope": "instance:instance-0976612a58664c75431765c9",
+      "task_id": "task-19c2df2501b33aecb8a127b8d15fa0e8c281d60e36172c73974b3a7029f4bf9f",
+      "expected_budget_sha256": "01d67c7e861db046d8fa191f5ac625bc002701553ae629c5a1d0bd915bfa2010"
+    }
+  },
+  "response": {
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "request_id": "controller-proof-53afa26a17db4a26a712342c5f304918",
+    "operation_id": "controller-proof-53afa26a17db4a26a712342c5f304918",
+    "outcome": {
+      "status": "error",
+      "error": {
+        "code": "failed_precondition",
+        "message": "ReasoningBudgetStopped(UnresolvedAttempt)",
+        "retryable": false
+      }
+    }
+  }
+}

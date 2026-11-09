@@ -8,6 +8,7 @@ use rrd_inference::{EmbeddingCancellation, EmbeddingExecutionControl};
 mod persistence;
 mod public;
 mod repetition;
+mod resume;
 
 pub use rrd_contract::{ReasoningBudgetStop, TaskReasoningBudget};
 
@@ -50,6 +51,8 @@ struct AttemptRecord {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     worker_output: Option<rrd_contract::TaskWorkerOutput>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    assessment_output: Option<rrd_contract::TaskAssessmentOutput>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     invalidation: Option<rrd_contract::TaskAttemptInvalidation>,
 }
 
@@ -68,6 +71,7 @@ pub(super) enum TaskAttemptOutput {
     Embedding(Box<GenerateEmbeddingsResult>),
     EndpointProposal(Box<rrd_contract::EndpointSelectionProposal>),
     Worker(Box<rrd_contract::TaskWorkerOutput>),
+    Assessment(Box<rrd_contract::TaskAssessmentOutput>),
 }
 
 impl From<rrd_contract::EndpointSelectionProposal> for TaskAttemptOutput {
@@ -82,6 +86,7 @@ impl TaskAttemptOutput {
             Self::Embedding(output) => serde_json::to_vec(output),
             Self::EndpointProposal(output) => serde_json::to_vec(output),
             Self::Worker(output) => serde_json::to_vec(output),
+            Self::Assessment(output) => serde_json::to_vec(output),
         }
         .map_err(contract_json)
     }
@@ -98,6 +103,19 @@ impl TaskAttemptOutput {
                 {
                     return Err(ServiceError::Contract(
                         "task worker output identity mismatch".into(),
+                    ));
+                }
+            }
+            Self::Assessment(output) => {
+                output
+                    .validate()
+                    .map_err(|e| ServiceError::Contract(e.to_string()))?;
+                if output.scope != budget.scope
+                    || output.task_id != budget.task_id
+                    || output.attempt_id != attempt.attempt_id
+                {
+                    return Err(ServiceError::Contract(
+                        "task assessment output identity mismatch".into(),
                     ));
                 }
             }
@@ -134,6 +152,7 @@ impl TaskAttemptOutput {
 /// Engine-owned control bytes that must still match at the completion commit.
 /// These are compare-only semantic guards: their replacement is the same bytes.
 /// They never accept client-supplied keys or modify another authority's value.
+#[derive(Clone)]
 pub(super) struct AttemptAuthorityGuard {
     pub key: String,
     pub expected: Vec<u8>,
@@ -152,6 +171,8 @@ pub(super) struct TaskCompletionAdmission {
     pub guards: Vec<AttemptAuthorityGuard>,
     pub writes: Vec<AttemptControlWrite>,
     pub invalidation: Option<rrd_contract::TaskAttemptInvalidation>,
+    pub worker_source: Option<rrd_contract::TaskWorkerSourceProvenance>,
+    pub assessment_source: Option<rrd_contract::TaskWorkerSourceProvenance>,
 }
 
 pub(super) struct Reservation {
@@ -169,6 +190,71 @@ impl Reservation {
 }
 
 impl RrdEngine {
+    pub(super) fn read_task_assessment_record(
+        &self,
+        request: &rrd_contract::ReadTaskAssessment,
+    ) -> Result<rrd_contract::TaskAssessmentView> {
+        request
+            .validate()
+            .map_err(|error| ServiceError::Contract(error.to_string()))?;
+        self.query_scope(&request.scope)?;
+        let key = self.attempt_key(&request.scope, &request.task_id, &request.attempt_id);
+        let bytes = self.storage.control().get(&key)?;
+        let Some(bytes) = bytes else {
+            return Ok(rrd_contract::TaskAssessmentView {
+                contract_version: rrd_contract::TASK_ASSESSMENT_VERSION,
+                assessment: None,
+                outcome_sha256: None,
+            });
+        };
+        let record: AttemptRecord = serde_json::from_slice(&bytes).map_err(contract_json)?;
+        if record.format_version != 1 || record.attempt_id != request.attempt_id {
+            return Err(ServiceError::Storage(
+                "task assessment attempt identity is corrupt".into(),
+            ));
+        }
+        let Some(output) = record.assessment_output else {
+            if record.outcome == AttemptOutcome::Accepted
+                && record
+                    .outcome_sha256
+                    .as_ref()
+                    .is_some_and(|digest| digest.is_empty())
+            {
+                return Err(ServiceError::Storage(
+                    "task assessment outcome digest is corrupt".into(),
+                ));
+            }
+            return Ok(rrd_contract::TaskAssessmentView {
+                contract_version: rrd_contract::TASK_ASSESSMENT_VERSION,
+                assessment: None,
+                outcome_sha256: None,
+            });
+        };
+        output
+            .validate()
+            .map_err(|error| ServiceError::Contract(error.to_string()))?;
+        let output_bytes = serde_json::to_vec(&output).map_err(contract_json)?;
+        let expected = digest::sha256_hex(&output_bytes);
+        if record.outcome != AttemptOutcome::Accepted
+            || output.scope != request.scope
+            || output.task_id != request.task_id
+            || output.attempt_id != request.attempt_id
+            || record.result.is_some()
+            || record.endpoint_proposal.is_some()
+            || record.worker_output.is_some()
+            || record.outcome_sha256.as_deref() != Some(expected.as_str())
+        {
+            return Err(ServiceError::Storage(
+                "task assessment retained output is inconsistent".into(),
+            ));
+        }
+        Ok(rrd_contract::TaskAssessmentView {
+            contract_version: rrd_contract::TASK_ASSESSMENT_VERSION,
+            assessment: Some(output),
+            outcome_sha256: Some(expected),
+        })
+    }
+
     /// Execute one embedding attempt under the task's original durable effort
     /// allowance. This entry point requires ReasoningWrite AND EmbeddingGenerate.
     /// No automatic retries; a recorded attempt returns a receipt digest or
@@ -350,13 +436,13 @@ impl RrdEngine {
                 outcome_sha256: previous.outcome_sha256,
             });
         }
-        let limits = self.engram_configuration.reasoning.clone();
+        let limits = self.estate_configuration.reasoning.clone();
         let mut budget = existing.unwrap_or(TaskReasoningBudget {
             format_version: 1,
             instance_id: self.instance.clone(),
             scope: input.scope.into(),
             task_id: input.task_id.clone(),
-            configuration_sha256: self.engram_configuration.configuration_sha256.clone(),
+            configuration_sha256: self.estate_configuration.configuration_sha256.clone(),
             deadline_unix_ms: at
                 .checked_add(limits.max_run_elapsed_ms)
                 .ok_or(ServiceError::DeadlineExceeded)?,
@@ -382,7 +468,7 @@ impl RrdEngine {
         }
         let mut stop = if at < budget.last_observed_at_unix_ms {
             Some(ReasoningBudgetStop::ClockRollback)
-        } else if budget.configuration_sha256 != self.engram_configuration.configuration_sha256 {
+        } else if budget.configuration_sha256 != self.estate_configuration.configuration_sha256 {
             Some(ReasoningBudgetStop::ConfigurationChanged)
         } else if input.cancellation.is_cancelled() {
             Some(ReasoningBudgetStop::Cancelled)
@@ -435,6 +521,7 @@ impl RrdEngine {
             result: None,
             endpoint_proposal: None,
             worker_output: None,
+            assessment_output: None,
             invalidation: None,
         };
         self.commit_budget_controlled(
@@ -469,7 +556,9 @@ impl RrdEngine {
             context,
         )? {
             TaskAttemptOutput::Embedding(output) => Ok(*output),
-            TaskAttemptOutput::EndpointProposal(_) | TaskAttemptOutput::Worker(_) => {
+            TaskAttemptOutput::EndpointProposal(_)
+            | TaskAttemptOutput::Worker(_)
+            | TaskAttemptOutput::Assessment(_) => {
                 Err(ServiceError::Storage("unexpected task output kind".into()))
             }
         }
@@ -542,6 +631,36 @@ impl RrdEngine {
             // Cleanup also runs for known failures. If admission cannot be read,
             // leave the reservation unresolved rather than releasing capacity.
             let admission = admit_completion(&read)?;
+            if let Some(source) = admission.worker_source.clone() {
+                if let Ok(output) = &mut result {
+                    match output {
+                        TaskAttemptOutput::Worker(output) => output.source = Some(source),
+                        _ => {
+                            result = Err(ServiceError::Storage(
+                                "worker source admission returned for a non-worker attempt".into(),
+                            ));
+                        }
+                    }
+                }
+            }
+            if let Some(source) = admission.assessment_source.clone() {
+                if let Ok(output) = &mut result {
+                    match output {
+                        TaskAttemptOutput::Assessment(output) => output.source = source,
+                        _ => {
+                            result = Err(ServiceError::Storage(
+                                "assessment source admission returned for a non-assessment attempt"
+                                    .into(),
+                            ));
+                        }
+                    }
+                }
+            }
+            if let Ok(output) = &result {
+                if let Err(error) = output.validate_for(&reserved, &attempt) {
+                    result = Err(error);
+                }
+            }
             if result.is_ok() {
                 if let Some(reason) = admission.invalidation {
                     result = Err(ServiceError::TaskAttemptInvalidated(reason));
@@ -627,6 +746,10 @@ impl RrdEngine {
                 Ok(TaskAttemptOutput::Worker(output)) => Some((**output).clone()),
                 _ => None,
             };
+            attempt.assessment_output = match &result {
+                Ok(TaskAttemptOutput::Assessment(output)) => Some((**output).clone()),
+                _ => None,
+            };
             match self.commit_budget_controlled(
                 &read,
                 expected_budget,
@@ -681,5 +804,39 @@ impl Drop for ActiveTaskCancellation<'_> {
                 active.remove(&self.key);
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod legacy_attempt_record_tests {
+    use super::{AttemptOutcome, AttemptRecord};
+    use rrd_contract::CorrelationId;
+
+    #[test]
+    fn prior_v1_attempt_record_without_assessment_output_loads_and_keeps_its_wire_shape() {
+        let legacy = serde_json::json!({
+            "format_version": 1,
+            "attempt_id": "legacy-attempt-v1",
+            "request_sha256": "a".repeat(64),
+            "ordinal": 3,
+            "read_manifest_sha256": "b".repeat(64),
+            "read_cursor": 17,
+            "outcome": "stopped",
+            "outcome_sha256": null,
+            "result": null
+        });
+        let record: AttemptRecord = serde_json::from_value(legacy.clone()).unwrap();
+        assert_eq!(
+            record.attempt_id,
+            CorrelationId::new("legacy-attempt-v1").unwrap()
+        );
+        assert_eq!(record.outcome, AttemptOutcome::Stopped);
+        assert!(record.assessment_output.is_none());
+        let roundtrip = serde_json::to_value(record).unwrap();
+        assert_eq!(roundtrip, legacy);
+        assert!(!roundtrip
+            .as_object()
+            .unwrap()
+            .contains_key("assessment_output"));
     }
 }

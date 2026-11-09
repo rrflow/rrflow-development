@@ -77,7 +77,7 @@ pub use runtime::{
     SnapshotId, DATA_RUNTIME_CONTRACT_VERSION,
 };
 pub use schema::{
-    RuntimeCategorySchema, RuntimeCategoryTargets, RuntimeDomainSchema, RuntimeengramOrganisation,
+    RuntimeCategorySchema, RuntimeCategoryTargets, RuntimeDomainSchema, RuntimeEstateOrganisation,
     RuntimeEventSchema, RuntimeLogicalModel, RuntimePropertySchema, RuntimeRecordSchema,
     RuntimeRelationSchema, RuntimeSchemaMode, RuntimeSchemaRegistry, RuntimeTableSchema,
     RuntimeTagCardinality, RuntimeTagRef, RuntimeTagSchema, RuntimeValueType, DEFAULT_DOMAIN,

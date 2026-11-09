@@ -1,0 +1,75 @@
+{
+  "status": 200,
+  "request": {
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "context": {
+      "request_id": "controller-proof-4246c04a25794f4783ea82834a8d7e79",
+      "operation_id": "controller-proof-4246c04a25794f4783ea82834a8d7e79",
+      "idempotency_key": null,
+      "deadline_unix_ms": null
+    },
+    "resource": {
+      "segments": [
+        {
+          "kind": "instance",
+          "id": "instance-0976612a58664c75431765c9"
+        }
+      ]
+    },
+    "payload": {
+      "scope": "instance:instance-0976612a58664c75431765c9",
+      "task_id": "task-19c2df2501b33aecb8a127b8d15fa0e8c281d60e36172c73974b3a7029f4bf9f",
+      "attempt_id": "actual-resumed-worker-4361d2314ff2415e8a809109d5086941"
+    }
+  },
+  "response": {
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "request_id": "controller-proof-4246c04a25794f4783ea82834a8d7e79",
+    "operation_id": "controller-proof-4246c04a25794f4783ea82834a8d7e79",
+    "outcome": {
+      "status": "ok",
+      "payload": {
+        "attempt": {
+          "attempt_id": "actual-resumed-worker-4361d2314ff2415e8a809109d5086941",
+          "ordinal": 4,
+          "status": "accepted",
+          "outcome_sha256": "81766460465ead2c805d8a3a4850abf8481c01a62aa3830c96b386352ca6e61f",
+          "result": null,
+          "worker_output": {
+            "contract_version": 1,
+            "scope": "instance:instance-0976612a58664c75431765c9",
+            "task_id": "task-19c2df2501b33aecb8a127b8d15fa0e8c281d60e36172c73974b3a7029f4bf9f",
+            "attempt_id": "actual-resumed-worker-4361d2314ff2415e8a809109d5086941",
+            "selection_attempt_id": "actual-resumed-proposal-72d3b231047f40a98185ebb5319d2929",
+            "selection_sha256": "220862abfb3f65a3e5f2004a4a1973f71dba0ad6f40133eb11e568bc3bdd5c84",
+            "task_sha256": "62e20741c6862789c243005a39daf4dddd4c4ebd262c299e850e1e70859255fa",
+            "configuration_sha256": "de61345abfd42c0a80fcb2fac06f259adac5db54d6ac8d884afcda97960ab59b",
+            "binding_id": "swag-custom-bf16",
+            "service_id": "swag-qwen3-coder-intent-20261028",
+            "packet_sha256": "9cbcfdf49ccd5037294caa9a0a385936afe10bc332504222270e123c86d82cb6",
+            "request_sha256": "697b25bc72a95de94f3ea1c873d526594df8be611f6ad2cdb43d8da49cdbfde7",
+            "response_sha256": "7b3679993c58ad127519f9dce6de52391af2144e0edfe9e00a6e1c2d5e3b220d",
+            "content_sha256": "800d1828b55c74fcfef0da9a9e89cbeaeda3b384d4a325cdc273f2cdaf708a78",
+            "content": "{\n  \"implementation_steps\": [\n    \"Add a new `task-budget-resume` operation to handle resuming tasks from a known stopped state without resetting effort.\",\n    \"Update the task state machine to support transitioning from failed/cancelled to resumed states while preserving original metadata.\",\n    \"Integrate the resume logic into the existing budget management flow to ensure no new admission is triggered during the resume process.\"\n  ],\n  \"verification_steps\": [\n    \"Confirm that a task in a stopped state can be resumed using the new `task-budget-resume` operation without resetting effort or deadline.\",\n    \"Verify that active or uncertain attempts remain denied after a successful resume operation.\",\n    \"Validate that the original attempt history and repetition counts are preserved through the resume transition.\"\n  ],\n  \"unresolved_questions\": [\n    \"Should the resume operation also restore previous provider outcomes if they are known and stable?\",\n    \"How should the system handle cases where the original task's deadline has passed during the stop period?\",\n    \"What is the expected behavior when attempting to resume a task that has been modified externally since its last known good state?\"\n  ]\n}",
+            "read": {
+              "runtime_manifest_sha256": "d3be260b24ac066846adb2a92bd06766c906c285d7feb7bd92851eb2ffe95678",
+              "runtime_cursor": 12,
+              "schema_revision": 3,
+              "catalogue_revision": 0
+            },
+            "context": null,
+            "usage": {
+              "prompt_tokens": 1563,
+              "completion_tokens": 229,
+              "total_tokens": 1792
+            },
+            "elapsed_ms": 17161,
+            "http_status": 200
+          }
+        }
+      }
+    }
+  }
+}

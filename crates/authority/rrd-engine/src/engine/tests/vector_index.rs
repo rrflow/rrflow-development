@@ -87,7 +87,7 @@ fn vector_fixture_schema(
     DataSchemaRegistry {
         revision: 1,
         migration: migration.into(),
-        organisation: DataengramOrganisation::default(),
+        organisation: DataEstateOrganisation::default(),
         tables: BTreeMap::from([
             (document_kind.clone(), document_table),
             (
@@ -1865,7 +1865,7 @@ fn collection_filtered_hnsw_overlays_retirement_and_protects_payload_index() {
                 registry: DataSchemaRegistry {
                     revision: 1,
                     migration: "install filtered HNSW schema".into(),
-                    organisation: DataengramOrganisation::default(),
+                    organisation: DataEstateOrganisation::default(),
                     tables: BTreeMap::from([
                         (
                             CanonicalId::new("embedding").unwrap(),
@@ -2189,7 +2189,7 @@ fn collection_point_and_payload_index_administration_is_atomic_and_restart_safe(
                 registry: DataSchemaRegistry {
                     revision: 1,
                     migration: "install multimodal point schema".into(),
-                    organisation: DataengramOrganisation::default(),
+                    organisation: DataEstateOrganisation::default(),
                     tables: BTreeMap::from([
                         (
                             CanonicalId::new("embedding").unwrap(),

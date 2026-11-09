@@ -37,7 +37,7 @@ brief now binds this exact merge and the combined acceptance commands.
 `git fetch development main` resolved the development remote above. The
 worktree was clean. `git merge --no-commit development/main` preserved history
 and surfaced two conflicts: workflow policy and the generated file inventory.
-Both policy blocks were retained: reader tests in each native engram job and
+Both policy blocks were retained: reader tests in each native estate job and
 the ordinary-primary 100-cycle job requirements. No gate was removed.
 The inventory was regenerated from the combined source. Other overlapping CI,
 roadmap, POA&M and journal-index changes merged without conflict and were

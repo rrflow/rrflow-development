@@ -24,7 +24,7 @@ const MAX_READ_REPLICAS: u8 = 32;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub enum PlacementNodengram {
+pub enum PlacementNodeState {
     Active,
     Draining,
     Unavailable,
@@ -36,7 +36,7 @@ pub struct PlacementNode {
     pub node: NodeId,
     pub region: RegionId,
     pub zone: ZoneId,
-    pub state: PlacementNodengram,
+    pub state: PlacementNodeState,
     pub voter_capacity: u32,
     pub learner_capacity: u32,
     pub observed_at: u64,
@@ -258,7 +258,7 @@ impl DistributedAuthorityCatalogue {
                     ClusterError::Invalid("shard placement names an unknown node".into())
                 })?;
                 if node.zone != replica.zone
-                    || node.state != PlacementNodengram::Active
+                    || node.state != PlacementNodeState::Active
                     || !tenant.allowed_regions.contains(&node.region)
                     || !shard.replica_health.contains_key(&node.node)
                 {
@@ -784,7 +784,7 @@ fn select_replicas(
     let candidates = nodes
         .values()
         .filter(|node| {
-            node.state == PlacementNodengram::Active
+            node.state == PlacementNodeState::Active
                 && tenant.allowed_regions.contains(&node.region)
         })
         .collect::<Vec<_>>();

@@ -28,7 +28,7 @@ export type SuccessPayload<K extends OperationId> = operations[K] extends {
 export interface ResourceSegment {
   kind:
     | "organization"
-    | "engram"
+    | "estate"
     | "project"
     | "instance"
     | "node"
@@ -89,8 +89,8 @@ export function defaultResource(
   parameters: Readonly<Record<string, string>> | undefined,
 ): ResourceSegment[] {
   const segments: ResourceSegment[] = [];
-  if (parameters?.engram)
-    segments.push({ kind: "engram", id: canonicalId(parameters.engram, "engram") });
+  if (parameters?.estate)
+    segments.push({ kind: "estate", id: canonicalId(parameters.estate, "estate") });
   segments.push({ kind: "instance", id: instance });
   return segments;
 }

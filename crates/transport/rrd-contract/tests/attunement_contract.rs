@@ -5,12 +5,12 @@ use rrd_contract::{
     AttunementPhasePlan, AttunementPlan, AttunementRuntimeCoordinates, AttunementStatus,
     AttunementVerification, AttunementVerificationCheck, AttunementVerificationStatus,
     CancelAttunement, CanonicalId, DeploymentForm, DeploymentProfile, EndpointPresentation,
-    engramConfiguration, InstallationActionDisposition, InstallationActionKind,
+    EstateConfiguration, InstallationActionDisposition, InstallationActionKind,
     InstallationActionResult, InstallationBootstrap, InstallationBootstrapPolicy,
     InstallationManagedPath, InstallationManagedPathKind, InstallationPlan, InstallationPlanAction,
     InstallationRecordKind, InstallationRemovalRule, InstallationResult,
     InstallationSpecialization, InstallationStorageGeneration, InstallationTargetKind,
-    InstalledengramIdentity, MemorySeatDefinition, ResumeAttunement, SecurityAction,
+    InstalledEstateIdentity, MemorySeatDefinition, ResumeAttunement, SecurityAction,
     StorageProfileKind, ATTUNEMENT_CONTRACT_VERSION, INSTALLATION_PLAN_CONTRACT_VERSION,
     INSTALL_ATTUNEMENT_CONTRACT_VERSION,
 };
@@ -60,49 +60,49 @@ fn public_replan_operations_have_exact_authentication_and_mutation_boundaries() 
             "attunement-pause",
             "/v1/attunement/pause",
             true,
-            SecurityAction::engramAdmin,
+            SecurityAction::EstateAdmin,
         ),
         (
             "attunement-recover-expired",
             "/v1/attunement/recover-expired",
             true,
-            SecurityAction::engramAdmin,
+            SecurityAction::EstateAdmin,
         ),
         (
             "attunement-resume",
             "/v1/attunement/resume",
             true,
-            SecurityAction::engramAdmin,
+            SecurityAction::EstateAdmin,
         ),
         (
             "attunement-start",
             "/v1/attunement/start",
             true,
-            SecurityAction::engramAdmin,
+            SecurityAction::EstateAdmin,
         ),
         (
             "attunement-step",
             "/v1/attunement/step",
             true,
-            SecurityAction::engramAdmin,
+            SecurityAction::EstateAdmin,
         ),
         (
             "attunement-replan-preview",
             "/v1/attunement/replan/preview",
             false,
-            SecurityAction::engramAdmin,
+            SecurityAction::EstateAdmin,
         ),
         (
             "attunement-replan-accept",
             "/v1/attunement/replan/accept",
             true,
-            SecurityAction::engramAdmin,
+            SecurityAction::EstateAdmin,
         ),
         (
             "attunement-replan-receipt-read",
             "/v1/attunement/replan/receipt/read",
             false,
-            SecurityAction::engramRead,
+            SecurityAction::EstateRead,
         ),
     ] {
         let endpoint = catalogue
@@ -140,7 +140,7 @@ fn attunement_status_is_an_authenticated_read_operation() {
     assert!(!endpoint.mutation);
     assert_eq!(
         endpoint.action.fixed_action(),
-        Some(SecurityAction::engramRead)
+        Some(SecurityAction::EstateRead)
     );
     assert_eq!(endpoint.request_type, "ReadAttunement");
     assert_eq!(endpoint.response_type, "AttunementReadResult");
@@ -158,7 +158,7 @@ fn attunement_cancel_is_an_authenticated_mutation_operation() {
     assert!(endpoint.mutation);
     assert_eq!(
         endpoint.action.fixed_action(),
-        Some(SecurityAction::engramAdmin)
+        Some(SecurityAction::EstateAdmin)
     );
     assert_eq!(endpoint.request_type, "CancelAttunement");
     assert_eq!(endpoint.response_type, "AttunementCancelResult");
@@ -203,10 +203,10 @@ fn digest(value: u64) -> String {
     format!("{value:064x}")
 }
 
-fn target() -> InstalledengramIdentity {
-    InstalledengramIdentity {
+fn target() -> InstalledEstateIdentity {
+    InstalledEstateIdentity {
         project_id: canonical_id("rrflow"),
-        engram_id: canonical_id("developer-engram"),
+        estate_id: canonical_id("developer-estate"),
         instance_id: canonical_id("rrflow-dev"),
     }
 }
@@ -364,7 +364,7 @@ fn installation_plan(attunement: &AttunementPlan) -> InstallationPlan {
         profile_sha256: digest(41),
         project_precondition_sha256: digest(42),
         storage_root_id: canonical_id("install-01"),
-        configuration: engramConfiguration::default(),
+        configuration: EstateConfiguration::default(),
         bootstrap: bootstrap(),
         initial_seat: MemorySeatDefinition {
             id: canonical_id("rrflow-local-seat"),
@@ -385,7 +385,7 @@ fn installation_plan(attunement: &AttunementPlan) -> InstallationPlan {
         ],
         managed_paths: vec![
             InstallationManagedPath {
-                kind: InstallationManagedPathKind::engramDirectory,
+                kind: InstallationManagedPathKind::EstateDirectory,
                 relative_path: ".rrflow".into(),
                 precondition_sha256: digest(43),
                 removal_rule: InstallationRemovalRule::RemoveIfOwnedAndEmpty,
@@ -487,7 +487,7 @@ fn installation_plan(attunement: &AttunementPlan) -> InstallationPlan {
                 estimated_write_bytes: 65_536,
             },
             InstallationPlanAction {
-                kind: InstallationActionKind::CreateengramDirectories,
+                kind: InstallationActionKind::CreateEstateDirectories,
                 disposition: InstallationActionDisposition::Create,
                 input_sha256: digest(4),
                 estimated_write_bytes: 0,

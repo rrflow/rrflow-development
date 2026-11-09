@@ -6,7 +6,7 @@
   "retry": "Attempt 1 macOS never acquired a hosted runner; capacity cancellation made the aggregate gate fail. Attempt 2 reran macOS and the dependent gate at the same source revision, retaining fifteen successful jobs.",
   "jobs": [
     {
-      "name": "pipeline / engram process (macos-latest)",
+      "name": "pipeline / estate process (macos-latest)",
       "databaseId": 119487607619,
       "conclusion": "success",
       "url": "https://github.com/rrflow/rrflow-development/actions/runs/39674145683/job/119487607619"
@@ -66,7 +66,7 @@
       "url": "https://github.com/rrflow/rrflow-development/actions/runs/39674145683/job/119487657895"
     },
     {
-      "name": "pipeline / engram process (windows-latest)",
+      "name": "pipeline / estate process (windows-latest)",
       "databaseId": 119487658682,
       "conclusion": "success",
       "url": "https://github.com/rrflow/rrflow-development/actions/runs/39674145683/job/119487658682"
@@ -132,7 +132,7 @@
       "installation_cases": [
         "engine::tests::installation::a_restore_into_an_existing_verified_target_is_recovered_without_a_second_writer",
         "engine::tests::installation::a_restored_root_carries_the_installed_control_state",
-        "engine::tests::installation::a_staged_restore_is_published_in_place_and_the_engram_opens_from_the_backup",
+        "engine::tests::installation::a_staged_restore_is_published_in_place_and_the_estate_opens_from_the_backup",
         "engine::tests::installation::an_interrupted_publication_resumes_from_its_recorded_stage",
         "engine::tests::installation::changed_project_or_credential_permissions_fail_closed",
         "engine::tests::installation::configuration_input_rejects_unknown_oversized_and_symbolic_sources",
@@ -198,7 +198,7 @@
       "process_death_stages_in_native_log": [
         "LeaseAcquired",
         "IntentPublished",
-        "engramDirectoriesReady",
+        "EstateDirectoriesReady",
         "BootstrapStaged",
         "BootstrapReady",
         "StorageReady",
@@ -211,7 +211,7 @@
       "installation_cases": [
         "engine::tests::installation::a_restore_into_an_existing_verified_target_is_recovered_without_a_second_writer",
         "engine::tests::installation::a_restored_root_carries_the_installed_control_state",
-        "engine::tests::installation::a_staged_restore_is_published_in_place_and_the_engram_opens_from_the_backup",
+        "engine::tests::installation::a_staged_restore_is_published_in_place_and_the_estate_opens_from_the_backup",
         "engine::tests::installation::an_interrupted_publication_resumes_from_its_recorded_stage",
         "engine::tests::installation::changed_project_or_credential_permissions_fail_closed",
         "engine::tests::installation::configuration_input_rejects_unknown_oversized_and_symbolic_sources",
@@ -277,7 +277,7 @@
       "process_death_stages_in_native_log": [
         "LeaseAcquired",
         "IntentPublished",
-        "engramDirectoriesReady",
+        "EstateDirectoriesReady",
         "BootstrapStaged",
         "BootstrapReady",
         "StorageReady",
@@ -290,7 +290,7 @@
       "installation_cases": [
         "engine::tests::installation::a_restore_into_an_existing_verified_target_is_recovered_without_a_second_writer",
         "engine::tests::installation::a_restored_root_carries_the_installed_control_state",
-        "engine::tests::installation::a_staged_restore_is_published_in_place_and_the_engram_opens_from_the_backup",
+        "engine::tests::installation::a_staged_restore_is_published_in_place_and_the_estate_opens_from_the_backup",
         "engine::tests::installation::an_interrupted_publication_resumes_from_its_recorded_stage",
         "engine::tests::installation::changed_project_or_credential_permissions_fail_closed",
         "engine::tests::installation::configuration_input_rejects_unknown_oversized_and_symbolic_sources",

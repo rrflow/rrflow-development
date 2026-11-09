@@ -7,8 +7,8 @@ use rrd_contract::{
 };
 
 impl RrdEngine {
-    fn observation_source_identity(&self) -> Result<InstalledengramIdentity> {
-        self.installed_engram_identity().cloned().ok_or_else(|| {
+    fn observation_source_identity(&self) -> Result<InstalledEstateIdentity> {
+        self.installed_estate_identity().cloned().ok_or_else(|| {
             ServiceError::Contract(
                 "observation sources require an installed project identity".into(),
             )
@@ -66,7 +66,7 @@ impl RrdEngine {
         self.authorize(
             session,
             token,
-            SecurityAction::engramRead,
+            SecurityAction::EstateRead,
             now,
             request_id,
             operation_id,
@@ -109,7 +109,7 @@ impl RrdEngine {
         self.authorize(
             session,
             token,
-            SecurityAction::engramAdmin,
+            SecurityAction::EstateAdmin,
             now,
             request_id,
             operation_id,
@@ -187,7 +187,7 @@ impl RrdEngine {
         self.authorize(
             session,
             token,
-            SecurityAction::engramAdmin,
+            SecurityAction::EstateAdmin,
             now,
             request_id,
             operation_id,

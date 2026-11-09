@@ -1,11 +1,11 @@
-# engram organisation contract
+# Estate organisation contract
 
 **Status:** active target contract; H-11a is implemented (domain and category definitions, kind and collection membership, and kind tags in the schema registry); record tags, scoped reads, isolation and per-domain evidence are not ([POAM-042](../../poam/rrflow-1.0-alpha/poam-042.md))
-**Coordinate:** `rrflow://rrflow-instance/data/reference/data/engram-organisation`
-**Owner:** domains, categories and tags inside one engram: membership, scoping, isolation, per-domain evidence, defaults and tuning
+**Coordinate:** `rrflow://rrflow-instance/data/reference/data/estate-organisation`
+**Owner:** domains, categories and tags inside one estate: membership, scoping, isolation, per-domain evidence, defaults and tuning
 
-[ADR-0003](../../decisions/0003-configurable-engram-organisation.md) records
-why RRFlow organises an engram this way and the research behind it. This
+[ADR-0003](../../decisions/0003-configurable-estate-organisation.md) records
+why RRFlow organises an estate this way and the research behind it. This
 record fixes the terms. The [roadmap](../../roadmap/rrflow-1.0.md) owns order
 and completion: item H-11 in [Gate H](../../roadmap/rrflow-1.0/gate-h.md)
 carries the work, and [OBJ-15](../../objectives/rrflow-1.0-alpha.md#required-outcomes)
@@ -15,8 +15,8 @@ measures it.
 
 | Date | Decision | Effect here |
 |---|---|---|
-| 2026-10-17 | One project ↔ one engram (rrflowDB) ↔ one RRD instance. | Domains divide one engram. They never span engrams or create instances. |
-| 2026-10-18 | rrflowDB is "the pure Rust Postgres DB for AI". | A domain is the engram's catalogue namespace, and the PostgreSQL projection shows it as a SQL schema. |
+| 2026-10-17 | One project ↔ one estate (rrflowDB) ↔ one RRD instance. | Domains divide one estate. They never span estates or create instances. |
+| 2026-10-18 | rrflowDB is "the pure Rust Postgres DB for AI". | A domain is the estate's catalogue namespace, and the PostgreSQL projection shows it as a SQL schema. |
 | 2026-10-27 | Domains are configurable, with a default setup each project tunes; kinds are grouped; categories and tags can be created; data can be isolated; drill-down finds bottlenecks and what works; the design absorbs current research. | This record. |
 
 ## Terms
@@ -24,7 +24,7 @@ measures it.
 | Term | Meaning | Not allowed to mean |
 |---|---|---|
 | **organisation** | The domain, category and tag definitions in one schema-registry revision. | A client preference, a second catalogue or a configuration file outside the registry. |
-| **domain** | A named part of one engram's catalogue, such as a service, package or subject area. It has an identity, a title, a description, an optional parent domain and an isolation mode. | An engram, instance, database, storage root, tenant, deployment or authorisation principal. |
+| **domain** | A named part of one estate's catalogue, such as a service, package or subject area. It has an identity, a title, a description, an optional parent domain and an isolation mode. | An estate, instance, database, storage root, tenant, deployment or authorisation principal. |
 | **membership** | The one domain a kind belongs to. Records, relations, events, series values, geo values, objects and vector points inherit their kind's domain. | Part of the kind's identity. |
 | **category** | A governed vocabulary of tags. It declares its targets (kinds, records or both), its cardinality (one tag or several per target) and whether writers with the grant may add tags. | A domain, a free-text property or a model-only label. |
 | **tag** | One value in a category, such as `lifecycle:accepted` or `component:storage`. | A record kind or an access grant. |
@@ -45,7 +45,7 @@ measures it.
   belongs to `default`, or to `rrflow` when it is engine-owned. A registry
   that names an unknown domain or parent, forms a cycle, exceeds the depth or
   repeats a domain is rejected before the cursor advances.
-- **Identity.** Kind names stay unique across the engram, so the domain is not
+- **Identity.** Kind names stay unique across the estate, so the domain is not
   part of a kind's identity. Moving a kind to another domain is one schema
   revision. It rewrites no record. An old read stamp reads the old membership.
 - **Reserved domain.** Kinds and collections whose identity starts with
@@ -59,7 +59,7 @@ measures it.
   Organisation data adds a separately versioned section to the canonical
   encoding.
 - **Retired label.** H-11a removes the registry's `DataCatalogueIdentity`
-  (`namespace`/`database`). The engram is the one database, and a domain is
+  (`namespace`/`database`). The estate is the one database, and a domain is
   its catalogue namespace. H-11d replaces the `Namespace` and `Database`
   resource kinds with `Domain`.
 
@@ -116,8 +116,8 @@ A scope applies as follows:
 
 | Mode | Reads and retrieval | Relations | Grants | Physical rules |
 |---|---|---|---|---|
-| `shared` (default) | Part of every unscoped read; context expansion may cross into it | May relate to any shared domain; cross-domain commits are atomic | Grants for the whole engram apply | Shares lexical statistics and indexes with other shared domains |
-| `isolated` | Read, retrieved, traversed or streamed only by a caller whose grant names this domain | Crosses the boundary only for relation kinds the domain lists, with both grants held | Grants for the whole engram do not reach it; a grant names `domain:<id>` in its resource prefix | Keeps its own lexical statistics; its vectors never share an approximate index with another domain |
+| `shared` (default) | Part of every unscoped read; context expansion may cross into it | May relate to any shared domain; cross-domain commits are atomic | Grants for the whole estate apply | Shares lexical statistics and indexes with other shared domains |
+| `isolated` | Read, retrieved, traversed or streamed only by a caller whose grant names this domain | Crosses the boundary only for relation kinds the domain lists, with both grants held | Grants for the whole estate do not reach it; a grant names `domain:<id>` in its resource prefix | Keeps its own lexical statistics; its vectors never share an approximate index with another domain |
 
 - **Resource paths.** These gain a `domain` segment, for example
   `instance:{id}/domain:{domain}/…`. `ResourceKind::Domain` replaces
@@ -126,9 +126,9 @@ A scope applies as follows:
   its boundary that it does not allow. Those relations must first be retired
   or the relation kind allowed. Making it shared again is an ordinary
   revision.
-- **What stays whole.** Isolation does not split the engram's transactions,
+- **What stays whole.** Isolation does not split the estate's transactions,
   cursor, backup or restore. An isolated domain is still committed, backed up
-  and restored with its engram.
+  and restored with its estate.
 
 ## Per-domain evidence
 
@@ -152,7 +152,7 @@ OpenTelemetry GenAI retrieval-span convention (`gen_ai.data_source.id`).
 - **Bundled initial revision.** One project domain, `default`, and the
   reserved `rrflow` domain. Both are shared, and there are no categories. A
   project that never configures anything works exactly as an unorganised
-  engram.
+  estate.
 - **Attunement proposal.** After D-03, attunement may propose domains from the
   committed project tree: workspace members, packages and service roots, with
   each proposed kind assigned to where its source lives. Community detection
@@ -177,11 +177,11 @@ grants.
 
 ## Projections
 
-- **Connectome** shows Project ▸ engram ▸ Domain. It reads domains, categories
+- **Connectome** shows Project ▸ Estate ▸ Domain. It reads domains, categories
   and per-domain evidence from public operations and never keeps its own
   grouping ([Connectome contract](../client/connectome.md)).
 - **PostgreSQL** (H-08) shows each domain as a SQL schema (`pg_namespace`) and
-  each kind as a table in it. Kind names are unique across the engram, so a
+  each kind as a table in it. Kind names are unique across the estate, so a
   qualified `schema.table` and a bare `table` resolve to the same kind.
 - **SDKs and OpenAPI** are generated from the contract types. No surface keeps
   a handwritten copy.
@@ -190,14 +190,14 @@ grants.
 
 | Limit | Value |
 |---|---|
-| Domains per engram | 256 |
+| Domains per estate | 256 |
 | Domain depth | 8 |
-| Categories per engram | 64 |
+| Categories per estate | 64 |
 | Tags per category | 4,096 |
 | Tags per record, across categories | 64 |
 | Domains or tags in one scope | 32 |
 
-These are contract ceilings. Installed engram limits may be lower.
+These are contract ceilings. Installed estate limits may be lower.
 
 ## Build order
 
@@ -208,7 +208,7 @@ Each step is one pull request with its own oracle.
 | H-11a | Domain and category definitions, kind and collection membership, and tags on kinds in `rrd-contract` and the `rrd-core` registry; retire `DataCatalogueIdentity`; generated OpenAPI and SDK models | — | Golden registry fixtures; rejection of unknown domains and parents, cycles, excess depth, redefined built-in domains and reserved-domain violations; a default organisation keeps every existing registry digest; membership moves keep record identity; old stamps read old membership; rrflowMX and rrflowKV agree after reopen |
 | H-11b | Record tags as the reserved `rrflow.tag`/`rrflow.tagged` family, validated in the same commit | H-11a | Cardinality, vocabulary and target violations fail; retirement keeps history; adjacency returns each tag's candidates |
 | H-11c | Scoped reads in rrflowQL (tag predicate), `context-assemble`, `vector-search`, `data-schema-read`, `diagnostics-read` and changefeed, applied as pre-filters | H-11a, H-11b | Golden query vectors; scoped results equal an independent full-replay oracle; a path that cannot pre-filter refuses; results name scope and revision |
-| H-11d | Isolation and domain grants: the domain isolation mode, `ResourceKind::Domain` replacing `Namespace` and `Database`, isolated read, traversal, retrieval, changefeed and relation-write enforcement, and isolated lexical statistics | H-11c | Every surface is denied without the domain grant and allowed with it; crossing relations are refused unless allowed; an engram-wide grant does not reach an isolated domain |
+| H-11d | Isolation and domain grants: the domain isolation mode, `ResourceKind::Domain` replacing `Namespace` and `Database`, isolated read, traversal, retrieval, changefeed and relation-write enforcement, and isolated lexical statistics | H-11c | Every surface is denied without the domain grant and allowed with it; crossing relations are refused unless allowed; an estate-wide grant does not reach an isolated domain |
 | H-11e | Per-domain evidence in diagnostics and retrieval evidence | H-11c, H-01, H-05 | Fixture counts reconcile with an independent recount; unknown values stay unknown |
 | H-11f | Attunement proposal from the project tree, and organisation experiments | D-03, H-09 M5 | A proposal changes nothing until accepted; an experiment promotes only past both thresholds |
 | H-11g | Connectome projection (H-06) and the PostgreSQL schema projection (H-08) | H-11a–e, H-06, H-08 | Both show the same organisation and values at the same read stamp |

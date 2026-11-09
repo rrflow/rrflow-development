@@ -29,7 +29,7 @@ remaining known errors and owner: flight-list still reads every version of the f
 full-file reread and diff review: complete for every created and changed authored file before commit.
 change checklist: complete — owner chain, documentation owners, link closure, generated indexes, generated surfaces, and the reviewed OpenAPI digest reconciled.
 roadmap/POA&M status change, or explicit none: POAM-034 added (High, Open; owning gates E-01 and E-02). No roadmap status change.
-pull request, CI run, and merge evidence: the pull request from agent/h06b-prompt-flight-graph carries the candidate CI runs and the merge; this record does not rengram them.
+pull request, CI run, and merge evidence: the pull request from agent/h06b-prompt-flight-graph carries the candidate CI runs and the merge; this record does not restate them.
 ```
 
 ## Links

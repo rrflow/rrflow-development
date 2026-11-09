@@ -19,7 +19,7 @@ do not widen a running limit or automatically retry uncertain effects.
 The operator installed build-essential, pkg-config and libssl-dev inside the
 new disposable guest, then copied the frozen source, toolchain, dependency
 cache and build artifacts into the same absolute paths. This copied no
-project credentials or existing engram and changed no host package or
+project credentials or existing estate and changed no host package or
 permission. The transfer completed in 86.726 seconds. Source remained clean
 at `c206c270ee5a2d1a3e07f7ffe6e2d4ec0466be61`, tree
 `e7c5503e59f385d2eda302d22b95bc3f879e9f3b`. Cargo runs offline with the
@@ -29,7 +29,7 @@ installed_reopen --no-run` passed; the ordinary primary remained byte-identical:
 The harness SHA-256 is
 `62b7efd23251c364639f7468e46a2c58bfbd52b60f0bead3db5d18a15c4d9e42`.
 
-Bootstrap used the installed primary to preview/apply a fresh engram, start
+Bootstrap used the installed primary to preview/apply a fresh estate, start
 its loopback service, authenticate and collect the public storage observation.
 The installed configuration remains
 `2d382dbde4b923db65fb5ebbf841d12b45ec0e278c7cab41635dbff782072d55`.
@@ -61,7 +61,7 @@ Admission is not execution proof. The frozen nominal point has:
 User service `rrflow-c07-desktop26.service` started in the guest at
 2026-10-24 01:40:17 UTC. It runs the existing
 `scripts/ci/run_sustained_capacity.py` with an explicit delegated cgroup
-parent and a private engram temporary directory. Its outer limit is 307080
+parent and a private estate temporary directory. Its outer limit is 307080
 seconds, derived from the complete three-seed schedule plus cleanup margin;
 the canonical launcher retains its shorter internal deadlines. The service
 does not restart a failed campaign automatically. Guest environment: Linux

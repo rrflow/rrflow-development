@@ -71,7 +71,7 @@ than abrupt portable process loss.
 
 The bounded target is one clock boundary, not an all-purpose time service:
 
-- format-2 `engramConfiguration` owns bounded
+- format-2 `EstateConfiguration` owns bounded
   `clock.maximum_rollback_ms`, with zero as the strict default and one hour as
   the compiled maximum;
 - production installation obtains a fallible `SystemTime` observation inside
@@ -84,7 +84,7 @@ The bounded target is one clock boundary, not an all-purpose time service:
   or rollback exceeds policy;
 - read-only inspection completes its structural checks and reports `current`,
   `rollback_within_tolerance`, `rollback_exceeded`, or `unavailable`; the last
-  two make overall verification fail without changing engram bytes;
+  two make overall verification fail without changing estate bytes;
 - CLI version and plan are clock-independent, quick verify returns failure for
   a failed report, and the primary lifecycle uses bounded `Child::kill`; and
 - OpenAPI, language SDK endpoints/types, fixtures, and signal identities are
@@ -106,12 +106,12 @@ Kubernetes qualification, or signed offline distributions.
 | Configuration v1 had no rollback policy | sole bundled format-2 configuration and v2 domain-separated digest with strict bounded `ClockPolicy` | five configuration tests plus refreshed public/attunement fixtures and generated OpenAPI/SDK projections | D-01 |
 | Recovery intent and installed record stored a bare time | version-2 intent/record bind the complete first `ClockObservation`; the v2 checkpoint is cross-checked against its coordinate; retry reuses its exact bytes and derived semantic time | eight-stage recovery corpus plus explicit recovery rollback/no-write test | D-01/POAM-006 |
 | Replay and open ignored host rollback | one assessment compares observation, anchor, and sealed policy before accepting recovery/replay/open | strict one-millisecond replay/open denial and configured 250-ms acceptance | D-01/D-02 |
-| Verification could only pass and carried no time evidence | typed failed status, clock assessment, clock check digest, CLI trace/rendering, and nonzero failure exit | unavailable/exceeded read-only reports retain byte-identical engram inventory | D-01/D-11 |
+| Verification could only pass and carried no time evidence | typed failed status, clock assessment, clock check digest, CLI trace/rendering, and nonzero failure exit | unavailable/exceeded read-only reports retain byte-identical estate inventory | D-01/D-11 |
 | Primary lifecycle used external Unix SIGINT | standard-library bounded abrupt termination and reopen, with the exact command scheduled in Linux and Windows/macOS jobs | four-test Linux primary lifecycle finishes in 1.87 seconds; workflow checker requires both job placements | D-01/J |
 | Clients repeated the old effective configuration | contract-owned OpenAPI plus generated endpoint/signal projections and five language fixtures carry format 2, policy, and digest | generator parity and TypeScript/Python/Go/Java SDK tests | H-04/J |
 
 No implementation was moved. The superseded pre-release
-`default-engram-configuration-v1.toml` was removed directly; there is no
+`default-estate-configuration-v1.toml` was removed directly; there is no
 successful format-1 fallback or migration lane.
 
 ## Complete file review
@@ -148,11 +148,11 @@ generators, and fixtures were decoded/validated by their owning Rust tests.
 Created implementation paths:
 
 - `crates/authority/rrd-engine/src/engine/clock.rs`; and
-- `crates/authority/rrd-engine/assets/install/default-engram-configuration-v2.toml`.
+- `crates/authority/rrd-engine/assets/install/default-estate-configuration-v2.toml`.
 
 Deleted implementation path:
 
-- `crates/authority/rrd-engine/assets/install/default-engram-configuration-v1.toml`.
+- `crates/authority/rrd-engine/assets/install/default-estate-configuration-v1.toml`.
 
 Changed implementation paths are the declared contract configuration/export/
 tests; install profile; engine error/composition/installation/recovery/export/
@@ -271,7 +271,7 @@ hook, editor hook, or second lifecycle authority.
 | `cargo test -p rrd-engine --test engine_authority --locked` | passed, 3/3 |
 | `cargo test -p rrflow-cli --test installed_lifecycle --locked` | passed, 4/4; test runtime 1.87 seconds |
 | `cargo test -p rrflow-mcp --test stdio --test stdio_daemon --locked` | passed, 3/3 and 2/2 |
-| `cargo test -p rrd-server --test local_engram_driver --test http_process --locked` | passed, HTTP 17/17 in 1.58 seconds and controller 4/4 in 228.94 seconds |
+| `cargo test -p rrd-server --test local_estate_driver --test http_process --locked` | passed, HTTP 17/17 in 1.58 seconds and controller 4/4 in 228.94 seconds |
 | `cargo test -p rrd-client --test real_server --locked` | passed, 3/3 |
 | `cargo check -p rrd-client --example sdk_conformance_server --locked` | passed |
 | `python3 scripts/ci/check_workflow.py` | passed; 3 workflows, 7 substantive jobs, 5 engine suites, 20 default and 6 optional packages |

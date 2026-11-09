@@ -40,7 +40,7 @@
         },
         {
           "id": "developer",
-          "kind": "engram"
+          "kind": "estate"
         },
         {
           "id": "alpha",
@@ -145,8 +145,8 @@
     },
     "implementation": "rrflow",
     "implementation_version": "1.0.0",
-    "installed_engram": {
-      "engram_id": "alpha-engram",
+    "installed_estate": {
+      "estate_id": "alpha-estate",
       "instance_id": "project-alpha",
       "project_id": "alpha-project"
     },

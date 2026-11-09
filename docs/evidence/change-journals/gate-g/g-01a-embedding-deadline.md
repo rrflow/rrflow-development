@@ -14,7 +14,7 @@ implementation began at `4531db68515cfe601511028348691aecbb40b08a`, tree
 `089789ea87a7c5f3b0d2cc305d85cf1aadfdbb11`, after the draft PR brief.
 
 Previously, one admitted synchronous embedding batch could block its engine
-caller indefinitely. Now `generate_embeddings_at` consumes the sealed engram's
+caller indefinitely. Now `generate_embeddings_at` consumes the sealed estate's
 `reasoning.max_step_elapsed_ms`. One monotonic deadline spans input preparation,
 adapter wait and output acceptance. `EmbeddingExecution::embed_batch_until`
 uses an owned worker and capacity-one result channel. Timeout rejects output
@@ -68,7 +68,7 @@ Windows native commands used the existing local build cache. Raw logs are
 |---|---|
 | `cargo test --locked -p rrd-inference --test deadline` | 4 passed, 36.16 s including build |
 | `cargo test --locked -p rrd-inference` | 20 passed, 2.80 s; includes all admission/deadline/pipeline tests |
-| `cargo test --locked -p rrd-engine --lib configured_embedding_deadline` | First compile failed because the fixture assumed `engramConfigurationInput::default`; corrected to an actual sealed/validated configuration |
+| `cargo test --locked -p rrd-engine --lib configured_embedding_deadline` | First compile failed because the fixture assumed `EstateConfigurationInput::default`; corrected to an actual sealed/validated configuration |
 | Same focused engine command after correction | 1 passed, 35.64 s including build |
 | `cargo test --locked -p rrd-engine --lib native_inference` | 3 passed, 3.03 s |
 | `cargo test --locked -p rrd-engine --lib -- --test-threads=4` | 156 passed, 2 existing ignored, 32.00 s |

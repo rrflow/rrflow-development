@@ -1,4 +1,4 @@
-use rrd_contract::{CanonicalId, InstalledengramIdentity};
+use rrd_contract::{CanonicalId, InstalledEstateIdentity};
 use rrd_core::{
     digest, EmbeddingProvenance, ProjectionStamp, ProjectionState, RuntimeCommit,
     RuntimeLogicalModel, RuntimeMutation, RuntimeProperties, RuntimeRecord, RuntimeRecordSchema,
@@ -121,15 +121,15 @@ fn canonical(value: &str) -> CanonicalId {
     CanonicalId::new(value).unwrap()
 }
 
-fn installed_identity() -> InstalledengramIdentity {
-    InstalledengramIdentity {
+fn installed_identity() -> InstalledEstateIdentity {
+    InstalledEstateIdentity {
         project_id: canonical("operator-trace-project"),
-        engram_id: canonical("operator-trace-engram"),
+        estate_id: canonical("operator-trace-estate"),
         instance_id: canonical("operator-trace-instance"),
     }
 }
 
-fn knowledge(installed: &InstalledengramIdentity) -> OperatorKnowledgeBinding {
+fn knowledge(installed: &InstalledEstateIdentity) -> OperatorKnowledgeBinding {
     OperatorKnowledgeBinding {
         contract_version: OPERATOR_KNOWLEDGE_CONTRACT_VERSION,
         adapter: "pgvector".into(),
@@ -144,7 +144,7 @@ fn knowledge(installed: &InstalledengramIdentity) -> OperatorKnowledgeBinding {
         dimensions: 3,
         projection: ProjectionStamp {
             contract_version: DATA_RUNTIME_CONTRACT_VERSION,
-            id: rrd_core::ProjectionId::new("operator:pgvector:knowledge").unwrap(),
+            id: rrd_core::ProjectionId::new("operator-pgvector-knowledge").unwrap(),
             generation: 1,
             source_cursor: 7,
             config_digest: "22".repeat(32),
@@ -273,7 +273,7 @@ fn traces<E: StorageEngine>(store: &E) -> Vec<TraceView> {
 
 fn exercise<E: StorageEngine>(
     store: &E,
-    installed: &InstalledengramIdentity,
+    installed: &InstalledEstateIdentity,
 ) -> (rrd_engine::TracedOperatorSearch, Vec<TraceView>) {
     let candidates = fixture(store);
     let knowledge = knowledge(installed);
