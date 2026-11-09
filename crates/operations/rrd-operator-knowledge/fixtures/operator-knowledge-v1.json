@@ -15,7 +15,7 @@
       "config_digest": "2222222222222222222222222222222222222222222222222222222222222222",
       "contract_version": 1,
       "generation": 2,
-      "id": "operator:pgvector:fixture",
+      "id": "operator-pgvector-fixture",
       "source_cursor": 9,
       "state": "ready"
     },
@@ -56,7 +56,7 @@
     ]
   },
   "request": {
-    "binding_digest": "d583c8fd89d278079ff7eb5ecb032e38515bde2b03ea23bf5d29ecbe7d2ea870",
+    "binding_digest": "6e1ff1b408b5773b32e26efb6aefe1798c6bbb4e97eda93715d0db89826d3bc2",
     "contract_version": 1,
     "controls": {
       "hnsw_ef_search": 80,

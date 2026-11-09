@@ -4983,6 +4983,7 @@ dependencies = [
  "tempfile",
  "toml",
  "tracing",
+ "tracing-subscriber",
  "wasmi",
  "wat",
  "windows-sys 0.61.2",

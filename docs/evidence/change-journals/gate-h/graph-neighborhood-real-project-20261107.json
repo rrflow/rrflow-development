@@ -1,0 +1,87 @@
+{
+  "engine_stopped": true,
+  "session_closed": true,
+  "queries": [
+    {
+      "status": "ok",
+      "response_bytes": 127188,
+      "elapsed_ms": 157,
+      "row_fields": [
+        "depth",
+        "from_id",
+        "from_kind",
+        "node_id",
+        "node_kind",
+        "path",
+        "relation_id",
+        "relation_kind",
+        "to_id",
+        "to_kind"
+      ],
+      "expected_edge_found": true,
+      "expected_target_found": true,
+      "selected_paths": [
+        "adjacency_traversal"
+      ],
+      "rows": 100,
+      "truncated": true,
+      "returned_rows": 100,
+      "known_at_cursor": 5237
+    },
+    {
+      "status": "ok",
+      "response_bytes": 3818,
+      "elapsed_ms": 15,
+      "row_fields": [
+        "depth",
+        "from_id",
+        "from_kind",
+        "node_id",
+        "node_kind",
+        "path",
+        "relation_id",
+        "relation_kind",
+        "to_id",
+        "to_kind"
+      ],
+      "expected_edge_found": true,
+      "expected_target_found": true,
+      "selected_paths": [
+        "adjacency_traversal"
+      ],
+      "rows": 1,
+      "truncated": false,
+      "returned_rows": 1,
+      "known_at_cursor": 5237
+    }
+  ],
+  "schema_discovery": {
+    "status": "ok",
+    "response_bytes": 3992,
+    "seeds": [
+      {
+        "record_status": "ok",
+        "record_bytes": 1958,
+        "record_type_registered": true,
+        "table_type_registered": true,
+        "record_rows": 0
+      },
+      {
+        "record_status": "error",
+        "record_bytes": 317,
+        "record_type_registered": true,
+        "table_type_registered": true,
+        "error_code": "resource_exhausted",
+        "error_class": "budget"
+      }
+    ],
+    "record_types": 5,
+    "relation_types": 2,
+    "known_at_cursor": 5237
+  },
+  "graph_response_bytes": 5573992,
+  "records": 2619,
+  "relations": 2616,
+  "models": 7,
+  "runtime_cursor": 5237
+}

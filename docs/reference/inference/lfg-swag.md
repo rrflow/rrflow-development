@@ -1,6 +1,6 @@
 # LFG analysis and SWAG controller
 
-**Status:** active target contract; configuration, choice validation and optional chat transport exist; engine-admitted LFG/SWAG execution is unimplemented
+**Status:** active target contract; experimental engine-admitted selection and worker drafts exist; full LFG/SWAG journey remains incomplete
 **Coordinate:** `rrflow://rrflow-instance/data/reference/inference/lfg-swag`
 **Owner:** configurable CPU prompt analysis, System One selection, model dispatch, and inference-cache identity
 
@@ -56,20 +56,59 @@ router execution port to the SWAG path.
 
 ## Endpoint-selection capability decision
 
-This is G-01b contract preparation, not a registered public operation or an
-implemented adapter. The current public endpoint operations read, preview and
-apply configuration. They do not invoke a selector or its selected provider.
+The G-01b controller operation `task-endpoint-propose` invokes the configured
+selector under initialized authority and the existing task budget. The selected
+worker operation `task-worker-execute` separately authorizes a bounded model
+call. Endpoint configuration reads and preview/apply do not invoke either.
 Embedding execution and `RouteStepDecision` cannot be overloaded to fill that
 gap. Keep the three recipe/branch/context decisions unchanged.
 
-The next public capability is **propose endpoint selection**, owned by
-`RrdEngine` and exposed through the executable operation catalogue when its
-handler and authorization are implemented together. Its proposed semantic
+The public capability **propose endpoint selection** is owned by
+`RrdEngine` and exposed through the executable operation catalogue with its
+handler and authorization. Its semantic
 types are `EndpointSelectionRequest`, `EndpointSelectionPacket` and
 `EndpointSelectionProposal`. Their Rust validators are implemented; the proposal
-schema is now exposed by existing task-attempt readback. No public operation
-creates a controller proposal yet. A separate admitted external activity executes
-a selected provider.
+schema is exposed by existing task-attempt readback. `TaskWorkerRequest` names
+the exact accepted selection receipt and current task/configuration digests.
+The engine resolves the selected binding and configured effort mapping, assembles
+optional authorized context, reserves the same task budget and shared endpoint
+capacity, then guards completion against current task/configuration/authority.
+`TaskWorkerOutput` is retained draft text, not an accepted project edit, task
+success, provider qualification or training consent. Historical context stamps
+do not attest current project-file freshness. Worker readback requires TaskRead
+and, for context-derived drafts, current MemoryContextRead permission.
+`EndpointSelectionRequest` may now carry typed LFG/SWAG routing input:
+bounded context-extraction signals plus semantic-router ranked candidates and
+narrowing count. The engine validates that narrowed candidates are a non-empty
+subset of configured allowance candidates before proposal dispatch, then
+retains the same routing input in packet/proposal identity so receipts can bind
+intent → narrowing → authorized execution.
+Observation export now includes optional selector feedback references derived
+from retained task attempts: `selector_policy_id`,
+`selector_routing_sha256`, and `selector_narrowed_candidate_count`. These
+values identify the exact routing input admitted for execution so downstream
+learning review can correlate outcomes without trusting client-supplied labels.
+The [worker activity journal](../../evidence/change-journals/gate-g/task-worker-model-admission.md)
+separates local protocol checks from installed provider and public-release proof.
+The [installed worker journal](../../evidence/change-journals/gate-g/task-worker-installed-live.md)
+retains a real configured selector/worker draft, credential denials, restart and
+replay checks, alongside the first rejected model choice. Run the existing
+`scripts/inference/installed_controller_proof.py --worker` with its explicit
+build receipt, contract example, profile, actual task source and private credential
+inputs. Worker mode requires an explicit worker policy and excludes selector fault
+and admission-only modes. `--recover-proof` reads both retained attempts without
+provider credentials or dispatch. A successful trial is not a quality label or
+permission to mutate a project.
+The native proof mode uses the `task_model_call` Rust example for both the
+proposal and selected worker. Its typed worker wrapper shares the catalogue
+call's one-attempt transport and contract-owned identity checks. The example
+receives an explicit engine operation and installed project; it never talks
+directly to a model provider. Native-client source and engine artifact identity
+must both accompany any installed trial result.
+The [native installed receipts](../../evidence/change-journals/gate-g/task-worker-native-live.md)
+show accepted and rejected real worker attempts separately, including read-only
+recovery. They prove the named client/engine combination, not the complete UI
+journey, output quality or release readiness.
 Generating the proposal itself may invoke the configured controller, so it
 requires model-call authorization, egress admission and budget reservation;
 it must never masquerade as a free configuration read.
@@ -88,9 +127,10 @@ Unknown effort support cannot silently become permission to omit effort.
 unknown fields, foreign bindings, changed configuration, unsupported effort and
 contradictory no-candidate abstention. Supplied capability evidence digests are
 identifiers, not verified attestations. These pure types perform no network call
-and grant no authority. Engine-derived eligibility, task/source binding,
-authenticated admission, descriptor verification and dispatch remain missing.
-The existing three reasoning-tree decisions and public catalogue are unchanged.
+and grant no authority. The engine supplies configured eligibility, task identity,
+authenticated admission and bounded dispatch. Loaded-weight/descriptor verification,
+current project-source effects and comparative routing qualification remain open.
+The existing three reasoning-tree decisions are unchanged.
 
 The offline `endpoint_selection` example provides `schema`,
 `configuration-sha256 CONFIGURATION` and
@@ -105,15 +145,19 @@ human review, provider-quality evidence or completion of G-01b.
 
 `EndpointSelectionRequest` names an existing task and stable attempt, expected
 task/configuration digests and a bounded task-read allowance. It accepts no URL,
-credential, prompt or caller-authored candidate catalogue. The task-text packet
+credential, prompt or caller-authored candidate catalogue. It may carry one
+exact prompt-flight identity (`flight_id`, prompt cohort digest and optional
+context-request digest), which must match the named task and the retained
+flight record exactly before the proposal is admitted. The task-text packet
 omits the task creation replay key, binds an open task version/read coordinate
 and requires the exact configured selector and allowance. Task projection checks
 do not authorize repository context or establish source-edit freshness.
 
 `EndpointSelectionProposal` binds request, task, attempt, packet, configuration,
-allowance, service alias and observed request/response/content identities. Its
-only purpose is an experimental proposal. That purpose is not runtime permission,
-capability verification, loaded-weight attestation or worker-effect authority.
+allowance, service alias, observed request/response/content identities, and the
+optional retained flight identity carried by the request. Its only purpose is an
+experimental proposal. That purpose is not runtime permission, capability
+verification, loaded-weight attestation or worker-effect authority.
 `EndpointTokenUsage` retains missing counts as unknown and rejects overflow or
 contradictory partial totals; the native adapter uses this same validator while
 tolerating unrelated provider envelope metadata.
@@ -129,11 +173,11 @@ provider execution or model-quality claim follows from those checks.
 
 ### Durable proposal completion in progress
 
-The existing task-attempt ledger can now retain a bounded typed proposal or
+The existing task-attempt ledger retains a bounded typed proposal, worker draft or
 embedding output, with an exclusive kind and exact outcome digest. Its public
-readback validates scope/task/attempt identity. Reopening the estate preserves
+readback validates scope/task/attempt identity. Reopening the engram preserves
 the output and original consumed budget; replay cannot reserve the same attempt
-again. This is internal completion support, not a public proposal dispatcher.
+again. Both public model operations compose this same completion owner.
 
 Completion rechecks its supplied authority at the current runtime read stamp.
 Engine-owned control guards compare exact authority bytes atomically with the
@@ -210,6 +254,13 @@ remain missing; this transport is not automatically active in the installed engi
 | Effort and modality | Each adapter declares the supported effort values, modalities and parameter semantics for its exact service revision. Effort is selected from that candidate's supported values; no universal translation between provider effort scales is assumed. Missing support is explicit. |
 | Resource and access facts | Profile limits intersect the task's remaining aggregate allowance, locality/sharing policy and observed capacity/health/quota/cost facts. Bind facts to their producer, observation revision/time and freshness rule. A stale or unknown fact cannot satisfy a requirement that depends on it. A subscription label never supplies an API credential or proves an entitlement. |
 | Selection policy | Versioned configuration defines the objective, required constraints, permitted fallback behavior and experimental/shadow scope. No task-keyword branch, fixed provider ranking, model alias or deployment host is embedded in selection code. Quality claims require the associated evaluation evidence. |
+
+Worker policy now carries a typed adapter profile (`openai_chat_completions_v1`,
+`swag_chat_completions_v1`, `lfg_chat_completions_v1`, or an explicitly typed
+`other` schema pair). The current engine build executes only the declared
+native chat-completions profiles and fails closed on unimplemented adapters,
+so configuration can remain provider-extensible without implying unreviewed
+wire compatibility.
 
 An endpoint declaration alone is insufficient: current `EndpointBinding`
 contains a locator, service identity, credential reference and operating limits,
@@ -312,7 +363,7 @@ gate status and does not make a development endpoint a turnkey controller.
 
 ## Configuration revisions and failure behavior
 
-Extend the existing `EstateConfiguration` and `EndpointProfile` revision
+Extend the existing `engramConfiguration` and `EndpointProfile` revision
 mechanisms; do not add a mutable provider-owned configuration file. Defaults,
 project preferences and per-request overrides produce one effective digest
 with field origins. Hard policy intersects all applicable limits; an override
@@ -350,7 +401,7 @@ project override, then a global profile value. If the selected value is
 `inherit from caller`, resolve the admitted caller value at that position;
 missing/unsupported caller metadata falls back to the declared bounded profile
 and records the reason. Display the requested value, selected origin, effective
-value and limiting policy. Hard estate/security/resource ceilings intersect the
+value and limiting policy. Hard engram/security/resource ceilings intersect the
 result regardless of origin. A higher AI effort cannot grant network access,
 sharing, model installation or unlimited work. Imported project instructions
 are source content until their preference proposal is explicitly accepted.
@@ -447,7 +498,7 @@ owns implementation order and the failing histories required for acceptance.
 #### Embedded task-budget implementation
 
 `RrdEngine::generate_task_embeddings` now binds one task's embedding attempts
-to the sealed estate reasoning limits. `TaskEmbeddingAttempt` carries the
+to the sealed engram reasoning limits. `TaskEmbeddingAttempt` carries the
 existing task ID, stable attempt ID, embedding request and cancellation handle.
 It requires both `ReasoningWrite` and `EmbeddingGenerate`; inspection through
 `inspect_task_reasoning_budget` requires `ReasoningRead`. The public task
@@ -461,8 +512,8 @@ until replay, prior-stop and allowance checks permit it. Identity preparation
 retains the original monotonic start. Invalid request/equivalence digests fail
 before budget publication. This internal input is neither serializable nor a
 public authorization API. Existing durable keys, records, completion type and
-Stop behavior remain unchanged; typed controller completion and dispatch still
-require implementation. The [shared-admission journal](../../evidence/change-journals/gate-g/task-attempt-admission.md)
+Stop behavior remain shared; typed controller and worker completion compose this
+owner. The [shared-admission journal](../../evidence/change-journals/gate-g/task-attempt-admission.md)
 records retained-input reservation/reopen evidence, not a controller call.
 
 The first admitted attempt fixes the configuration digest, original host-clock
@@ -493,7 +544,7 @@ for it. A recorded terminal stop is distinct from a late response to already
 completed work. This is not a durable Stop operation for all task activities.
 
 Host time is explicitly unverified. Any rollback below the last stored
-observation stops this budget, even if the estate permits tolerance elsewhere;
+observation stops this budget, even if the engram permits tolerance elsewhere;
 unavailable completion time withholds output and retains the reservation.
 The original wall deadline survives restart; monotonic child time and charged
 elapsed time cover active computation. This does not prove trusted elapsed time
@@ -519,7 +570,7 @@ executes a task attempt, and reads its budget/result or requests Stop.
 
 | Operation | Required grant | Behavior |
 |---|---|---|
-| `task-budget-configure` | `ReasoningWrite` | Fix narrower-or-equal estate limits and the original deadline immediately. Repeating identical limits reads the existing budget; changing them conflicts. |
+| `task-budget-configure` | `ReasoningWrite` | Fix narrower-or-equal engram limits and the original deadline immediately. Repeating identical limits reads the existing budget; changing them conflicts. |
 | `embedding-builtin-activate` | `ReasoningWrite` | Explicitly activate the bundled CPU FeatureHash reference adapter for this process. No model fetch, LLM or trained semantic-quality claim. |
 | `task-embedding-execute` | `ReasoningWrite` and `EmbeddingGenerate` | Require configuration and an activated backend; reserve one attempt through the existing durable owner before dispatch. |
 | `task-budget-read` | `ReasoningRead` | Return persisted counters, original deadline, terminal reason, uncertainty and the digest required by Stop. |
@@ -583,8 +634,8 @@ Extend that same engine-owned revision and eventual run admission with:
 | Repetition/no progress | A configurable finite repetition threshold stops repeated equivalent requests with no new authorized input, evidence or accepted transition. Identity uses semantic request/configuration/source coordinates, not changing timestamps or correlation IDs. A stop reports insufficient progress; it does not assert that a repeated question is logically invalid. |
 | Stop, resume and extend | Cancellation prevents new dispatch and requests cancellation of active work. Report active/uncertain provider work until reconciled; returning to the UI does not prove a remote call stopped. Resume retains consumed steps/attempts/cost and the original deadline. An expired or exhausted run needs a separately authorized extension with explicit limits, never an automatic fresh allowance. |
 
-Estate policy, project preferences and per-run choices resolve to one effective
-budget with provenance and a digest. Per-run choices may narrow estate caps.
+engram policy, project preferences and per-run choices resolve to one effective
+budget with provenance and a digest. Per-run choices may narrow engram caps.
 SWAG may recommend more effort or reduce work, but cannot grant itself an
 extension. A connector, plugin, fallback adapter or UI client cannot reset or
 replace the engine's budget owner. Independently running external clients are
@@ -624,10 +675,10 @@ Model KV cache is disposable inference acceleration. It is not rrflowKV,
 durable recall, a portable memory format or a substitute for source provenance.
 Different models/tokenizers/adapters/runtimes may have incompatible tensors.
 
-The gateway must derive an opaque cache scope from authenticated estate and
+The gateway must derive an opaque cache scope from authenticated engram and
 principal authorization, explicit cache-sharing consent, policy epoch and
 endpoint/model revision. Default reuse stays within the authorized principal
-and estate. Broader reuse needs a separately approved trust group; a project
+and engram. Broader reuse needs a separately approved trust group; a project
 link, common account or co-located VM does not grant it. Mixed-scope context
 must satisfy every source's permitted audience or disable reuse.
 
@@ -678,6 +729,13 @@ Neither mappings nor secret values enter prompts, public configuration or receip
 Capacity admission is committed with the task budget and attempt. Known completed
 or denied calls release their entry at completion; uncertain remote work retains
 capacity across reopen. There is no automatic retry or uncertainty reconciliation.
+A matching bounded response with one assistant choice, terminal generation reason
+(`stop`, `length` or `content_filter`) and no tool/function request distinguishes
+completed generation from a lost outcome. Invalid content remains rejected;
+completion does not imply acceptable output, attested identity or retry permission.
+Malformed, mismatched, oversized and lost responses remain uncertain. A failed
+attempt still spends its step and elapsed effort and stops its task budget.
+This classification applies to newly observed calls, not historical reservations.
 Read `task-attempt-read` to recover a receipt without calling the provider again.
 Changed authority/configuration/task inputs invalidate accepted-output publication
 while retaining consumed effort. Ordinary repository-edit successor plans are not
@@ -701,7 +759,7 @@ data. G-02/G-04 prove governed dispatch and durable replay. G-06 compares
 policies on the same task/corpus/model inputs, including abstention and routing
 regret against the measured eligible choices.
 
-Cache tests pair identical prefixes across principals, estates and policy
+Cache tests pair identical prefixes across principals, engrams and policy
 epochs, forge caller metadata, change model/LoRA/media, revoke shared context,
 and exercise an unsupported provider. Require same-scope reuse where supported,
 no cross-scope reuse, and no stale authorized output after revocation. A

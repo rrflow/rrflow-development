@@ -2131,7 +2131,7 @@ mod tests {
         .unwrap();
         let projection = ProjectionStamp {
             contract_version: crate::DATA_RUNTIME_CONTRACT_VERSION,
-            id: crate::ProjectionId::new("vector:operator").unwrap(),
+            id: crate::ProjectionId::new("vector-operator").unwrap(),
             generation: 3,
             source_cursor: 29,
             config_digest: "b".repeat(64),

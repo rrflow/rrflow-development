@@ -12,16 +12,17 @@ use std::sync::{Arc, Barrier};
 // Fixture times start from BASE, but a committed transition records its supplied
 // time plus real elapsed work. Every time after one follows the completion it
 // returned, never a fixed later offset that assumes how long the call took.
-const BASE: u64 = 1_800_000_000_000;
+pub(super) const BASE: u64 = 1_800_000_000_000;
 mod discovery;
 mod inventory_delta;
+pub(super) use inventory_delta::first_inventory_for_worker_with_setup_at;
 mod observation_delivery;
 mod startup_binding;
 
-struct Installed {
-    root: tempfile::TempDir,
+pub(super) struct Installed {
+    pub(super) root: tempfile::TempDir,
     executable: PathBuf,
-    preview: InstallationPreview,
+    pub(super) preview: InstallationPreview,
     job: CanonicalId,
 }
 impl Installed {
@@ -39,13 +40,30 @@ impl Installed {
         proposal: Option<&crate::AttunementProposal>,
         setup: impl FnOnce(&Path),
     ) -> (Self, RrdEngine, SessionLease) {
-        Self::with_configuration(mode, proposal, setup, None)
+        Self::with_source_at(mode, proposal, setup, BASE)
+    }
+    pub(super) fn with_source_at(
+        mode: InstallationTargetKind,
+        proposal: Option<&crate::AttunementProposal>,
+        setup: impl FnOnce(&Path),
+        base: u64,
+    ) -> (Self, RrdEngine, SessionLease) {
+        Self::with_configuration_at(mode, proposal, setup, None, base)
     }
     fn with_configuration(
         mode: InstallationTargetKind,
         proposal: Option<&crate::AttunementProposal>,
         setup: impl FnOnce(&Path),
         configuration: Option<&Path>,
+    ) -> (Self, RrdEngine, SessionLease) {
+        Self::with_configuration_at(mode, proposal, setup, configuration, BASE)
+    }
+    fn with_configuration_at(
+        mode: InstallationTargetKind,
+        proposal: Option<&crate::AttunementProposal>,
+        setup: impl FnOnce(&Path),
+        configuration: Option<&Path>,
+        base: u64,
     ) -> (Self, RrdEngine, SessionLease) {
         let root = tempfile::tempdir().unwrap();
         setup(root.path());
@@ -68,14 +86,14 @@ impl Installed {
             mode,
             &preview,
             &preview.installation.plan_sha256,
-            BASE,
+            base,
             &executable,
         )
         .unwrap();
         let engine = RrdEngine::open_installed_with_clock(
             root.path(),
             &executable,
-            &FixedClock::at(BASE + 1),
+            &FixedClock::at(base + 1),
         )
         .unwrap();
         let job =
@@ -86,7 +104,7 @@ impl Installed {
             preview,
             job,
         };
-        let session = installed.session(&engine, "first-session", BASE + 100);
+        let session = installed.session(&engine, "first-session", base + 100);
         (installed, engine, session)
     }
     fn session(&self, engine: &RrdEngine, key: &str, at: u64) -> SessionLease {
@@ -109,7 +127,7 @@ impl Installed {
             )
             .unwrap()
     }
-    fn reopen(&self, at: u64) -> RrdEngine {
+    pub(super) fn reopen(&self, at: u64) -> RrdEngine {
         RrdEngine::open_installed_with_clock(
             self.root.path(),
             &self.executable,
@@ -138,14 +156,14 @@ impl Installed {
             .unwrap()
     }
 }
-fn context(key: &str) -> RequestContext {
+pub(super) fn context(key: &str) -> RequestContext {
     mutation_context(
         &id(key),
         &format!("request-{key}"),
         &format!("operation-{key}"),
     )
 }
-fn call(
+pub(super) fn call(
     engine: &RrdEngine,
     session: &SessionLease,
     command: &AttunementCommand,
@@ -160,7 +178,7 @@ fn call(
         at,
     )
 }
-fn step(job: &AttunementJob) -> AttunementCommand {
+pub(super) fn step(job: &AttunementJob) -> AttunementCommand {
     AttunementCommand::Step {
         job_id: job.id.clone(),
         expected_revision: job.revision,

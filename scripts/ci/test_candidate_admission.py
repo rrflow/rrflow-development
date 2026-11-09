@@ -6,7 +6,15 @@ import re
 import unittest
 from types import SimpleNamespace
 
-from check_workflow import CALLER, PolicyError, verify_candidate_admission
+from check_workflow import (
+    CALLER,
+    REUSABLE,
+    PolicyError,
+    job_blocks,
+    verify_candidate_admission,
+    verify_merge_group_rust_cache_scope,
+    verify_storage_contract_preflight,
+)
 
 
 class CandidateAdmissionTests(unittest.TestCase):
@@ -134,6 +142,116 @@ class CandidateAdmissionTests(unittest.TestCase):
     def test_another_caller_cannot_bypass_admission(self):
         with self.assertRaisesRegex(PolicyError, "one pipeline"):
             verify_candidate_admission(self.caller + "\n  bypass:\n    uses: ./.github/workflows/ci-reusable.yml\n")
+
+
+class MergeGroupCacheScopeTests(unittest.TestCase):
+    def setUp(self):
+        self.reusable = REUSABLE.read_text(encoding="utf-8")
+
+    def test_every_rust_cache_rejects_merge_group_saves(self):
+        verify_merge_group_rust_cache_scope(self.reusable)
+
+    def test_removed_or_weakened_condition_is_rejected(self):
+        action = "      - uses: Swatinem/rust-cache@"
+        expression = "          save-if: ${{ github.event_name != 'merge_group' }}\n"
+        count = self.reusable.count(action)
+        self.assertGreater(count, 0)
+        self.assertEqual(self.reusable.count(expression), count)
+        for index in range(count):
+            for replacement in ("", "          save-if: true\n"):
+                with self.subTest(index=index, replacement=replacement):
+                    parts = self.reusable.split(expression)
+                    modified = expression.join(parts[:index + 1]) + replacement + expression.join(parts[index + 1:])
+                    with self.assertRaises(PolicyError):
+                        verify_merge_group_rust_cache_scope(modified)
+
+
+class StorageContractPreflightTests(unittest.TestCase):
+    def setUp(self):
+        self.jobs = job_blocks(REUSABLE.read_text(encoding="utf-8"))
+
+    def test_checked_in_dependency_and_gate_are_admitted(self):
+        verify_storage_contract_preflight(self.jobs)
+
+    def test_missing_or_bypassed_preflight_is_rejected(self):
+        for change in ("missing", "condition", "continue", "test", "list"):
+            with self.subTest(change=change):
+                jobs = self.jobs.copy()
+                if change == "missing":
+                    jobs.pop("storage-contract-preflight")
+                elif change == "condition":
+                    jobs["storage-contract-preflight"] += "\n    if: false\n"
+                elif change == "continue":
+                    jobs["storage-contract-preflight"] += "\n        continue-on-error: true\n"
+                elif change == "test":
+                    jobs["storage-contract-preflight"] = jobs["storage-contract-preflight"].replace(
+                        "generated_schemas_and_synthetic_receipts_match_goldens", "other_test"
+                    )
+                else:
+                    jobs["storage-contract-preflight"] = jobs["storage-contract-preflight"].replace(
+                        "--exact --list | grep -Fx", "--exact | grep -Fx"
+                    )
+                with self.assertRaises(PolicyError):
+                    verify_storage_contract_preflight(jobs)
+
+    def test_test_step_condition_cannot_skip_oracle(self):
+        jobs = self.jobs.copy()
+        jobs["storage-contract-preflight"] += "\n        if: ${{ false }}\n"
+        with self.assertRaises(PolicyError):
+            verify_storage_contract_preflight(jobs)
+
+    def test_final_test_failure_cannot_be_suppressed(self):
+        jobs = self.jobs.copy()
+        original = "generated_schemas_and_synthetic_receipts_match_goldens -- --exact\n"
+        self.assertIn(original, jobs["storage-contract-preflight"])
+        jobs["storage-contract-preflight"] = jobs["storage-contract-preflight"].replace(
+            original, "generated_schemas_and_synthetic_receipts_match_goldens -- --exact || true\n"
+        )
+        with self.assertRaises(PolicyError):
+            verify_storage_contract_preflight(jobs)
+
+    def test_reopen_cannot_bypass_or_omit_dependency(self):
+        for mutation in ("omit", "condition", "continue"):
+            with self.subTest(mutation=mutation):
+                jobs = self.jobs.copy()
+                if mutation == "omit":
+                    jobs["installed-reopen"] = jobs["installed-reopen"].replace(
+                        "    needs: storage-contract-preflight\n", ""
+                    )
+                elif mutation == "condition":
+                    jobs["installed-reopen"] += "\n    if: ${{ always() }}\n"
+                else:
+                    jobs["installed-reopen"] += "\n    continue-on-error: true\n"
+                with self.assertRaises(PolicyError):
+                    verify_storage_contract_preflight(jobs)
+
+    def test_gate_step_condition_cannot_skip_reduction(self):
+        jobs = self.jobs.copy()
+        jobs["ci-gate"] += "\n        if: ${{ false }}\n"
+        with self.assertRaises(PolicyError):
+            verify_storage_contract_preflight(jobs)
+
+    def test_gate_failure_cannot_be_suppressed(self):
+        jobs = self.jobs.copy()
+        original = 'test "$STORAGE_PREFLIGHT_RESULT" = success'
+        jobs["ci-gate"] = jobs["ci-gate"].replace(original, original + " || true")
+        with self.assertRaises(PolicyError):
+            verify_storage_contract_preflight(jobs)
+
+    def test_gate_requires_preflight_success(self):
+        for old, new in [
+            ("    if: ${{ always() }}\n", ""),
+            ("      - name: Require every CI partition\n        env:\n", "      - name: Require every CI partition\n        if: false\n        env:\n"),
+            ("      - storage-contract-preflight\n", ""),
+            ("STORAGE_PREFLIGHT_RESULT: ${{ needs.storage-contract-preflight.result }}", ""),
+            ('test "$STORAGE_PREFLIGHT_RESULT" = success', 'test "$STORAGE_PREFLIGHT_RESULT" != failure'),
+        ]:
+            with self.subTest(old=old):
+                jobs = self.jobs.copy()
+                self.assertIn(old, jobs["ci-gate"])
+                jobs["ci-gate"] = jobs["ci-gate"].replace(old, new)
+                with self.assertRaises(PolicyError):
+                    verify_storage_contract_preflight(jobs)
 
 
 if __name__ == "__main__":

@@ -398,23 +398,26 @@ fn authenticated_storage_diagnostic_trace_correlates_store_without_secrets() {
 
     const CHILD: &str = "RRFLOW_TEST_DIAGNOSTIC_TRACE_CHILD";
     if std::env::var_os(CHILD).is_none() {
-        let result = Command::new(std::env::current_exe().unwrap())
-            .args([
-                "--exact",
-                "authenticated_storage_diagnostic_trace_correlates_store_without_secrets",
-                "--nocapture",
-            ])
-            .env(CHILD, "1")
-            .output()
-            .unwrap();
-        assert!(
-            result.status.success(),
-            "isolated diagnostic trace test failed: stdout={} stderr={}",
-            String::from_utf8_lossy(&result.stdout),
-            String::from_utf8_lossy(&result.stderr)
-        );
+        for mode in ["enabled", "disabled"] {
+            let result = Command::new(std::env::current_exe().unwrap())
+                .args([
+                    "--exact",
+                    "authenticated_storage_diagnostic_trace_correlates_store_without_secrets",
+                    "--nocapture",
+                ])
+                .env(CHILD, mode)
+                .output()
+                .unwrap();
+            assert!(
+                result.status.success(),
+                "isolated diagnostic trace test ({mode}) failed: stdout={} stderr={}",
+                String::from_utf8_lossy(&result.stdout),
+                String::from_utf8_lossy(&result.stderr)
+            );
+        }
         return;
     }
+    let timing_enabled = std::env::var(CHILD).unwrap() == "enabled";
 
     #[derive(Clone)]
     struct Capture(Arc<Mutex<Vec<u8>>>);
@@ -429,11 +432,14 @@ fn authenticated_storage_diagnostic_trace_correlates_store_without_secrets() {
     }
     let output = Arc::new(Mutex::new(Vec::new()));
     let writer_output = output.clone();
+    let filter = if timing_enabled {
+        "rrd_store::diagnostic=debug,rrd_server::diagnostic=debug,rrd_engine::transaction_diagnostic=debug"
+    } else {
+        "rrd_store::diagnostic=debug,rrd_server::diagnostic=debug"
+    };
     let subscriber = tracing_subscriber::fmt()
         .json()
-        .with_env_filter(tracing_subscriber::EnvFilter::new(
-            "rrd_store::diagnostic=debug,rrd_server::diagnostic=debug",
-        ))
+        .with_env_filter(tracing_subscriber::EnvFilter::new(filter))
         .with_writer(move || Capture(writer_output.clone()))
         .finish();
     tracing::subscriber::set_global_default(subscriber).unwrap();
@@ -461,6 +467,7 @@ fn authenticated_storage_diagnostic_trace_correlates_store_without_secrets() {
         grants: [
             SecurityAction::SessionCreate,
             SecurityAction::DiagnosticsRead,
+            SecurityAction::TransactionBegin,
         ]
         .into_iter()
         .map(|action| ResourceGrant {
@@ -512,17 +519,87 @@ fn authenticated_storage_diagnostic_trace_correlates_store_without_secrets() {
         Some((session, token)),
     );
     assert_eq!(status, 200, "{response}");
+    let mut begin = envelope(
+        json!({"scope": "claims", "timeout_ms": 5000}),
+        Some("private-begin-key"),
+        None,
+    );
+    begin["context"]["request_id"] = json!("private-begin-sentinel");
+    let (status, created_tx) = post(&server, "/v1/transactions", &begin, Some((session, token)));
+    assert_eq!(status, 200, "{created_tx}");
+    let (status, replayed_tx) = post(&server, "/v1/transactions", &begin, Some((session, token)));
+    assert_eq!(status, 200, "{replayed_tx}");
+    assert_eq!(payload(&created_tx), payload(&replayed_tx));
+    let mut second_begin = begin.clone();
+    second_begin["context"]["idempotency_key"] = json!("second-begin");
+    let (status, second) = post(
+        &server,
+        "/v1/transactions",
+        &second_begin,
+        Some((session, token)),
+    );
+    assert_eq!(status, 200, "{second}");
+    let mut over_quota = begin.clone();
+    over_quota["context"]["idempotency_key"] = json!("third-begin");
+    over_quota["context"]["request_id"] = json!("private-error-sentinel");
+    let (status, rejection) = post(
+        &server,
+        "/v1/transactions",
+        &over_quota,
+        Some((session, token)),
+    );
+    assert_eq!(status, 429, "{rejection}");
     server.stop();
 
     let bytes = output.lock().unwrap().clone();
     let raw = std::str::from_utf8(&bytes).unwrap();
     assert!(!raw.contains("private-request-sentinel"));
     assert!(!raw.contains("trace-test-api-key"));
+    assert!(!raw.contains("private-begin-sentinel"));
+    assert!(!raw.contains("private-begin-key"));
+    assert!(!raw.contains("private-error-sentinel"));
     assert!(!raw.contains(token));
     let events: Vec<Value> = raw
         .lines()
         .map(|line| serde_json::from_str(line).unwrap())
         .collect();
+    let begin_events: Vec<_> = events
+        .iter()
+        .filter(|event| event["target"] == "rrd_engine::transaction_diagnostic")
+        .collect();
+    if !timing_enabled {
+        assert!(begin_events.is_empty());
+    } else {
+        for outcome in ["created", "replayed"] {
+            let event = begin_events
+                .iter()
+                .find(|event| event["fields"]["outcome"] == outcome)
+                .expect("HTTP transaction begin must emit its actual outcome");
+            assert_eq!(
+                event["fields"]["request_sha256"],
+                rrd_core::digest::sha256_hex(b"private-begin-sentinel")
+            );
+            for field in [
+                "validation_ns",
+                "admission_ns",
+                "authentication_ns",
+                "replay_ns",
+                "snapshot_ns",
+                "publication_ns",
+                "total_ns",
+            ] {
+                assert!(event["fields"][field].is_u64(), "missing {field}: {event}");
+            }
+        }
+        let rejection = begin_events
+            .iter()
+            .find(|event| event["fields"]["outcome"] == "error")
+            .expect("quota rejection must emit an error timing");
+        assert_eq!(
+            rejection["fields"]["request_sha256"],
+            rrd_core::digest::sha256_hex(b"private-error-sentinel")
+        );
+    }
     let event = events
         .iter()
         .find(|event| event["target"] == "rrd_store::diagnostic")

@@ -122,14 +122,13 @@ control is proof of those downstream capabilities or full H-06 acceptance.
 Newer RRFlow installation-plan contract v2 requires an explicit identity from
 `rrflow install identity`, retained across preview regeneration and supplied
 with `install plan --identity`. The
-[2026-11-01 pin receipt](../../evidence/change-journals/gate-h/h-06-connectome-chain-pin.md)
-moves the pinned workbench to Connectome
-`c1cbff203ecee89013878609d11aed04e89d0e71`. That revision is bound to engine/SDK
-`15f36a8758e32b33c930a20da836def3e5cc3207`. Its native preview allocates that
-identity, serve sends it back, and its real-engine process tests pass against
-that engine. That is component evidence, not qualification of the installation
-contract. Updating its engine bundle again requires updating and testing this
-adapter input as described in the
+[Inventory neighborhood pin receipt](../../evidence/change-journals/gate-h/h-06-connectome-inventory-pin-20261107.md)
+associates this checkout with Connectome
+`4da67e27f52ef20861fd9ee8c8351ce48920f49a`, whose native client is bound to
+engine/SDK `91b6c6789e2e7d217e0873cff532bd53aa937581`. Its process tests are
+component evidence for that pair, not qualification of installation or of
+compatibility with a later engine. Updating its engine bundle again requires
+updating and testing this adapter input as described in the
 [implementation guide](connectome-implementation-guide.md#run-the-current-installed-engine).
 
 The same pin brings these Connectome changes, each landed through Connectome's
@@ -498,8 +497,8 @@ identity. Every metric says whether it is measured, estimated, unsupported or
 unknown. Changing projects isolates caches, sessions and in-flight results;
 concurrent engines never imply context sharing.
 
-The current pinned workbench binds engine/SDK `15f36a8758e32b33c930a20da836def3e5cc3207`
-([2026-11-01 pin receipt](../../evidence/change-journals/gate-h/h-06-connectome-chain-pin.md)).
+The pinned workbench binds engine/SDK `91b6c6789e2e7d217e0873cff532bd53aa937581`
+([Inventory neighborhood pin receipt](../../evidence/change-journals/gate-h/h-06-connectome-inventory-pin-20261107.md)).
 H-06 must keep engine assets, SDK, installation adapter and public-control
 consumers updated together and qualify the resulting exact pair. An existing UI
 data lens does not prove this new user journey or compatibility with a later

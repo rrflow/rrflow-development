@@ -2,9 +2,9 @@
 
 package rrd
 
-// OpenAPI SHA-256: 12e52bb72a3be1c220d1badf3af0124be7d5c08c9f2c875249a9c3ab43eb7e3d
+// OpenAPI SHA-256: 355e5482791fc6a9705b6c1bc9ba7303d1549b69b7dfbe8819c029bb7074c507
 
-const EndpointOpenAPIDocumentSHA256 = "12e52bb72a3be1c220d1badf3af0124be7d5c08c9f2c875249a9c3ab43eb7e3d"
+const EndpointOpenAPIDocumentSHA256 = "355e5482791fc6a9705b6c1bc9ba7303d1549b69b7dfbe8819c029bb7074c507"
 
 type OperationID string
 
@@ -61,9 +61,12 @@ const (
 	OperationSessionRenew                 OperationID = "session-renew"
 	OperationSubscriptionClose            OperationID = "subscription-close"
 	OperationSubscriptionOpen             OperationID = "subscription-open"
+	OperationTaskAssessmentExecute        OperationID = "task-assessment-execute"
+	OperationTaskAssessmentRead           OperationID = "task-assessment-read"
 	OperationTaskAttemptRead              OperationID = "task-attempt-read"
 	OperationTaskBudgetConfigure          OperationID = "task-budget-configure"
 	OperationTaskBudgetRead               OperationID = "task-budget-read"
+	OperationTaskBudgetResume             OperationID = "task-budget-resume"
 	OperationTaskBudgetStop               OperationID = "task-budget-stop"
 	OperationTaskClose                    OperationID = "task-close"
 	OperationTaskEmbeddingExecute         OperationID = "task-embedding-execute"
@@ -71,12 +74,16 @@ const (
 	OperationTaskList                     OperationID = "task-list"
 	OperationTaskOpen                     OperationID = "task-open"
 	OperationTaskRead                     OperationID = "task-read"
+	OperationTaskWorkerExecute            OperationID = "task-worker-execute"
 	OperationTransactionAbort             OperationID = "transaction-abort"
 	OperationTransactionBegin             OperationID = "transaction-begin"
 	OperationTransactionCommit            OperationID = "transaction-commit"
 	OperationTransactionPreview           OperationID = "transaction-preview"
 	OperationVectorCollectionEnsure       OperationID = "vector-collection-ensure"
 	OperationVectorCollectionList         OperationID = "vector-collection-list"
+	OperationVectorIndexEnsure            OperationID = "vector-index-ensure"
+	OperationVectorPayloadIndexDelete     OperationID = "vector-payload-index-delete"
+	OperationVectorPayloadIndexEnsure     OperationID = "vector-payload-index-ensure"
 	OperationVectorPointRetrieve          OperationID = "vector-point-retrieve"
 	OperationVectorPointScroll            OperationID = "vector-point-scroll"
 	OperationVectorQuantizationActivate   OperationID = "vector-quantization-activate"
@@ -139,9 +146,12 @@ var endpoints = map[OperationID]Endpoint{
 	OperationSessionRenew:                 {Method: "POST", Path: "/v1/sessions/{session}/renew", Authentication: "session_bearer", Mutation: true},
 	OperationSubscriptionClose:            {Method: "POST", Path: "/v1/subscriptions/close", Authentication: "session_bearer", Mutation: true},
 	OperationSubscriptionOpen:             {Method: "POST", Path: "/v1/subscriptions/open", Authentication: "session_bearer", Mutation: true},
+	OperationTaskAssessmentExecute:        {Method: "POST", Path: "/v1/tasks/assessment/execute", Authentication: "session_bearer", Mutation: true},
+	OperationTaskAssessmentRead:           {Method: "POST", Path: "/v1/tasks/assessment/read", Authentication: "session_bearer", Mutation: false},
 	OperationTaskAttemptRead:              {Method: "POST", Path: "/v1/tasks/attempt/read", Authentication: "session_bearer", Mutation: false},
 	OperationTaskBudgetConfigure:          {Method: "POST", Path: "/v1/tasks/budget/configure", Authentication: "session_bearer", Mutation: true},
 	OperationTaskBudgetRead:               {Method: "POST", Path: "/v1/tasks/budget/read", Authentication: "session_bearer", Mutation: false},
+	OperationTaskBudgetResume:             {Method: "POST", Path: "/v1/tasks/budget/resume", Authentication: "session_bearer", Mutation: true},
 	OperationTaskBudgetStop:               {Method: "POST", Path: "/v1/tasks/budget/stop", Authentication: "session_bearer", Mutation: true},
 	OperationTaskClose:                    {Method: "POST", Path: "/v1/tasks/close", Authentication: "session_bearer", Mutation: true},
 	OperationTaskEmbeddingExecute:         {Method: "POST", Path: "/v1/tasks/embedding/execute", Authentication: "session_bearer", Mutation: true},
@@ -149,12 +159,16 @@ var endpoints = map[OperationID]Endpoint{
 	OperationTaskList:                     {Method: "POST", Path: "/v1/tasks/list", Authentication: "session_bearer", Mutation: false},
 	OperationTaskOpen:                     {Method: "POST", Path: "/v1/tasks", Authentication: "session_bearer", Mutation: true},
 	OperationTaskRead:                     {Method: "POST", Path: "/v1/tasks/read", Authentication: "session_bearer", Mutation: false},
+	OperationTaskWorkerExecute:            {Method: "POST", Path: "/v1/tasks/worker/execute", Authentication: "session_bearer", Mutation: true},
 	OperationTransactionAbort:             {Method: "DELETE", Path: "/v1/transactions/{transaction}", Authentication: "session_bearer", Mutation: true},
 	OperationTransactionBegin:             {Method: "POST", Path: "/v1/transactions", Authentication: "session_bearer", Mutation: true},
 	OperationTransactionCommit:            {Method: "POST", Path: "/v1/transactions/{transaction}/commit", Authentication: "session_bearer", Mutation: true},
 	OperationTransactionPreview:           {Method: "POST", Path: "/v1/transactions/{transaction}/preview", Authentication: "session_bearer", Mutation: true},
 	OperationVectorCollectionEnsure:       {Method: "POST", Path: "/v1/vector/collections/ensure", Authentication: "session_bearer", Mutation: true},
 	OperationVectorCollectionList:         {Method: "POST", Path: "/v1/vector/collections/list", Authentication: "session_bearer", Mutation: false},
+	OperationVectorIndexEnsure:            {Method: "POST", Path: "/v1/vector/indexes/ensure", Authentication: "session_bearer", Mutation: true},
+	OperationVectorPayloadIndexDelete:     {Method: "POST", Path: "/v1/vector/payload-indexes/delete", Authentication: "session_bearer", Mutation: true},
+	OperationVectorPayloadIndexEnsure:     {Method: "POST", Path: "/v1/vector/payload-indexes/ensure", Authentication: "session_bearer", Mutation: true},
 	OperationVectorPointRetrieve:          {Method: "POST", Path: "/v1/vector/points/retrieve", Authentication: "session_bearer", Mutation: false},
 	OperationVectorPointScroll:            {Method: "POST", Path: "/v1/vector/points/scroll", Authentication: "session_bearer", Mutation: false},
 	OperationVectorQuantizationActivate:   {Method: "POST", Path: "/v1/vector/quantizations/activate", Authentication: "session_bearer", Mutation: true},

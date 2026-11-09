@@ -31,7 +31,7 @@ fn mixed_kind_traversal_paths_preserve_component_boundaries_after_reopen() {
     let root = tempfile::tempdir().unwrap();
     let store = RrflowKvStore::open(root.path()).unwrap();
     let mut registry = RuntimeSchemaRegistry::empty(1, "identity traversal");
-    for kind in ["node", "a:b", "a"] {
+    for kind in ["node", "a-b", "a"] {
         registry
             .define_record_table(
                 RuntimeType::new(kind).unwrap(),
@@ -46,7 +46,7 @@ fn mixed_kind_traversal_paths_preserve_component_boundaries_after_reopen() {
             RuntimeRelationSchema {
                 from: BTreeSet::from([RuntimeType::new("node").unwrap()]),
                 to: BTreeSet::from([
-                    RuntimeType::new("a:b").unwrap(),
+                    RuntimeType::new("a-b").unwrap(),
                     RuntimeType::new("a").unwrap(),
                 ]),
                 ..RuntimeRelationSchema::default()
@@ -54,8 +54,9 @@ fn mixed_kind_traversal_paths_preserve_component_boundaries_after_reopen() {
         )
         .unwrap();
     let start = RuntimeRef::new("node", "root").unwrap();
-    let left = RuntimeRef::new("a:b", "c").unwrap();
-    let right = RuntimeRef::new("a", "b:c").unwrap();
+    let left = RuntimeRef::new("a-b", "c").unwrap();
+    // An event identity holds the one colon an identifier can, so a path has to escape it.
+    let right = RuntimeRef::event(RuntimeType::new("a").unwrap(), 9);
     let mut mutations = vec![RuntimeMutation::Schema { registry }];
     mutations.extend(
         [start.clone(), left.clone(), right.clone()]
@@ -94,11 +95,11 @@ fn mixed_kind_traversal_paths_preserve_component_boundaries_after_reopen() {
     assert_eq!(paths.len(), 2);
     assert!(paths.contains(&RuntimeValue::List(vec![
         RuntimeValue::String("node:root".into()),
-        RuntimeValue::String("a%3Ab:c".into())
+        RuntimeValue::String("a-b:c".into())
     ])));
     assert!(paths.contains(&RuntimeValue::List(vec![
         RuntimeValue::String("node:root".into()),
-        RuntimeValue::String("a:b%3Ac".into())
+        RuntimeValue::String("a:cursor%3A9".into())
     ])));
     drop(store);
     let store = RrflowKvStore::open(root.path()).unwrap();
