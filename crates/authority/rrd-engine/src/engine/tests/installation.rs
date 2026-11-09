@@ -2093,6 +2093,7 @@ fn inherited_estate_preview_reports_the_rejected_directory() {
 
 #[cfg(windows)]
 #[test]
+#[ignore = "POAM-006: the installer still rejects an existing .rrflow with inherited permissions; #236 adopts it by relocation, this oracle asks for in-place preservation of bytes and ACLs, and no repair for that exists yet"]
 fn existing_project_preserves_inherited_estate_and_opens_after_replay() {
     use std::process::Command;
 

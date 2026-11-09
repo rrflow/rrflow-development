@@ -45,3 +45,14 @@ The complete engine suite, contract/generator checks, restart and interruption c
 - [ ] Implement collision-safe admission and recovery with inherited parent permissions and private owned descendants; test changes between preview/apply, interruption, restart and replay.
 - [ ] Verify installed Windows flow and existing-state/ACL preservation, then run owning suites and the required candidate CI.
 - [ ] Complete full-file and diff review, update the package record, and merge only after all required checks pass.
+
+## 2026-11-09 absorption onto main
+
+Merged `development/main` cleanly. The preservation oracle
+`existing_project_preserves_inherited_estate_and_opens_after_replay` still
+fails, as this package recorded: no in-place preservation repair exists. The
+owner directed every authored line onto main, so the oracle lands marked
+`#[ignore]` with the POAM-006 reason; the preview-reporting and native
+directory-identity tests run and pass (63 passed, 1 ignored). #236 lands the
+relocating adoption separately; whichever behaviour the owner finally wants,
+this oracle is the test to un-ignore.
