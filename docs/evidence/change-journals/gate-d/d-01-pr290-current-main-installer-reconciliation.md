@@ -42,3 +42,12 @@ test tree beside the canonical `crates/authority/rrd-estate` package.
 The duplicate directory is removed from the candidate only after this mapping;
 Git retains its history, while current source and tests remain in the existing
 estate owner. No runtime fallback, package alias, or second authority is added.
+
+
+## Follow-up candidate CI failure reconciliation
+
+The first CI run against `f9c8b7ab9fcf306169013245fdae12553651be57` started and exposed four root causes across 14 failing partitions: generated `storage-segment-v1.json` and `storage-progress-event-v1.json` were stale after the candidate's `estate` to `engram` description change; `EndpointWorkerAdapter` had a manually implemented default rejected by Linux Clippy; `installed_lifecycle.rs` had three incomplete contract initializers; and the installer passed `Option<&AttunementProposal>` where the contract now owns `Option<AttunementProposal>`. The run's repeated platform/job failures map to these same root causes, not 14 independent defects.
+
+Repairs made locally: regenerated the two owned schema goldens through the test's explicit `RRFLOW_UPDATE_STORAGE_GOLDENS=1` mode; used the derived enum `Default` with the same OpenAI variant as `#[default]`; added explicit `adapter`, `flight: None`, and `routing: None` values to lifecycle fixtures; and passed the owned proposal through to installation planning. No workflow selector, policy, or test expectation was weakened.
+
+Exact local verification after these corrections: `cargo test --locked -p rrflow-eval --test storage_contract generated_schemas_and_synthetic_receipts_match_goldens -- --exact` passed; `cargo clippy -p rrd-core -p rrd-lsm -p rrd-store -p rrd-maintenance --all-targets --locked -- -D warnings` passed; `cargo clippy -p rrd-inference --all-targets --all-features --locked -- -D warnings` passed; `cargo check -p rrflow-cli --tests --locked` passed; `cargo test -p rrflow-cli --test installed_lifecycle --locked -- --nocapture` passed all 8 tests, including fresh/existing installation, restore, source-read consent and reopen. After the locally repaired failed targets below, updated candidate CI and merge-group evidence are still required; do not infer macOS/Windows/Linux ARM native results from the local Windows host run.

@@ -1480,6 +1480,7 @@ fn loopback_worker_profile(
                 protocol_evidence_sha256: rrd_core::digest::sha256_hex(
                     b"controlled loopback protocol fixture; no model or quality claim",
                 ),
+                adapter: rrd_contract::EndpointWorkerAdapter::default(),
                 system_prompt: "Return a bounded draft. Do not mutate project files.".into(),
                 generation: rrd_contract::EndpointGenerationSettings {
                     maximum_output_tokens: 128,
@@ -1689,6 +1690,8 @@ fn exercise_installed_source_worker(project: &Path, source_read_enabled: bool, j
             .unwrap()
             .task_sha256,
         expected_configuration_sha256: selection_configuration.sha256().unwrap(),
+        flight: None,
+        routing: None,
     };
 
     if !source_read_enabled {
@@ -2758,6 +2761,8 @@ fn endpoint_selection_request(
             .unwrap()
             .task_sha256,
         expected_configuration_sha256: configuration.sha256().unwrap(),
+        flight: None,
+        routing: None,
     }
 }
 
