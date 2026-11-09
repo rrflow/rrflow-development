@@ -40,7 +40,7 @@ class LinuxArm64PolicyTests(unittest.TestCase):
             "  native-arm64:\n",
             "      - native-arm64\n",
             "needs.native-arm64.result",
-            'test "$ARM64_RESULT" = success',
+            'expect "$FULL_LANE" "$ARM64_RESULT" native-arm64',
         ]:
             with self.subTest(old=old):
                 self.assertIn(old, self.reusable)
@@ -50,7 +50,8 @@ class LinuxArm64PolicyTests(unittest.TestCase):
     def test_arm_job_or_test_cannot_be_skipped(self):
         marker = "  native-arm64:\n"
         before, after = self.reusable.split(marker, 1)
-        for insertion in ["    if: false\n", "    continue-on-error: true\n"]:
+        for insertion in ["    if: false\n", "    continue-on-error: true\n",
+                          "    if: ${{ needs.changes.outputs.docs == 'true' }}\n"]:
             with self.subTest(insertion=insertion):
                 with self.assertRaises(PolicyError):
                     verify_linux_arm64_ci(self.caller, before + marker + insertion + after)

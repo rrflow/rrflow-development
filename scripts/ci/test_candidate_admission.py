@@ -216,7 +216,7 @@ class StorageContractPreflightTests(unittest.TestCase):
                 jobs = self.jobs.copy()
                 if mutation == "omit":
                     jobs["installed-reopen"] = jobs["installed-reopen"].replace(
-                        "    needs: storage-contract-preflight\n", ""
+                        "    needs: [changes, storage-contract-preflight]\n", "    needs: [changes]\n"
                     )
                 elif mutation == "condition":
                     jobs["installed-reopen"] += "\n    if: ${{ always() }}\n"
@@ -233,7 +233,7 @@ class StorageContractPreflightTests(unittest.TestCase):
 
     def test_gate_failure_cannot_be_suppressed(self):
         jobs = self.jobs.copy()
-        original = 'test "$STORAGE_PREFLIGHT_RESULT" = success'
+        original = 'expect "$FULL_LANE" "$STORAGE_PREFLIGHT_RESULT" storage-contract-preflight'
         jobs["ci-gate"] = jobs["ci-gate"].replace(original, original + " || true")
         with self.assertRaises(PolicyError):
             verify_storage_contract_preflight(jobs)
@@ -241,10 +241,13 @@ class StorageContractPreflightTests(unittest.TestCase):
     def test_gate_requires_preflight_success(self):
         for old, new in [
             ("    if: ${{ always() }}\n", ""),
-            ("      - name: Require every CI partition\n        env:\n", "      - name: Require every CI partition\n        if: false\n        env:\n"),
+            ("      - name: Require every selected CI lane\n        env:\n", "      - name: Require every selected CI lane\n        if: false\n        env:\n"),
             ("      - storage-contract-preflight\n", ""),
             ("STORAGE_PREFLIGHT_RESULT: ${{ needs.storage-contract-preflight.result }}", ""),
-            ('test "$STORAGE_PREFLIGHT_RESULT" = success', 'test "$STORAGE_PREFLIGHT_RESULT" != failure'),
+            ('expect "$FULL_LANE" "$STORAGE_PREFLIGHT_RESULT" storage-contract-preflight',
+             'expect false "$STORAGE_PREFLIGHT_RESULT" storage-contract-preflight'),
+            ('expect "$FULL_LANE" "$STORAGE_PREFLIGHT_RESULT" storage-contract-preflight',
+             'test "$STORAGE_PREFLIGHT_RESULT" != failure'),
         ]:
             with self.subTest(old=old):
                 jobs = self.jobs.copy()

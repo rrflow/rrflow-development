@@ -107,16 +107,50 @@ not cancel a ready run already in progress; a subsequent ready candidate for
 the same PR supersedes that run. Other PRs and non-PR refs remain isolated.
 A skipped draft run is not candidate acceptance. GitHub does not guarantee
 concurrency start order, and a local grouping test cannot prove live delivery
-order. The required gate continues to fail unless every partition succeeds.
-Manual dispatch remains available for an explicitly requested full run on a
-draft branch.
+order. The required gate fails unless every partition the change selected
+succeeded and every partition it did not select was skipped by its lane
+condition. Manual dispatch remains available for an explicitly requested full
+run on a draft branch.
 
 This uses GitHub's documented [pull-request activity types](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#pull_request);
 the default activity list does not include readiness transitions. The local
 `test_candidate_admission.py` corpus verifies the checked-in admission shape
 and rejects missing transitions, filters and lost merge/manual coverage; it
-does not emulate GitHub execution. Full checks still run for merge groups.
-No path filter or reduced ready-candidate lane substitutes for acceptance.
+does not emulate GitHub execution. Merge-group candidates select lanes from
+their own diff against the queue base, exactly as pull requests do. The caller
+has no path filter; lane selection lives inside the reusable workflow, where
+`ci-gate` can see it.
+
+## Proportional lanes
+
+Candidate CI is proportional to the change (owner decision, 2026-11-09, which
+replaces the 2026-11-01 decision to run the full matrix on every candidate).
+The first job, `changes`, diffs the candidate against its base and runs
+`scripts/ci/select_ci_lanes.py`, which maps every changed path to a lane:
+
+| Lane | Selected by | Partitions |
+|---|---|---|
+| `docs` | `docs/**`, Markdown anywhere, issue and PR templates, `LICENSE` | `docs-policy`: documentation authority and local links, generated navigation, execution inventory, capacity projection rendering, whitespace |
+| `scripts` | `scripts/**` except `scripts/ci`, `eval/**` | `scripts-policy`: the repository's Python test files that need no build |
+| `engine` | `crates/**` outside the full-lane paths | `engine-fast` on Linux: formatting, generated-surface parity, `cargo test` and clippy for the changed crates, `cargo check --all-targets` for every workspace dependent |
+| `sdk` | `sdks/**`, `fixtures/**`, `crates/transport/**` | `sdk-conformance`; transport crate edits also run `engine-fast` |
+| `full` | `.github/**` except templates, `scripts/ci/**`, `.cargo/**`, `.devcontainer/**`, `.gitmodules`, `rust-toolchain.toml`, `Cargo.toml`, `Cargo.lock`, `VERSION`, `deploy/**`, the Connectome gitlink, `crates/kernel/**`, `crates/persistence/**`, `crates/adapters/rrflow-cli/**`, `rrd-maintenance`, and the engine's transaction, installation, estate layout, token key, maintenance, attunement supervisor, backup, control, configuration, estate-control, flight, function, knowledge, observation, reasoning-budget persistence, restore, session, subscription, task, query, and tail-repair effect modules; also engine test modules, `.gitignore`, `.gitattributes`, any path the classifier does not recognize, a manual dispatch, a `scope: full` call, or an event without a base revision | every partition below, exactly as before |
+
+A `full` selection absorbs the light lanes, so their jobs skip and the full
+partitions carry their checks. The `engine` lane never links the whole
+workspace in one target graph; a root manifest or lock change takes the
+partitioned full matrix instead. The classifier fails closed: an unrecognized
+path routes to `full` and is named in the job log.
+
+`.github/workflows/ci-nightly.yml` calls the reusable workflow with
+`scope: full` against `main` once a day and on manual dispatch, so a dated
+complete result exists for the current main revision regardless of what the
+day's candidates selected. It is evidence about main, not candidate acceptance.
+
+`scripts/ci/check_workflow.py` requires every partition to declare exactly its
+lane condition and the gate to check each result by lane;
+`test_select_ci_lanes.py` and `test_ci_lanes_policy.py` are its regressions and
+run in the `changes` job and the verify policy step.
 
 Rust cache steps still restore compatible entries on every candidate, but do
 not save new entries from `merge_group` runs. Queue-ref entries are scoped to
@@ -171,7 +205,10 @@ check for branch protection:
   exclusion on GitHub-hosted Linux, macOS and Windows;
 - ordinary-primary fresh/existing 100-cycle acknowledged kill/reopen histories
   on those same three native platforms; and
-- one always-evaluated gate which fails unless every partition succeeded.
+- the three light lanes, `docs-policy`, `scripts-policy` and `engine-fast`,
+  described under proportional lanes; and
+- one always-evaluated gate which fails unless every selected partition
+  succeeded and every unselected partition was skipped.
 
 The preflight responds to a candidate whose changed operation catalogue left a
 stale synthetic fixture: the native reopen smoke rejected that identity only
