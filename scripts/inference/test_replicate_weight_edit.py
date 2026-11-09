@@ -285,6 +285,21 @@ class EvaluateTests(EvaluationFixture):
         with self.assertRaisesRegex(ValueError, "rebuild receipt"):
             self.run_arm("arm")
 
+    def test_changed_tokenizer_or_configuration_is_refused(self):
+        for name in ("tokenizer.json", "chat_template.jinja", "generation_config.json"):
+            (self.root / "edited").rename(self.root / f"edited-before-{name}")
+            self.build("edited")
+            with (self.root / "edited" / name).open("ab") as target:
+                target.write(b"x")
+            with self.assertRaisesRegex(ValueError, "tokenizer or configuration"):
+                self.run_arm("arm")
+
+    def test_job_binds_the_tokenizer_and_configuration(self):
+        job = self.run_arm("arm")["_job"]
+        receipt = json.loads((self.root / "edited" / RECEIPT).read_text())
+        self.assertEqual(job["tokenizerSha256"], receipt["tokenizerSha256"])
+        self.assertEqual(job["configSha256"], receipt["configSha256"])
+
 
 class CompareTests(EvaluationFixture):
     def test_paired_numbers_on_a_hand_checked_fixture(self):
@@ -338,23 +353,25 @@ class DecideTests(unittest.TestCase):
             setattr(module, name, value)
         self.addCleanup(lambda: [setattr(module, name, value) for name, value in self.saved.items()])
 
-    def arm(self, name, correct_problems, job=None, base="b" * 64, count=40):
-        part = self.root / name / "parts" / "small_s0of1"
+    def arm(self, name, correct_problems, job=None, base="b" * 64, count=40, set_name="small"):
+        part = self.root / name / "parts" / f"{set_name}_s0of1"
         part.mkdir(parents=True)
         rows = [{"id": f"p{i}", "correct": [int(i < correct_problems)] * 2, "pred_first": None} for i in range(count)]
         ok = sum(sum(row["correct"]) for row in rows)
-        scores = {"small": {"ok": ok, "total": 2 * count, "cut": 0, "tokens_sum": 0,
-                             "samples": self.module.SAMPLES["small"]}}
+        scores = {set_name: {"ok": ok, "total": 2 * count, "cut": 0, "tokens_sum": 0,
+                             "samples": self.module.SAMPLES[set_name]}}
         if job is not None:
             protocol = job.get("protocol", "think35")
             config = self.module.PROTOCOLS[protocol]
             record = {"protocol": protocol, "sampling": config["sampling"], "thinking": config["thinking"],
-                      "samples": self.module.SAMPLES["small"], "prompt": self.module.INSTRUCTION,
+                      "samples": self.module.SAMPLES[set_name], "prompt": self.module.INSTRUCTION,
                       "benchmarkSha256": "c" * 64,
                       "checkpointModelSha256": "d" * 64 if job.get("edited") else "e" * 64,
+                      "tokenizerSha256": "a" * 64,
+                      "configSha256": {config_name: "a" * 64 for config_name in self.module.CONFIG_FILES},
                       "baseFileSha256": base, "edited": job.get("edited", False), "shard": [0, 1], "limit": None}
             scores["_job"] = {**record, **job}
-        (part / "small_per_problem.json").write_bytes(canonical(rows))
+        (part / f"{set_name}_per_problem.json").write_bytes(canonical(rows))
         (part / "scores.json").write_bytes(canonical(scores))
         return self.root / name
 
@@ -449,6 +466,8 @@ class DecideTests(unittest.TestCase):
             job = {"protocol": "think35", "sampling": self.module.PROTOCOLS["think35"]["sampling"],
                    "thinking": True, "samples": 2, "prompt": self.module.INSTRUCTION,
                    "benchmarkSha256": "c" * 64, "checkpointModelSha256": "d" * 64,
+                   "tokenizerSha256": "a" * 64,
+                   "configSha256": {config_name: "a" * 64 for config_name in self.module.CONFIG_FILES},
                    "baseFileSha256": "b" * 64, "edited": True, "shard": [min(index, 1), 2], "limit": None}
             scores = {"small": {"ok": ok, "total": 2 * len(selected), "cut": 0,
                                  "tokens_sum": 0, "samples": 2}, "_job": job}
@@ -468,6 +487,21 @@ class DecideTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "different model checkpoints"):
             self.decide(control_job={"edited": False, "protocol": "nothink35",
                                      "checkpointModelSha256": "f" * 64})
+
+    def test_arms_must_use_one_checkpoint_across_benchmark_sets(self):
+        self.module.PROBLEMS["other"] = 40
+        self.module.SAMPLES["other"] = 2
+        for set_name in ("small", "other"):
+            self.arm("published", 20, set_name=set_name)
+            edited_job = {"edited": True, "protocol": "think35"}
+            if set_name == "other":
+                edited_job["checkpointModelSha256"] = "f" * 64
+            self.arm("edited", 20, edited_job, set_name=set_name)
+            self.arm("base", 2, {"edited": False, "protocol": "think35"}, set_name=set_name)
+            self.arm("control", 2, {"edited": False, "protocol": "nothink35"}, set_name=set_name)
+        with self.assertRaisesRegex(ValueError, "across benchmark sets"):
+            decide(self.root / "published", self.root / "edited", self.root / "base", self.root / "control",
+                   ("small", "other"))
 
     def test_arms_from_different_bases_cannot_decide(self):
         with self.assertRaisesRegex(ValueError, "different base"):

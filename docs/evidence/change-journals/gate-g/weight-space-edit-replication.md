@@ -230,3 +230,22 @@ The first post-change run of `python scripts/inference/test_replicate_weight_edi
 Other local checks on the reconciled tree: `python scripts/ci/check_workflow.py` passed (6 workflows, 11 substantive jobs, 5 cohesive engine suites, 22 default-feature packages, 6 optional-feature packages and 19 development-container pins); `python scripts/ci/check_documentation.py` passed (1,035 document statuses and 1,033 classified coordinates); `python scripts/knowledge/render_navigation.py --check` passed (18 indexes, 1,034 nodes, 3,618 edges); `git diff --check refs/remotes/development/main` passed. The retained main CI test `python scripts/inference/test_installed_controller_fault_relay.py` passed: 14 tests. Candidate CI and merge-group CI have not run on this reconciled candidate. Full edited and unedited thinking arms remain unrun; this package does not replicate the published result or demonstrate RRFlow quality, speed or alpha readiness.
 
 Current state: merge conflict resolution and review corrections are prepared locally in the temporary PR worktree and are not yet pushed. Recheck destination `development` URL, target ref `agent/weight-space-edit-replication`, and exact remote head immediately before any push. Do not treat the historical successful CI run on `55e9988...` as validation of this candidate. Keep the PR open until updated candidate CI and required merge-group checks pass; do not claim the full GPU replication.
+
+## 2026-11-09 review repairs
+
+A Codex review of the pull request found two identity gaps, both repaired
+with tests before merge:
+
+- `evaluate` verified only `model.safetensors` against the rebuild receipt,
+  so a changed `tokenizer.json`, `chat_template.jinja` or other configuration
+  file could reuse a cached result or mix shards. The job now binds
+  `tokenizerSha256` and `configSha256` and refuses a checkpoint whose files
+  differ from its receipt.
+- `decide` reset the expected identities for every benchmark set, so an arm
+  holding MATH-500 results from one edited checkpoint and GSM8K results from
+  another could be reported as one reproduction. One edited, base and
+  control checkpoint set is now required across every benchmark set.
+
+`python scripts/inference/test_replicate_weight_edit.py`: 53 tests pass
+(42 before). Existing result parts recorded by the earlier tool carry the
+old job shape and are refused rather than silently accepted.

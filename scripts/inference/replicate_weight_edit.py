@@ -375,13 +375,20 @@ def evaluate(checkpoint: Path, benchmark: Path, arm: Path, name: str, protocol_n
         raise ValueError("unsupported benchmark set or shard")
     receipt = strict_json(read_bounded(checkpoint / RECEIPT))
     rows, benchmark_sha = load_benchmark(benchmark)
+    # The tokenizer and configuration shape every prompt and generation, so a
+    # job binds them as it binds the weights; a changed file cannot reuse a
+    # cached result or pass as one arm beside shards built from another.
+    configs = {config_name: file_digest(checkpoint / config_name) for config_name in CONFIG_FILES}
     job = {"protocol": protocol_name, "sampling": protocol["sampling"], "thinking": protocol["thinking"],
            "samples": SAMPLES[name], "prompt": INSTRUCTION, "benchmarkSha256": benchmark_sha,
            "checkpointModelSha256": file_digest(checkpoint / "model.safetensors"),
+           "tokenizerSha256": file_digest(checkpoint / "tokenizer.json"), "configSha256": configs,
            "baseFileSha256": receipt["baseFileSha256"], "edited": receipt["edit"] is not None,
            "shard": list(shard), "limit": limit}
     if job["checkpointModelSha256"] != receipt["modelSha256"]:
         raise ValueError("checkpoint model differs from its rebuild receipt")
+    if job["tokenizerSha256"] != receipt["tokenizerSha256"] or configs != receipt["configSha256"]:
+        raise ValueError("checkpoint tokenizer or configuration differs from its rebuild receipt")
     part = arm / "parts" / f"{name}_s{shard[0]}of{shard[1]}"
     if part.exists():
         existing = strict_json(read_bounded(part / "scores.json"))
@@ -493,7 +500,8 @@ def require_arm(arm: Path, name: str, edited: bool, protocol: str, base: str | N
     expected_thinking = PROTOCOLS[protocol]["thinking"]
     expected_samples = SAMPLES[name]
     expected_job_fields = {"protocol", "sampling", "thinking", "samples", "prompt", "benchmarkSha256",
-                           "checkpointModelSha256", "baseFileSha256", "edited", "shard", "limit"}
+                           "checkpointModelSha256", "tokenizerSha256", "configSha256", "baseFileSha256",
+                           "edited", "shard", "limit"}
     signature = None
     shard_indices, shard_counts = set(), set()
     benchmark, checkpoint = None, None
@@ -538,6 +546,7 @@ def require_arm(arm: Path, name: str, edited: bool, protocol: str, base: str | N
 def decide(published: Path, edited: Path, base: Path, control: Path, names: tuple[str, ...] = ("math500", "gsm8k")) -> dict:
     """Apply the frozen rule: reproduce the effect, then require an advantage over the documented setting."""
     results = {}
+    checkpoints = None
     for name in names:
         edited_identity = require_arm(edited, name, True, "think35", None)
         base_identity = require_arm(base, name, False, "think35", edited_identity["base"])
@@ -547,6 +556,13 @@ def decide(published: Path, edited: Path, base: Path, control: Path, names: tupl
             raise ValueError("arms were evaluated against different benchmark contents")
         if base_identity["checkpoint"] != control_identity["checkpoint"]:
             raise ValueError("unedited arms were evaluated with different model checkpoints")
+        # One decision is about one edit of one base: every benchmark set must
+        # come from the same checkpoints, or two edits could each pass one set
+        # and be reported together as a single reproduction.
+        current = (edited_identity["base"], edited_identity["checkpoint"], base_identity["checkpoint"])
+        if checkpoints not in (None, current):
+            raise ValueError("arms mix model checkpoints across benchmark sets")
+        checkpoints = current
         results[name] = {"gain": compare(base, edited, name), "againstPublished": compare(published, edited, name),
                          "againstControl": compare(control, edited, name)}
     gained = all(result["gain"]["ci95"][0] > 0 for result in results.values())
