@@ -1102,7 +1102,12 @@ fn score_dense_values(
                 // performs only unaligned in-bounds loads.
                 let score = unsafe { simd(query, candidate, metric) };
                 // A lane that overflowed says nothing about the real score.
-                if score.is_finite() {
+                // A tiny score may have lost whole lanes to f32 underflow
+                // (squares of values below about 1e-19 vanish) while a tail
+                // element kept its f64 value, so it is finite and still wrong.
+                // Either is the scalar f64 kernel's to decide; a duplicate or
+                // orthogonal pair costs one scalar pass and keeps its answer.
+                if score.is_finite() && score.abs() >= SIMD_SCORE_FLOOR {
                     return Ok(score);
                 }
             }
@@ -1110,6 +1115,11 @@ fn score_dense_values(
         }
     }
 }
+
+/// Below this magnitude a SIMD score is recomputed by the scalar kernel. An
+/// f32 product underflows near 1e-38, so a sum of squares this small can have
+/// dropped most of its terms; every ordinary embedding distance is far above it.
+const SIMD_SCORE_FLOOR: f64 = 1e-15;
 
 type SimdScore = unsafe fn(&[f32], &[f32], ScoreMetric) -> f64;
 
@@ -1505,6 +1515,29 @@ mod tests {
                 let (scalar, automatic) = both_kernels(&same, other, metric);
                 assert!(scalar.is_finite(), "{metric:?}: {scalar}");
                 assert_eq!(automatic, scalar, "{metric:?}");
+            }
+        }
+    }
+
+    /// Lanes are f32. Squares of small-magnitude values underflow there where
+    /// the f64 scalar kernel keeps them, so distinct distances would become
+    /// ties, or keep only their tail element, and the nearest candidates
+    /// would be lost at traversal. Vectors of 33 leave one tail element.
+    #[test]
+    fn a_lane_that_underflows_gets_the_scalar_kernels_score() {
+        let tiny = vec![1e-30_f32; 33];
+        let zero = vec![0.0_f32; 33];
+        let doubled = tiny.iter().map(|value| value * 2.0).collect::<Vec<_>>();
+        for metric in KERNEL_METRICS {
+            for (left, right) in [(&tiny, &zero), (&tiny, &doubled), (&doubled, &tiny)] {
+                let (scalar, automatic) = both_kernels(left, right, metric);
+                assert!(scalar.is_finite(), "{metric:?}: {scalar}");
+                // A metric whose lanes stay normal (Manhattan here) keeps its
+                // f32 rounding; one that underflowed must be the scalar score.
+                assert!(
+                    (scalar - automatic).abs() <= scalar.abs() * 1e-5,
+                    "{metric:?}: {scalar} and {automatic}"
+                );
             }
         }
     }
