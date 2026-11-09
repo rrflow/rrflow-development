@@ -7,6 +7,7 @@ use crate::{
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeSet;
 
 /// A proposal can describe a choice without qualifying that choice for execution.
 /// Adding another purpose requires its own admission semantics and evidence.
@@ -16,9 +17,171 @@ pub enum EndpointSelectionPurpose {
     ExperimentalProposal,
 }
 
-/// No endpoint, credential, prompt or client-authored candidate facts enter this request.
+pub const MAX_SELECTION_CONTEXT_SIGNALS: usize = 64;
+pub const MAX_SELECTION_SIGNAL_NAME_BYTES: usize = 128;
+pub const MAX_SELECTION_SIGNAL_VALUE_BYTES: usize = 1024;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum EndpointSelectionExtractionModality {
+    Text,
+    Code,
+    Mixed,
+    Unknown,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+pub struct EndpointSelectionContextSignal {
+    pub name: String,
+    pub value: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub confidence_milli: Option<u16>,
+}
+
+impl EndpointSelectionContextSignal {
+    fn validate(&self) -> Result<()> {
+        if self.name.is_empty()
+            || self.name.len() > MAX_SELECTION_SIGNAL_NAME_BYTES
+            || self.name.trim() != self.name
+            || self.name.chars().any(char::is_control)
+            || self.value.is_empty()
+            || self.value.len() > MAX_SELECTION_SIGNAL_VALUE_BYTES
+            || self.value.trim() != self.value
+            || self.value.chars().any(char::is_control)
+            || self.confidence_milli.is_some_and(|value| value > 1000)
+        {
+            return invalid("invalid selection context signal");
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct EndpointSelectionContextExtraction {
+    pub modality: EndpointSelectionExtractionModality,
+    pub signals: Vec<EndpointSelectionContextSignal>,
+}
+
+impl EndpointSelectionContextExtraction {
+    fn validate(&self) -> Result<()> {
+        if self.signals.is_empty() || self.signals.len() > MAX_SELECTION_CONTEXT_SIGNALS {
+            return invalid("selection context extraction signal count is out of bounds");
+        }
+        let mut names = BTreeSet::new();
+        for signal in &self.signals {
+            signal.validate()?;
+            if !names.insert(signal.name.as_str()) {
+                return invalid("selection context extraction signals must be unique by name");
+            }
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct EndpointSelectionRankedCandidate {
+    pub binding_id: CanonicalId,
+    pub score_milli: u16,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct EndpointSelectionSemanticRouterInput {
+    pub policy_id: CanonicalId,
+    pub ranked_candidates: Vec<EndpointSelectionRankedCandidate>,
+    pub narrowed_candidate_count: u32,
+}
+
+impl EndpointSelectionSemanticRouterInput {
+    fn validate(&self) -> Result<()> {
+        if self.ranked_candidates.is_empty()
+            || self.narrowed_candidate_count == 0
+            || self.narrowed_candidate_count as usize > self.ranked_candidates.len()
+        {
+            return invalid("invalid semantic router candidate narrowing");
+        }
+        let mut ids = BTreeSet::new();
+        let mut previous_score = None;
+        for candidate in &self.ranked_candidates {
+            if !ids.insert(candidate.binding_id.as_str()) {
+                return invalid("semantic router candidates must be unique");
+            }
+            if previous_score.is_some_and(|score: u16| score < candidate.score_milli) {
+                return invalid("semantic router candidates must be sorted by descending score");
+            }
+            previous_score = Some(candidate.score_milli);
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct EndpointSelectionRoutingInput {
+    pub context_extraction: EndpointSelectionContextExtraction,
+    pub semantic_router: EndpointSelectionSemanticRouterInput,
+}
+
+impl EndpointSelectionRoutingInput {
+    pub fn validate(&self) -> Result<()> {
+        self.context_extraction.validate()?;
+        self.semantic_router.validate()
+    }
+
+    pub fn narrow_allowance(
+        &self,
+        allowance: &EndpointSelectionAllowance,
+    ) -> Result<EndpointSelectionAllowance> {
+        self.validate()?;
+        if self.semantic_router.narrowed_candidate_count > allowance.limits.maximum_candidates {
+            return invalid("semantic router narrowed candidate count exceeds configured limit");
+        }
+        let candidate_ids = allowance
+            .candidates
+            .iter()
+            .map(|candidate| candidate.binding_id.as_str())
+            .collect::<BTreeSet<_>>();
+        let selected = self
+            .semantic_router
+            .ranked_candidates
+            .iter()
+            .take(self.semantic_router.narrowed_candidate_count as usize)
+            .map(|candidate| candidate.binding_id.as_str())
+            .collect::<BTreeSet<_>>();
+        if selected.is_empty() || !selected.is_subset(&candidate_ids) {
+            return invalid(
+                "semantic router narrowed candidates must be a non-empty subset of allowance candidates",
+            );
+        }
+        let mut narrowed = allowance.clone();
+        narrowed.candidates = allowance
+            .candidates
+            .iter()
+            .filter(|candidate| selected.contains(candidate.binding_id.as_str()))
+            .cloned()
+            .collect();
+        if narrowed.candidates.is_empty() {
+            return invalid("semantic router narrowing removed every allowance candidate");
+        }
+        Ok(narrowed)
+    }
+}
+
+pub fn endpoint_selection_routing_sha256(
+    routing: &EndpointSelectionRoutingInput,
+) -> Result<String> {
+    routing.validate()?;
+    digest(routing)
+}
+
+/// Unknown fields are accepted and ignored for forward compatibility. No
+/// endpoint, credential, prompt or client-authored candidate facts are used by
+/// this request; an extension needs explicit engine admission to matter.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[schemars(extend("additionalProperties" = true))]
 pub struct EndpointSelectionRequest {
     pub scope: String,
     pub task_id: CanonicalId,
@@ -26,6 +189,10 @@ pub struct EndpointSelectionRequest {
     pub max_storage_keys: u64,
     pub expected_task_sha256: String,
     pub expected_configuration_sha256: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub flight: Option<EndpointSelectionFlightIdentity>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub routing: Option<EndpointSelectionRoutingInput>,
 }
 
 impl EndpointSelectionRequest {
@@ -40,7 +207,35 @@ impl EndpointSelectionRequest {
         validate_sha256(
             &self.expected_configuration_sha256,
             "expected endpoint configuration digest",
-        )
+        )?;
+        if let Some(flight) = &self.flight {
+            flight.validate()?;
+        }
+        if let Some(routing) = &self.routing {
+            routing.validate()?;
+        }
+        Ok(())
+    }
+}
+
+/// Exact prompt and context identity expected by selection input admission.
+/// This identifies one governed prompt flight; it does not authorize dispatch.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct EndpointSelectionFlightIdentity {
+    pub flight_id: CanonicalId,
+    pub prompt_cohort_sha256: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub context_request_sha256: Option<String>,
+}
+
+impl EndpointSelectionFlightIdentity {
+    pub fn validate(&self) -> Result<()> {
+        validate_sha256(&self.prompt_cohort_sha256, "selection prompt cohort digest")?;
+        if let Some(context_request_sha256) = &self.context_request_sha256 {
+            validate_sha256(context_request_sha256, "selection context request digest")?;
+        }
+        Ok(())
     }
 }
 
@@ -100,6 +295,8 @@ pub struct EndpointSelectionPacket {
     pub read_cursor: u64,
     pub controller_binding_id: CanonicalId,
     pub allowance: EndpointSelectionAllowance,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub routing: Option<EndpointSelectionRoutingInput>,
 }
 
 impl EndpointSelectionPacket {
@@ -121,9 +318,15 @@ impl EndpointSelectionPacket {
             .selection_policy
             .as_ref()
             .ok_or_else(|| crate::ContractError("endpoint selector policy is absent".into()))?;
+        let configured_allowance = policy.allowance(configuration)?;
+        let expected_allowance = if let Some(routing) = &self.routing {
+            routing.narrow_allowance(&configured_allowance)?
+        } else {
+            configured_allowance
+        };
         if self.purpose != policy.purpose
             || self.controller_binding_id != policy.controller_binding_id
-            || self.allowance != policy.allowance(configuration)?
+            || self.allowance != expected_allowance
         {
             return invalid("selection packet differs from the configured policy");
         }
@@ -205,6 +408,10 @@ pub struct EndpointSelectionProposal {
     pub request_sha256: String,
     pub response_sha256: String,
     pub content_sha256: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub flight: Option<EndpointSelectionFlightIdentity>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub routing: Option<EndpointSelectionRoutingInput>,
     pub choice: EndpointSelectionChoice,
     pub usage: Option<EndpointTokenUsage>,
     pub elapsed_ms: Option<u64>,
@@ -228,6 +435,12 @@ impl EndpointSelectionProposal {
         ] {
             validate_sha256(value, field)?;
         }
+        if let Some(flight) = &self.flight {
+            flight.validate()?;
+        }
+        if let Some(routing) = &self.routing {
+            routing.validate()?;
+        }
         if self
             .http_status
             .is_some_and(|status| !(200..300).contains(&status))
@@ -250,6 +463,8 @@ impl EndpointSelectionProposal {
             || self.attempt_id != request.attempt_id
             || self.task_sha256 != request.expected_task_sha256
             || self.configuration_sha256 != request.expected_configuration_sha256
+            || self.flight != request.flight
+            || self.routing != request.routing
         {
             return invalid("endpoint proposal request identity mismatch");
         }
@@ -272,6 +487,7 @@ impl EndpointSelectionProposal {
             || self.allowance_sha256 != packet.allowance.sha256(configuration)?
             || self.controller_binding_id != packet.controller_binding_id
             || self.purpose != packet.purpose
+            || self.routing != packet.routing
         {
             return invalid("endpoint proposal input identity mismatch");
         }

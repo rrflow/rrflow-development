@@ -56,7 +56,7 @@ The target command vocabulary is:
 rrflow version
 rrflow install identity
 rrflow install attunement-schema
-rrflow install plan   --project <root> --identity <256-bit-hex> --mode fresh|existing --profile <id> [--configuration <toml>] [--attunement-proposal <json>]
+rrflow install plan   --project <root> --identity <256-bit-hex> --mode fresh|existing --profile <id> [--configuration <toml>] [--attunement-proposal <json>] [--allow-project-source-read]
 rrflow install apply  --project <root> --plan <file> --expect <sha256>
 rrflow install status --project <root>
 rrflow attune status|resume|cancel ...
@@ -187,6 +187,17 @@ adapter. The plan is canonical serialized data whose SHA-256 covers:
 
 Repeated planning over unchanged inputs is byte-identical. A stale plan fails
 before mutation.
+
+Initial source access is off by default. For a new installation that needs the
+bootstrap principal to read eligible project source, pass
+`--allow-project-source-read` while planning. The preview then includes the
+canonical `ProjectSourceRead` action and declares its `instance_prefix` resource
+scope; the grant covers the installed instance, not only a later selected file.
+The alternative is the unchanged default grant list. Apply accepts only those
+two canonical lists and still requires the exact preview digest. This choice
+does not enable source or context export, make a path eligible, select a
+provider, or change any existing estate. An older executable rejects the new
+option as unsupported.
 
 `rrflow install attunement-schema` emits the machine-readable shape of an
 attunement proposal without writing project state. An explicit

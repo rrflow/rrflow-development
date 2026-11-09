@@ -78,6 +78,8 @@ enum MatrixMethod {
     Product(ProductCompression),
     Binary,
     Turbo(TurboQuantBits),
+    /// TurboQuant's inner-product estimator at this total width.
+    TurboProd(TurboQuantBits),
 }
 
 impl MatrixMethod {
@@ -86,15 +88,8 @@ impl MatrixMethod {
             Self::Scalar => "scalar".into(),
             Self::Product(compression) => format!("product_{}x", compression.ratio()),
             Self::Binary => "binary".into(),
-            Self::Turbo(bits) => format!(
-                "turboquant_{}",
-                match bits {
-                    TurboQuantBits::Bits4 => "4bit",
-                    TurboQuantBits::Bits2 => "2bit",
-                    TurboQuantBits::Bits1_5 => "1_5bit",
-                    TurboQuantBits::Bits1 => "1bit",
-                }
-            ),
+            Self::Turbo(bits) => format!("turboquant_{}", bits_label(bits)),
+            Self::TurboProd(bits) => format!("turboquant_prod_{}", bits_label(bits)),
         }
     }
 
@@ -102,11 +97,22 @@ impl MatrixMethod {
         match self {
             Self::Scalar => 4,
             Self::Product(compression) => compression.ratio(),
-            Self::Binary | Self::Turbo(TurboQuantBits::Bits1) => 32,
-            Self::Turbo(TurboQuantBits::Bits1_5) => 21,
-            Self::Turbo(TurboQuantBits::Bits2) => 16,
-            Self::Turbo(TurboQuantBits::Bits4) => 8,
+            Self::Binary
+            | Self::Turbo(TurboQuantBits::Bits1)
+            | Self::TurboProd(TurboQuantBits::Bits1) => 32,
+            Self::Turbo(TurboQuantBits::Bits1_5) | Self::TurboProd(TurboQuantBits::Bits1_5) => 21,
+            Self::Turbo(TurboQuantBits::Bits2) | Self::TurboProd(TurboQuantBits::Bits2) => 16,
+            Self::Turbo(TurboQuantBits::Bits4) | Self::TurboProd(TurboQuantBits::Bits4) => 8,
         }
+    }
+}
+
+fn bits_label(bits: TurboQuantBits) -> &'static str {
+    match bits {
+        TurboQuantBits::Bits4 => "4bit",
+        TurboQuantBits::Bits2 => "2bit",
+        TurboQuantBits::Bits1_5 => "1_5bit",
+        TurboQuantBits::Bits1 => "1bit",
     }
 }
 
@@ -131,6 +137,9 @@ fn fixed_quantization_bias_recall_memory_compression_and_latency_matrix_passes()
         MatrixMethod::Turbo(TurboQuantBits::Bits2),
         MatrixMethod::Turbo(TurboQuantBits::Bits1_5),
         MatrixMethod::Turbo(TurboQuantBits::Bits1),
+        MatrixMethod::TurboProd(TurboQuantBits::Bits4),
+        MatrixMethod::TurboProd(TurboQuantBits::Bits2),
+        MatrixMethod::TurboProd(TurboQuantBits::Bits1),
     ];
     let mut rows = Vec::new();
     for method in methods {
@@ -163,6 +172,7 @@ fn fixed_quantization_bias_recall_memory_compression_and_latency_matrix_passes()
         }
 
         let mut absolute_error = 0.0;
+        let mut signed_error = 0.0;
         let mut score_samples = 0_usize;
         let mut recall = 0.0;
         for query in &queries {
@@ -208,6 +218,7 @@ fn fixed_quantization_bias_recall_memory_compression_and_latency_matrix_passes()
                 artifact.search(&approximate_request, VECTORS, QuantizedKernel::Auto);
             for hit in &approximate_all {
                 absolute_error += (exact_scores[&hit.reference] - hit.score).abs();
+                signed_error += hit.score - exact_scores[&hit.reference];
                 score_samples += 1;
             }
             let rerank_references = approximate_all
@@ -229,6 +240,7 @@ fn fixed_quantization_bias_recall_memory_compression_and_latency_matrix_passes()
         let search_ns = search_started.elapsed().as_nanos();
         let mean_recall = recall / QUERIES as f64;
         let mean_absolute_score_error = absolute_error / score_samples as f64;
+        let mean_signed_score_error = signed_error / score_samples as f64;
         assert!(
             mean_recall >= 0.80,
             "{} recall={mean_recall}",
@@ -257,12 +269,13 @@ fn fixed_quantization_bias_recall_memory_compression_and_latency_matrix_passes()
             "artifact_bytes": artifact.bytes().len(),
             "full_precision_vector_bytes": full,
             "mean_absolute_score_error": mean_absolute_score_error,
+            "mean_signed_score_error": mean_signed_score_error,
             "recall_at_10_after_exact_rerank_96": mean_recall,
             "build_nanoseconds": build_ns,
             "search_matrix_nanoseconds": search_ns,
         }));
     }
-    assert_eq!(rows.len(), 11);
+    assert_eq!(rows.len(), 14);
     assert!(rows
         .iter()
         .any(|row| { row["method"] == "product_64x" && row["packed_compression_ratio"] == 64 }));
@@ -292,7 +305,7 @@ fn checked_in_quantization_evidence_is_complete_and_honestly_scoped() {
     assert_eq!(evidence["schema"], "rrflow.quantization-evidence.v1");
     assert_eq!(evidence["profile"]["vectors"], VECTORS);
     assert_eq!(evidence["profile"]["dimensions"], DIMENSIONS);
-    assert_eq!(evidence["rows"].as_array().unwrap().len(), 11);
+    assert_eq!(evidence["rows"].as_array().unwrap().len(), 14);
     assert!(evidence["rows"]
         .as_array()
         .unwrap()
@@ -326,7 +339,7 @@ fn build(method: MatrixMethod, scope: &ScopeId, candidates: &[VectorCandidate]) 
                                 QuantizationMethod::Product { compression }
                             }
                             MatrixMethod::Binary => QuantizationMethod::Binary,
-                            MatrixMethod::Turbo(_) => unreachable!(),
+                            MatrixMethod::Turbo(_) | MatrixMethod::TurboProd(_) => unreachable!(),
                         },
                         embedding_model: None,
                         filter_properties: BTreeSet::new(),
@@ -338,25 +351,32 @@ fn build(method: MatrixMethod, scope: &ScopeId, candidates: &[VectorCandidate]) 
                 .unwrap(),
             ))
         }
-        MatrixMethod::Turbo(bits) => MatrixArtifact::Turbo(Box::new(
-            TurboQuantSegment::build(
-                TurboQuantSegmentConfig {
-                    id,
-                    scope: scope.clone(),
-                    field: "body".into(),
-                    dimensions: DIMENSIONS,
-                    metric: ScoreMetric::Cosine,
-                    bits,
-                    seed: 0x5eed,
-                    embedding_model: None,
-                    filter_properties: BTreeSet::new(),
-                },
-                1,
-                VECTORS as u64,
-                candidates.to_vec(),
-            )
-            .unwrap(),
-        )),
+        MatrixMethod::Turbo(bits) | MatrixMethod::TurboProd(bits) => {
+            MatrixArtifact::Turbo(Box::new(
+                TurboQuantSegment::build(
+                    TurboQuantSegmentConfig {
+                        id,
+                        scope: scope.clone(),
+                        field: "body".into(),
+                        dimensions: DIMENSIONS,
+                        metric: ScoreMetric::Cosine,
+                        bits,
+                        seed: 0x5eed,
+                        embedding_model: None,
+                        filter_properties: BTreeSet::new(),
+                        estimator: if matches!(method, MatrixMethod::TurboProd(_)) {
+                            rrd_vector::TurboQuantEstimator::InnerProduct
+                        } else {
+                            rrd_vector::TurboQuantEstimator::Mse
+                        },
+                    },
+                    1,
+                    VECTORS as u64,
+                    candidates.to_vec(),
+                )
+                .unwrap(),
+            ))
+        }
     }
 }
 

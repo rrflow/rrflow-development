@@ -1,0 +1,13 @@
+# C-07 failed warmup ledger rejection attribution
+
+**Status:** active retained failed native evidence; cause and qualification pending
+**Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/gate-c/c-07g-native-rejection-ledger`
+**Owner:** OBJ-02 / C-07g,h / POAM-035 / [PR169](https://github.com/rrflow/rrflow-development/pull/169)
+
+Driver: this session. Before repository edits PR169 bound this evidence-only successor to the retained candidate `c02f33c8254d5bbac95344a8dd6de5bf71c8cc96`. The [original outcome](c-07g-selected-segment-native-outcome.md) remains immutable and correctly records the incomplete attribution available at the time. Its failed first warmup segment is retained as `D:/localdev/devlabs/rrflow/target/c07-windows-selected-segments-c02f33c8/evidence/failed-segment.json`, 106473 bytes, SHA-256 `8a6cf2d1e4c161e2e73863fff53a0eb4d838d1a62843fdb9a1c53309e0147334`; the retained result binds that digest. This local path and hash identify evidence, not a public artifact upload.
+
+A read-only JSON scan of the failed segment's `result.cases[*].ledger.attempts` found six `driver-concurrency-limit` rejections at logical sequences 9, 10, 11, 19, 20 and 29; sequences 15 and 18 were `api-conflict-storage-conflict`. The progress events for the first six also match the domain-separated `c07g.saturated` digest of each sequence and the `collect` implementation's driver-limit encoding. These are preserved classifications, not proof of why concurrency saturated or what underlying conflict occurred. Timing records correlate a delayed second sample with a roughly 1.28-second pause in starting scheduled requests, but do not prove why either was delayed. The original 2.2520021-second sample gap exceeded the frozen two-second bound; the segment and campaign failed, with no accepted measured segment or qualification.
+
+Read the full failed segment JSON by a bounded local script, the relevant `collect` and digest implementations, parent journal and user-provided `AGENTS.md`; reviewed the C-07 and POAM owners through the parent records. No upstream code, new runtime behavior, source adaptation or fabricated telemetry is introduced. POAM-035 links this verified diagnostic without changing status. Full candidate CI and merge, independent root-cause analysis, full native profile and 24-hour soak remain open. Documentation, workflow, navigation, inventory and staged-diff checks are required before push.
+
+Checklist: exact source and immutable predecessor retained; independent ledger and digest attribution recorded; conflict and gap causes not inferred; generated links and full diff checked; no qualification claim.

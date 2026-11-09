@@ -1,0 +1,72 @@
+{
+  "status": 200,
+  "request": {
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "context": {
+      "request_id": "controller-proof-48b9137113094bd588563b7dd2b51394",
+      "operation_id": "controller-proof-48b9137113094bd588563b7dd2b51394",
+      "idempotency_key": null,
+      "deadline_unix_ms": null
+    },
+    "resource": {
+      "segments": [
+        {
+          "kind": "instance",
+          "id": "instance-c4a41309a51cc10ddcf3134c"
+        }
+      ]
+    },
+    "payload": {
+      "scope": "instance:instance-c4a41309a51cc10ddcf3134c",
+      "task_id": "task-a297054b58ce3bd3e4501025238101871b018b284e5901ef4672f4470461bf80",
+      "attempt_id": "actual-proposal-286ac681a5f3485bb08773387a97ba5f"
+    }
+  },
+  "response": {
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "request_id": "controller-proof-48b9137113094bd588563b7dd2b51394",
+    "operation_id": "controller-proof-48b9137113094bd588563b7dd2b51394",
+    "outcome": {
+      "status": "ok",
+      "payload": {
+        "attempt": {
+          "attempt_id": "actual-proposal-286ac681a5f3485bb08773387a97ba5f",
+          "ordinal": 1,
+          "status": "accepted",
+          "outcome_sha256": "bfe57c33556e8b3adde2e4e706a9235081aea63fe0f0564bcd7f1c092b5d1bd7",
+          "result": null,
+          "endpoint_proposal": {
+            "contract_version": 1,
+            "purpose": "experimental_proposal",
+            "scope": "instance:instance-c4a41309a51cc10ddcf3134c",
+            "task_id": "task-a297054b58ce3bd3e4501025238101871b018b284e5901ef4672f4470461bf80",
+            "attempt_id": "actual-proposal-286ac681a5f3485bb08773387a97ba5f",
+            "task_sha256": "8c10d456b8a77600ece800cdcf04587942087ba3fb5a66067b4879965941bb64",
+            "packet_sha256": "c6ab8300f11cc2511ac86e43a46ca140023ad81ee5333335f0dc1b21a784df87",
+            "configuration_sha256": "b1ebb5790f7e532cd1eab7845449571cf07e27a11f1333916d6ec3bbb9d40716",
+            "allowance_sha256": "190335a97a4bcd0d1216c0ac10987b6c48db4b6cfab890775d0f19cad0211bf2",
+            "controller_binding_id": "swag-custom-bf16",
+            "service_id": "swag-qwen3-coder-intent-20261028",
+            "request_sha256": "0c91811b2fdf372b4cf36ac04a0edd1f2010d7177e29072bc54f4b9adbb9518c",
+            "response_sha256": "1c75006a195015c9e7abc13068e4f2ffe031a23512259a286d22aa33f02d76b7",
+            "content_sha256": "f00ec144e84b0093c575418c45be469717d1725ba11736e3f0070c2fa666e6a2",
+            "choice": {
+              "kind": "select",
+              "binding_id": "swag-custom-bf16",
+              "effort": null
+            },
+            "usage": {
+              "prompt_tokens": 2026,
+              "completion_tokens": 20,
+              "total_tokens": 2046
+            },
+            "elapsed_ms": 1892,
+            "http_status": 200
+          }
+        }
+      }
+    }
+  }
+}

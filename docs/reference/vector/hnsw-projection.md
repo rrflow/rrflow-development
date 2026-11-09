@@ -39,10 +39,14 @@ the base cursor, overlay cursor, and overlay candidate count.
 
 Graph traversal proposes dense candidates. Non-matching records remain
 available for navigation but cannot enter the eligible layer-zero result heap.
-The exact oracle then evaluates graph candidates plus covered overlay versions
-for transaction visibility, valid time, latest-version selection, retirement,
-filtering, metric score, and deterministic order. This makes committed inserts
-and retirements visible before another graph generation is published.
+The exact oracle then evaluates the canonical versions of every identity that
+the graph or the overlay proposes, for transaction visibility, valid time,
+latest-version selection, retirement, filtering, metric score, and
+deterministic order. This makes committed inserts and retirements visible
+before another graph generation is published. A version the graph stored
+before its identity moved to another collection never answers. The graph
+proposes it only until its next generation, which holds what the collection
+holds of each identity's history.
 
 `AllowApproximate` may select an exact path when estimated graph work is more
 expensive. `RequireApproximate` requires an identity-compatible graph and
@@ -56,11 +60,39 @@ newer vector versions. It does not recompute old neighbor selection from the
 canonical corpus. The result is a new immutable generation; configuration
 changes intentionally use a full build.
 
+A generation's versions are its collection's view of every identity's history
+(`rrd_vector::source_history`). A move out of the collection drops the
+versions it supersedes at every valid time, and ends the version the
+collection held before it where the move takes effect. A graph cannot remove
+a node. So when that view no longer holds a version the active graph stores,
+`ensure_vector_index` builds the next generation in full instead of advancing
+it, and it never replays such a graph
+([POAM-048](../../poam/rrflow-1.0-alpha/poam-048.md)).
+
+Clients reach this path through `vector-index-ensure`
+(`POST /v1/vector/indexes/ensure`), under the `vector_collection_ensure` grant.
+They declare the payload indexes a generation filters on through
+`vector-payload-index-ensure` and remove them through
+`vector-payload-index-delete`, each under its own grant, and they read them from
+`vector-collection-list`. A catalogue entry records the idempotency key and
+request digest in the commit that publishes its generation. So a retry returns
+that generation even after the source has moved on, and another request under
+the key is a conflict. An ensure that found the index already current published
+nothing, so its key binds nothing. The build runs inside the request, and the
+Rust client's default request timeout is five seconds, so a client building a
+large index sets a longer one.
+
+A generation's catalogue record is `{projection}.{generation}` and its object is
+`{projection}.{generation}.vector-bytes`. The public changefeed projects both,
+and publication refuses a projection id that would make either non-canonical
+before it stores any bytes
+([POAM-046](../../poam/rrflow-1.0-alpha/poam-046.md)).
+
 `RrdEngine::ensure_vector_index` currently obtains canonical candidates by
 reading every vector version in the scope at one read stamp
 (`read_vector_versions`, a whole-family read rather than a cursor-zero replay),
-rebuilds the vector artifact catalogue by replaying retained changes from
-cursor zero ([POAM-028](../../poam/rrflow-1.0-alpha/poam-028.md)), reopens the
+reads the vector artifact catalogue through authenticated, budgeted typed
+version ranges ([POAM-028](../../poam/rrflow-1.0-alpha/poam-028.md)), reopens the
 active artifact, builds or advances a generation, stages its content-addressed
 object, and publishes the descriptor through the engine-owned vector artifact
 transaction.

@@ -49,3 +49,19 @@ The owner decided the folder must be adopted in place, not refused.
   as before adoption.
 - The install inventory still ignores `.gitignore`; projects with large
   generated folders can exceed its file or byte bound. Separate package.
+
+## 2026-11-09 main reconciliation
+
+Merged `development/main` at `a9f1b0fb` (413 commits ahead of this branch's
+base) by an ordinary merge. Two conflicts: the `rrd-contract` export list,
+resolved by adding this package's `validate_adopted_estate_entries`,
+`ADOPTED_ESTATE_DIRECTORY` and `MAX_ADOPTED_ESTATE_ENTRIES` to main's current
+list, and the generated Gate D index, regenerated. On the merged tree:
+`cargo test -p rrd-contract --test attunement_contract` 20 passed;
+`cargo test -p rrd-engine --lib` 397 passed, 4 ignored;
+`cargo clippy -p rrd-contract -p rrd-engine --all-targets -D warnings` clean;
+`cargo fmt --check` clean. Not rerun here: the Windows CLI run on the owner's
+failing shape recorded above; candidate CI's installed lifecycle jobs are the
+acceptance. #247 characterizes the same inherited-ACL shape with a failing
+preservation test and no repair; once this package lands, that test belongs
+here as an additional regression or #247 closes as folded.

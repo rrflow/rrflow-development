@@ -1,0 +1,11 @@
+# C-07g: first observed post-reopen readback progress
+
+**Status:** active partial characterization evidence; terminal result pending
+**Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/gate-c/c-07g-reopen-window-windows-progress`
+**Owner:** OBJ-02 / C-07g / POAM-035 / [PR151](https://github.com/rrflow/rrflow-development/pull/151)
+
+This evidence-only continuation was briefed on PR151 before edits. It reports the [separately frozen 33d26f13 Windows launch](c-07g-reopen-window-windows-launch.md), not a new candidate or a qualifying profile. At 2026-10-27 15:52:54 UTC, an independent streaming count of the retained live progress file observed 100000 corpus intents, acknowledgements and initial independent verifications; two lifecycle intents, acknowledgements and forced-reopen observations; and 7296 distinct `reopened_corpus_verified` records in consecutive ordinal order 0 through 7295. The two reopen observations checked one and two operations respectively and each had equal original/replay receipt digests. The launcher process was alive and no terminal result existed at that sample.
+
+The new post-reopen events demonstrate that the changed driver reached and recorded a prefix of the second independent readback after process termination/reopen. They do not establish a complete 100000-record post-reopen pass, a measured segment, a correct operating point, a 24-hour soak, or C-07 qualification. The previous 8721f17 admission error remains unresolved. The progress file was live and its final digest/cleanup were not yet available; retained artifacts remain in `target/c07-windows-reopen-window-33d26f13/`. No running source, estate, resource bound or earlier journal was changed.
+
+Reviewed the source/campaign identity and launcher receipt documented by the launch record, streamed and counted event kinds/ordinals, and compared the two recorded replay digest pairs. No external research, code change or new runtime trace was needed for this sample. Navigation/inventory, documentation/workflow policy and diff checks were run. Candidate CI, prerequisite merges, full native profile, terminal failure/success and actual soak remain open; no roadmap or POA&M status changed.

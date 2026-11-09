@@ -26,7 +26,10 @@ metrics return negative distance.
 
 The latest transaction-visible version wins per vector identity. Future
 valid-time versions do not hide an applicable version, while a visible
-retirement does. Exact filters support equality, inequality, membership,
+retirement does. A collection-addressed search applies its collection and
+named vector to that version, never to a version it replaced. An identity that
+moved to another collection is therefore found only there. Point retrieval,
+scroll and the retrieval query resolve with the same rule. Exact filters support equality, inequality, membership,
 ranges, existence, and bounded recursive `all`, `any`, and `not`. Final order
 is score descending, reference ascending, then source cursor descending.
 
@@ -50,6 +53,16 @@ runtime-dispatched AVX2 scoring, and final exact reranking. New vector or
 retirement versions after an HNSW generation are searched as an exact overlay
 until a new immutable generation incorporates them. Sparse and multi-dense
 queries remain exact-only.
+
+Every approximate path reranks the identities it proposes from the request's
+canonical candidates, never from the versions its generation stored. A
+generation holds its collection's view of each identity's history
+(`rrd_vector::source_history`), so one built or maintained after a move stops
+proposing the identity that left
+([POAM-048](../../poam/rrflow-1.0-alpha/poam-048.md)). A generation built
+before the move proposes it until the next generation, and the rerank
+discards it. An exact segment's hits stand only when the canonical candidates
+confirm each one; otherwise the exact scan answers.
 
 Quantized and TurboQuant candidates can also be selected through the same
 planner and exact-f32 reranking path. Their format and lifecycle semantics are
@@ -101,9 +114,9 @@ The retained 10,000-by-128 local observation remains raw evidence at
 It is not a cross-system or production performance claim.
 
 Gate C-04 has replaced normal whole-log candidate reconstruction with direct
-versioned reads, but every search still rebuilds the vector artifact and
-quantization catalogues from cursor 0, so C-04 is reopened
-([POAM-028](../../poam/rrflow-1.0-alpha/poam-028.md)). Gate C-05 has removed
+versioned reads, and search now reads the vector artifact and quantization
+catalogues the same way at its read stamp. C-04 stays reopened until the
+closure evidence in [POAM-028](../../poam/rrflow-1.0-alpha/poam-028.md) is recorded. Gate C-05 has removed
 the older artifact-catalogue reader and separate digest branch, requires the
 canonical collection plus named-vector address on every persisted candidate,
 and removes the duplicate generic quantized/TurboQuant publication, request,

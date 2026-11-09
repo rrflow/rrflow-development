@@ -1,9 +1,10 @@
 // Generated from rrd-contract; do not edit.
-// OpenAPI SHA-256: f1856602eb3b5ba419f600b3be0e9626d62ad533032fe220a2728795bd28048a
+// OpenAPI SHA-256: 355e5482791fc6a9705b6c1bc9ba7303d1549b69b7dfbe8819c029bb7074c507
 package io.rrflow.rrd;
 
 public enum OperationId {
     ATTUNEMENT_CANCEL("attunement-cancel", "POST", "/v1/attunement/cancel", Authentication.SESSION_BEARER, true),
+    ATTUNEMENT_JOB_LIST("attunement-job-list", "POST", "/v1/attunement/jobs/list", Authentication.SESSION_BEARER, false),
     ATTUNEMENT_PAUSE("attunement-pause", "POST", "/v1/attunement/pause", Authentication.SESSION_BEARER, true),
     ATTUNEMENT_READ("attunement-read", "POST", "/v1/attunement/read", Authentication.SESSION_BEARER, false),
     ATTUNEMENT_RECEIPT_READ("attunement-receipt-read", "POST", "/v1/attunement/receipt/read", Authentication.SESSION_BEARER, false),
@@ -39,6 +40,9 @@ public enum OperationId {
     HEALTH_READY("health-ready", "GET", "/v1/health/ready", Authentication.PUBLIC, false),
     KNOWLEDGE_TREE_LIST("knowledge-tree-list", "POST", "/v1/knowledge/trees/list", Authentication.SESSION_BEARER, false),
     KNOWLEDGE_TREE_REPLACE("knowledge-tree-replace", "POST", "/v1/knowledge/trees/replace", Authentication.SESSION_BEARER, true),
+    OBSERVATION_DELIVER("observation-deliver", "POST", "/v1/observations/deliver", Authentication.SESSION_BEARER, true),
+    OBSERVATION_PREPARE("observation-prepare", "POST", "/v1/observations/prepare", Authentication.SESSION_BEARER, true),
+    OBSERVATION_READ("observation-read", "POST", "/v1/observations/read", Authentication.SESSION_BEARER, false),
     OPENAPI_READ("openapi-read", "GET", "/v1/schema/openapi", Authentication.PUBLIC, false),
     QUERY_EXECUTE("query-execute", "POST", "/v1/query", Authentication.SESSION_BEARER, false),
     QUERY_EXPORT("query-export", "POST", "/v1/query/export", Authentication.SESSION_BEARER, false),
@@ -51,9 +55,12 @@ public enum OperationId {
     SESSION_RENEW("session-renew", "POST", "/v1/sessions/{session}/renew", Authentication.SESSION_BEARER, true),
     SUBSCRIPTION_CLOSE("subscription-close", "POST", "/v1/subscriptions/close", Authentication.SESSION_BEARER, true),
     SUBSCRIPTION_OPEN("subscription-open", "POST", "/v1/subscriptions/open", Authentication.SESSION_BEARER, true),
+    TASK_ASSESSMENT_EXECUTE("task-assessment-execute", "POST", "/v1/tasks/assessment/execute", Authentication.SESSION_BEARER, true),
+    TASK_ASSESSMENT_READ("task-assessment-read", "POST", "/v1/tasks/assessment/read", Authentication.SESSION_BEARER, false),
     TASK_ATTEMPT_READ("task-attempt-read", "POST", "/v1/tasks/attempt/read", Authentication.SESSION_BEARER, false),
     TASK_BUDGET_CONFIGURE("task-budget-configure", "POST", "/v1/tasks/budget/configure", Authentication.SESSION_BEARER, true),
     TASK_BUDGET_READ("task-budget-read", "POST", "/v1/tasks/budget/read", Authentication.SESSION_BEARER, false),
+    TASK_BUDGET_RESUME("task-budget-resume", "POST", "/v1/tasks/budget/resume", Authentication.SESSION_BEARER, true),
     TASK_BUDGET_STOP("task-budget-stop", "POST", "/v1/tasks/budget/stop", Authentication.SESSION_BEARER, true),
     TASK_CLOSE("task-close", "POST", "/v1/tasks/close", Authentication.SESSION_BEARER, true),
     TASK_EMBEDDING_EXECUTE("task-embedding-execute", "POST", "/v1/tasks/embedding/execute", Authentication.SESSION_BEARER, true),
@@ -61,12 +68,16 @@ public enum OperationId {
     TASK_LIST("task-list", "POST", "/v1/tasks/list", Authentication.SESSION_BEARER, false),
     TASK_OPEN("task-open", "POST", "/v1/tasks", Authentication.SESSION_BEARER, true),
     TASK_READ("task-read", "POST", "/v1/tasks/read", Authentication.SESSION_BEARER, false),
+    TASK_WORKER_EXECUTE("task-worker-execute", "POST", "/v1/tasks/worker/execute", Authentication.SESSION_BEARER, true),
     TRANSACTION_ABORT("transaction-abort", "DELETE", "/v1/transactions/{transaction}", Authentication.SESSION_BEARER, true),
     TRANSACTION_BEGIN("transaction-begin", "POST", "/v1/transactions", Authentication.SESSION_BEARER, true),
     TRANSACTION_COMMIT("transaction-commit", "POST", "/v1/transactions/{transaction}/commit", Authentication.SESSION_BEARER, true),
     TRANSACTION_PREVIEW("transaction-preview", "POST", "/v1/transactions/{transaction}/preview", Authentication.SESSION_BEARER, true),
     VECTOR_COLLECTION_ENSURE("vector-collection-ensure", "POST", "/v1/vector/collections/ensure", Authentication.SESSION_BEARER, true),
     VECTOR_COLLECTION_LIST("vector-collection-list", "POST", "/v1/vector/collections/list", Authentication.SESSION_BEARER, false),
+    VECTOR_INDEX_ENSURE("vector-index-ensure", "POST", "/v1/vector/indexes/ensure", Authentication.SESSION_BEARER, true),
+    VECTOR_PAYLOAD_INDEX_DELETE("vector-payload-index-delete", "POST", "/v1/vector/payload-indexes/delete", Authentication.SESSION_BEARER, true),
+    VECTOR_PAYLOAD_INDEX_ENSURE("vector-payload-index-ensure", "POST", "/v1/vector/payload-indexes/ensure", Authentication.SESSION_BEARER, true),
     VECTOR_POINT_RETRIEVE("vector-point-retrieve", "POST", "/v1/vector/points/retrieve", Authentication.SESSION_BEARER, false),
     VECTOR_POINT_SCROLL("vector-point-scroll", "POST", "/v1/vector/points/scroll", Authentication.SESSION_BEARER, false),
     VECTOR_QUANTIZATION_ACTIVATE("vector-quantization-activate", "POST", "/v1/vector/quantizations/activate", Authentication.SESSION_BEARER, true),
@@ -75,7 +86,7 @@ public enum OperationId {
     VECTOR_QUANTIZATION_RETIRE("vector-quantization-retire", "POST", "/v1/vector/quantizations/retire", Authentication.SESSION_BEARER, true),
     VECTOR_SEARCH("vector-search", "POST", "/v1/vector/search", Authentication.SESSION_BEARER, false);
 
-    static final String OPENAPI_DOCUMENT_SHA256 = "f1856602eb3b5ba419f600b3be0e9626d62ad533032fe220a2728795bd28048a";
+    static final String OPENAPI_DOCUMENT_SHA256 = "355e5482791fc6a9705b6c1bc9ba7303d1549b69b7dfbe8819c029bb7074c507";
 
     public enum Authentication { PUBLIC, API_KEY, SESSION_BEARER }
 

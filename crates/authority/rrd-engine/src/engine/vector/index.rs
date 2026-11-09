@@ -25,10 +25,15 @@ impl RrdEngine {
         session_id: &CorrelationId,
         token: &CorrelationId,
         request: &EnsureVectorIndex,
+        context: &RequestContext,
         now: u64,
-        request_id: &str,
-        operation_id: &str,
     ) -> Result<EnsureVectorIndexResult> {
+        context
+            .validate(true)
+            .map_err(|error| ServiceError::Contract(error.to_string()))?;
+        let idempotency_key = context.idempotency_key.as_ref().ok_or_else(|| {
+            ServiceError::Contract("vector index ensure requires idempotency".into())
+        })?;
         request
             .validate()
             .map_err(|error| ServiceError::Vector(error.to_string()))?;
@@ -37,10 +42,42 @@ impl RrdEngine {
             token,
             SecurityAction::VectorCollectionEnsure,
             now,
-            request_id,
-            operation_id,
+            context.request_id.as_str(),
+            context.operation_id.as_str(),
         )?;
         let scope = self.query_scope(&request.scope)?;
+        let operation_sha256 = operation_digest(request)?;
+        // The catalogue entry records the key in the commit that published the
+        // generation. A retry finds that generation even after the source has
+        // moved on, and another request under the key is a conflict.
+        let recorded = crate::vector_artifact_catalog_entries(&self.storage, &scope)
+            .map_err(|error| ServiceError::Vector(error.to_string()))?
+            .into_iter()
+            .find(|entry| {
+                entry
+                    .operation
+                    .as_ref()
+                    .is_some_and(|receipt| receipt.idempotency_key == idempotency_key.as_str())
+            });
+        if let Some(entry) = recorded {
+            if entry
+                .operation
+                .as_ref()
+                .is_none_or(|receipt| receipt.operation_sha256 != operation_sha256)
+            {
+                return Err(ServiceError::IdempotencyConflict);
+            }
+            let read = self.storage.runtime().read_stamp(&scope)?;
+            let direct = read_vector_versions(self, &read, request.max_storage_keys)?;
+            return replay_vector_index(
+                &self.storage,
+                entry.descriptor,
+                &request.collection_id,
+                &request.vector_name,
+                direct.selected_versions,
+                direct.read_evidence,
+            );
+        }
         let catalogue = rrd_vector::VectorCollectionRepository::new(&self.storage, scope.clone())
             .load()
             .map_err(vector_collection_error)?;
@@ -85,21 +122,14 @@ impl RrdEngine {
 
         let read = self.storage.runtime().read_stamp(&scope)?;
         let direct = read_vector_versions(self, &read, request.max_storage_keys)?;
-        let candidates = rrd_vector::candidates_from_changes(&direct.changes, &scope)
-            .into_iter()
-            .filter(|candidate| {
-                vector_matches_collection(
-                    &candidate.vector,
-                    &request.collection_id,
-                    &request.vector_name,
-                )
-            })
-            .collect::<Vec<_>>();
-        let source_cursor = candidates
-            .iter()
-            .map(|candidate| candidate.source_cursor)
-            .max()
-            .unwrap_or(0);
+        let rrd_vector::SourceHistory {
+            versions: candidates,
+            source_cursor,
+        } = source_history(
+            rrd_vector::candidates_from_changes(&direct.changes, &scope),
+            &request.collection_id,
+            &request.vector_name,
+        );
         let data = rrd_store::DataRuntimeRef::new(&self.storage, &self.objects);
         let mut runtime = crate::reopen_vector_runtime(&data, &scope, candidates.clone())
             .map_err(|error| ServiceError::Vector(error.to_string()))?;
@@ -124,7 +154,17 @@ impl RrdEngine {
             };
             let active = active.clone();
             let desired = hnsw_config(request, vector, scope.clone(), projection_id.clone())?;
-            if active.config() == &desired {
+            // A graph keeps every version it stores. When this source's
+            // history no longer holds one of them, as after a move out of the
+            // collection, only a full build drops it (POAM-048).
+            let active_cursor = active.descriptor().stamp.source_cursor;
+            let keeps_its_versions = active.stored_versions()
+                == candidates
+                    .iter()
+                    .filter(|candidate| candidate.source_cursor <= active_cursor)
+                    .map(|candidate| (candidate.vector.reference.clone(), candidate.source_cursor))
+                    .collect::<BTreeSet<_>>();
+            if active.config() == &desired && keeps_its_versions {
                 if source_cursor < active.descriptor().stamp.source_cursor {
                     return Err(ServiceError::Vector(
                         "canonical vector coverage regressed behind the active HNSW index".into(),
@@ -212,6 +252,10 @@ impl RrdEngine {
             expected_revision,
             artifact,
             Some(build_evidence),
+            Some(rrd_vector::VectorArtifactOperationReceipt {
+                idempotency_key: idempotency_key.as_str().into(),
+                operation_sha256,
+            }),
             &format!("session:{}", session_id.as_str()),
             now,
         )

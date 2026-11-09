@@ -149,6 +149,7 @@ fn fixture(unrelated: usize) -> (tempfile::TempDir, RrdEngine, SessionLease) {
                 method: VectorQuantizationMethod::TurboQuant {
                     bits: VectorQuantizationBits::Bits4,
                     seed: 29,
+                    estimator: rrd_contract::VectorQuantizationEstimator::Mse,
                 },
                 filter_properties: vec![CanonicalId::new("bucket").unwrap()],
                 max_storage_keys: 100_000,
@@ -499,4 +500,37 @@ fn turboquant_search_is_bounded_by_its_budget() {
         )
         .unwrap_err();
     assert_eq!(error.kind(), crate::ServiceErrorKind::ResourceExhausted);
+}
+
+#[test]
+fn unsupported_filter_is_rejected_before_vector_versions_are_read() {
+    for unrelated in [0, 64] {
+        let (_root, engine, _lease) = fixture(unrelated);
+        let scope_id = rrd_core::ScopeId::new(scope()).unwrap();
+        let read = engine.storage.runtime().read_stamp(&scope_id).unwrap();
+        let catalogue = crate::runtime::vector_catalog::read_vector_catalogue_versions(
+            &engine.storage,
+            &read,
+            &[],
+            rrd_store::RuntimeReadBudget::new(100_000).unwrap(),
+        )
+        .unwrap();
+        let budget = catalogue.evidence.keys_examined;
+        assert!(budget > 0);
+        let unsupported = VectorPayloadFilter::Condition {
+            condition: VectorPayloadCondition {
+                property: CanonicalId::new("unindexed").unwrap(),
+                operator: VectorPayloadOperator::Equals {
+                    value: QueryValue::Unsigned(1),
+                },
+            },
+        };
+        let request = search(1, 2, Some(unsupported), APPROXIMATE, budget);
+        let error = engine.search_vectors_at(&request, read).unwrap_err();
+        assert!(
+            matches!(error, ServiceError::Vector(ref reason)
+                if reason.contains("no vector access path satisfies the request contract")),
+            "expected no-path refusal with {unrelated} unrelated vectors, got {error:?}"
+        );
+    }
 }

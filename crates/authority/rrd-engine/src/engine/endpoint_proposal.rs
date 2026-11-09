@@ -55,12 +55,12 @@ impl EndpointCredentials {
         }
         Ok(Self { values })
     }
-    fn resolve(&self, reference: &CredentialReference) -> Option<&str> {
+    pub(in crate::engine) fn resolve(&self, reference: &CredentialReference) -> Option<&str> {
         self.values
             .get(&(reference.provider.clone(), reference.name.clone()))
             .map(String::as_str)
     }
-    fn contains(&self, reference: &CredentialReference) -> bool {
+    pub(super) fn contains(&self, reference: &CredentialReference) -> bool {
         self.values
             .contains_key(&(reference.provider.clone(), reference.name.clone()))
     }
@@ -186,6 +186,7 @@ impl RrdEngine {
             allowance: policy
                 .allowance(&configuration)
                 .map_err(|e| ServiceError::Contract(e.to_string()))?,
+            routing: request.routing.clone(),
         };
         if packet.task.task_sha256 != request.expected_task_sha256 {
             return Err(ServiceError::TaskAttemptInvalidated(
@@ -330,6 +331,8 @@ impl RrdEngine {
                 controller_binding_id: binding.id.clone(),
                 service_id: CanonicalId::new(observed.service_id)
                     .map_err(|e| ServiceError::Contract(e.to_string()))?,
+                flight: request.flight.clone(),
+                routing: packet.routing.clone(),
                 request_sha256: observed.request_sha256,
                 response_sha256: observed.response_sha256,
                 content_sha256: observed.content_sha256,
@@ -382,7 +385,9 @@ impl RrdEngine {
             &context,
         )? {
             TaskAttemptOutput::EndpointProposal(proposal) => Ok(*proposal),
-            TaskAttemptOutput::Embedding(_) => {
+            TaskAttemptOutput::Embedding(_)
+            | TaskAttemptOutput::Worker(_)
+            | TaskAttemptOutput::Assessment(_) => {
                 Err(ServiceError::Storage("unexpected task output kind".into()))
             }
         }
@@ -437,9 +442,9 @@ fn task_read(request: &EndpointSelectionRequest) -> ReadTask {
         max_storage_keys: request.max_storage_keys,
     }
 }
-fn endpoint_failure(error: EndpointChatFailure) -> ServiceError {
+pub(super) fn endpoint_failure(error: EndpointChatFailure) -> ServiceError {
     ServiceError::EndpointCallFailed {
         reason: error.reason,
-        execution_may_continue: error.dispatch_may_have_occurred,
+        execution_may_continue: error.execution_may_continue(),
     }
 }

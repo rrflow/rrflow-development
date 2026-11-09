@@ -13,10 +13,15 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 
 mod bootstrap;
+mod discovery;
 pub use bootstrap::{
     InstallationBootstrap, InstallationBootstrapPolicy, InstallationRecordKind,
     InstallationSpecialization, InstallationStorageGeneration, INSTALLATION_BOOTSTRAP_VERSION,
     MAX_BOOTSTRAP_RECORD_BYTES, MAX_BOOTSTRAP_TEXT_BYTES,
+};
+pub use discovery::{
+    AttunementJobPage, AttunementJobSummary, ListAttunementJobs, MAX_ATTUNEMENT_JOB_PAGE,
+    MAX_ATTUNEMENT_JOB_PAGE_BYTES,
 };
 
 pub const INSTALL_ATTUNEMENT_CONTRACT_VERSION: u16 = 1;
@@ -446,6 +451,15 @@ impl InstallationPlan {
         };
         &self.managed_paths[index]
     }
+}
+
+/// Canonical initial grant choices for a newly installed estate. The optional
+/// source-read action is explicit and never accepts caller-authored grant sets.
+pub fn installation_initial_grants(project_source_read: bool) -> Vec<SecurityAction> {
+    SecurityAction::ALL
+        .into_iter()
+        .filter(|action| *action != SecurityAction::ProjectSourceRead || project_source_read)
+        .collect()
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]

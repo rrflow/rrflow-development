@@ -6,14 +6,17 @@ import json
 import os
 import plistlib
 import subprocess
+import sys
 from pathlib import Path
 import tempfile
+import time
 import unittest
 from unittest.mock import patch
 
 import run_native_capacity as runner
 import run_filesystem_containment as containment
 import check_workflow
+from test_offline_lifecycle import end_holder, held_output_command
 
 
 class NativeCapacityCases(unittest.TestCase):
@@ -25,6 +28,246 @@ class NativeCapacityCases(unittest.TestCase):
         self.generation = 0
         self.config = {"size_mib": 256, "modes": ["fresh", "existing"],
                        "points": list(runner.POINTS), "executable": "unused", "harness_sha256": "test"}
+
+    def test_open_output_capture_retains_only_bounded_case_metadata(self):
+        diagnostics = self.root / "rrflow-capacity-diagnostics"
+        environment = {"RUNNER_TEMP": str(self.root), "RRFLOW_CAPACITY_DIAGNOSTICS": str(diagnostics),
+                       "GITHUB_SHA": "abc", "GITHUB_RUN_ID": "42", "GITHUB_RUN_ATTEMPT": "2"}
+        try:
+            try:
+                raise runner.CommandOutputNotClosed("hdiutil-attach", 0, True, False,
+                                                    timed_out=True)
+            except runner.CommandOutputNotClosed:
+                raise RuntimeError("private cleanup path and product output")
+        except RuntimeError as error:
+            with patch.dict(os.environ, environment):
+                runner.retain_native_failure(self.config, self.root, "existing", runner.POINTS[1], 22, error)
+        files = list(diagnostics.glob("*.json"))
+        self.assertEqual(len(files), 1)
+        raw = files[0].read_text(encoding="utf8")
+        receipt = json.loads(raw)
+        self.assertEqual((receipt["mode"], receipt["point"], receipt["case_index"]),
+                         ("existing", runner.POINTS[1], 22))
+        self.assertEqual(receipt["command_category"], "hdiutil-attach")
+        self.assertEqual(receipt["child_returncode"], 0)
+        self.assertTrue(receipt["stdout_open"])
+        self.assertFalse(receipt["stderr_open"])
+        self.assertTrue(receipt["timed_out"])
+        self.assertEqual(receipt["cleanup_state"], "unknown")
+        self.assertNotIn("private", raw)
+        self.assertNotIn(str(self.root), raw)
+
+    def test_open_output_metadata_denies_untrusted_identifiers(self):
+        diagnostics = self.root / "rrflow-capacity-diagnostics"
+        environment = {"RUNNER_TEMP": str(self.root), "RRFLOW_CAPACITY_DIAGNOSTICS": str(diagnostics),
+                       "GITHUB_SHA": "private-secret", "GITHUB_RUN_ID": "private-secret"}
+        config = {"size_mib": "private-secret", "harness_sha256": "private-secret"}
+        error = runner.CommandOutputNotClosed("private-secret", "private-secret", True, False)
+        with patch.dict(os.environ, environment):
+            runner.retain_native_failure(config, self.root, "private-secret", "private-secret", 22, error)
+        raw = next(diagnostics.glob("*.json")).read_text(encoding="utf8")
+        receipt = json.loads(raw)
+        self.assertNotIn("private-secret", raw)
+        self.assertEqual(receipt["command_category"], "other")
+        self.assertEqual((receipt["mode"], receipt["point"]), ("unknown", "unknown"))
+        self.assertIsNone(receipt["child_returncode"])
+
+    def native_child(self, command, verb):
+        """Run a real child under an owned native command's identity."""
+        real = runner.run
+
+        def run(*arguments, **kwargs):
+            self.assertEqual(arguments[:2], ("hdiutil", verb))
+            return real(*command, **kwargs)
+        return patch.object(runner, "run", run)
+
+    def test_deadline_capture_is_opt_in_and_completion_callback_is_preserved(self):
+        for capture in (False, True):
+            with self.subTest(capture=capture):
+                completed = []
+                with self.assertRaisesRegex(RuntimeError, "command exceeded its deadline") as caught:
+                    runner.run(sys.executable, "-c", "import time; time.sleep(10)",
+                               timeout=0.1, capture_deadline_output=capture,
+                               on_completion=completed.append)
+                self.assertEqual(type(caught.exception),
+                                 runner.CommandDeadlineExceeded if capture else RuntimeError)
+                self.assertEqual(len(completed), 1)
+                if capture:
+                    self.assertIs(caught.exception.captured, completed[0])
+
+    @unittest.skipUnless(os.name == "posix", "requires native POSIX process ownership")
+    def test_failed_native_command_does_not_leave_its_stderr_holder_running(self):
+        pid_file = self.root / "holder.pid"
+        try:
+            with self.native_child(held_output_command(pid_file, False, True), "create"):
+                with self.assertRaises(runner.NativeCommandFailure) as caught:
+                    runner.native_command("hdiutil", "create", timeout=10)
+            self.assertEqual(caught.exception.returncode, 1)
+            self.assertIn("Resource busy", caught.exception.stderr_tail)
+            pid = int(pid_file.read_text())
+            deadline = time.monotonic() + 3
+            while True:
+                # A dead child can remain briefly as an orphaned zombie until
+                # the host reaps it; it cannot keep the pipe or do work.
+                status = subprocess.run(["ps", "-o", "stat=", "-p", str(pid)],
+                                        capture_output=True, text=True, timeout=2)
+                state = status.stdout.strip()
+                if status.returncode != 0 or not state or state.startswith("Z"):
+                    break
+                if time.monotonic() >= deadline:
+                    self.fail(f"owned stderr holder remains running (state {state})")
+                time.sleep(0.02)
+        finally:
+            end_holder(pid_file)
+
+    def test_failed_create_with_held_output_retains_real_status_and_stderr(self):
+        for held, stdout, stderr in [("stdout", True, False), ("stderr", False, True), ("both", True, True)]:
+            with self.subTest(held=held), tempfile.TemporaryDirectory(prefix="rrflow-capacity-") as temporary:
+                root = Path(temporary).resolve(strict=True)
+                diagnostics = root / "rrflow-capacity-diagnostics"
+                pid_file = root / "holder.pid"
+                environment = {"RUNNER_TEMP": str(root), "RRFLOW_CAPACITY_DIAGNOSTICS": str(diagnostics)}
+                begin = time.monotonic()
+                try:
+                    with patch.dict(os.environ, environment), patch.object(runner.sys, "platform", "darwin"), \
+                            self.native_child(held_output_command(pid_file, stdout, stderr), "create"):
+                        with self.assertRaises(runner.NativeCommandFailure) as caught:
+                            runner.cases(self.config, root)
+                finally:
+                    end_holder(pid_file)
+                self.assertLess(time.monotonic() - begin, 30, "the output-close wait must stay bounded")
+                error = caught.exception
+                self.assertEqual((error.tool, error.verb, error.returncode), ("hdiutil", "create", 1))
+                self.assertIn("Resource busy", str(error))
+                if os.name == "posix":
+                    self.assertIsNone(error.__cause__)
+                else:
+                    self.assertIsInstance(error.__cause__, runner.CommandOutputNotClosed)
+                files = list(diagnostics.glob("*.json"))
+                self.assertEqual(len(files), 1)
+                receipt = json.loads(files[0].read_text(encoding="utf8"))
+                self.assertEqual((receipt["tool"], receipt["verb"], receipt["returncode"]), ("hdiutil", "create", 1))
+                self.assertEqual((receipt["mode"], receipt["point"], receipt["case_index"]),
+                                 ("fresh", runner.POINTS[0], 1))
+                self.assertIn("Resource busy", receipt["stdout_tail"])
+                self.assertIn("Resource busy", receipt["stderr_tail"])
+                self.assertFalse(receipt["timed_out"])
+                self.assertEqual((receipt["stdout_open"], receipt["stderr_open"]),
+                                 (False, False) if os.name == "posix" else (stdout, stderr))
+
+    def test_failed_attach_with_held_output_reports_status_and_keeps_closed_receipt(self):
+        pid_file = self.root / "holder.pid"
+        diagnostics = self.root / "rrflow-capacity-diagnostics"
+        environment = {"RUNNER_TEMP": str(self.root), "RRFLOW_CAPACITY_DIAGNOSTICS": str(diagnostics)}
+        try:
+            with self.native_child(held_output_command(pid_file, True, False), "attach"):
+                with self.assertRaisesRegex(runner.NativeCommandFailure, "Resource busy") as caught:
+                    runner.native_command("hdiutil", "attach", timeout=30)
+        finally:
+            end_holder(pid_file)
+        with patch.dict(os.environ, environment):
+            runner.retain_native_failure(self.config, self.root, "fresh", runner.POINTS[0], 1, caught.exception)
+        raw = next(diagnostics.glob("*.json")).read_text(encoding="utf8")
+        receipt = json.loads(raw)
+        self.assertEqual(receipt["kind"], "native-command-failed")
+        self.assertEqual(receipt["child_returncode"], 1)
+        self.assertEqual((receipt["stdout_open"], receipt["stderr_open"]),
+                         (False, False) if os.name == "posix" else (True, False))
+        self.assertNotIn("Resource busy", raw)
+
+    def test_successful_native_command_with_held_output_remains_a_closed_failure(self):
+        pid_file = self.root / "holder.pid"
+        try:
+            with self.native_child(held_output_command(pid_file, True, False, 0, "partial native output"), "attach"):
+                with self.assertRaises(runner.CommandOutputNotClosed) as caught:
+                    runner.native_command("hdiutil", "attach", timeout=30)
+        finally:
+            end_holder(pid_file)
+        self.assertEqual(caught.exception.child_returncode, 0)
+        self.assertIsNone(caught.exception.captured)
+
+    def test_native_deadline_with_held_output_stays_bounded_and_reports_status(self):
+        pid_file = self.root / "holder.pid"
+        try:
+            with self.native_child(held_output_command(pid_file, True, False, status=None), "create"):
+                with self.assertRaises(runner.NativeCommandFailure) as caught:
+                    runner.native_command("hdiutil", "create", timeout=5)
+        finally:
+            end_holder(pid_file)
+        if os.name == "posix":
+            self.assertTrue(caught.exception.timed_out)
+            self.assertIsInstance(caught.exception.__cause__, runner.CommandDeadlineExceeded)
+            self.assertIn("Resource busy", caught.exception.stderr_tail)
+            diagnostics = self.root / "rrflow-capacity-diagnostics"
+            with patch.dict(os.environ, {"RUNNER_TEMP": str(self.root),
+                                         "RRFLOW_CAPACITY_DIAGNOSTICS": str(diagnostics)}):
+                runner.retain_native_failure(self.config, self.root, "fresh", runner.POINTS[0],
+                                             1, caught.exception)
+            receipt = json.loads(next(diagnostics.glob("*.json")).read_text(encoding="utf8"))
+            self.assertTrue(receipt["timed_out"])
+            self.assertEqual(receipt["returncode"], caught.exception.returncode)
+        else:
+            self.assertNotEqual(caught.exception.returncode, 0)
+            self.assertIn("Resource busy", caught.exception.stderr_tail)
+
+    @unittest.skipUnless(os.name == "posix", "requires native POSIX process ownership")
+    def test_successful_parent_with_silent_surviving_descendant_is_not_a_pass(self):
+        pid_file = self.root / "holder.pid"
+        try:
+            with self.native_child(held_output_command(pid_file, False, False, 0), "attach"):
+                with self.assertRaisesRegex(RuntimeError, "owned process group did not exit"):
+                    runner.native_command("hdiutil", "attach", timeout=10)
+        finally:
+            end_holder(pid_file)
+
+    @unittest.skipUnless(os.name == "posix", "requires native POSIX process ownership")
+    def test_escaped_pipe_holder_is_reported_and_not_killed_as_owned(self):
+        pid_file = self.root / "escaped.pid"
+        code = ("import pathlib,subprocess,sys; "
+                "child=subprocess.Popen([sys.executable,'-c','import time; time.sleep(60)'],"
+                "stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=sys.stderr,"
+                "start_new_session=True); pathlib.Path(sys.argv[1]).write_text(str(child.pid)); "
+                "sys.exit(0)")
+        try:
+            with self.native_child((sys.executable, "-c", code, str(pid_file)), "attach"):
+                with self.assertRaises(runner.CommandOutputNotClosed) as caught:
+                    runner.native_command("hdiutil", "attach", timeout=10)
+            self.assertTrue(caught.exception.stderr_open)
+            self.assertFalse(caught.exception.stdout_open)
+            os.kill(int(pid_file.read_text()), 0)
+        finally:
+            end_holder(pid_file)
+
+    @unittest.skipUnless(os.name == "posix", "requires native POSIX process ownership")
+    def test_timeout_with_escaped_pipe_holder_retains_deadline_classification(self):
+        pid_file = self.root / "escaped-timeout.pid"
+        code = ("import pathlib,subprocess,sys,time; "
+                "child=subprocess.Popen([sys.executable,'-c','import time; time.sleep(60)'],"
+                "stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=sys.stderr,"
+                "start_new_session=True); pathlib.Path(sys.argv[1]).write_text(str(child.pid)); "
+                "print('native pre-timeout output',file=sys.stderr,flush=True); time.sleep(60)")
+        try:
+            with self.native_child((sys.executable, "-c", code, str(pid_file)), "create"):
+                with self.assertRaises(runner.NativeCommandFailure) as caught:
+                    runner.native_command("hdiutil", "create", timeout=0.5)
+            self.assertTrue(caught.exception.timed_out)
+            self.assertTrue(caught.exception.stderr_open)
+            self.assertIn("native pre-timeout output", caught.exception.stderr_tail)
+            os.kill(int(pid_file.read_text()), 0)
+        finally:
+            end_holder(pid_file)
+
+    @unittest.skipUnless(os.name == "posix", "requires native POSIX process ownership")
+    def test_successful_descendant_may_complete_before_the_bound(self):
+        marker = self.root / "finished"
+        code = ("import pathlib,subprocess,sys; "
+                "subprocess.Popen([sys.executable,'-c',"
+                "'import pathlib,sys,time; time.sleep(0.1); pathlib.Path(sys.argv[1]).write_text(\\\"ok\\\")',"
+                "sys.argv[1]]); print('parent complete')")
+        with self.native_child((sys.executable, "-c", code, str(marker)), "attach"):
+            result = runner.native_command("hdiutil", "attach", timeout=10)
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(marker.read_text(), "ok")
 
     @contextmanager
     def volume(self, fixture, size):
