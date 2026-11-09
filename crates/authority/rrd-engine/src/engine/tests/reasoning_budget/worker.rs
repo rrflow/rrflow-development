@@ -104,6 +104,7 @@ fn admitted_fixture(
                 protocol_evidence_sha256: digest::sha256_hex(
                     b"controlled protocol fixture, not provider qualification",
                 ),
+                adapter: Default::default(),
                 system_prompt: "Return a protocol-test draft, no project effects.".into(),
                 generation: EndpointGenerationSettings {
                     maximum_output_tokens: 256,
@@ -166,6 +167,8 @@ fn admitted_fixture(
             .unwrap()
             .task_sha256,
         expected_configuration_sha256: configuration.sha256().unwrap(),
+        flight: None,
+        routing: None,
     };
     (root, engine, lease, request)
 }

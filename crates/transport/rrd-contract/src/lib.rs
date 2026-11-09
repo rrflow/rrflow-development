@@ -19,8 +19,8 @@ pub use endpoint_generation::{
     EndpointGenerationSettings, EndpointResponseFormat, EndpointTokenParameter,
 };
 pub use endpoint_worker::{
-    EndpointWorkerBinding, EndpointWorkerPolicy, TaskWorkerContext, TaskWorkerOutput,
-    TaskWorkerRequest, TaskWorkerSourceProvenance, TaskWorkerSourceRequest,
+    EndpointWorkerAdapter, EndpointWorkerBinding, EndpointWorkerPolicy, TaskWorkerContext,
+    TaskWorkerOutput, TaskWorkerRequest, TaskWorkerSourceProvenance, TaskWorkerSourceRequest,
     ENDPOINT_WORKER_VERSION, TASK_WORKER_SOURCE_VERSION,
 };
 mod endpoint_policy;
@@ -47,6 +47,7 @@ mod inference;
 mod knowledge;
 mod knowledge_tree;
 mod memory_context;
+mod memory_engram;
 mod memory_estate;
 mod model_manifest;
 mod operation_reference;
@@ -184,6 +185,7 @@ pub use memory_context::{
     ContextPlanStageStatus, ContextReadStamp, MAX_CONTEXT_GRAPH_DEPTH, MAX_CONTEXT_ITEMS,
     MAX_CONTEXT_OUTPUT_BYTES, MAX_CONTEXT_QUERY_BYTES, MAX_CONTEXT_SEEDS, MAX_CONTEXT_STORAGE_KEYS,
 };
+pub use memory_engram::{MemoryengramPlan, PersistMemoryengram};
 pub use memory_estate::{
     MemoryEstatePlan, MemorySeatDefinition, MemoryWarp, PersistMemoryEstate,
     ProviderRepresentation, ProviderRepresentationDefinition, ResolveMemoryWarp,
@@ -275,7 +277,7 @@ use std::fmt;
 pub const PROTOCOL: &str = "rrd";
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const OPENAPI_DOCUMENT_SHA256: &str =
-    "fb09bd98e533e3330b86e461a82ce7a6cd02a1cc0d31888cc72dedbe3f767797";
+    "355e5482791fc6a9705b6c1bc9ba7303d1549b69b7dfbe8819c029bb7074c507";
 pub const MAX_ID_BYTES: usize = 128;
 pub const MAX_MESSAGE_BYTES: usize = 4_096;
 pub const MAX_CAPABILITIES: usize = 512;
@@ -2971,9 +2973,9 @@ pub struct InstanceBackupSnapshot {
     pub claims: BackupCoverageSnapshot,
     pub typed_runtime: BackupCoverageSnapshot,
     pub catalogues: BackupCoverageSnapshot,
-    /// The estate's control state outside the catalogues: installed record
+    /// The engram's control state outside the catalogues: installed record
     /// and checkpoint, active configuration, security policy and audit chain,
-    /// attunement plan and job state, and estate documents. `included` means
+    /// attunement plan and job state, and engram documents. `included` means
     /// the backup carries them as a replayable control-journal archive; the
     /// token key and operator credential are never carried.
     pub installed_control: BackupCoverageSnapshot,
@@ -4170,6 +4172,26 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             "TaskBudgetView",
         ),
         endpoint(
+            "task-assessment-execute",
+            HttpMethod::Post,
+            "/v1/tasks/assessment/execute",
+            EndpointAuthentication::SessionBearer,
+            true,
+            SecurityAction::EndpointPropose,
+            "TaskAssessmentRequest",
+            "TaskAssessmentOutput",
+        ),
+        endpoint(
+            "task-assessment-read",
+            HttpMethod::Post,
+            "/v1/tasks/assessment/read",
+            EndpointAuthentication::SessionBearer,
+            false,
+            SecurityAction::ReasoningRead,
+            "ReadTaskAssessment",
+            "TaskAssessmentView",
+        ),
+        endpoint(
             "task-embedding-execute",
             HttpMethod::Post,
             "/v1/tasks/embedding/execute",
@@ -4238,26 +4260,6 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             SecurityAction::WorkerExecute,
             "TaskWorkerRequest",
             "TaskWorkerOutput",
-        ),
-        endpoint(
-            "task-assessment-execute",
-            HttpMethod::Post,
-            "/v1/tasks/assessment/execute",
-            EndpointAuthentication::SessionBearer,
-            true,
-            SecurityAction::EndpointPropose,
-            "TaskAssessmentRequest",
-            "TaskAssessmentOutput",
-        ),
-        endpoint(
-            "task-assessment-read",
-            HttpMethod::Post,
-            "/v1/tasks/assessment/read",
-            EndpointAuthentication::SessionBearer,
-            false,
-            SecurityAction::ReasoningRead,
-            "ReadTaskAssessment",
-            "TaskAssessmentView",
         ),
         endpoint(
             "task-close",
@@ -4744,7 +4746,7 @@ fn openapi_vector_payload_filter_schema() -> Result<serde_json::Value> {
 
 fn openapi_parameters(descriptor: &EndpointDescriptor) -> Vec<serde_json::Value> {
     let mut parameters = Vec::new();
-    for name in ["estate", "session", "transaction"] {
+    for name in ["engram", "session", "transaction"] {
         if descriptor.path.contains(&format!("{{{name}}}")) {
             parameters.push(serde_json::json!({
                 "name": name,
@@ -4883,8 +4885,8 @@ fn response_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "GenerateEmbeddingsResult" => schema_json::<ResponseEnvelope<GenerateEmbeddingsResult>>(),
         "TaskAttemptView" => schema_json::<ResponseEnvelope<TaskAttemptView>>(),
         "TaskAssessmentView" => schema_json::<ResponseEnvelope<TaskAssessmentView>>(),
-        "EndpointSelectionProposal" => schema_json::<ResponseEnvelope<EndpointSelectionProposal>>(),
         "TaskAssessmentOutput" => schema_json::<ResponseEnvelope<TaskAssessmentOutput>>(),
+        "EndpointSelectionProposal" => schema_json::<ResponseEnvelope<EndpointSelectionProposal>>(),
         "TaskWorkerOutput" => schema_json::<ResponseEnvelope<TaskWorkerOutput>>(),
         "TaskBudgetView" => schema_json::<ResponseEnvelope<TaskBudgetView>>(),
         "AuditExport" => schema_json::<ResponseEnvelope<AuditExport>>(),
@@ -5625,6 +5627,7 @@ impl<'de> Deserialize<'de> for CanonicalId {
 pub enum ResourceKind {
     Organization,
     Estate,
+    Engram,
     Project,
     Instance,
     Tenant,
@@ -5935,7 +5938,7 @@ impl ServiceCapabilities {
             installed.validate()?;
             if installed.instance_id != self.instance.id {
                 return invalid(
-                    "service capability instance differs from installed estate identity",
+                    "service capability instance differs from installed engram identity",
                 );
             }
         }
@@ -6342,8 +6345,8 @@ pub const MAX_DATA_TAGS_PER_KIND: usize = 64;
 pub const MAX_DATA_ORGANISATION_TITLE_BYTES: usize = 128;
 pub const MAX_DATA_ORGANISATION_DESCRIPTION_BYTES: usize = 1_024;
 
-/// One configurable part of an estate's catalogue, such as a service, package
-/// or subject area. The estate organisation contract owns its rules.
+/// One configurable part of an engram's catalogue, such as a service, package
+/// or subject area. The engram organisation contract owns its rules.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct DataDomainSchema {
@@ -6402,7 +6405,7 @@ pub struct DataTagReference {
     pub tag: CanonicalId,
 }
 
-/// Domains, categories and memberships of one estate catalogue. A kind or
+/// Domains, categories and memberships of one engram catalogue. A kind or
 /// collection without an entry belongs to `default`, or to `rrflow` when its
 /// identity starts with `rrflow-`.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -6444,6 +6447,10 @@ impl DataEstateOrganisation {
         )
     }
 }
+
+/// Internal engram terminology maps to the existing public organization type.
+/// There is one serialized and validated representation.
+pub type DataengramOrganisation = DataEstateOrganisation;
 
 fn default_data_domain(identity: &str) -> &'static str {
     if identity.starts_with(DATA_ENGINE_OWNED_PREFIX) {
@@ -6976,7 +6983,7 @@ fn validate_data_schema(registry: &DataSchemaRegistry) -> Result<()> {
     validate_data_organisation(registry)
 }
 
-/// Public-boundary checks of the estate organisation. `rrd-core` repeats them
+/// Public-boundary checks of the engram organisation. `rrd-core` repeats them
 /// as the authority at commit; an engine parity test keeps the two aligned.
 fn validate_data_organisation(registry: &DataSchemaRegistry) -> Result<()> {
     let organisation = &registry.organisation;
@@ -6985,7 +6992,7 @@ fn validate_data_organisation(registry: &DataSchemaRegistry) -> Result<()> {
         |id: &str| id == DATA_ENGINE_DOMAIN || id.starts_with(DATA_ENGINE_OWNED_PREFIX);
     if organisation.domains.len() + 2 > MAX_DATA_DOMAINS {
         return invalid(format!(
-            "an estate may declare at most {} domains besides default and rrflow",
+            "an engram may declare at most {} domains besides default and rrflow",
             MAX_DATA_DOMAINS - 2
         ));
     }
@@ -7075,7 +7082,7 @@ fn validate_data_organisation(registry: &DataSchemaRegistry) -> Result<()> {
     }
     if organisation.categories.len() > MAX_DATA_CATEGORIES {
         return invalid(format!(
-            "an estate may declare at most {MAX_DATA_CATEGORIES} categories"
+            "an engram may declare at most {MAX_DATA_CATEGORIES} categories"
         ));
     }
     for (id, category) in &organisation.categories {

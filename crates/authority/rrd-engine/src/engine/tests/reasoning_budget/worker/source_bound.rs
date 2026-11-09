@@ -461,6 +461,7 @@ fn source_worker_fixture_for_path_at(
             bindings: vec![EndpointWorkerBinding {
                 binding_id: candidate.binding_id,
                 protocol_evidence_sha256: digest::sha256_hex(b"controlled source worker fixture"),
+                adapter: Default::default(),
                 system_prompt: "Return a bounded draft. Do not mutate the project.".into(),
                 generation: EndpointGenerationSettings {
                     maximum_output_tokens: 256,
@@ -542,6 +543,8 @@ fn source_worker_fixture_for_path_at(
             .unwrap()
             .task_sha256,
         expected_configuration_sha256: configuration.sha256().unwrap(),
+        flight: None,
+        routing: None,
     };
     SourceWorkerFixture {
         installed,

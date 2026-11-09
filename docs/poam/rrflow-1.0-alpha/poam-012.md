@@ -22,6 +22,16 @@ J-04a through J-04d must supply schema validation, installed execution,
 sustained interference/recovery and quality-matched optimization evidence.
 Documented targets are not benchmark results and leave this item sequenced.
 
+At main `3a72a6b4`, the provider-summary verifier accepted a synthetic report
+claiming eight successes when all eight detailed rows reported failure and the
+provider/repository lists contained duplicates. The provider runner's arm is a
+label and its substring match is not an independent task oracle. The
+[research and repair record](../../research/rrflow-adaptive-planning-measurement-architecture-research.md)
+documents the failure, screening-only candidate and remaining treatment,
+quality, provenance and held-out-evaluation gaps. The historical provider
+summary lacks per-trial repository and raw-output evidence; it is not upgraded
+into a quality claim. J-04 remains open regardless of screening-test results.
+
 ## Impact
 
 Performance or competitive claims cannot be evaluated honestly.

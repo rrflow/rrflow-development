@@ -11,24 +11,54 @@ use std::collections::BTreeMap;
 pub const ENDPOINT_WORKER_VERSION: u16 = 1;
 pub const TASK_WORKER_SOURCE_VERSION: u16 = 1;
 
-/// References an accepted routing attempt; carries no endpoint or credential.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
-#[serde(deny_unknown_fields)]
-pub struct TaskWorkerRequest {
-    pub scope: String,
-    pub task_id: CanonicalId,
-    pub attempt_id: crate::CorrelationId,
-    pub selection_attempt_id: crate::CorrelationId,
-    pub expected_selection_sha256: String,
-    pub expected_task_sha256: String,
-    pub expected_configuration_sha256: String,
-    pub max_storage_keys: u64,
-    /// Explicit historical context selection, not permission to mutate sources.
-    pub context: Option<crate::AssembleContext>,
-    /// One explicitly selected file from the installed project's accepted inventory.
-    /// The entry identity resolves only inside the engine; this carries no path or bytes.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub source: Option<TaskWorkerSourceRequest>,
+/// Typed worker adapter selection. The policy may name future adapters while
+/// the engine executes only adapters it explicitly implements.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+pub enum EndpointWorkerAdapter {
+    #[default]
+    OpenaiChatCompletionsV1,
+    SwagChatCompletionsV1,
+    LfgChatCompletionsV1,
+    Other {
+        adapter_id: CanonicalId,
+        request_schema_sha256: String,
+        response_schema_sha256: String,
+    },
+}
+
+impl EndpointWorkerAdapter {
+    pub fn validate(&self) -> Result<()> {
+        if let Self::Other {
+            request_schema_sha256,
+            response_schema_sha256,
+            ..
+        } = self
+        {
+            validate_sha256(
+                request_schema_sha256,
+                "worker adapter request schema digest",
+            )?;
+            validate_sha256(
+                response_schema_sha256,
+                "worker adapter response schema digest",
+            )?;
+        }
+        Ok(())
+    }
+
+    pub fn is_native_chat_adapter(&self) -> bool {
+        matches!(
+            self,
+            Self::OpenaiChatCompletionsV1
+                | Self::SwagChatCompletionsV1
+                | Self::LfgChatCompletionsV1
+        )
+    }
+}
+
+fn adapter_is_default(value: &EndpointWorkerAdapter) -> bool {
+    matches!(value, EndpointWorkerAdapter::OpenaiChatCompletionsV1)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -99,6 +129,26 @@ impl TaskWorkerSourceProvenance {
     }
 }
 
+/// References an accepted routing attempt; carries no endpoint or credential.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct TaskWorkerRequest {
+    pub scope: String,
+    pub task_id: CanonicalId,
+    pub attempt_id: crate::CorrelationId,
+    pub selection_attempt_id: crate::CorrelationId,
+    pub expected_selection_sha256: String,
+    pub expected_task_sha256: String,
+    pub expected_configuration_sha256: String,
+    pub max_storage_keys: u64,
+    /// Explicit historical context selection, not permission to mutate sources.
+    pub context: Option<crate::AssembleContext>,
+    /// One explicitly selected file from the installed project's accepted inventory.
+    /// The entry identity resolves only inside the engine; this carries no path or bytes.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source: Option<TaskWorkerSourceRequest>,
+}
+
 impl TaskWorkerRequest {
     pub fn validate(&self) -> Result<()> {
         crate::ReadTask {
@@ -161,9 +211,11 @@ pub struct TaskWorkerOutput {
     /// Provider draft only; acceptance records transport/admission, not task success.
     pub content: String,
     pub read: crate::ContextReadStamp,
+    pub context: Option<TaskWorkerContext>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub source: Option<TaskWorkerSourceProvenance>,
-    pub context: Option<TaskWorkerContext>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub routing: Option<crate::EndpointSelectionRoutingInput>,
     pub usage: Option<crate::EndpointTokenUsage>,
     pub elapsed_ms: Option<u64>,
     pub http_status: Option<u16>,
@@ -231,6 +283,9 @@ impl TaskWorkerOutput {
             validate_sha256(&context.request_sha256, "worker context request digest")?;
             validate_sha256(&context.packet_sha256, "worker context packet digest")?;
         }
+        if let Some(routing) = &self.routing {
+            routing.validate()?;
+        }
         if let Some(source) = &self.source {
             source.validate()?;
         }
@@ -250,6 +305,8 @@ pub struct EndpointWorkerBinding {
     pub binding_id: CanonicalId,
     /// Reference to observed wire support; its presence is not an attestation.
     pub protocol_evidence_sha256: String,
+    #[serde(default, skip_serializing_if = "adapter_is_default")]
+    pub adapter: EndpointWorkerAdapter,
     pub system_prompt: String,
     pub generation: EndpointGenerationSettings,
     pub maximum_response_bytes: u64,
@@ -322,6 +379,7 @@ impl EndpointWorkerPolicy {
         selector.validate_for(bindings)?;
         bounded(self, MAX_ROUTE_REQUEST_BYTES)?;
         for worker in &self.bindings {
+            worker.adapter.validate()?;
             worker.generation.validate()?;
             validate_sha256(
                 &worker.protocol_evidence_sha256,
