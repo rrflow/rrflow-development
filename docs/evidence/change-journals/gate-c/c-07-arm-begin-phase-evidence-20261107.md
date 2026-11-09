@@ -1,7 +1,9 @@
 # C-07: retained ARM transaction-begin timings
 
-**Status:** active diagnostic evidence; no performance or release gate passed  
-**Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/gate-c/c-07-arm-begin-phase-evidence-20261107`  
+**Status:** active diagnostic evidence; no performance or release gate passed
+
+**Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/gate-c/c-07-arm-begin-phase-evidence-20261107`
+
 **Owner:** C-07g, OBJ-10/11, [POAM-035](../../../poam/rrflow-1.0-alpha/poam-035.md)
 
 The installed 100,000-record ARM characterization at public source `40870e5c5f8f79dfebc7126bf721458ccf789634`, tree `fd041325a1861ad3c7180541c0e563a02ab6b31c`, failed after its warmup; PR #294 retains the full failure and independently verified evidence. Its retained launcher log SHA-256 is `881d53dff39607e36f703a3e87161a378003a471a7e51d5652be0db9550adb47`. The existing test driver emits at most 64 slow write records, hashes their synthetic logical IDs, and records client-observed begin, commit and total call durations. Matching SHA-256 of the retained synthetic IDs to the log yielded:

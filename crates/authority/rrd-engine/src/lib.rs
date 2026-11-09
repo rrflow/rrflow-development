@@ -1,6 +1,6 @@
 //! The single RRFlow engine composition root.
 //!
-//! Physical storage, query, vector, estate, and security components are
+//! Physical storage, query, vector, engram, and security components are
 //! composed here. Daemon and embedded faces consume this API instead of
 //! constructing those components independently.
 
@@ -33,11 +33,11 @@ pub use engine::{
     InstallationVerificationCheck, InstallationVerificationReport, InstallationVerificationStatus,
     InstalledEstateRecord, InstalledTailRepairPlan, InstalledTailRepairReceipt, Invocation,
     InvocationCompletion, InvocationCredential, PreparedDistributedAuthority, ProjectLocator,
-    ReasoningBudgetStop, Result, RrdEngine, RrdOperation, ServiceError, ServiceErrorKind,
-    ServingPublisher, ServingRecord, ServingRegistration, TaskEmbeddingAttempt,
+    ProjectMapSummary, ReasoningBudgetStop, Result, RrdEngine, RrdOperation, ServiceError,
+    ServiceErrorKind, ServingPublisher, ServingRecord, ServingRegistration, TaskEmbeddingAttempt,
     TaskReasoningBudget, TransactionAdmissionSnapshot, ATTUNEMENT_PROPOSAL_FORMAT_VERSION,
     CLOCK_OBSERVATION_FORMAT_VERSION, INSTALLATION_PREVIEW_FORMAT_VERSION, MAX_AUDIT_PAGE_RECORDS,
-    MAX_JWT_CREDENTIAL_BYTES, TOKEN_KEY_BYTES,
+    MAX_JWT_CREDENTIAL_BYTES, PROJECT_MAP_RELATIVE_PATH, TOKEN_KEY_BYTES,
 };
 #[cfg(feature = "full")]
 pub use operator::{
