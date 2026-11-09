@@ -13,7 +13,7 @@ from unittest import mock
 import zipfile
 
 from replicate_weight_edit import (compare, decide, evaluate, extract, load_arm, observed_environment, prepare, rebuild,
-                                   regrade, RECEIPT)
+                                   regrade, require_arm, RECEIPT)
 from review_outcomes import canonical
 
 EDITED = "model.language_model.layers.0.mlp.weight"
@@ -125,6 +125,22 @@ class RebuildTests(Fixture):
     def test_tampered_edit_value_fails_closed(self):
         self.write_edit(values=(0x4000, 0x4040))
         self.assertRefused("rebuilt tensor differs")
+
+    def test_edit_archive_expansion_has_an_aggregate_bound(self):
+        with mock.patch("replicate_weight_edit.MAX_EDIT_ARCHIVE_ARRAY_BYTES", 1):
+            self.assertRefused("aggregate bound")
+
+    def test_duplicate_edit_archive_member_is_refused(self):
+        index_content = npy("<i4", "i", (0, 2))
+        value_content = npy("<u2", "H", (0x4000, 0x4000))
+        buffer = io.BytesIO()
+        with self.assertWarns(UserWarning):
+            with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
+                archive.writestr("t0_idx.npy", index_content)
+                archive.writestr("t0_idx.npy", index_content)
+                archive.writestr("t0_val.npy", value_content)
+        (self.edit / "edit.npz").write_bytes(buffer.getvalue())
+        self.assertRefused("archive members differ")
 
     def test_wrong_pinned_base_fails_closed(self):
         self.assertRefused("pinned digest", expected_base="0" * 64)
@@ -327,9 +343,17 @@ class DecideTests(unittest.TestCase):
         part.mkdir(parents=True)
         rows = [{"id": f"p{i}", "correct": [int(i < correct_problems)] * 2, "pred_first": None} for i in range(count)]
         ok = sum(sum(row["correct"]) for row in rows)
-        scores = {"small": {"ok": ok, "total": 2 * count, "cut": 0, "tokens_sum": 0}}
+        scores = {"small": {"ok": ok, "total": 2 * count, "cut": 0, "tokens_sum": 0,
+                             "samples": self.module.SAMPLES["small"]}}
         if job is not None:
-            scores["_job"] = {"limit": None, "baseFileSha256": base, **job}
+            protocol = job.get("protocol", "think35")
+            config = self.module.PROTOCOLS[protocol]
+            record = {"protocol": protocol, "sampling": config["sampling"], "thinking": config["thinking"],
+                      "samples": self.module.SAMPLES["small"], "prompt": self.module.INSTRUCTION,
+                      "benchmarkSha256": "c" * 64,
+                      "checkpointModelSha256": "d" * 64 if job.get("edited") else "e" * 64,
+                      "baseFileSha256": base, "edited": job.get("edited", False), "shard": [0, 1], "limit": None}
+            scores["_job"] = {**record, **job}
         (part / "small_per_problem.json").write_bytes(canonical(rows))
         (part / "scores.json").write_bytes(canonical(scores))
         return self.root / name
@@ -338,7 +362,7 @@ class DecideTests(unittest.TestCase):
         published_arm = self.arm("published", published)
         edited_arm = self.arm("edited", edited, options.get("edited_job", {"edited": True, "protocol": "think35"}))
         base_arm = self.arm("base", base, {"edited": False, "protocol": "think35"})
-        control_arm = self.arm("control", control, {"edited": False, "protocol": "nothink35"},
+        control_arm = self.arm("control", control, options.get("control_job", {"edited": False, "protocol": "nothink35"}),
                                base=options.get("control_base", "b" * 64))
         return decide(published_arm, edited_arm, base_arm, control_arm, self.names)
 
@@ -370,7 +394,7 @@ class DecideTests(unittest.TestCase):
             decide(self.root / "short", self.root / "short", self.root / "short", self.root / "short", self.names)
 
     def test_published_layout_cannot_stand_in_for_a_replication_arm(self):
-        with self.assertRaisesRegex(ValueError, "not a complete"):
+        with self.assertRaisesRegex(ValueError, "unsupported exchange fields"):
             self.decide(edited_job={"protocol": "think35", "ckpt": "x", "shard": "0/10"})
 
     def test_limited_run_cannot_decide(self):
@@ -380,6 +404,70 @@ class DecideTests(unittest.TestCase):
     def test_wrong_protocol_arm_cannot_decide(self):
         with self.assertRaisesRegex(ValueError, "not a complete"):
             self.decide(edited_job={"edited": True, "protocol": "nothink35"})
+
+    def test_changed_sampling_parameters_cannot_decide(self):
+        changed = dict(self.module.PROTOCOLS["think35"]["sampling"], temperature=0.1)
+        with self.assertRaisesRegex(ValueError, "frozen run settings"):
+            self.decide(edited_job={"edited": True, "protocol": "think35", "sampling": changed})
+
+    def test_fewer_samples_cannot_decide(self):
+        with self.assertRaisesRegex(ValueError, "frozen run settings"):
+            self.decide(edited_job={"edited": True, "protocol": "think35", "samples": 1})
+
+    def test_result_vectors_must_match_the_declared_sample_count(self):
+        published = self.arm("published", 20)
+        edited = self.arm("edited", 20, {"edited": True, "protocol": "think35"})
+        base = self.arm("base", 2, {"edited": False, "protocol": "think35"})
+        control = self.arm("control", 2, {"edited": False, "protocol": "nothink35"})
+        part = edited / "parts" / "small_s0of1"
+        rows_path = part / "small_per_problem.json"
+        rows = json.loads(rows_path.read_text())
+        for row in rows:
+            row["correct"] = row["correct"][:1]
+        rows_path.write_bytes(canonical(rows))
+        scores_path = part / "scores.json"
+        scores = json.loads(scores_path.read_text())
+        scores["small"]["ok"] = sum(sum(row["correct"]) for row in rows)
+        scores["small"]["total"] = sum(len(row["correct"]) for row in rows)
+        scores_path.write_bytes(canonical(scores))
+        with self.assertRaisesRegex(ValueError, "frozen run settings"):
+            decide(published, edited, base, control, self.names)
+
+    def test_duplicate_shard_identity_cannot_stand_in_for_a_complete_arm(self):
+        arm = self.arm("duplicate-shard", 20, {"edited": True, "protocol": "think35"})
+        original = arm / "parts" / "small_s0of1"
+        rows = json.loads((original / "small_per_problem.json").read_text())
+        original.rmdir() if not list(original.iterdir()) else None
+        for path in list(original.iterdir()):
+            path.unlink()
+        original.rmdir()
+        for index, selected in enumerate((rows[::3], rows[1::3], rows[2::3])):
+            part = arm / "parts" / f"small_s{index}of2"
+            part.mkdir()
+            ok = sum(sum(row["correct"]) for row in selected)
+            (part / "small_per_problem.json").write_bytes(canonical(selected))
+            job = {"protocol": "think35", "sampling": self.module.PROTOCOLS["think35"]["sampling"],
+                   "thinking": True, "samples": 2, "prompt": self.module.INSTRUCTION,
+                   "benchmarkSha256": "c" * 64, "checkpointModelSha256": "d" * 64,
+                   "baseFileSha256": "b" * 64, "edited": True, "shard": [min(index, 1), 2], "limit": None}
+            scores = {"small": {"ok": ok, "total": 2 * len(selected), "cut": 0,
+                                 "tokens_sum": 0, "samples": 2}, "_job": job}
+            (part / "scores.json").write_bytes(canonical(scores))
+        with self.assertRaisesRegex(ValueError, "complete, unique set of shards"):
+            require_arm(arm, "small", True, "think35", None)
+
+    def test_changed_prompt_cannot_decide(self):
+        with self.assertRaisesRegex(ValueError, "frozen run settings"):
+            self.decide(edited_job={"edited": True, "protocol": "think35", "prompt": "easier prompt"})
+
+    def test_arms_must_share_benchmark_and_unedited_checkpoint(self):
+        with self.assertRaisesRegex(ValueError, "different benchmark contents"):
+            self.decide(edited_job={"edited": True, "protocol": "think35", "benchmarkSha256": "f" * 64})
+        self.root = self.root / "different-checkpoint"
+        self.root.mkdir()
+        with self.assertRaisesRegex(ValueError, "different model checkpoints"):
+            self.decide(control_job={"edited": False, "protocol": "nothink35",
+                                     "checkpointModelSha256": "f" * 64})
 
     def test_arms_from_different_bases_cannot_decide(self):
         with self.assertRaisesRegex(ValueError, "different base"):

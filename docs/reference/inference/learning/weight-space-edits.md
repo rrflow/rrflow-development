@@ -71,7 +71,10 @@ default sampler cannot start; set `VLLM_USE_FLASHINFER_SAMPLER=0`, which the run
 also records.
 
 Rebuild and prepare first. These steps need no GPU and fail closed on any
-digest, problem or gold-answer mismatch:
+digest, problem or gold-answer mismatch. The sparse-edit archive reader accepts
+only the declared unique NPY members, decodes them without pickle, and caps both
+each array and aggregate expanded array data at 64 MiB. This bounds the local
+parser; it does not make an unpinned source artifact trustworthy:
 
 ```bash
 TOOL=scripts/inference/replicate_weight_edit.py

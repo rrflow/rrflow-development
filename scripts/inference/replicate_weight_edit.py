@@ -29,6 +29,7 @@ from review_outcomes import canonical, digest, fields, identity, read_bounded, s
 
 MAX_HEADER_BYTES = 64 * 1024 * 1024
 MAX_EDIT_ARRAY_BYTES = 64 * 1024 * 1024
+MAX_EDIT_ARCHIVE_ARRAY_BYTES = 64 * 1024 * 1024
 MAX_BENCHMARK_BYTES = 64 * 1024 * 1024
 MAX_SAMPLES_BYTES = 1024 * 1024 * 1024
 CHUNK_BYTES = 1024 * 1024
@@ -135,8 +136,12 @@ def load_edit(edit_dir: Path) -> dict:
         raise ValueError("edit archive is not a zip file") from error
     with archive:
         expected = {f"t{i}_{part}.npy" for i in range(len(tensors)) for part in ("idx", "val")}
-        if set(archive.namelist()) != expected:
+        members = archive.infolist()
+        names = [member.filename for member in members]
+        if len(names) != len(set(names)) or set(names) != expected:
             raise ValueError("edit archive members differ from a sparse edit of its manifest")
+        if sum(member.file_size for member in members) > MAX_EDIT_ARCHIVE_ARRAY_BYTES:
+            raise ValueError("edit archive arrays exceed their aggregate bound")
         for i, record in enumerate(tensors):
             fields(record, {"name", "shape", "dtype", "changed_entries", "changed_columns", "changed_rows",
                             "relative_change", "base_sha256", "edited_sha256", "submitted_file", "form"})
@@ -451,7 +456,7 @@ def load_arm(arm: Path, name: str) -> dict:
             raise ValueError(f"per-problem results differ from the recorded totals in {part.name}")
         for key in totals:
             totals[key] += record[key]
-        jobs.append(scores.get("_job"))
+        jobs.append({"job": scores.get("_job"), "samples": record.get("samples")})
     return {"problems": problems, "jobs": jobs, "totals": totals}
 
 
@@ -479,28 +484,69 @@ def compare(baseline: Path, candidate: Path, name: str) -> dict:
             "tied": sum(value == 0 for value in differences)}
 
 
-def require_arm(arm: Path, name: str, edited: bool, protocol: str, base: str | None) -> str:
+def require_arm(arm: Path, name: str, edited: bool, protocol: str, base: str | None) -> dict:
     """A decision reads only complete arms of the expected kind, all built from one base file."""
     loaded = load_arm(arm, name)
     if len(loaded["problems"]) != PROBLEMS[name]:
         raise ValueError(f"{arm} does not cover every {name} problem")
-    for job in loaded["jobs"]:
-        if (not job or job.get("limit") is not None or job.get("edited") is not edited
-                or job.get("protocol") != protocol or not job.get("baseFileSha256")):
+    expected_sampling = PROTOCOLS[protocol]["sampling"]
+    expected_thinking = PROTOCOLS[protocol]["thinking"]
+    expected_samples = SAMPLES[name]
+    expected_job_fields = {"protocol", "sampling", "thinking", "samples", "prompt", "benchmarkSha256",
+                           "checkpointModelSha256", "baseFileSha256", "edited", "shard", "limit"}
+    signature = None
+    shard_indices, shard_counts = set(), set()
+    benchmark, checkpoint = None, None
+    for part in loaded["jobs"]:
+        job = part["job"]
+        if not isinstance(job, dict):
             raise ValueError(f"{arm} is not a complete {protocol} arm of the expected model")
-        if base not in (None, job["baseFileSha256"]):
+        fields(job, expected_job_fields)
+        shard = job["shard"]
+        if (not isinstance(shard, list) or len(shard) != 2
+                or any(type(value) is not int for value in shard)
+                or shard[1] < 1 or not 0 <= shard[0] < shard[1]):
+            raise ValueError(f"{arm} has an invalid shard identity")
+        shard_indices.add(shard[0])
+        shard_counts.add(shard[1])
+        if (job["limit"] is not None or job["edited"] is not edited
+                or job["protocol"] != protocol or job["sampling"] != expected_sampling
+                or job["thinking"] is not expected_thinking or job["samples"] != expected_samples
+                or job["prompt"] != INSTRUCTION or part["samples"] != expected_samples
+                or any(len(correct) != expected_samples for correct in loaded["problems"].values())):
+            raise ValueError(f"{arm} is not a complete {protocol} arm with the frozen run settings")
+        base_sha = identity(job["baseFileSha256"])
+        benchmark_sha = identity(job["benchmarkSha256"])
+        checkpoint_sha = identity(job["checkpointModelSha256"])
+        if base not in (None, base_sha):
             raise ValueError(f"{arm} was built from a different base file")
-        base = job["baseFileSha256"]
-    return base
+        current_signature = canonical({key: value for key, value in job.items() if key != "shard"})
+        if signature is not None and signature != current_signature:
+            raise ValueError(f"{arm} combines result parts from different run configurations")
+        signature = current_signature
+        benchmark = benchmark_sha
+        checkpoint = checkpoint_sha
+        base = base_sha
+    if not loaded["jobs"] or len(shard_counts) != 1:
+        raise ValueError(f"{arm} does not contain one complete, unique set of shards")
+    shard_count = next(iter(shard_counts))
+    if len(loaded["jobs"]) != shard_count or shard_indices != set(range(shard_count)):
+        raise ValueError(f"{arm} does not contain one complete, unique set of shards")
+    return {"base": base, "benchmark": benchmark, "checkpoint": checkpoint}
 
 
 def decide(published: Path, edited: Path, base: Path, control: Path, names: tuple[str, ...] = ("math500", "gsm8k")) -> dict:
     """Apply the frozen rule: reproduce the effect, then require an advantage over the documented setting."""
     results = {}
     for name in names:
-        identity_base = require_arm(edited, name, True, "think35", None)
-        require_arm(base, name, False, "think35", identity_base)
-        require_arm(control, name, False, "nothink35", identity_base)
+        edited_identity = require_arm(edited, name, True, "think35", None)
+        base_identity = require_arm(base, name, False, "think35", edited_identity["base"])
+        control_identity = require_arm(control, name, False, "nothink35", edited_identity["base"])
+        if (base_identity["benchmark"] != edited_identity["benchmark"]
+                or control_identity["benchmark"] != edited_identity["benchmark"]):
+            raise ValueError("arms were evaluated against different benchmark contents")
+        if base_identity["checkpoint"] != control_identity["checkpoint"]:
+            raise ValueError("unedited arms were evaluated with different model checkpoints")
         results[name] = {"gain": compare(base, edited, name), "againstPublished": compare(published, edited, name),
                          "againstControl": compare(control, edited, name)}
     gained = all(result["gain"]["ci95"][0] > 0 for result in results.values())
