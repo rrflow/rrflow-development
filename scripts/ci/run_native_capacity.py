@@ -203,9 +203,14 @@ def native_command(*arguments, **kwargs):
 
 
 def is_retryable_darwin_create_failure(error):
+    # Only a command that finished and closed its streams can be retried. A
+    # timed-out or still-open create may leave an escaped process holding the
+    # image; retrying over it could report success while that process lives,
+    # and its diagnostic would never be retained.
     if not (isinstance(error, NativeCommandFailure)
             and sys.platform == "darwin"
-            and (error.tool, error.verb) == ("hdiutil", "create")):
+            and (error.tool, error.verb) == ("hdiutil", "create")
+            and not (error.timed_out or error.stdout_open or error.stderr_open)):
         return False
     native_output = (error.stderr_tail + "\n" + error.stdout_tail).lower()
     return "resource busy" in native_output

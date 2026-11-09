@@ -6,6 +6,7 @@ import io
 import json
 import os
 import plistlib
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -392,6 +393,23 @@ class NativeCapacityCases(unittest.TestCase):
         self.assertEqual(calls[0][0][:3], ("hdiutil", "create", "-verbose"))
         self.assertEqual([call.args[0] for call in sleep.call_args_list], [1, 2, 4, 8])
         self.assertFalse((self.root / "capacity.dmg").exists())
+
+    def test_macos_volume_does_not_retry_an_unfinished_busy_create(self):
+        result = subprocess.CompletedProcess([], 1, "native detail", "Resource busy")
+        for flags in ({"timed_out": True}, {"stdout_open": True}, {"stderr_open": True}):
+            root = Path(tempfile.mkdtemp(prefix="rrflow-capacity-")).resolve()
+            self.addCleanup(shutil.rmtree, root, ignore_errors=True)
+            calls = []
+
+            def native(*args, **kwargs):
+                calls.append((args, kwargs))
+                raise runner.NativeCommandFailure(args[0], args[1], result, **flags)
+            with patch.object(runner.sys, "platform", "darwin"),                     patch.object(runner, "native_command", side_effect=native),                     patch.object(runner.time, "sleep") as sleep:
+                with self.assertRaisesRegex(runner.NativeCommandFailure, "Resource busy"):
+                    with runner.volume(root, 256):
+                        self.fail("an unfinished creation must not yield a volume")
+            self.assertEqual(len(calls), 1, flags)
+            sleep.assert_not_called()
 
     def test_macos_volume_retries_busy_create_until_success(self):
         result = subprocess.CompletedProcess([], 1, "native detail", "Resource busy")
