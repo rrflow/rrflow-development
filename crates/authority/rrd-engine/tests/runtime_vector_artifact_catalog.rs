@@ -1,10 +1,10 @@
 use rrd_core::{
-    ProjectionId, RuntimeMutation, RuntimeProperties, RuntimeRef, RuntimeVector, ScopeId,
-    VectorCollectionAddress, VectorValue,
+    ProjectionId, RuntimeMutation, RuntimeProperties, RuntimeRef, RuntimeValue, RuntimeVector,
+    ScopeId, VectorCollectionAddress, VectorValue,
 };
 use rrd_engine::{
-    publish_traced_vector_artifact, reopen_vector_runtime, reopen_vector_runtime_metadata,
-    vector_artifact_catalog_entries,
+    publish_traced_vector_artifact, publish_traced_vector_artifact_with_evidence,
+    reopen_vector_runtime, reopen_vector_runtime_metadata, vector_artifact_catalog_entries,
 };
 use rrd_store::{DataRuntime, LocalObjectStore, RrflowKvStore, RrflowMxStore, StorageEngine};
 use rrd_vector::{
@@ -188,6 +188,92 @@ fn publication_atomically_binds_typed_record_object_and_serving_view() {
 
     let reopened = reopen_vector_runtime(&data, &scope(), canonical).unwrap();
     assert_eq!(reopened.catalog(), runtime.catalog());
+}
+
+#[test]
+fn named_hnsw_publication_binds_source_and_emits_correlated_trace() {
+    let object_dir = tempdir().unwrap();
+    let data = DataRuntime::new(
+        RrflowMxStore::new(),
+        LocalObjectStore::open(object_dir.path()).unwrap(),
+    );
+    let canonical = candidates();
+    let mut runtime = VectorRuntime::new(canonical.clone()).unwrap();
+    let source = VectorCollectionAddress {
+        collection_id: "documents".into(),
+        vector_name: "body".into(),
+    };
+    let wrong = VectorCollectionAddress {
+        collection_id: "foreign".into(),
+        vector_name: "body".into(),
+    };
+    let before = data.engine().runtime().read_stamp(&scope()).unwrap();
+    let receipt = || rrd_vector::VectorArtifactOperationReceipt {
+        idempotency_key: "source-binding-test".into(),
+        operation_sha256: "11".repeat(32),
+        source: None,
+    };
+    let rejected = publish_traced_vector_artifact_with_evidence(
+        &data,
+        &mut runtime,
+        0,
+        hnsw(canonical.clone()).into(),
+        None,
+        Some(receipt()),
+        Some(wrong),
+        "operator:catalog-test",
+        99,
+    );
+    assert!(rejected.unwrap_err().to_string().contains("named source"));
+    assert_eq!(
+        data.engine().runtime().read_stamp(&scope()).unwrap(),
+        before
+    );
+    assert_eq!(runtime.catalog().revision, 0);
+    assert!(stored_files(object_dir.path()).is_empty());
+
+    let published = publish_traced_vector_artifact_with_evidence(
+        &data,
+        &mut runtime,
+        0,
+        hnsw(canonical.clone()).into(),
+        None,
+        Some(receipt()),
+        Some(source.clone()),
+        "operator:catalog-test",
+        100,
+    )
+    .unwrap();
+    assert_eq!(published.entry.source(), Some(&source));
+    let manifest = reopen_vector_runtime_metadata(&data, &scope(), canonical).unwrap();
+    assert_eq!(
+        manifest.bindings.values().next().unwrap().source.as_ref(),
+        Some(&source)
+    );
+    let digest = rrd_vector::vector_source_digest(&source).unwrap();
+    let changes = data
+        .engine()
+        .runtime()
+        .changes_since(0, usize::MAX, Some(&scope()))
+        .unwrap();
+    assert!(
+        changes.changes.iter().any(|change| match &change.mutation {
+            RuntimeMutation::Event { event } if event.kind.as_str() == "runtime_trace" => {
+                let Some(RuntimeValue::List(links)) = event.properties.get("links") else {
+                    return false;
+                };
+                links.iter().any(|link| {
+                    matches!(link, RuntimeValue::Map(fields)
+                if fields.get("kind") == Some(&RuntimeValue::String("source".into()))
+                && fields.get("source_kind") == Some(&RuntimeValue::String("named_vector".into()))
+                && fields.get("source_id") == Some(&RuntimeValue::String(digest.clone()))
+                && fields.get("source_revision") == Some(&RuntimeValue::String("cursor:3".into())))
+                })
+            }
+            _ => false,
+        }),
+        "the publication trace must identify the bound source and cursor"
+    );
 }
 
 #[test]

@@ -615,7 +615,7 @@ fn alpha_storage_closure_has_one_required_physical_dependency_and_current_reader
     assert!(segment.contains("pub const SEGMENT_FORMAT_VERSION: u16 = 6;"));
     assert!(segment.contains("pub const SEGMENT_MAGIC: &[u8; 8] = b\"RRDSEG06\";"));
     assert!(segment.contains("pub const INDEX_MAGIC: &[u8; 8] = b\"RRDIX006\";"));
-    assert!(vector_catalog.contains("pub const VECTOR_ARTIFACT_CATALOG_VERSION: u16 = 2;"));
+    assert!(vector_catalog.contains("pub const VECTOR_ARTIFACT_CATALOG_VERSION: u16 = 3;"));
     for (name, source) in [
         ("batch", batch.as_str()),
         ("manifest", manifest.as_str()),

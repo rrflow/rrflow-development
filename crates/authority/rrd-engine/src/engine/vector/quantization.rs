@@ -371,7 +371,7 @@ impl RrdEngine {
                     crate::QuantizationOperationRecorded::Conflict => {
                         Err(ServiceError::IdempotencyConflict)
                     }
-                }
+                };
             }
         };
         Ok(BuildVectorQuantizationArtifactResult {
@@ -418,6 +418,10 @@ impl RrdEngine {
             kind: entry.kind,
             descriptor: entry.descriptor.clone(),
             object: entry.object.clone(),
+            source: Some(rrd_core::VectorCollectionAddress {
+                collection_id: entry.collection_id.to_string(),
+                vector_name: entry.vector_name.to_string(),
+            }),
         };
         let decoded = match binding.decode_mapped(&self.objects) {
             Ok(Some(artifact)) => Ok(artifact),
@@ -711,7 +715,7 @@ fn internal_quantization_method(
         VectorQuantizationMethod::TurboQuant { .. } => {
             return Err(ServiceError::Vector(
                 "TurboQuant does not use the scalar/product/binary codec".into(),
-            ))
+            ));
         }
     })
 }
@@ -785,7 +789,7 @@ fn public_quantization_artifact(
         _ => {
             return Err(ServiceError::Vector(
                 "quantization lifecycle entry has a non-quantized descriptor".into(),
-            ))
+            ));
         }
     };
     let as_u64 = |value: usize, label: &str| {

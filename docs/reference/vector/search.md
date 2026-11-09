@@ -83,11 +83,19 @@ Artifact descriptors and object references are persisted through engine-owned
 runtime state, and restart tests prove verified HNSW and active-quantization
 reopen plus retirement-overlay behavior. Compact exact and quantized codecs
 support mapped reads; the current exact JSON segment and HNSW JSON artifact do
-not. The generic vector artifact catalogue accepts only exact/compact/HNSW
-contract-v2 entries and computes one identity digest that includes optional
-HNSW build evidence. Quantized and TurboQuant artifacts use their separate
+not. The generic vector artifact catalogue writes contract-v3 entries and reads
+v2 entries through the same identity calculation. A v3 named HNSW generation
+binds its structured collection and vector address to its operation receipt;
+that binding is checked against the graph and retained across reopen. An older
+v2 generation has no authenticated source and cannot serve a named approximate
+search; it remains readable and can be replaced by a newly built generation.
+Rebuilding does not remove the old generation. An unbound v2 name can still
+conservatively block collection or payload-index deletion, and an authorized
+HNSW retirement operation is not yet exposed
+([POAM-053](../../poam/rrflow-1.0-alpha/poam-053.md)).
+Quantized and TurboQuant artifacts use their separate
 build/activate/retire lifecycle and join only the shared process-local planner.
-Pre-1.0 or generic-quantized catalogue entries fail before artifact decoding
+Unsupported-version or generic-quantized catalogue entries fail before artifact decoding
 or engine replay.
 
 Consequently, a successful HNSW query today is a real approximate traversal
