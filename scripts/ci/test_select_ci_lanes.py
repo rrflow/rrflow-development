@@ -82,7 +82,14 @@ class LaneSelectionTests(unittest.TestCase):
         for path in (".gitignore", ".gitattributes",
                      "crates/authority/rrd-engine/src/engine/transaction.rs",
                      "crates/authority/rrd-engine/src/engine/query_transaction.rs",
-                     "crates/authority/rrd-engine/src/engine/session_transactions.rs"):
+                     "crates/authority/rrd-engine/src/engine/session_transactions.rs",
+                     "crates/authority/rrd-engine/src/engine/endpoint_configuration.rs",
+                     "crates/authority/rrd-engine/src/engine/estate_control.rs",
+                     "crates/authority/rrd-engine/src/engine/attunement.rs",
+                     "crates/authority/rrd-engine/src/engine/function/execution.rs",
+                     "crates/authority/rrd-engine/src/engine/observation_delivery/persistence.rs",
+                     "crates/authority/rrd-engine/src/engine/reasoning_budget/persistence.rs",
+                     "crates/authority/rrd-engine/src/engine/tests/recovery.rs"):
             with self.subTest(path=path):
                 self.assertEqual(self.lanes(path)[0], {"full"})
 
