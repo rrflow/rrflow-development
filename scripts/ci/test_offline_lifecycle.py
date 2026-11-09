@@ -384,7 +384,7 @@ class OfflineLifecyclePolicyTests(unittest.TestCase):
             "installed_plan_accepts_selected_attunement_and_rejects_tampering",
             "fresh_installed_engine_survives_restart_and_restore",
             "installed_engine_plans_applies_serves_discovers_authenticates_and_reopens",
-            "a_served_estate_is_found_proved_and_not_served_twice",
+            "a_served_engram_is_found_proved_and_not_served_twice",
             "installed_source_read_choice_is_explicit_and_reopens",
         }
         runner.require_lifecycle_tests("\n".join(f"{case}: test" for case in sorted(cases)))

@@ -49,7 +49,7 @@ execution recomputes and compares it before reading artifact bytes.
 
 The current dense HNSW implementation has deterministic construction,
 filter-aware layer-zero admission, immutable generations, scalar and
-runtime-dispatched AVX2 scoring, and final exact reranking. New vector or
+runtime-dispatched AVX2 or NEON scoring, and final exact reranking. New vector or
 retirement versions after an HNSW generation are searched as an exact overlay
 until a new immutable generation incorporates them. Sparse and multi-dense
 queries remain exact-only.

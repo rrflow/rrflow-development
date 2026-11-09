@@ -272,7 +272,7 @@ fn install(action: &InstallAction, json: bool) -> Result<Execution, BoxError> {
                 profile,
                 configuration.as_deref(),
                 rrd_engine::InstallationPlanningOptions {
-                    attunement_proposal: proposal.as_ref(),
+                    attunement_proposal: proposal,
                     allow_project_source_read: *allow_project_source_read,
                 },
                 &executable,
