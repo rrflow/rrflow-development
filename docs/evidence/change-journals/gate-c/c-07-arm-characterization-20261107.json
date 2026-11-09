@@ -1,0 +1,82 @@
+{
+  "format_version": 1,
+  "purpose": "characterization",
+  "results": {
+    "1k": {
+      "candidate_commit": "40870e5c5f8f79dfebc7126bf721458ccf789634",
+      "candidate_tree": "fd041325a1861ad3c7180541c0e563a02ab6b31c",
+      "binary_sha256": "b885d2071f99c590a27921c88c710df301729fa5a3617b5ef3da90a5f5b8eabc",
+      "campaign_sha256": "9c0637c27c910d86ae5f37dd558737d432a59bd153b14571a5e7aadc6c6333ea",
+      "status": "completed",
+      "qualification_passed": false,
+      "cgroup_bytes": 2147483648,
+      "vcpus": 4,
+      "host_bytes": 130592624640,
+      "corpus": {
+        "records": 1000,
+        "edges": 5000,
+        "vectors": 1000,
+        "vector_dimensions": 384,
+        "verified_records": 1000,
+        "started_ns": 963456906,
+        "finished_ns": 20514462613
+      },
+      "reopened_verified": 1000,
+      "forced_reopens": 2,
+      "measured": {
+        "attempts": 20,
+        "failures": 0,
+        "unresolved": 0,
+        "maximum_scheduled_latency_ns": 29216438,
+        "maximum_resident_bytes": 157642752
+      },
+      "launcher_elapsed_ms": 127751,
+      "cleanup_confirmed": true,
+      "file_sha256": {
+        "campaign.json": "3548f333df87ae3e401a87e9bfbb75398b2683ab6a07441e8eeec81ba1d458b1",
+        "configuration.toml": "fed73738ac4df13564f0cfc4c3f9b753b367aa9bd733823f157a4bb74951669f",
+        "evidence/launch.json": "c5f9187ac73319c87f280d6c9c41ad75e947854f1bfc7beb51d1bc8b588be85d",
+        "evidence/result.json": "7eb98f4ab9110a0546d59f6e02fcc6e7de07cd7c800b03565c098bd7fbbea904",
+        "evidence/progress.jsonl": "155161e9c6fc6a23718ec11e59e20a651b544e74f058a082becdf812e83f7453"
+      }
+    },
+    "10k": {
+      "candidate_commit": "40870e5c5f8f79dfebc7126bf721458ccf789634",
+      "candidate_tree": "fd041325a1861ad3c7180541c0e563a02ab6b31c",
+      "binary_sha256": "b885d2071f99c590a27921c88c710df301729fa5a3617b5ef3da90a5f5b8eabc",
+      "campaign_sha256": "5e9799af4430c2ac6c68ba15af0661a66528f3bc2421d6e485ec3028504191bd",
+      "status": "completed",
+      "qualification_passed": false,
+      "cgroup_bytes": 2147483648,
+      "vcpus": 4,
+      "host_bytes": 130592624640,
+      "corpus": {
+        "records": 10000,
+        "edges": 50000,
+        "vectors": 10000,
+        "vector_dimensions": 384,
+        "verified_records": 10000,
+        "started_ns": 945693878,
+        "finished_ns": 240355633529
+      },
+      "reopened_verified": 10000,
+      "forced_reopens": 2,
+      "measured": {
+        "attempts": 20,
+        "failures": 0,
+        "unresolved": 0,
+        "maximum_scheduled_latency_ns": 31981059,
+        "maximum_resident_bytes": 334299136
+      },
+      "launcher_elapsed_ms": 529491,
+      "cleanup_confirmed": true,
+      "file_sha256": {
+        "campaign.json": "f1e370389622def7baf620b54281deb45580c32ef572f3b40e873df0e5241a2e",
+        "configuration.toml": "fed73738ac4df13564f0cfc4c3f9b753b367aa9bd733823f157a4bb74951669f",
+        "evidence/launch.json": "5ae7d5ed3c8d96e22997380a52669c92446b25c621e60d1ca44b5462388093eb",
+        "evidence/result.json": "4fc86a3222cd35756121d702ad508b6d367955d65ca5e4fdc92729fb86d18af6",
+        "evidence/progress.jsonl": "689a0fcbc2395d5baec17cc58d6bc03777c0e13816d328154a9582b84dccc954"
+      }
+    }
+  }
+}

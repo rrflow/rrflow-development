@@ -49,6 +49,7 @@ macro_rules! http_dispatch_catalogue {
 http_dispatch_catalogue! {
     AttunementCancel => ("attunement-cancel", RrdOperation::EstateAdmin),
     AttunementRead => ("attunement-read", RrdOperation::EstateRead),
+    AttunementJobList => ("attunement-job-list", RrdOperation::EstateRead),
     AttunementReceiptRead => ("attunement-receipt-read", RrdOperation::EstateRead),
     AttunementStart => ("attunement-start", RrdOperation::EstateAdmin),
     AttunementStep => ("attunement-step", RrdOperation::EstateAdmin),
@@ -98,8 +99,12 @@ http_dispatch_catalogue! {
     TaskBudgetConfigure => ("task-budget-configure", RrdOperation::ReasoningWrite),
     TaskBudgetRead => ("task-budget-read", RrdOperation::ReasoningRead),
     TaskBudgetStop => ("task-budget-stop", RrdOperation::ReasoningWrite),
+    TaskBudgetResume => ("task-budget-resume", RrdOperation::ReasoningWrite),
     TaskEmbeddingExecute => ("task-embedding-execute", RrdOperation::ReasoningWrite),
     TaskEndpointPropose => ("task-endpoint-propose", RrdOperation::EndpointPropose),
+    TaskWorkerExecute => ("task-worker-execute", RrdOperation::WorkerExecute),
+    TaskAssessmentExecute => ("task-assessment-execute", RrdOperation::EndpointPropose),
+    TaskAssessmentRead => ("task-assessment-read", RrdOperation::ReasoningRead),
     ObservationPrepare => ("observation-prepare", RrdOperation::ObservationPrepare),
     ObservationDeliver => ("observation-deliver", RrdOperation::ObservationDeliver),
     ObservationRead => ("observation-read", RrdOperation::ObservationRead),
@@ -117,6 +122,18 @@ http_dispatch_catalogue! {
         RrdOperation::VectorCollectionEnsure
     ),
     VectorCollectionList => ("vector-collection-list", RrdOperation::VectorCollectionList),
+    VectorIndexEnsure => (
+        "vector-index-ensure",
+        RrdOperation::VectorCollectionEnsure
+    ),
+    VectorPayloadIndexDelete => (
+        "vector-payload-index-delete",
+        RrdOperation::VectorPayloadIndexDelete
+    ),
+    VectorPayloadIndexEnsure => (
+        "vector-payload-index-ensure",
+        RrdOperation::VectorPayloadIndexEnsure
+    ),
     VectorPointRetrieve => ("vector-point-retrieve", RrdOperation::VectorPointRetrieve),
     VectorPointScroll => ("vector-point-scroll", RrdOperation::VectorPointScroll),
     VectorQuantizationActivate => (
@@ -257,6 +274,9 @@ impl AppState {
                 self.replace_knowledge_trees(&headers, &body, now)
             }
             Some(HttpDispatch::AttunementRead) => self.read_attunement(&headers, &body, now),
+            Some(HttpDispatch::AttunementJobList) => {
+                self.list_attunement_jobs(&headers, &body, now)
+            }
             Some(HttpDispatch::AttunementReceiptRead) => {
                 self.read_attunement_receipt(&headers, &body, now)
             }
@@ -336,11 +356,19 @@ impl AppState {
             }
             Some(HttpDispatch::TaskBudgetRead) => self.read_task_budget(&headers, &body, now),
             Some(HttpDispatch::TaskBudgetStop) => self.stop_task_budget(&headers, &body, now),
+            Some(HttpDispatch::TaskBudgetResume) => self.resume_task_budget(&headers, &body, now),
             Some(HttpDispatch::TaskEmbeddingExecute) => {
                 self.execute_task_embedding(&headers, &body, now)
             }
             Some(HttpDispatch::TaskEndpointPropose) => {
                 self.propose_task_endpoint(&headers, &body, now)
+            }
+            Some(HttpDispatch::TaskWorkerExecute) => self.execute_task_worker(&headers, &body, now),
+            Some(HttpDispatch::TaskAssessmentExecute) => {
+                self.execute_task_assessment(&headers, &body, now)
+            }
+            Some(HttpDispatch::TaskAssessmentRead) => {
+                self.read_task_assessment(&headers, &body, now)
             }
             Some(HttpDispatch::TaskAttemptRead) => self.read_task_attempt(&headers, &body, now),
             Some(HttpDispatch::TaskClose) => self.close_task(&headers, &body, now),
@@ -357,6 +385,13 @@ impl AppState {
             }
             Some(HttpDispatch::VectorPointRetrieve) => {
                 self.retrieve_vector_points(&headers, &body, now)
+            }
+            Some(HttpDispatch::VectorIndexEnsure) => self.ensure_vector_index(&headers, &body, now),
+            Some(HttpDispatch::VectorPayloadIndexEnsure) => {
+                self.ensure_vector_payload_index(&headers, &body, now)
+            }
+            Some(HttpDispatch::VectorPayloadIndexDelete) => {
+                self.delete_vector_payload_index(&headers, &body, now)
             }
             Some(HttpDispatch::VectorQuantizationBuild) => {
                 self.build_vector_quantization(&headers, &body, now)

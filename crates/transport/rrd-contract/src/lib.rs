@@ -13,9 +13,20 @@ mod storage_cursor;
 pub use storage_cursor::{InspectStorageCursor, StorageCursorAction, StorageCursorSnapshot};
 mod endpoint_binding;
 mod endpoint_configuration;
+mod endpoint_generation;
+mod endpoint_worker;
+pub use endpoint_generation::{
+    EndpointGenerationSettings, EndpointResponseFormat, EndpointTokenParameter,
+};
+pub use endpoint_worker::{
+    EndpointWorkerAdapter, EndpointWorkerBinding, EndpointWorkerPolicy, TaskWorkerContext,
+    TaskWorkerOutput, TaskWorkerRequest, TaskWorkerSourceProvenance, TaskWorkerSourceRequest,
+    ENDPOINT_WORKER_VERSION, TASK_WORKER_SOURCE_VERSION,
+};
 mod endpoint_policy;
 mod endpoint_proposal;
 mod endpoint_selection;
+mod task_assessment;
 pub use endpoint_policy::EndpointSelectionPolicy;
 pub use endpoint_proposal::*;
 pub use endpoint_selection::{
@@ -23,6 +34,7 @@ pub use endpoint_selection::{
     EndpointSelectionCandidate, EndpointSelectionChoice, EndpointSelectionLimits,
     ENDPOINT_SELECTION_VERSION,
 };
+pub use task_assessment::*;
 mod observation_source;
 pub use observation_source::*;
 mod observation_delivery;
@@ -35,6 +47,7 @@ mod inference;
 mod knowledge;
 mod knowledge_tree;
 mod memory_context;
+mod memory_engram;
 mod memory_estate;
 mod model_manifest;
 mod operation_reference;
@@ -53,26 +66,27 @@ mod websocket;
 pub use attunement::{
     attunement_checkpoint_sha256, attunement_plan_sha256, attunement_replan_accept_sha256,
     attunement_replan_preview_sha256, attunement_replan_seed, attunement_verification_sha256,
-    installation_plan_sha256, installation_result_sha256, AcceptAttunementReplan,
-    AttunementCancelResult, AttunementControlResponse, AttunementFailure, AttunementJob,
-    AttunementJobState, AttunementLease, AttunementPhase, AttunementPhaseCheckpoint,
-    AttunementPhasePlan, AttunementPlan, AttunementReadResult, AttunementReceipt,
-    AttunementReceiptReadResult, AttunementReplanPreview, AttunementReplanReceiptReadResult,
-    AttunementReplanReceiptView, AttunementReplanResult, AttunementRuntimeCoordinates,
-    AttunementSourceVerification, AttunementStatus, AttunementVerification,
-    AttunementVerificationCheck, AttunementVerificationStatus, CancelAttunement,
-    InstallationActionDisposition, InstallationActionKind, InstallationActionResult,
-    InstallationBootstrap, InstallationBootstrapPolicy, InstallationManagedPath,
-    InstallationManagedPathKind, InstallationPlan, InstallationPlanAction, InstallationRecordKind,
-    InstallationRemovalRule, InstallationResult, InstallationSpecialization,
-    InstallationStorageGeneration, InstallationTargetKind, PauseAttunement,
-    PreviewAttunementReplan, ReadAttunement, ReadAttunementReceipt, RecoverExpiredAttunement,
-    ResumeAttunement, ResumeAttunementWithLease, StartAttunement, StepAttunement,
-    ATTUNEMENT_CONTRACT_VERSION, INSTALLATION_BOOTSTRAP_VERSION, INSTALLATION_LEASE_PATH,
-    INSTALLATION_LEASE_PRECONDITION, INSTALLATION_PLAN_CONTRACT_VERSION,
+    installation_initial_grants, installation_plan_sha256, installation_result_sha256,
+    AcceptAttunementReplan, AttunementCancelResult, AttunementControlResponse, AttunementFailure,
+    AttunementJob, AttunementJobPage, AttunementJobState, AttunementJobSummary, AttunementLease,
+    AttunementPhase, AttunementPhaseCheckpoint, AttunementPhasePlan, AttunementPlan,
+    AttunementReadResult, AttunementReceipt, AttunementReceiptReadResult, AttunementReplanPreview,
+    AttunementReplanReceiptReadResult, AttunementReplanReceiptView, AttunementReplanResult,
+    AttunementRuntimeCoordinates, AttunementSourceVerification, AttunementStatus,
+    AttunementVerification, AttunementVerificationCheck, AttunementVerificationStatus,
+    CancelAttunement, InstallationActionDisposition, InstallationActionKind,
+    InstallationActionResult, InstallationBootstrap, InstallationBootstrapPolicy,
+    InstallationManagedPath, InstallationManagedPathKind, InstallationPlan, InstallationPlanAction,
+    InstallationRecordKind, InstallationRemovalRule, InstallationResult,
+    InstallationSpecialization, InstallationStorageGeneration, InstallationTargetKind,
+    ListAttunementJobs, PauseAttunement, PreviewAttunementReplan, ReadAttunement,
+    ReadAttunementReceipt, RecoverExpiredAttunement, ResumeAttunement, ResumeAttunementWithLease,
+    StartAttunement, StepAttunement, ATTUNEMENT_CONTRACT_VERSION, INSTALLATION_BOOTSTRAP_VERSION,
+    INSTALLATION_LEASE_PATH, INSTALLATION_LEASE_PRECONDITION, INSTALLATION_PLAN_CONTRACT_VERSION,
     INSTALL_ATTUNEMENT_CONTRACT_VERSION, MAX_ATTUNEMENT_CANCEL_REASON_BYTES,
-    MAX_ATTUNEMENT_FAILURE_BYTES, MAX_ATTUNEMENT_PHASES, MAX_ATTUNEMENT_VERIFICATION_CHECKS,
-    MAX_BOOTSTRAP_RECORD_BYTES, MAX_BOOTSTRAP_TEXT_BYTES, MAX_INSTALLATION_ACTIONS,
+    MAX_ATTUNEMENT_FAILURE_BYTES, MAX_ATTUNEMENT_JOB_PAGE, MAX_ATTUNEMENT_JOB_PAGE_BYTES,
+    MAX_ATTUNEMENT_PHASES, MAX_ATTUNEMENT_VERIFICATION_CHECKS, MAX_BOOTSTRAP_RECORD_BYTES,
+    MAX_BOOTSTRAP_TEXT_BYTES, MAX_INSTALLATION_ACTIONS,
 };
 pub use capability_surface::{
     ProductCapability, ProductCapabilityCatalogue, ProductSurface, SurfaceBinding,
@@ -171,6 +185,7 @@ pub use memory_context::{
     ContextPlanStageStatus, ContextReadStamp, MAX_CONTEXT_GRAPH_DEPTH, MAX_CONTEXT_ITEMS,
     MAX_CONTEXT_OUTPUT_BYTES, MAX_CONTEXT_QUERY_BYTES, MAX_CONTEXT_SEEDS, MAX_CONTEXT_STORAGE_KEYS,
 };
+pub use memory_engram::{MemoryengramPlan, PersistMemoryengram};
 pub use memory_estate::{
     MemoryEstatePlan, MemorySeatDefinition, MemoryWarp, PersistMemoryEstate,
     ProviderRepresentation, ProviderRepresentationDefinition, ResolveMemoryWarp,
@@ -262,7 +277,7 @@ use std::fmt;
 pub const PROTOCOL: &str = "rrd";
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const OPENAPI_DOCUMENT_SHA256: &str =
-    "fefbaa7fb31b733a731b48f884fb3adaddc4942aed2882c31a6efc1d8b65af69";
+    "355e5482791fc6a9705b6c1bc9ba7303d1549b69b7dfbe8819c029bb7074c507";
 pub const MAX_ID_BYTES: usize = 128;
 pub const MAX_MESSAGE_BYTES: usize = 4_096;
 pub const MAX_CAPABILITIES: usize = 512;
@@ -583,6 +598,7 @@ pub struct QueryResult {
     pub scope: String,
     pub read_manifest_sha256: String,
     pub known_at_cursor: u64,
+    pub result_identity_version: u16,
     pub schema_revision: u64,
     pub plan: QueryPlanSnapshot,
     pub execution: QueryExecutionSnapshot,
@@ -597,6 +613,9 @@ pub struct PollLiveQuery {
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub parameters: BTreeMap<String, QueryValue>,
     pub after_cursor: u64,
+    /// Identity version of the caller's retained snapshot; required on resume.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub result_identity_version: Option<u16>,
     #[serde(default)]
     pub budget: QueryBudget,
     pub max_delta_rows: u64,
@@ -613,6 +632,9 @@ impl PollLiveQuery {
             budget: self.budget.clone(),
         }
         .validate()?;
+        if self.result_identity_version == Some(0) {
+            return invalid("live query result identity version must be nonzero");
+        }
         if self.max_delta_rows == 0 || self.max_delta_rows > MAX_LIVE_QUERY_DELTA_ROWS {
             return invalid(format!(
                 "live query max_delta_rows must be in 1..={MAX_LIVE_QUERY_DELTA_ROWS}"
@@ -640,6 +662,7 @@ pub struct LiveQueryDeltaResult {
     pub timed_out: bool,
     pub waited_ms: u64,
     pub query_sha256: String,
+    pub result_identity_version: u16,
     pub from_cursor: u64,
     pub through_cursor: u64,
     pub head_cursor: u64,
@@ -826,6 +849,12 @@ pub struct QueryIndexSnapshot {
     pub source_cursor: u64,
     pub built_valid_at: Option<u64>,
     pub artifact_rows: Option<u64>,
+    /// Identity encoding of the derived rows, absent for older artifacts.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub result_identity_version: Option<u16>,
+    /// The stored index is not eligible until rebuilt with current identities.
+    #[serde(default)]
+    pub identity_rebuild_required: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub analytics_total_count: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -2777,6 +2806,9 @@ pub enum SubscriptionStream {
         #[serde(default)]
         budget: QueryBudget,
         max_delta_rows: u64,
+        /// Version of an existing caller snapshot when opening from a cursor.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        result_identity_version: Option<u16>,
     },
 }
 
@@ -2795,11 +2827,13 @@ impl SubscriptionStream {
                 parameters,
                 budget,
                 max_delta_rows,
+                result_identity_version,
             } => PollLiveQuery {
                 scope: scope.clone(),
                 query: query.clone(),
                 parameters: parameters.clone(),
                 after_cursor,
+                result_identity_version: *result_identity_version,
                 budget: budget.clone(),
                 max_delta_rows: *max_delta_rows,
                 wait_timeout_ms: 0,
@@ -2871,6 +2905,8 @@ pub struct SubscriptionSnapshot {
     pub subscription_id: CorrelationId,
     pub stream_sha256: String,
     pub acknowledged_cursor: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub result_identity_version: Option<u16>,
     pub retention_floor_cursor: u64,
     pub head_cursor: u64,
     pub batch_size: u64,
@@ -2937,9 +2973,9 @@ pub struct InstanceBackupSnapshot {
     pub claims: BackupCoverageSnapshot,
     pub typed_runtime: BackupCoverageSnapshot,
     pub catalogues: BackupCoverageSnapshot,
-    /// The estate's control state outside the catalogues: installed record
+    /// The engram's control state outside the catalogues: installed record
     /// and checkpoint, active configuration, security policy and audit chain,
-    /// attunement plan and job state, and estate documents. `included` means
+    /// attunement plan and job state, and engram documents. `included` means
     /// the backup carries them as a replayable control-journal archive; the
     /// token key and operator credential are never carried.
     pub installed_control: BackupCoverageSnapshot,
@@ -3089,6 +3125,8 @@ pub enum SecurityAction {
     ReasoningRead,
     ReasoningWrite,
     EndpointPropose,
+    WorkerExecute,
+    ProjectSourceRead,
     ObservationPrepare,
     ObservationDeliver,
     ObservationRead,
@@ -3099,7 +3137,7 @@ pub enum SecurityAction {
 impl SecurityAction {
     /// Canonical policy-action catalogue. Installation profiles and other
     /// projections consume this list instead of maintaining parallel copies.
-    pub const ALL: [Self; 57] = [
+    pub const ALL: [Self; 59] = [
         Self::ServiceInspect,
         Self::UnknownRequest,
         Self::SessionCreate,
@@ -3152,6 +3190,8 @@ impl SecurityAction {
         Self::ReasoningRead,
         Self::ReasoningWrite,
         Self::EndpointPropose,
+        Self::WorkerExecute,
+        Self::ProjectSourceRead,
         Self::ObservationPrepare,
         Self::ObservationDeliver,
         Self::ObservationRead,
@@ -3822,6 +3862,16 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             "AttunementReadResult",
         ),
         endpoint(
+            "attunement-job-list",
+            HttpMethod::Post,
+            "/v1/attunement/jobs/list",
+            EndpointAuthentication::SessionBearer,
+            false,
+            SecurityAction::EstateRead,
+            "ListAttunementJobs",
+            "AttunementJobPage",
+        ),
+        endpoint(
             "flight-launch",
             HttpMethod::Post,
             "/v1/flights",
@@ -4102,6 +4152,16 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             "TaskBudgetView",
         ),
         endpoint(
+            "task-budget-resume",
+            HttpMethod::Post,
+            "/v1/tasks/budget/resume",
+            EndpointAuthentication::SessionBearer,
+            true,
+            SecurityAction::ReasoningWrite,
+            "ResumeTaskBudget",
+            "TaskBudgetView",
+        ),
+        endpoint(
             "task-budget-stop",
             HttpMethod::Post,
             "/v1/tasks/budget/stop",
@@ -4110,6 +4170,26 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             SecurityAction::ReasoningWrite,
             "StopTaskBudget",
             "TaskBudgetView",
+        ),
+        endpoint(
+            "task-assessment-execute",
+            HttpMethod::Post,
+            "/v1/tasks/assessment/execute",
+            EndpointAuthentication::SessionBearer,
+            true,
+            SecurityAction::EndpointPropose,
+            "TaskAssessmentRequest",
+            "TaskAssessmentOutput",
+        ),
+        endpoint(
+            "task-assessment-read",
+            HttpMethod::Post,
+            "/v1/tasks/assessment/read",
+            EndpointAuthentication::SessionBearer,
+            false,
+            SecurityAction::ReasoningRead,
+            "ReadTaskAssessment",
+            "TaskAssessmentView",
         ),
         endpoint(
             "task-embedding-execute",
@@ -4170,6 +4250,16 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             SecurityAction::EndpointPropose,
             "EndpointSelectionRequest",
             "EndpointSelectionProposal",
+        ),
+        endpoint(
+            "task-worker-execute",
+            HttpMethod::Post,
+            "/v1/tasks/worker/execute",
+            EndpointAuthentication::SessionBearer,
+            true,
+            SecurityAction::WorkerExecute,
+            "TaskWorkerRequest",
+            "TaskWorkerOutput",
         ),
         endpoint(
             "task-close",
@@ -4270,6 +4360,36 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             SecurityAction::VectorCollectionList,
             "ListVectorCollections",
             "VectorCollectionCatalogueSnapshot",
+        ),
+        endpoint(
+            "vector-index-ensure",
+            HttpMethod::Post,
+            "/v1/vector/indexes/ensure",
+            EndpointAuthentication::SessionBearer,
+            true,
+            SecurityAction::VectorCollectionEnsure,
+            "EnsureVectorIndex",
+            "EnsureVectorIndexResult",
+        ),
+        endpoint(
+            "vector-payload-index-delete",
+            HttpMethod::Post,
+            "/v1/vector/payload-indexes/delete",
+            EndpointAuthentication::SessionBearer,
+            true,
+            SecurityAction::VectorPayloadIndexDelete,
+            "DeleteVectorPayloadIndex",
+            "DeleteVectorPayloadIndexResult",
+        ),
+        endpoint(
+            "vector-payload-index-ensure",
+            HttpMethod::Post,
+            "/v1/vector/payload-indexes/ensure",
+            EndpointAuthentication::SessionBearer,
+            true,
+            SecurityAction::VectorPayloadIndexEnsure,
+            "EnsureVectorPayloadIndex",
+            "EnsureVectorPayloadIndexResult",
         ),
         endpoint(
             "vector-point-retrieve",
@@ -4626,7 +4746,7 @@ fn openapi_vector_payload_filter_schema() -> Result<serde_json::Value> {
 
 fn openapi_parameters(descriptor: &EndpointDescriptor) -> Vec<serde_json::Value> {
     let mut parameters = Vec::new();
-    for name in ["estate", "session", "transaction"] {
+    for name in ["engram", "session", "transaction"] {
         if descriptor.path.contains(&format!("{{{name}}}")) {
             parameters.push(serde_json::json!({
                 "name": name,
@@ -4668,14 +4788,18 @@ fn request_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "ConfigureTaskBudget" => schema_json::<RequestEnvelope<ConfigureTaskBudget>>(),
         "ExecuteTaskEmbedding" => schema_json::<RequestEnvelope<ExecuteTaskEmbedding>>(),
         "EndpointSelectionRequest" => schema_json::<RequestEnvelope<EndpointSelectionRequest>>(),
+        "TaskWorkerRequest" => schema_json::<RequestEnvelope<TaskWorkerRequest>>(),
+        "TaskAssessmentRequest" => schema_json::<RequestEnvelope<TaskAssessmentRequest>>(),
         "PrepareObservationDelivery" => {
             schema_json::<RequestEnvelope<PrepareObservationDelivery>>()
         }
         "DeliverObservation" => schema_json::<RequestEnvelope<DeliverObservation>>(),
         "ReadObservationDelivery" => schema_json::<RequestEnvelope<ReadObservationDelivery>>(),
+        "ReadTaskAssessment" => schema_json::<RequestEnvelope<ReadTaskAssessment>>(),
         "ReadTaskAttempt" => schema_json::<RequestEnvelope<ReadTaskAttempt>>(),
         "ReadTaskBudget" => schema_json::<RequestEnvelope<ReadTaskBudget>>(),
         "StopTaskBudget" => schema_json::<RequestEnvelope<StopTaskBudget>>(),
+        "ResumeTaskBudget" => schema_json::<RequestEnvelope<ResumeTaskBudget>>(),
         "AbortTransaction" => schema_json::<RequestEnvelope<AbortTransaction>>(),
         "AssembleContext" => schema_json::<RequestEnvelope<AssembleContext>>(),
         "BeginTransaction" => schema_json::<RequestEnvelope<BeginTransaction>>(),
@@ -4718,6 +4842,7 @@ fn request_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "ListTasks" => schema_json::<RequestEnvelope<ListTasks>>(),
         "ReadTask" => schema_json::<RequestEnvelope<ReadTask>>(),
         "ReadAttunement" => schema_json::<RequestEnvelope<ReadAttunement>>(),
+        "ListAttunementJobs" => schema_json::<RequestEnvelope<ListAttunementJobs>>(),
         "StartAttunement" => schema_json::<RequestEnvelope<StartAttunement>>(),
         "StepAttunement" => schema_json::<RequestEnvelope<StepAttunement>>(),
         "PauseAttunement" => schema_json::<RequestEnvelope<PauseAttunement>>(),
@@ -4733,6 +4858,9 @@ fn request_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "RetrieveVectorPoints" => schema_json::<RequestEnvelope<RetrieveVectorPoints>>(),
         "ScrollVectorPoints" => schema_json::<RequestEnvelope<ScrollVectorPoints>>(),
         "SearchVectors" => schema_json::<RequestEnvelope<SearchVectors>>(),
+        "EnsureVectorIndex" => schema_json::<RequestEnvelope<EnsureVectorIndex>>(),
+        "EnsureVectorPayloadIndex" => schema_json::<RequestEnvelope<EnsureVectorPayloadIndex>>(),
+        "DeleteVectorPayloadIndex" => schema_json::<RequestEnvelope<DeleteVectorPayloadIndex>>(),
         "BuildVectorQuantizationArtifact" => {
             schema_json::<RequestEnvelope<BuildVectorQuantizationArtifact>>()
         }
@@ -4756,7 +4884,10 @@ fn response_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "EmbeddingModelCatalogue" => schema_json::<ResponseEnvelope<EmbeddingModelCatalogue>>(),
         "GenerateEmbeddingsResult" => schema_json::<ResponseEnvelope<GenerateEmbeddingsResult>>(),
         "TaskAttemptView" => schema_json::<ResponseEnvelope<TaskAttemptView>>(),
+        "TaskAssessmentView" => schema_json::<ResponseEnvelope<TaskAssessmentView>>(),
+        "TaskAssessmentOutput" => schema_json::<ResponseEnvelope<TaskAssessmentOutput>>(),
         "EndpointSelectionProposal" => schema_json::<ResponseEnvelope<EndpointSelectionProposal>>(),
+        "TaskWorkerOutput" => schema_json::<ResponseEnvelope<TaskWorkerOutput>>(),
         "TaskBudgetView" => schema_json::<ResponseEnvelope<TaskBudgetView>>(),
         "AuditExport" => schema_json::<ResponseEnvelope<AuditExport>>(),
         "AuditPage" => schema_json::<ResponseEnvelope<AuditPage>>(),
@@ -4785,6 +4916,7 @@ fn response_envelope_schema(name: &str) -> Result<serde_json::Value> {
             schema_json::<ResponseEnvelope<ObservationDeliveryReadResult>>()
         }
         "AttunementReadResult" => schema_json::<ResponseEnvelope<AttunementReadResult>>(),
+        "AttunementJobPage" => schema_json::<ResponseEnvelope<AttunementJobPage>>(),
         "AttunementControlResponse" => schema_json::<ResponseEnvelope<AttunementControlResponse>>(),
         "AttunementReplanPreview" => schema_json::<ResponseEnvelope<AttunementReplanPreview>>(),
         "AttunementReplanResult" => schema_json::<ResponseEnvelope<AttunementReplanResult>>(),
@@ -4834,6 +4966,13 @@ fn response_envelope_schema(name: &str) -> Result<serde_json::Value> {
             schema_json::<ResponseEnvelope<VectorCollectionCatalogueSnapshot>>()
         }
         "VectorSearchResult" => schema_json::<ResponseEnvelope<VectorSearchResult>>(),
+        "EnsureVectorIndexResult" => schema_json::<ResponseEnvelope<EnsureVectorIndexResult>>(),
+        "EnsureVectorPayloadIndexResult" => {
+            schema_json::<ResponseEnvelope<EnsureVectorPayloadIndexResult>>()
+        }
+        "DeleteVectorPayloadIndexResult" => {
+            schema_json::<ResponseEnvelope<DeleteVectorPayloadIndexResult>>()
+        }
         "BuildVectorQuantizationArtifactResult" => {
             schema_json::<ResponseEnvelope<BuildVectorQuantizationArtifactResult>>()
         }
@@ -5488,6 +5627,7 @@ impl<'de> Deserialize<'de> for CanonicalId {
 pub enum ResourceKind {
     Organization,
     Estate,
+    Engram,
     Project,
     Instance,
     Tenant,
@@ -5798,7 +5938,7 @@ impl ServiceCapabilities {
             installed.validate()?;
             if installed.instance_id != self.instance.id {
                 return invalid(
-                    "service capability instance differs from installed estate identity",
+                    "service capability instance differs from installed engram identity",
                 );
             }
         }
@@ -6205,8 +6345,8 @@ pub const MAX_DATA_TAGS_PER_KIND: usize = 64;
 pub const MAX_DATA_ORGANISATION_TITLE_BYTES: usize = 128;
 pub const MAX_DATA_ORGANISATION_DESCRIPTION_BYTES: usize = 1_024;
 
-/// One configurable part of an estate's catalogue, such as a service, package
-/// or subject area. The estate organisation contract owns its rules.
+/// One configurable part of an engram's catalogue, such as a service, package
+/// or subject area. The engram organisation contract owns its rules.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct DataDomainSchema {
@@ -6265,7 +6405,7 @@ pub struct DataTagReference {
     pub tag: CanonicalId,
 }
 
-/// Domains, categories and memberships of one estate catalogue. A kind or
+/// Domains, categories and memberships of one engram catalogue. A kind or
 /// collection without an entry belongs to `default`, or to `rrflow` when its
 /// identity starts with `rrflow-`.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -6307,6 +6447,10 @@ impl DataEstateOrganisation {
         )
     }
 }
+
+/// Internal engram terminology maps to the existing public organization type.
+/// There is one serialized and validated representation.
+pub type DataengramOrganisation = DataEstateOrganisation;
 
 fn default_data_domain(identity: &str) -> &'static str {
     if identity.starts_with(DATA_ENGINE_OWNED_PREFIX) {
@@ -6839,7 +6983,7 @@ fn validate_data_schema(registry: &DataSchemaRegistry) -> Result<()> {
     validate_data_organisation(registry)
 }
 
-/// Public-boundary checks of the estate organisation. `rrd-core` repeats them
+/// Public-boundary checks of the engram organisation. `rrd-core` repeats them
 /// as the authority at commit; an engine parity test keeps the two aligned.
 fn validate_data_organisation(registry: &DataSchemaRegistry) -> Result<()> {
     let organisation = &registry.organisation;
@@ -6848,7 +6992,7 @@ fn validate_data_organisation(registry: &DataSchemaRegistry) -> Result<()> {
         |id: &str| id == DATA_ENGINE_DOMAIN || id.starts_with(DATA_ENGINE_OWNED_PREFIX);
     if organisation.domains.len() + 2 > MAX_DATA_DOMAINS {
         return invalid(format!(
-            "an estate may declare at most {} domains besides default and rrflow",
+            "an engram may declare at most {} domains besides default and rrflow",
             MAX_DATA_DOMAINS - 2
         ));
     }
@@ -6938,7 +7082,7 @@ fn validate_data_organisation(registry: &DataSchemaRegistry) -> Result<()> {
     }
     if organisation.categories.len() > MAX_DATA_CATEGORIES {
         return invalid(format!(
-            "an estate may declare at most {MAX_DATA_CATEGORIES} categories"
+            "an engram may declare at most {MAX_DATA_CATEGORIES} categories"
         ));
     }
     for (id, category) in &organisation.categories {

@@ -14,7 +14,8 @@ use rrd_core::{
     ScopeId, VectorCollectionAddress, VectorValue, DATA_RUNTIME_CONTRACT_VERSION,
 };
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, BTreeSet};
+use std::cmp::Ordering;
+use std::collections::{BTreeMap, BTreeSet, BinaryHeap};
 use std::fs::File;
 use std::path::Path;
 use std::sync::{Arc, OnceLock};
@@ -24,6 +25,63 @@ const TURBOQUANT_SEGMENT_MAGIC: &[u8; 8] = b"RRDTQ001";
 const HEADER_PREFIX_BYTES: usize = 8 + 2 + 4 + 8 + 64;
 const MAX_TURBOQUANT_SEGMENT_BYTES: usize = 1 << 30;
 const MAX_TURBOQUANT_CANDIDATES: usize = 10_000_000;
+
+// The existing best-first comparison puts the worst retained hit at the top
+// of the max-heap. Only the requested candidate width is retained here; the
+// temporal visibility map and the scan still scale with the artifact size.
+struct RankedHit(SearchHit);
+
+impl PartialEq for RankedHit {
+    fn eq(&self, other: &Self) -> bool {
+        SearchHit::compare_best_first(&self.0, &other.0) == Ordering::Equal
+    }
+}
+impl Eq for RankedHit {}
+impl PartialOrd for RankedHit {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+impl Ord for RankedHit {
+    fn cmp(&self, other: &Self) -> Ordering {
+        SearchHit::compare_best_first(&self.0, &other.0)
+    }
+}
+
+struct CandidateHits {
+    limit: usize,
+    hits: BinaryHeap<RankedHit>,
+}
+
+impl CandidateHits {
+    fn new(limit: usize) -> Self {
+        Self {
+            limit,
+            hits: BinaryHeap::new(),
+        }
+    }
+
+    fn consider(&mut self, hit: SearchHit) {
+        if self.hits.len() < self.limit {
+            self.hits.push(RankedHit(hit));
+        } else if self
+            .hits
+            .peek()
+            .is_some_and(|worst| SearchHit::compare_best_first(&hit, &worst.0) == Ordering::Less)
+        {
+            *self
+                .hits
+                .peek_mut()
+                .expect("a full candidate heap is nonempty") = RankedHit(hit);
+        }
+    }
+
+    fn finish(self) -> Vec<SearchHit> {
+        let mut hits = self.hits.into_iter().map(|hit| hit.0).collect::<Vec<_>>();
+        hits.sort_by(SearchHit::compare_best_first);
+        hits
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -634,7 +692,7 @@ impl TurboQuantSegment {
                 self.projection()?,
             )?,
         };
-        let mut hits = Vec::new();
+        let mut hits = CandidateHits::new(candidate_limit);
         for index in latest.into_values() {
             let candidate = &self.candidates[index];
             if candidate
@@ -663,16 +721,14 @@ impl TurboQuantSegment {
                     kernel,
                 )?,
             };
-            hits.push(SearchHit {
+            hits.consider(SearchHit {
                 reference: candidate.reference.clone(),
                 subject: candidate.subject.clone(),
                 source_cursor: candidate.source_cursor,
                 score,
             });
         }
-        hits.sort_by(SearchHit::compare_best_first);
-        hits.truncate(candidate_limit);
-        Ok(hits)
+        Ok(hits.finish())
     }
 
     /// S for this inner-product generation, materialized once and kept.
@@ -804,7 +860,7 @@ mod tests {
 
     fn config(scope: &ScopeId) -> TurboQuantSegmentConfig {
         TurboQuantSegmentConfig {
-            id: ProjectionId::new("vector:turbo-body").unwrap(),
+            id: ProjectionId::new("vector-turbo-body").unwrap(),
             scope: scope.clone(),
             field: "body".into(),
             dimensions: 64,
@@ -855,6 +911,117 @@ mod tests {
         ids.iter()
             .map(|id| RuntimeRef::new("embedding", *id).unwrap())
             .collect()
+    }
+
+    #[test]
+    fn bounded_candidate_heap_matches_full_sort_for_ties_and_widths() {
+        let scores = [0.0, -0.0, 1.0, -3.0, 1.0, 0.5, 10.0];
+        let input = (0..211)
+            .rev()
+            .map(|i| SearchHit {
+                reference: RuntimeRef::new("embedding", format!("p{:03}", i % 73)).unwrap(),
+                subject: RuntimeRef::new("document", format!("p{i:03}")).unwrap(),
+                source_cursor: i as u64 + 1,
+                score: scores[i % scores.len()],
+            })
+            .collect::<Vec<_>>();
+        let mut expected = input.clone();
+        expected.sort_by(SearchHit::compare_best_first);
+        for limit in [1, 2, 7, 19, 211, 250] {
+            let mut selected = CandidateHits::new(limit);
+            for hit in input.iter().cloned() {
+                selected.consider(hit);
+                assert!(selected.hits.len() <= limit);
+            }
+            assert_eq!(selected.finish(), expected[..limit.min(expected.len())]);
+        }
+    }
+
+    #[test]
+    fn bounded_turbo_candidates_match_full_results_across_policy_and_visibility() {
+        let scope = ScopeId::new("instance:bounded-turbo").unwrap();
+        let mut versions = (1..=32)
+            .map(|cursor| {
+                candidate(
+                    &scope,
+                    cursor,
+                    &format!("point-{cursor:02}"),
+                    if cursor % 2 == 0 { "a" } else { "b" },
+                )
+            })
+            .collect::<Vec<_>>();
+        // Equal vectors force ties resolved by record identity. A later valid
+        // version and a retirement exercise temporal selection before top-k.
+        versions[1].vector.value = versions[0].vector.value.clone();
+        versions[3].vector.valid_to = Some(5);
+        let mut later = candidate(&scope, 33, "point-01", "a");
+        later.vector.valid_from = 50;
+        versions.push(later);
+        for (bits, estimator) in [
+            (TurboQuantBits::Bits4, TurboQuantEstimator::Mse),
+            (TurboQuantBits::Bits2, TurboQuantEstimator::Mse),
+            (TurboQuantBits::Bits1_5, TurboQuantEstimator::Mse),
+            (TurboQuantBits::Bits1, TurboQuantEstimator::Mse),
+            (TurboQuantBits::Bits4, TurboQuantEstimator::InnerProduct),
+            (TurboQuantBits::Bits2, TurboQuantEstimator::InnerProduct),
+            (TurboQuantBits::Bits1, TurboQuantEstimator::InnerProduct),
+        ] {
+            let mut policy = config(&scope);
+            policy.bits = bits;
+            policy.estimator = estimator;
+            let segment = TurboQuantSegment::build(policy, 1, 33, versions.clone()).unwrap();
+            let reopened = TurboQuantSegment::from_bytes(segment.as_bytes()).unwrap();
+            let directory = tempfile::tempdir().unwrap();
+            let artifact = directory.path().join("segment");
+            std::fs::write(&artifact, segment.as_bytes()).unwrap();
+            let mapped = TurboQuantSegment::open_mmap(&artifact).unwrap();
+            for valid_at in [2, 10, 60] {
+                for filtered in [false, true] {
+                    let request = SearchRequest {
+                        scope: scope.clone(),
+                        read: ReadStamp::new(scope.clone(), None, 0, 33, Some("11".repeat(32)))
+                            .unwrap(),
+                        valid_at,
+                        field: "body".into(),
+                        query: VectorQuery::Dense {
+                            values: deterministic_vector(64, 99),
+                        },
+                        metric: ScoreMetric::Cosine,
+                        embedding_model: None,
+                        top_k: 1,
+                        mode: SearchMode::RequireApproximate { exact_rerank: 64 },
+                        filter: filtered.then(|| FilterExpression::Condition {
+                            condition: FilterCondition {
+                                property: "tenant".into(),
+                                operator: FilterOperator::Equals {
+                                    value: RuntimeValue::String("a".into()),
+                                },
+                            },
+                        }),
+                    };
+                    let full = reopened
+                        .search_candidates_at_with_kernel(&request, 64, 33, QuantizedKernel::Scalar)
+                        .unwrap();
+                    for limit in [1, 3, 8, 16, 64] {
+                        for artifact in [&reopened, &mapped] {
+                            let narrow = artifact
+                                .search_candidates_at_with_kernel(
+                                    &request,
+                                    limit,
+                                    33,
+                                    QuantizedKernel::Scalar,
+                                )
+                                .unwrap();
+                            assert_eq!(
+                                narrow,
+                                full[..limit.min(full.len())],
+                                "{bits:?} {estimator:?} {valid_at} {filtered} {limit}"
+                            );
+                        }
+                    }
+                }
+            }
+        }
     }
 
     /// MSE artifacts keep the bytes they had before the inner-product

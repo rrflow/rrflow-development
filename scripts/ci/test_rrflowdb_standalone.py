@@ -17,6 +17,13 @@ def view(status="done"):
             "id": value("first-task"), "title": value("Build with rrflowDB"), "status": value(status)}}]},
         "relationships": {**copy.deepcopy(common), "rows": [{"values": {
             "left.name": value("Local AI project"), "right.to_id": value("first-task")}}]},
+        "documents": {**copy.deepcopy(common), "rows": [{"values": {
+            "id": value("context-note"), "title": value("Project context"),
+            "metadata": {"type": "map", "value": {
+                "source": value("local"), "revision": {"type": "unsigned", "value": 1}}}}}]},
+        "document_relationships": {**copy.deepcopy(common), "rows": [{"values": {
+            "left.id": value("context-note"), "right.to_id": value("first-task"),
+            "right.reason": value("supports")}}]},
     }
 
 
@@ -26,6 +33,14 @@ class ResultOracle(unittest.TestCase):
         bad = view()
         bad["relationships"]["rows"][0]["values"]["right.to_id"]["value"] = "other"
         with self.assertRaisesRegex(ValueError, "relationship"):
+            runner.check_view(bad, "done")
+        bad = view()
+        bad["documents"]["rows"][0]["values"]["metadata"]["value"]["revision"]["value"] = 2
+        with self.assertRaisesRegex(ValueError, "document"):
+            runner.check_view(bad, "done")
+        bad = view()
+        bad["document_relationships"]["rows"][0]["values"]["right.reason"]["value"] = "other"
+        with self.assertRaisesRegex(ValueError, "document relationship"):
             runner.check_view(bad, "done")
         with self.assertRaisesRegex(ValueError, "task"):
             runner.check_view(view("open"), "done")
@@ -39,6 +54,10 @@ class ResultOracle(unittest.TestCase):
             lambda x: x["relationships"].update(scope="instance:other"),
             lambda x: x["tasks"].update(rows=[]),
             lambda x: x.pop("relationships"),
+            lambda x: x["documents"].update(known_at_cursor=8),
+            lambda x: x["document_relationships"]["execution"].update(truncated=True),
+            lambda x: x.pop("documents"),
+            lambda x: x.pop("document_relationships"),
         ):
             bad = view()
             mutate(bad)

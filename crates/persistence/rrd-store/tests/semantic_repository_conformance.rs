@@ -6,7 +6,7 @@ use rrd_store::{ControlTransition, RrflowKvStore, StorageEngine, StorageProfile}
 
 fn exercise(storage: &dyn StorageEngine) -> (u64, u64, String, usize) {
     let claim = Claim::new(
-        rrd_core::Subject::new("file:src/lib.rs").unwrap(),
+        rrd_core::Subject::new("file-src-lib.rs").unwrap(),
         rrd_core::Predicate::new("language").unwrap(),
         "rust",
         10,
