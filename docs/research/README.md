@@ -108,6 +108,8 @@ The following reviewed history, supporting references, and unclassified flat
 records participate in this research trail; listing them here does not transfer
 their authority into this index:
 
+- [`rrflow-adaptive-planning-measurement-architecture-research.md`](rrflow-adaptive-planning-measurement-architecture-research.md)
+  (adaptive-plan and memory evaluation, independent checks and current limits)
 - [`rrflow-system-convergence-architecture-research.md`](rrflow-system-convergence-architecture-research.md)
   (active primary-source basis for the 1.0 execution map)
 - [`rrd-data-services-architecture-research.md`](../history/rrd-data-services-architecture-research.md) (historical)

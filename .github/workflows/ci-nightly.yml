@@ -1,0 +1,39 @@
+name: nightly full matrix
+
+# The candidate pipeline runs only the lanes a change needs. This run executes
+# every partition against main once a day, so there is always a dated,
+# complete result for the current main revision. It is evidence about main,
+# not candidate acceptance; a failure here is investigated, never bypassed.
+
+on:
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-nightly-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  pipeline:
+    name: pipeline
+    permissions:
+      contents: read
+    uses: ./.github/workflows/ci-reusable.yml
+    with:
+      scope: full
+      linux-standard-runner: >-
+        ${{ vars.CI_SELF_HOSTED_ENABLED == 'true'
+            && (vars.CI_LINUX_STANDARD_RUNNER || '["ubuntu-latest"]')
+            || '["ubuntu-latest"]' }}
+      linux-heavy-runner: >-
+        ${{ vars.CI_SELF_HOSTED_ENABLED == 'true'
+            && (vars.CI_LINUX_HEAVY_RUNNER || '["ubuntu-latest"]')
+            || '["ubuntu-latest"]' }}
+      linux-arm64-runner: >-
+        ${{ vars.CI_SELF_HOSTED_ENABLED == 'true'
+            && (vars.CI_LINUX_ARM64_RUNNER || '["ubuntu-24.04-arm"]')
+            || '["ubuntu-24.04-arm"]' }}
