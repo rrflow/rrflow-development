@@ -149,3 +149,9 @@ v2 schema exactly matches fresh generator output (SHA-256
 `git diff --check`, all three manifest validations, formatting, the 111-pass / 2
 ignored package suite, and Clippy pass. No candidate CI or merge-group result
 exists for this dirty revision.
+
+## Integrated candidate on current main (2026-11-09)
+
+Ordinarily merged public development `main` at `a9f1b0fb8d948e113dca347e5eeac10dd224330a` into this PR #253 candidate; merge commit `ebe4ffe61f05e09060cb5ec604b979de7301fa93`. The merge was conflict-free and retains the candidate work plus current main. This is a local integration; the remote PR head is still `23c3f16e776f2cd5dae49130acdb26a100926ff3` until the integrated candidate is pushed and reviewed by CI.
+
+On the integrated tree, `cargo test --offline --locked -p rrflow-eval --quiet` passed: 111 passed, 2 ignored, 0 failed across the package's test groups. The ignored tests are Milvus wire behavior, whose mutation path is intentionally disabled. `cargo fmt -p rrflow-eval -- --check` and `cargo clippy --offline --locked -p rrflow-eval --all-targets -- -D warnings` passed. Navigation generated and checked 19 indexes, 1,043 nodes and 3,648 edges; documentation policy passed 1,044 document statuses and 1,042 classified coordinates. All three vector manifests validate, the generated v2 schema matches byte-for-byte, and the preserved v1 schema matches the original PR-base blob byte-for-byte. The post-merge `git diff --check a9f1b0f..HEAD` found trailing spaces on two metadata lines in POAM-057; these are being removed before push and the full diff check will be rerun. No current-head hosted candidate or merge-group CI exists; no merge readiness is claimed.

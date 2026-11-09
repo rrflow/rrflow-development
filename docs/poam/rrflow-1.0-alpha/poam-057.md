@@ -1,7 +1,7 @@
 # POAM-057 — comparison lab cannot establish exclusive scratch ownership
 
-**Status:** active parent-owned POA&M detail  
-**Coordinate:** `rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-057`  
+**Status:** active parent-owned POA&M detail
+**Coordinate:** `rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-057`
 **Owner:** [RRFlow 1.0 alpha POA&M](../rrflow-1.0-alpha.md)
 
 ## Observed deficiency
