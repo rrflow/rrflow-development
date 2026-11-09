@@ -679,6 +679,7 @@ impl RrdEngine {
                     .as_ref()
                     .map(|capture| capture.packet.provenance.clone()),
                 context: context_reference,
+                routing: None,
                 usage: observed.usage,
                 elapsed_ms: observed.elapsed_ms,
                 http_status: observed.http_status,

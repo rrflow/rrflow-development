@@ -43,6 +43,7 @@ fn proposed() -> (EndpointConfiguration, EndpointWorkerPolicy) {
         maximum_concurrent_calls: 1,
         bindings: vec![EndpointWorkerBinding {
             binding_id: candidate.binding_id.clone(),
+            adapter: EndpointWorkerAdapter::default(),
             // Digest-shaped protocol probe, not evidence of worker compatibility.
             protocol_evidence_sha256: evidence_sha256.clone(),
             system_prompt: "Return a draft; do not claim project effects.".into(),
