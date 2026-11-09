@@ -1,8 +1,8 @@
 use rrd_contract::{
+    engramConfiguration, engramConfigurationInput, engram_CONFIGURATION_FORMAT_VERSION,
     engram_configuration_sha256, CanonicalId, ClockPolicy, DeploymentForm, DeploymentProfile,
-    EndpointPresentation, engramConfiguration, engramConfigurationInput, InstalledengramIdentity,
-    QueryBudget, ReasoningLimits, RecallLimits, StorageProfileKind,
-    engram_CONFIGURATION_FORMAT_VERSION, MAX_CLOCK_ROLLBACK_MS,
+    EndpointPresentation, InstalledengramIdentity, QueryBudget, ReasoningLimits, RecallLimits,
+    StorageProfileKind, MAX_CLOCK_ROLLBACK_MS,
 };
 
 fn identity() -> InstalledengramIdentity {

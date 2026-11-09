@@ -2,8 +2,8 @@ use super::*;
 use crate::ServiceErrorKind;
 use rrd_contract::{
     AssembleContext, ContextAccessPath, ContextEvidenceKind, ContextPlanStageKind,
-    ContextPlanStageStatus, DataengramOrganisation, DataLogicalModel, DataReference,
-    DataSchemaMode, DataSchemaRegistry, DataTableSchema, EmbeddingInput, EmbeddingNetworkPolicy,
+    ContextPlanStageStatus, DataLogicalModel, DataReference, DataSchemaMode, DataSchemaRegistry,
+    DataTableSchema, DataengramOrganisation, EmbeddingInput, EmbeddingNetworkPolicy,
     EnsureVectorCollection, GenerateEmbeddings, ListEmbeddingModels, NamedVectorDefinition,
     QueryValue, ReadAccessPath, VectorEmbeddingModel, VectorMemoryTier, VectorSearchMetric,
     VectorValueKind,

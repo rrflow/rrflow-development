@@ -1,4 +1,4 @@
-use rrd_contract::{CanonicalId, engramDesiredPhase};
+use rrd_contract::{engramDesiredPhase, CanonicalId};
 use rrd_engine::{engramAdminAction, RrdEngine};
 use std::path::PathBuf;
 

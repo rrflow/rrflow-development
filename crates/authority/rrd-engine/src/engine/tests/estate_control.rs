@@ -1,7 +1,7 @@
 use super::*;
 use crate::engine::engram_control::EngineLocalBackupDriver;
 use rrd_contract::InstallationTargetKind;
-use rrd_engram::{BackupDriverRequest, DriverErrorKind, engramBackupDriver};
+use rrd_engram::{engramBackupDriver, BackupDriverRequest, DriverErrorKind};
 use rrd_store::BackupCoverage;
 use std::path::{Path, PathBuf};
 

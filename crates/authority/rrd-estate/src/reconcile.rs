@@ -1,5 +1,5 @@
 use crate::{
-    DesiredInstance, DesiredPhase, Error, engramDocument, engramOperation, engramRepository,
+    engramDocument, engramOperation, engramRepository, DesiredInstance, DesiredPhase, Error,
     LeaseRequest, MutationContext, ObservedPhase, OperationKind, OperationState, ReceiptBoundary,
     ReceiptRequest, Result,
 };

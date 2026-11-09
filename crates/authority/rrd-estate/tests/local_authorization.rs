@@ -1,5 +1,5 @@
 use rrd_contract::CanonicalId;
-use rrd_engram::{LocalengramPermission, LocalOperatorPolicy, LOCAL_OPERATOR_POLICY_FORMAT};
+use rrd_engram::{LocalOperatorPolicy, LocalengramPermission, LOCAL_OPERATOR_POLICY_FORMAT};
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
 

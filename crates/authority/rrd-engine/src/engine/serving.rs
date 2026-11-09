@@ -5,7 +5,7 @@
 //! endpoint candidate, never readiness: a caller proves it with the
 //! authenticated readiness challenge.
 
-use super::engram_layout::{safe_join, engramFilesystem, engram_DIRECTORY};
+use super::engram_layout::{engramFilesystem, engram_DIRECTORY, safe_join};
 use super::installation::{
     publish_new_file, read_locator, read_locator_anchored, read_regular_bounded,
 };

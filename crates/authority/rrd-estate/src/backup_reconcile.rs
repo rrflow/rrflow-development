@@ -1,7 +1,7 @@
 use crate::{
-    BackupCompleteRequest, BackupFailRequest, BackupJobState, BackupLeaseRequest,
-    BackupPreparedRequest, BackupResult, DesiredPhase, DriverError, DriverErrorKind, Error,
-    engramBackupJob, engramDocument, engramRepository, MutationContext, ObservedPhase, Result,
+    engramBackupJob, engramDocument, engramRepository, BackupCompleteRequest, BackupFailRequest,
+    BackupJobState, BackupLeaseRequest, BackupPreparedRequest, BackupResult, DesiredPhase,
+    DriverError, DriverErrorKind, Error, MutationContext, ObservedPhase, Result,
 };
 use rrd_contract::CanonicalId;
 use rrd_core::digest;

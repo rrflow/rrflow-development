@@ -5,6 +5,7 @@
 //! persistence authority.
 
 pub mod cluster_transfer;
+pub mod coldlight;
 pub mod data_plane;
 pub mod operator_knowledge;
 pub mod query;
@@ -16,6 +17,7 @@ pub use cluster_transfer::{
     execute_traced_artifact_transfer, record_artifact_transfer_observation,
     DurableArtifactTransferObserver,
 };
+pub use coldlight::{RrflowCldLifecycleState, RrflowCldSnapshot};
 pub use data_plane::{
     execute_traced_embedding, execute_traced_vector_search, TracedEmbeddingExecution,
     TracedVectorSearch,

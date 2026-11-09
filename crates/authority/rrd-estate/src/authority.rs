@@ -1,6 +1,6 @@
 use super::{
-    require_time, validate_ascii_key, validate_error, validate_id_key, validate_sha256, Error,
-    engramDocument, MutationContext, Result,
+    engramDocument, require_time, validate_ascii_key, validate_error, validate_id_key,
+    validate_sha256, Error, MutationContext, Result,
 };
 use rrd_contract::CanonicalId;
 use rrd_core::digest;

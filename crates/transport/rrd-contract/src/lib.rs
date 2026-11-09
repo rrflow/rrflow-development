@@ -44,6 +44,7 @@ mod inference;
 mod knowledge;
 mod knowledge_tree;
 mod memory_context;
+#[path = "memory_estate.rs"]
 mod memory_engram;
 mod model_manifest;
 mod operation_reference;
@@ -89,12 +90,11 @@ pub use capability_surface::{
     SurfaceDisposition,
 };
 pub use deployment::{
+    engramConfiguration, engramConfigurationInput, engram_CONFIGURATION_FORMAT_VERSION,
     engram_configuration_sha256, ClockPolicy, DeploymentForm, DeploymentProfile,
-    EndpointPresentation, engramConfiguration, engramConfigurationInput, InstalledengramIdentity,
-    ReasoningLimits, RecallLimits, StorageLimits, StorageProfileKind,
-    DEPLOYMENT_PROFILE_CONTRACT_VERSION, engram_CONFIGURATION_FORMAT_VERSION,
-    MAX_CLOCK_ROLLBACK_MS, MAX_REASONING_RUN_ELAPSED_MS, MAX_REASONING_STEPS,
-    MAX_REASONING_STEP_ELAPSED_MS,
+    EndpointPresentation, InstalledengramIdentity, ReasoningLimits, RecallLimits, StorageLimits,
+    StorageProfileKind, DEPLOYMENT_PROFILE_CONTRACT_VERSION, MAX_CLOCK_ROLLBACK_MS,
+    MAX_REASONING_RUN_ELAPSED_MS, MAX_REASONING_STEPS, MAX_REASONING_STEP_ELAPSED_MS,
 };
 pub use diagnostic::{
     DiagnosticAuthority, DiagnosticCoverage, DiagnosticGraphDifference,
@@ -102,14 +102,14 @@ pub use diagnostic::{
     DiagnosticGraphRelationSnapshot, DiagnosticGraphSnapshot, DiagnosticMaintenanceSnapshot,
     DiagnosticMemtableSnapshot, DiagnosticModelCatalogueSnapshot, DiagnosticModelKind,
     DiagnosticModelSnapshot, DiagnosticPageCacheSnapshot, DiagnosticReadStamp,
-    DiagnosticRetentionPin, DiagnosticRetentionSnapshot, DiagnosticRrflowKvSnapshot,
-    DiagnosticRuntimeReference, DiagnosticSectionSnapshot, DiagnosticSegmentIoMode,
-    DiagnosticSegmentIoSnapshot, DiagnosticSegmentSetSnapshot, DiagnosticSnapshot,
-    DiagnosticSnapshotLease, DiagnosticStorageAdmission, DiagnosticStorageEvidenceLevel,
-    DiagnosticStorageSnapshot, DiagnosticVectorArtifactCatalogueSnapshot,
-    DiagnosticVectorArtifactKind, DiagnosticVectorArtifactSnapshot,
-    DiagnosticWriteAheadLogSnapshot, ReadDiagnosticSnapshot, ReadStorageDiagnostics,
-    DIAGNOSTIC_SNAPSHOT_FORMAT_VERSION, MAX_DIAGNOSTIC_AUDIT_RECORDS,
+    DiagnosticRetentionPin, DiagnosticRetentionSnapshot, DiagnosticRrflowCldSnapshot,
+    DiagnosticRrflowKvSnapshot, DiagnosticRuntimeReference, DiagnosticSectionSnapshot,
+    DiagnosticSegmentIoMode, DiagnosticSegmentIoSnapshot, DiagnosticSegmentSetSnapshot,
+    DiagnosticSnapshot, DiagnosticSnapshotLease, DiagnosticStorageAdmission,
+    DiagnosticStorageEvidenceLevel, DiagnosticStorageSnapshot,
+    DiagnosticVectorArtifactCatalogueSnapshot, DiagnosticVectorArtifactKind,
+    DiagnosticVectorArtifactSnapshot, DiagnosticWriteAheadLogSnapshot, ReadDiagnosticSnapshot,
+    ReadStorageDiagnostics, DIAGNOSTIC_SNAPSHOT_FORMAT_VERSION, MAX_DIAGNOSTIC_AUDIT_RECORDS,
     MAX_DIAGNOSTIC_RUNTIME_SCANNED_CHANGES,
 };
 pub use endpoint_binding::{
@@ -182,7 +182,7 @@ pub use memory_context::{
     MAX_CONTEXT_OUTPUT_BYTES, MAX_CONTEXT_QUERY_BYTES, MAX_CONTEXT_SEEDS, MAX_CONTEXT_STORAGE_KEYS,
 };
 pub use memory_engram::{
-    MemoryengramPlan, MemorySeatDefinition, MemoryWarp, PersistMemoryengram,
+    MemorySeatDefinition, MemoryWarp, MemoryengramPlan, PersistMemoryengram,
     ProviderRepresentation, ProviderRepresentationDefinition, ResolveMemoryWarp,
     ResolveSeatIdentity, ResolvedMemoryWarp, SeatIdentity, MAX_PROVIDER_REPRESENTATIONS,
     MEMORY_PROVIDER_IDENTITY_KIND, MEMORY_REPRESENTS_KIND, MEMORY_SEAT_KIND,
@@ -1869,6 +1869,10 @@ pub struct VectorSearchResourceEvidence {
     pub selected_generation: Option<u64>,
     pub loaded_artifact_bytes: u64,
     pub result_hits: u64,
+    #[serde(default)]
+    pub cold_source_hits: u64,
+    #[serde(default)]
+    pub rrflowcld_triggered: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]

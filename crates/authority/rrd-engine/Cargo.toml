@@ -49,7 +49,7 @@ full = [
 [dependencies]
 rrd-attunement = { path = "../../compute/rrd-attunement", optional = true }
 rrd-contract = { path = "../../transport/rrd-contract", optional = true }
-rrd-engram = { path = "../rrd-engram", optional = true }
+rrd-engram = { path = "../rrd-estate", optional = true }
 rrd-security = { path = "../rrd-security", optional = true }
 rrd-core = { path = "../../kernel/rrd-core", optional = true }
 rrd-query = { path = "../../compute/rrd-query", optional = true }

@@ -1,5 +1,5 @@
 use crate::{
-    DriverEffect, DriverError, DriverObservation, DriverRequest, engramDriver, ObservedPhase,
+    engramDriver, DriverEffect, DriverError, DriverObservation, DriverRequest, ObservedPhase,
     OperationKind,
 };
 use rrd_contract::CanonicalId;

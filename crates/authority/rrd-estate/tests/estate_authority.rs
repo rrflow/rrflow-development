@@ -1,6 +1,6 @@
 use rrd_contract::CanonicalId;
 use rrd_engram::{
-    ActivityClass, ActivityEvidence, DesiredPhase, DesiredTarget, Error, engramRepository,
+    engramRepository, ActivityClass, ActivityEvidence, DesiredPhase, DesiredTarget, Error,
     LeaseRequest, MutationContext, OperationState, ReceiptBoundary, ReceiptRequest, SetDesired,
 };
 use rrd_store::{RrflowKvStore, RrflowMxStore, StorageEngine};

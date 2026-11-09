@@ -3,8 +3,8 @@ use super::clock::FixedClock;
 use super::clock::{assess, observe_required, require_accepted, ClockSource, HostSystemClock};
 use super::*;
 use crate::engine::engram_layout::{
-    create_engram_directories, reject_existing_engram, safe_join, validate_engram_directories,
-    validate_managed_relative, validate_recovery_engram, engramFilesystem, engramLayout,
+    create_engram_directories, engramFilesystem, engramLayout, reject_existing_engram, safe_join,
+    validate_engram_directories, validate_managed_relative, validate_recovery_engram,
     LOCATOR_RELATIVE_PATH, STORAGE_DIRECTORY,
 };
 use crate::engine::memory_engram::build_memory_engram_plan;
@@ -13,13 +13,14 @@ use crate::engine::token_key::{
     read_token_key_anchored as read_token_key, ApiKeyDocument,
 };
 use rrd_contract::{
-    attunement_plan_sha256, installation_plan_sha256, installation_result_sha256, AttunementJob,
-    AttunementJobState, AttunementPhase, AttunementPhasePlan, AttunementPlan, DeploymentProfile,
-    engramConfiguration, engramConfigurationInput, InstallationActionDisposition,
-    InstallationActionKind, InstallationActionResult, InstallationManagedPathKind,
-    InstallationPlan, InstallationPlanAction, InstallationResult, InstallationTargetKind,
-    InstalledengramIdentity, PersistMemoryengram, StorageProfileKind, ATTUNEMENT_CONTRACT_VERSION,
-    INSTALLATION_PLAN_CONTRACT_VERSION, INSTALL_ATTUNEMENT_CONTRACT_VERSION, MAX_ATTUNEMENT_PHASES,
+    attunement_plan_sha256, engramConfiguration, engramConfigurationInput,
+    installation_plan_sha256, installation_result_sha256, AttunementJob, AttunementJobState,
+    AttunementPhase, AttunementPhasePlan, AttunementPlan, DeploymentProfile,
+    InstallationActionDisposition, InstallationActionKind, InstallationActionResult,
+    InstallationManagedPathKind, InstallationPlan, InstallationPlanAction, InstallationResult,
+    InstallationTargetKind, InstalledengramIdentity, PersistMemoryengram, StorageProfileKind,
+    ATTUNEMENT_CONTRACT_VERSION, INSTALLATION_PLAN_CONTRACT_VERSION,
+    INSTALL_ATTUNEMENT_CONTRACT_VERSION, MAX_ATTUNEMENT_PHASES,
 };
 use rrd_core::digest::Sha256 as IncrementalSha256;
 use rrd_security::{Principal, PrincipalKind, ResourceGrant, SecurityState, SECURITY_FORMAT};
@@ -31,7 +32,7 @@ use std::io::{Read, Write};
 
 const INSTALL_PROFILE_BYTES: &[u8] = include_bytes!("../../assets/install/default-profile-v3.json");
 const DEFAULT_CONFIGURATION_BYTES: &[u8] =
-    include_bytes!("../../assets/install/default-engram-configuration-v3.toml");
+    include_bytes!("../../assets/install/default-estate-configuration-v3.toml");
 const CLYFFY_PROFILE_BYTES: &[u8] = include_bytes!("../../assets/install/clyffy-profile-v3.json");
 const INSTALL_PROFILE_FORMAT: u16 = 3;
 const LOCATOR_FORMAT: u16 = 2;
@@ -253,7 +254,7 @@ impl DefaultInstallProfile {
         if self.format_version != INSTALL_PROFILE_FORMAT
             || !matches!(self.id.as_str(), "default" | "clyffy")
             || self.template_asset != "templates/generic-project-v1.md"
-            || self.configuration_asset != "default-engram-configuration-v3.toml"
+            || self.configuration_asset != "default-estate-configuration-v3.toml"
             || self.initial_grant_policy.as_str() != "local-owner-all-actions"
             || !(32..=4_096).contains(&self.credential_bytes)
             || self.estimated_min_duration_ms > self.estimated_max_duration_ms

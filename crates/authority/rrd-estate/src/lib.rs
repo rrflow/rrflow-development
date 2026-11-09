@@ -13,24 +13,25 @@ mod reconcile;
 mod recovery;
 
 pub use authority::{
-    ApplyAuthority, AuthorityDesiredState, AuthorityIdempotencyBinding, AuthorityMutationOutcome,
-    AuthorityObservedState, AuthorityReceipt, AuthorityReceiptBoundary, AuthorityResource,
-    AuthorityResourceKind, AuthorityStatus, engramAuthorityState, engram_AUTHORITY_FORMAT,
-    MAX_AUTHORITY_IDEMPOTENCY_BINDINGS, MAX_AUTHORITY_RECEIPTS, MAX_AUTHORITY_RESOURCES,
+    engramAuthorityState, engram_AUTHORITY_FORMAT, ApplyAuthority, AuthorityDesiredState,
+    AuthorityIdempotencyBinding, AuthorityMutationOutcome, AuthorityObservedState,
+    AuthorityReceipt, AuthorityReceiptBoundary, AuthorityResource, AuthorityResourceKind,
+    AuthorityStatus, MAX_AUTHORITY_IDEMPOTENCY_BINDINGS, MAX_AUTHORITY_RECEIPTS,
+    MAX_AUTHORITY_RESOURCES,
 };
 pub use backup_job::{
-    public_backup_job, public_backup_jobs, BackupCompleteRequest, BackupFailRequest,
-    BackupIdempotencyBinding, BackupJobReceipt, BackupJobState, BackupLeaseRequest,
-    BackupPreparedRequest, BackupReceiptBoundary, BackupRecoveryPolicySnapshot, BackupResult,
-    BackupScheduleOutcome, engramBackupJob, ScheduleBackup, MAX_BACKUP_IDEMPOTENCY_BINDINGS,
+    engramBackupJob, public_backup_job, public_backup_jobs, BackupCompleteRequest,
+    BackupFailRequest, BackupIdempotencyBinding, BackupJobReceipt, BackupJobState,
+    BackupLeaseRequest, BackupPreparedRequest, BackupReceiptBoundary, BackupRecoveryPolicySnapshot,
+    BackupResult, BackupScheduleOutcome, ScheduleBackup, MAX_BACKUP_IDEMPOTENCY_BINDINGS,
     MAX_BACKUP_JOBS, MAX_BACKUP_RECEIPTS_PER_JOB,
 };
 pub use backup_reconcile::{
-    BackupDriverRequest, BackupReconcileBoundary, BackupReconcileOutcome, BackupReconciler,
-    engramBackupDriver,
+    engramBackupDriver, BackupDriverRequest, BackupReconcileBoundary, BackupReconcileOutcome,
+    BackupReconciler,
 };
 pub use local_authorization::{
-    LocalengramPermission, LocalOperatorAuthorization, LocalOperatorPolicy,
+    LocalOperatorAuthorization, LocalOperatorPolicy, LocalengramPermission,
     LOCAL_OPERATOR_POLICY_FORMAT,
 };
 pub use local_process::{
@@ -38,13 +39,13 @@ pub use local_process::{
     LocalShutdown, LOCAL_DEPLOYMENT_FORMAT,
 };
 pub use reconcile::{
-    DriverEffect, DriverError, DriverErrorKind, DriverObservation, DriverRequest, engramDriver,
+    engramDriver, DriverEffect, DriverError, DriverErrorKind, DriverObservation, DriverRequest,
     ReconcileBoundary, ReconcileOutcome, Reconciler,
 };
 pub use recovery::{
-    public_recovery_snapshot, public_retention_decision, retention_decision, CompleteRecoveryPrune,
     engramRecoveryPoint, engramRecoveryPolicy, engramRecoveryPruneIntent, engramRestoreEvidence,
-    engramRetentionDecision, engramRetentionPin, engramRetentionPinKind, PinRecoveryPoint,
+    engramRetentionDecision, engramRetentionPin, engramRetentionPinKind, public_recovery_snapshot,
+    public_retention_decision, retention_decision, CompleteRecoveryPrune, PinRecoveryPoint,
     PrepareRecoveryPrune, RecordRestoreEvidence, RecoveryIdempotencyBinding,
     RecoveryMutationOutcome, ReleaseRecoveryPin, SetRecoveryPolicy,
     MAX_RECOVERY_IDEMPOTENCY_BINDINGS, MAX_RECOVERY_PINS, MAX_RECOVERY_POINTS,

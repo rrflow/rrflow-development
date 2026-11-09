@@ -1,8 +1,8 @@
 use rrd_contract::CanonicalId;
 use rrd_core::digest;
 use rrd_engram::{
-    DesiredPhase, DesiredTarget, DriverEffect, DriverError, DriverObservation, DriverRequest,
-    engramDriver, engramRepository, MutationContext, ObservedPhase, OperationState,
+    engramDriver, engramRepository, DesiredPhase, DesiredTarget, DriverEffect, DriverError,
+    DriverObservation, DriverRequest, MutationContext, ObservedPhase, OperationState,
     ReconcileBoundary, ReconcileOutcome, Reconciler, SetDesired,
 };
 use rrd_store::{RrflowKvStore, StorageEngine};

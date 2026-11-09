@@ -1,6 +1,6 @@
 use super::*;
 use rrd_contract::{
-    AssembleContext, ContextReadStamp, DataPropertySchema, MemoryengramPlan, MemoryWarp,
+    AssembleContext, ContextReadStamp, DataPropertySchema, MemoryWarp, MemoryengramPlan,
     PersistMemoryengram, ProviderRepresentation, ResolveMemoryWarp, ResolveSeatIdentity,
     ResolvedMemoryWarp, SeatIdentity, MEMORY_PROVIDER_IDENTITY_KIND, MEMORY_REPRESENTS_KIND,
     MEMORY_SEAT_KIND,

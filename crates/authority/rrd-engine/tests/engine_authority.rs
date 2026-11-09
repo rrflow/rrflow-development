@@ -1,13 +1,13 @@
 use rrd_contract::{
-    transaction_operation_sha256, AuditDecision, AuditPhase, BeginTransaction, CanonicalId,
-    CloseSession, CommitTransaction, CorrelationId, CreateSession, DataengramOrganisation,
-    DataLogicalModel, DataProperties, DataPropertySchema, DataRecordSchema, DataReference,
-    DataSchemaMode, DataSchemaRegistry, DataTableSchema, DataValueType, DataVectorValue,
+    engramDesiredPhase, transaction_operation_sha256, AuditDecision, AuditPhase, BeginTransaction,
+    CanonicalId, CloseSession, CommitTransaction, CorrelationId, CreateSession, DataLogicalModel,
+    DataProperties, DataPropertySchema, DataRecordSchema, DataReference, DataSchemaMode,
+    DataSchemaRegistry, DataTableSchema, DataValueType, DataVectorValue, DataengramOrganisation,
     DiagnosticAuthority, DiagnosticStorageEvidenceLevel, EnsureQueryIndex, EnsureVectorCollection,
-    engramDesiredPhase, InstallationManagedPathKind, InstallationTargetKind, NamedVectorDefinition,
-    QueryBudget, QueryIndexKind, QueryValue, ReadAudit, ReadChangefeed, ReadDiagnosticSnapshot,
-    RequestContext, ResourceId, ResourceKind, ResourcePath, SecurityAction, SessionLimits,
-    StorageProfileKind, TransactionMutation, VectorMemoryTier, VectorSearchMetric, VectorValueKind,
+    InstallationManagedPathKind, InstallationTargetKind, NamedVectorDefinition, QueryBudget,
+    QueryIndexKind, QueryValue, ReadAudit, ReadChangefeed, ReadDiagnosticSnapshot, RequestContext,
+    ResourceId, ResourceKind, ResourcePath, SecurityAction, SessionLimits, StorageProfileKind,
+    TransactionMutation, VectorMemoryTier, VectorSearchMetric, VectorValueKind,
 };
 use rrd_core::{digest, Claim, Predicate, Producer, Subject};
 use rrd_engine::{
@@ -15,8 +15,8 @@ use rrd_engine::{
     RrdOperation, ServiceError,
 };
 use rrd_engram::{
-    DesiredPhase, DesiredTarget, engramRepository, LeaseRequest, LocalengramPermission,
-    LocalOperatorPolicy, MutationContext, ObservationRequest, ObservedPhase, ReceiptBoundary,
+    engramRepository, DesiredPhase, DesiredTarget, LeaseRequest, LocalOperatorPolicy,
+    LocalengramPermission, MutationContext, ObservationRequest, ObservedPhase, ReceiptBoundary,
     ReceiptRequest, ScheduleBackup, SetDesired, SetRecoveryPolicy, LOCAL_OPERATOR_POLICY_FORMAT,
 };
 use rrd_store::StorageEngine;

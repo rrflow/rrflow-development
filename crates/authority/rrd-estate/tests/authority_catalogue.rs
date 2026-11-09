@@ -1,8 +1,8 @@
 use rrd_contract::CanonicalId;
 use rrd_engram::{
-    public_snapshot, ApplyAuthority, AuthorityDesiredState, AuthorityObservedState,
-    AuthorityReceipt, AuthorityReceiptBoundary, AuthorityResource, AuthorityResourceKind,
-    AuthorityStatus, DesiredPhase, DesiredTarget, Error, engramRepository, MutationContext,
+    engramRepository, public_snapshot, ApplyAuthority, AuthorityDesiredState,
+    AuthorityObservedState, AuthorityReceipt, AuthorityReceiptBoundary, AuthorityResource,
+    AuthorityResourceKind, AuthorityStatus, DesiredPhase, DesiredTarget, Error, MutationContext,
     SetDesired,
 };
 use rrd_store::{RrflowKvStore, StorageEngine};

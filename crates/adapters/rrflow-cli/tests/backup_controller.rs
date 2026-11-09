@@ -1,7 +1,7 @@
 use rrd_contract::{CanonicalId, InstallationTargetKind};
 use rrd_engine::RrdEngine;
 use rrd_engram::{
-    BackupJobState, BackupReconcileOutcome, DesiredPhase, DesiredTarget, engramRepository,
+    engramRepository, BackupJobState, BackupReconcileOutcome, DesiredPhase, DesiredTarget,
     LeaseRequest, MutationContext, ObservationRequest, ObservedPhase, ReceiptBoundary,
     ReceiptRequest, ScheduleBackup, SetDesired,
 };

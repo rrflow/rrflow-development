@@ -1,10 +1,10 @@
 use std::collections::BTreeMap;
 
 use rrd_contract::{
-    CanonicalId, DataCategorySchema, DataCategoryTargets, DataDomainSchema, DataengramOrganisation,
-    DataLogicalModel, DataPropertySchema, DataRecordSchema, DataReference, DataSchemaMode,
-    DataSchemaRegistry, DataTableSchema, DataTagCardinality, DataTagReference, DataTagSchema,
-    DataTarget, DataValueType, DataVectorValue, TransactionMutation,
+    CanonicalId, DataCategorySchema, DataCategoryTargets, DataDomainSchema, DataLogicalModel,
+    DataPropertySchema, DataRecordSchema, DataReference, DataSchemaMode, DataSchemaRegistry,
+    DataTableSchema, DataTagCardinality, DataTagReference, DataTagSchema, DataTarget,
+    DataValueType, DataVectorValue, DataengramOrganisation, TransactionMutation,
 };
 
 /// One domain tree, one category and a kind placed and tagged in it.

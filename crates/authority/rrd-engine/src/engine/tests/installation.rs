@@ -1163,7 +1163,7 @@ fn pre_canonical_rrflow_state_blocks_a_parallel_installation_authority() {
 
 #[test]
 fn installed_backups_and_restore_staging_live_beside_the_storage_roots() {
-    use crate::engine::engram_layout::{validate_recovery_engram, engramLayout};
+    use crate::engine::engram_layout::{engramLayout, validate_recovery_engram};
     use rrd_contract::{
         CreateInstanceBackup, CreateSession, ListInstanceBackups, RestoreInstanceBackup,
         SessionLimits,
@@ -1777,7 +1777,7 @@ fn authenticated_readiness(engram: &Installedengram, now: u64) -> rrd_contract::
 /// `open_installed` and reaches authenticated readiness at the backup's state.
 #[test]
 fn a_staged_restore_is_published_in_place_and_the_engram_opens_from_the_backup() {
-    use crate::engine::engram_layout::{validate_recovery_engram, engramLayout};
+    use crate::engine::engram_layout::{engramLayout, validate_recovery_engram};
 
     let (engram, backup_sha256, restore_id) = install_backup_and_stage();
     let locator = RrdEngine::read_project_locator(&engram.project_path).unwrap();

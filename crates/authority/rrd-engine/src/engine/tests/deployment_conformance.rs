@@ -3,9 +3,9 @@ use crate::ServiceErrorKind;
 use std::collections::BTreeMap;
 
 use rrd_contract::{
-    CommitTransaction, DataengramOrganisation, DataLogicalModel, DataPropertySchema,
-    DataRecordSchema, DataReference, DataSchemaMode, DataSchemaRegistry, DataTableSchema,
-    DataValueType, DeploymentConformanceCorpus, ExecuteQuery, QueryBudget, QueryValue,
+    CommitTransaction, DataLogicalModel, DataPropertySchema, DataRecordSchema, DataReference,
+    DataSchemaMode, DataSchemaRegistry, DataTableSchema, DataValueType, DataengramOrganisation,
+    DeploymentConformanceCorpus, ExecuteQuery, QueryBudget, QueryValue,
 };
 
 fn corpus() -> DeploymentConformanceCorpus {

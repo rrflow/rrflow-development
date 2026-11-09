@@ -1,6 +1,6 @@
 use rrd_contract::CanonicalId;
 use rrd_engram::{
-    engramRepository, LeaseRequest, LocalengramPermission, LocalOperatorPolicy, MutationContext,
+    engramRepository, LeaseRequest, LocalOperatorPolicy, LocalengramPermission, MutationContext,
     ObservationRequest, ObservedPhase, ReceiptBoundary, ReceiptRequest,
     LOCAL_OPERATOR_POLICY_FORMAT,
 };

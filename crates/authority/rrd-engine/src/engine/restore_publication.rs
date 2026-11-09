@@ -12,7 +12,7 @@
 //! publication receipt.
 
 use super::engram_layout::{
-    instance_operation_root, reject_existing_symlink_path, safe_join, engramFilesystem,
+    engramFilesystem, instance_operation_root, reject_existing_symlink_path, safe_join,
     BACKUPS_DIRECTORY_NAME, RESTORES_DIRECTORY_NAME, STORAGE_DIRECTORY,
 };
 use super::installation::{

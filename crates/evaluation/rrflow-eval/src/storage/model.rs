@@ -1,5 +1,5 @@
 use super::{require, Result};
-use rrd_contract::{CapabilityStatus, DiagnosticStorageSnapshot, engramConfiguration};
+use rrd_contract::{engramConfiguration, CapabilityStatus, DiagnosticStorageSnapshot};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 

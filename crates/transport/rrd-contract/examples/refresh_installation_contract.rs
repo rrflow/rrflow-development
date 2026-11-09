@@ -1,7 +1,7 @@
 //! Refresh default-policy projections using the owning typed digest functions.
 //! No installation, engine workload, or qualification evidence is produced.
 use rrd_contract::{
-    installation_plan_sha256, installation_result_sha256, engramConfiguration, InstallationPlan,
+    engramConfiguration, installation_plan_sha256, installation_result_sha256, InstallationPlan,
     InstallationResult,
 };
 use serde_json::Value;

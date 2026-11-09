@@ -5,8 +5,8 @@
 //! authority that may persist transitions and checkpoints.
 
 use crate::{
-    invalid, sha256_bytes, validate_sha256, CanonicalId, CorrelationId, DeploymentProfile,
-    engramConfiguration, InstalledengramIdentity, MemorySeatDefinition, Result, SecurityAction,
+    engramConfiguration, invalid, sha256_bytes, validate_sha256, CanonicalId, CorrelationId,
+    DeploymentProfile, InstalledengramIdentity, MemorySeatDefinition, Result, SecurityAction,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};

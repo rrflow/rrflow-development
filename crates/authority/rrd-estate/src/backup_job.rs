@@ -1,6 +1,6 @@
 use super::{
-    encode, validate_ascii_key, validate_context, validate_error, validate_id_key, validate_sha256,
-    Error, engramDocument, engramRepository, MutationContext, ObservedPhase, OperationLease,
+    encode, engramDocument, engramRepository, validate_ascii_key, validate_context, validate_error,
+    validate_id_key, validate_sha256, Error, MutationContext, ObservedPhase, OperationLease,
     Result,
 };
 use rrd_contract::CanonicalId;
