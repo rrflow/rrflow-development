@@ -18,7 +18,7 @@ It is an unoptimized engineering executable, not a distribution or model artifac
 
 The disposable repository has 1,870 tracked paths at public source
 `d1b8a26a73cfb8f01791737913b4098988c1acdd`, tree
-`c4cc385adc54705cd5b22cdc26ade218b2ebd4a0`. Earlier failed and successful engrams
+`c4cc385adc54705cd5b22cdc26ade218b2ebd4a0`. Earlier failed and successful estates
 remain intact. The frozen Python SDK drove actual loopback processes with
 installed credentials retained privately, one attempt per request, 120-second
 request deadlines and unchanged 60-second job leases. No model, worker command,
@@ -74,7 +74,7 @@ The trial command was
 `uv --directory sdks/python run --frozen python <evidence>/startup-repository-trial.py`.
 It exited zero, with completed/README-restored/Git-config-restored all true.
 The script refuses an existing result or installation; do not replay it over this
-preserved engram. Raw machine-local records are not a publicly downloadable bundle.
+preserved estate. Raw machine-local records are not a publicly downloadable bundle.
 
 | Record | SHA-256 |
 |---|---|

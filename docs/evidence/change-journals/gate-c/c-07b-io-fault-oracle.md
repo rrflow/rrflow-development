@@ -49,7 +49,7 @@ two-key authoritative writes, flushes, compaction, a retained checkpoint,
 checkpoint release and reclamation. Expected keys/values and acknowledged or
 attempted IDs come from the submitted history, never engine readback. Every
 acknowledged pair must survive; an uncertain pair may be wholly present or
-absent; an unattempted pair must be absent. Each recovered engram must accept
+absent; an unattempted pair must be absent. Each recovered estate must accept
 another valid write and survive GC/reopen.
 
 The device model is seeded from fixture files before fault scheduling, records
@@ -83,7 +83,7 @@ fixture paths and ordinals, with no production payload telemetry.
 
 This is **I/O-model evidence**, including real native-call error propagation.
 It does not model arbitrary torn sectors, controller caches, kernel crashes or
-all filesystem operations. The bounded corpus covers an already-created engram;
+all filesystem operations. The bounded corpus covers an already-created estate;
 fresh-install namespace creation, arbitrary persistent damage, process-death
 ACK receipts, native ENOSPC, aggregate hard resource caps, lifetime concurrency
 and sustained scale retain their owning later packages. It does not claim every

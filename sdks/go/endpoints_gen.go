@@ -2,9 +2,9 @@
 
 package rrd
 
-// OpenAPI SHA-256: f14071c71318062cd2b1a9fca491a16d91b4481e98c3e0bcefeeaf98359ed580
+// OpenAPI SHA-256: 355e5482791fc6a9705b6c1bc9ba7303d1549b69b7dfbe8819c029bb7074c507
 
-const EndpointOpenAPIDocumentSHA256 = "f14071c71318062cd2b1a9fca491a16d91b4481e98c3e0bcefeeaf98359ed580"
+const EndpointOpenAPIDocumentSHA256 = "355e5482791fc6a9705b6c1bc9ba7303d1549b69b7dfbe8819c029bb7074c507"
 
 type OperationID string
 
@@ -38,7 +38,7 @@ const (
 	OperationEndpointConfigurationApply   OperationID = "endpoint-configuration-apply"
 	OperationEndpointConfigurationPreview OperationID = "endpoint-configuration-preview"
 	OperationEndpointConfigurationRead    OperationID = "endpoint-configuration-read"
-	OperationengramRead                   OperationID = "engram-read"
+	OperationEstateRead                   OperationID = "estate-read"
 	OperationFlightLaunch                 OperationID = "flight-launch"
 	OperationFlightList                   OperationID = "flight-list"
 	OperationFlightRead                   OperationID = "flight-read"
@@ -61,9 +61,12 @@ const (
 	OperationSessionRenew                 OperationID = "session-renew"
 	OperationSubscriptionClose            OperationID = "subscription-close"
 	OperationSubscriptionOpen             OperationID = "subscription-open"
+	OperationTaskAssessmentExecute        OperationID = "task-assessment-execute"
+	OperationTaskAssessmentRead           OperationID = "task-assessment-read"
 	OperationTaskAttemptRead              OperationID = "task-attempt-read"
 	OperationTaskBudgetConfigure          OperationID = "task-budget-configure"
 	OperationTaskBudgetRead               OperationID = "task-budget-read"
+	OperationTaskBudgetResume             OperationID = "task-budget-resume"
 	OperationTaskBudgetStop               OperationID = "task-budget-stop"
 	OperationTaskClose                    OperationID = "task-close"
 	OperationTaskEmbeddingExecute         OperationID = "task-embedding-execute"
@@ -120,7 +123,7 @@ var endpoints = map[OperationID]Endpoint{
 	OperationEndpointConfigurationApply:   {Method: "POST", Path: "/v1/configuration/endpoints/apply", Authentication: "session_bearer", Mutation: true},
 	OperationEndpointConfigurationPreview: {Method: "POST", Path: "/v1/configuration/endpoints/preview", Authentication: "session_bearer", Mutation: false},
 	OperationEndpointConfigurationRead:    {Method: "POST", Path: "/v1/configuration/endpoints/read", Authentication: "session_bearer", Mutation: false},
-	OperationengramRead:                   {Method: "POST", Path: "/v1/engrams/{engram}/read", Authentication: "session_bearer", Mutation: false},
+	OperationEstateRead:                   {Method: "POST", Path: "/v1/estates/{estate}/read", Authentication: "session_bearer", Mutation: false},
 	OperationFlightLaunch:                 {Method: "POST", Path: "/v1/flights", Authentication: "session_bearer", Mutation: true},
 	OperationFlightList:                   {Method: "POST", Path: "/v1/flights/list", Authentication: "session_bearer", Mutation: false},
 	OperationFlightRead:                   {Method: "POST", Path: "/v1/flights/read", Authentication: "session_bearer", Mutation: false},
@@ -143,9 +146,12 @@ var endpoints = map[OperationID]Endpoint{
 	OperationSessionRenew:                 {Method: "POST", Path: "/v1/sessions/{session}/renew", Authentication: "session_bearer", Mutation: true},
 	OperationSubscriptionClose:            {Method: "POST", Path: "/v1/subscriptions/close", Authentication: "session_bearer", Mutation: true},
 	OperationSubscriptionOpen:             {Method: "POST", Path: "/v1/subscriptions/open", Authentication: "session_bearer", Mutation: true},
+	OperationTaskAssessmentExecute:        {Method: "POST", Path: "/v1/tasks/assessment/execute", Authentication: "session_bearer", Mutation: true},
+	OperationTaskAssessmentRead:           {Method: "POST", Path: "/v1/tasks/assessment/read", Authentication: "session_bearer", Mutation: false},
 	OperationTaskAttemptRead:              {Method: "POST", Path: "/v1/tasks/attempt/read", Authentication: "session_bearer", Mutation: false},
 	OperationTaskBudgetConfigure:          {Method: "POST", Path: "/v1/tasks/budget/configure", Authentication: "session_bearer", Mutation: true},
 	OperationTaskBudgetRead:               {Method: "POST", Path: "/v1/tasks/budget/read", Authentication: "session_bearer", Mutation: false},
+	OperationTaskBudgetResume:             {Method: "POST", Path: "/v1/tasks/budget/resume", Authentication: "session_bearer", Mutation: true},
 	OperationTaskBudgetStop:               {Method: "POST", Path: "/v1/tasks/budget/stop", Authentication: "session_bearer", Mutation: true},
 	OperationTaskClose:                    {Method: "POST", Path: "/v1/tasks/close", Authentication: "session_bearer", Mutation: true},
 	OperationTaskEmbeddingExecute:         {Method: "POST", Path: "/v1/tasks/embedding/execute", Authentication: "session_bearer", Mutation: true},

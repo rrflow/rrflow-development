@@ -1,26 +1,25 @@
+use super::memory_engram::{canonical, required_digest, required_string};
 use super::*;
 use rrd_contract::{
-    AssembleContext, ContextReadStamp, DataPropertySchema, MemoryWarp, MemoryengramPlan,
-    PersistMemoryengram, ProviderRepresentation, ResolveMemoryWarp, ResolveSeatIdentity,
-    ResolvedMemoryWarp, SeatIdentity, MEMORY_PROVIDER_IDENTITY_KIND, MEMORY_REPRESENTS_KIND,
-    MEMORY_SEAT_KIND,
+    AssembleContext, ContextReadStamp, MemoryEstatePlan, MemoryWarp, PersistMemoryEstate,
+    ProviderRepresentation, ResolveMemoryWarp, ResolveSeatIdentity, ResolvedMemoryWarp,
+    SeatIdentity, MEMORY_PROVIDER_IDENTITY_KIND, MEMORY_REPRESENTS_KIND, MEMORY_SEAT_KIND,
 };
-use std::collections::BTreeSet;
 
 impl RrdEngine {
     /// Builds canonical schema/record/relation mutations for one durable seat.
     /// The returned plan is committed through the existing authenticated data
     /// transaction API; this method creates no side registry or write path.
     #[allow(clippy::too_many_arguments)]
-    pub fn plan_memory_engram(
+    pub fn plan_memory_estate(
         &self,
         session_id: &CorrelationId,
         token: &CorrelationId,
-        request: &PersistMemoryengram,
+        request: &PersistMemoryEstate,
         now: u64,
         request_id: &str,
         operation_id: &str,
-    ) -> Result<MemoryengramPlan> {
+    ) -> Result<MemoryEstatePlan> {
         self.authorize(
             session_id,
             token,
@@ -37,7 +36,7 @@ impl RrdEngine {
             .as_ref()
             .map(public_schema)
             .transpose()?;
-        build_memory_engram_plan(request, current)
+        build_memory_estate_plan(request, current)
     }
 
     /// Resolves a stable `rrflow://` coordinate through the same context
@@ -213,226 +212,10 @@ impl RrdEngine {
     }
 }
 
-/// Pure canonical memory-engram planner used by both authenticated previews
-/// and the cold-start transaction. It performs no authentication or I/O.
-pub(crate) fn build_memory_engram_plan(
-    request: &PersistMemoryengram,
+/// Existing source-level entry point delegates to the canonical engram planner.
+pub(crate) fn build_memory_estate_plan(
+    request: &PersistMemoryEstate,
     current: Option<DataSchemaRegistry>,
-) -> Result<MemoryengramPlan> {
-    request
-        .validate()
-        .map_err(|error| ServiceError::Contract(error.to_string()))?;
-    let (schema, schema_changed) = memory_engram_schema(current)?;
-    let mut mutations = Vec::with_capacity(2 + request.representations.len() * 2);
-    if schema_changed {
-        mutations.push(TransactionMutation::PutSchema { registry: schema });
-    }
-    mutations.push(TransactionMutation::PutRecord {
-        reference: DataReference {
-            kind: canonical(MEMORY_SEAT_KIND)?,
-            id: request.seat.id.clone(),
-        },
-        valid_from: request.valid_from,
-        valid_to: None,
-        properties: BTreeMap::from([
-            (
-                "display_name".into(),
-                QueryValue::String(request.seat.display_name.clone()),
-            ),
-            (
-                "purpose".into(),
-                QueryValue::String(request.seat.purpose.clone()),
-            ),
-        ]),
-    });
-    let mut representations = request.representations.clone();
-    representations.sort_by(|left, right| left.id.cmp(&right.id));
-    for representation in representations {
-        let provider_reference = DataReference {
-            kind: canonical(MEMORY_PROVIDER_IDENTITY_KIND)?,
-            id: representation.provider_identity,
-        };
-        mutations.push(TransactionMutation::PutRecord {
-            reference: provider_reference.clone(),
-            valid_from: request.valid_from,
-            valid_to: None,
-            properties: BTreeMap::from([
-                (
-                    "provider".into(),
-                    QueryValue::String(representation.provider.to_string()),
-                ),
-                (
-                    "subject_sha256".into(),
-                    QueryValue::Digest(representation.subject_sha256),
-                ),
-            ]),
-        });
-        mutations.push(TransactionMutation::PutRelation {
-            reference: DataReference {
-                kind: canonical(MEMORY_REPRESENTS_KIND)?,
-                id: representation.id,
-            },
-            from: provider_reference,
-            to: DataReference {
-                kind: canonical(MEMORY_SEAT_KIND)?,
-                id: request.seat.id.clone(),
-            },
-            valid_from: request.valid_from,
-            valid_to: None,
-            properties: BTreeMap::new(),
-        });
-    }
-    let plan = MemoryengramPlan {
-        operation_sha256: transaction_operation_sha256(&mutations),
-        mutations,
-    };
-    plan.validate()
-        .map_err(|error| ServiceError::Contract(error.to_string()))?;
-    Ok(plan)
-}
-
-fn memory_engram_schema(current: Option<DataSchemaRegistry>) -> Result<(DataSchemaRegistry, bool)> {
-    let mut registry = current.unwrap_or_else(|| DataSchemaRegistry {
-        revision: 0,
-        migration: "memory engram bootstrap".into(),
-        organisation: DataengramOrganisation::default(),
-        tables: BTreeMap::new(),
-        records: BTreeMap::new(),
-        relations: BTreeMap::new(),
-        events: BTreeMap::new(),
-    });
-    let seat_kind = canonical(MEMORY_SEAT_KIND)?;
-    let provider_kind = canonical(MEMORY_PROVIDER_IDENTITY_KIND)?;
-    let represents_kind = canonical(MEMORY_REPRESENTS_KIND)?;
-    let seat_properties = BTreeMap::from([
-        ("display_name".into(), required(DataValueType::String)),
-        ("purpose".into(), required(DataValueType::String)),
-    ]);
-    let provider_properties = BTreeMap::from([
-        ("provider".into(), required(DataValueType::String)),
-        ("subject_sha256".into(), required(DataValueType::Digest)),
-    ]);
-    let expected_tables = [
-        (
-            seat_kind.clone(),
-            DataTableSchema {
-                model: DataLogicalModel::GraphNode,
-                mode: DataSchemaMode::Strict,
-                properties: BTreeMap::new(),
-                allow_additional_properties: false,
-            },
-        ),
-        (
-            provider_kind.clone(),
-            DataTableSchema {
-                model: DataLogicalModel::GraphNode,
-                mode: DataSchemaMode::Strict,
-                properties: BTreeMap::new(),
-                allow_additional_properties: false,
-            },
-        ),
-        (
-            represents_kind.clone(),
-            DataTableSchema {
-                model: DataLogicalModel::GraphRelation,
-                mode: DataSchemaMode::Strict,
-                properties: BTreeMap::new(),
-                allow_additional_properties: false,
-            },
-        ),
-    ];
-    let expected_records = [
-        (
-            seat_kind.clone(),
-            DataRecordSchema {
-                properties: seat_properties,
-                allow_additional_properties: false,
-                unique_properties: BTreeSet::new(),
-            },
-        ),
-        (
-            provider_kind.clone(),
-            DataRecordSchema {
-                properties: provider_properties,
-                allow_additional_properties: false,
-                unique_properties: BTreeSet::new(),
-            },
-        ),
-    ];
-    let expected_relation = DataRelationSchema {
-        from: BTreeSet::from([provider_kind]),
-        to: BTreeSet::from([seat_kind]),
-        properties: BTreeMap::new(),
-        allow_additional_properties: false,
-        unique_pair: true,
-        max_outgoing: Some(1),
-        max_incoming: None,
-    };
-    let mut changed = false;
-    for (kind, expected) in expected_tables {
-        changed |= install_exact(&mut registry.tables, kind, expected, "table")?;
-    }
-    for (kind, expected) in expected_records {
-        changed |= install_exact(&mut registry.records, kind, expected, "record schema")?;
-    }
-    changed |= install_exact(
-        &mut registry.relations,
-        represents_kind,
-        expected_relation,
-        "relation schema",
-    )?;
-    if changed {
-        registry.revision = registry.revision.checked_add(1).ok_or_else(|| {
-            ServiceError::Contract("memory engram schema revision overflowed".into())
-        })?;
-        registry.migration = "install rrflow memory engram v1".into();
-    }
-    Ok((registry, changed))
-}
-
-fn install_exact<T: PartialEq>(
-    entries: &mut BTreeMap<CanonicalId, T>,
-    kind: CanonicalId,
-    expected: T,
-    description: &str,
-) -> Result<bool> {
-    match entries.get(&kind) {
-        Some(existing) if existing == &expected => Ok(false),
-        Some(_) => Err(ServiceError::StorageConflict(format!(
-            "memory engram {description} {kind} conflicts with the canonical definition"
-        ))),
-        None => {
-            entries.insert(kind, expected);
-            Ok(true)
-        }
-    }
-}
-
-fn required(value_type: DataValueType) -> DataPropertySchema {
-    DataPropertySchema {
-        value_type,
-        required: true,
-    }
-}
-
-fn canonical(value: &str) -> Result<CanonicalId> {
-    CanonicalId::new(value).map_err(|error| ServiceError::Contract(error.to_string()))
-}
-
-fn required_string(properties: &RuntimeProperties, name: &str) -> Result<String> {
-    match properties.get(name) {
-        Some(RuntimeValue::String(value)) => Ok(value.clone()),
-        _ => Err(ServiceError::Storage(format!(
-            "memory engram record lacks string property {name}"
-        ))),
-    }
-}
-
-fn required_digest(properties: &RuntimeProperties, name: &str) -> Result<String> {
-    match properties.get(name) {
-        Some(RuntimeValue::Digest(value)) => Ok(value.clone()),
-        _ => Err(ServiceError::Storage(format!(
-            "memory engram record lacks digest property {name}"
-        ))),
-    }
+) -> Result<MemoryEstatePlan> {
+    super::memory_engram::build_memory_engram_plan(request, current)
 }

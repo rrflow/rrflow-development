@@ -357,7 +357,7 @@ fn canonical_runtime_commit_is_atomic_idempotent_durable_and_transferable() {
                 .put(artifact_bytes)
                 .map_err(test_storage_error)?;
             let artifact = ObjectReference::for_bytes(
-                "vector:hnsw:body@1:bytes",
+                "vector-hnsw-body.1.vector-bytes",
                 None,
                 "application/vnd.rrflow.vector-hnsw+json",
                 artifact_bytes,

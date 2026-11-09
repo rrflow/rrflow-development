@@ -1,5 +1,5 @@
 use rrd_contract::CanonicalId;
-use rrd_engram::{
+use rrd_estate::{
     LocalArgument, LocalDeployment, LocalDeploymentCatalog, LocalReadiness, LocalShutdown,
 };
 use std::collections::BTreeMap;

@@ -202,7 +202,6 @@ impl RrdEngine {
             .map(crate::VectorArtifactBinding::key)
             .collect::<std::collections::BTreeSet<_>>();
         let mut first_pressure = None;
-        let mut cold_source_hits = 0u64;
         {
             let mut residency = self
                 .vector_residency
@@ -214,18 +213,9 @@ impl RrdEngine {
                 .filter(|binding| vector_artifact_relevant(&binding.descriptor, &search))
             {
                 match residency.acquire(memory_tier, binding, &self.objects) {
-                    Ok(acquisition) => {
-                        if acquisition.source.is_cold_source() {
-                            self.record_rrflow_cld_vector_trigger(
-                                acquisition.source,
-                                request.valid_at,
-                            )?;
-                            cold_source_hits = cold_source_hits.saturating_add(1);
-                        }
-                        runtime
-                            .install_loaded_artifact(acquisition.artifact)
-                            .map_err(core_vector)?;
-                    }
+                    Ok(acquisition) => runtime
+                        .install_loaded_artifact(acquisition.artifact)
+                        .map_err(core_vector)?,
                     Err(error) if error.is_pressure() => {
                         first_pressure.get_or_insert_with(|| error.to_string());
                         runtime.suppress_projection(&binding.descriptor.stamp().id);
@@ -265,7 +255,6 @@ impl RrdEngine {
                 read_evidence: direct.read_evidence,
                 canonical_candidates,
                 loaded_artifact_bytes,
-                cold_source_hits,
             },
             &prepared,
             execution,
@@ -337,7 +326,7 @@ impl RrdEngine {
         }) {
             return Ok(None);
         }
-        let acquisition = {
+        let artifact = {
             let mut residency = self
                 .vector_residency
                 .lock()
@@ -350,17 +339,13 @@ impl RrdEngine {
                     .collect(),
             );
             match residency.acquire(memory_tier, binding, &self.objects) {
-                Ok(acquisition) => acquisition,
+                Ok(acquisition) => acquisition.artifact,
                 Err(error) if error.is_pressure() => {
                     return Err(ServiceError::VectorPressure(error.to_string()))
                 }
                 Err(error) => return Err(ServiceError::Vector(error.to_string())),
             }
         };
-        if acquisition.source.is_cold_source() {
-            self.record_rrflow_cld_vector_trigger(acquisition.source, request.valid_at)?;
-        }
-        let artifact = acquisition.artifact;
         let rrd_vector::VectorArtifact::TurboQuant(segment) = artifact.as_ref() else {
             return Err(ServiceError::Vector(
                 "the active TurboQuant binding loaded another artifact".into(),
@@ -486,11 +471,6 @@ impl RrdEngine {
                 read_evidence: crate::runtime::merge_read_evidence(budget, evidence)?,
                 canonical_candidates,
                 loaded_artifact_bytes: binding.object.length,
-                cold_source_hits: if acquisition.source.is_cold_source() {
-                    1
-                } else {
-                    0
-                },
             },
             &prepared,
             execution,
@@ -505,7 +485,6 @@ struct Searched {
     read_evidence: rrd_contract::ReadEvidence,
     canonical_candidates: u64,
     loaded_artifact_bytes: u64,
-    cold_source_hits: u64,
 }
 
 fn search_result(
@@ -540,8 +519,6 @@ fn search_result(
         loaded_artifact_bytes: searched.loaded_artifact_bytes,
         result_hits: u64::try_from(execution.hits.len())
             .map_err(|_| ServiceError::Vector("vector result count exceeds u64".into()))?,
-        cold_source_hits: searched.cold_source_hits,
-        rrflowcld_triggered: searched.cold_source_hits > 0,
     };
     Ok(VectorSearchResult {
         scope: request.scope.clone(),

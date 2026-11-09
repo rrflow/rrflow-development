@@ -113,7 +113,7 @@ The current `endpoints_gen.go` contains:
   `7efde511a5ba3b1cad630d2c63c473a966fb871182c8bd3a5fb85c3673924a11`.
 
 That audit describes an earlier projection. The current generated OpenAPI
-SHA-256 is `f14071c71318062cd2b1a9fca491a16d91b4481e98c3e0bcefeeaf98359ed580`.
+SHA-256 is `355e5482791fc6a9705b6c1bc9ba7303d1549b69b7dfbe8819c029bb7074c507`.
 
 It does not generate request/result/error types, path-parameter sets, security
 actions, exact success statuses, media types, causal identity rules,
@@ -289,7 +289,7 @@ the public error text. An error's `Retryable` field never overrides operation
 semantics.
 
 Every operation propagates canonical request and operation IDs plus valid W3C
-`traceparent`/`tracengram`. Logical attempts are child spans of one semantic
+`traceparent`/`tracestate`. Logical attempts are child spans of one semantic
 operation; DNS, connect, TLS, pool wait, header, body, reconnect, and endpoint
 rotation observations are bounded attributes or causal links. Standard
 `httptrace` hooks may measure phases, but trace output is not completion truth,
@@ -371,7 +371,7 @@ Current evidence is deliberately bounded:
 The live conformance command exercises capability retry/version rejection,
 catalogue count, one authentication denial, session create/renew/close, vector
 ensure/search, transaction begin/preview/abort/commit, one query, changefeed
-read/follow/local cancellation, backup create/list, and engram read. Its
+read/follow/local cancellation, backup create/list, and estate read. Its
 labels overstate CRUD, backup/restore, vector, live delivery, typed-error,
 retry/failure, cancellation, and version/module coverage as catalogued in the
 [Rust reference](rust.md#conformance-that-actually-counts).
@@ -475,5 +475,5 @@ The dependency order is:
   require protection against oversized frames and reassembled messages; B-04
   defines RRFlow queue, identity, cursor, generation, and backpressure bounds.
 - [W3C Trace Context](https://www.w3.org/TR/trace-context/) defines
-  `traceparent` and `tracengram`; RRFlow owns validation, causal links,
+  `traceparent` and `tracestate`; RRFlow owns validation, causal links,
   redaction, and evidence meaning.

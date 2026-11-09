@@ -1,10 +1,10 @@
 {
-  "comment": "default-organisation registries; written before engram organisation and never regenerated",
+  "comment": "default-organisation registries; written before estate organisation and never regenerated",
   "engine_owned": {
     "commit_digest": "d1e93bc7f85240878211c2ea2480db6124e2e537b82e96a6a92fccf7846f1bf2",
     "registry": {
       "events": {},
-      "migration": "memory engram bootstrap",
+      "migration": "memory estate bootstrap",
       "records": {
         "rrflow-provider-identity": {
           "allow_additional_properties": false,

@@ -61,6 +61,7 @@ fn profile_of(bindings: Vec<EndpointBinding>) -> rrd_contract::Result<EndpointPr
             selection_policy: None,
             worker_policy: None,
             observation_policy: None,
+            assessment_policy: None,
         },
     )
 }
@@ -212,7 +213,7 @@ fn binding_kinds_enforce_credential_placement_and_locator_rules() {
 
     let mut with_user_information = local_binding("user-info", WorkloadClass::ControlPlane);
     with_user_information.endpoint = EndpointLocator::Url {
-        url: "https://operator:secret@warden.engram.example".into(),
+        url: "https://operator:secret@warden.estate.example".into(),
     };
     assert!(
         with_user_information.validate().is_err(),
@@ -221,7 +222,7 @@ fn binding_kinds_enforce_credential_placement_and_locator_rules() {
 
     let mut without_scheme = local_binding("no-scheme", WorkloadClass::ControlPlane);
     without_scheme.endpoint = EndpointLocator::Url {
-        url: "warden.engram.example:443".into(),
+        url: "warden.estate.example:443".into(),
     };
     assert!(without_scheme.validate().is_err());
 

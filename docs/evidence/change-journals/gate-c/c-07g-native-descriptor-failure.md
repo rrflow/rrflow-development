@@ -30,7 +30,7 @@ RRD API 500 Internal Server Error: Internal: Storage("substrate: RRD LSM I/O: To
 The actual `systemctl --user show` record for the failed launcher reports
 `LimitNOFILESoft=1024`, hard limit 524288 and exit status 1. An earlier query
 without `--user` selected the wrong service manager; its default values were
-discarded. The retained engram inventories 977 storage files. The immutable
+discarded. The retained estate inventories 977 storage files. The immutable
 `PageSource::File` implementation holds one strong `Arc<File>` per segment,
 explaining descriptor growth independently of the encoder's allocation repair.
 
@@ -38,9 +38,9 @@ Read-only `rrflow verify --project <retained-project> --json` exited zero and
 passed all 13 checks, including physical, runtime and checkpoint checks.
 It reports runtime cursor 545626 and control-journal sequence 935612. This is
 physical/installed verification, not complete independent corpus readback or
-proof that every uncertain intent committed. The original engram is preserved
+proof that every uncertain intent committed. The original estate is preserved
 under the owned Linux guest's `desktop-integrated-files-9957ed39` directory;
-credentials and private engram files are not published.
+credentials and private estate files are not published.
 
 | Retained artifact | SHA-256 |
 |---|---|

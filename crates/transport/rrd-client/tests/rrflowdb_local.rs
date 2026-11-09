@@ -465,7 +465,7 @@ async fn installed_typed_attunement_controls_replan_and_reopen() {
             record.request_id == "request-typed-accept"
                 && record.operation_id == "operation-typed-accept"
                 && record.principal_id.as_ref() == Some(session.principal_id())
-                && record.action == rrd_contract::SecurityAction::engramAdmin
+                && record.action == rrd_contract::SecurityAction::EstateAdmin
                 && record.decision == rrd_contract::AuditDecision::Allowed
         }),
         "the accepted replan authorization must remain auditable after reopen"

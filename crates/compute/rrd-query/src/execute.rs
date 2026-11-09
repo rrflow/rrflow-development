@@ -2,21 +2,18 @@ use crate::physical::graph::{AdjacencyExpansion, TraversalPlan};
 use crate::{
     execute_snapshot, highlight_offsets, index::index_artifact_name, rows_to_arrow_snapshot,
     ArrowReadStamp, Bm25Artifact, Bm25Config, Bm25Offset, BoundFilter, Error, FusionAnalysis,
-    FusionBudget, IndexDefinition, IndexKind, IndexMaintenanceEvidence, LogicalOperator,
-    PhysicalOperator, PhysicalPlan, Result, INDEX_ARTIFACT_CONTRACT_VERSION,
+    FusionBudget, IndexArtifact, IndexKind, LogicalOperator, PhysicalOperator, PhysicalPlan,
+    Result,
 };
 use crate::{Join, Projection, Source};
-use rrd_core::result_identity::{self, ResultIdentityFamily, RESULT_IDENTITY_VERSION};
+use rrd_core::result_identity::{self, ResultIdentityFamily};
 use rrd_core::{
     resolve_as_of, Claim, GeoValue, RuntimeChange, RuntimeGeo, RuntimeMutation, RuntimeRecord,
     RuntimeRelation, RuntimeValue, SeriesValue,
 };
 use rrd_store::{RuntimeReadBudget, RuntimeReadEvidence, RuntimeVersionedSource, StorageEngine};
-use serde::de::{DeserializeSeed, IgnoredAny, SeqAccess, Visitor};
 use serde::{Deserialize, Serialize};
-use serde_json::value::RawValue;
 use std::collections::BTreeMap;
-use std::fmt;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ExecutionBudget {
@@ -457,15 +454,7 @@ impl ReadPath {
                     "index artifact {id} digest does not verify"
                 )));
             }
-            let row_limit = if shape.filters.is_empty()
-                && !matches!(kind, IndexKind::Bm25 { .. })
-                && shape.join.is_none()
-            {
-                shape.limit
-            } else {
-                None
-            };
-            let artifact = decode_index_artifact_for_read(&bytes, row_limit)?;
+            let artifact = IndexArtifact::decode(&bytes)?;
             if artifact.scope != stamp.scope
                 || artifact.definition.id != *id
                 || artifact.definition.kind != *kind
@@ -476,7 +465,7 @@ impl ReadPath {
                 || artifact.read_cursor > shape.known_at_cursor
                 || artifact.schema_revision != *schema_revision
                 || artifact.valid_at != *valid_at
-                || artifact.total_rows
+                || artifact.rows.len()
                     != usize::try_from(*artifact_rows)
                         .map_err(|_| Error::Budget("index artifact rows exceed usize".into()))?
             {
@@ -491,215 +480,6 @@ impl ReadPath {
                 selected_versions: 0,
                 read_evidence: validation.evidence,
             });
-        }
-
-        struct LoadedIndexArtifact {
-            scope: rrd_core::ScopeId,
-            definition: IndexDefinition,
-            generation: u64,
-            source_cursor: u64,
-            read_cursor: u64,
-            schema_revision: u64,
-            valid_at: u64,
-            rows: Vec<QueryRow>,
-            total_rows: usize,
-            bm25: Option<Bm25Artifact>,
-        }
-
-        #[derive(Deserialize)]
-        #[serde(deny_unknown_fields)]
-        struct IndexArtifactEnvelope<'a> {
-            contract_version: u16,
-            result_identity_version: u16,
-            scope: rrd_core::ScopeId,
-            definition: IndexDefinition,
-            generation: u64,
-            source_cursor: u64,
-            read_cursor: u64,
-            schema_revision: u64,
-            valid_at: u64,
-            #[serde(borrow)]
-            rows: &'a RawValue,
-            #[serde(default, skip_serializing_if = "Option::is_none")]
-            bm25: Option<Bm25Artifact>,
-            #[serde(default, skip_serializing_if = "Option::is_none")]
-            analytics: Option<crate::IndexAnalyticsArtifact>,
-            maintenance: IndexMaintenanceEvidence,
-        }
-
-        fn decode_index_artifact_for_read(
-            bytes: &[u8],
-            row_limit: Option<usize>,
-        ) -> Result<LoadedIndexArtifact> {
-            let envelope: IndexArtifactEnvelope<'_> = serde_json::from_slice(bytes)?;
-            if envelope.contract_version != INDEX_ARTIFACT_CONTRACT_VERSION {
-                return Err(Error::Integrity(format!(
-                    "unsupported index artifact contract version {}",
-                    envelope.contract_version
-                )));
-            }
-            if envelope.result_identity_version != RESULT_IDENTITY_VERSION {
-                return Err(Error::Integrity(format!(
-                    "unsupported index result identity version {}",
-                    envelope.result_identity_version
-                )));
-            }
-            envelope.definition.validate()?;
-            if envelope.generation == 0
-                || envelope.source_cursor == 0
-                || envelope.read_cursor < envelope.source_cursor
-            {
-                return Err(Error::Integrity(
-                    "index artifact generation/source cursor/read cursor are invalid".into(),
-                ));
-            }
-            if envelope.maintenance.source_cursor != envelope.source_cursor
-                || (envelope.maintenance.mode != "full_build"
-                    && envelope.maintenance.mode != "incremental_reconciliation")
-            {
-                return Err(Error::Integrity(
-                    "index maintenance evidence does not cover this artifact".into(),
-                ));
-            }
-            match (
-                &envelope.definition.kind,
-                &envelope.bm25,
-                &envelope.analytics,
-            ) {
-                (IndexKind::Scalar | IndexKind::Geo | IndexKind::MaterializedView, None, None) => {}
-                (IndexKind::Count | IndexKind::AggregateCount, None, Some(analytics)) => {
-                    validate_count_analytics(&envelope.definition, analytics)?;
-                }
-                (IndexKind::Bm25 { config }, Some(artifact), None) => {
-                    artifact.validate()?;
-                    if &artifact.config != config
-                        || artifact.source_cursor != envelope.source_cursor
-                        || artifact.schema_revision != envelope.schema_revision
-                        || artifact.valid_at != envelope.valid_at
-                    {
-                        return Err(Error::Integrity(
-                            "BM25 artifact coordinates differ from the containing query index"
-                                .into(),
-                        ));
-                    }
-                }
-                _ => {
-                    return Err(Error::Integrity(
-                        "query index kind and specialized artifact disagree".into(),
-                    ))
-                }
-            }
-            let (rows, total_rows) = decode_index_rows(envelope.rows.get(), row_limit)?;
-            if total_rows > 1_000_000 {
-                return Err(Error::Integrity("index artifact row limit exceeded".into()));
-            }
-            Ok(LoadedIndexArtifact {
-                scope: envelope.scope,
-                definition: envelope.definition,
-                generation: envelope.generation,
-                source_cursor: envelope.source_cursor,
-                read_cursor: envelope.read_cursor,
-                schema_revision: envelope.schema_revision,
-                valid_at: envelope.valid_at,
-                rows,
-                total_rows,
-                bm25: envelope.bm25,
-            })
-        }
-
-        fn decode_index_rows(
-            rows_json: &str,
-            row_limit: Option<usize>,
-        ) -> Result<(Vec<QueryRow>, usize)> {
-            let mut deserializer = serde_json::Deserializer::from_str(rows_json);
-            let seed = RowCollector { row_limit };
-            let (rows, total) = seed.deserialize(&mut deserializer)?;
-            deserializer.end()?;
-            Ok((rows, total))
-        }
-
-        struct RowCollector {
-            row_limit: Option<usize>,
-        }
-
-        impl<'de> DeserializeSeed<'de> for RowCollector {
-            type Value = (Vec<QueryRow>, usize);
-
-            fn deserialize<D>(self, deserializer: D) -> std::result::Result<Self::Value, D::Error>
-            where
-                D: serde::Deserializer<'de>,
-            {
-                deserializer.deserialize_seq(RowCollectorVisitor {
-                    row_limit: self.row_limit,
-                })
-            }
-        }
-
-        struct RowCollectorVisitor {
-            row_limit: Option<usize>,
-        }
-
-        impl<'de> Visitor<'de> for RowCollectorVisitor {
-            type Value = (Vec<QueryRow>, usize);
-
-            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-                formatter.write_str("an array of query rows")
-            }
-
-            fn visit_seq<A>(self, mut seq: A) -> std::result::Result<Self::Value, A::Error>
-            where
-                A: SeqAccess<'de>,
-            {
-                let mut rows = Vec::new();
-                let mut total = 0usize;
-                let mut previous_identity: Option<String> = None;
-                while self.row_limit.map_or(true, |limit| rows.len() < limit) {
-                    let Some(row) = seq.next_element::<QueryRow>()? else {
-                        return Ok((rows, total));
-                    };
-                    total = total.saturating_add(1);
-                    if previous_identity
-                        .as_ref()
-                        .is_some_and(|previous| previous >= &row.identity)
-                    {
-                        return Err(serde::de::Error::custom(
-                            "index artifact row identities must be unique and sorted",
-                        ));
-                    }
-                    previous_identity = Some(row.identity.clone());
-                    rows.push(row);
-                }
-                while seq.next_element::<IgnoredAny>()?.is_some() {
-                    total = total.saturating_add(1);
-                }
-                Ok((rows, total))
-            }
-        }
-
-        fn validate_count_analytics(
-            definition: &IndexDefinition,
-            analytics: &crate::IndexAnalyticsArtifact,
-        ) -> Result<()> {
-            if matches!(definition.kind, IndexKind::Count) && !analytics.groups.is_empty() {
-                return Err(Error::Integrity(
-                    "a count index cannot contain groups".into(),
-                ));
-            }
-            if matches!(definition.kind, IndexKind::AggregateCount) {
-                let grouped_total = analytics.groups.iter().try_fold(0_u64, |sum, group| {
-                    if group.values.len() != definition.fields.len() || group.count == 0 {
-                        return Err(Error::Integrity("grouped-count entry is invalid".into()));
-                    }
-                    sum.checked_add(group.count)
-                        .ok_or_else(|| Error::Integrity("grouped-count total overflow".into()))
-                })?;
-                if grouped_total != analytics.total_count {
-                    return Err(Error::Integrity(
-                        "grouped-count total does not match its groups".into(),
-                    ));
-                }
-            }
-            Ok(())
         }
         let selected = match self {
             Self::Versioned { sources } => {
@@ -1007,11 +787,8 @@ fn rows_for_source(
                     RuntimeMutation::Event { event }
                         if &event.kind == kind && change.at <= valid_at =>
                     {
-                        let reference = rrd_core::RuntimeRef::new(
-                            event.kind.to_string(),
-                            format!("cursor:{}", change.cursor),
-                        )
-                        .expect("persisted event reference is valid");
+                        let reference =
+                            rrd_core::RuntimeRef::event(event.kind.clone(), change.cursor);
                         active.insert(reference, (change, event));
                     }
                     RuntimeMutation::Retire { retirement }

@@ -51,10 +51,10 @@ impl Drop for ServerFixturePermit {
     }
 }
 
-fn engram_context(at: u64, operation: &str) -> rrd_engram::MutationContext {
-    rrd_engram::MutationContext {
+fn estate_context(at: u64, operation: &str) -> rrd_estate::MutationContext {
+    rrd_estate::MutationContext {
         at,
-        actor: "rrd-engram".into(),
+        actor: "rrd-estate".into(),
         request_id: format!("request-{operation}"),
         operation_id: CanonicalId::new(operation).unwrap(),
     }
@@ -398,23 +398,26 @@ fn authenticated_storage_diagnostic_trace_correlates_store_without_secrets() {
 
     const CHILD: &str = "RRFLOW_TEST_DIAGNOSTIC_TRACE_CHILD";
     if std::env::var_os(CHILD).is_none() {
-        let result = Command::new(std::env::current_exe().unwrap())
-            .args([
-                "--exact",
-                "authenticated_storage_diagnostic_trace_correlates_store_without_secrets",
-                "--nocapture",
-            ])
-            .env(CHILD, "1")
-            .output()
-            .unwrap();
-        assert!(
-            result.status.success(),
-            "isolated diagnostic trace test failed: stdout={} stderr={}",
-            String::from_utf8_lossy(&result.stdout),
-            String::from_utf8_lossy(&result.stderr)
-        );
+        for mode in ["enabled", "disabled"] {
+            let result = Command::new(std::env::current_exe().unwrap())
+                .args([
+                    "--exact",
+                    "authenticated_storage_diagnostic_trace_correlates_store_without_secrets",
+                    "--nocapture",
+                ])
+                .env(CHILD, mode)
+                .output()
+                .unwrap();
+            assert!(
+                result.status.success(),
+                "isolated diagnostic trace test ({mode}) failed: stdout={} stderr={}",
+                String::from_utf8_lossy(&result.stdout),
+                String::from_utf8_lossy(&result.stderr)
+            );
+        }
         return;
     }
+    let timing_enabled = std::env::var(CHILD).unwrap() == "enabled";
 
     #[derive(Clone)]
     struct Capture(Arc<Mutex<Vec<u8>>>);
@@ -429,11 +432,14 @@ fn authenticated_storage_diagnostic_trace_correlates_store_without_secrets() {
     }
     let output = Arc::new(Mutex::new(Vec::new()));
     let writer_output = output.clone();
+    let filter = if timing_enabled {
+        "rrd_store::diagnostic=debug,rrd_server::diagnostic=debug,rrd_engine::transaction_diagnostic=debug"
+    } else {
+        "rrd_store::diagnostic=debug,rrd_server::diagnostic=debug"
+    };
     let subscriber = tracing_subscriber::fmt()
         .json()
-        .with_env_filter(tracing_subscriber::EnvFilter::new(
-            "rrd_store::diagnostic=debug,rrd_server::diagnostic=debug",
-        ))
+        .with_env_filter(tracing_subscriber::EnvFilter::new(filter))
         .with_writer(move || Capture(writer_output.clone()))
         .finish();
     tracing::subscriber::set_global_default(subscriber).unwrap();
@@ -461,6 +467,7 @@ fn authenticated_storage_diagnostic_trace_correlates_store_without_secrets() {
         grants: [
             SecurityAction::SessionCreate,
             SecurityAction::DiagnosticsRead,
+            SecurityAction::TransactionBegin,
         ]
         .into_iter()
         .map(|action| ResourceGrant {
@@ -512,17 +519,87 @@ fn authenticated_storage_diagnostic_trace_correlates_store_without_secrets() {
         Some((session, token)),
     );
     assert_eq!(status, 200, "{response}");
+    let mut begin = envelope(
+        json!({"scope": "claims", "timeout_ms": 5000}),
+        Some("private-begin-key"),
+        None,
+    );
+    begin["context"]["request_id"] = json!("private-begin-sentinel");
+    let (status, created_tx) = post(&server, "/v1/transactions", &begin, Some((session, token)));
+    assert_eq!(status, 200, "{created_tx}");
+    let (status, replayed_tx) = post(&server, "/v1/transactions", &begin, Some((session, token)));
+    assert_eq!(status, 200, "{replayed_tx}");
+    assert_eq!(payload(&created_tx), payload(&replayed_tx));
+    let mut second_begin = begin.clone();
+    second_begin["context"]["idempotency_key"] = json!("second-begin");
+    let (status, second) = post(
+        &server,
+        "/v1/transactions",
+        &second_begin,
+        Some((session, token)),
+    );
+    assert_eq!(status, 200, "{second}");
+    let mut over_quota = begin.clone();
+    over_quota["context"]["idempotency_key"] = json!("third-begin");
+    over_quota["context"]["request_id"] = json!("private-error-sentinel");
+    let (status, rejection) = post(
+        &server,
+        "/v1/transactions",
+        &over_quota,
+        Some((session, token)),
+    );
+    assert_eq!(status, 429, "{rejection}");
     server.stop();
 
     let bytes = output.lock().unwrap().clone();
     let raw = std::str::from_utf8(&bytes).unwrap();
     assert!(!raw.contains("private-request-sentinel"));
     assert!(!raw.contains("trace-test-api-key"));
+    assert!(!raw.contains("private-begin-sentinel"));
+    assert!(!raw.contains("private-begin-key"));
+    assert!(!raw.contains("private-error-sentinel"));
     assert!(!raw.contains(token));
     let events: Vec<Value> = raw
         .lines()
         .map(|line| serde_json::from_str(line).unwrap())
         .collect();
+    let begin_events: Vec<_> = events
+        .iter()
+        .filter(|event| event["target"] == "rrd_engine::transaction_diagnostic")
+        .collect();
+    if !timing_enabled {
+        assert!(begin_events.is_empty());
+    } else {
+        for outcome in ["created", "replayed"] {
+            let event = begin_events
+                .iter()
+                .find(|event| event["fields"]["outcome"] == outcome)
+                .expect("HTTP transaction begin must emit its actual outcome");
+            assert_eq!(
+                event["fields"]["request_sha256"],
+                rrd_core::digest::sha256_hex(b"private-begin-sentinel")
+            );
+            for field in [
+                "validation_ns",
+                "admission_ns",
+                "authentication_ns",
+                "replay_ns",
+                "snapshot_ns",
+                "publication_ns",
+                "total_ns",
+            ] {
+                assert!(event["fields"][field].is_u64(), "missing {field}: {event}");
+            }
+        }
+        let rejection = begin_events
+            .iter()
+            .find(|event| event["fields"]["outcome"] == "error")
+            .expect("quota rejection must emit an error timing");
+        assert_eq!(
+            rejection["fields"]["request_sha256"],
+            rrd_core::digest::sha256_hex(b"private-error-sentinel")
+        );
+    }
     let event = events
         .iter()
         .find(|event| event["target"] == "rrd_store::diagnostic")
@@ -938,7 +1015,7 @@ fn initialized_security_authority_binds_sessions_and_denies_ungranted_routes() {
     }));
     assert!(records
         .iter()
-        .any(|record| { record["action"] == "engram_read" && record["decision"] == "denied" }));
+        .any(|record| { record["action"] == "estate_read" && record["decision"] == "denied" }));
     assert!(records.iter().any(|record| {
         record["action"] == "vector_collection_ensure" && record["decision"] == "denied"
     }));
@@ -2552,23 +2629,23 @@ fn data_transaction_atomically_commits_every_public_model_and_replays_after_rest
 }
 
 #[test]
-fn authenticated_engram_read_returns_the_public_snapshot_only() {
+fn authenticated_estate_read_returns_the_public_snapshot_only() {
     let temporary = tempfile::tempdir().unwrap();
     let root = temporary.path().join("instance");
     {
         let engine = RrflowKvStore::open(&root).unwrap();
         let repository =
-            rrd_engram::engramRepository::new(&engine, CanonicalId::new("engram-a").unwrap());
+            rrd_estate::EstateRepository::new(&engine, CanonicalId::new("estate-a").unwrap());
         repository
-            .create(&engram_context(10, "create-engram"))
+            .create(&estate_context(10, "create-estate"))
             .unwrap();
         repository
-            .set_desired(&rrd_engram::SetDesired {
-                context: engram_context(20, "deploy-project-a"),
+            .set_desired(&rrd_estate::SetDesired {
+                context: estate_context(20, "deploy-project-a"),
                 instance_id: CanonicalId::new("project-a").unwrap(),
                 idempotency_key: "deploy-project-a".into(),
-                target: rrd_engram::DesiredTarget {
-                    phase: rrd_engram::DesiredPhase::Running,
+                target: rrd_estate::DesiredTarget {
+                    phase: rrd_estate::DesiredPhase::Running,
                     deployment_ref: CanonicalId::new("local-rrd").unwrap(),
                     version: "1.0.0".into(),
                     configuration_sha256: "a".repeat(64),
@@ -2585,7 +2662,7 @@ fn authenticated_engram_read_returns_the_public_snapshot_only() {
                 "max_open_transactions": 2,
             }
         }),
-        Some("engram-session"),
+        Some("estate-session"),
         None,
     );
     let (status, created) = post(&server, "/v1/sessions", &create, None);
@@ -2595,21 +2672,21 @@ fn authenticated_engram_read_returns_the_public_snapshot_only() {
 
     let mut read = envelope(json!({}), None, None);
     read["resource"]["segments"] = json!([
-        {"kind": "engram", "id": "engram-a"},
+        {"kind": "estate", "id": "estate-a"},
         {"kind": "instance", "id": "socket-test"}
     ]);
-    let (status, denied) = post(&server, "/v1/engrams/engram-a/read", &read, None);
+    let (status, denied) = post(&server, "/v1/estates/estate-a/read", &read, None);
     assert_eq!(status, 401);
     assert_eq!(denied["outcome"]["error"]["code"], "unauthenticated");
 
     let (status, response) = post(
         &server,
-        "/v1/engrams/engram-a/read",
+        "/v1/estates/estate-a/read",
         &read,
         Some((session_id, token)),
     );
     assert_eq!(status, 200, "{response}");
-    assert_eq!(payload(&response)["id"], "engram-a");
+    assert_eq!(payload(&response)["id"], "estate-a");
     assert_eq!(payload(&response)["revision"], 2);
     assert_eq!(payload(&response)["instances"][0]["id"], "project-a");
     assert_eq!(payload(&response)["operations"][0]["state"], "pending");
@@ -2618,7 +2695,7 @@ fn authenticated_engram_read_returns_the_public_snapshot_only() {
 
     let (status, mismatch) = post(
         &server,
-        "/v1/engrams/other-engram/read",
+        "/v1/estates/other-estate/read",
         &read,
         Some((session_id, token)),
     );
@@ -2747,7 +2824,7 @@ fn standalone_daemon_process_passes_the_shared_corpus_and_exclusively_owns_its_r
         "loopback_http_websocket"
     );
     assert_eq!(
-        payload(&capabilities)["installed_engram"]["instance_id"],
+        payload(&capabilities)["installed_estate"]["instance_id"],
         instance.as_str()
     );
 
@@ -3935,7 +4012,7 @@ fn installed_endpoint_configuration_http_flow_survives_restart_and_revocation() 
     }
     let reopened = RrdEngine::open_installed(&project, &executable).unwrap();
     assert_eq!(
-        reopened.installed_engram_identity(),
+        reopened.installed_estate_identity(),
         Some(&installation.installation.target)
     );
 }

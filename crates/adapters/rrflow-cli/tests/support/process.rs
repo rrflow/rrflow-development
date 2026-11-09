@@ -25,6 +25,15 @@ pub fn spawn(command: &mut Command) -> io::Result<Child> {
 
 type Capture = (mpsc::Receiver<io::Result<Vec<u8>>>, JoinHandle<()>);
 
+/// A test-owned observer must redact input itself and keep bounded state.
+#[allow(dead_code)]
+pub trait RedactedStderr: Send {
+    fn set_pid(&mut self, pid: u32);
+    fn consume(&mut self, bytes: &[u8]);
+    fn finish(&mut self);
+    fn capture_failed(&mut self);
+}
+
 pub struct Process {
     child: Arc<Mutex<Child>>,
     cancel: Arc<AtomicBool>,
@@ -32,6 +41,7 @@ pub struct Process {
     monitor: Option<JoinHandle<()>>,
     capture: Vec<Capture>,
     control_input: Option<std::process::ChildStdin>,
+    redacted_stderr: bool,
 }
 
 impl Process {
@@ -50,6 +60,28 @@ impl Process {
             None,
             false,
             None,
+            None,
+        )
+    }
+
+    #[allow(dead_code)]
+    pub fn start_with_redacted_stderr(
+        command: &mut Command,
+        deadline: Duration,
+        limit: usize,
+        announcement: Option<mpsc::SyncSender<io::Result<Vec<u8>>>>,
+        observer: Box<dyn RedactedStderr>,
+    ) -> io::Result<Self> {
+        Self::start_inner(
+            command,
+            deadline,
+            limit,
+            announcement,
+            None,
+            None,
+            false,
+            None,
+            Some(observer),
         )
     }
 
@@ -72,6 +104,7 @@ impl Process {
             None,
             false,
             Some(cancel),
+            None,
         )
     }
 
@@ -92,6 +125,7 @@ impl Process {
             Some(lines),
             Some(input),
             false,
+            None,
             None,
         )
     }
@@ -118,6 +152,7 @@ impl Process {
             Some(lines),
             Some(input),
             true,
+            None,
             None,
         )
     }
@@ -149,6 +184,7 @@ impl Process {
         input: Option<&[u8]>,
         retain_input: bool,
         supplied_cancel: Option<Arc<AtomicBool>>,
+        mut stderr_observer: Option<Box<dyn RedactedStderr>>,
     ) -> io::Result<Self> {
         if let Some(input) = input {
             if input.len() > 4096 {
@@ -160,6 +196,22 @@ impl Process {
         let stdin = child.stdin.take();
         let stdout = child.stdout.take().unwrap();
         let stderr = child.stderr.take().unwrap();
+        if let Some(observer) = &mut stderr_observer {
+            if std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                observer.set_pid(child.id());
+            }))
+            .is_err()
+            {
+                let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    observer.capture_failed();
+                }));
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(io::Error::other(
+                    "redacted stderr observer initialization panicked",
+                ));
+            }
+        }
         let child = Arc::new(Mutex::new(child));
         let cancel = supplied_cancel.unwrap_or_else(|| Arc::new(AtomicBool::new(false)));
         let failure = Arc::new(Mutex::new(None));
@@ -170,9 +222,14 @@ impl Process {
             monitor: None,
             capture: Vec::new(),
             control_input: None,
+            redacted_stderr: stderr_observer.is_some(),
         };
         process.capture(stdout, limit, announcement, lines);
-        process.capture(stderr, limit, None, None);
+        if let Some(observer) = stderr_observer {
+            process.capture_redacted(stderr, observer);
+        } else {
+            process.capture(stderr, limit, None, None);
+        }
         process.monitor = Some(thread::spawn(move || {
             let end = Instant::now() + deadline;
             loop {
@@ -211,6 +268,42 @@ impl Process {
             }
         }
         Ok(process)
+    }
+
+    fn capture_redacted(
+        &mut self,
+        mut stream: impl Read + Send + 'static,
+        mut observer: Box<dyn RedactedStderr>,
+    ) {
+        let (send, receive) = mpsc::sync_channel(1);
+        let cancel = self.cancel.clone();
+        let failure = self.failure.clone();
+        let reader = thread::spawn(move || {
+            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                let mut buffer = [0_u8; 8192];
+                let read_result = loop {
+                    match stream.read(&mut buffer) {
+                        Ok(0) => break Ok(()),
+                        Ok(count) => observer.consume(&buffer[..count]),
+                        Err(error) if error.kind() == io::ErrorKind::Interrupted => continue,
+                        Err(error) => break Err(error),
+                    }
+                };
+                observer.finish();
+                read_result?;
+                Ok(Vec::new())
+            }))
+            .unwrap_or_else(|_| Err(io::Error::other("redacted stderr observer panicked")));
+            if result.is_err() {
+                let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    observer.capture_failed();
+                }));
+                *failure.lock().unwrap() = Some("redacted stderr capture failed");
+                cancel.store(true, Ordering::Release);
+            }
+            let _ = send.send(result);
+        });
+        self.capture.push((receive, reader));
     }
 
     fn capture(
@@ -286,6 +379,11 @@ impl Process {
 
     pub fn id(&self) -> u32 {
         self.child.lock().unwrap().id()
+    }
+
+    #[allow(dead_code)]
+    pub fn stderr_is_redacted(&self) -> bool {
+        self.redacted_stderr
     }
 
     pub fn terminate(&self) {

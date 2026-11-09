@@ -10,6 +10,20 @@ it cannot close a roadmap gate independently.
 
 ## Observed deficiency
 
+The [selected-source worker package](../../evidence/change-journals/gate-g/task-worker-selected-source.md)
+separates selected-file identity and current eligibility from unrelated inventory
+head and Git changes. Its native prerequisites and matching Connectome PR39 have
+landed through protected CI. The [assessment package's dependency evidence](../../evidence/change-journals/gate-g/task-controller-assessments.md#dependency-evidence-and-exact-limits)
+records the actual source-bound worker and exact merged-desktop recovery; this
+does not establish general attunement or project-effect closure.
+The existing `make_attunement_replan` boundary accepts only eligible unresolved
+jobs with Connect/Inventory checkpoints. Completed jobs and later-effect jobs
+have no general inventory refresh path. Older inventories lacking the derived
+`source_file` query projection therefore remain unavailable to the proposed
+picker until a grounded refresh path is implemented. Preserve prior effects and
+receipts; neither private head replacement nor treating old metadata as current
+is remediation. This limitation remains open under D-02/D-03 and this POA&M.
+
 Verified at development `main` `04fae276`:
 
 - [`control_attunement`](../../../crates/authority/rrd-engine/src/engine/attunement.rs)
@@ -60,7 +74,7 @@ Roadmap owner: [Gate D](../../roadmap/rrflow-1.0/gate-d.md#project-workflow-buil
 Every attunement phase recomputes its bound source identity (the project's
 source revision where it has one, and its inventory digest) before its effect,
 and commits a checkpoint only when that identity matches the plan. A mismatch
-returns a typed stale-plan failure with no project or engram write and requires
+returns a typed stale-plan failure with no project or estate write and requires
 an explicit re-plan; the accepted plan is never edited in place. Tests change a
 project file between plan and `Start` and between two phases, through the
 shipped `rrflow`, and a test changes a storage root between restore planning and

@@ -56,7 +56,7 @@ browser rendering smoke tests passed. Browser tests are not native proof.
 The Windows desktop/NSIS build passed. Actual WebView2 interaction cancelled
 and accepted the native preview, read the installed catalogue, queried seeded
 native data, closed, reopened, queried again and rendered relationships.
-Post-shutdown `rrflow --json verify --project <engram> --level quick` passed.
+Post-shutdown `rrflow --json verify --project <estate> --level quick` passed.
 No mock or raw filesystem read supplied the UI results. Existing local data
 and the original user checkout were preserved.
 

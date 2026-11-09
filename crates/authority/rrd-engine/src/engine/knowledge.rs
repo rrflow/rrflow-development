@@ -16,7 +16,7 @@ const MAX_KNOWLEDGE_CONTROL_BYTES: usize = 1024 * 1024;
 
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-struct Knowledgengram {
+struct KnowledgeState {
     format_version: u16,
     catalogue: KnowledgeTreeCatalogue,
     catalogue_sha256: String,
@@ -126,7 +126,7 @@ impl RrdEngine {
             .into_catalogue()
             .map_err(knowledge_contract)?;
         let catalogue_sha256 = catalogue.sha256().map_err(knowledge_contract)?;
-        let state = Knowledgengram {
+        let state = KnowledgeState {
             format_version: KNOWLEDGE_STATE_FORMAT,
             catalogue: catalogue.clone(),
             catalogue_sha256: catalogue_sha256.clone(),
@@ -191,7 +191,7 @@ impl RrdEngine {
 
     fn knowledge_scope(&self, project_id: &CanonicalId, scope: &str) -> Result<ScopeId> {
         if self
-            .installed_engram_identity()
+            .installed_estate_identity()
             .is_none_or(|identity| &identity.project_id != project_id)
         {
             return Err(ServiceError::ProjectBindingMismatch);
@@ -314,7 +314,7 @@ fn decode_knowledge_state(
             .map_err(knowledge_contract);
     };
     require_bounded_knowledge_record(bytes)?;
-    let state: Knowledgengram = serde_json::from_slice(bytes)
+    let state: KnowledgeState = serde_json::from_slice(bytes)
         .map_err(|_| ServiceError::Storage("knowledge catalogue cannot be decoded".into()))?;
     validate_knowledge_snapshot(
         state.format_version,

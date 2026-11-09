@@ -102,7 +102,7 @@ fn ensure_collection(engine: &RrdEngine, lease: &SessionLease, collection: &str)
 }
 
 /// Where each accelerator is built: before the moves, so it serves them from
-/// its overlay, or after them, so it was built from the moved engram.
+/// its overlay, or after them, so it was built from the moved estate.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Accelerator {
     None,
@@ -206,7 +206,7 @@ fn build(engine: &RrdEngine, lease: &SessionLease, accelerator: Accelerator, bef
 
 /// The three collections, seven identities in `documents` and `e` in
 /// `archive`, before any move.
-fn engram() -> (tempfile::TempDir, RrdEngine, SessionLease) {
+fn estate() -> (tempfile::TempDir, RrdEngine, SessionLease) {
     let root = tempfile::tempdir().unwrap();
     let engine = RrdEngine::open(root.path(), instance(), TOKEN_KEY).unwrap();
     let lease = engine
@@ -252,10 +252,10 @@ fn commit_move(engine: &RrdEngine, lease: &SessionLease, index: usize) {
     );
 }
 
-/// The engram, the accelerator, every move, and the accelerator again when
+/// The estate, the accelerator, every move, and the accelerator again when
 /// it is built after them.
 fn fixture(accelerator: Accelerator) -> (tempfile::TempDir, RrdEngine, SessionLease) {
-    let (root, engine, lease) = engram();
+    let (root, engine, lease) = estate();
     build(&engine, &lease, accelerator, true);
     for index in 0..MOVES.len() {
         commit_move(&engine, &lease, index);
@@ -549,7 +549,7 @@ fn membership(
 /// sees every move.
 #[test]
 fn every_move_is_a_delta_of_the_sources_it_leaves_and_joins() {
-    let (_root, engine, lease) = engram();
+    let (_root, engine, lease) = estate();
     let scope_id = rrd_core::ScopeId::new(scope()).unwrap();
     let mut location = IDENTITIES
         .iter()
@@ -787,7 +787,7 @@ fn empty_documents(engine: &RrdEngine, lease: &SessionLease, later: &[(&str, u64
 /// any valid time and can be deleted.
 #[test]
 fn a_collection_every_identity_left_can_be_deleted() {
-    let (_root, engine, lease) = engram();
+    let (_root, engine, lease) = estate();
     empty_documents(&engine, &lease, &[]);
     assert!(retrieved(&engine, &lease, "documents", 10).is_empty());
     assert!(retrieved(&engine, &lease, "documents", 60).is_empty());
@@ -800,7 +800,7 @@ fn a_collection_every_identity_left_can_be_deleted() {
 /// deletion time.
 #[test]
 fn a_collection_an_identity_still_holds_refuses_deletion() {
-    let (_root, engine, lease) = engram();
+    let (_root, engine, lease) = estate();
     empty_documents(&engine, &lease, &[("b", 100)]);
     assert!(retrieved(&engine, &lease, "documents", 60).contains("b"));
     assert!(delete(&engine, &lease, "documents", 60).is_err());
@@ -808,12 +808,12 @@ fn a_collection_an_identity_still_holds_refuses_deletion() {
     let deleted = delete(&engine, &lease, "documents", 100);
     assert!(deleted.is_ok(), "{deleted:?}");
 
-    let (_root, engine, lease) = engram();
+    let (_root, engine, lease) = estate();
     empty_documents(&engine, &lease, &[]);
     commit_vectors(&engine, &lease, 510, vec![put("d", "documents", 3, 1)]);
     assert!(delete(&engine, &lease, "documents", 60).is_err());
 
-    let (_root, engine, lease) = engram();
+    let (_root, engine, lease) = estate();
     empty_documents(&engine, &lease, &[]);
     commit_vectors(&engine, &lease, 510, vec![put("d", "documents", 3, 100)]);
     assert!(retrieved(&engine, &lease, "documents", 60).is_empty());
@@ -827,7 +827,7 @@ fn a_collection_an_identity_still_holds_refuses_deletion() {
 /// and it publishes.
 #[test]
 fn a_generation_after_its_newest_version_moves_out_still_publishes() {
-    let (_root, engine, lease) = engram();
+    let (_root, engine, lease) = estate();
     hnsw(&engine, &lease, "hnsw-first");
     let turboquant = VectorQuantizationMethod::TurboQuant {
         bits: VectorQuantizationBits::Bits4,

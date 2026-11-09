@@ -1,6 +1,6 @@
 use rrd_contract::CanonicalId;
-use rrd_engram::{
-    engramRepository, ActivityClass, ActivityEvidence, DesiredPhase, DesiredTarget, Error,
+use rrd_estate::{
+    ActivityClass, ActivityEvidence, DesiredPhase, DesiredTarget, Error, EstateRepository,
     LeaseRequest, MutationContext, OperationState, ReceiptBoundary, ReceiptRequest, SetDesired,
 };
 use rrd_store::{RrflowKvStore, RrflowMxStore, StorageEngine};
@@ -12,7 +12,7 @@ fn id(value: &str) -> CanonicalId {
 fn context(at: u64, request: &str, operation: &str) -> MutationContext {
     MutationContext {
         at,
-        actor: "rrd-engram".into(),
+        actor: "rrd-estate".into(),
         request_id: request.into(),
         operation_id: id(operation),
     }
@@ -39,9 +39,9 @@ fn set_request(at: u64, key: &str, operation: &str) -> SetDesired {
 #[test]
 fn desired_state_is_journaled_and_idempotency_is_durable() {
     let engine = RrflowMxStore::new();
-    let repository = engramRepository::new(&engine, id("engram-a"));
+    let repository = EstateRepository::new(&engine, id("estate-a"));
     repository
-        .create(&context(10, "create-engram", "create-engram"))
+        .create(&context(10, "create-estate", "create-estate"))
         .unwrap();
 
     let request = set_request(20, "deploy-project-a", "deploy-project-a");
@@ -75,9 +75,9 @@ fn desired_state_is_journaled_and_idempotency_is_durable() {
 #[test]
 fn expired_workers_are_fenced_and_recovery_uses_a_new_epoch() {
     let engine = RrflowMxStore::new();
-    let repository = engramRepository::new(&engine, id("engram-a"));
+    let repository = EstateRepository::new(&engine, id("estate-a"));
     repository
-        .create(&context(10, "create-engram", "create-engram"))
+        .create(&context(10, "create-estate", "create-estate"))
         .unwrap();
     repository
         .set_desired(&set_request(20, "deploy-project-a", "deploy-project-a"))
@@ -183,9 +183,9 @@ fn expired_workers_are_fenced_and_recovery_uses_a_new_epoch() {
 #[test]
 fn activity_classification_keeps_evidence_and_recomputes_over_time() {
     let engine = RrflowMxStore::new();
-    let repository = engramRepository::new(&engine, id("engram-a"));
+    let repository = EstateRepository::new(&engine, id("estate-a"));
     repository
-        .create(&context(10, "create-engram", "create-engram"))
+        .create(&context(10, "create-estate", "create-estate"))
         .unwrap();
     repository
         .set_desired(&set_request(20, "deploy-project-a", "deploy-project-a"))
@@ -219,12 +219,12 @@ fn activity_classification_keeps_evidence_and_recomputes_over_time() {
 #[test]
 fn native_reopen_recovers_authority_and_hash_chained_history() {
     let directory = tempfile::tempdir().unwrap();
-    let path = directory.path().join("engram-native");
+    let path = directory.path().join("estate-native");
     {
         let engine = RrflowKvStore::open(&path).unwrap();
-        let repository = engramRepository::new(&engine, id("engram-a"));
+        let repository = EstateRepository::new(&engine, id("estate-a"));
         repository
-            .create(&context(10, "create-engram", "create-engram"))
+            .create(&context(10, "create-estate", "create-estate"))
             .unwrap();
         repository
             .set_desired(&set_request(20, "deploy-project-a", "deploy-project-a"))
@@ -239,7 +239,7 @@ fn native_reopen_recovers_authority_and_hash_chained_history() {
     }
 
     let reopened = RrflowKvStore::open(&path).unwrap();
-    let repository = engramRepository::new(&reopened, id("engram-a"));
+    let repository = EstateRepository::new(&reopened, id("estate-a"));
     let document = repository.load().unwrap().unwrap();
     assert_eq!(document.revision, 3);
     assert_eq!(

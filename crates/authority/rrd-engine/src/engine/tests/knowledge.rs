@@ -2,7 +2,7 @@ use super::*;
 use rrd_contract::{
     BindingKind, BindingLimits, CredentialReference, DeclaredFootprint, DeploymentForm,
     DeploymentProfile, EndpointBinding, EndpointLocator, EndpointPresentation, GpuRequirement,
-    InstalledengramIdentity, KnowledgePath, KnowledgePathBinding, KnowledgeTree,
+    InstalledEstateIdentity, KnowledgePath, KnowledgePathBinding, KnowledgeTree,
     KnowledgeTreeCatalogue, ListKnowledgeTrees, ReplaceKnowledgeTrees, SessionLease,
     StorageProfileKind, WorkloadClass, DEPLOYMENT_PROFILE_CONTRACT_VERSION,
 };
@@ -18,12 +18,12 @@ fn project() -> CanonicalId {
 }
 
 fn bind_project(engine: &mut RrdEngine, root: &Path) {
-    let configuration = engine.engram_configuration().clone();
+    let configuration = engine.estate_configuration().clone();
     engine
         .bind_installed_state(
-            InstalledengramIdentity {
+            InstalledEstateIdentity {
                 project_id: project(),
-                engram_id: canonical("knowledge-engram"),
+                estate_id: canonical("knowledge-estate"),
                 instance_id: instance(),
             },
             DeploymentProfile {
@@ -149,7 +149,7 @@ fn knowledge_catalogue_and_exact_receipt_survive_engine_restart() {
 fn knowledge_saturated_admission_preserves_catalogue_and_releases_for_retry() {
     let (_root, mut engine, lease) = knowledge_engine();
     engine
-        .engram_configuration
+        .estate_configuration
         .storage
         .transaction_admission_requests = 1;
     let permit = engine

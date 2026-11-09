@@ -57,15 +57,6 @@ pub enum VectorResidencySource {
     CacheBypassOwned,
 }
 
-impl VectorResidencySource {
-    pub const fn is_cold_source(self) -> bool {
-        matches!(
-            self,
-            Self::ColdMapped | Self::ColdOwned | Self::CacheBypassMapped | Self::CacheBypassOwned
-        )
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct VectorResidencyAcquisition {
     pub artifact: Arc<VectorArtifact>,
@@ -504,7 +495,7 @@ mod tests {
         );
         let verified = objects.put(artifact.as_bytes()).unwrap();
         let object = ObjectReference::for_verified(
-            format!("{projection}:bytes"),
+            format!("{projection}.vector-bytes"),
             None,
             VectorArtifactKind::CompactDense.media_type(),
             verified.sha256,
@@ -524,7 +515,7 @@ mod tests {
         let temporary = tempfile::tempdir().unwrap();
         let objects = LocalObjectStore::open(temporary.path()).unwrap();
         let scope = ScopeId::new("instance:residency-pinned").unwrap();
-        let binding = binding(&objects, &scope, "vector:compact:pinned", "pinned");
+        let binding = binding(&objects, &scope, "vector-compact-pinned", "pinned");
         let bytes = binding.object.length;
         let mut manager = VectorResidencyManager::new(VectorResidencyLimits {
             pinned_bytes: bytes,
@@ -601,8 +592,8 @@ mod tests {
         let temporary = tempfile::tempdir().unwrap();
         let objects = LocalObjectStore::open(temporary.path()).unwrap();
         let scope = ScopeId::new("instance:residency-cache").unwrap();
-        let first = binding(&objects, &scope, "vector:compact:first", "first");
-        let second = binding(&objects, &scope, "vector:compact:second", "second");
+        let first = binding(&objects, &scope, "vector-compact-first", "first");
+        let second = binding(&objects, &scope, "vector-compact-second", "second");
         let capacity = first.object.length.max(second.object.length);
         let mut manager = VectorResidencyManager::new(VectorResidencyLimits {
             pinned_bytes: capacity,

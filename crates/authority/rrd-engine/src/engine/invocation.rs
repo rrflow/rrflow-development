@@ -16,8 +16,8 @@ pub enum RrdOperation {
     TransactionPreview,
     TransactionCommit,
     TransactionAbort,
-    engramRead,
-    engramAdmin,
+    EstateRead,
+    EstateAdmin,
     EndpointConfigurationPreview,
     AttunementReplanPreview,
     QueryExecute,
@@ -76,7 +76,7 @@ impl RrdOperation {
                 | Self::TransactionPreview
                 | Self::TransactionCommit
                 | Self::TransactionAbort
-                | Self::engramAdmin
+                | Self::EstateAdmin
                 | Self::SubscriptionOpen
                 | Self::SubscriptionConnect
                 | Self::SubscriptionAck
@@ -111,10 +111,10 @@ impl RrdOperation {
             Self::TransactionPreview => SecurityAction::TransactionPreview,
             Self::TransactionCommit => SecurityAction::TransactionCommit,
             Self::TransactionAbort => SecurityAction::TransactionAbort,
-            Self::engramRead => SecurityAction::engramRead,
-            Self::engramAdmin
+            Self::EstateRead => SecurityAction::EstateRead,
+            Self::EstateAdmin
             | Self::EndpointConfigurationPreview
-            | Self::AttunementReplanPreview => SecurityAction::engramAdmin,
+            | Self::AttunementReplanPreview => SecurityAction::EstateAdmin,
             Self::QueryExecute => SecurityAction::QueryExecute,
             Self::QueryLivePoll => SecurityAction::QueryLivePoll,
             Self::QueryIndexEnsure => SecurityAction::QueryIndexEnsure,

@@ -4,7 +4,7 @@ use super::{
 };
 use rrd_contract::{
     AbortTransaction, AuditDecision, AuditPhase, BeginTransaction, CanonicalId, CloseSession,
-    CommitTransaction, CorrelationId, CreateSession, DataengramOrganisation,
+    CommitTransaction, CorrelationId, CreateSession, DataEstateOrganisation,
     EnsureVectorCollection, NamedVectorDefinition, PreviewTransaction, RenewSession,
     RequestContext, ResourceId, ResourceKind, ResourcePath, SecurityAction, SessionLimits,
     TransactionMutation, TransactionState, VectorMemoryTier, VectorSearchMetric, VectorValueKind,
@@ -86,10 +86,8 @@ mod context;
 mod data_crud;
 mod deployment_conformance;
 mod endpoint_configuration;
-#[path = "tests/estate_control.rs"]
-mod engram_control;
-#[path = "tests/estate_organisation.rs"]
-mod engram_organisation;
+mod estate_control;
+mod estate_organisation;
 mod flight;
 mod function;
 mod index_foundation;
@@ -99,8 +97,7 @@ mod installation_concurrency;
 mod installation_recovery;
 mod knowledge;
 mod lifecycle;
-#[path = "tests/memory_estate.rs"]
-mod memory_engram;
+mod memory_estate;
 mod native_inference;
 mod observation_source;
 mod query_admission;

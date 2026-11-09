@@ -8,7 +8,7 @@
 
 Development main `393e6b86ee58bb4ea4b77d14a871af339404ebb4` and opening commit `e28ef6389504a18cd24f369025e43247bc9ece3f` precede the PR brief and implementation. The candidate ordinary-merges unmerged [PR158](https://github.com/rrflow/rrflow-development/pull/158) head `90bb821ee360b4979f61f1e8203efff8569594ad`, which depends on PR153, PR152 and PR142. Those packages and fresh candidate CI must land through their own controls. The separately running PR158 characterization is unchanged and cannot qualify this new revision.
 
-The existing sustained adapter checks exact vector references and uses their read cursor to query the corresponding record and edges. The existing installed smoke also exercises mutations, restart and replay, but did not join a nearest-vector search to the other two paths. The HTTP server and Rust client were inspected and do not expose the engine-local HNSW and quantization artifact build/activate operations. These observations do not mean an index search is impossible under every pre-existing engram; they mean a public lifecycle has not been demonstrated by this harness.
+The existing sustained adapter checks exact vector references and uses their read cursor to query the corresponding record and edges. The existing installed smoke also exercises mutations, restart and replay, but did not join a nearest-vector search to the other two paths. The HTTP server and Rust client were inspected and do not expose the engine-local HNSW and quantization artifact build/activate operations. These observations do not mean an index search is impossible under every pre-existing estate; they mean a public lifecycle has not been demonstrated by this harness.
 
 ## Implemented oracle and result
 

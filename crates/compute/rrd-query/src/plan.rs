@@ -500,7 +500,7 @@ pub fn plan(bound: &BoundQuery) -> Result<PhysicalPlan> {
                 name: "versioned_source_read".into(),
                 selected: false,
                 exact: true,
-                reason: "rejected: relation and record family ranges grow with the engram, not with the visited neighbourhood".into(),
+                reason: "rejected: relation and record family ranges grow with the estate, not with the visited neighbourhood".into(),
             },
             CandidatePath {
                 name: "derived_projection".into(),
@@ -726,7 +726,8 @@ fn bound_version_sources(
                 }) {
                     // An arbitrary comparison string need not be a valid
                     // runtime ID. Preserve its existing empty-result behavior.
-                    if let Ok(reference) = rrd_core::RuntimeRef::new(kind.to_string(), id.clone()) {
+                    if let Ok(reference) = rrd_core::RuntimeRef::parse(kind.to_string(), id.clone())
+                    {
                         let model = schema
                             .logical_model(kind)
                             .map_err(|error| Error::Binding(error.to_string()))?;
@@ -760,11 +761,7 @@ fn bound_version_sources(
                 }
                 return Ok(vec![RuntimeVersionedSource::Identity {
                     model,
-                    reference: rrd_core::RuntimeRef::new(
-                        kind.to_string(),
-                        format!("cursor:{cursor}"),
-                    )
-                    .map_err(|error| Error::Binding(error.to_string()))?,
+                    reference: rrd_core::RuntimeRef::event(kind.clone(), cursor),
                 }]);
             }
         }
@@ -837,7 +834,7 @@ fn bound_adjacency_source(
                 .then(|| allowed.first().expect("one allowed endpoint kind").as_str())
         });
         let Some(node_kind) = node_kind else { continue };
-        let Ok(node) = rrd_core::RuntimeRef::new(node_kind, id) else {
+        let Ok(node) = rrd_core::RuntimeRef::parse(node_kind, id) else {
             continue;
         };
         return Some(RuntimeVersionedSource::Adjacency {
@@ -864,7 +861,7 @@ fn bound_identity_range(
         let RuntimeValue::String(value) = &filter.value else {
             continue;
         };
-        let Ok(id) = rrd_core::RuntimeId::new(value.clone()) else {
+        let Ok(id) = rrd_core::RuntimeId::parse(value.clone()) else {
             continue;
         };
         match filter.comparison {

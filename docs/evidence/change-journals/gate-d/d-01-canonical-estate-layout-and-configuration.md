@@ -1,13 +1,13 @@
-# D-01 canonical engram layout and configuration evidence journal
+# D-01 canonical estate layout and configuration evidence journal
 
 **Status:** active immutable change-journal evidence
-**Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/gate-d/d-01-canonical-engram-layout-and-configuration`
+**Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/gate-d/d-01-canonical-estate-layout-and-configuration`
 **Owner:** package receipt for
-`D01-02-canonical-engram-layout-and-configuration-v1`; the roadmap retains
+`D01-02-canonical-estate-layout-and-configuration-v1`; the roadmap retains
 completion authority
 
 This record reports one bounded D-01 prerequisite. It establishes a canonical
-project-local engram tree, separates installation identity from deployment
+project-local estate tree, separates installation identity from deployment
 composition, seals operator-configured reasoning, recall, and query ceilings
 into installation, and projects that same state through the public contract and
 five SDK fixtures. It does not mark D-01, D-02, F-01, H-04, a Gate J
@@ -41,17 +41,17 @@ though a local project has no organization. The public capability response
 collapsed process form, storage, and endpoint reachability into one
 `deployment_mode` value inferred partly from storage and TLS. Operator-facing
 reasoning/recall ceilings did not exist; query hard limits existed at request
-level but were not sealed as engram policy. There was no install-time
+level but were not sealed as estate policy. There was no install-time
 configuration input, no durable effective configuration record, and SDK/UI
 fixtures could not discover those facts.
 
 The target was one canonical contract and one engine-owned lifecycle:
 
-- `InstalledengramIdentity` identifies project, engram, and instance without a
+- `InstalledEstateIdentity` identifies project, estate, and instance without a
   fabricated organization or absolute filesystem identity;
 - `DeploymentProfile` keeps deployment form, storage profile, and endpoint
   presentation as independent validated axes;
-- `engramConfiguration` carries a format version, monotonic revision,
+- `EstateConfiguration` carries a format version, monotonic revision,
   domain-separated content digest, and bounded reasoning, recall, and query
   ceilings;
 - install planning accepts at most one explicit, regular, non-symbolic TOML
@@ -76,7 +76,7 @@ The canonical project tree for this slice is:
 
 ```text
 <project>/
-└── .rrflow/                       RRFlow-owned engram directory
+└── .rrflow/                       RRFlow-owned estate directory
     ├── config.toml                portable locator, not operator policy text
     ├── credentials/               owner-only credential directory
     │   └── <principal-id>.json    generated local operator credential
@@ -148,10 +148,10 @@ The package-specific replacement map is:
 
 | Baseline behavior | Canonical destination | Characterization/replacement evidence | Owner |
 |---|---|---|---|
-| Tenant-shaped local target and absolute project root | `InstalledengramIdentity`, relative `ProjectLocator` | contract fixture, install plan/open and real-process tests | D-01, POAM-020 |
-| Scattered implicit `.rrflow` paths | `engine::engram_layout::engramLayout` | exact eight-path planning and canonical-tree tests | D-01 |
+| Tenant-shaped local target and absolute project root | `InstalledEstateIdentity`, relative `ProjectLocator` | contract fixture, install plan/open and real-process tests | D-01, POAM-020 |
+| Scattered implicit `.rrflow` paths | `engine::estate_layout::EstateLayout` | exact eight-path planning and canonical-tree tests | D-01 |
 | Scalar `DeploymentMode` inferred from storage/TLS | three-axis `DeploymentProfile`, listener-bound server composition | contract negative test, MX/KV conformance, loopback/network process tests | POAM-022 |
-| Request-only limits and no operator configuration | sealed `engramConfiguration` in contract, plan, durable state, capabilities | digest/maximum tests, custom-config plan/apply/open, query/context denials | D-01, F-01 |
+| Request-only limits and no operator configuration | sealed `EstateConfiguration` in contract, plan, durable state, capabilities | digest/maximum tests, custom-config plan/apply/open, query/context denials | D-01, F-01 |
 | Hand-consumed capability fixture | contract-generated OpenAPI and SDK projections | OpenAPI golden plus five language suites | D-02, H-04 |
 
 No old implementation was deleted in this package. Legacy manifest/root and
@@ -164,9 +164,9 @@ Created implementation paths:
 
 - `crates/transport/rrd-contract/src/deployment.rs`;
 - `crates/transport/rrd-contract/tests/deployment_configuration_contract.rs`;
-- `crates/authority/rrd-engine/assets/install/default-engram-configuration-v1.toml`;
+- `crates/authority/rrd-engine/assets/install/default-estate-configuration-v1.toml`;
   and
-- `crates/authority/rrd-engine/src/engine/engram_layout.rs`.
+- `crates/authority/rrd-engine/src/engine/estate_layout.rs`.
 
 Changed implementation paths comprise the contract exports, attunement
 contract/tests/fixtures, install profile, engine composition/errors/install/
@@ -186,7 +186,7 @@ global file plan are generated projections. No file was moved or deleted, and
 Deep research was required because the design crosses portable identity,
 configuration integrity, memory execution, observability, installation
 security, SDK generation, and later release trust. The new
-[code-grounded research synthesis](../../../research/rrflow-canonical-engram-configuration-and-runtime-controls.md)
+[code-grounded research synthesis](../../../research/rrflow-canonical-estate-configuration-and-runtime-controls.md)
 uses primary specifications and official documentation for RFC 8785, Apache
 Arrow, Apache DataFusion, OpenTelemetry, Rust atomic create-new behavior,
 OpenAPI, The Update Framework, and Kubernetes configuration/API separation.
@@ -354,7 +354,7 @@ The full workspace widening also passed:
 cargo test --workspace --all-targets --locked
 ```
 
-The pre-existing `local_engram_driver` group took 229.10 seconds in the
+The pre-existing `local_estate_driver` group took 229.10 seconds in the
 five-package run and 229.41 seconds in the final workspace run. Those four tests
 exercise legacy supervisor/process-marker/effect-gap/bounded-kill behavior.
 They are inventory for later convergence, not product-performance or
@@ -412,7 +412,7 @@ automatic improvement loop, model/provider adapters, or their evaluation
 receipts. Recall/query ceilings govern the installed public HTTP query,
 live-query, index, and context-assembly paths. The legacy direct operator CLI
 query path still accepts its own explicit execution budget and requires a
-separate convergence package before it can claim installed-engram policy.
+separate convergence package before it can claim installed-estate policy.
 
 The installed identity is deterministic for the sealed project inventory,
 profile, executable, and configuration. Clone and intentional multi-instance

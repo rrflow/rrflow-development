@@ -1,5 +1,5 @@
 use crate::{
-    engramDriver, DriverEffect, DriverError, DriverObservation, DriverRequest, ObservedPhase,
+    DriverEffect, DriverError, DriverObservation, DriverRequest, EstateDriver, ObservedPhase,
     OperationKind,
 };
 use rrd_contract::CanonicalId;
@@ -692,7 +692,7 @@ impl LocalProcessDriver {
     }
 }
 
-impl engramDriver for LocalProcessDriver {
+impl EstateDriver for LocalProcessDriver {
     fn apply(&mut self, request: &DriverRequest) -> std::result::Result<DriverEffect, DriverError> {
         match request.desired.phase {
             crate::DesiredPhase::Running => {

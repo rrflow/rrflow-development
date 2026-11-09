@@ -1,5 +1,5 @@
 // Generated from rrd-contract; do not edit.
-// OpenAPI SHA-256: f14071c71318062cd2b1a9fca491a16d91b4481e98c3e0bcefeeaf98359ed580
+// OpenAPI SHA-256: 355e5482791fc6a9705b6c1bc9ba7303d1549b69b7dfbe8819c029bb7074c507
 namespace Rrflow.Rrd;
 
 public enum OperationId
@@ -33,7 +33,7 @@ public enum OperationId
     EndpointConfigurationApply,
     EndpointConfigurationPreview,
     EndpointConfigurationRead,
-    engramRead,
+    EstateRead,
     FlightLaunch,
     FlightList,
     FlightRead,
@@ -56,9 +56,12 @@ public enum OperationId
     SessionRenew,
     SubscriptionClose,
     SubscriptionOpen,
+    TaskAssessmentExecute,
+    TaskAssessmentRead,
     TaskAttemptRead,
     TaskBudgetConfigure,
     TaskBudgetRead,
+    TaskBudgetResume,
     TaskBudgetStop,
     TaskClose,
     TaskEmbeddingExecute,
@@ -101,8 +104,8 @@ public sealed record Endpoint(
 
 public static class EndpointCatalog
 {
-    public const string OpenApiDocumentSha256 = "f14071c71318062cd2b1a9fca491a16d91b4481e98c3e0bcefeeaf98359ed580";
-    public const int Count = 79;
+    public const string OpenApiDocumentSha256 = "355e5482791fc6a9705b6c1bc9ba7303d1549b69b7dfbe8819c029bb7074c507";
+    public const int Count = 82;
 
     public static Endpoint Get(OperationId operation) => operation switch
     {
@@ -135,7 +138,7 @@ public static class EndpointCatalog
         OperationId.EndpointConfigurationApply => new("endpoint-configuration-apply", "POST", "/v1/configuration/endpoints/apply", Authentication.SessionBearer, true),
         OperationId.EndpointConfigurationPreview => new("endpoint-configuration-preview", "POST", "/v1/configuration/endpoints/preview", Authentication.SessionBearer, false),
         OperationId.EndpointConfigurationRead => new("endpoint-configuration-read", "POST", "/v1/configuration/endpoints/read", Authentication.SessionBearer, false),
-        OperationId.engramRead => new("engram-read", "POST", "/v1/engrams/{engram}/read", Authentication.SessionBearer, false),
+        OperationId.EstateRead => new("estate-read", "POST", "/v1/estates/{estate}/read", Authentication.SessionBearer, false),
         OperationId.FlightLaunch => new("flight-launch", "POST", "/v1/flights", Authentication.SessionBearer, true),
         OperationId.FlightList => new("flight-list", "POST", "/v1/flights/list", Authentication.SessionBearer, false),
         OperationId.FlightRead => new("flight-read", "POST", "/v1/flights/read", Authentication.SessionBearer, false),
@@ -158,9 +161,12 @@ public static class EndpointCatalog
         OperationId.SessionRenew => new("session-renew", "POST", "/v1/sessions/{session}/renew", Authentication.SessionBearer, true),
         OperationId.SubscriptionClose => new("subscription-close", "POST", "/v1/subscriptions/close", Authentication.SessionBearer, true),
         OperationId.SubscriptionOpen => new("subscription-open", "POST", "/v1/subscriptions/open", Authentication.SessionBearer, true),
+        OperationId.TaskAssessmentExecute => new("task-assessment-execute", "POST", "/v1/tasks/assessment/execute", Authentication.SessionBearer, true),
+        OperationId.TaskAssessmentRead => new("task-assessment-read", "POST", "/v1/tasks/assessment/read", Authentication.SessionBearer, false),
         OperationId.TaskAttemptRead => new("task-attempt-read", "POST", "/v1/tasks/attempt/read", Authentication.SessionBearer, false),
         OperationId.TaskBudgetConfigure => new("task-budget-configure", "POST", "/v1/tasks/budget/configure", Authentication.SessionBearer, true),
         OperationId.TaskBudgetRead => new("task-budget-read", "POST", "/v1/tasks/budget/read", Authentication.SessionBearer, false),
+        OperationId.TaskBudgetResume => new("task-budget-resume", "POST", "/v1/tasks/budget/resume", Authentication.SessionBearer, true),
         OperationId.TaskBudgetStop => new("task-budget-stop", "POST", "/v1/tasks/budget/stop", Authentication.SessionBearer, true),
         OperationId.TaskClose => new("task-close", "POST", "/v1/tasks/close", Authentication.SessionBearer, true),
         OperationId.TaskEmbeddingExecute => new("task-embedding-execute", "POST", "/v1/tasks/embedding/execute", Authentication.SessionBearer, true),

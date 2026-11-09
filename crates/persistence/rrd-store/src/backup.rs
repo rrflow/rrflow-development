@@ -1,7 +1,7 @@
 //! Digest-verified local backup catalogue over retained logical archives.
 //!
 //! Every digest here detects changed bytes. None authenticates a producer:
-//! the catalogue shares the engram's filesystem trust domain, so a keyed
+//! the catalogue shares the estate's filesystem trust domain, so a keyed
 //! authenticator would be stored beside the key it protects. Operations that
 //! read a catalogue say "verify", never "authenticate".
 
@@ -27,7 +27,7 @@ use std::path::{Component, Path};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 /// Version 2 adds the control-journal archive: an application-complete backup
-/// carries the engram's control state (installed record, configuration,
+/// carries the estate's control state (installed record, configuration,
 /// security policy and audit chain, attunement) as replayable journal entries.
 /// A version 1 catalogue is refused rather than read as complete.
 pub const BACKUP_CATALOGUE_VERSION: u16 = 2;
@@ -110,7 +110,7 @@ pub struct BackupEntry {
     pub claims: BackupCoverage,
     pub typed_runtime: BackupCoverage,
     pub catalogues: BackupCoverage,
-    /// The engram's control state outside the catalogues: installed record and
+    /// The estate's control state outside the catalogues: installed record and
     /// checkpoint, active configuration, security policy and audit chain, and
     /// attunement plan and job state, carried as replayable journal entries.
     pub installed_control: BackupCoverage,
@@ -353,7 +353,7 @@ pub fn create_logical_backup<E: StorageEngine>(
 /// `control_families`.
 ///
 /// The caller owns the control-key layout and declares which families are
-/// engram control state. Secrets never live in control values (the token key
+/// estate control state. Secrets never live in control values (the token key
 /// and operator credential are files outside every family), and transient
 /// families such as sessions, subscriptions, and operation receipts stay out
 /// of the scope. Logical replay, object bytes, catalogues, and control entries

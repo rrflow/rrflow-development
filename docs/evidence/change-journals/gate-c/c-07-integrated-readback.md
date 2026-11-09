@@ -95,7 +95,7 @@ retained under `target/c07-integrated-readback-evidence/native-json/`:
    successful result. `abort` and `verify done` then succeeded with unchanged
    task rows and known cursor.
 5. The owned process was terminated. Offline `verify --level quick --json`
-   succeeded. A new process reopened the same engram and passed authenticated
+   succeeded. A new process reopened the same estate and passed authenticated
    readiness and `verify done`.
 6. Independent script assertions compared task and relationship rows, cursor,
    schema revision and read-manifest digests before and after restart. All
@@ -103,7 +103,7 @@ retained under `target/c07-integrated-readback-evidence/native-json/`:
 
 All 14 expected-success commands exited zero; the one negative command exited
 one. Both owned server processes were stopped, and project state retained.
-No provider, cloud account, user project or running capacity engram was used.
+No provider, cloud account, user project or running capacity estate was used.
 The private installed credential is not committed or included in this journal.
 
 | Retained identity | SHA-256 |
@@ -125,7 +125,7 @@ rejected multi-mutation writes, abort, successful update and disk reopen.
 No Rust test failure surfaced in this package. The first native operator
 attempt parsed human-readable `version` output as JSON and failed before
 installation. Its output remains under the separate `native/` directory;
-the corrected attempt explicitly used `--json` and a new engram. Exploratory shell
+the corrected attempt explicitly used `--json` and a new estate. Exploratory shell
 lookups used one nonexistent query directory and a Windows-incompatible path
 glob; corrected lookups found `crates/compute/rrd-query`. One GitHub jq command
 lost shell quotes and was replaced by PowerShell JSON selection. These were

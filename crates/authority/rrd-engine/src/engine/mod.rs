@@ -2,20 +2,20 @@
 
 use hmac::{Hmac, KeyInit, Mac};
 use rrd_contract::{
-    engramConfiguration, transaction_operation_sha256, AbortTransaction,
-    ActivateVectorQuantizationArtifact, ActivateVectorQuantizationArtifactResult, AuditDecision,
-    AuditExport, AuditPage, AuditPhase, AuditRecordSnapshot, BeginTransaction,
-    BuildVectorQuantizationArtifact, BuildVectorQuantizationArtifactResult, CanonicalId,
-    ChangeMutationSnapshot, ChangefeedFollowResult, ChangefeedPage, ChangefeedValidation,
-    ClaimChangeSnapshot, ClaimPromotionSnapshot, ClaimTierSnapshot, CloseSession,
-    CloseSubscription, CloseSubscriptionResult, CommitReceipt, CommitTransaction, CorrelationId,
-    CreateInstanceBackup, CreateInstanceBackupResult, CreateSession, DataCategorySchema,
-    DataCategoryTargets, DataDomainSchema, DataEmbeddingProvenance, DataEventSchema, DataGeoPoint,
-    DataGeoValue, DataLogicalModel, DataObjectReceipt, DataProperties, DataPropertySchema,
-    DataRecordSchema, DataReference, DataRelationSchema, DataSchemaMode, DataSchemaRegistry,
-    DataSeriesValue, DataSnapshot, DataSnapshotEntry, DataTableSchema, DataTagCardinality,
-    DataTagReference, DataTagSchema, DataTarget, DataValueType, DataVectorNormalization,
-    DataVectorValue, DataengramOrganisation, DeleteVectorCollection, DeleteVectorCollectionResult,
+    transaction_operation_sha256, AbortTransaction, ActivateVectorQuantizationArtifact,
+    ActivateVectorQuantizationArtifactResult, AuditDecision, AuditExport, AuditPage, AuditPhase,
+    AuditRecordSnapshot, BeginTransaction, BuildVectorQuantizationArtifact,
+    BuildVectorQuantizationArtifactResult, CanonicalId, ChangeMutationSnapshot,
+    ChangefeedFollowResult, ChangefeedPage, ChangefeedValidation, ClaimChangeSnapshot,
+    ClaimPromotionSnapshot, ClaimTierSnapshot, CloseSession, CloseSubscription,
+    CloseSubscriptionResult, CommitReceipt, CommitTransaction, CorrelationId, CreateInstanceBackup,
+    CreateInstanceBackupResult, CreateSession, DataCategorySchema, DataCategoryTargets,
+    DataDomainSchema, DataEmbeddingProvenance, DataEstateOrganisation, DataEventSchema,
+    DataGeoPoint, DataGeoValue, DataLogicalModel, DataObjectReceipt, DataProperties,
+    DataPropertySchema, DataRecordSchema, DataReference, DataRelationSchema, DataSchemaMode,
+    DataSchemaRegistry, DataSeriesValue, DataSnapshot, DataSnapshotEntry, DataTableSchema,
+    DataTagCardinality, DataTagReference, DataTagSchema, DataTarget, DataValueType,
+    DataVectorNormalization, DataVectorValue, DeleteVectorCollection, DeleteVectorCollectionResult,
     DeleteVectorPayloadIndex, DeleteVectorPayloadIndexResult, DeploymentProfile,
     DiagnosticAuthority, DiagnosticCoverage, DiagnosticGraphDifference,
     DiagnosticGraphRecordChange, DiagnosticGraphRecordSnapshot, DiagnosticGraphRelationChange,
@@ -26,14 +26,14 @@ use rrd_contract::{
     DiagnosticVectorArtifactKind, DiagnosticVectorArtifactSnapshot, EnsureQueryIndex,
     EnsureQueryIndexResult, EnsureVectorCollection, EnsureVectorCollectionResult,
     EnsureVectorIndex, EnsureVectorIndexResult, EnsureVectorPayloadIndex,
-    EnsureVectorPayloadIndexResult, ExecuteFunction, ExecuteQuery, ExecuteQueryTransaction,
-    ExecuteRetrievalQuery, ExportAudit, FollowChangefeed, ForwardRollbackCounts,
-    ForwardRollbackPlan, ForwardRollbackRequest, FunctionArtifact, FunctionArtifactMediaType,
-    FunctionCatalogue, FunctionDefinition, FunctionExecutionResult, FunctionInvocationProposal,
-    FunctionInvocationReceipt, FunctionRuntime, FunctionRuntimeKind, HybridFusion, HybridSearchHit,
-    HybridSearchResult, InstalledengramIdentity, InstanceBackupCatalogueSnapshot,
-    InstanceBackupSnapshot, ListInstanceBackups, ListQueryIndexes, ListVectorCollections,
-    ListVectorPayloadIndexes, ListVectorQuantizationArtifacts,
+    EnsureVectorPayloadIndexResult, EstateConfiguration, ExecuteFunction, ExecuteQuery,
+    ExecuteQueryTransaction, ExecuteRetrievalQuery, ExportAudit, FollowChangefeed,
+    ForwardRollbackCounts, ForwardRollbackPlan, ForwardRollbackRequest, FunctionArtifact,
+    FunctionArtifactMediaType, FunctionCatalogue, FunctionDefinition, FunctionExecutionResult,
+    FunctionInvocationProposal, FunctionInvocationReceipt, FunctionRuntime, FunctionRuntimeKind,
+    HybridFusion, HybridSearchHit, HybridSearchResult, InstalledEstateIdentity,
+    InstanceBackupCatalogueSnapshot, InstanceBackupSnapshot, ListInstanceBackups, ListQueryIndexes,
+    ListVectorCollections, ListVectorPayloadIndexes, ListVectorQuantizationArtifacts,
     ListVectorQuantizationArtifactsResult, LiveQueryDeltaResult, LiveQueryRowChange,
     LogicalArchiveSnapshot, NamedVectorDefinition, OpenSubscription, OpenSubscriptionResult,
     PollLiveQuery, PreviewTransaction, QueryExecutionAnalysisSnapshot, QueryExecutionSnapshot,
@@ -109,13 +109,10 @@ mod endpoint_configuration;
 mod endpoint_proposal;
 mod endpoint_worker;
 pub use endpoint_proposal::EndpointCredentials;
-#[path = "estate.rs"]
-mod engram;
-#[path = "estate_control.rs"]
-mod engram_control;
-#[path = "estate_layout.rs"]
-mod engram_layout;
 mod error;
+mod estate;
+mod estate_control;
+mod estate_layout;
 mod flight;
 mod function;
 mod inference;
@@ -130,8 +127,8 @@ pub use attunement::{
 mod invocation;
 mod knowledge;
 mod maintenance;
-#[path = "memory_estate.rs"]
 mod memory_engram;
+mod memory_estate;
 mod model;
 mod query;
 mod query_export;
@@ -151,6 +148,7 @@ mod session;
 mod session_transactions;
 mod subscription;
 mod task;
+mod task_assessment;
 mod token_key;
 mod transaction;
 mod transaction_admission;
@@ -166,16 +164,16 @@ use data::public_data_snapshot;
 pub use distributed::{
     DistributedAuthorityRead, DistributedReadRoute, PreparedDistributedAuthority,
 };
-pub use engram_control::{
-    engramAdminAction, engramAdminResult, engramBackupReconcileOutcome, engramReconcileOutcome,
-};
 pub use error::{Result, ServiceError, ServiceErrorKind};
+pub use estate_control::{
+    EstateAdminAction, EstateAdminResult, EstateBackupReconcileOutcome, EstateReconcileOutcome,
+};
 pub use installation::{
-    attunement_proposal_schema, load_attunement_proposal, load_engram_configuration,
+    attunement_proposal_schema, load_attunement_proposal, load_estate_configuration,
     AttunementProposal, AttunementProposalStep, DefaultAttunementPhase, DefaultInstallProfile,
-    InstallationPreview, InstallationVerificationCheck, InstallationVerificationReport,
-    InstallationVerificationStatus, InstalledengramRecord, ProjectLocator,
-    ATTUNEMENT_PROPOSAL_FORMAT_VERSION, INSTALLATION_PREVIEW_FORMAT_VERSION,
+    InstallationPlanningOptions, InstallationPreview, InstallationVerificationCheck,
+    InstallationVerificationReport, InstallationVerificationStatus, InstalledEstateRecord,
+    ProjectLocator, ATTUNEMENT_PROPOSAL_FORMAT_VERSION, INSTALLATION_PREVIEW_FORMAT_VERSION,
 };
 pub use invocation::{
     AuthorizedInvocation, Invocation, InvocationCompletion, InvocationCredential, RrdOperation,

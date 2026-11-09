@@ -13,7 +13,7 @@ use rrd_store::{
 use std::fs::OpenOptions;
 use std::io::{Seek, SeekFrom, Write};
 
-/// The control families a test engram declares as its engram control state.
+/// The control families a test estate declares as its estate control state.
 fn control_families() -> Vec<String> {
     vec![
         "server/state/install".into(),
@@ -222,7 +222,7 @@ fn indivisible_backup_entry_is_denied_without_publication_and_can_resume() {
 
 fn claim(name: &str, at: u64) -> Claim {
     Claim::new(
-        Subject::new(format!("backup:{name}")).unwrap(),
+        Subject::new(format!("backup-{name}")).unwrap(),
         Predicate::new("status").unwrap(),
         "retained",
         at,

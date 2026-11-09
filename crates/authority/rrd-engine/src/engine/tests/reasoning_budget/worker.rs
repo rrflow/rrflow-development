@@ -1,14 +1,15 @@
 //! Admission probes, not model-quality observations or learning records.
 mod observation;
+mod resume;
+mod source_bound;
 mod terminal_response;
 use super::*;
 use crate::engine::operation_digest;
 use rrd_contract::{
     ApplyEndpointConfiguration, EndpointConfiguration, EndpointGenerationSettings, EndpointLocator,
     EndpointProfileInput, EndpointResponseFormat, EndpointSelectionChoice,
-    EndpointSelectionRequest, EndpointTokenParameter, EndpointWorkerAdapter, EndpointWorkerBinding,
-    EndpointWorkerPolicy, InstalledengramIdentity, PreviewEndpointConfiguration, ReadTaskAttempt,
-    TaskAttemptStatus,
+    EndpointSelectionRequest, EndpointTokenParameter, EndpointWorkerBinding, EndpointWorkerPolicy,
+    InstalledEstateIdentity, PreviewEndpointConfiguration, ReadTaskAttempt, TaskAttemptStatus,
 };
 use rrd_contract::{EndpointSelectionTask, ReadTask, TaskWorkerRequest, MAX_TASK_STORAGE_KEYS};
 use std::io::{Read, Write};
@@ -24,9 +25,9 @@ fn admitted_fixture(
 ) {
     let (root, mut engine, lease, task_id, _) = actual_request_fixture();
     configure(&mut engine, 8);
-    engine.installed_engram = Some(InstalledengramIdentity {
+    engine.installed_estate = Some(InstalledEstateIdentity {
         project_id: CanonicalId::new("worker-project").unwrap(),
-        engram_id: CanonicalId::new("worker-engram").unwrap(),
+        estate_id: CanonicalId::new("worker-estate").unwrap(),
         instance_id: instance(),
     });
     let principal_id = engine.instance.clone();
@@ -90,10 +91,12 @@ fn admitted_fixture(
         bindings,
         selection_policy: Some(selector.clone()),
         observation_policy: None,
+        assessment_policy: None,
         worker_policy: Some(EndpointWorkerPolicy {
             contract_version: 1,
             allow_network: true,
             allow_context_export: true,
+            allow_source_export: false,
             allow_unverified_identity: true,
             maximum_concurrent_calls: 1,
             bindings: vec![EndpointWorkerBinding {
@@ -101,7 +104,7 @@ fn admitted_fixture(
                 protocol_evidence_sha256: digest::sha256_hex(
                     b"controlled protocol fixture, not provider qualification",
                 ),
-                adapter: EndpointWorkerAdapter::OpenaiChatCompletionsV1,
+                adapter: Default::default(),
                 system_prompt: "Return a protocol-test draft, no project effects.".into(),
                 generation: EndpointGenerationSettings {
                     maximum_output_tokens: 256,
@@ -303,6 +306,7 @@ fn worker_consumes_retained_selection_reserves_before_http_and_reopens_without_r
             expected_configuration_sha256: selection.configuration_sha256,
             max_storage_keys: MAX_TASK_STORAGE_KEYS,
             context: None,
+            source: None,
         };
         let before = budget(&engine, &lease, &request.task_id);
         let output = engine
@@ -364,7 +368,7 @@ fn worker_consumes_retained_selection_reserves_before_http_and_reopens_without_r
     assert_eq!(budget(&engine, &lease, &request.task_id), after);
     drop(engine);
     let mut engine = RrdEngine::open_existing(root.path(), instance(), TOKEN_KEY).unwrap();
-    engine.installed_engram = Some(configuration.identity.clone());
+    engine.installed_estate = Some(configuration.identity.clone());
     configure(&mut engine, 8);
     assert_eq!(
         engine
@@ -411,6 +415,7 @@ fn worker_requires_initialized_authority_before_reservation() {
         expected_configuration_sha256: digest::sha256_hex(b"explicit absent configuration probe"),
         max_storage_keys: MAX_TASK_STORAGE_KEYS,
         context: None,
+        source: None,
     };
     assert!(matches!(
         engine.execute_task_worker_with_clock(
@@ -490,6 +495,7 @@ fn selected_request(
         expected_configuration_sha256: proposal.configuration_sha256,
         max_storage_keys: MAX_TASK_STORAGE_KEYS,
         context: None,
+        source: None,
     }
 }
 
@@ -514,6 +520,7 @@ fn replace_profile(
         bindings: profile.bindings,
         selection_policy: profile.selection_policy,
         observation_policy: profile.observation_policy,
+        assessment_policy: profile.assessment_policy,
         worker_policy: profile.worker_policy,
     };
     edit(&mut input);
@@ -802,10 +809,10 @@ fn changed_inputs_stop_and_response_loss_withhold_worker_output_and_survive_reop
             assert_eq!(receipt.status, TaskAttemptStatus::Stopped);
             assert!(after.execution_may_continue);
         }
-        let identity = engine.installed_engram.clone();
+        let identity = engine.installed_estate.clone();
         drop(engine);
         let mut engine = RrdEngine::open_existing(root.path(), instance(), TOKEN_KEY).unwrap();
-        engine.installed_engram = identity;
+        engine.installed_estate = identity;
         configure(&mut engine, 8);
         assert_eq!(
             engine

@@ -69,7 +69,7 @@ unsafe pruning, early ACK, ignored caps, a second scheduler or failed candidate 
 Candidate CI `39880104913` at the starting revision exposed stale attunement
 configuration/plan/result hashes, bundled profile identities, SDK corpus identity,
 and evaluation schemas/synthetic fixtures. Engine-authority, product-operations,
-SDK conformance, optional-engine and macOS engram lanes failed on those assertions.
+SDK conformance, optional-engine and macOS estate lanes failed on those assertions.
 These failures were read from the original job logs, not rerun until green.
 
 Repairs preserve the assertions. Attunement digests follow the canonical Rust

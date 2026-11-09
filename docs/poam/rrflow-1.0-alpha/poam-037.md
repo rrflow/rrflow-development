@@ -23,7 +23,7 @@ scan/chunk/embed/ingest pipeline is also unfinished under existing Gate D.
 The canonical Shippin API catalogue exposes no RRFlow provisioning/sync offering,
 and the current shippin-site cloud-control reservation explicitly has no
 implemented client/service data. Existing outbound projection receipts are not
-bidirectional engram synchronization. No default hosted endpoint may be
+bidirectional estate synchronization. No default hosted endpoint may be
 fabricated from the website domain.
 
 Current integration also verified a client gap: the authored knowledge editor
@@ -39,6 +39,9 @@ The [2026-11-01 pin](../../evidence/change-journals/gate-h/h-06-connectome-chain
 does not contain it either. `8a9eb5e5` is not an ancestor of Connectome
 `c1cbff203ecee89013878609d11aed04e89d0e71`, and that revision has no
 knowledge-tree editor or native knowledge bridge.
+The [earlier 2026-11-03 pin candidate](../../evidence/change-journals/gate-h/h-06-connectome-teal-pin.md)
+did not contain it either: `8a9eb5e5` is not an ancestor of Connectome
+`95ba9975c506886f79984ad956e5dba557369f93`.
 
 ### Nomen and first hosted profile
 
@@ -63,7 +66,7 @@ cloud toggle or documented permission boundary alone does not satisfy this UX.
 ## Impact
 
 A configured path can otherwise be mistaken for an operational connector.
-Users cannot yet provision a turnkey managed engram or prove two-way knowledge
+Users cannot yet provision a turnkey managed estate or prove two-way knowledge
 synchronization with custom/native instances. HydraDB is the owner's first
 selected connector; Pinecone Nexus requires an accepted deployment contract,
 not an assumption that its published demo equals production.
@@ -82,7 +85,7 @@ Roadmap owners: [Gate D](../../roadmap/rrflow-1.0/gate-d.md) and
 Close only with typed, authorized native/adapter operations; explicit capability
 negotiation; live configured provider qualification; provenance and exact source
 scope; bounded I/O and cancellation/error behavior; and no secret exposure.
-Turnkey cloud acceptance also requires authenticated engram identity delivery,
+Turnkey cloud acceptance also requires authenticated estate identity delivery,
 conflict rules, cursors, tombstones, echo suppression, retries, offline recovery,
 export and process-restart evidence. Configuration persistence alone cannot
 satisfy these conditions. Release and roadmap status remain open.

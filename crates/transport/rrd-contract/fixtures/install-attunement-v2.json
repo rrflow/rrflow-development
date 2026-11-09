@@ -136,7 +136,7 @@
     "plan_sha256": "ed9ad5706a4a5d176fe312c668a0153f220c6cb182512b57b0084e94fe6fd74e",
     "source_sha256": "0000000000000000000000000000000000000000000000000000000000000001",
     "target": {
-      "engram_id": "developer-engram",
+      "estate_id": "developer-estate",
       "instance_id": "rrflow-dev",
       "project_id": "rrflow"
     }
@@ -174,7 +174,7 @@
         "disposition": "create",
         "estimated_write_bytes": 0,
         "input_sha256": "0000000000000000000000000000000000000000000000000000000000000004",
-        "kind": "create_engram_directories"
+        "kind": "create_estate_directories"
       },
       {
         "disposition": "create",
@@ -369,7 +369,7 @@
     "installation_identity": "000000000000000000000000000000000000000000000000000000000000002e",
     "managed_paths": [
       {
-        "kind": "engram_directory",
+        "kind": "estate_directory",
         "precondition_sha256": "000000000000000000000000000000000000000000000000000000000000002b",
         "relative_path": ".rrflow",
         "removal_rule": "remove_if_owned_and_empty"
@@ -455,7 +455,7 @@
     "project_root_sha256": "000000000000000000000000000000000000000000000000000000000000002f",
     "storage_root_id": "install-01",
     "target": {
-      "engram_id": "developer-engram",
+      "estate_id": "developer-estate",
       "instance_id": "rrflow-dev",
       "project_id": "rrflow"
     },
@@ -476,7 +476,7 @@
         "output_sha256": "0000000000000000000000000000000000000000000000000000000000000016"
       },
       {
-        "kind": "create_engram_directories",
+        "kind": "create_estate_directories",
         "output_sha256": "0000000000000000000000000000000000000000000000000000000000000017"
       },
       {

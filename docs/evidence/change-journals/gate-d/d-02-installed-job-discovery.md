@@ -17,7 +17,7 @@ not complete that UI or the project-to-learning journey.
 Previously a client needed an already-known job ID for public reads and replan
 preview. The installation record and existing successor links are the canonical
 lineage. The new authenticated `attunement-job-list` operation follows that
-lineage under `engramRead`, returning bounded summaries and continuation IDs.
+lineage under `EstateRead`, returning bounded summaries and continuation IDs.
 Clients do not derive identities, inspect private storage or own another job
 registry. No persisted format, phase execution, provider policy, task authority,
 project mutation or version changes are introduced.
@@ -26,7 +26,7 @@ project mutation or version changes are introduced.
 
 The contract owns request/page validation, a maximum of 64 summaries and a
 256 KiB encoded response ceiling. The engine validates each encountered plan,
-job, successor proposal, generation and installed-engram binding. It reads only
+job, successor proposal, generation and installed-estate binding. It reads only
 the requested page and one successor lookahead, plus the optional cursor job;
 it does not scan the complete history. The control sequence must be unchanged
 across collection. A conflict yields no partial result or automatic retry.
@@ -73,7 +73,7 @@ maximum-page encoding and schema-projected limits.
 
 `cargo check --locked -p rrd-engine -p rrd-server -p rrd-client` passes.
 `cargo test --locked -p rrd-engine --lib engine::tests::attunement::discovery`
-passes all five focused tests on actual temporary installed engrams: initial
+passes all five focused tests on actual temporary installed estates: initial
 discovery, source-edit/read preservation, restart, successor pagination,
 foreign/unknown cursor and token rejection, corrupt-link rejection and
 deterministic rejection when an actual control mutation occurs during a read.
@@ -99,7 +99,7 @@ Structural comparison against the prior hash-bound OpenAPI export finds only
 the new `/v1/attunement/jobs/list` path and endpoint-count change; every existing
 endpoint definition is unchanged.
 
-After building the CI-required `rrd-engram-controller` process helper,
+After building the CI-required `rrd-estate-controller` process helper,
 `cargo test --locked -p rrd-contract -p rrd-client -p rrd-server --all-features --all-targets`
 passes all 227 tests with no failures or ignored tests. Its log SHA-256 is
 `88448be4e7a46b2682441de18644c00f101aeedfd6ab6799ea2e903582d82374`.

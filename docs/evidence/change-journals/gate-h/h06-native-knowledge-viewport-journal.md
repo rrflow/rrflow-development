@@ -9,7 +9,7 @@
 Starting engine revision e5672ec1d953c736b2befa38b34a13623a23a5d6; authored
 client baseline abc549cf7bb61f2ed4a20353ccb2e3621da515c9. Work continued only
 under D:/localdev/rrflow, preserving the owner's authored branch, independent
-client history, original engram and unrelated changes. The pre-effect briefs
+client history, original estate and unrelated changes. The pre-effect briefs
 are recorded in draft [PR 16](https://github.com/rrflow/rrflow-development/pull/16)
 and local .tools/knowledge-path-change-brief.md and
 .tools/connectome-viewport-change-brief.md. No merge or promotion is claimed.
@@ -58,7 +58,7 @@ Knowledge forms present names, source types and service names first; technical
 identities, placement and limits remain accessible in accordions. A sticky Save
 and feedback row shows unsaved/loading/conflict states. Provider labels retain
 canonical IDs and explicitly describe setup-only, unverified configuration.
-No secret values, provider calls, default new engram, engine restart, new cloud
+No secret values, provider calls, default new estate, engine restart, new cloud
 API, fake progress or cancellation, or alternative authority is introduced.
 
 The existing Vectors map is a bounded expensive read (up to 600 points with exact
@@ -84,7 +84,7 @@ built from A passed 1, ignored 0: real plan/apply/authenticated readiness,
 knowledge list, actual native vector collection/path save/read, stale-write
 refusal, wrong-instance refusal, exact query and existing security denials.
 The retained isolated fixture is 825daf1883ab4d48974cc11339b88849. It is not the
-original engram and was stopped by the test finally block.
+original estate and was stopped by the test finally block.
 
 Primary CLI artifact rrflow-e5672ec1.exe SHA256:
 8423528fc0cec016578a47ee0ed6499c3081e4a7e07c0295ecd227b2a4d7d044.

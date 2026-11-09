@@ -13,7 +13,7 @@
               "type": "null"
             }
           ],
-          "description": "Optional shared native pool. Individual ceilings are not reservations;\nthe summed per-engram disjoint reservations must fit this aggregate."
+          "description": "Optional shared native pool. Individual ceilings are not reservations;\nthe summed per-estate disjoint reservations must fit this aggregate."
         },
         "atomic_batch_bytes": {
           "$ref": "#/$defs/Limit"
@@ -33,7 +33,7 @@
         "disk_bytes": {
           "$ref": "#/$defs/Limit"
         },
-        "engrams": {
+        "estates": {
           "$ref": "#/$defs/Limit"
         },
         "host_bytes": {
@@ -107,7 +107,7 @@
         "recovery_ms",
         "process_bytes",
         "host_bytes",
-        "engrams",
+        "estates",
         "disk_bytes",
         "temporary_disk_bytes",
         "recovery_reserve_bytes",
@@ -894,7 +894,7 @@
       ],
       "type": "object"
     },
-    "engramConfiguration": {
+    "EstateConfiguration": {
       "additionalProperties": false,
       "description": "Effective, immutable configuration bound to an installation plan and\nsurfaced to every client. Mutating it requires a future governed\nconfigure-plan/configure-apply operation.",
       "properties": {
@@ -1409,7 +1409,7 @@
       "type": "integer"
     },
     "installed_configuration": {
-      "$ref": "#/$defs/engramConfiguration"
+      "$ref": "#/$defs/EstateConfiguration"
     },
     "profile": {
       "$ref": "#/$defs/Id"

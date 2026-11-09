@@ -125,7 +125,7 @@ short-run rejection and quota admission before directory creation.
 ## Current limitations and stop conditions
 
 This is an in-progress implementation, not C-07 completion. The installed driver
-admits a single-engram configurable linked characterization corpus;
+admits a single-estate configurable linked characterization corpus;
 it explicitly denies full qualification/fleet execution until lifecycle lanes,
 native allocation binding and remaining native measurements are integrated. macOS native memory
 enforcement is unavailable. Exhaustion/recovery and 100-cycle evidence belong
@@ -200,7 +200,7 @@ roadmap or POA&M completion status changed.
 ## Installed reopen and backup interference lanes
 
 Continued from `1681b098a65a0972118ee52ff55b97062fff8c87`. The same configured
-engram now performs its frozen number of forced-process kills before warmup.
+estate now performs its frozen number of forced-process kills before warmup.
 Every cycle commits a linked record/relation/vector operation, reaps the owned
 server, reconnects, reads every preceding lifecycle effect before retry and
 requires each original receipt plus an explicit idempotent replay. A final
@@ -272,7 +272,7 @@ The owned Windows controller now admits invalid limit/name input before native
 ownership and registers pipe write ends immediately. Every exceptional path
 closes writer handles before joining bounded readers and quiescing its job.
 The original anonymous-job callers retain their default behavior. Evidence
-capacity admission now also precedes corpus/engram setup, not only measured
+capacity admission now also precedes corpus/estate setup, not only measured
 segments.
 
 Read boundaries: native sampler, sustained driver/model/writer, explicit
@@ -397,7 +397,7 @@ the old unfiltered ignored-test command. Its policy now requires the explicit
 Clippy for rrflow-eval/rrflow-cli all targets passed (16.29 seconds initially,
 2.24 seconds after final readback/smoke changes). Storage schema generation
 passed (21.20 seconds). No local runtime tests or campaigns were executed.
-Required candidate CI is still pending. Physical cold/pin lanes, multi-engram
+Required candidate CI is still pending. Physical cold/pin lanes, multi-estate
 allocation, recovery disk reserve and actual full profile/24-hour acceptance
 remain open. No owner completion status changed.
 
@@ -504,7 +504,7 @@ passed (9.69 seconds, then 1.50 seconds after regression definitions).
 `python -m py_compile scripts/ci/run_sustained_capacity.py` passed. These are
 Windows compile/authoring checks; Linux-only code and native eviction still
 require candidate execution. No local runtime suite, capacity effect or soak
-ran. Reader-pin interference, multi-engram allocation, full native damage and
+ran. Reader-pin interference, multi-estate allocation, full native damage and
 backup matrix, profile campaigns and 24-hour acceptance remain open. No
 objective, roadmap or POA&M completion status changed.
 
@@ -512,11 +512,11 @@ objective, roadmap or POA&M completion status changed.
 
 Continued from `0c1743b3`; PR 72 brief and backup refinement were posted
 before implementation. Added `support/sustained/damage.rs` under the existing
-installed harness. Fresh and existing engrams acknowledge actual mixed-family
+installed harness. Fresh and existing estates acknowledge actual mixed-family
 records, relationships and vectors, create a verified public backup, then
 acknowledge another WAL-backed batch. Eight cases independently remove or
 corrupt WAL, segment, manifest and CURRENT bytes. Ordinary full verification
-and serving must refuse each damaged engram without changing its streamed
+and serving must refuse each damaged estate without changing its streamed
 byte inventory. Only the fixture restores saved bytes; subsequent reopening
 must independently read every acknowledged effect before exact receipt replay.
 Inventory is bounded to 4096 entries, 128 MiB file content, 16 MiB path metadata,
@@ -586,7 +586,7 @@ targets then passed (1.43 seconds); schema refresh passed (3.57 seconds).
 Final temporal-order additions were formatted and strictly linted again.
 No local runtime tests, capacity effects or soak ran. Required candidate CI
 owns execution. C-07g still lacks installed retained-reader interference,
-multi-engram capacity execution and full profile/24-hour evidence; Gate C,
+multi-estate capacity execution and full profile/24-hour evidence; Gate C,
 OBJ-02 and POAM-035 remain open. Full diff reviewed before commit.
 ## Configurable read distribution and release campaign selection
 
@@ -698,7 +698,7 @@ ebb702 remain tied to that historical candidate, not this combined revision.
 
 ## Owning capacity-profile binding
 
-Starting revision `40f0f6b57be80d126abf6bc0f5edc2c56fb6736d`. Before implementation, PR #72's brief bound this work to OBJ-02/C-07g: qualification previously accepted an arbitrary owner digest and reduced CPU/memory/corpus under any profile label. The new `storage/capacity.rs` validates qualification against a mechanically generated `eval/capacity-profiles-v1.json`. Its sole owner is J-04's workload table. The renderer hashes the exact owning section, parses all four rows, resolves fleet/large-data inheritance and fails on unfamiliar grammar. No duplicate hand-maintained hardware table. `storage campaign profiles` exposes those coordinates offline. Qualification now binds owner digest, profile ID, exact allocation, minimum record/edge/vector/source corpus, dimensions and declared load coordinates. Fleet is explicitly refused pending per-engram interference evidence; individual admitted points do not prove the full sweep. Reduced characterization is unchanged.
+Starting revision `40f0f6b57be80d126abf6bc0f5edc2c56fb6736d`. Before implementation, PR #72's brief bound this work to OBJ-02/C-07g: qualification previously accepted an arbitrary owner digest and reduced CPU/memory/corpus under any profile label. The new `storage/capacity.rs` validates qualification against a mechanically generated `eval/capacity-profiles-v1.json`. Its sole owner is J-04's workload table. The renderer hashes the exact owning section, parses all four rows, resolves fleet/large-data inheritance and fails on unfamiliar grammar. No duplicate hand-maintained hardware table. `storage campaign profiles` exposes those coordinates offline. Qualification now binds owner digest, profile ID, exact allocation, minimum record/edge/vector/source corpus, dimensions and declared load coordinates. Fleet is explicitly refused pending per-estate interference evidence; individual admitted points do not prove the full sweep. Reduced characterization is unchanged.
 
 Complete affected functions/modules read: capacity renderer, storage CLI/mod, campaign validation, qualification/result reducer and synthetic fixtures; owning C-07 capacity/failure sections and J-04 workload ladder; workflow verification block and its policy; evaluation usage record. Regression definitions cover every allocation/corpus dimension, changed owner digest, unknown profile, unsupported fleet and out-of-sweep rate/client coordinates. Python definitions cover owner edits, inherited allocation and changed grammar. Required CI runs projection drift and parser characterization. No private reasoning or model trace is an acceptance oracle. No new runtime telemetry or dependency.
 
@@ -712,7 +712,7 @@ The registry exposes a single-lock observation of active streams and charged pin
 
 Read/traceability: native DatabaseOptions/create/open/projected-read path, full ActiveReadViews acquisition/release and ProjectedReadBatch/output ownership; existing projected-lifetime tests; store physical evidence and logical-only defaults; installed StorageLimits validation/defaults/lowering; diagnostic admission projection; campaign sample and drain reduction; owning C-07 failure/retention requirements. Changes stay at those owners. The native retained-reader/installed maintenance lane and fleet orchestration still require separate completion; these ceilings do not claim those workloads ran.
 
-Added the declared first-party `rrd-engine` example `refresh_sdk_installation_identity`, using the real read-only planner and checked binary anchor. It changes only the corpus instance, engram and matching four scopes, validates the typed corpus and requires that the project remain empty. `--check` compares the derived typed corpus without writing. This replaces manual identity transcription after default-policy changes; the unchanged existing engine and SDK candidate oracles verify it. Initial compilation found sha2 0.11's array does not implement LowerHex; fixed explicit byte encoding. The example then completed without installing or starting an engine. An initial batch-lifetime assertion was corrected during source review: physical streams and copied output buffers own separate charges, as the existing native output module documents.
+Added the declared first-party `rrd-engine` example `refresh_sdk_installation_identity`, using the real read-only planner and checked binary anchor. It changes only the corpus instance, estate and matching four scopes, validates the typed corpus and requires that the project remain empty. `--check` compares the derived typed corpus without writing. This replaces manual identity transcription after default-policy changes; the unchanged existing engine and SDK candidate oracles verify it. Initial compilation found sha2 0.11's array does not implement LowerHex; fixed explicit byte encoding. The example then completed without installing or starting an engine. An initial batch-lifetime assertion was corrected during source review: physical streams and copied output buffers own separate charges, as the existing native output module documents.
 
 Validation: strict `cargo clippy -p rrd-lsm -p rrd-store -p rrd-engine -p rrd-contract -p rrflow-eval -p rrflow-cli --all-targets --locked -- -D warnings` passed (20.75s initially, 8.30s after final definitions). Installation/storage fixtures and all five language projections were regenerated; a subsequent description correction exposed stale TypeScript parity, so endpoint/model generators were rerun against the final owner. Combined OpenAPI digest is `12334d8bad21d6326f49262111dcbbae9c6ec89f41f5a1615cc0049a7e50a1dc`, still 43 operations. No local runtime tests, resource-control effects, disk filling or soak were executed. Native runtime acceptance remains required in candidate CI. C-07/OBJ-02/POAM-035 remain open.
 

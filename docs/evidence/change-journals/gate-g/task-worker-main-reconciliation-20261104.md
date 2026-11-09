@@ -43,7 +43,7 @@ documents that a remote call can be repeated after the remote result arrives
 but before it is durably recorded; it does not guarantee deduplication for
 RRFlow's providers. That supports retaining uncertain external outcomes rather
 than treating a timeout as proof of no execution. [OpenTelemetry's sampling
-specification](https://opentelemetry.io/docs/specs/otel/trace/tracengram-probability-sampling/)
+specification](https://opentelemetry.io/docs/specs/otel/trace/tracestate-probability-sampling/)
 allows spans to be dropped at several points; sampled traces therefore cannot
 replace a durable attempt receipt. This reconciliation retains existing
 operation, configuration, attempt and response digests and adds no telemetry

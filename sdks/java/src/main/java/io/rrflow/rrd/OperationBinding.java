@@ -15,7 +15,7 @@ final class OperationBinding {
     private static final Pattern CANONICAL = Pattern.compile("^[a-z0-9][a-z0-9._-]*$");
     private static final Set<String> RESOURCE_KINDS = Set.of(
             "organization",
-            "engram",
+            "estate",
             "project",
             "instance",
             "node",
@@ -99,9 +99,9 @@ final class OperationBinding {
 
     private List<ResourceSegment> defaultResource(Map<String, String> parameters) {
         List<ResourceSegment> result = new ArrayList<>();
-        String engram = parameters.get("engram");
-        if (engram != null) {
-            result.add(new ResourceSegment("engram", canonical(engram, "engram")));
+        String estate = parameters.get("estate");
+        if (estate != null) {
+            result.add(new ResourceSegment("estate", canonical(estate, "estate")));
         }
         result.add(new ResourceSegment("instance", instance));
         return result;

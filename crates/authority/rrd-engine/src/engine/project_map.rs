@@ -4,7 +4,7 @@
 //! is installed or served. It is a replaceable projection with no authority;
 //! only the notes section belongs to the owner and is carried forward intact.
 
-use super::engram_layout::engramFilesystem;
+use super::estate_layout::EstateFilesystem;
 use super::installation::{project_entries, ProjectEntry};
 use super::*;
 use rrd_store::filesystem::{AnchoredPath, OpenOptions};
@@ -37,7 +37,7 @@ impl RrdEngine {
         let locator = Self::read_project_locator(project)?;
         let (profile, _) = DefaultInstallProfile::load(locator.profile_id.as_str())?;
         let root = AnchoredPath::open_root(project).map_err(storage_error)?;
-        let engram = engramFilesystem::admit(root, false)?;
+        let engram = EstateFilesystem::admit(root, false)?;
         // The installed profile's inventory policy and the project's own Git
         // ignore rules decide what is part of the project, as for installation.
         let entries = project_entries(engram.project(), &profile)?;
@@ -401,7 +401,7 @@ fn count(value: u64) -> String {
     let digits = value.to_string();
     let mut out = String::new();
     for (index, digit) in digits.chars().enumerate() {
-        if index > 0 && (digits.len() - index) % 3 == 0 {
+        if index > 0 && (digits.len() - index).is_multiple_of(3) {
             out.push(',');
         }
         out.push(digit);

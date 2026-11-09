@@ -8,7 +8,7 @@ The repository root [README](../../../README.md) owns RRFlow identity and curren
 status. The [system overview](../../architecture/system-overview.md) owns the
 engine/client boundary, the
 [instance topology](../../architecture/instance-topology.md) owns project,
-engram, instance, and deployment identity, the
+estate, instance, and deployment identity, the
 [engine data flow](../../architecture/engine-data-flow.md) owns query, context,
 reasoning, automation, and presentation flow, the
 [public contract](../protocol/public-contract.md) owns wire vocabulary and
@@ -104,40 +104,31 @@ the reviewed UI revision independently. The
 owns build and desktop-use instructions.
 
 [Connectome PR13](https://github.com/rrflow/connectome-development/pull/13)
-adds selected-project workspaces with nested Overview, Knowledge, Workbench,
-Activity, Learning and Services sections. Basic descriptions lead to advanced
-engine identity and evidence; native model, record/relationship, vector and
-storage views remain bounded public-operation projections. Manage project
-engines owns at most four local processes, and authenticated native connections
-are keyed by project profile (at most eight), so opening or stopping one does
-not replace another project's session. Context sharing is not implied by
-parallel execution.
+adds selected-project workspaces with nested Overview, Knowledge, Activity,
+Learning and Services sections. Basic descriptions lead to advanced engine
+identity and evidence; native model, record/relationship, vector and storage
+views remain bounded public-operation projections. Manage project engines owns
+at most four local processes, and authenticated native connections are keyed by
+project profile (at most eight), so opening or stopping one does not replace
+another project's session. Context sharing is not implied by parallel execution.
 
 The [project workspaces pin receipt](../../evidence/change-journals/gate-h/h-06-project-workspaces-pin.md)
 binds the merged UI to its Windows/Linux/macOS, frontend and real-engine process
-CI. Workbench planning and receipt capture are available as project-scoped UI
-records, including runtime-backed receipt capture from authenticated engine
-reads, governed observe-flight launch, and task/flight snapshot summaries, while
-bounded recent-flight snapshots (ID/status/provider/context mode) are rendered
-from engine reads, and selected flights can be read for governed summary/event
-detail from the same authenticated session, while
-knowledge-path activation, replay, supervised/unsupervised learning and cloud
-sync remain visibly unavailable. This UI revision retains
-the same older engine/SDK pair named above; neither source association nor
-parallel process control is proof of those downstream capabilities or full
-H-06 acceptance.
+CI. Knowledge-path activation, replay, supervised/unsupervised learning and
+cloud sync remain visibly unavailable. This UI revision retains the same older
+engine/SDK pair named above; neither source association nor parallel process
+control is proof of those downstream capabilities or full H-06 acceptance.
 
 Newer RRFlow installation-plan contract v2 requires an explicit identity from
 `rrflow install identity`, retained across preview regeneration and supplied
 with `install plan --identity`. The
-[2026-11-01 pin receipt](../../evidence/change-journals/gate-h/h-06-connectome-chain-pin.md)
-moves the pinned workbench to Connectome
-`c1cbff203ecee89013878609d11aed04e89d0e71`. That revision is bound to engine/SDK
-`15f36a8758e32b33c930a20da836def3e5cc3207`. Its native preview allocates that
-identity, serve sends it back, and its real-engine process tests pass against
-that engine. That is component evidence, not qualification of the installation
-contract. Updating its engine bundle again requires updating and testing this
-adapter input as described in the
+[Inventory neighborhood pin receipt](../../evidence/change-journals/gate-h/h-06-connectome-inventory-pin-20261107.md)
+associates this checkout with Connectome
+`4da67e27f52ef20861fd9ee8c8351ce48920f49a`, whose native client is bound to
+engine/SDK `91b6c6789e2e7d217e0873cff532bd53aa937581`. Its process tests are
+component evidence for that pair, not qualification of installation or of
+compatibility with a later engine. Updating its engine bundle again requires
+updating and testing this adapter input as described in the
 [implementation guide](connectome-implementation-guide.md#run-the-current-installed-engine).
 
 The same pin brings these Connectome changes, each landed through Connectome's
@@ -157,7 +148,7 @@ merge queue:
 Source association is not H-06 acceptance.
 
 The desktop shows the native installation preview, requires its exact accepted
-digest, and regenerates the plan before apply. Existing engrams reopen through
+digest, and regenerates the plan before apply. Existing estates reopen through
 the same installed lifecycle. Data models display the authenticated catalogue,
 bounded native query results and read cursors; graph, vector and storage lenses
 remain public-operation projections. The local workflow requires no account.
@@ -193,7 +184,7 @@ Connectome is a projection client. It may:
 
 It cannot own or recreate:
 
-- installation, engram, project, instance, session, policy, or attunement
+- installation, estate, project, instance, session, policy, or attunement
   authority;
 - rrflowDB or rrflowKV state, rrflowMX semantics, read stamps, transactions, or
   commit decisions;
@@ -275,7 +266,7 @@ The current generated handoff is:
 
 ```text
 ServiceCapabilities
-  installed_engram? { project_id, engram_id, instance_id }
+  installed_estate? { project_id, estate_id, instance_id }
   deployment {
     contract_version, deployment_form, storage_profile,
     endpoint_presentation
@@ -291,19 +282,19 @@ ServiceCapabilities
   product_capabilities
 ```
 
-`installed_engram` is required for the D-01-installed product even though the
+`installed_estate` is required for the D-01-installed product even though the
 field remains optional for embedded/test compositions. Connectome must reject
 an identity mismatch between it and `instance`. It renders the effective
 configuration revision and ceilings but never edits `.rrflow/config.toml` or
 assumes that a ceiling activates a feature. In particular,
 `governed-reasoning-runner` is currently unavailable; its configured limits
 support future plan/apply and UI preparation, not a success badge. Context and
-query controls must default at or below the advertised engram ceilings rather
+query controls must default at or below the advertised estate ceilings rather
 than blindly sending the protocol hard maximum.
 
 The [user-selected effort contract](../inference/lfg-swag.md#user-selected-effort-and-run-budgets)
 owns reasoning controls. H-06 must show the selected preset or custom limits,
-effective engram caps, remaining time/steps/attempts and known cost, plus Stop
+effective estate caps, remaining time/steps/attempts and known cost, plus Stop
 and an explicitly previewed extension. A stopped run shows partial results and
 unresolved work with the engine's reason. Resume cannot reset consumption.
 Until the runner and configuration-apply capabilities are advertised, these
@@ -321,7 +312,7 @@ Each rendered object or aggregate retains, as applicable:
 
 | Coordinate | Required client behavior |
 |---|---|
-| Instance and scope | Retain the exact RRD instance resource and project/engram/resource path supplied by the operation; never infer scope from a label or active tab. |
+| Instance and scope | Retain the exact RRD instance resource and project/estate/resource path supplied by the operation; never infer scope from a label or active tab. |
 | Read coordinate | Retain runtime cursor, manifest generation, valid time, and schema/catalogue/policy revisions supplied by the `ReadStamp`. |
 | Semantic identity | Retain record, relation, event, reasoning-run/tree, routine-run, attunement-job, projection, plan, trace, and evidence identities rather than array position or display text. |
 | Causality | Retain request, operation, transaction, subscription, trace, causation, and idempotency coordinates supplied by the result. |
@@ -354,23 +345,23 @@ workspaces; a new adapter or view mode does not warrant another top-level
 feature area. Nested routes and breadcrumbs retain exact instance, resource
 and permitted read coordinates. A deep link never implies authorization.
 
-Inside one project, the breadcrumb is Project ▸ engram ▸ Domain, taken from
-the engine's [engram organisation](../data/engram-organisation.md). "All
+Inside one project, the breadcrumb is Project ▸ Estate ▸ Domain, taken from
+the engine's [estate organisation](../data/estate-organisation.md). "All
 domains" is the unscoped default. Choosing a domain or tag sends that scope to
-the engine, so every view reads only that part of the engram; the client never
-filters an engram-wide result. An isolated domain appears only when the
+the engine, so every view reads only that part of the estate; the client never
+filters an estate-wide result. An isolated domain appears only when the
 session holds its grant, and otherwise shows as unavailable. Per-domain
 evidence (size, work, latency, used context, denials and truncations) is the
 drill-down for finding bottlenecks and what is working. Before H-11 serves
-organisation, the breadcrumb shows the engram alone and marks domains
+organisation, the breadcrumb shows the estate alone and marks domains
 unavailable; Connectome keeps no grouping of its own.
 
 Choosing a new or existing project previews the engine's exact installation
-plan. Once authorized, the installed lifecycle provisions one engram/rrflowDB
+plan. Once authorized, the installed lifecycle provisions one estate/rrflowDB
 and its rrflowKV storage automatically; users do not install three databases
 for DB, KV and QL. Reopening that project resolves and validates the existing
 identity. A missing, foreign or damaged binding requires an explicit recovery
-or installation decision, never silent creation of a replacement engram.
+or installation decision, never silent creation of a replacement estate.
 Switching projects detaches the previous view's subscriptions/session handles
 and isolates cached results; it does not stop independently running projects.
 Running projects concurrently does not grant context sharing.
@@ -408,7 +399,7 @@ schemas and traces. Do not force exploratory reading into a closed workflow;
 show why the durable-effect boundary needs verification. A green control must
 name what was verified and expose partial, denied or unimplemented stages.
 
-H-06 acceptance must exercise two project engrams in one actual desktop build:
+H-06 acceptance must exercise two project estates in one actual desktop build:
 install/reopen each, switch during in-flight requests, follow knowledge
 breadcrumbs, compare a baseline, inspect a retained run after engine restart,
 and explicitly fork a new authorized run. Assert no cross-project cache/session
@@ -441,9 +432,9 @@ provider connection and cloud sync status distinguishable in the UI.
 The client prepares an exact engine plan, including generated identity,
 project-bound rrflowDB/rrflowKV storage, bootstrap schema and admitted vector
 collection/model/metric bindings. rrflowQL is the query interface to this same
-engram, not another database process. Apply provisions what the user reviewed;
+estate, not another database process. Apply provisions what the user reviewed;
 D-02 executes authorized indexing automatically once its admission contract
-exists. Reopen must reuse the engram. Do not call a pending job "indexed".
+exists. Reopen must reuse the estate. Do not call a pending job "indexed".
 A changed plan is presented again; the client cannot accept a different digest.
 
 The default distribution must supply the qualified local assets required by its
@@ -460,7 +451,6 @@ each algorithm:
 |---|---|---|
 | Overview | Project name, indexed/source-changed/blocked status, effective effort, next useful action | Instance, plan/configuration/source identities; phase/checkpoint and exact unavailable reason |
 | Knowledge | Sources, files, relationships, search results and source citations | Schema/records, rrflowQL explain, graph adjacency, vector collection/model/dimension, rrflowKV resource evidence, Parquet export |
-| Workbench | Create project-scoped testing/reverse-engineering/optimization/release-update plans and capture receipts | Planned scope, retained diagnostics and updates tied to the selected project profile; execution remains engine-authorized |
 | Activity | Current task, elapsed/remaining allowance, Stop, result and retained session | Original deadline, attempt receipts, selected/skipped retrieval, read stamp, retries, queue/compute/storage/model time and uncertainty |
 | Learning | Disabled/available/experiment/candidate status, separate supervised and unsupervised choices | Dataset authorization, model/configuration identity, held-out quality, promotion/rollback and RROFLOW receipts |
 | Services | Local operation, optional account/knowledge-path setup and transfer state | Expected endpoint/account/instance, scope, selected datasets, checkpoints, conflict/revocation and failure evidence |
@@ -507,8 +497,8 @@ identity. Every metric says whether it is measured, estimated, unsupported or
 unknown. Changing projects isolates caches, sessions and in-flight results;
 concurrent engines never imply context sharing.
 
-The current pinned workbench binds engine/SDK `15f36a8758e32b33c930a20da836def3e5cc3207`
-([2026-11-01 pin receipt](../../evidence/change-journals/gate-h/h-06-connectome-chain-pin.md)).
+The pinned workbench binds engine/SDK `91b6c6789e2e7d217e0873cff532bd53aa937581`
+([Inventory neighborhood pin receipt](../../evidence/change-journals/gate-h/h-06-connectome-inventory-pin-20261107.md)).
 H-06 must keep engine assets, SDK, installation adapter and public-control
 consumers updated together and qualify the resulting exact pair. An existing UI
 data lens does not prove this new user journey or compatibility with a later
@@ -529,7 +519,7 @@ event, run, file, symbol, plan, or evidence item. It displays typed edge
 identity and direction and retains the stamp and traversal bounds. A global
 orientation graph is optional, capability-gated, and bounded. Expanding a node
 submits one explicit graph/query intent to RRD; the renderer cannot perform
-client-side N+1 lookups, scan the engram, or traverse a locally reconstructed
+client-side N+1 lookups, scan the estate, or traverse a locally reconstructed
 graph as authoritative state.
 
 A timeline consumes cursor-ordered engine events, routine/reasoning transitions,
@@ -612,8 +602,8 @@ states. It does not collapse them into a generic empty view or success badge.
 Connectome may aggregate several independently authenticated RRD instances for
 operator navigation. Each panel, cache entry, route, subscription, action, and
 error retains its exact instance identity and connection. The client cannot
-merge their engram state, claim cross-instance ACID, reuse a session across
-instances, or turn the first-alpha per-project engram into a fleet database.
+merge their estate state, claim cross-instance ACID, reuse a session across
+instances, or turn the first-alpha per-project estate into a fleet database.
 
 PostgreSQL, Turso, SQLite, Dragonfly, object stores, model providers,
 generators, harnesses, and meshes appear only through their installed RRFlow

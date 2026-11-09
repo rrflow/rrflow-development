@@ -4904,7 +4904,7 @@ dependencies = [
  "rrd-contract",
  "rrd-core",
  "rrd-engine",
- "rrd-engram",
+ "rrd-estate",
  "rrd-security",
  "rrd-server",
  "rrd-store",
@@ -4968,7 +4968,7 @@ dependencies = [
  "rrd-cluster",
  "rrd-contract",
  "rrd-core",
- "rrd-engram",
+ "rrd-estate",
  "rrd-inference",
  "rrd-observation",
  "rrd-operator-knowledge",
@@ -4983,13 +4983,14 @@ dependencies = [
  "tempfile",
  "toml",
  "tracing",
+ "tracing-subscriber",
  "wasmi",
  "wat",
  "windows-sys 0.61.2",
 ]
 
 [[package]]
-name = "rrd-engram"
+name = "rrd-estate"
 version = "1.0.0"
 dependencies = [
  "rrd-contract",
@@ -5146,7 +5147,7 @@ dependencies = [
  "rrd-contract",
  "rrd-core",
  "rrd-engine",
- "rrd-engram",
+ "rrd-estate",
  "rrd-security",
  "rrd-store",
  "rustls",
@@ -5200,7 +5201,7 @@ dependencies = [
  "rrd-contract",
  "rrd-core",
  "rrd-engine",
- "rrd-engram",
+ "rrd-estate",
  "rrd-query",
  "rrd-security",
  "rrd-server",

@@ -201,9 +201,9 @@
           "overflow_checks": false
         },
         {
-          "package": "rrd-engram",
+          "package": "rrd-estate",
           "version": "1.0.0",
-          "target": "rrd_engram",
+          "target": "rrd_estate",
           "kind": [
             "lib"
           ],

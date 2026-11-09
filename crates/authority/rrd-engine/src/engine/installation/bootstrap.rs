@@ -9,7 +9,7 @@ const TEMPLATE: &str = include_str!("../../../assets/install/templates/generic-p
 
 pub(super) fn build(
     profile: &DefaultInstallProfile,
-    layout: &engramLayout,
+    layout: &EstateLayout,
 ) -> Result<InstallationBootstrap> {
     let formats = rrd_store::RrflowKvStore::initialization_formats();
     let paths = layout.managed_paths(&digest::sha256_hex(
@@ -67,8 +67,8 @@ pub(super) fn build(
 }
 
 pub(super) fn materialize(
-    project: &engramFilesystem,
-    layout: &engramLayout,
+    project: &EstateFilesystem,
+    layout: &EstateLayout,
     preview: &InstallationPreview,
     staged: &mut dyn FnMut() -> Result<()>,
 ) -> Result<()> {
@@ -81,7 +81,7 @@ pub(super) fn materialize(
     )
 }
 
-pub(super) fn verify(project: &engramFilesystem, plan: &InstallationPlan) -> Result<()> {
+pub(super) fn verify(project: &EstateFilesystem, plan: &InstallationPlan) -> Result<()> {
     let path = project.managed(
         &plan
             .managed_path(InstallationManagedPathKind::ProjectBootstrap)

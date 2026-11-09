@@ -17,7 +17,7 @@ The new local `rrflow-controller-trial-windows-x64-8cf235ac.zip` is 33,976,833
 bytes, SHA256 `8fc7a5056bde73f29ffb435393d6254cac152ff0f30aea4158e597fb9749f9a3`.
 Its primary `rrflow.exe` is 114,013,696 bytes, SHA256
 `2ef231864e983673ac82eeadc158be993770917cd1f0ae81b52bb4a951c457a1`.
-It contains no weights, credentials, project engram, task or GUI.
+It contains no weights, credentials, project estate, task or GUI.
 
 ## Commands and actual observations
 
@@ -26,7 +26,7 @@ member manifest and verification outputs are retained in the
 [evidence manifest](../../controller-bundle-refresh-20261030/evidence-manifest.json).
 The two readiness reports and archive-test log are gzip-compressed exact bytes; the manifest
 binds both compressed and decompressed hashes. Private generated operator
-credentials and engram data are excluded. All exported report bytes were
+credentials and estate data are excluded. All exported report bytes were
 checked against the actual local operator credential before publication.
 
 - `python scripts/build_rrflow.py --profile release --target-dir <release-cache>

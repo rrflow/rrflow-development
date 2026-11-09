@@ -5,27 +5,26 @@ use crate::operations as generated;
 use crate::{Error, Result, RrdClient, Session};
 use hyper::{Method, StatusCode};
 use rrd_contract::{
-    engramSnapshot, AbortTransaction, ActivateVectorQuantizationArtifact,
-    ActivateVectorQuantizationArtifactResult, AssembleContext, AuditExport, AuditPage,
-    BeginTransaction, BuildVectorQuantizationArtifact, BuildVectorQuantizationArtifactResult,
-    CanonicalId, ChangefeedFollowResult, ChangefeedPage, CloseTask, CommitReceipt,
-    CommitTransaction, ContextPacket, CorrelationId, CreateInstanceBackup,
-    CreateInstanceBackupResult, DeleteVectorPayloadIndex, DeleteVectorPayloadIndexResult,
-    DiagnosticSnapshot, EnsureVectorCollection, EnsureVectorCollectionResult, EnsureVectorIndex,
-    EnsureVectorIndexResult, EnsureVectorPayloadIndex, EnsureVectorPayloadIndexResult,
-    ExecuteQuery, ExportAudit, FollowChangefeed, InstanceBackupCatalogueSnapshot,
-    KnowledgeTreeCatalogue, LaunchPromptFlight, LaunchPromptFlightResult, ListInstanceBackups,
-    ListKnowledgeTrees, ListPromptFlights, ListTasks, ListVectorCollections,
-    ListVectorQuantizationArtifacts, ListVectorQuantizationArtifactsResult, OpenTask,
-    PreviewTransaction, PromptFlightPage, PromptFlightReadResult, QueryResult, ReadAudit,
-    ReadChangefeed, ReadDiagnosticSnapshot, ReadPromptFlight, ReadTask, Readengram,
-    ReplaceKnowledgeTrees, ReplaceKnowledgeTreesResult, RequestContext, RequestEnvelope,
-    ResourceId, ResourceKind, ResourcePath, ResponseEnvelope, ResponseOutcome,
-    RestoreInstanceBackup, RestoreInstanceBackupResult, RetireVectorQuantizationArtifact,
-    RetireVectorQuantizationArtifactResult, RetrieveVectorPoints, ScrollVectorPoints,
-    SearchVectors, TaskPage, TaskReadResult, TaskResult, TransactionLease, TransactionPreview,
-    VectorCollectionCatalogueSnapshot, VectorPointBatch, VectorPointPage, VectorSearchResult,
-    PROTOCOL, PROTOCOL_VERSION,
+    AbortTransaction, ActivateVectorQuantizationArtifact, ActivateVectorQuantizationArtifactResult,
+    AssembleContext, AuditExport, AuditPage, BeginTransaction, BuildVectorQuantizationArtifact,
+    BuildVectorQuantizationArtifactResult, CanonicalId, ChangefeedFollowResult, ChangefeedPage,
+    CloseTask, CommitReceipt, CommitTransaction, ContextPacket, CorrelationId,
+    CreateInstanceBackup, CreateInstanceBackupResult, DeleteVectorPayloadIndex,
+    DeleteVectorPayloadIndexResult, DiagnosticSnapshot, EnsureVectorCollection,
+    EnsureVectorCollectionResult, EnsureVectorIndex, EnsureVectorIndexResult,
+    EnsureVectorPayloadIndex, EnsureVectorPayloadIndexResult, EstateSnapshot, ExecuteQuery,
+    ExportAudit, FollowChangefeed, InstanceBackupCatalogueSnapshot, KnowledgeTreeCatalogue,
+    LaunchPromptFlight, LaunchPromptFlightResult, ListInstanceBackups, ListKnowledgeTrees,
+    ListPromptFlights, ListTasks, ListVectorCollections, ListVectorQuantizationArtifacts,
+    ListVectorQuantizationArtifactsResult, OpenTask, PreviewTransaction, PromptFlightPage,
+    PromptFlightReadResult, QueryResult, ReadAudit, ReadChangefeed, ReadDiagnosticSnapshot,
+    ReadEstate, ReadPromptFlight, ReadTask, ReplaceKnowledgeTrees, ReplaceKnowledgeTreesResult,
+    RequestContext, RequestEnvelope, ResourceId, ResourceKind, ResourcePath, ResponseEnvelope,
+    ResponseOutcome, RestoreInstanceBackup, RestoreInstanceBackupResult,
+    RetireVectorQuantizationArtifact, RetireVectorQuantizationArtifactResult, RetrieveVectorPoints,
+    ScrollVectorPoints, SearchVectors, TaskPage, TaskReadResult, TaskResult, TransactionLease,
+    TransactionPreview, VectorCollectionCatalogueSnapshot, VectorPointBatch, VectorPointPage,
+    VectorSearchResult, PROTOCOL, PROTOCOL_VERSION,
 };
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -749,16 +748,16 @@ impl RrdClient {
         .await
     }
 
-    pub async fn read_engram(
+    pub async fn read_estate(
         &self,
         session: &Session,
-        engram: CanonicalId,
-        request: Readengram,
+        estate: CanonicalId,
+        request: ReadEstate,
         options: RequestOptions,
-    ) -> Result<engramSnapshot> {
+    ) -> Result<EstateSnapshot> {
         let resource = ResourcePath {
             segments: vec![
-                ResourceId::new(ResourceKind::engram, engram.as_str().to_owned())
+                ResourceId::new(ResourceKind::Estate, estate.as_str().to_owned())
                     .map_err(contract)?,
                 ResourceId::new(ResourceKind::Instance, self.instance.as_str().to_owned())
                     .map_err(contract)?,
@@ -766,7 +765,7 @@ impl RrdClient {
         };
         self.session_call_resource(
             Method::POST,
-            &format!("/v1/engrams/{engram}/read"),
+            &format!("/v1/estates/{estate}/read"),
             session,
             resource,
             request,

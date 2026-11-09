@@ -50,7 +50,7 @@ Source inspection was bounded to these paths/symbols:
 - `crates/authority/rrd-engine/src/engine/installation/inventory.rs`: production
   implementation of installation preconditions, explicitly not D-03 inventory.
 - `crates/transport/rrd-contract/src/attunement.rs`: phase and job declarations.
-- `crates/transport/rrd-contract/src/deployment.rs`: sealed engram configuration.
+- `crates/transport/rrd-contract/src/deployment.rs`: sealed estate configuration.
 - `crates/authority/rrd-engine/src/engine/context.rs::assemble_context_at`:
   materialized snapshot and lexical construction; E/H work remains.
 - `crates/authority/rrd-engine/src/engine/vector.rs::read_vector_versions` and

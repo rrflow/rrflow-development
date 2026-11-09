@@ -27,12 +27,12 @@ fn api_fixture() -> (Value, Value, Value) {
                 "Require both complete ordinary-primary receipts",
                 "Require fresh and existing installed damage denial",
                 "Exercise installed capacity workload and backup readback",
-                "Independent installed engrams under concurrent load",
+                "Independent installed estates under concurrent load",
             ],
         );
     }
     for os in ["macos-latest", "windows-latest"] {
-        add(format!("pipeline / engram process ({os})"), &[]);
+        add(format!("pipeline / estate process ({os})"), &[]);
     }
     (
         run,
@@ -131,8 +131,8 @@ fn acceptance_fixture(root: &Path) -> StorageAcceptanceManifest {
     };
     let mut campaign = super::super::sustained::tests::fixture().0;
     campaign.storage.profile = "desktop".to_owned().try_into().unwrap();
-    campaign.allocation.engrams = 1u64.try_into().unwrap();
-    campaign.storage.budgets.engrams = campaign.allocation.engrams;
+    campaign.allocation.estates = 1u64.try_into().unwrap();
+    campaign.storage.budgets.estates = campaign.allocation.estates;
     campaign.storage.candidate.commit = source.commit.clone();
     campaign.storage.candidate.tree = source.tree.clone();
     let campaign_root = root.join("desktop");

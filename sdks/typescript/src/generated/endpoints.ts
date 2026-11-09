@@ -1,6 +1,6 @@
 // Generated from rrd-contract; do not edit.
-// OpenAPI SHA-256: f14071c71318062cd2b1a9fca491a16d91b4481e98c3e0bcefeeaf98359ed580
-export const ENDPOINT_OPENAPI_DOCUMENT_SHA256 = "f14071c71318062cd2b1a9fca491a16d91b4481e98c3e0bcefeeaf98359ed580" as const;
+// OpenAPI SHA-256: 355e5482791fc6a9705b6c1bc9ba7303d1549b69b7dfbe8819c029bb7074c507
+export const ENDPOINT_OPENAPI_DOCUMENT_SHA256 = "355e5482791fc6a9705b6c1bc9ba7303d1549b69b7dfbe8819c029bb7074c507" as const;
 
 export const endpoints = {
   "attunement-cancel": {
@@ -171,9 +171,9 @@ export const endpoints = {
     "authentication": "session_bearer",
     "mutation": true
   },
-  "engram-read": {
+  "estate-read": {
     "method": "POST",
-    "path": "/v1/engrams/{engram}/read",
+    "path": "/v1/estates/{estate}/read",
     "authentication": "session_bearer",
     "mutation": false
   },
@@ -321,6 +321,18 @@ export const endpoints = {
     "authentication": "session_bearer",
     "mutation": true
   },
+  "task-assessment-execute": {
+    "method": "POST",
+    "path": "/v1/tasks/assessment/execute",
+    "authentication": "session_bearer",
+    "mutation": true
+  },
+  "task-assessment-read": {
+    "method": "POST",
+    "path": "/v1/tasks/assessment/read",
+    "authentication": "session_bearer",
+    "mutation": false
+  },
   "task-attempt-read": {
     "method": "POST",
     "path": "/v1/tasks/attempt/read",
@@ -338,6 +350,12 @@ export const endpoints = {
     "path": "/v1/tasks/budget/read",
     "authentication": "session_bearer",
     "mutation": false
+  },
+  "task-budget-resume": {
+    "method": "POST",
+    "path": "/v1/tasks/budget/resume",
+    "authentication": "session_bearer",
+    "mutation": true
   },
   "task-budget-stop": {
     "method": "POST",

@@ -1,6 +1,6 @@
 //! Ordinary installed campaign. Explicit environment admission keeps a long
 //! campaign out of ordinary correctness CI; failure artifacts are never green.
-use super::engram;
+use super::Estate;
 use rrd_client::RequestOptions;
 use rrd_contract::{CloseSession, CreateSession, ReadStorageDiagnostics, SessionLimits};
 use rrflow_eval::storage::*;
@@ -40,21 +40,30 @@ use workload::{Prepared, Workload};
 
 type DriverResult<T> = std::result::Result<T, String>;
 
+/// Backup overlaps the first mixed write only when the campaign requests it.
+fn backup_due(campaign: &StorageCampaign, phase: LoadPhase, sequence: u64) -> bool {
+    phase == LoadPhase::Measured
+        && sequence == 14
+        && campaign
+            .required_lanes
+            .contains(&CapacityLane::BackupUnderWrite)
+}
+
 fn retain_failed_lifecycle<T>(
-    engram: &super::owned_directory::OwnedDirectory,
+    estate: &super::owned_directory::OwnedDirectory,
     result: DriverResult<T>,
 ) -> DriverResult<T> {
     if result.is_err() {
         eprintln!(
-            "native_lifecycle_failure_engram={}",
-            serde_json::json!({"path": engram.retain(), "private_state": true})
+            "native_lifecycle_failure_estate={}",
+            serde_json::json!({"path": estate.retain(), "private_state": true})
         );
     }
     result
 }
 
 #[test]
-fn lifecycle_failure_retains_its_owned_engram_but_success_cleans_it() {
+fn lifecycle_failure_retains_its_owned_estate_but_success_cleans_it() {
     let parent = tempfile::tempdir().unwrap();
     let success =
         super::owned_directory::OwnedDirectory::new(tempfile::tempdir_in(parent.path()).unwrap());
@@ -102,14 +111,14 @@ fn bounded_json<T: serde::de::DeserializeOwned>(path: &std::path::Path) -> Drive
 }
 
 async fn session(
-    engram: &engram,
+    estate: &Estate,
     client: rrd_client::RrdClient,
     seed: u64,
     campaign: &StorageCampaign,
     clients: u64,
     ordinal: u64,
 ) -> DriverResult<Workload> {
-    let credential = rrd_engine::RrdEngine::read_installed_api_key(&engram.project)
+    let credential = rrd_engine::RrdEngine::read_installed_api_key(&estate.project)
         .map_err(|e| e.to_string())?;
     let name = format!("capacity-session-{ordinal}");
     let session = client
@@ -133,7 +142,7 @@ async fn session(
         native_worker: Default::default(),
         client,
         session,
-        valid_at: engram.at,
+        valid_at: estate.at,
         dimensions: campaign
             .allocation
             .vector_dimensions
@@ -165,7 +174,7 @@ async fn session(
             .max(1024)
             .try_into()
             .map_err(|_| "source payload overflow")?,
-        query_budget: serde_json::from_value(engram.plan["configuration"]["query"].clone())
+        query_budget: serde_json::from_value(estate.plan["configuration"]["query"].clone())
             .map_err(|e| e.to_string())?,
     })
 }
@@ -173,7 +182,7 @@ async fn session(
 /// Rotate only between bounded segments, after every in-flight request has
 /// joined. Closing the old lease prevents a day of accumulated live sessions.
 async fn rotate_session(
-    engram: &engram,
+    estate: &Estate,
     work: &mut Workload,
     campaign: &StorageCampaign,
     clients: u64,
@@ -194,7 +203,7 @@ async fn rotate_session(
         .map_err(|e| e.to_string())?;
     *ordinal = ordinal.checked_add(1).ok_or("session ordinal overflow")?;
     *work = session(
-        engram,
+        estate,
         work.client.clone(),
         work.seed,
         campaign,
@@ -676,7 +685,7 @@ impl PointRun<'_> {
             let work = self.workload.clone();
             let operation = operation.clone();
             let clock = self.clock;
-            if phase == LoadPhase::Measured && sequence == 14 {
+            if backup_due(campaign, phase, sequence) {
                 let work = work.clone();
                 let name = format!("capacity-backup-{}", writer.next_index());
                 let started_ns = ns(clock);
@@ -1137,7 +1146,7 @@ fn installed_sustained_capacity() {
         PathBuf::from(std::env::var_os("RRFLOW_SUSTAINED_EVIDENCE").expect("new evidence path"));
     let campaign: StorageCampaign = bounded_json(&campaign_path).unwrap();
     campaign.validate().unwrap();
-    if campaign.allocation.engrams.get() > 1 {
+    if campaign.allocation.estates.get() > 1 {
         return fleet::execute(campaign, evidence);
     }
     let mut writer = CampaignWriter::create(&evidence, campaign.clone()).unwrap();
@@ -1188,7 +1197,7 @@ fn smoke_campaign() -> StorageCampaign {
     )))
     .unwrap();
     storage.evidence_class = EvidenceClass::NativeCapacity;
-    storage.budgets.engrams = 1u64.try_into().unwrap();
+    storage.budgets.estates = 1u64.try_into().unwrap();
     let limit = |value: u64| value.try_into().unwrap();
     StorageCampaign {
         format_version: 1,
@@ -1198,7 +1207,7 @@ fn smoke_campaign() -> StorageCampaign {
             vcpus: limit(1),
             host_bytes: storage.budgets.host_bytes,
             engine_bytes: storage.budgets.process_bytes,
-            engrams: storage.budgets.engrams,
+            estates: storage.budgets.estates,
             records: limit(8),
             edges: limit(24),
             vectors: limit(16),
@@ -1246,12 +1255,32 @@ fn smoke_campaign() -> StorageCampaign {
 }
 
 #[test]
+fn backup_is_due_only_for_the_selected_lane_and_first_measured_mixed_write() {
+    let mut campaign = smoke_campaign();
+    // The default characterization requests warm only.
+    assert!(!backup_due(&campaign, LoadPhase::Measured, 14));
+    campaign.required_lanes.push(CapacityLane::BackupUnderWrite);
+    assert_eq!(storage_load_kind(14), StorageLoadKind::MixedWrite);
+    assert!(backup_due(&campaign, LoadPhase::Measured, 14));
+    for phase in [
+        LoadPhase::Warmup,
+        LoadPhase::Burst,
+        LoadPhase::Drain,
+        LoadPhase::Soak,
+    ] {
+        assert!(!backup_due(&campaign, phase, 14));
+    }
+    assert!(!backup_due(&campaign, LoadPhase::Measured, 13));
+    assert!(!backup_due(&campaign, LoadPhase::Measured, 15));
+}
+
+#[test]
 #[ignore = "explicit installed trace correlation; not capacity qualification"]
 fn installed_sampler_trace_matches_server_and_store() {
-    let engram = engram::install("fresh");
+    let estate = Estate::install("fresh");
     let clock = Instant::now();
-    let (mut child, client, _) = engram.start_for_with_trace(clock, Duration::from_secs(300), true);
-    let credential = rrd_engine::RrdEngine::read_installed_api_key(&engram.project).unwrap();
+    let (mut child, client, _) = estate.start_for_with_trace(clock, Duration::from_secs(300), true);
+    let credential = rrd_engine::RrdEngine::read_installed_api_key(&estate.project).unwrap();
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
@@ -1281,7 +1310,7 @@ fn installed_sampler_trace_matches_server_and_store() {
             native_worker: Default::default(),
             client,
             session: lease,
-            valid_at: engram.at,
+            valid_at: estate.at,
             dimensions: 16,
             seed: 73,
             records: 8,
@@ -1289,7 +1318,7 @@ fn installed_sampler_trace_matches_server_and_store() {
             edges_per_record: 3,
             vectors_per_record: 2,
             payload_bytes: 1024,
-            query_budget: serde_json::from_value(engram.plan["configuration"]["query"].clone())
+            query_budget: serde_json::from_value(estate.plan["configuration"]["query"].clone())
                 .unwrap(),
         };
         work.initialize().await.unwrap();
@@ -1311,7 +1340,7 @@ fn installed_sampler_trace_matches_server_and_store() {
     let output = child.finish().expect("reap owned traced server");
     check_sample_trace(&output.stderr, &request_id, credential.credential());
     let (mut restarted, client, _) =
-        engram.start_for_with_trace(clock, Duration::from_secs(300), true);
+        estate.start_for_with_trace(clock, Duration::from_secs(300), true);
     work.client = client;
     let second_id = runtime.block_on(async {
         let after = work
@@ -1379,10 +1408,10 @@ fn check_sample_trace(bytes: &[u8], request_id: &str, credential: &str) -> [u64;
 fn installed_sampler_trace_during_write_load() {
     const RECORDS: u64 = 4_000;
     const PERIOD: u64 = 125;
-    let engram = engram::install("fresh");
+    let estate = Estate::install("fresh");
     let clock = Instant::now();
-    let (mut child, client, _) = engram.start_for_with_trace(clock, Duration::from_secs(600), true);
-    let credential = rrd_engine::RrdEngine::read_installed_api_key(&engram.project).unwrap();
+    let (mut child, client, _) = estate.start_for_with_trace(clock, Duration::from_secs(600), true);
+    let credential = rrd_engine::RrdEngine::read_installed_api_key(&estate.project).unwrap();
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
@@ -1408,7 +1437,7 @@ fn installed_sampler_trace_during_write_load() {
             native_worker: Default::default(),
             client,
             session,
-            valid_at: engram.at,
+            valid_at: estate.at,
             dimensions: 16,
             seed: 73,
             records: RECORDS,
@@ -1416,7 +1445,7 @@ fn installed_sampler_trace_during_write_load() {
             edges_per_record: 3,
             vectors_per_record: 2,
             payload_bytes: 1024,
-            query_budget: serde_json::from_value(engram.plan["configuration"]["query"].clone())
+            query_budget: serde_json::from_value(estate.plan["configuration"]["query"].clone())
                 .unwrap(),
         };
         work.initialize().await.unwrap();
@@ -1511,7 +1540,7 @@ fn installed_sampler_trace_during_write_load() {
         overlapping > 0,
         "no client-observed diagnostic/write overlap"
     );
-    let (mut restarted, client, _) = engram.start_for(clock, Duration::from_secs(300));
+    let (mut restarted, client, _) = estate.start_for(clock, Duration::from_secs(300));
     work.client = client;
     runtime.block_on(async {
         for ordinal in [0, 1_333, 2_666, RECORDS - 1] {
@@ -1535,10 +1564,10 @@ fn installed_disjoint_writes_from_one_stamp_conflict_without_partial_effect() {
         RequestOptions::new(id, id, Some(id), Some(u64::MAX)).unwrap()
     }
 
-    let engram = engram::install("fresh");
+    let estate = Estate::install("fresh");
     let clock = Instant::now();
-    let (child, client, _) = engram.start_for(clock, Duration::from_secs(300));
-    let credential = rrd_engine::RrdEngine::read_installed_api_key(&engram.project).unwrap();
+    let (child, client, _) = estate.start_for(clock, Duration::from_secs(300));
+    let credential = rrd_engine::RrdEngine::read_installed_api_key(&estate.project).unwrap();
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
@@ -1563,7 +1592,7 @@ fn installed_disjoint_writes_from_one_stamp_conflict_without_partial_effect() {
             native_worker: Default::default(),
             client,
             session,
-            valid_at: engram.at,
+            valid_at: estate.at,
             dimensions: 16,
             seed: 73,
             records: 8,
@@ -1571,7 +1600,7 @@ fn installed_disjoint_writes_from_one_stamp_conflict_without_partial_effect() {
             edges_per_record: 3,
             vectors_per_record: 2,
             payload_bytes: 1024,
-            query_budget: serde_json::from_value(engram.plan["configuration"]["query"].clone())
+            query_budget: serde_json::from_value(estate.plan["configuration"]["query"].clone())
                 .unwrap(),
         };
         work.initialize().await.unwrap();
@@ -1714,7 +1743,7 @@ fn installed_disjoint_writes_from_one_stamp_conflict_without_partial_effect() {
         assert!(!fresh.idempotent_replay);
         work.verify(&second).await.unwrap();
         super::kill(child, clock);
-        let (reopened, client, _) = engram.start_for(clock, Duration::from_secs(300));
+        let (reopened, client, _) = estate.start_for(clock, Duration::from_secs(300));
         work.client = client;
         work.verify(&first).await.unwrap();
         work.verify(&second).await.unwrap();
@@ -1728,10 +1757,10 @@ fn installed_disjoint_writes_from_one_stamp_conflict_without_partial_effect() {
 #[test]
 #[ignore = "explicit native capacity-driver smoke; candidate portability job"]
 fn installed_capacity_workload_smoke() {
-    let engram = engram::install("fresh");
+    let estate = Estate::install("fresh");
     let clock = Instant::now();
-    let (child, client, _) = engram.start_for(clock, Duration::from_secs(300));
-    let credential = rrd_engine::RrdEngine::read_installed_api_key(&engram.project).unwrap();
+    let (child, client, _) = estate.start_for(clock, Duration::from_secs(300));
+    let credential = rrd_engine::RrdEngine::read_installed_api_key(&estate.project).unwrap();
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
@@ -1761,7 +1790,7 @@ fn installed_capacity_workload_smoke() {
             native_worker: Default::default(),
             client,
             session: lease,
-            valid_at: engram.at,
+            valid_at: estate.at,
             dimensions: 16,
             seed: 73,
             records: 8,
@@ -1769,7 +1798,7 @@ fn installed_capacity_workload_smoke() {
             edges_per_record: 3,
             vectors_per_record: 2,
             payload_bytes: 1024,
-            query_budget: serde_json::from_value(engram.plan["configuration"]["query"].clone())
+            query_budget: serde_json::from_value(estate.plan["configuration"]["query"].clone())
                 .unwrap(),
         };
         work.initialize().await.unwrap();
@@ -1785,7 +1814,7 @@ fn installed_capacity_workload_smoke() {
         let winning_key = "seed-00000000000000000007";
         let before = work.verify_joined_search(winning_key, 1, 7, 5.53125).await.unwrap();
         super::kill(child, clock);
-        let (mut child, client, _) = engram.start_for(clock, Duration::from_secs(300));
+        let (mut child, client, _) = estate.start_for(clock, Duration::from_secs(300));
         work.client = client;
         let after = work.verify_joined_search(winning_key, 1, 7, 5.53125).await.unwrap();
         assert_eq!(after.known_at_cursor, before.known_at_cursor);
@@ -2151,7 +2180,7 @@ fn installed_capacity_workload_smoke() {
         assert!(!acknowledged.is_empty());
         assert_eq!(interrupted_events.iter().filter(|event| matches!(event, ProgressEvent::Resource { .. })).count(), 1);
         super::kill(child, clock);
-        let (restarted, client, _) = engram.start_for(clock, Duration::from_secs(300));
+        let (restarted, client, _) = estate.start_for(clock, Duration::from_secs(300));
         child = restarted;
         work.client = client;
         assert_eq!(std::fs::read_to_string(interrupted_evidence.join("progress.jsonl")).unwrap(), raw);
@@ -2219,7 +2248,7 @@ fn installed_capacity_workload_smoke() {
             serde_json::to_string(&selected_evidence).unwrap()
         );
         let killed = super::kill(child, clock);
-        let (reopened, client, identity) = engram.start_for(clock, Duration::from_secs(300));
+        let (reopened, client, identity) = estate.start_for(clock, Duration::from_secs(300));
         work.client = client;
         // Exercise the production post-reopen bounded readback before replay.
         let mut reopened_digest =
@@ -2270,7 +2299,7 @@ fn installed_capacity_workload_smoke() {
         println!(
             "installed_capacity_workload_smoke={}",
             serde_json::json!({
-            "build":engram.build,"records":8,"edges":24,"vectors":16,"dimensions":16,
+            "build":estate.build,"records":8,"edges":24,"vectors":16,"dimensions":16,
             "replayed_transactions":12,"write_transitions":{"insert":3,"update":4,"retire":3,"recreate":2},"backup_sha256":backup.receipt.backup.backup_sha256,
             "management_followup_verified":true,"reader_interference":reader_evidence,"termination":killed,"reopened":identity,
             "interrupted_acknowledged_writes":acknowledged.len(),"interrupted_sample_cancelled":gate.dropped.load(std::sync::atomic::Ordering::SeqCst),
@@ -2281,9 +2310,9 @@ fn installed_capacity_workload_smoke() {
 }
 
 async fn run(campaign: &StorageCampaign, writer: &mut CampaignWriter) -> DriverResult<()> {
-    run_engram(campaign, writer, None).await
+    run_estate(campaign, writer, None).await
 }
-async fn run_engram(
+async fn run_estate(
     campaign: &StorageCampaign,
     writer: &mut CampaignWriter,
     fleet: Option<&fleet::Participation>,
@@ -2311,8 +2340,8 @@ async fn run_engram(
     if campaign.schedule.operation_deadline_ms.get() > 60_000 {
         return Err("installed request deadline exceeds the driver's one-minute bound".into());
     }
-    if campaign.allocation.engrams.get() != 1 {
-        return Err("fleet requires native aggregate engram driver".into());
+    if campaign.allocation.estates.get() != 1 {
+        return Err("fleet requires native aggregate estate driver".into());
     }
     if campaign
         .required_lanes
@@ -2330,10 +2359,10 @@ async fn run_engram(
     for point in &campaign.points {
         for seed in &campaign.seeds {
             writer.admit_next()?;
-            let engram = engram::install_configured("fresh", configuration.as_deref());
-            if engram.build["executable_sha256"].as_str()
+            let estate = Estate::install_configured("fresh", configuration.as_deref());
+            if estate.build["executable_sha256"].as_str()
                 != Some(campaign.storage.candidate.executable_sha256.as_str())
-                || engram.plan["configuration"]["configuration_sha256"].as_str()
+                || estate.plan["configuration"]["configuration_sha256"].as_str()
                     != Some(campaign.storage.candidate.configuration_sha256.as_str())
             {
                 return Err("installed binary/configuration differs from frozen campaign".into());
@@ -2359,13 +2388,13 @@ async fn run_engram(
             .ok_or("campaign deadline overflow")?
             .checked_add(fleet.map_or(0, |f| f.quiet_extra_ms(campaign.schedule.measured_ms.get())))
             .ok_or("fleet isolated baseline deadline overflow")?;
-            let (child, client, _) = engram.start_for(clock, Duration::from_millis(lifetime_ms));
+            let (child, client, _) = estate.start_for(clock, Duration::from_millis(lifetime_ms));
             native::enforcement(child.id(), allocation.as_ref())?;
             let mut child = Some(child);
             let mut session_ordinal = 0;
             let mut session_opened = Instant::now();
             let mut work = session(
-                &engram,
+                &estate,
                 client,
                 *seed,
                 campaign,
@@ -2374,7 +2403,7 @@ async fn run_engram(
             )
             .await?;
             let seeded = corpus::seed(
-                &engram,
+                &estate,
                 &mut work,
                 campaign,
                 &ProgressContext { writer, point },
@@ -2424,8 +2453,8 @@ async fn run_engram(
                     drop(stopped);
                 }
                 eprintln!(
-                    "native_setup_failure_engram={}",
-                    serde_json::json!({"path": engram.temp.retain(), "private_state": true})
+                    "native_setup_failure_estate={}",
+                    serde_json::json!({"path": estate.temp.retain(), "private_state": true})
                 );
             }
             let mut corpus = Some(seeded?);
@@ -2433,7 +2462,7 @@ async fn run_engram(
             // setup age. Subsequent load still rotates joined session segments.
             session_opened = Instant::now() - Duration::from_secs(120);
             rotate_session(
-                &engram,
+                &estate,
                 &mut work,
                 campaign,
                 point.clients.get(),
@@ -2442,7 +2471,7 @@ async fn run_engram(
             )
             .await?;
             let reopens_result = lifecycle::reopens(
-                &engram,
+                &estate,
                 &mut child,
                 &mut work,
                 campaign,
@@ -2451,11 +2480,11 @@ async fn run_engram(
                 (&mut session_ordinal, &mut session_opened),
             )
             .await;
-            let mut reopens = Some(retain_failed_lifecycle(&engram.temp, reopens_result)?);
+            let mut reopens = Some(retain_failed_lifecycle(&estate.temp, reopens_result)?);
             let mut cold_start = if campaign.required_lanes.contains(&CapacityLane::Cold) {
                 Some(
                     cold::run(
-                        &engram,
+                        &estate,
                         &mut child,
                         &mut work,
                         campaign,
@@ -2495,7 +2524,7 @@ async fn run_engram(
                 }
                 let mut phase_origin = if let Some(fleet) = fleet {
                     rotate_session(
-                        &engram,
+                        &estate,
                         &mut driver.workload,
                         campaign,
                         point.clients.get(),
@@ -2514,7 +2543,7 @@ async fn run_engram(
                         fleet
                             .boundary(
                                 stage,
-                                &engram,
+                                &estate,
                                 &mut driver,
                                 &mut session_ordinal,
                                 &mut session_opened,
@@ -2528,10 +2557,10 @@ async fn run_engram(
                     if let Some(fleet) = fleet.filter(|f| f.trial == FleetTrial::Quiet) {
                         fleet
                             .wait_quiet(
-                                fleet.engram,
+                                fleet.estate,
                                 &mut driver,
                                 writer,
-                                (&engram, &mut session_ordinal, &mut session_opened),
+                                (&estate, &mut session_ordinal, &mut session_opened),
                             )
                             .await?;
                         phase_origin = Some(ns(clock));
@@ -2540,7 +2569,7 @@ async fn run_engram(
                 if phase == LoadPhase::Drain
                     || (phase != LoadPhase::Warmup
                         && fleet.is_some_and(|f| {
-                            !f.trial.active(f.engram)
+                            !f.trial.active(f.estate)
                                 && !(phase == LoadPhase::Measured && f.trial == FleetTrial::Quiet)
                         }))
                 {
@@ -2548,7 +2577,7 @@ async fn run_engram(
                     while remaining > 0 {
                         writer.admit_next()?;
                         rotate_session(
-                            &engram,
+                            &estate,
                             &mut driver.workload,
                             campaign,
                             point.clients.get(),
@@ -2574,7 +2603,7 @@ async fn run_engram(
                     writer.admit_next()?;
                     if !driver.backup.is_pending() {
                         rotate_session(
-                            &engram,
+                            &estate,
                             &mut driver.workload,
                             campaign,
                             point.clients.get(),
@@ -2669,7 +2698,7 @@ async fn run_engram(
                                 all,
                                 &mut driver,
                                 writer,
-                                (&engram, &mut session_ordinal, &mut session_opened),
+                                (&estate, &mut session_ordinal, &mut session_opened),
                             )
                             .await?;
                     }
@@ -2677,7 +2706,7 @@ async fn run_engram(
             }
             if let Some(fleet) = fleet {
                 rotate_session(
-                    &engram,
+                    &estate,
                     &mut driver.workload,
                     campaign,
                     point.clients.get(),
@@ -2688,7 +2717,7 @@ async fn run_engram(
                 fleet
                     .boundary(
                         "loaded",
-                        &engram,
+                        &estate,
                         &mut driver,
                         &mut session_ordinal,
                         &mut session_opened,
@@ -2703,7 +2732,7 @@ async fn run_engram(
                     let started_ns = ns(clock);
                     let killed = super::kill(child.take().ok_or("missing final server")?, clock);
                     let (reopened, client, _) =
-                        engram.start_for(clock, Duration::from_millis(lifetime_ms));
+                        estate.start_for(clock, Duration::from_millis(lifetime_ms));
                     let reopened_pid = reopened.id();
                     native::enforcement(reopened_pid, allocation.as_ref())?;
                     driver.pid = reopened_pid;
@@ -2711,7 +2740,7 @@ async fn run_engram(
                     driver.workload.client = client;
                     session_opened = Instant::now() - Duration::from_secs(120);
                     rotate_session(
-                        &engram,
+                        &estate,
                         &mut driver.workload,
                         campaign,
                         point.clients.get(),
@@ -2722,7 +2751,7 @@ async fn run_engram(
                     let mut states = digest("c07g.final-state", &(*seed, point.id.clone()))?;
                     for record in 0..driver.workload.records {
                         rotate_session(
-                            &engram,
+                            &estate,
                             &mut driver.workload,
                             campaign,
                             point.clients.get(),
@@ -2742,7 +2771,7 @@ async fn run_engram(
                         .filter(|(_, n)| **n > 0)
                     {
                         rotate_session(
-                            &engram,
+                            &estate,
                             &mut driver.workload,
                             campaign,
                             point.clients.get(),
@@ -2784,7 +2813,7 @@ async fn run_engram(
             .map_err(|_| "final readback exceeded lifecycle deadline")??;
             if let Some(fleet) = fleet {
                 rotate_session(
-                    &engram,
+                    &estate,
                     &mut driver.workload,
                     campaign,
                     point.clients.get(),
@@ -2795,7 +2824,7 @@ async fn run_engram(
                 fleet
                     .boundary(
                         "reopened",
-                        &engram,
+                        &estate,
                         &mut driver,
                         &mut session_ordinal,
                         &mut session_opened,

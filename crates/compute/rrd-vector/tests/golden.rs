@@ -41,7 +41,7 @@ fn contract() -> serde_json::Value {
     let exact_hits = search_exact(&request, candidates.clone()).unwrap();
     let segment = ImmutableVectorSegment::build(
         VectorSegmentConfig {
-            id: ProjectionId::new("vector:exact:golden").unwrap(),
+            id: ProjectionId::new("vector-exact-golden").unwrap(),
             scope: scope.clone(),
             field: "body".into(),
             dimensions: 2,
@@ -56,7 +56,7 @@ fn contract() -> serde_json::Value {
     .unwrap();
     let hnsw = HnswIndex::build(
         HnswConfig {
-            id: ProjectionId::new("vector:hnsw:golden").unwrap(),
+            id: ProjectionId::new("vector-hnsw-golden").unwrap(),
             scope,
             field: "body".into(),
             dimensions: 2,

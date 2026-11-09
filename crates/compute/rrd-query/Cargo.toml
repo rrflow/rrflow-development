@@ -10,7 +10,7 @@ description = "rrflowQL syntax, catalog binding, deterministic planning, and exe
 rrd-core = { path = "../../kernel/rrd-core" }
 rrd-store = { path = "../../persistence/rrd-store" }
 serde = { workspace = true }
-serde_json = { workspace = true, features = ["raw_value"] }
+serde_json = { workspace = true }
 datafusion = { version = "=55.0.0", default-features = false, features = ["recursive_protection"] }
 datafusion-datasource = "=55.0.0"
 datafusion-session = "=55.0.0"

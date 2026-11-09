@@ -4,7 +4,7 @@ use super::{Result, RrdEngine};
 impl RrdEngine {
     /// Offer one housekeeping quantum to the installed native storage owner.
     /// Lock admission never queues; admitted work uses the configured native
-    /// byte/count/time limits. Volatile engrams have no physical maintenance.
+    /// byte/count/time limits. Volatile estates have no physical maintenance.
     pub fn maintain_storage(&self) -> Result<bool> {
         self.storage.as_rrflow_kv().map_or(Ok(false), |store| {
             store.try_maintenance_step().map_err(Into::into)

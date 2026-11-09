@@ -1,15 +1,15 @@
 use super::*;
 use rrd_contract::{
-    DataReference, MemorySeatDefinition, PersistMemoryengram, ProviderRepresentationDefinition,
+    DataReference, MemorySeatDefinition, PersistMemoryEstate, ProviderRepresentationDefinition,
     ResolveMemoryWarp, ResolveSeatIdentity, MEMORY_PROVIDER_IDENTITY_KIND, MEMORY_REPRESENTS_KIND,
 };
 
-fn memory_engram(
+fn memory_estate(
     provider_identity: Option<&str>,
     representation: Option<&str>,
     provider: Option<&str>,
     valid_from: u64,
-) -> PersistMemoryengram {
+) -> PersistMemoryEstate {
     let representations = match (provider_identity, representation, provider) {
         (Some(provider_identity), Some(representation), Some(provider)) => {
             vec![ProviderRepresentationDefinition {
@@ -24,7 +24,7 @@ fn memory_engram(
         (None, None, None) => Vec::new(),
         _ => panic!("provider fixture must be complete"),
     };
-    PersistMemoryengram {
+    PersistMemoryEstate {
         scope: "instance:test-instance".into(),
         seat: MemorySeatDefinition {
             id: CanonicalId::new("clyffy").unwrap(),
@@ -36,15 +36,15 @@ fn memory_engram(
     }
 }
 
-fn commit_engram_plan(
+fn commit_estate_plan(
     engine: &RrdEngine,
     lease: &rrd_contract::SessionLease,
-    request: &PersistMemoryengram,
+    request: &PersistMemoryEstate,
     at: u64,
     suffix: &str,
 ) {
     let plan = engine
-        .plan_memory_engram(
+        .plan_memory_estate(
             &lease.session_id,
             &lease.token,
             request,
@@ -93,10 +93,10 @@ fn seat_becomes_self_through_provider_neutral_edges_and_survives_reopen() {
     let lease = engine
         .create_session(
             &session_request(10_000, 8),
-            &id("memory-engram-session"),
+            &id("memory-estate-session"),
             1_000,
-            "request-memory-engram-session",
-            "operation-memory-engram-session",
+            "request-memory-estate-session",
+            "operation-memory-estate-session",
         )
         .unwrap();
     let resolve = |engine: &RrdEngine, valid_at, suffix: &str| {
@@ -115,10 +115,10 @@ fn seat_becomes_self_through_provider_neutral_edges_and_survives_reopen() {
         )
     };
 
-    commit_engram_plan(
+    commit_estate_plan(
         &engine,
         &lease,
-        &memory_engram(None, None, None, 1_100),
+        &memory_estate(None, None, None, 1_100),
         1_100,
         "seat",
     );
@@ -127,10 +127,10 @@ fn seat_becomes_self_through_provider_neutral_edges_and_survives_reopen() {
         Err(ServiceError::SeatNotRepresented)
     ));
 
-    commit_engram_plan(
+    commit_estate_plan(
         &engine,
         &lease,
-        &memory_engram(
+        &memory_estate(
             Some("openai-account"),
             Some("openai-represents-clyffy"),
             Some("openai"),
@@ -180,14 +180,14 @@ fn seat_becomes_self_through_provider_neutral_edges_and_survives_reopen() {
         .iter()
         .any(|item| item.identity == "record:rrflow-provider-identity:openai-account"));
 
-    let replacement_request = memory_engram(
+    let replacement_request = memory_estate(
         Some("anthropic-account"),
         Some("anthropic-represents-clyffy"),
         Some("anthropic"),
         1_300,
     );
     let mut replacement = engine
-        .plan_memory_engram(
+        .plan_memory_estate(
             &lease.session_id,
             &lease.token,
             &replacement_request,

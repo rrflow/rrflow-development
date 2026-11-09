@@ -37,7 +37,7 @@ this continuation did not independently rerun that pre-repair test.
 ## Preserved native failure
 
 Retained local files under `target/c07-indexed-failure-evidence/` were read
-without editing the original engram. Campaign `170295519223ad438da894799c5f60767a1090db542bde5bf63c4edb23d7df7f`,
+without editing the original estate. Campaign `170295519223ad438da894799c5f60767a1090db542bde5bf63c4edb23d7df7f`,
 source `7c329d491cda5326858de0eab36a6f9912c492da`, acknowledged all 100000
 corpus operations and independently verified 44556. The launcher reports exit
 101, elapsed 7202526 ms and confirmed cleanup; stderr says corpus setup exceeded
@@ -53,7 +53,7 @@ An independent streaming count found 100000 intents, 100000 acknowledgements,
 44556 verifications, one resource sample and one failure. The sample reported
 1404 segments, 3228790960 segment bytes and 128 peak file handles with zero
 handle denials. A single sample is not a whole-run resource peak. The copied
-engram profiling described in the PR suggests an allocation target; it does
+estate profiling described in the PR suggests an allocation target; it does
 not prove that manifest copying caused the deadline failure.
 
 ## Research, review and evidence decisions

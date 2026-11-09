@@ -1,14 +1,14 @@
-//! One canonical project-local filesystem layout for an installed RRFlow engram.
+//! One canonical project-local filesystem layout for an installed RRFlow estate.
 
 use super::*;
 use rrd_contract::{InstallationManagedPath, InstallationManagedPathKind, InstallationRemovalRule};
 use rrd_store::filesystem::AnchoredPath;
 
-pub(super) const engram_DIRECTORY: &str = ".rrflow";
+pub(super) const ESTATE_DIRECTORY: &str = ".rrflow";
 pub(super) const STORAGE_DIRECTORY: &str = ".rrflow/rrd";
 pub(super) const STORAGE_ROOTS_DIRECTORY: &str = ".rrflow/rrd/roots";
 pub(super) const CREDENTIAL_DIRECTORY: &str = ".rrflow/credentials";
-/// Backups of an installed engram live under `.rrflow/rrd/backups/<instance>`,
+/// Backups of an installed estate live under `.rrflow/rrd/backups/<instance>`,
 /// beside the storage roots and never below `roots/`, which holds only roots
 /// the locator can select. Created on first use; retained by uninstall.
 pub(super) const BACKUPS_DIRECTORY_NAME: &str = "backups";
@@ -18,8 +18,8 @@ pub(super) const RESTORES_DIRECTORY_NAME: &str = "restores";
 pub(super) const LOCATOR_RELATIVE_PATH: &str = ".rrflow/config.toml";
 const INSTALL_INTENT_PREFIX: &str = ".rrflow-install-";
 const INSTALL_INTENT_SUFFIX: &str = ".json";
-const PRIVATE_engram_DIRECTORIES: [&str; 4] = [
-    engram_DIRECTORY,
+const PRIVATE_ESTATE_DIRECTORIES: [&str; 4] = [
+    ESTATE_DIRECTORY,
     STORAGE_DIRECTORY,
     STORAGE_ROOTS_DIRECTORY,
     CREDENTIAL_DIRECTORY,
@@ -28,12 +28,12 @@ const PRIVATE_engram_DIRECTORIES: [&str; 4] = [
 /// One admitted project plus the exact private directories selected beneath it.
 /// Retained directory identities, never display paths, authorize later effects.
 #[derive(Clone, Debug)]
-pub(super) struct engramFilesystem {
+pub(super) struct EstateFilesystem {
     project: AnchoredPath,
     private: BTreeMap<&'static str, AnchoredPath>,
 }
 
-impl engramFilesystem {
+impl EstateFilesystem {
     pub fn admit(project: AnchoredPath, allow_missing: bool) -> Result<Self> {
         let mut filesystem = Self {
             project,
@@ -46,7 +46,7 @@ impl engramFilesystem {
     /// Discover newly created descendants without replacing any directory
     /// capability already admitted by this operation.
     pub fn admit_missing_private_directories(&mut self, allow_missing: bool) -> Result<()> {
-        for relative in PRIVATE_engram_DIRECTORIES {
+        for relative in PRIVATE_ESTATE_DIRECTORIES {
             if let Some(directory) = self.private.get(relative) {
                 super::token_key::pin_private_directory(directory)
                     .map_err(|error| ServiceError::Storage(error.to_string()))?;
@@ -95,7 +95,7 @@ impl engramFilesystem {
     }
 
     pub fn create_private_directories(&mut self) -> Result<()> {
-        for relative in PRIVATE_engram_DIRECTORIES {
+        for relative in PRIVATE_ESTATE_DIRECTORIES {
             if let Some(directory) = self.private.get(relative) {
                 super::token_key::pin_private_directory(directory)
                     .map_err(|error| ServiceError::Storage(error.to_string()))?;
@@ -111,7 +111,7 @@ impl engramFilesystem {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) struct engramLayout {
+pub(super) struct EstateLayout {
     pub storage_root: String,
     pub token_key: String,
     pub operator_credential: String,
@@ -121,7 +121,7 @@ pub(super) struct engramLayout {
     pub bootstrap_pending: String,
 }
 
-impl engramLayout {
+impl EstateLayout {
     pub fn new(storage_root_id: &CanonicalId, principal_id: &CanonicalId) -> Result<Self> {
         let layout = Self {
             storage_root: format!("{STORAGE_ROOTS_DIRECTORY}/{storage_root_id}"),
@@ -130,9 +130,9 @@ impl engramLayout {
             install_intent: format!(
                 "{INSTALL_INTENT_PREFIX}{storage_root_id}{INSTALL_INTENT_SUFFIX}"
             ),
-            locator_pending: format!("{engram_DIRECTORY}/.config.{storage_root_id}.pending"),
-            bootstrap: format!("{engram_DIRECTORY}/bootstrap.md"),
-            bootstrap_pending: format!("{engram_DIRECTORY}/.bootstrap.{storage_root_id}.pending"),
+            locator_pending: format!("{ESTATE_DIRECTORY}/.config.{storage_root_id}.pending"),
+            bootstrap: format!("{ESTATE_DIRECTORY}/bootstrap.md"),
+            bootstrap_pending: format!("{ESTATE_DIRECTORY}/.bootstrap.{storage_root_id}.pending"),
         };
         for relative in [
             layout.storage_root.as_str(),
@@ -152,8 +152,8 @@ impl engramLayout {
     pub fn managed_paths(&self, absent_sha256: &str) -> Vec<InstallationManagedPath> {
         [
             (
-                InstallationManagedPathKind::engramDirectory,
-                engram_DIRECTORY.to_owned(),
+                InstallationManagedPathKind::EstateDirectory,
+                ESTATE_DIRECTORY.to_owned(),
                 InstallationRemovalRule::RemoveIfOwnedAndEmpty,
             ),
             (
@@ -237,10 +237,10 @@ impl engramLayout {
 }
 
 /// A new install may not coexist with either a pre-canonical
-/// `.rrflow/instance.toml` engram or an unrecognized `.rrflow` tree. Replay is
+/// `.rrflow/instance.toml` estate or an unrecognized `.rrflow` tree. Replay is
 /// resolved from the canonical locator before this check is called.
-pub(super) fn reject_existing_engram(project: &engramFilesystem) -> Result<()> {
-    match project.project().join(engram_DIRECTORY).metadata() {
+pub(super) fn reject_existing_estate(project: &EstateFilesystem) -> Result<()> {
+    match project.project().join(ESTATE_DIRECTORY).metadata() {
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
         Ok(_) => Err(ServiceError::ProjectBindingMismatch),
         Err(error) => Err(ServiceError::Storage(error.to_string())),
@@ -265,15 +265,15 @@ pub(super) fn reject_existing_engram(project: &engramFilesystem) -> Result<()> {
     Ok(())
 }
 
-pub(super) fn create_engram_directories(project: &mut engramFilesystem) -> Result<()> {
+pub(super) fn create_estate_directories(project: &mut EstateFilesystem) -> Result<()> {
     project.create_private_directories()
 }
 
-pub(super) fn validate_engram_directories(
-    project: &engramFilesystem,
+pub(super) fn validate_estate_directories(
+    project: &EstateFilesystem,
     allow_missing: bool,
 ) -> Result<()> {
-    for relative in PRIVATE_engram_DIRECTORIES {
+    for relative in PRIVATE_ESTATE_DIRECTORIES {
         match project.private.get(relative) {
             Some(directory) => {
                 super::token_key::pin_private_directory(directory)
@@ -286,11 +286,11 @@ pub(super) fn validate_engram_directories(
     Ok(())
 }
 
-pub(super) fn validate_recovery_engram(
-    project: &engramFilesystem,
-    layout: &engramLayout,
+pub(super) fn validate_recovery_estate(
+    project: &EstateFilesystem,
+    layout: &EstateLayout,
 ) -> Result<()> {
-    validate_engram_directories(project, true)?;
+    validate_estate_directories(project, true)?;
     let storage_id = Path::new(&layout.storage_root)
         .file_name()
         .and_then(|value| value.to_str())
@@ -309,14 +309,12 @@ pub(super) fn validate_recovery_engram(
         .ok_or(ServiceError::ProjectBindingMismatch)?;
     validate_directory_entries(
         project,
-        engram_DIRECTORY,
+        ESTATE_DIRECTORY,
         &[
             "rrd",
             "credentials",
             "config.toml",
             "bootstrap.md",
-            "project-map.md",
-            ".project-map.pending",
             locator_pending,
             bootstrap_pending,
         ],
@@ -331,7 +329,7 @@ pub(super) fn validate_recovery_engram(
 }
 
 fn validate_directory_entries(
-    project: &engramFilesystem,
+    project: &EstateFilesystem,
     relative: &str,
     allowed: &[&str],
 ) -> Result<()> {
@@ -364,8 +362,8 @@ fn validate_directory_entries(
 }
 
 pub(super) fn install_intent_path(
-    project: &engramFilesystem,
-    layout: &engramLayout,
+    project: &EstateFilesystem,
+    layout: &EstateLayout,
 ) -> Result<AnchoredPath> {
     validate_intent_relative(&layout.install_intent)?;
     Ok(project.project().join(&layout.install_intent))
@@ -384,7 +382,7 @@ fn validate_intent_relative(relative: &str) -> Result<()> {
 }
 
 pub(super) fn reject_existing_symlink_path(
-    _project: &engramFilesystem,
+    _project: &EstateFilesystem,
     path: &AnchoredPath,
 ) -> Result<()> {
     match path.metadata() {
@@ -402,7 +400,7 @@ pub(super) fn validate_managed_relative(relative: &str) -> Result<()> {
         || relative
             .split('/')
             .any(|segment| segment.is_empty() || matches!(segment, "." | ".."))
-        || !(relative == engram_DIRECTORY
+        || !(relative == ESTATE_DIRECTORY
             || relative.starts_with(".rrflow/")
             || relative == rrd_contract::INSTALLATION_LEASE_PATH)
     {
@@ -411,15 +409,15 @@ pub(super) fn validate_managed_relative(relative: &str) -> Result<()> {
     Ok(())
 }
 
-pub(super) fn safe_join(project: &engramFilesystem, relative: &str) -> Result<AnchoredPath> {
+pub(super) fn safe_join(project: &EstateFilesystem, relative: &str) -> Result<AnchoredPath> {
     project.managed(relative)
 }
 
 /// One installed instance's backup catalogue or restore staging root,
 /// `.rrflow/rrd/<kind>/<instance>` below its project. The served engine, the
-/// offline publication, and the engram controller all resolve the same path.
+/// offline publication, and the estate controller all resolve the same path.
 pub(super) fn instance_operation_root(
-    project: &engramFilesystem,
+    project: &EstateFilesystem,
     kind: &str,
     instance: &CanonicalId,
 ) -> Result<AnchoredPath> {

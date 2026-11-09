@@ -24,8 +24,8 @@ introduced. Stop conditions remain duplicate authority, invented evidence,
 embedded provider ranking or required-check bypass.
 
 The embedded engine test derives a proposed policy from retained actual BF16
-request, configuration and allowance files. It uses a fresh test engram, not a
-claimed replay of the captured installed engram. Preview leaves state unchanged;
+request, configuration and allowance files. It uses a fresh test estate, not a
+claimed replay of the captured installed estate. Preview leaves state unchanged;
 changed settings fail old approval; apply, exact readback and idempotent replay
 survive real store close/reopen; revocation invalidates policy projection and the
 old plan. This advances durable configuration, not installed-binary execution.

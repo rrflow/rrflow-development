@@ -24,7 +24,7 @@ tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 
 [dev-dependencies]
-rrd-engram = { path = "../../authority/rrd-estate" }
+rrd-estate = { path = "../../authority/rrd-estate" }
 rrd-security = { path = "../../authority/rrd-security" }
 rrd-core = { path = "../../kernel/rrd-core" }
 rrd-store = { path = "../../persistence/rrd-store" }

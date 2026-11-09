@@ -7,7 +7,7 @@ use rrd_core::{
     RuntimeRecordSchema, RuntimeTableSchema, RuntimeType, RuntimeValueType, ScopeId,
 };
 use rrd_engine::RrdEngine;
-use rrd_engram::{engramRepository, MutationContext};
+use rrd_estate::{EstateRepository, MutationContext};
 use rrd_security::{Principal, PrincipalKind, ResourceGrant, SecurityRepository, SECURITY_FORMAT};
 use rrd_server::RrdHttpServer;
 use rrd_store::{RrflowKvStore, StorageEngine};
@@ -63,14 +63,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         &distribution,
     )?;
     if preview.installation.target.instance_id != corpus.identity.instance
-        || preview.installation.target.engram_id != corpus.identity.engram
+        || preview.installation.target.estate_id != corpus.identity.estate
     {
         return Err(format!(
-            "checked SDK corpus identity drifted: expected instance={} engram={}, planned instance={} engram={}",
+            "checked SDK corpus identity drifted: expected instance={} estate={}, planned instance={} estate={}",
             corpus.identity.instance,
-            corpus.identity.engram,
+            corpus.identity.estate,
             preview.installation.target.instance_id,
-            preview.installation.target.engram_id,
+            preview.installation.target.estate_id,
         )
         .into());
     }
@@ -90,7 +90,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
     let storage = RrflowKvStore::open(&root)?;
     seed_schema(&storage, &corpus)?;
-    seed_engram(&storage, &corpus)?;
+    seed_estate(&storage, &corpus)?;
     seed_security(&storage, &corpus)?;
     drop(storage);
 
@@ -213,15 +213,15 @@ fn seed_schema(
     Ok(())
 }
 
-fn seed_engram(
+fn seed_estate(
     storage: &RrflowKvStore,
     corpus: &SdkConformanceCorpus,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    engramRepository::new(storage, corpus.identity.engram.clone()).create(&MutationContext {
+    EstateRepository::new(storage, corpus.identity.estate.clone()).create(&MutationContext {
         at: 110,
         actor: "sdk-conformance-harness".into(),
-        request_id: "request-sdk-engram".into(),
-        operation_id: CanonicalId::new("sdk-engram-create")?,
+        request_id: "request-sdk-estate".into(),
+        operation_id: CanonicalId::new("sdk-estate-create")?,
     })?;
     Ok(())
 }
@@ -236,10 +236,10 @@ fn seed_security(
             corpus.identity.instance.as_str(),
         )?],
     };
-    let engram_resource = ResourcePath {
+    let estate_resource = ResourcePath {
         segments: vec![ResourceId::new(
-            ResourceKind::engram,
-            corpus.identity.engram.as_str(),
+            ResourceKind::Estate,
+            corpus.identity.estate.as_str(),
         )?],
     };
     let actions = [
@@ -260,7 +260,7 @@ fn seed_security(
         SecurityAction::ChangefeedFollow,
         SecurityAction::BackupCreate,
         SecurityAction::BackupList,
-        SecurityAction::engramRead,
+        SecurityAction::EstateRead,
     ];
     let mut grants = actions
         .into_iter()
@@ -271,8 +271,8 @@ fn seed_security(
         })
         .collect::<Vec<_>>();
     grants.push(ResourceGrant {
-        action: SecurityAction::engramRead,
-        resource_prefix: engram_resource,
+        action: SecurityAction::EstateRead,
+        resource_prefix: estate_resource,
         data_policy: None,
     });
     let principal = Principal {

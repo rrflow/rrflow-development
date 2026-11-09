@@ -1,4 +1,4 @@
-# POAM-019 — native engram records and engine transactions
+# POAM-019 — native estate records and engine transactions
 
 **Status:** active parent-owned POA&M detail
 **Coordinate:** `rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-019`
@@ -10,19 +10,19 @@ independently.
 
 ## Observed deficiency
 
-`rrd-engram` publicly depends on `rrd-store` through `engramRepository`, `Reconciler`, and
-`BackupReconciler`; every engram mutation decodes and rewrites one JSON `engramDocument` at
-`server/state/engram/{engram}/document`, and the control journal copies that full
+`rrd-estate` publicly depends on `rrd-store` through `EstateRepository`, `Reconciler`, and
+`BackupReconciler`; every estate mutation decodes and rewrites one JSON `EstateDocument` at
+`server/state/estate/{estate}/document`, and the control journal copies that full
 replacement. The one-MiB value cap can preempt the advertised aggregate cardinalities. The
-document also nests both `ManagedInstance`/`engramOperation` and a twelve-kind
-`engramAuthorityState` hierarchy with overlapping instance, job, health, secret,
+document also nests both `ManagedInstance`/`EstateOperation` and a twelve-kind
+`EstateAuthorityState` hierarchy with overlapping instance, job, health, secret,
 desired/observed, receipt, and idempotency concepts.
 
 ## Impact
 
-engram code can bypass the engine transaction; write and read cost grow with unrelated
+Estate code can bypass the engine transaction; write and read cost grow with unrelated
 state; state is not natively addressable as graph/scalar/index families;
-audit/outbox/runtime-log/index changes are not atomic with the engram replacement; and
+audit/outbox/runtime-log/index changes are not atomic with the estate replacement; and
 overlapping operational models can become a second topology, job, secret, or authorization
 authority.
 
@@ -41,9 +41,9 @@ Roadmap owners: [Gate A](../../roadmap/rrflow-1.0/gate-a.md),
 
 ## Closure evidence
 
-Make `rrd-engram` pure domain validation; reconcile every broad authority resource in the
+Make `rrd-estate` pure domain validation; reconcile every broad authority resource in the
 instance-topology package; remove direct storage/repository constructors and the monolithic
-key without a wrapper; persist typed engram/instance/operation/lease/receipt/backup/recovery
+key without a wrapper; persist typed estate/instance/operation/lease/receipt/backup/recovery
 records plus relations and indexes through one stamped engine transaction; prove MX/KV
 semantics, effect-gap crash/reopen, bounded native reads, write/copy/decode/allocation
 accounting, streamed same-stamp DataFusion analytics, cross-surface results, and

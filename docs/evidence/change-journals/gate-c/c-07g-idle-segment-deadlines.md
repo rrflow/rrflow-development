@@ -10,7 +10,7 @@ package; it does not add engine runtime state or another evaluation authority.
 
 ## Failure, scope and replacement
 
-The first actual two-engram Windows Job campaign on combined candidate
+The first actual two-estate Windows Job campaign on combined candidate
 79663cdd4d162379c82a2fab0ff3f87d5cbf907e failed in the quiet trial with
 `invalid client timing boundary`. The idle member collected a full 120000ms
 of resource observations, then executed its required baseline probe. Its

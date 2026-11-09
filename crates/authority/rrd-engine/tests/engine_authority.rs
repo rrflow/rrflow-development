@@ -1,22 +1,22 @@
 use rrd_contract::{
-    engramDesiredPhase, transaction_operation_sha256, AuditDecision, AuditPhase, BeginTransaction,
-    CanonicalId, CloseSession, CommitTransaction, CorrelationId, CreateSession, DataLogicalModel,
-    DataProperties, DataPropertySchema, DataRecordSchema, DataReference, DataSchemaMode,
-    DataSchemaRegistry, DataTableSchema, DataValueType, DataVectorValue, DataengramOrganisation,
+    transaction_operation_sha256, AuditDecision, AuditPhase, BeginTransaction, CanonicalId,
+    CloseSession, CommitTransaction, CorrelationId, CreateSession, DataEstateOrganisation,
+    DataLogicalModel, DataProperties, DataPropertySchema, DataRecordSchema, DataReference,
+    DataSchemaMode, DataSchemaRegistry, DataTableSchema, DataValueType, DataVectorValue,
     DiagnosticAuthority, DiagnosticStorageEvidenceLevel, EnsureQueryIndex, EnsureVectorCollection,
-    InstallationManagedPathKind, InstallationTargetKind, NamedVectorDefinition, QueryBudget,
-    QueryIndexKind, QueryValue, ReadAudit, ReadChangefeed, ReadDiagnosticSnapshot, RequestContext,
-    ResourceId, ResourceKind, ResourcePath, SecurityAction, SessionLimits, StorageProfileKind,
-    TransactionMutation, VectorMemoryTier, VectorSearchMetric, VectorValueKind,
+    EstateDesiredPhase, InstallationManagedPathKind, InstallationTargetKind, NamedVectorDefinition,
+    QueryBudget, QueryIndexKind, QueryValue, ReadAudit, ReadChangefeed, ReadDiagnosticSnapshot,
+    RequestContext, ResourceId, ResourceKind, ResourcePath, SecurityAction, SessionLimits,
+    StorageProfileKind, TransactionMutation, VectorMemoryTier, VectorSearchMetric, VectorValueKind,
 };
 use rrd_core::{digest, Claim, Predicate, Producer, Subject};
 use rrd_engine::{
-    engramAdminAction, engramAdminResult, Invocation, InvocationCredential, RrdEngine,
+    EstateAdminAction, EstateAdminResult, Invocation, InvocationCredential, RrdEngine,
     RrdOperation, ServiceError,
 };
-use rrd_engram::{
-    engramRepository, DesiredPhase, DesiredTarget, LeaseRequest, LocalOperatorPolicy,
-    LocalengramPermission, MutationContext, ObservationRequest, ObservedPhase, ReceiptBoundary,
+use rrd_estate::{
+    DesiredPhase, DesiredTarget, EstateRepository, LeaseRequest, LocalEstatePermission,
+    LocalOperatorPolicy, MutationContext, ObservationRequest, ObservedPhase, ReceiptBoundary,
     ReceiptRequest, ScheduleBackup, SetDesired, SetRecoveryPolicy, LOCAL_OPERATOR_POLICY_FORMAT,
 };
 use rrd_store::StorageEngine;
@@ -127,34 +127,34 @@ fn one_authority_coordinates_security_data_catalogues_audit_and_reopen() {
             .collect(),
         not_before_unix_ms: 1,
         expires_at_unix_ms: 10_000,
-        engrams: BTreeMap::from([(
-            "engram-a".into(),
-            BTreeSet::from([LocalengramPermission::Create]),
+        estates: BTreeMap::from([(
+            "estate-a".into(),
+            BTreeSet::from([LocalEstatePermission::Create]),
         )]),
     };
     fs::write(&operator_policy, serde_json::to_vec(&policy).unwrap()).unwrap();
     private(&operator_policy);
-    let create_engram = || {
-        RrdEngine::administer_engram_store(
+    let create_estate = || {
+        RrdEngine::administer_estate_store(
             &database,
             instance.clone(),
             &operator_policy,
             &operator_key,
-            canonical("engram-a"),
+            canonical("estate-a"),
             200,
-            "create-engram-request".into(),
-            canonical("create-engram-operation"),
-            engramAdminAction::Create,
+            "create-estate-request".into(),
+            canonical("create-estate-operation"),
+            EstateAdminAction::Create,
         )
         .unwrap()
     };
     assert!(matches!(
-        create_engram(),
-        engramAdminResult::Mutation(result) if !result.idempotent_replay
+        create_estate(),
+        EstateAdminResult::Mutation(result) if !result.idempotent_replay
     ));
     assert!(matches!(
-        create_engram(),
-        engramAdminResult::Mutation(result) if result.idempotent_replay
+        create_estate(),
+        EstateAdminResult::Mutation(result) if result.idempotent_replay
     ));
 
     let engine = RrdEngine::open_installed(&project, &executable).unwrap();
@@ -226,7 +226,7 @@ fn one_authority_coordinates_security_data_catalogues_audit_and_reopen() {
             registry: DataSchemaRegistry {
                 revision: 2,
                 migration: "install authority fixture schema".into(),
-                organisation: DataengramOrganisation::default(),
+                organisation: DataEstateOrganisation::default(),
                 tables: BTreeMap::from([
                     (
                         canonical("document"),
@@ -497,15 +497,15 @@ fn one_authority_coordinates_security_data_catalogues_audit_and_reopen() {
         .unwrap();
     assert_eq!(denied_backup.phase, AuditPhase::Completed);
     assert_eq!(denied_backup.decision, AuditDecision::Denied);
-    let engram_audit = audit
+    let estate_audit = audit
         .records
         .iter()
-        .filter(|record| record.action == SecurityAction::engramAdmin)
+        .filter(|record| record.action == SecurityAction::EstateAdmin)
         .collect::<Vec<_>>();
-    assert!(engram_audit
+    assert!(estate_audit
         .iter()
         .any(|record| record.phase == AuditPhase::Authorized));
-    assert!(engram_audit.iter().any(|record| {
+    assert!(estate_audit.iter().any(|record| {
         record.phase == AuditPhase::Completed && record.decision == AuditDecision::Allowed
     }));
     assert_eq!(
@@ -570,22 +570,22 @@ fn private(path: &Path) {
 fn private(_path: &Path) {}
 
 #[test]
-fn public_admin_phase_type_does_not_reintroduce_a_physical_engram_dependency() {
-    let action = engramAdminAction::SetDesired {
+fn public_admin_phase_type_does_not_reintroduce_a_physical_estate_dependency() {
+    let action = EstateAdminAction::SetDesired {
         instance: canonical("project-a"),
         idempotency_key: "desired-a".into(),
-        phase: engramDesiredPhase::Stopped,
+        phase: EstateDesiredPhase::Stopped,
         deployment: canonical("rrd-server"),
         version: "1.0.0".into(),
         configuration_sha256: "a".repeat(64),
     };
-    assert!(matches!(action, engramAdminAction::SetDesired { .. }));
+    assert!(matches!(action, EstateAdminAction::SetDesired { .. }));
 }
 
 #[test]
-fn engram_recovery_prune_and_restore_are_one_fenced_engine_workflow() {
+fn estate_recovery_prune_and_restore_are_one_fenced_engine_workflow() {
     let temporary = tempfile::tempdir().unwrap();
-    let database = temporary.path().join("engram-authority");
+    let database = temporary.path().join("estate-authority");
     let state_root = temporary.path().join("state");
     for path in [
         state_root.clone(),
@@ -595,7 +595,7 @@ fn engram_recovery_prune_and_restore_are_one_fenced_engine_workflow() {
         fs::create_dir(&path).unwrap();
     }
     let state_root = fs::canonicalize(state_root).unwrap();
-    // The managed instance is a canonically installed engram: the engram names
+    // The managed instance is a canonically installed estate: the estate names
     // it `instance-a` (its project directory under `instances/`), while the
     // installed engine carries its own derived instance identity, which names
     // the backup catalogue and restore staging roots inside `.rrflow/rrd`.
@@ -647,11 +647,11 @@ fn engram_recovery_prune_and_restore_are_one_fenced_engine_workflow() {
             .collect(),
         not_before_unix_ms: 1,
         expires_at_unix_ms: 10_000,
-        engrams: BTreeMap::from([(
-            "engram-a".into(),
+        estates: BTreeMap::from([(
+            "estate-a".into(),
             BTreeSet::from([
-                LocalengramPermission::PruneRecovery,
-                LocalengramPermission::RestoreRecovery,
+                LocalEstatePermission::PruneRecovery,
+                LocalEstatePermission::RestoreRecovery,
             ]),
         )]),
     };
@@ -659,19 +659,19 @@ fn engram_recovery_prune_and_restore_are_one_fenced_engine_workflow() {
     private(&policy_path);
 
     let authority = rrd_store::RrflowKvStore::open(&database).unwrap();
-    let repository = engramRepository::new(&authority, canonical("engram-a"));
-    let engram_context = |at, request: &str, operation: &str| MutationContext {
+    let repository = EstateRepository::new(&authority, canonical("estate-a"));
+    let estate_context = |at, request: &str, operation: &str| MutationContext {
         at,
         actor: "operator-one".into(),
         request_id: request.into(),
         operation_id: canonical(operation),
     };
     repository
-        .create(&engram_context(10, "create-engram", "create-engram"))
+        .create(&estate_context(10, "create-estate", "create-estate"))
         .unwrap();
     repository
         .set_desired(&SetDesired {
-            context: engram_context(20, "stop-instance", "stop-instance"),
+            context: estate_context(20, "stop-instance", "stop-instance"),
             instance_id: canonical("instance-a"),
             idempotency_key: "stop-instance".into(),
             target: DesiredTarget {
@@ -684,8 +684,8 @@ fn engram_recovery_prune_and_restore_are_one_fenced_engine_workflow() {
         .unwrap();
     repository
         .acquire_lease(&LeaseRequest {
-            context: engram_context(30, "lease-stop", "stop-instance"),
-            worker: canonical("engram-worker"),
+            context: estate_context(30, "lease-stop", "stop-instance"),
+            worker: canonical("estate-worker"),
             lease_ms: 1_000,
         })
         .unwrap();
@@ -695,8 +695,8 @@ fn engram_recovery_prune_and_restore_are_one_fenced_engine_workflow() {
     ] {
         repository
             .record_receipt(&ReceiptRequest {
-                context: engram_context(at, request, "stop-instance"),
-                worker: canonical("engram-worker"),
+                context: estate_context(at, request, "stop-instance"),
+                worker: canonical("estate-worker"),
                 lease_epoch: 1,
                 boundary,
                 evidence_sha256: evidence.repeat(64),
@@ -706,8 +706,8 @@ fn engram_recovery_prune_and_restore_are_one_fenced_engine_workflow() {
     }
     repository
         .record_observation(&ObservationRequest {
-            context: engram_context(60, "observe-stop", "stop-instance"),
-            worker: canonical("engram-worker"),
+            context: estate_context(60, "observe-stop", "stop-instance"),
+            worker: canonical("estate-worker"),
             lease_epoch: 1,
             phase: ObservedPhase::Stopped,
             version: None,
@@ -718,8 +718,8 @@ fn engram_recovery_prune_and_restore_are_one_fenced_engine_workflow() {
         .unwrap();
     repository
         .record_receipt(&ReceiptRequest {
-            context: engram_context(70, "complete-stop", "stop-instance"),
-            worker: canonical("engram-worker"),
+            context: estate_context(70, "complete-stop", "stop-instance"),
+            worker: canonical("estate-worker"),
             lease_epoch: 1,
             boundary: ReceiptBoundary::Completed,
             evidence_sha256: "e".repeat(64),
@@ -728,7 +728,7 @@ fn engram_recovery_prune_and_restore_are_one_fenced_engine_workflow() {
         .unwrap();
     repository
         .set_recovery_policy(&SetRecoveryPolicy {
-            context: engram_context(75, "set-policy", "set-policy"),
+            context: estate_context(75, "set-policy", "set-policy"),
             instance_id: canonical("instance-a"),
             idempotency_key: "set-policy".into(),
             max_rpo_ms: 1_000,
@@ -741,9 +741,9 @@ fn engram_recovery_prune_and_restore_are_one_fenced_engine_workflow() {
 
     for (job, scheduled_at) in [("backup-one", 100), ("backup-two", 200)] {
         let authority = rrd_store::RrflowKvStore::open(&database).unwrap();
-        engramRepository::new(&authority, canonical("engram-a"))
+        EstateRepository::new(&authority, canonical("estate-a"))
             .schedule_backup(&ScheduleBackup {
-                context: engram_context(scheduled_at, job, job),
+                context: estate_context(scheduled_at, job, job),
                 instance_id: canonical("instance-a"),
                 idempotency_key: job.into(),
                 label: job.into(),
@@ -751,12 +751,12 @@ fn engram_recovery_prune_and_restore_are_one_fenced_engine_workflow() {
             .unwrap();
         drop(authority);
         for at in [scheduled_at + 10, scheduled_at + 20, scheduled_at + 30] {
-            RrdEngine::reconcile_engram_backup_store(
+            RrdEngine::reconcile_estate_backup_store(
                 &database,
-                canonical("engram-control-instance"),
+                canonical("estate-control-instance"),
                 &state_root,
                 &executable,
-                canonical("engram-a"),
+                canonical("estate-a"),
                 canonical("backup-worker"),
                 1_000,
                 at,
@@ -769,19 +769,19 @@ fn engram_recovery_prune_and_restore_are_one_fenced_engine_workflow() {
     assert_eq!(before.backups.len(), 2);
     assert!(
         !state_root.join("backups").exists(),
-        "the engram controller writes only the instance's own catalogue"
+        "the estate controller writes only the instance's own catalogue"
     );
     let first_id = before.backups[0].backup_id.clone();
     let second_id = before.backups[1].backup_id.clone();
 
-    let pruned = RrdEngine::prune_engram_backups_store(
+    let pruned = RrdEngine::prune_estate_backups_store(
         &database,
-        canonical("engram-control-instance"),
+        canonical("estate-control-instance"),
         &state_root,
         &executable,
         &policy_path,
         &key_path,
-        canonical("engram-a"),
+        canonical("estate-a"),
         canonical("instance-a"),
         4_000,
         4_000,
@@ -806,14 +806,14 @@ fn engram_recovery_prune_and_restore_are_one_fenced_engine_workflow() {
     let physical = rrd_store::verify_backup_catalogue(&catalogue_root).unwrap();
     assert_eq!(physical.backups.len(), 1);
     assert_eq!(physical.backups[0].backup_id, second_id);
-    let prune_replay = RrdEngine::prune_engram_backups_store(
+    let prune_replay = RrdEngine::prune_estate_backups_store(
         &database,
-        canonical("engram-control-instance"),
+        canonical("estate-control-instance"),
         &state_root,
         &executable,
         &policy_path,
         &key_path,
-        canonical("engram-a"),
+        canonical("estate-a"),
         canonical("instance-a"),
         4_000,
         4_000,
@@ -824,17 +824,17 @@ fn engram_recovery_prune_and_restore_are_one_fenced_engine_workflow() {
     .unwrap();
     assert!(prune_replay.idempotent_replay);
 
-    // A different distribution is refused before any engram, catalogue, or
+    // A different distribution is refused before any estate, catalogue, or
     // filesystem state is touched.
     let foreign_executable = Path::new(env!("CARGO_MANIFEST_DIR")).join("src/lib.rs");
-    let mismatch = RrdEngine::prune_engram_backups_store(
+    let mismatch = RrdEngine::prune_estate_backups_store(
         &database,
-        canonical("engram-control-instance"),
+        canonical("estate-control-instance"),
         &state_root,
         &foreign_executable,
         &policy_path,
         &key_path,
-        canonical("engram-a"),
+        canonical("estate-a"),
         canonical("instance-a"),
         4_050,
         4_050,
@@ -845,14 +845,14 @@ fn engram_recovery_prune_and_restore_are_one_fenced_engine_workflow() {
     .unwrap_err();
     assert!(matches!(mismatch, ServiceError::ProjectBindingMismatch));
 
-    let restored = RrdEngine::restore_engram_backup_store(
+    let restored = RrdEngine::restore_estate_backup_store(
         &database,
-        canonical("engram-control-instance"),
+        canonical("estate-control-instance"),
         &state_root,
         &executable,
         &policy_path,
         &key_path,
-        canonical("engram-a"),
+        canonical("estate-a"),
         canonical("instance-a"),
         second_id.clone(),
         canonical("restore-one"),
@@ -877,17 +877,17 @@ fn engram_recovery_prune_and_restore_are_one_fenced_engine_workflow() {
     assert!(storage_root.join("CURRENT").is_file());
     assert!(
         !state_root.join("restores").exists(),
-        "the engram controller stages restores only inside the instance's container"
+        "the estate controller stages restores only inside the instance's container"
     );
 
-    let pruned_restore = RrdEngine::restore_engram_backup_store(
+    let pruned_restore = RrdEngine::restore_estate_backup_store(
         &database,
-        canonical("engram-control-instance"),
+        canonical("estate-control-instance"),
         &state_root,
         &executable,
         &policy_path,
         &key_path,
-        canonical("engram-a"),
+        canonical("estate-a"),
         canonical("instance-a"),
         first_id,
         canonical("restore-pruned"),
@@ -900,14 +900,14 @@ fn engram_recovery_prune_and_restore_are_one_fenced_engine_workflow() {
     .unwrap_err();
     assert!(pruned_restore.to_string().contains("unavailable"));
 
-    let restore_replay = RrdEngine::restore_engram_backup_store(
+    let restore_replay = RrdEngine::restore_estate_backup_store(
         &database,
-        canonical("engram-control-instance"),
+        canonical("estate-control-instance"),
         &state_root,
         &executable,
         &policy_path,
         &key_path,
-        canonical("engram-a"),
+        canonical("estate-a"),
         canonical("instance-a"),
         second_id.clone(),
         canonical("restore-one"),
@@ -922,14 +922,14 @@ fn engram_recovery_prune_and_restore_are_one_fenced_engine_workflow() {
 
     let gap_target = restores_root.join("restore-gap");
     rrd_store::restore_catalogued_backup(&catalogue_root, &second_id, &gap_target, 4_250).unwrap();
-    let recovered_gap = RrdEngine::restore_engram_backup_store(
+    let recovered_gap = RrdEngine::restore_estate_backup_store(
         &database,
-        canonical("engram-control-instance"),
+        canonical("estate-control-instance"),
         &state_root,
         &executable,
         &policy_path,
         &key_path,
-        canonical("engram-a"),
+        canonical("estate-a"),
         canonical("instance-a"),
         second_id.clone(),
         canonical("restore-gap"),
@@ -946,14 +946,14 @@ fn engram_recovery_prune_and_restore_are_one_fenced_engine_workflow() {
     // empty rather than created as a new database.
     let empty_target = restores_root.join("restore-empty");
     std::fs::create_dir_all(&empty_target).unwrap();
-    let empty_error = RrdEngine::restore_engram_backup_store(
+    let empty_error = RrdEngine::restore_estate_backup_store(
         &database,
-        canonical("engram-control-instance"),
+        canonical("estate-control-instance"),
         &state_root,
         &executable,
         &policy_path,
         &key_path,
-        canonical("engram-a"),
+        canonical("estate-a"),
         canonical("instance-a"),
         second_id.clone(),
         canonical("restore-empty"),
@@ -978,7 +978,7 @@ fn engram_recovery_prune_and_restore_are_one_fenced_engine_workflow() {
     divergent
         .claims()
         .append_batch(&[Claim::new(
-            Subject::new("restore:divergent").unwrap(),
+            Subject::new("restore-divergent").unwrap(),
             Predicate::new("status").unwrap(),
             "different",
             4_350,
@@ -991,14 +991,14 @@ fn engram_recovery_prune_and_restore_are_one_fenced_engine_workflow() {
         )])
         .unwrap();
     drop(divergent);
-    let divergent_error = RrdEngine::restore_engram_backup_store(
+    let divergent_error = RrdEngine::restore_estate_backup_store(
         &database,
-        canonical("engram-control-instance"),
+        canonical("estate-control-instance"),
         &state_root,
         &executable,
         &policy_path,
         &key_path,
-        canonical("engram-a"),
+        canonical("estate-a"),
         canonical("instance-a"),
         second_id,
         canonical("restore-divergent"),

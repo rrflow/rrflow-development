@@ -24,7 +24,7 @@
       "change_rule": "no_installed_storage_reconfiguration_capability",
       "kind": "soft_flush_target",
       "owner": "rrd_lsm::MaintenancePolicy.wal_payload_max_bytes",
-      "scope": "engram_process",
+      "scope": "estate_process",
       "source": "DiagnosticStorageSnapshot.rrflow_kv.write_ahead_log.payload_max_bytes",
       "unit": "bytes",
       "value": 67108864
@@ -33,7 +33,7 @@
       "change_rule": "no_installed_storage_reconfiguration_capability",
       "kind": "soft_flush_target",
       "owner": "rrd_lsm::MaintenancePolicy.memtable_max_versions",
-      "scope": "engram_process",
+      "scope": "estate_process",
       "source": "DiagnosticStorageSnapshot.rrflow_kv.memtable.max_versions",
       "unit": "versions",
       "value": 524288
@@ -42,7 +42,7 @@
       "change_rule": "no_installed_storage_reconfiguration_capability",
       "kind": "cache_capacity",
       "owner": "rrd_lsm::DatabaseOptions.page_cache_bytes",
-      "scope": "engram_process",
+      "scope": "estate_process",
       "source": "DiagnosticStorageSnapshot.rrflow_kv.page_cache.capacity_bytes",
       "unit": "bytes",
       "value": 1048576
@@ -51,7 +51,7 @@
       "change_rule": "no_installed_storage_reconfiguration_capability",
       "kind": "io_request_bound",
       "owner": "rrd_lsm::SegmentIoPolicy.max_request_bytes",
-      "scope": "engram_process",
+      "scope": "estate_process",
       "source": "DiagnosticStorageSnapshot.rrflow_kv.segment_io.max_request_bytes",
       "unit": "bytes",
       "value": 65536
@@ -60,7 +60,7 @@
       "change_rule": "no_installed_storage_reconfiguration_capability",
       "kind": "compaction_trigger",
       "owner": "rrd_lsm::CompactionPolicy.l0_compaction_trigger",
-      "scope": "engram_process",
+      "scope": "estate_process",
       "source": "DiagnosticStorageSnapshot.rrflow_kv.segment_set.l0_compaction_trigger",
       "unit": "segments",
       "value": 8
@@ -69,7 +69,7 @@
       "change_rule": "no_installed_storage_reconfiguration_capability",
       "kind": "output_target",
       "owner": "rrd_lsm::CompactionPolicy.target_segment_bytes",
-      "scope": "engram_process",
+      "scope": "estate_process",
       "source": "DiagnosticStorageSnapshot.rrflow_kv.segment_set.compaction_target_segment_bytes",
       "unit": "bytes",
       "value": 8388608
@@ -78,10 +78,10 @@
   "evidence_class": "synthetic",
   "failed": 0,
   "format_version": 1,
-  "manifest_sha256": "601b3de193d33e5fe29c109f1b7c53dceadba60e1506e510732c2ee40892a352",
+  "manifest_sha256": "29931a4a551ee1a700213f8607259626787a2efd328ecd0ff1fa37b7a25dd63d",
   "passed": 1,
   "required": 1,
-  "result_sha256": "aa1b11bc17ee2f1b86c30dc4d5bb5305bf38adff85b9b9e9b7b918088cf6effb",
+  "result_sha256": "416aa99348abb69067ac6f6b509226bcdf499122557d7ef042251ffd3b02d7d0",
   "skipped": 0,
   "unimplemented": 0
 }

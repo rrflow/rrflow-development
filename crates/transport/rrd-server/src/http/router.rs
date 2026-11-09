@@ -47,18 +47,18 @@ macro_rules! http_dispatch_catalogue {
 }
 
 http_dispatch_catalogue! {
-    AttunementCancel => ("attunement-cancel", RrdOperation::engramAdmin),
-    AttunementRead => ("attunement-read", RrdOperation::engramRead),
-    AttunementJobList => ("attunement-job-list", RrdOperation::engramRead),
-    AttunementReceiptRead => ("attunement-receipt-read", RrdOperation::engramRead),
-    AttunementStart => ("attunement-start", RrdOperation::engramAdmin),
-    AttunementStep => ("attunement-step", RrdOperation::engramAdmin),
+    AttunementCancel => ("attunement-cancel", RrdOperation::EstateAdmin),
+    AttunementRead => ("attunement-read", RrdOperation::EstateRead),
+    AttunementJobList => ("attunement-job-list", RrdOperation::EstateRead),
+    AttunementReceiptRead => ("attunement-receipt-read", RrdOperation::EstateRead),
+    AttunementStart => ("attunement-start", RrdOperation::EstateAdmin),
+    AttunementStep => ("attunement-step", RrdOperation::EstateAdmin),
     AttunementReplanPreview => ("attunement-replan-preview", RrdOperation::AttunementReplanPreview),
-    AttunementReplanAccept => ("attunement-replan-accept", RrdOperation::engramAdmin),
-    AttunementReplanReceiptRead => ("attunement-replan-receipt-read", RrdOperation::engramRead),
-    AttunementPause => ("attunement-pause", RrdOperation::engramAdmin),
-    AttunementRecoverExpired => ("attunement-recover-expired", RrdOperation::engramAdmin),
-    AttunementResume => ("attunement-resume", RrdOperation::engramAdmin),
+    AttunementReplanAccept => ("attunement-replan-accept", RrdOperation::EstateAdmin),
+    AttunementReplanReceiptRead => ("attunement-replan-receipt-read", RrdOperation::EstateRead),
+    AttunementPause => ("attunement-pause", RrdOperation::EstateAdmin),
+    AttunementRecoverExpired => ("attunement-recover-expired", RrdOperation::EstateAdmin),
+    AttunementResume => ("attunement-resume", RrdOperation::EstateAdmin),
     AuditExport => ("audit-export", RrdOperation::AuditExport),
     AuditRead => ("audit-read", RrdOperation::AuditRead),
     BackupCreate => ("backup-create", RrdOperation::BackupCreate),
@@ -75,10 +75,10 @@ http_dispatch_catalogue! {
     FlightList => ("flight-list", RrdOperation::FlightRead),
     FlightRead => ("flight-read", RrdOperation::FlightRead),
     EndpointCatalogue => ("endpoint-catalogue", RrdOperation::ServiceInspect),
-    EndpointConfigurationRead => ("endpoint-configuration-read", RrdOperation::engramRead),
+    EndpointConfigurationRead => ("endpoint-configuration-read", RrdOperation::EstateRead),
     EndpointConfigurationPreview => ("endpoint-configuration-preview", RrdOperation::EndpointConfigurationPreview),
-    EndpointConfigurationApply => ("endpoint-configuration-apply", RrdOperation::engramAdmin),
-    engramRead => ("engram-read", RrdOperation::engramRead),
+    EndpointConfigurationApply => ("endpoint-configuration-apply", RrdOperation::EstateAdmin),
+    EstateRead => ("estate-read", RrdOperation::EstateRead),
     HealthLive => ("health-live", RrdOperation::ServiceInspect),
     HealthReady => ("health-ready", RrdOperation::ServiceInspect),
     KnowledgeTreeList => ("knowledge-tree-list", RrdOperation::KnowledgeTreeRead),
@@ -99,9 +99,12 @@ http_dispatch_catalogue! {
     TaskBudgetConfigure => ("task-budget-configure", RrdOperation::ReasoningWrite),
     TaskBudgetRead => ("task-budget-read", RrdOperation::ReasoningRead),
     TaskBudgetStop => ("task-budget-stop", RrdOperation::ReasoningWrite),
+    TaskBudgetResume => ("task-budget-resume", RrdOperation::ReasoningWrite),
     TaskEmbeddingExecute => ("task-embedding-execute", RrdOperation::ReasoningWrite),
     TaskEndpointPropose => ("task-endpoint-propose", RrdOperation::EndpointPropose),
     TaskWorkerExecute => ("task-worker-execute", RrdOperation::WorkerExecute),
+    TaskAssessmentExecute => ("task-assessment-execute", RrdOperation::EndpointPropose),
+    TaskAssessmentRead => ("task-assessment-read", RrdOperation::ReasoningRead),
     ObservationPrepare => ("observation-prepare", RrdOperation::ObservationPrepare),
     ObservationDeliver => ("observation-deliver", RrdOperation::ObservationDeliver),
     ObservationRead => ("observation-read", RrdOperation::ObservationRead),
@@ -353,6 +356,7 @@ impl AppState {
             }
             Some(HttpDispatch::TaskBudgetRead) => self.read_task_budget(&headers, &body, now),
             Some(HttpDispatch::TaskBudgetStop) => self.stop_task_budget(&headers, &body, now),
+            Some(HttpDispatch::TaskBudgetResume) => self.resume_task_budget(&headers, &body, now),
             Some(HttpDispatch::TaskEmbeddingExecute) => {
                 self.execute_task_embedding(&headers, &body, now)
             }
@@ -360,6 +364,12 @@ impl AppState {
                 self.propose_task_endpoint(&headers, &body, now)
             }
             Some(HttpDispatch::TaskWorkerExecute) => self.execute_task_worker(&headers, &body, now),
+            Some(HttpDispatch::TaskAssessmentExecute) => {
+                self.execute_task_assessment(&headers, &body, now)
+            }
+            Some(HttpDispatch::TaskAssessmentRead) => {
+                self.read_task_assessment(&headers, &body, now)
+            }
             Some(HttpDispatch::TaskAttemptRead) => self.read_task_attempt(&headers, &body, now),
             Some(HttpDispatch::TaskClose) => self.close_task(&headers, &body, now),
             Some(HttpDispatch::TaskList) => self.list_tasks(&headers, &body, now),
@@ -396,7 +406,7 @@ impl AppState {
                 self.retire_vector_quantization(&headers, &body, now)
             }
             Some(HttpDispatch::VectorSearch) => self.search_vectors(&headers, &body, now),
-            Some(HttpDispatch::engramRead) => self.read_engram(&headers, &body, &path, now),
+            Some(HttpDispatch::EstateRead) => self.read_estate(&headers, &body, &path, now),
             Some(HttpDispatch::TransactionPreview) => {
                 self.preview_transaction(&headers, &body, &path, now)
             }
@@ -486,8 +496,8 @@ mod tests {
     fn route_resolution_rejects_unknown_methods_paths_and_empty_parameters() {
         assert!(HttpDispatch::resolve(&Method::PUT, "/v1/query").is_none());
         assert!(HttpDispatch::resolve(&Method::GET, "/v1/not-real").is_none());
-        assert!(HttpDispatch::resolve(&Method::POST, "/v1/engrams//read").is_none());
-        assert!(HttpDispatch::resolve(&Method::POST, "/v1/engrams/a/b/read").is_none());
+        assert!(HttpDispatch::resolve(&Method::POST, "/v1/estates//read").is_none());
+        assert!(HttpDispatch::resolve(&Method::POST, "/v1/estates/a/b/read").is_none());
     }
 
     fn concrete_path(template: &str) -> String {

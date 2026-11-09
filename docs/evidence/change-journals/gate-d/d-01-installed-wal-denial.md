@@ -66,5 +66,5 @@ edits; current behavior mapped to the existing installed composition; small
 real fixture and complete byte inventory selected; compile failure recorded and
 corrected; focused then owning tests passed; full changed-file/diff review;
 linked evidence/projections and unrun checks explicit. Stop on any mutation of
-the damaged engram or unsupported native qualification. No D-01, OBJ-07, alpha
+the damaged estate or unsupported native qualification. No D-01, OBJ-07, alpha
 or POAM-006 status closes with this additional characterization.

@@ -378,7 +378,7 @@ impl Filler {
             let path = std::fs::canonicalize(path).unwrap();
             assert!(
                 path.starts_with(&volume.root) && path != volume.root,
-                "metadata fill must remain inside the owned engram volume"
+                "metadata fill must remain inside the owned estate volume"
             );
             path
         });
@@ -1081,7 +1081,7 @@ impl Drop for Filler {
                 }
             }
         }
-        // Exact create_new-owned file only; never recurse or remove engram data.
+        // Exact create_new-owned file only; never recurse or remove estate data.
         if let Err(error) = std::fs::remove_file(&self.path) {
             if !std::thread::panicking() {
                 panic!("owned filler cleanup failed: {error}");
@@ -1298,9 +1298,9 @@ async fn begin(
         .unwrap()
 }
 
-fn wal_bytes(engram: &engram) -> u64 {
-    let locator = RrdEngine::read_project_locator(&engram.project).unwrap();
-    let root = engram.project.join(locator.storage_root).join("wal");
+fn wal_bytes(estate: &Estate) -> u64 {
+    let locator = RrdEngine::read_project_locator(&estate.project).unwrap();
+    let root = estate.project.join(locator.storage_root).join("wal");
     std::fs::read_dir(root)
         .unwrap()
         .map(|entry| entry.unwrap().metadata().unwrap().len())
@@ -1328,8 +1328,8 @@ fn metadata_pressure_directory(
 
 #[test]
 fn apfs_wal_consumes_metadata_pressure_outside_authoritative_wal_directory() {
-    let engram = tempfile::tempdir().unwrap();
-    let root = engram.path();
+    let estate = tempfile::tempdir().unwrap();
+    let root = estate.path();
     // A failed write to one APFS filler file did not prevent another existing
     // file from allocating. WAL pressure must include the metadata phase too.
     assert_eq!(
@@ -1358,15 +1358,15 @@ fn apfs_wal_consumes_metadata_pressure_outside_authoritative_wal_directory() {
 
 fn capacity_case(point: &str, mode: &str) {
     let volume = Volume::admitted();
-    let engram = engram::install_at(mode, Some(&volume.root), point != "wal_before_write");
-    let locator = RrdEngine::read_project_locator(&engram.project).unwrap();
-    let native_root = engram.project.join(locator.storage_root);
+    let estate = Estate::install_at(mode, Some(&volume.root), point != "wal_before_write");
+    let locator = RrdEngine::read_project_locator(&estate.project).unwrap();
+    let native_root = estate.project.join(locator.storage_root);
     let metadata_directory = metadata_pressure_directory(point, &native_root, &volume.filesystem);
-    let credential = RrdEngine::read_installed_api_key(&engram.project).unwrap();
+    let credential = RrdEngine::read_installed_api_key(&estate.project).unwrap();
     let mut ledger = AcknowledgementLedger::default();
     let clock = Instant::now();
     tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap().block_on(async {
-        let (child, client) = engram.serve(&Value::Null);
+        let (child, client) = estate.serve(&Value::Null);
         let session = client.create_session(credential.principal_id.clone(),credential.credential(),
             CreateSession {limits:SessionLimits {idle_timeout_ms:600_000,absolute_timeout_ms:3_600_000,max_open_transactions:2}},
             options("capacity-session")).await.unwrap();
@@ -1376,7 +1376,7 @@ fn capacity_case(point: &str, mode: &str) {
         // operations. No direct file growth or sparse-file simulation is allowed.
         for index in 0..256 {
             let name = format!("prior-{index}");
-            let mut request = request(&name, engram.at);
+            let mut request = request(&name, estate.at);
             for mutation in &mut request.mutations {
                 if let TransactionMutation::AssertClaim {object,..} = mutation { *object = format!("{name}:").repeat(400); object.truncate(4096); }
             }
@@ -1388,15 +1388,15 @@ fn capacity_case(point: &str, mode: &str) {
             record(&mut ledger, &name, &request, &expected, &receipt, started, &clock);
             values.extend(expected);
             acknowledged.push((name,request,lease,receipt_hash(&receipt)));
-            if point != "wal_before_write" || wal_bytes(&engram) > 2 * 1024 * 1024 { break; }
+            if point != "wal_before_write" || wal_bytes(&estate) > 2 * 1024 * 1024 { break; }
             assert!(index < 255,"failed to consume initial WAL allocation within corpus bound");
         }
-        assert_eq!(read_values(&client,&session,engram.at).await,values);
+        assert_eq!(read_values(&client,&session,estate.at).await,values);
         child.kill();
         let mutations = (0..180).map(|index| TransactionMutation::AssertClaim {
             subject:CanonicalId::new(format!("crash-uncertain-{index}")).unwrap(),
             predicate:CanonicalId::new("crash").unwrap(), object:format!("{index:04}").repeat(1024),
-            valid_from:engram.at,tx_time:engram.at,producer:CanonicalId::new("independent-oracle").unwrap(),confidence:None,
+            valid_from:estate.at,tx_time:estate.at,producer:CanonicalId::new("independent-oracle").unwrap(),confidence:None,
         }).collect::<Vec<_>>();
         let target = CommitTransaction {operation_sha256:transaction_operation_sha256(&mutations),mutations};
         assert!(serde_json::to_vec(&target).unwrap().len() < 1024 * 1024);
@@ -1404,9 +1404,9 @@ fn capacity_case(point: &str, mode: &str) {
         ledger.expected.push(ExpectedOperation {logical_id:"uncertain".to_owned().try_into().unwrap(),
             request_sha256:digest("c07f.request",&target).unwrap(),effect_sha256:digest("c07f.effect",&target_values).unwrap(),
             resolution:ExpectedResolution::Present});
-        let mut control = engram.control(point,1,Some(&target.operation_sha256));
+        let mut control = estate.control(point,1,Some(&target.operation_sha256));
         control["resume"] = json!(true);
-        let (child,client) = engram.serve(&control);
+        let (child,client) = estate.serve(&control);
         let lease = begin(&client,&session,"uncertain").await;
         let started = clock.elapsed().as_nanos() as u64;
         let controller = tokio::task::spawn_blocking(move ||resume_after_fill(child,control,volume,metadata_directory,native_root.join("wal")));
@@ -1434,19 +1434,19 @@ fn capacity_case(point: &str, mode: &str) {
             outcome:AttemptOutcome::Uncertain {reason:"native-capacity-error".to_owned().try_into().unwrap()}});
         // Ordinary verify cannot silently repair. Only a positively classified
         // tail yields a plan; any other failure remains fatal on serve/re-read.
-        let mut command = engram.command();
-        command.args(["repair","plan","--project"]).arg(&engram.project);
+        let mut command = estate.command();
+        command.args(["repair","plan","--project"]).arg(&estate.project);
         let output = installed_command(&mut command,CommandPhase::RepairPlan,Duration::from_secs(120),8*LIMIT)
             .unwrap_or_else(|error| panic!("{error}"));
         let repair_receipt = if output.status.success() {
             let plan:Value = serde_json::from_slice(&output.stdout).unwrap();
-            let path = engram.temp.path().join("repair.json");
+            let path = estate.temp.path().join("repair.json");
             std::fs::write(&path,&output.stdout).unwrap();
-            Some(engram.invoke(&["repair","apply","--project",engram.project.to_str().unwrap(),
+            Some(estate.invoke(&["repair","apply","--project",estate.project.to_str().unwrap(),
                 "--plan",path.to_str().unwrap(),"--expect",plan["plan_sha256"].as_str().unwrap()]))
         } else { None };
-        let (child,client) = engram.serve(&Value::Null);
-        let after = read_values(&client,&session,engram.at).await;
+        let (child,client) = estate.serve(&Value::Null);
+        let after = read_values(&client,&session,estate.at).await;
         let mut with_target = values.clone(); with_target.extend(target_values.clone());
         assert!(after == values || after == with_target,"prior ACK lost or non-atomic target after capacity recovery");
         // Resolve the unknown attempt via the original request identity, then
@@ -1459,21 +1459,21 @@ fn capacity_case(point: &str, mode: &str) {
             let receipt = client.commit_transaction(&session,&lease.transaction_id,request,options(&name)).await.unwrap();
             assert!(receipt.idempotent_replay); assert_eq!(receipt_hash(&receipt),hash);
         }
-        let last = request("after",engram.at);
+        let last = request("after",estate.at);
         let lease = begin(&client,&session,"after").await;
         let started = clock.elapsed().as_nanos() as u64;
         let receipt = client.commit_transaction(&session,&lease.transaction_id,last.clone(),options("after")).await.unwrap();
         record(&mut ledger,"after",&last,&expected("after"),&receipt,started,&clock);
         values.extend(expected("after"));
-        assert_eq!(read_values(&client,&session,engram.at).await,values);
+        assert_eq!(read_values(&client,&session,estate.at).await,values);
         child.kill();
-        let (child,client) = engram.serve(&Value::Null);
-        assert_eq!(read_values(&client,&session,engram.at).await,values);
+        let (child,client) = estate.serve(&Value::Null);
+        assert_eq!(read_values(&client,&session,estate.at).await,values);
         child.kill();
         let report = ledger.reconcile(1024, 1_800_000_000_000).unwrap();
         assert!(report.violations.is_empty());
         println!("\nnative_capacity_receipt={}",json!({"version":1,"mode":mode,"point":point,
-            "build":engram.build,"native":native,"filler":fill,"repair":repair_receipt,
+            "build":estate.build,"native":native,"filler":fill,"repair":repair_receipt,
             "expected_sha256":digest("c07f.values",&values).unwrap(),"ledger":ledger,"report":report}));
     });
 }
@@ -1541,8 +1541,8 @@ fn installed_native_capacity_recovers_acknowledged_history() {
 /// a filesystem. Native exhaustion remains the separate owned-image oracle.
 #[test]
 fn installed_capacity_wal_payload_is_observed_before_domain_commit() {
-    let engram = engram::install("existing");
-    let credential = RrdEngine::read_installed_api_key(&engram.project).unwrap();
+    let estate = Estate::install("existing");
+    let credential = RrdEngine::read_installed_api_key(&estate.project).unwrap();
     tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
@@ -1553,8 +1553,8 @@ fn installed_capacity_wal_payload_is_observed_before_domain_commit() {
                     subject: CanonicalId::new(format!("crash-uncertain-{index}")).unwrap(),
                     predicate: CanonicalId::new("crash").unwrap(),
                     object: format!("{index:04}").repeat(1024),
-                    valid_from: engram.at,
-                    tx_time: engram.at,
+                    valid_from: estate.at,
+                    tx_time: estate.at,
                     producer: CanonicalId::new("independent-oracle").unwrap(),
                     confidence: None,
                 })
@@ -1563,9 +1563,9 @@ fn installed_capacity_wal_payload_is_observed_before_domain_commit() {
                 operation_sha256: transaction_operation_sha256(&mutations),
                 mutations,
             };
-            let mut control = engram.control("wal_before_write", 1, Some(&target.operation_sha256));
+            let mut control = estate.control("wal_before_write", 1, Some(&target.operation_sha256));
             control["resume"] = json!(true);
-            let (mut child, client) = engram.serve(&control);
+            let (mut child, client) = estate.serve(&control);
             let session = client
                 .create_session(
                     credential.principal_id.clone(),
@@ -1631,13 +1631,13 @@ fn installed_capacity_wal_payload_is_observed_before_domain_commit() {
             assert!(replay.idempotent_replay);
             assert_eq!(receipt_hash(&receipt), receipt_hash(&replay));
             assert_eq!(
-                read_values(&client, &session, engram.at).await,
+                read_values(&client, &session, estate.at).await,
                 requested_values(&target)
             );
             child.kill();
-            let (child, client) = engram.serve(&Value::Null);
+            let (child, client) = estate.serve(&Value::Null);
             assert_eq!(
-                read_values(&client, &session, engram.at).await,
+                read_values(&client, &session, estate.at).await,
                 requested_values(&target)
             );
             child.kill();

@@ -28,7 +28,7 @@ assert set(cast(list[str], corpus["required_domains"])) == {
     "backup",
     "cancellation",
     "crud",
-    "engram",
+    "estate",
     "live_feeds",
     "query",
     "retries",
@@ -176,7 +176,7 @@ with RrdClient(str(manifest["base_url"]), str(identity["instance"])) as client:
         == expected["vector_reference"]
         for hit in cast(list[object], vectors["hits"])
     )
-    # The runners share one engram, so activate the generation this build
+    # The runners share one estate, so activate the generation this build
     # returned.
     quantization = obj(vector["quantization"])
     built = client.call(
@@ -284,12 +284,12 @@ with RrdClient(str(manifest["base_url"]), str(identity["instance"])) as client:
         obj(entry)["backup_sha256"] == backup_snapshot["backup_sha256"]
         for entry in cast(list[object], backups["backups"])
     )
-    engram = client.call(
-        "engram-read",
-        obj(corpus["engram"]),
-        options("engram-read", session=session, paths={"engram": str(identity["engram"])}),
+    estate = client.call(
+        "estate-read",
+        obj(corpus["estate"]),
+        options("estate-read", session=session, paths={"estate": str(identity["estate"])}),
     )
-    assert engram["revision"] == expected["engram_revision"]
+    assert estate["revision"] == expected["estate_revision"]
     closed = client.call(
         "session-close",
         obj(session_fixture["close"]),

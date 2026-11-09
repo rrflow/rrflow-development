@@ -1,5 +1,5 @@
 use crate::{
-    engramDocument, engramOperation, engramRepository, DesiredInstance, DesiredPhase, Error,
+    DesiredInstance, DesiredPhase, Error, EstateDocument, EstateOperation, EstateRepository,
     LeaseRequest, MutationContext, ObservedPhase, OperationKind, OperationState, ReceiptBoundary,
     ReceiptRequest, Result,
 };
@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct DriverRequest {
-    pub engram_id: CanonicalId,
+    pub estate_id: CanonicalId,
     pub instance_id: CanonicalId,
     pub operation_id: CanonicalId,
     pub kind: OperationKind,
@@ -74,7 +74,7 @@ impl DriverError {
 /// Typed effect boundary. Implementations must bind every external mutation to
 /// `request.operation_id` and make a retry of that ID converge without
 /// repeating a destructive effect.
-pub trait engramDriver {
+pub trait EstateDriver {
     fn apply(&mut self, request: &DriverRequest) -> std::result::Result<DriverEffect, DriverError>;
 
     fn observe(
@@ -113,18 +113,18 @@ pub enum ReconcileOutcome {
     },
 }
 
-pub struct Reconciler<'a, E: StorageEngine + ?Sized, D: engramDriver> {
-    repository: engramRepository<'a, E>,
-    engram_id: CanonicalId,
+pub struct Reconciler<'a, E: StorageEngine + ?Sized, D: EstateDriver> {
+    repository: EstateRepository<'a, E>,
+    estate_id: CanonicalId,
     worker: CanonicalId,
     lease_ms: u64,
     driver: D,
 }
 
-impl<'a, E: StorageEngine + ?Sized, D: engramDriver> Reconciler<'a, E, D> {
+impl<'a, E: StorageEngine + ?Sized, D: EstateDriver> Reconciler<'a, E, D> {
     pub fn new(
         engine: &'a E,
-        engram_id: CanonicalId,
+        estate_id: CanonicalId,
         worker: CanonicalId,
         lease_ms: u64,
         driver: D,
@@ -135,8 +135,8 @@ impl<'a, E: StorageEngine + ?Sized, D: engramDriver> Reconciler<'a, E, D> {
             ));
         }
         Ok(Self {
-            repository: engramRepository::new(engine, engram_id.clone()),
-            engram_id,
+            repository: EstateRepository::new(engine, estate_id.clone()),
+            estate_id,
             worker,
             lease_ms,
             driver,
@@ -167,10 +167,10 @@ impl<'a, E: StorageEngine + ?Sized, D: engramDriver> Reconciler<'a, E, D> {
         let document = self
             .repository
             .load()?
-            .ok_or_else(|| Error::NotFound(self.engram_id.to_string()))?;
+            .ok_or_else(|| Error::NotFound(self.estate_id.to_string()))?;
         if at < document.updated_at {
             return Err(Error::Invalid(
-                "reconcile timestamp precedes engram authority".into(),
+                "reconcile timestamp precedes estate authority".into(),
             ));
         }
         let Some(operation) = select_operation(&document, &self.worker, at) else {
@@ -329,8 +329,8 @@ impl<'a, E: StorageEngine + ?Sized, D: engramDriver> Reconciler<'a, E, D> {
 
     fn handle_driver_error(
         &self,
-        document: &engramDocument,
-        operation: &engramOperation,
+        document: &EstateDocument,
+        operation: &EstateOperation,
         lease_epoch: u64,
         error: DriverError,
         at: u64,
@@ -361,8 +361,8 @@ impl<'a, E: StorageEngine + ?Sized, D: engramDriver> Reconciler<'a, E, D> {
 
     fn fail_from_observation(
         &self,
-        document: &engramDocument,
-        operation: &engramOperation,
+        document: &EstateDocument,
+        operation: &EstateOperation,
         lease_epoch: u64,
         evidence: Option<String>,
         message: Option<String>,
@@ -399,10 +399,10 @@ impl<'a, E: StorageEngine + ?Sized, D: engramDriver> Reconciler<'a, E, D> {
 }
 
 fn select_operation(
-    document: &engramDocument,
+    document: &EstateDocument,
     worker: &CanonicalId,
     at: u64,
-) -> Option<engramOperation> {
+) -> Option<EstateOperation> {
     document
         .operations
         .values()
@@ -417,7 +417,7 @@ fn select_operation(
         .cloned()
 }
 
-fn oldest_open_operation(document: &engramDocument) -> Option<&engramOperation> {
+fn oldest_open_operation(document: &EstateDocument) -> Option<&EstateOperation> {
     document
         .operations
         .values()
@@ -425,7 +425,7 @@ fn oldest_open_operation(document: &engramDocument) -> Option<&engramOperation> 
         .min_by_key(|operation| (operation.created_at, operation.id.as_str()))
 }
 
-fn driver_request(document: &engramDocument, operation: &engramOperation) -> Result<DriverRequest> {
+fn driver_request(document: &EstateDocument, operation: &EstateOperation) -> Result<DriverRequest> {
     let instance = document
         .instance(&operation.instance_id)
         .ok_or_else(|| Error::NotFound(operation.instance_id.to_string()))?;
@@ -436,7 +436,7 @@ fn driver_request(document: &engramDocument, operation: &engramOperation) -> Res
         )));
     }
     Ok(DriverRequest {
-        engram_id: document.id.clone(),
+        estate_id: document.id.clone(),
         instance_id: operation.instance_id.clone(),
         operation_id: operation.id.clone(),
         kind: operation.kind,
@@ -445,7 +445,7 @@ fn driver_request(document: &engramDocument, operation: &engramOperation) -> Res
 }
 
 fn observation_converged(
-    operation: &engramOperation,
+    operation: &EstateOperation,
     desired: &DesiredInstance,
     observed: &crate::ObservedInstance,
 ) -> bool {

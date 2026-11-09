@@ -1,7 +1,7 @@
 use super::*;
-use crate::engine::engram_control::EngineLocalBackupDriver;
+use crate::engine::estate_control::EngineLocalBackupDriver;
 use rrd_contract::InstallationTargetKind;
-use rrd_engram::{engramBackupDriver, BackupDriverRequest, DriverErrorKind};
+use rrd_estate::{BackupDriverRequest, DriverErrorKind, EstateBackupDriver};
 use rrd_store::BackupCoverage;
 use std::path::{Path, PathBuf};
 
@@ -27,7 +27,7 @@ fn state_root(temporary: &tempfile::TempDir) -> PathBuf {
 
 fn request(instance: &str) -> BackupDriverRequest {
     BackupDriverRequest {
-        engram_id: canonical("engram-a"),
+        estate_id: canonical("estate-a"),
         job_id: canonical("backup-one"),
         instance_id: canonical(instance),
         source_generation: 1,
@@ -78,15 +78,15 @@ fn a_managed_instance_backup_lands_in_its_own_installed_catalogue() {
         .backups
         .iter()
         .find(|entry| entry.backup_id == result.backup_id)
-        .expect("the engram backup is catalogued where the served engine lists backups");
+        .expect("the estate backup is catalogued where the served engine lists backups");
     assert_eq!(entry.archive.archive_sha256, result.archive_sha256);
     assert!(entry.application_complete);
     assert_eq!(entry.installed_control, BackupCoverage::Included);
     assert!(
         !state_root.join("backups").exists(),
-        "no engram-level catalogue lane exists beside the instance"
+        "no estate-level catalogue lane exists beside the instance"
     );
-    // The instance is untouched and still opens as the installed engram.
+    // The instance is untouched and still opens as the installed estate.
     drop(RrdEngine::open_installed(&project, &test_executable()).unwrap());
 }
 

@@ -1,10 +1,9 @@
 use super::*;
 use rrd_contract::{
     DiagnosticMaintenanceSnapshot, DiagnosticMemtableSnapshot, DiagnosticPageCacheSnapshot,
-    DiagnosticRrflowCldSnapshot, DiagnosticRrflowKvSnapshot, DiagnosticSegmentIoMode,
-    DiagnosticSegmentIoSnapshot, DiagnosticSegmentSetSnapshot, DiagnosticStorageAdmission,
-    DiagnosticStorageEvidenceLevel, DiagnosticStorageSnapshot, DiagnosticWriteAheadLogSnapshot,
-    MAX_MESSAGE_BYTES,
+    DiagnosticRrflowKvSnapshot, DiagnosticSegmentIoMode, DiagnosticSegmentIoSnapshot,
+    DiagnosticSegmentSetSnapshot, DiagnosticStorageAdmission, DiagnosticStorageEvidenceLevel,
+    DiagnosticStorageSnapshot, DiagnosticWriteAheadLogSnapshot, MAX_MESSAGE_BYTES,
 };
 use rrd_store::PhysicalStoreEvidence;
 
@@ -162,10 +161,10 @@ impl RrdEngine {
             let retention_sha256 = diagnostic_retention_sha256(&retention)?;
             let query_indexes = diagnostic_query_indexes(self, &scope, &request.scope)?;
             let vector_collections = diagnostic_vector_collections(self, &scope, &request.scope)?;
-            let engram = rrd_engram::engramRepository::new(&self.storage, self.instance.clone())
+            let estate = rrd_estate::EstateRepository::new(&self.storage, self.instance.clone())
                 .load()?
                 .as_ref()
-                .map(rrd_engram::public_snapshot);
+                .map(rrd_estate::public_snapshot);
             let changes = self.read_changefeed_page(&ReadChangefeed {
                 scope: request.scope.clone(),
                 after_cursor: request.changes_after_cursor,
@@ -204,7 +203,7 @@ impl RrdEngine {
                 &vector_artifacts,
                 &query_indexes,
                 &vector_collections,
-                engram.as_ref(),
+                estate.as_ref(),
                 &storage,
                 &changes,
                 &audit,
@@ -235,7 +234,7 @@ impl RrdEngine {
                 vector_artifacts,
                 query_indexes,
                 vector_collections,
-                engram,
+                estate,
                 storage,
                 changes,
                 audit,
@@ -696,7 +695,7 @@ fn diagnostic_sections(
     vector_artifacts: &DiagnosticVectorArtifactCatalogueSnapshot,
     query_indexes: &QueryIndexCatalogueSnapshot,
     vector_collections: &VectorCollectionCatalogueSnapshot,
-    engram: Option<&rrd_contract::engramSnapshot>,
+    estate: Option<&rrd_contract::EstateSnapshot>,
     storage: &DiagnosticStorageSnapshot,
     changes: &ChangefeedPage,
     audit: &AuditPage,
@@ -719,10 +718,10 @@ fn diagnostic_sections(
             Some(changes.requested_after_cursor),
         )?,
         section(
-            "engram",
+            "estate",
             DiagnosticAuthority::Authoritative,
             DiagnosticCoverage::Complete,
-            usize::from(engram.is_some()),
+            usize::from(estate.is_some()),
             known_at_cursor,
             None,
         )?,
@@ -819,7 +818,6 @@ fn diagnostic_storage(
     observed_at_unix_ms: u64,
 ) -> Result<DiagnosticStorageSnapshot> {
     let evidence = engine.storage.physical_store_evidence()?;
-    let rrflow_cld = engine.rrflow_cld_snapshot()?;
     if evidence.backend != engine.storage.backend_name() {
         return Err(ServiceError::Storage(format!(
             "storage evidence names backend {} but the instance runs {}",
@@ -831,7 +829,7 @@ fn diagnostic_storage(
         rrd_store::LOGICAL_ONLY_EVIDENCE => (DiagnosticStorageEvidenceLevel::LogicalOnly, None),
         rrd_store::RRFLOW_KV_COUNTER_EVIDENCE => (
             DiagnosticStorageEvidenceLevel::RrflowKvCounters,
-            Some(rrflow_kv_snapshot(&evidence, &rrflow_cld)?),
+            Some(rrflow_kv_snapshot(&evidence)?),
         ),
         level => {
             return Err(ServiceError::Storage(format!(
@@ -915,10 +913,7 @@ fn bounded_reason(reason: Option<&String>) -> Option<String> {
     Some(reason[..end].to_owned())
 }
 
-fn rrflow_kv_snapshot(
-    evidence: &PhysicalStoreEvidence,
-    rrflow_cld: &crate::RrflowCldSnapshot,
-) -> Result<DiagnosticRrflowKvSnapshot> {
+fn rrflow_kv_snapshot(evidence: &PhysicalStoreEvidence) -> Result<DiagnosticRrflowKvSnapshot> {
     Ok(DiagnosticRrflowKvSnapshot {
         physical_sequence: counter(evidence.physical_sequence, "physical_sequence")?,
         manifest_generation: counter(evidence.manifest_generation, "manifest_generation")?,
@@ -1079,14 +1074,6 @@ fn rrflow_kv_snapshot(
                 "segment_io_peak_request_bytes",
             )?,
         },
-        rrflow_cld: Some(DiagnosticRrflowCldSnapshot {
-            trigger_count: rrflow_cld.trigger_count,
-            cold_source_hits: rrflow_cld.cold_source_hits,
-            cold_mapped_hits: rrflow_cld.cold_mapped_hits,
-            cold_owned_hits: rrflow_cld.cold_owned_hits,
-            cache_bypass_hits: rrflow_cld.cache_bypass_hits,
-            last_trigger_at_unix_ms: rrflow_cld.last_trigger_at_unix_ms,
-        }),
     })
 }
 
@@ -1131,18 +1118,7 @@ mod storage_tests {
     #[test]
     fn rrflow_kv_projection_fails_closed_on_a_missing_counter() {
         let evidence = PhysicalStoreEvidence::logical_only("rrflow_kv");
-        let error = rrflow_kv_snapshot(
-            &evidence,
-            &crate::RrflowCldSnapshot {
-                trigger_count: 0,
-                cold_source_hits: 0,
-                cold_mapped_hits: 0,
-                cold_owned_hits: 0,
-                cache_bypass_hits: 0,
-                last_trigger_at_unix_ms: None,
-            },
-        )
-        .unwrap_err();
+        let error = rrflow_kv_snapshot(&evidence).unwrap_err();
         assert!(error.to_string().contains("physical_sequence"));
     }
 

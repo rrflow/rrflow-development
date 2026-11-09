@@ -54,6 +54,7 @@ fn profile(engine: &RrdEngine, retained: u32) -> EndpointProfileInput {
             retry_delay_ms: 10,
             max_response_bytes: 1024,
         }),
+        assessment_policy: None,
     }
 }
 fn credential() -> CredentialReference {
@@ -674,7 +675,7 @@ fn observation_delivery_current_source_and_export_permissions_are_required() {
         SecurityAction::ObservationPrepare,
         SecurityAction::ObservationDeliver,
         SecurityAction::ObservationRead,
-        SecurityAction::engramRead,
+        SecurityAction::EstateRead,
     ] {
         let (_installed, engine, session, request) = setup(2);
         let first = prepare(&engine, &session, &request, BASE + 300).unwrap();
