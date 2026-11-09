@@ -65,3 +65,16 @@ failing shape recorded above; candidate CI's installed lifecycle jobs are the
 acceptance. #247 characterizes the same inherited-ACL shape with a failing
 preservation test and no repair; once this package lands, that test belongs
 here as an additional regression or #247 closes as folded.
+
+### Candidate CI, 2026-11-09
+
+The GitHub Windows runner failed `a_leftover_rrflow_folder_is_adopted_in_place_and_keeps_every_file`
+with "the existing .rrflow folder belongs to another account": an administrator's
+token gives new objects `BUILTIN\Administrators` as owner, so the folder the
+test itself created did not match the token's user SID. Adoption now accepts a
+folder owned by the user or by the token's default owner (`TokenOwner`), which
+is how Windows itself decides what an account owns. 64 installation tests pass
+locally; the runner is the acceptance. The same run also failed
+`git_inputs_detect_appearance_change_and_bound_bytes`, a main-line test this
+package does not touch, which passed on the two other Windows runs today; it
+is recorded as a flake to investigate, not fixed here.

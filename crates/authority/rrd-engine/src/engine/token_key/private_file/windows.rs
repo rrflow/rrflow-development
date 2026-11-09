@@ -18,9 +18,9 @@ use windows_sys::Win32::Security::Authorization::{
 };
 use windows_sys::Win32::Security::{
     EqualSid, GetAce, GetLengthSid, GetSecurityDescriptorControl, GetTokenInformation, IsValidAcl,
-    IsValidSecurityDescriptor, IsValidSid, IsWellKnownSid, TokenUser, WinLocalSystemSid,
-    ACCESS_ALLOWED_ACE, ACE_HEADER, ACL, DACL_SECURITY_INFORMATION, OWNER_SECURITY_INFORMATION,
-    PSID, SE_DACL_PROTECTED, TOKEN_QUERY, TOKEN_USER,
+    IsValidSecurityDescriptor, IsValidSid, IsWellKnownSid, TokenOwner, TokenUser,
+    WinLocalSystemSid, ACCESS_ALLOWED_ACE, ACE_HEADER, ACL, DACL_SECURITY_INFORMATION,
+    OWNER_SECURITY_INFORMATION, PSID, SE_DACL_PROTECTED, TOKEN_OWNER, TOKEN_QUERY, TOKEN_USER,
 };
 use windows_sys::Win32::Storage::FileSystem::{
     GetFileInformationByHandle, GetFileType, BY_HANDLE_FILE_INFORMATION, FILE_ATTRIBUTE_DIRECTORY,
@@ -41,6 +41,17 @@ struct CurrentUser {
     // Pointer-sized elements give TOKEN_USER its required alignment. The SID
     // pointer returned by GetTokenInformation points into this retained buffer.
     storage: Vec<usize>,
+}
+
+struct DefaultOwner {
+    storage: Vec<usize>,
+}
+
+impl DefaultOwner {
+    fn sid(&self) -> PSID {
+        // SAFETY: query populated an aligned TOKEN_OWNER; storage never resizes.
+        unsafe { (*self.storage.as_ptr().cast::<TOKEN_OWNER>()).Owner }
+    }
 }
 
 impl CurrentUser {
@@ -89,6 +100,58 @@ impl CurrentUser {
     fn sid(&self) -> PSID {
         // SAFETY: query populated an aligned TOKEN_USER; storage never resizes.
         unsafe { (*self.storage.as_ptr().cast::<TOKEN_USER>()).User.Sid }
+    }
+
+    /// The owner Windows assigns to objects this token creates. For an
+    /// administrator's token that is BUILTIN\Administrators, not the user, so
+    /// a folder the same account made can carry a different owner SID than
+    /// `sid()` and still be its own.
+    fn default_owner(&self) -> io::Result<DefaultOwner> {
+        let mut raw = null_mut();
+        // SAFETY: a valid pseudo process handle and a writable output handle.
+        if unsafe { OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &mut raw) } == 0 {
+            return Err(io::Error::last_os_error());
+        }
+        // SAFETY: successful OpenProcessToken transfers one owned real handle.
+        let token = unsafe { OwnedHandle::from_raw_handle(raw) };
+        let mut length = 0;
+        // SAFETY: zero-length query requests only the required allocation size.
+        let first = unsafe {
+            GetTokenInformation(
+                token.as_raw_handle(),
+                TokenOwner,
+                null_mut(),
+                0,
+                &mut length,
+            )
+        };
+        if first != 0
+            || io::Error::last_os_error().raw_os_error() != Some(ERROR_INSUFFICIENT_BUFFER as i32)
+            || !(size_of::<TOKEN_OWNER>() as u32..=64 * 1024).contains(&length)
+        {
+            return Err(denied("cannot bound the current Windows default owner"));
+        }
+        let mut storage = vec![0usize; (length as usize).div_ceil(size_of::<usize>())];
+        // SAFETY: aligned storage has at least length writable bytes; the token
+        // remains open and the output-length pointer is valid.
+        if unsafe {
+            GetTokenInformation(
+                token.as_raw_handle(),
+                TokenOwner,
+                storage.as_mut_ptr().cast(),
+                length,
+                &mut length,
+            )
+        } == 0
+        {
+            return Err(io::Error::last_os_error());
+        }
+        let result = DefaultOwner { storage };
+        // SAFETY: GetTokenInformation populated a complete TOKEN_OWNER and SID.
+        if unsafe { IsValidSid(result.sid()) } == 0 {
+            return Err(denied("invalid Windows default owner"));
+        }
+        Ok(result)
     }
 
     fn text(&self) -> io::Result<String> {
@@ -178,10 +241,15 @@ pub(super) fn adopt_directory_relative(parent: &File, name: &std::ffi::OsStr) ->
         return Err(io::Error::from_raw_os_error(status as i32));
     }
     let _owner_descriptor = LocalAllocation(raw);
-    // SAFETY: owner points into the retained descriptor; both SIDs are live.
+    let default_owner = user.default_owner()?;
+    // SAFETY: owner points into the retained descriptor; all SIDs are live.
+    // A folder this account created is owned either by the user or by the
+    // token's default owner (BUILTIN\Administrators for an administrator),
+    // which is what the GitHub Windows runner and any elevated shell produce.
     if owner.is_null()
         || unsafe { IsValidSid(owner) } == 0
-        || unsafe { EqualSid(owner, user.sid()) } == 0
+        || (unsafe { EqualSid(owner, user.sid()) } == 0
+            && unsafe { EqualSid(owner, default_owner.sid()) } == 0)
     {
         return Err(denied(
             "the existing .rrflow folder belongs to another account",
