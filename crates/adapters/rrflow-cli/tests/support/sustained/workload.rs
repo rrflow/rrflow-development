@@ -51,8 +51,21 @@ fn slow_write_phase_trace_is_bounded_and_private() {
             .count(),
         1
     );
-    let line = format_write_trace("load-secret", 123, 456, 600, WriteTraceOutcome::Accepted);
+    let begin_id = "load-secret-begin";
+    let line = format_write_trace(
+        "load-secret",
+        begin_id,
+        123,
+        456,
+        600,
+        WriteTraceOutcome::Accepted,
+    );
     assert!(line.contains(&rrd_core::digest::sha256_hex(b"load-secret")));
+    let actual = options(begin_id);
+    assert!(line.contains(&format!(
+        "begin_request_sha256={}",
+        rrd_core::digest::sha256_hex(actual.request_id.as_str().as_bytes())
+    )));
     assert!(line.contains("begin_ns=123 commit_ns=456 total_ns=600 outcome=accepted"));
     assert!(!line.contains("load-secret"));
 }
@@ -90,6 +103,7 @@ fn admit_write_trace(counter: &AtomicUsize, key: &str, total_ns: u64) -> WriteTr
 
 fn format_write_trace(
     key: &str,
+    begin_request_id: &str,
     begin_ns: u64,
     commit_ns: u64,
     total_ns: u64,
@@ -101,13 +115,15 @@ fn format_write_trace(
         WriteTraceOutcome::BeginError => "begin-error",
     };
     format!(
-        "c07_write_phase_trace request_sha256={} begin_ns={begin_ns} commit_ns={commit_ns} total_ns={total_ns} outcome={outcome}",
-        rrd_core::digest::sha256_hex(key.as_bytes())
+        "c07_write_phase_trace request_sha256={} begin_ns={begin_ns} commit_ns={commit_ns} total_ns={total_ns} outcome={outcome} begin_request_sha256={}",
+        rrd_core::digest::sha256_hex(key.as_bytes()),
+        rrd_core::digest::sha256_hex(begin_request_id.as_bytes())
     )
 }
 
 fn record_write_trace(
     key: &str,
+    begin_request_id: &str,
     begin_ns: u64,
     commit_ns: u64,
     total_ns: u64,
@@ -118,7 +134,14 @@ fn record_write_trace(
         WriteTraceAdmission::Record => {
             eprintln!(
                 "{}",
-                format_write_trace(key, begin_ns, commit_ns, total_ns, outcome)
+                format_write_trace(
+                    key,
+                    begin_request_id,
+                    begin_ns,
+                    commit_ns,
+                    total_ns,
+                    outcome
+                )
             )
         }
         WriteTraceAdmission::Exhausted => {
@@ -1016,6 +1039,7 @@ impl Workload {
     async fn commit(&self, key: &str, request: CommitTransaction) -> Result<CommitReceipt> {
         let started = Instant::now();
         let total_started = started;
+        let begin_request_id = format!("{key}-begin");
         let lease = self
             .client
             .begin_transaction(
@@ -1024,7 +1048,7 @@ impl Workload {
                     scope: id("data"),
                     timeout_ms: 60_000,
                 },
-                options(&format!("{key}-begin")),
+                options(&begin_request_id),
             )
             .await;
         let begin_ns = elapsed_ns(started);
@@ -1033,6 +1057,7 @@ impl Workload {
             Err(error) => {
                 record_write_trace(
                     key,
+                    &begin_request_id,
                     begin_ns,
                     0,
                     elapsed_ns(total_started),
@@ -1049,6 +1074,7 @@ impl Workload {
         let commit_ns = elapsed_ns(started);
         record_write_trace(
             key,
+            &begin_request_id,
             begin_ns,
             commit_ns,
             elapsed_ns(total_started),

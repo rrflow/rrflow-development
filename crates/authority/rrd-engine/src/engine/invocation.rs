@@ -57,6 +57,7 @@ pub enum RrdOperation {
     ReasoningRead,
     ReasoningWrite,
     EndpointPropose,
+    WorkerExecute,
     ObservationPrepare,
     ObservationDeliver,
     ObservationRead,
@@ -92,6 +93,7 @@ impl RrdOperation {
                 | Self::TaskWrite
                 | Self::ReasoningWrite
                 | Self::EndpointPropose
+                | Self::WorkerExecute
                 | Self::ObservationPrepare
                 | Self::ObservationDeliver
                 | Self::KnowledgeTreeWrite
@@ -150,6 +152,7 @@ impl RrdOperation {
             Self::ReasoningRead => SecurityAction::ReasoningRead,
             Self::ReasoningWrite => SecurityAction::ReasoningWrite,
             Self::EndpointPropose => SecurityAction::EndpointPropose,
+            Self::WorkerExecute => SecurityAction::WorkerExecute,
             Self::ObservationPrepare => SecurityAction::ObservationPrepare,
             Self::ObservationDeliver => SecurityAction::ObservationDeliver,
             Self::ObservationRead => SecurityAction::ObservationRead,
