@@ -31,3 +31,17 @@ pull request, CI run, and merge evidence: recorded on pull request #285.
 - [HNSW projection](../../../reference/vector/hnsw-projection.md)
 - [Vector search](../../../reference/vector/search.md)
 - [Gate E](../../../roadmap/rrflow-1.0/gate-e.md)
+
+## 2026-11-09 review repair
+
+Codex review of the pull request found that f32 lanes underflow where the
+f64 scalar kernel does not: squares of values below about 1e-19 vanish, so
+a NEON or AVX2 distance between small-magnitude vectors could become a tie,
+or keep only its tail element, and traversal would drop the nearest
+candidates. `score_dense_values` now recomputes any finite SIMD score below
+`SIMD_SCORE_FLOOR` (1e-15) with the scalar kernel; a duplicate or orthogonal
+pair pays one scalar pass. `a_lane_that_underflows_gets_the_scalar_kernels_score`
+fails on x86_64 AVX2 without the fallback and passes with it. `cargo test
+--locked -p rrd-vector` (78 unit tests and the integration tests), clippy
+with `-D warnings` and fmt pass on Windows x86_64; aarch64 runs in
+candidate CI.
