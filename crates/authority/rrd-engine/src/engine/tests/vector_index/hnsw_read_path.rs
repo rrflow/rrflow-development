@@ -738,6 +738,120 @@ fn assert_serves_only_its_own_collection(path: &str, publish: impl Fn(&RrdEngine
 }
 
 #[test]
+fn distinct_source_addresses_receive_distinct_hnsw_indexes() {
+    let (_root, engine, lease) = estate(0, VectorMemoryTier::Cached);
+    let addresses = [("a-b", "c"), ("a", "b-c")];
+    let mut indexes = Vec::new();
+    for (ordinal, (collection, vector_name)) in addresses.into_iter().enumerate() {
+        engine
+            .ensure_vector_collection(
+                &lease.session_id,
+                &lease.token,
+                &EnsureVectorCollection {
+                    scope: scope(),
+                    collection_id: CanonicalId::new(collection).unwrap(),
+                    vectors: vec![NamedVectorDefinition {
+                        name: CanonicalId::new(vector_name).unwrap(),
+                        field: CanonicalId::new("body-embedding").unwrap(),
+                        kind: VectorValueKind::Dense,
+                        dimensions: DIMENSIONS as u32,
+                        metric: VectorSearchMetric::Cosine,
+                        embedding_model: None,
+                        memory_tier: VectorMemoryTier::Cached,
+                    }],
+                },
+                &mutation_context(
+                    &id(&format!("source-collection-{ordinal}")),
+                    &format!("request-source-collection-{ordinal}"),
+                    &format!("operation-source-collection-{ordinal}"),
+                ),
+                350 + ordinal as u64,
+            )
+            .unwrap();
+        let result = engine
+            .ensure_vector_index(
+                &lease.session_id,
+                &lease.token,
+                &EnsureVectorIndex {
+                    scope: scope(),
+                    collection_id: CanonicalId::new(collection).unwrap(),
+                    vector_name: CanonicalId::new(vector_name).unwrap(),
+                    configuration: VectorIndexConfiguration::Hnsw {
+                        m: 8,
+                        ef_construction: 64,
+                        max_level: 4,
+                        seed: 17,
+                        filter_properties: Vec::new(),
+                    },
+                    build_policy: VectorIndexBuildPolicy::Cpu,
+                    max_storage_keys: 100_000,
+                },
+                &mutation_context(
+                    &id(&format!("source-index-{ordinal}")),
+                    &format!("request-source-index-{ordinal}"),
+                    &format!("operation-source-index-{ordinal}"),
+                ),
+                400 + ordinal as u64,
+            )
+            .unwrap();
+        indexes.push(result.index);
+    }
+    assert_ne!(indexes[0].index_id, indexes[1].index_id);
+}
+
+#[test]
+fn an_emptied_hnsw_generation_does_not_answer_for_another_collection() {
+    let (_root, engine, lease) = estate(4, VectorMemoryTier::Cached);
+    ensure_collection(
+        &engine,
+        &lease,
+        "mirror",
+        "body-embedding",
+        VectorMemoryTier::Cached,
+    );
+    commit_vectors(
+        &engine,
+        &lease,
+        350,
+        vec![
+            document_mutation("mirror-before-exit", "mirror"),
+            put("mirror-before-exit", "mirror", "body-embedding", 0, 200, 1),
+        ],
+    );
+    // Moving every source identity at its original valid time leaves no graph nodes,
+    // but the generation still covers the later move cursors.
+    commit_vectors(
+        &engine,
+        &lease,
+        360,
+        (0..DOCUMENTS)
+            .map(|row| {
+                put(
+                    &format!("d{row}"),
+                    "archive",
+                    "archive-embedding",
+                    0,
+                    row,
+                    1,
+                )
+            })
+            .collect(),
+    );
+    build(&engine, &lease, "empty-documents", &["bucket"]);
+
+    let mut mirror = search(200, 1, None, VectorSearchMode::Exact, 100_000);
+    mirror.collection_id = Some(CanonicalId::new("mirror").unwrap());
+    let exact = run(&engine, &lease, &mirror, 0);
+    assert_eq!(exact.hits[0].reference.id.as_str(), "mirror-before-exit");
+    mirror.mode = APPROXIMATE;
+    match try_run(&engine, &lease, &mirror, 1) {
+        Err(ServiceError::Vector(reason)) => assert!(reason.contains("no vector access path")),
+        Ok(result) => panic!("empty foreign HNSW answered {:?}", hit_ids(&result)),
+        Err(error) => panic!("unexpected denial: {error:?}"),
+    }
+}
+
+#[test]
 fn an_hnsw_generation_of_another_collection_does_not_answer_for_this_one() {
     assert_serves_only_its_own_collection("hnsw", |engine, lease| {
         build(engine, lease, "documents-only", &["bucket"]);

@@ -109,10 +109,13 @@ eligible generation, a scalar, product or binary quantized generation, or no
 named vector. It reads every vector version in the scope, and a query there still
 pays process-local canonical-candidate materialization before planning.
 
-A generation answers only for a collection it holds. A descriptor names a field,
-which two collections may share, so a graph's nodes and a quantized generation's
-lifecycle say which collection it belongs to, and one built for another
-collection is not a path for this one.
+A descriptor names a field, which two collections may share. This candidate
+uses graph nodes and the quantization lifecycle to check collection ownership,
+but the graph check is insufficient for an empty generation after a source
+moves away. A real-engine regression returns an incorrect empty answer for a
+different collection; see the [integration evidence](../../evidence/change-journals/gate-e/e-04-hnsw-read-main-integration-20261107.md).
+The candidate remains draft until source identity and correct search behavior
+are established for that case.
 
 Each query also reads its generation through the memory tiers. The HNSW artifact
 is JSON and has no mapped form, so a generation over the cached tier's bound is
