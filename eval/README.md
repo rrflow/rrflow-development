@@ -9,6 +9,43 @@ commands. The additional `storage` commands work offline. They validate
 measurement evidence and emit a bounded report; they do not run a workload,
 configure an engine, authenticate an observation, or call a provider.
 
+## Provider screening and its limits
+
+The provider runner's `baseline` and `runtime` values are labels. `run` does
+not attach RRFlow or establish different configurations, and the substring
+test against raw provider output is not an independent answer-quality oracle.
+Thus neither a matching substring nor a structurally valid report establishes
+that an RRFlow treatment ran or improved a task. The
+[adaptive-planning measurement research](../docs/research/rrflow-adaptive-planning-measurement-architecture-research.md)
+describes the separate installed-engine experiment, identity and quality proof.
+
+`summarize <directory>` displays checked, complete individual trial pairs. An optional
+new output path produces a version-1 `provider_screening_only` JSON summary;
+it must not already exist. Summary construction and `verify <file>` require
+eight to 256 records, at least two distinct provider labels and repository
+labels, and exactly one baseline/runtime pair per provider, repository and
+scenario. Counts and screening outcomes are recalculated from trial fields;
+contradictions, duplicate arms, missing pairs and unknown versions are refused.
+These bounds are the existing small screening interface plus a bounded input
+limit, not a statistically justified sample-size recommendation. Each file
+is limited to 8 MiB. The commands validate consistency, not provenance or
+authenticity. Output includes raw provider responses and errors and must be
+stored under an appropriate project data policy.
+
+Provider-reported input/output counters retain their native semantics; missing
+counts and unmeasured tool counts are null, not zero. Trial counters are shown
+separately and are not combined into a cross-provider total. The summary reports
+how many trials have both counters; that is not a comparable cost or total
+usage figure. `retries` counts this harness's retries, not hidden
+provider retries. The retained 2026-08-18 summary remains unchanged as history;
+it lacks the per-trial repository identities and raw outputs required by the
+current screening verifier and cannot be upgraded into new evidence.
+
+```text
+rrflow-eval summarize <trial-directory> <new-screening-summary.json>
+rrflow-eval verify <new-screening-summary.json>
+```
+
 ## Storage contract
 
 The Rust types in the evaluation crate own the version-1 storage manifest,

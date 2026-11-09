@@ -5,6 +5,9 @@ bounded context assembly. RRD is its embedded and daemon runtime; rrflowDB,
 rrflowKV, rrflowMX, rrflowQL, Arrow/DataFusion, graph, lexical, vector,
 inference, and client capabilities remain parts of that one system.
 
+**Want to try it?** Start at [Try RRFlow](#try-rrflow): what works today, how to
+run it from source, and where to report what you find.
+
 RRFlow is being built as an open-source reasoning engine for people building
 with AI, including vibe coders learning professional development practices.
 Connectome should make project context, evidence, change previews, verification
@@ -76,6 +79,61 @@ has requested a six-year source-availability direction for that enterprise
 code; its exact licence, distribution and self-hosting grant remain undecided.
 See the [delivery sequence](docs/roadmap/rrflow-1.0.md#product-delivery-path).
 
+## Try RRFlow
+
+RRFlow is **pre-alpha**. You can build it from source and try it today, but it
+is not a release yet. What works now:
+
+- Preview and apply an installation into one project folder, then serve an
+  authenticated local API.
+- Store typed records, documents and relationships in one transaction, query
+  them with rrflowQL, and read them back after a restart.
+- Create vector collections and payload indexes, and search them exactly or
+  through HNSW and TurboQuant indexes, over the same API.
+- Export a bounded query result as [Parquet](docs/reference/data/knowledge-connectors.md#bundled-query-export).
+- Explore an installed project in the
+  [native Connectome workbench](docs/reference/client/connectome.md#native-local-workbench),
+  a development build.
+
+Not ready yet: signed downloads and installers, automatic project indexing, the
+reasoning runner, uninstall and full repair, PostgreSQL compatibility, cloud
+synchronization, and running LFG or SWAG through RRFlow. The
+[POA&M](docs/poam/rrflow-1.0-alpha.md) lists every known gap, and
+[current status](#current-status) gives the detail.
+
+**Start with [Try RRFlow from source](docs/guides/getting-started.md).** It
+takes a few commands and a first build of a few minutes. Problems and ideas
+are welcome as [issues](https://github.com/rrflow/rrflow-development/issues/new/choose),
+and [CONTRIBUTING.md](CONTRIBUTING.md) explains what helps most. Report a
+vulnerability privately, as [SECURITY.md](SECURITY.md) describes, and never in
+a public issue.
+
+### Projects that work with RRFlow
+
+RRFlow runs without any of these, and each connects to it only through RRFlow's
+public contracts. SWAG and LFG are products of their own and also work without
+RRFlow.
+
+| Project | What it does | Repository |
+|---|---|---|
+| Connectome | RRFlow's operator and developer UI | [rrflow/connectome-development](https://github.com/rrflow/connectome-development), pinned here as `connectome/` |
+| SWAG | A system-one controller that routes a project's coding work and proposes bounded decisions | [rrflow/swag](https://github.com/rrflow/swag) |
+| LFG | A CPU prompt encoder that suggests a prompt's intent, complexity, models and agents | [EonsofStupid/lfg](https://github.com/EonsofStupid/lfg) |
+| RROFLOW | The planned AI observability and learning service | [rrflow/rroflow-development](https://github.com/rrflow/rroflow-development) |
+
+SWAG and LFG are being made public. The
+[LFG and SWAG target contract](docs/reference/inference/lfg-swag.md) defines how
+RRFlow will use them.
+
+### License
+
+RRFlow is source-available under the [Business Source License 1.1](LICENSE).
+You may use it in production for non-commercial purposes, including hosting it
+at no charge for yourself, your household, and your friends and family. Any
+other production use, including offering it as a hosted service, needs a
+commercial license from Angryvibes LLC. Each version becomes Apache-2.0 four
+years after it is published. [LICENSE](LICENSE) has the exact terms.
+
 ## Engine, UI, cloud, and desktop
 
 RRFlow is the reasoning engine. **Connectome** is its operator and developer
@@ -131,25 +189,7 @@ deployment, or synchronization. The [delivery boundaries](docs/architecture/syst
 define how these experiences share one engine; the existing roadmap and
 pre-alpha status remain authoritative.
 
-## Enter RRFlow
-
-For a local desktop workflow, use the [native Connectome workbench](docs/reference/client/connectome.md#native-local-workbench):
-start the bundled RRFlow engine after an explicit installation preview, explore
-the authenticated schema and data models, query records, and navigate their
-relationships. This is a development build with real-engine evidence; full
-client qualification remains open.
-
-Start with the [runnable local rrflowDB integration](docs/reference/sdk/rrflowdb-local.md):
-build the native engine, create related records, query them with rrflowQL and
-reopen persistent rrflowKV state. [DevPulse and optional shippin.cloud sync](docs/reference/client/devpulse-cloud.md)
-defines local operation without an account and the explicit cloud opt-in boundary.
-Cloud account synchronization and PostgreSQL compatibility remain unimplemented.
-
-The installed engine also exposes an authenticated, bounded
-[Parquet query-result export](docs/reference/data/knowledge-connectors.md#bundled-query-export).
-Apache's Rust writer is linked into the binary. This capability is available
-through the public operation catalogue and clients; a Connectome export control,
-bulk import and streaming exchange remain unqualified.
+## Find your way
 
 | Need | Single owning record |
 |---|---|
