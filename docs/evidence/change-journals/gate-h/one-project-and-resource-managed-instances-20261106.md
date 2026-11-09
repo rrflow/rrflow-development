@@ -112,3 +112,10 @@ journal status was normalized to the repository's recognized `active` label;
 the Gate-H index was regenerated. Candidate CI and merge-group CI have not
 been run on the reconciled revision at the time of this record. No release,
 objective, roadmap, or POA&M status changed.
+
+`git diff --cached --check` while preparing the merge commit reported CRLF
+line endings as trailing whitespace across files brought in from current main.
+No mass line-ending rewrite was made. The review-relevant
+`git diff --check a9f1b0fb8d948e113dca347e5eeac10dd224330a..HEAD` passed on the
+actual PR delta; `git diff --check` for the two documentation corrections also
+passed. The architecture whitespace test passed on the merged tree.
