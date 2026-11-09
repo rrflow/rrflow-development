@@ -153,7 +153,7 @@ jobs:
         run: python3 scripts/build_rrflow.py --profile dev --output "$RUNNER_TEMP/rrflow-build-receipt.json"
 
   estate-portability:
-    name: estate process (${{ matrix.os }})
+    name: engram process (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 35
     env:
@@ -175,10 +175,10 @@ jobs:
           components: clippy
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
-          shared-key: estate-process-${{ matrix.os }}
+          shared-key: engram-process-${{ matrix.os }}
           cache-on-failure: true
           save-if: ${{ github.event_name != 'merge_group' }}
-      - name: Test persistent estate authority and commands
+      - name: Test persistent engram authority and commands
         run: cargo test -p rrd-estate --all-targets --locked
       - name: Test RRD daemon process contract
         run: cargo test -p rrd-server --bin rrd-server --locked
@@ -681,7 +681,7 @@ jobs:
       - name: Correlate installed sampler and storage traces
         timeout-minutes: 10
         run: cargo test -p rrflow-cli --test installed_reopen --release --locked -- sustained::installed_sampler_trace_matches_server_and_store --exact --ignored --nocapture
-      - name: Independent installed estates under concurrent load
+      - name: Independent installed engrams under concurrent load
         run: cargo test -p rrflow-cli --test installed_reopen --release --locked -- sustained::fleet::installed_two_estate_isolation_under_concurrent_load --exact --ignored --nocapture
       - name: Require fresh and existing installed damage denial
         timeout-minutes: 10
@@ -727,7 +727,7 @@ jobs:
               assert previous['ready_ns'] <= receipt['cleanup']['killed_ns'] <= receipt['cleanup']['reaped_ns']
               builds.append(receipt['build'])
           assert builds[0] == builds[1]
-          print('ordinary reopen evidence: 200 cycles, 10300 reconciled attempts, both estates cleaned up')
+          print('ordinary reopen evidence: 200 cycles, 10300 reconciled attempts, both engrams cleaned up')
           PY
       - name: Retain sanitized ordinary reopen receipts
         if: always()

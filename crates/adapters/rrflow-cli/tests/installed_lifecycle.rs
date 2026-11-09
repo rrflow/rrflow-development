@@ -1480,6 +1480,7 @@ fn loopback_worker_profile(
                 protocol_evidence_sha256: rrd_core::digest::sha256_hex(
                     b"controlled loopback protocol fixture; no model or quality claim",
                 ),
+                adapter: rrd_contract::EndpointWorkerAdapter::default(),
                 system_prompt: "Return a bounded draft. Do not mutate project files.".into(),
                 generation: rrd_contract::EndpointGenerationSettings {
                     maximum_output_tokens: 128,
@@ -1689,6 +1690,8 @@ fn exercise_installed_source_worker(project: &Path, source_read_enabled: bool, j
             .unwrap()
             .task_sha256,
         expected_configuration_sha256: selection_configuration.sha256().unwrap(),
+        flight: None,
+        routing: None,
     };
 
     if !source_read_enabled {
@@ -2758,6 +2761,8 @@ fn endpoint_selection_request(
             .unwrap()
             .task_sha256,
         expected_configuration_sha256: configuration.sha256().unwrap(),
+        flight: None,
+        routing: None,
     }
 }
 
@@ -3731,7 +3736,7 @@ max_elapsed_ms = 20000
 /// another process proves it through `ready` without an address, and a second
 /// serve of the same estate fails before binding.
 #[test]
-fn a_served_estate_is_found_proved_and_not_served_twice() {
+fn a_served_engram_is_found_proved_and_not_served_twice() {
     let root = tempfile::tempdir().unwrap();
     let project = root.path().join("project");
     std::fs::create_dir(&project).unwrap();

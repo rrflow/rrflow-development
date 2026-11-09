@@ -2,7 +2,7 @@
 //! nor verify can invoke this effect. The project locator remains the authority.
 use super::estate_layout::safe_join;
 use super::installation::{
-    estate_configuration_key, json_sha256, read_locator, require_locator_record_match, sha256_file,
+    engram_configuration_key, json_sha256, read_locator, require_locator_record_match, sha256_file,
     InstalledEstateRecord, INSTALLED_RECORD_KEY,
 };
 use super::token_key::{read_api_key_document_anchored, read_token_key_anchored};
@@ -136,7 +136,7 @@ impl BoundRepair {
         require_locator_record_match(&locator, &installed)?;
         let configuration: EstateConfiguration = decode(
             &repair,
-            &estate_configuration_key(&locator.identity.instance_id),
+            &engram_configuration_key(&locator.identity.instance_id),
         )?;
         configuration
             .validate()
