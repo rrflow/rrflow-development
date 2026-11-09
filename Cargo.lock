@@ -4259,6 +4259,7 @@ dependencies = [
  "num-traits",
  "seq-macro",
  "twox-hash",
+ "zstd",
 ]
 
 [[package]]
@@ -4963,6 +4964,7 @@ dependencies = [
  "getrandom 0.3.4",
  "hmac",
  "libc",
+ "parquet",
  "rquickjs",
  "rrd-attunement",
  "rrd-cluster",

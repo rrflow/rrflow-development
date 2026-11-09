@@ -2,9 +2,9 @@
 
 package rrd
 
-// OpenAPI SHA-256: 1c508a4b2819d4470e6717a304f9990595da25ed09ef729d5fa0b76324bc2975
+// OpenAPI SHA-256: 60d01903f277eede2c2a585d20477e213a64af19471a902df87fcfb24f89b99e
 
-const EndpointOpenAPIDocumentSHA256 = "1c508a4b2819d4470e6717a304f9990595da25ed09ef729d5fa0b76324bc2975"
+const EndpointOpenAPIDocumentSHA256 = "60d01903f277eede2c2a585d20477e213a64af19471a902df87fcfb24f89b99e"
 
 type OperationID string
 
@@ -28,6 +28,7 @@ const (
 	OperationCapabilitiesRead             OperationID = "capabilities-read"
 	OperationChangefeedFollow             OperationID = "changefeed-follow"
 	OperationChangefeedRead               OperationID = "changefeed-read"
+	OperationColdHistoryRead              OperationID = "cold-history-read"
 	OperationContextAssemble              OperationID = "context-assemble"
 	OperationDataSchemaRead               OperationID = "data-schema-read"
 	OperationDiagnosticsRead              OperationID = "diagnostics-read"
@@ -106,6 +107,7 @@ var endpoints = map[OperationID]Endpoint{
 	OperationCapabilitiesRead:             {Method: "GET", Path: "/v1/capabilities", Authentication: "public", Mutation: false},
 	OperationChangefeedFollow:             {Method: "POST", Path: "/v1/changes/follow", Authentication: "session_bearer", Mutation: false},
 	OperationChangefeedRead:               {Method: "POST", Path: "/v1/changes/read", Authentication: "session_bearer", Mutation: false},
+	OperationColdHistoryRead:              {Method: "POST", Path: "/v1/storage/cold-history/read", Authentication: "session_bearer", Mutation: false},
 	OperationContextAssemble:              {Method: "POST", Path: "/v1/context/assemble", Authentication: "session_bearer", Mutation: false},
 	OperationDataSchemaRead:               {Method: "POST", Path: "/v1/data/schema", Authentication: "session_bearer", Mutation: false},
 	OperationDiagnosticsRead:              {Method: "POST", Path: "/v1/diagnostics/read", Authentication: "session_bearer", Mutation: false},

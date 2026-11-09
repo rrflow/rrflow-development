@@ -1285,6 +1285,154 @@ fn fresh_installed_engine_survives_restart_and_restore() {
     installed_lifecycle("fresh");
 }
 
+#[test]
+fn configured_cold_history_publishes_and_reads_after_process_restart() {
+    let root = tempfile::tempdir().unwrap();
+    let project = root.path().join("project");
+    std::fs::create_dir(&project).unwrap();
+    std::fs::write(project.join("README.md"), "cold history project\n").unwrap();
+    let default = rrd_contract::EstateConfiguration::default();
+    let mut input = rrd_contract::EstateConfigurationInput {
+        format_version: default.format_version,
+        clock: default.clock,
+        storage: default.storage,
+        reasoning: default.reasoning,
+        recall: default.recall,
+        query: default.query,
+    };
+    input.storage.cold_history = Some(rrd_contract::ColdHistoryPolicy {
+        interval_ms: 25,
+        max_changes: 128,
+        max_input_bytes: 1024 * 1024,
+        max_output_bytes: 1024 * 1024,
+        max_memory_bytes: 64 * 1024 * 1024,
+        max_elapsed_ms: 30_000,
+        row_group_rows: 16,
+        compression: rrd_contract::ColdHistoryCompression::Zstd { level: 3 },
+        dictionary: true,
+        statistics: true,
+    });
+    let configuration = root.path().join("cold.toml");
+    std::fs::write(&configuration, toml::to_string(&input).unwrap()).unwrap();
+    let identity = invoke(&["install", "identity"]);
+    assert_success(&identity, "allocate cold-history identity");
+    let identity: serde_json::Value = serde_json::from_slice(&identity.stdout).unwrap();
+    let project_arg = project.to_str().unwrap();
+    let plan = invoke(&[
+        "install",
+        "plan",
+        "--identity",
+        identity["installation_identity"].as_str().unwrap(),
+        "--mode",
+        "existing",
+        "--project",
+        project_arg,
+        "--configuration",
+        configuration.to_str().unwrap(),
+    ]);
+    assert_success(&plan, "cold-history install plan");
+    let preview: serde_json::Value = serde_json::from_slice(&plan.stdout).unwrap();
+    assert_eq!(
+        preview["installation"]["configuration"]["storage"]["cold_history"]["interval_ms"],
+        25
+    );
+    let plan_file = root.path().join("plan.json");
+    std::fs::write(&plan_file, &plan.stdout).unwrap();
+    let applied = invoke(&[
+        "install",
+        "apply",
+        "--mode",
+        "existing",
+        "--project",
+        project_arg,
+        "--plan",
+        plan_file.to_str().unwrap(),
+        "--expect",
+        preview["installation"]["plan_sha256"].as_str().unwrap(),
+    ]);
+    assert_success(&applied, "cold-history install apply");
+    let locator = RrdEngine::read_project_locator(&project).unwrap();
+    let credential = RrdEngine::read_installed_api_key(&project).unwrap();
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+    let mut captured = Vec::new();
+    let mut first = None;
+    for pass in 0..2 {
+        let (mut child, address) = RunningEngine::start(&project, &mut captured);
+        let client = RrdClient::connect_local(
+            address.parse().unwrap(),
+            locator.identity.instance_id.clone(),
+            ClientConfig::default(),
+        )
+        .unwrap();
+        let result = runtime.block_on(async {
+            let session = client
+                .create_session(
+                    credential.principal_id.clone(),
+                    credential.credential(),
+                    CreateSession {
+                        limits: SessionLimits {
+                            idle_timeout_ms: 60_000,
+                            absolute_timeout_ms: 300_000,
+                            max_open_transactions: 1,
+                        },
+                    },
+                    RequestOptions::mutation("cold-session", "cold-session", "cold-session")
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+            let mut request = rrd_contract::ReadColdHistory {
+                scope: format!("instance:{}", client.instance_id()),
+                generation: None,
+                max_artifact_bytes: 1024 * 1024,
+                budget: QueryBudget::default(),
+            };
+            let deadline = std::time::Instant::now() + Duration::from_secs(30);
+            loop {
+                let status = client
+                    .read_cold_history(
+                        &session,
+                        request.clone(),
+                        RequestOptions::read("cold-status", "cold-status").unwrap(),
+                    )
+                    .await
+                    .unwrap();
+                assert!(status.enabled);
+                if status.current_generation > 0 {
+                    break;
+                }
+                assert!(
+                    std::time::Instant::now() < deadline,
+                    "cold history was not published"
+                );
+                tokio::time::sleep(Duration::from_millis(100)).await;
+            }
+            request.generation = Some(1);
+            client
+                .read_cold_history(
+                    &session,
+                    request,
+                    RequestOptions::read("cold-read", "cold-read").unwrap(),
+                )
+                .await
+                .unwrap()
+        });
+        assert!(!result.changes.is_empty());
+        if pass == 0 {
+            first = Some(result);
+            child.terminate(&mut captured);
+        } else {
+            assert_eq!(first.as_ref().unwrap().generation, result.generation);
+            assert_eq!(first.as_ref().unwrap().changes, result.changes);
+            child.stop(&mut captured);
+        }
+    }
+    assert!(!String::from_utf8_lossy(&captured).contains(credential.credential()));
+}
+
 fn installed_lifecycle(mode: &str) {
     eprintln!(
         "native {mode} lifecycle executable bytes={}",

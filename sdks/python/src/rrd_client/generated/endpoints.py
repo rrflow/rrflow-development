@@ -1,9 +1,9 @@
 # Generated from rrd-contract; do not edit.
-# OpenAPI SHA-256: 1c508a4b2819d4470e6717a304f9990595da25ed09ef729d5fa0b76324bc2975
+# OpenAPI SHA-256: 60d01903f277eede2c2a585d20477e213a64af19471a902df87fcfb24f89b99e
 from typing import Final, Literal, TypedDict
 
 ENDPOINT_OPENAPI_DOCUMENT_SHA256: Final[str] = (
-    "1c508a4b2819d4470e6717a304f9990595da25ed09ef729d5fa0b76324bc2975"
+    "60d01903f277eede2c2a585d20477e213a64af19471a902df87fcfb24f89b99e"
 )
 
 OperationId = Literal[
@@ -26,6 +26,7 @@ OperationId = Literal[
     "capabilities-read",
     "changefeed-follow",
     "changefeed-read",
+    "cold-history-read",
     "context-assemble",
     "data-schema-read",
     "diagnostics-read",
@@ -206,6 +207,12 @@ ENDPOINTS: Final[dict[OperationId, Endpoint]] = {
         "method": "POST",
         "mutation": False,
         "path": "/v1/changes/read",
+    },
+    "cold-history-read": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": False,
+        "path": "/v1/storage/cold-history/read",
     },
     "context-assemble": {
         "authentication": "session_bearer",

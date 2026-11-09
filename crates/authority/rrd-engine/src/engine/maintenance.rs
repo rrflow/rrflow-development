@@ -3,12 +3,22 @@ use super::{Result, RrdEngine};
 
 impl RrdEngine {
     /// Offer one housekeeping quantum to the installed native storage owner.
-    /// Lock admission never queues; admitted work uses the configured native
-    /// byte/count/time limits. Volatile estates have no physical maintenance.
+    /// Native maintenance offers do not queue. Derived cold-history reads can
+    /// still wait for storage; their admission and starvation bounds remain open.
+    /// Volatile estates have no physical maintenance.
     pub fn maintain_storage(&self) -> Result<bool> {
-        self.storage.as_rrflow_kv().map_or(Ok(false), |store| {
-            store.try_maintenance_step().map_err(Into::into)
-        })
+        if self.maintain_native_storage()? {
+            return Ok(true);
+        }
+        self.maintain_cold_history()
+    }
+
+    /// Offer one native physical maintenance quantum without queueing.
+    pub fn maintain_native_storage(&self) -> Result<bool> {
+        let Some(store) = self.storage.as_rrflow_kv() else {
+            return Ok(false);
+        };
+        store.try_maintenance_step().map_err(Into::into)
     }
 }
 

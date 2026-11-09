@@ -1,6 +1,6 @@
 // Generated from rrd-contract; do not edit.
-// OpenAPI SHA-256: 1c508a4b2819d4470e6717a304f9990595da25ed09ef729d5fa0b76324bc2975
-export const ENDPOINT_OPENAPI_DOCUMENT_SHA256 = "1c508a4b2819d4470e6717a304f9990595da25ed09ef729d5fa0b76324bc2975" as const;
+// OpenAPI SHA-256: 60d01903f277eede2c2a585d20477e213a64af19471a902df87fcfb24f89b99e
+export const ENDPOINT_OPENAPI_DOCUMENT_SHA256 = "60d01903f277eede2c2a585d20477e213a64af19471a902df87fcfb24f89b99e" as const;
 
 export const endpoints = {
   "attunement-cancel": {
@@ -302,6 +302,12 @@ export const endpoints = {
     "path": "/v1/sessions/{session}/renew",
     "authentication": "session_bearer",
     "mutation": true
+  },
+  "cold-history-read": {
+    "method": "POST",
+    "path": "/v1/storage/cold-history/read",
+    "authentication": "session_bearer",
+    "mutation": false
   },
   "subscription-close": {
     "method": "POST",
