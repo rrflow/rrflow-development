@@ -844,7 +844,7 @@ mod tests {
         let scope = ScopeId::new("instance:compact-required-address").unwrap();
         let segment = CompactDenseSegment::build(
             VectorSegmentConfig {
-                id: ProjectionId::new("vector:compact-required-address").unwrap(),
+                id: ProjectionId::new("vector-compact-required-address").unwrap(),
                 scope: scope.clone(),
                 field: "body".into(),
                 dimensions: 2,

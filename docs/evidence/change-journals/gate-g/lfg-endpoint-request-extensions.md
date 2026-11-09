@@ -90,3 +90,36 @@ Starting candidate `919ea4aad371ef20c3909707d145edc33d43a8db`; prospective depen
 The combined contract exports 75 operations including `attunement-job-list` at `/v1/attunement/jobs/list`; its SHA-256 is `978e20e8128dea9d17367f66492200d675372d53c3cef92b381ff0b001bcbbc2`. `cargo test --offline --locked -p rrd-contract --test endpoint_selection --test attunement_discovery` passed 14 tests. `python scripts/ci/check_generated_surfaces.py --check`, `python scripts/knowledge/render_navigation.py --check`, `cargo fmt --all --check` and the TypeScript SDK's `corepack pnpm check` (seven tests, lint, typecheck and generation) passed on Windows. The first Python generator invocation failed because `ruff` was absent from PATH; rerunning with this checkout's `sdks/python/.venv/Scripts` on PATH succeeded. `cargo test --offline --locked -p rrd-contract` also passed the full contract suite. `python scripts/ci/check_documentation.py` passed. `cargo test --offline --locked -p rrd-engine --lib` passed 332 tests with four ignored; the focused discovery and proposal tests also passed. Python, Go, Java and .NET generated-endpoint checks passed. `cargo clippy --offline --locked -p rrd-contract -p rrd-engine --all-targets -- -D warnings` passed. The final CI and integration status are recorded with the candidate.
 
 This remains local speculative integration until #248 lands and actual main is checked. It does not establish that an external LFG call was performed or that the adaptive plan is implemented. No gate status changes.
+
+## Current-main reconciliation, 2026-11-04
+
+The isolated `agent/lfg246-main-integration` candidate merges public main
+`746a0a462e512563b6d3aaa89520f8ab5cde9051` into PR head
+`5f69e1ee81eaa1246c9e84fb509eb2be4d4a8a23` without rewriting history. Git
+identified 19 conflicts: seven authored contract/reference digest citations
+and twelve replaceable SDK/signal projections. The authored hunks were
+inspected, source changes preserved, and the combined contract exported to
+SHA-256 `c4375b035939ca40618f6e56eb1d52ea11347b742d003508f40df5d73c441d38`.
+All five SDK endpoint/schema projections and the signal references were
+regenerated from that source. Generated-surface parity reports 78 HTTP
+operations and seven verified signal projections. No generated side was
+accepted as final by merge policy.
+
+Windows local combined-tree checks: the full `cargo test --offline --locked
+-p rrd-contract` suite passed; TypeScript typecheck and six `client.test.ts`
+tests passed, including acceptance of a future field in the generated type;
+Go `go test ./...`, navigation and documentation policy passed. Execution
+inventory initially reported drift, then regeneration and recheck passed with
+2,368 path records. The real engine's cross-attempt/configuration/usage test
+is running. Offline TypeScript dependencies came from the existing pinned
+pnpm store; endpoint generation used pinned Ruff 0.17.1. This is local candidate
+proof, not candidate/merge-group CI or evidence that any LFG call ran. The
+unknown fields remain ignored and do not authorize a capability. Roadmap and
+POA&M statuses do not change.
+
+The combined engine command `cargo test --offline --locked -p rrd-engine
+--lib proposal_tuple_rejects_cross_attempt_config_and_usage_substitution --
+--nocapture` passed one test, including the ignored unknown `endpoint` field
+remaining absent from the typed request. `cargo fmt --all --check`,
+`git diff --cached --check`, and `python -X utf8 scripts/ci/check_workflow.py`
+also passed. These checks do not replace required candidate and merge-group CI.

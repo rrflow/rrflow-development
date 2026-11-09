@@ -117,7 +117,7 @@ The current generated projection contains:
   `7efde511a5ba3b1cad630d2c63c473a966fb871182c8bd3a5fb85c3673924a11`.
 
 That audit describes an earlier projection. The current generated OpenAPI
-SHA-256 is `d5e161a58a26c53ccfde018f3bff782f6e899a4b7c224c10f22f6abb8a8ea7b1`.
+SHA-256 is `bcd7fafb7bae0203c8ef8e4e8c743d253929ab0e6b847691f59179009aac1e0f`.
 
 It does not generate request models, response models, error-code constraints,
 path-parameter sets, security actions, exact success statuses, media types,

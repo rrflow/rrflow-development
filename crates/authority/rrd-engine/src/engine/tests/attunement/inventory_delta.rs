@@ -2,7 +2,34 @@ use super::*;
 use rrd_core::{ReadStamp, RuntimeCommit, RuntimeLogicalModel, RuntimeType};
 use rrd_store::{RuntimeReadBudget, RuntimeVersionedSource};
 
-fn first_inventory() -> (
+pub(in crate::engine::tests) fn first_inventory_for_worker() -> (
+    Installed,
+    RrdEngine,
+    SessionLease,
+    AttunementJob,
+    ScopeId,
+    ReadStamp,
+) {
+    first_inventory_for_worker_with_setup(|_| {})
+}
+
+pub(in crate::engine::tests) fn first_inventory_for_worker_with_setup(
+    setup: impl FnOnce(&std::path::Path),
+) -> (
+    Installed,
+    RrdEngine,
+    SessionLease,
+    AttunementJob,
+    ScopeId,
+    ReadStamp,
+) {
+    first_inventory_for_worker_with_setup_at(setup, BASE)
+}
+
+pub(in crate::engine::tests) fn first_inventory_for_worker_with_setup_at(
+    setup: impl FnOnce(&std::path::Path),
+    base: u64,
+) -> (
     Installed,
     RrdEngine,
     SessionLease,
@@ -31,21 +58,23 @@ fn first_inventory() -> (
         estimated_min_duration_ms: 0,
         estimated_max_duration_ms: 30_000,
     };
-    let (installed, engine, session) = Installed::with_source(
+    let (installed, engine, session) = Installed::with_source_at(
         InstallationTargetKind::ExistingProject,
         Some(&proposal),
         |root| {
             for name in ["alpha.txt", "beta.txt", "gamma.txt"] {
                 std::fs::write(root.join(name), format!("source {name}\n")).unwrap();
             }
+            setup(root);
         },
+        base,
     );
     let started = call(
         &engine,
         &session,
         &installed.start(30_000),
         "delta-start",
-        BASE + 1_000,
+        base + 1_000,
     )
     .unwrap();
     let connected = call(
@@ -71,7 +100,8 @@ fn first_inventory() -> (
 
 #[test]
 fn unchanged_inventory_publishes_only_completion_metadata() {
-    let (installed, engine, session, mut job, scope, mut previous_read) = first_inventory();
+    let (installed, engine, session, mut job, scope, mut previous_read) =
+        first_inventory_for_worker();
     for key in ["delta-second", "delta-third"] {
         let next = call(
             &engine,
@@ -116,7 +146,7 @@ fn unchanged_inventory_publishes_only_completion_metadata() {
 #[test]
 fn inventory_reuse_observes_current_records_edges_and_retirements() {
     for changed_kind in ["record", "relation", "retirement"] {
-        let (installed, engine, session, job, scope, before) = first_inventory();
+        let (installed, engine, session, job, scope, before) = first_inventory_for_worker();
         let facts = engine
             .storage
             .runtime()

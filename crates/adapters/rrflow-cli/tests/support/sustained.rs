@@ -40,6 +40,15 @@ use workload::{Prepared, Workload};
 
 type DriverResult<T> = std::result::Result<T, String>;
 
+/// Backup overlaps the first mixed write only when the campaign requests it.
+fn backup_due(campaign: &StorageCampaign, phase: LoadPhase, sequence: u64) -> bool {
+    phase == LoadPhase::Measured
+        && sequence == 14
+        && campaign
+            .required_lanes
+            .contains(&CapacityLane::BackupUnderWrite)
+}
+
 fn retain_failed_lifecycle<T>(
     estate: &super::owned_directory::OwnedDirectory,
     result: DriverResult<T>,
@@ -676,7 +685,7 @@ impl PointRun<'_> {
             let work = self.workload.clone();
             let operation = operation.clone();
             let clock = self.clock;
-            if phase == LoadPhase::Measured && sequence == 14 {
+            if backup_due(campaign, phase, sequence) {
                 let work = work.clone();
                 let name = format!("capacity-backup-{}", writer.next_index());
                 let started_ns = ns(clock);
@@ -1243,6 +1252,26 @@ fn smoke_campaign() -> StorageCampaign {
         reader_selection: None,
         storage,
     }
+}
+
+#[test]
+fn backup_is_due_only_for_the_selected_lane_and_first_measured_mixed_write() {
+    let mut campaign = smoke_campaign();
+    // The default characterization requests warm only.
+    assert!(!backup_due(&campaign, LoadPhase::Measured, 14));
+    campaign.required_lanes.push(CapacityLane::BackupUnderWrite);
+    assert_eq!(storage_load_kind(14), StorageLoadKind::MixedWrite);
+    assert!(backup_due(&campaign, LoadPhase::Measured, 14));
+    for phase in [
+        LoadPhase::Warmup,
+        LoadPhase::Burst,
+        LoadPhase::Drain,
+        LoadPhase::Soak,
+    ] {
+        assert!(!backup_due(&campaign, phase, 14));
+    }
+    assert!(!backup_due(&campaign, LoadPhase::Measured, 13));
+    assert!(!backup_due(&campaign, LoadPhase::Measured, 15));
 }
 
 #[test]

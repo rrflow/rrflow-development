@@ -2,6 +2,7 @@
 //! and changes live in separate runtime records; the control head only binds
 //! their authenticated commit identity, never a second copy of their contents.
 use super::*;
+use rrd_attunement::inventory::EntryKind;
 use rrd_store::{RuntimeReadBudget, RuntimeVersionedSource};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -10,7 +11,40 @@ pub(super) const ENTRY: &str = "source-tree-entry";
 pub(super) const CHANGES: &str = "source-tree-change-set";
 const CONTAINS: &str = "source-tree-contains";
 
-#[derive(Serialize, Deserialize)]
+#[cfg(test)]
+thread_local! {
+    static OMIT_SOURCE_FILE_PROJECTION: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+#[cfg(test)]
+pub(crate) struct LegacySourceFileProjectionGuard {
+    previous: bool,
+}
+
+#[cfg(test)]
+impl LegacySourceFileProjectionGuard {
+    pub(crate) fn omit_for_current_thread() -> Self {
+        let previous = OMIT_SOURCE_FILE_PROJECTION.with(|enabled| enabled.replace(true));
+        Self { previous }
+    }
+}
+
+#[cfg(test)]
+impl Drop for LegacySourceFileProjectionGuard {
+    fn drop(&mut self) {
+        OMIT_SOURCE_FILE_PROJECTION.with(|enabled| enabled.set(self.previous));
+    }
+}
+
+fn source_file_projection_enabled() -> bool {
+    #[cfg(test)]
+    if OMIT_SOURCE_FILE_PROJECTION.with(std::cell::Cell::get) {
+        return false;
+    }
+    true
+}
+
+#[derive(Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct Head {
     pub format_version: u32,
@@ -82,13 +116,33 @@ pub(super) fn load_prior(
     max_entries: u64,
     remaining_keys: &mut u64,
 ) -> Result<(Option<Vec<u8>>, Option<Proposal>)> {
+    let loaded = load_accepted(
+        engine,
+        &plan.target.project_id,
+        max_bytes,
+        max_entries,
+        remaining_keys,
+    )?;
+    Ok(match loaded {
+        Some((bytes, _, proposal)) => (Some(bytes), Some(proposal)),
+        None => (None, None),
+    })
+}
+
+pub(super) fn load_accepted(
+    engine: &RrdEngine,
+    project_id: &CanonicalId,
+    max_bytes: u64,
+    max_entries: u64,
+    remaining_keys: &mut u64,
+) -> Result<Option<(Vec<u8>, Head, Proposal)>> {
     let Some(bytes) = engine.storage.control().get(&head_key(&engine.instance))? else {
-        return Ok((None, None));
+        return Ok(None);
     };
     let head: Head = decode(&bytes)?;
     let scope = ScopeId::new(format!("instance:{}", engine.instance)).map_err(contract)?;
     if head.format_version != 1
-        || head.project_id != plan.target.project_id
+        || &head.project_id != project_id
         || head.read.scope != scope
         || !is_digest(&head.proposal_sha256)
     {
@@ -136,12 +190,13 @@ pub(super) fn load_prior(
         .iter()
         .map(|reference| {
             let record = rows.get(reference).ok_or_else(invalid)?;
-            let value = properties_json(&record.properties)?;
+            let mut value = properties_json(&record.properties)?;
             if value.get("identity").and_then(serde_json::Value::as_str)
                 != Some(reference.id.as_str())
             {
                 return Err(invalid());
             }
+            strip_verified_source_file_projection(&mut value)?;
             Ok(value)
         })
         .collect::<Result<Vec<_>>>()?;
@@ -154,7 +209,7 @@ pub(super) fn load_prior(
     let proposal =
         Proposal::from_committed_bytes(&serialized, &head.proposal_sha256, max_bytes as usize)
             .map_err(contract)?;
-    Ok((Some(bytes), Some(proposal)))
+    Ok(Some((bytes, head, proposal)))
 }
 
 fn read_records(
@@ -246,7 +301,29 @@ pub(super) fn mutations(
         at,
     )?);
     for entry in proposal.entries() {
-        mutations.push(record(ENTRY, &entry.identity, entry, at)?);
+        let mut entry_record = record(ENTRY, &entry.identity, entry, at)?;
+        if source_file_projection_enabled() {
+            if let EntryKind::File {
+                observation,
+                content_sha256,
+            } = &entry.kind
+            {
+                let RuntimeMutation::Record { record } = &mut entry_record else {
+                    return Err(invalid());
+                };
+                record.properties.insert(
+                    "source_file".into(),
+                    RuntimeValue::Map(BTreeMap::from([
+                        (
+                            "content_sha256".into(),
+                            RuntimeValue::String(content_sha256.clone()),
+                        ),
+                        ("bytes".into(), RuntimeValue::Unsigned(observation.bytes)),
+                    ])),
+                );
+            }
+        }
+        mutations.push(entry_record);
         let (from, edge) = match &entry.parent {
             Some(parent) => (
                 RuntimeRef::new(ENTRY, parent).map_err(contract)?,
@@ -405,9 +482,46 @@ fn properties_json(properties: &RuntimeProperties) -> Result<serde_json::Value> 
     from_runtime(&RuntimeValue::Map(properties.clone()))
 }
 
+/// Remove the collision-safe public projection only after confirming it is an
+/// exact mechanical view of the unchanged canonical entry kind. Old records
+/// without the optional projection remain reconstructible but cannot supply it
+/// to a picker until an eligible inventory publication writes it.
+fn strip_verified_source_file_projection(value: &mut serde_json::Value) -> Result<()> {
+    let object = value.as_object_mut().ok_or_else(invalid)?;
+    let projection = object.remove("source_file");
+    let entry_kind: EntryKind =
+        serde_json::from_value(object.get("kind").cloned().ok_or_else(invalid)?)
+            .map_err(contract_json)?;
+    match (entry_kind, projection) {
+        (
+            EntryKind::File {
+                observation,
+                content_sha256,
+            },
+            Some(projection),
+        ) => {
+            let expected = serde_json::json!({
+                "content_sha256": content_sha256,
+                "bytes": observation.bytes,
+            });
+            if projection != expected {
+                return Err(invalid());
+            }
+        }
+        (EntryKind::File { .. }, None) | (_, None) => {}
+        (_, Some(_)) => return Err(invalid()),
+    }
+    Ok(())
+}
+
 fn register(registry: &mut RuntimeSchemaRegistry) -> Result<bool> {
     use RuntimeValueType::{Bool, List, Map, String as Text, Unsigned};
     let mut changed = false;
+    let entry_optional = if source_file_projection_enabled() {
+        vec![("parent", Text), ("source_file", Map)]
+    } else {
+        vec![("parent", Text)]
+    };
     for (kind, fields, optional) in [
         (
             SNAPSHOT,
@@ -433,7 +547,7 @@ fn register(registry: &mut RuntimeSchemaRegistry) -> Result<bool> {
                 ("kind", Map),
                 ("subtree_sha256", Text),
             ],
-            vec![("parent", Text)],
+            entry_optional,
         ),
         (
             CHANGES,
@@ -496,4 +610,86 @@ pub(super) fn is_digest(value: &str) -> bool {
         && value
             .bytes()
             .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+}
+
+#[cfg(test)]
+mod source_file_projection_tests {
+    use super::strip_verified_source_file_projection;
+    use rrd_attunement::inventory::{Entry, EntryKind, FileObservation};
+
+    fn file_entry() -> serde_json::Value {
+        serde_json::json!({
+            "identity": "1".repeat(64),
+            "path": "alpha.txt",
+            "kind": {
+                "kind": "file",
+                "observation": {
+                    "bytes": 5,
+                    "executable": false,
+                    "revision": "fixture-revision",
+                    "classification_sha256": "a".repeat(64)
+                },
+                "content_sha256": "b".repeat(64)
+            },
+            "subtree_sha256": "c".repeat(64)
+        })
+    }
+
+    #[test]
+    fn optional_source_file_is_removed_only_when_it_matches_canonical_file_kind() {
+        let canonical = Entry {
+            path: "alpha.txt".into(),
+            identity: "1".repeat(64),
+            parent: None,
+            kind: EntryKind::File {
+                observation: FileObservation {
+                    bytes: 5,
+                    executable: false,
+                    revision: "fixture-revision".into(),
+                    classification_sha256: "a".repeat(64),
+                },
+                content_sha256: "b".repeat(64),
+            },
+            subtree_sha256: "c".repeat(64),
+        };
+        let canonical_json = serde_json::to_value(&canonical).unwrap();
+        let mut old = canonical_json.clone();
+        strip_verified_source_file_projection(&mut old).unwrap();
+        assert!(old.get("source_file").is_none());
+        assert_eq!(old, canonical_json);
+
+        let mut projected = canonical_json.clone();
+        projected["source_file"] = serde_json::json!({
+            "content_sha256": "b".repeat(64),
+            "bytes": 5
+        });
+        strip_verified_source_file_projection(&mut projected).unwrap();
+        assert!(projected.get("source_file").is_none());
+        assert_eq!(projected, canonical_json);
+    }
+
+    #[test]
+    fn inconsistent_or_non_file_source_projection_is_rejected() {
+        for projection in [
+            serde_json::json!({ "content_sha256": "d".repeat(64), "bytes": 5 }),
+            serde_json::json!({ "content_sha256": "b".repeat(64), "bytes": 6 }),
+            serde_json::json!({ "content_sha256": "b".repeat(64), "bytes": 5, "extra": true }),
+        ] {
+            let mut value = file_entry();
+            value["source_file"] = projection;
+            assert!(strip_verified_source_file_projection(&mut value).is_err());
+        }
+
+        let mut directory = file_entry();
+        directory["kind"] = serde_json::json!({ "kind": "directory" });
+        directory["source_file"] = serde_json::json!({
+            "content_sha256": "b".repeat(64),
+            "bytes": 5
+        });
+        assert!(strip_verified_source_file_projection(&mut directory).is_err());
+
+        let mut old_directory = file_entry();
+        old_directory["kind"] = serde_json::json!({ "kind": "directory" });
+        strip_verified_source_file_projection(&mut old_directory).unwrap();
+    }
 }

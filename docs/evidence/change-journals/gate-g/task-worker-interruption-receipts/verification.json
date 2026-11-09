@@ -1,0 +1,11 @@
+{
+  "selectorAttemptEqual": true,
+  "workerAttemptEqual": true,
+  "budgetEqual": true,
+  "taskEqualAcrossInterruption": true,
+  "providerCallRequestedOnRecovery": false,
+  "taskBeforeReceiptSha256": "15714d73cf1e8edfc5787a61e0e0aaab7b470c5afc34d713f4d6b2ae6c858afe",
+  "taskAfterReceiptSha256": "12573a641d20c3e31fc076cb82e8eeed28839b583154ac4de0a6758fc4caa515",
+  "trialSourceCommit": "2f7a1a344958c29891a2934a1965dfdfc8c0acc9",
+  "trainingData": false
+}

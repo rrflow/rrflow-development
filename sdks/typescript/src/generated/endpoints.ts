@@ -1,6 +1,6 @@
 // Generated from rrd-contract; do not edit.
-// OpenAPI SHA-256: d5e161a58a26c53ccfde018f3bff782f6e899a4b7c224c10f22f6abb8a8ea7b1
-export const ENDPOINT_OPENAPI_DOCUMENT_SHA256 = "d5e161a58a26c53ccfde018f3bff782f6e899a4b7c224c10f22f6abb8a8ea7b1" as const;
+// OpenAPI SHA-256: bcd7fafb7bae0203c8ef8e4e8c743d253929ab0e6b847691f59179009aac1e0f
+export const ENDPOINT_OPENAPI_DOCUMENT_SHA256 = "bcd7fafb7bae0203c8ef8e4e8c743d253929ab0e6b847691f59179009aac1e0f" as const;
 
 export const endpoints = {
   "attunement-cancel": {
@@ -321,6 +321,18 @@ export const endpoints = {
     "authentication": "session_bearer",
     "mutation": true
   },
+  "task-assessment-execute": {
+    "method": "POST",
+    "path": "/v1/tasks/assessment/execute",
+    "authentication": "session_bearer",
+    "mutation": true
+  },
+  "task-assessment-read": {
+    "method": "POST",
+    "path": "/v1/tasks/assessment/read",
+    "authentication": "session_bearer",
+    "mutation": false
+  },
   "task-attempt-read": {
     "method": "POST",
     "path": "/v1/tasks/attempt/read",
@@ -338,6 +350,12 @@ export const endpoints = {
     "path": "/v1/tasks/budget/read",
     "authentication": "session_bearer",
     "mutation": false
+  },
+  "task-budget-resume": {
+    "method": "POST",
+    "path": "/v1/tasks/budget/resume",
+    "authentication": "session_bearer",
+    "mutation": true
   },
   "task-budget-stop": {
     "method": "POST",
@@ -375,6 +393,12 @@ export const endpoints = {
     "authentication": "session_bearer",
     "mutation": false
   },
+  "task-worker-execute": {
+    "method": "POST",
+    "path": "/v1/tasks/worker/execute",
+    "authentication": "session_bearer",
+    "mutation": true
+  },
   "transaction-begin": {
     "method": "POST",
     "path": "/v1/transactions",
@@ -410,6 +434,24 @@ export const endpoints = {
     "path": "/v1/vector/collections/list",
     "authentication": "session_bearer",
     "mutation": false
+  },
+  "vector-index-ensure": {
+    "method": "POST",
+    "path": "/v1/vector/indexes/ensure",
+    "authentication": "session_bearer",
+    "mutation": true
+  },
+  "vector-payload-index-delete": {
+    "method": "POST",
+    "path": "/v1/vector/payload-indexes/delete",
+    "authentication": "session_bearer",
+    "mutation": true
+  },
+  "vector-payload-index-ensure": {
+    "method": "POST",
+    "path": "/v1/vector/payload-indexes/ensure",
+    "authentication": "session_bearer",
+    "mutation": true
   },
   "vector-point-retrieve": {
     "method": "POST",

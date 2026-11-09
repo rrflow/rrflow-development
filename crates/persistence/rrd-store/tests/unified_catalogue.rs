@@ -15,7 +15,7 @@ fn kind(value: &str) -> RuntimeType {
 }
 
 fn reference(kind: &str, id: &str) -> RuntimeRef {
-    RuntimeRef::new(kind, id).unwrap()
+    RuntimeRef::parse(kind, id).unwrap()
 }
 
 fn schemaless(model: RuntimeLogicalModel) -> RuntimeTableSchema {

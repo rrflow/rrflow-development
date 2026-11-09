@@ -29,9 +29,8 @@ fn retained_search_uses_its_artifact_generation_after_publication_and_reopen() {
             &lease.session_id,
             &lease.token,
             &index_request(),
+            &mutation_context(&id("catalogue-first"), "catalogue-first", "catalogue-first"),
             400,
-            "catalogue-first",
-            "catalogue-first",
         )
         .unwrap();
     assert_eq!(first.index.generation, 1);
@@ -52,9 +51,12 @@ fn retained_search_uses_its_artifact_generation_after_publication_and_reopen() {
             &lease.session_id,
             &lease.token,
             &rebuild,
+            &mutation_context(
+                &id("catalogue-second"),
+                "catalogue-second",
+                "catalogue-second",
+            ),
             500,
-            "catalogue-second",
-            "catalogue-second",
         )
         .unwrap();
     assert_eq!(second.index.generation, 2);
@@ -99,9 +101,8 @@ fn catalogue_search_work_excludes_unrelated_history_and_shares_the_request_budge
             &lease.session_id,
             &lease.token,
             &index_request(),
+            &mutation_context(&id("catalogue-index"), "catalogue-index", "catalogue-index"),
             400,
-            "catalogue-index",
-            "catalogue-index",
         )
         .unwrap();
     let scope = rrd_core::ScopeId::new(format!("instance:{}", instance())).unwrap();

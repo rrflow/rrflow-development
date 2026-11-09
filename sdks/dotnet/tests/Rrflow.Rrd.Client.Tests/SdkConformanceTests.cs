@@ -241,6 +241,50 @@ public sealed class SdkConformanceTests
                     == expected.GetProperty("vector_reference").GetString();
             });
 
+        // The graph index and its payload index. The changefeed read below proves
+        // the scope stays readable with an index in it.
+        JsonElement index = vector.GetProperty("index");
+        await api.CallAsync(
+            OperationId.VectorPayloadIndexEnsure,
+            index.GetProperty("payload_index"),
+            Options("payload-index-ensure", session, mutation: true),
+            TestContext.Current.CancellationToken);
+        JsonElement builtIndex = await api.CallAsync(
+            OperationId.VectorIndexEnsure,
+            index.GetProperty("ensure"),
+            Options("index-ensure", session, mutation: true),
+            TestContext.Current.CancellationToken);
+        Assert.Equal(
+            expected.GetProperty("indexed_access_path").GetString(),
+            builtIndex.GetProperty("index").GetProperty("kind").GetString());
+        JsonElement indexed = await api.CallAsync(
+            OperationId.VectorSearch,
+            index.GetProperty("search"),
+            Options("indexed-search", session),
+            TestContext.Current.CancellationToken);
+        Assert.Equal(
+            expected.GetProperty("indexed_access_path").GetString(),
+            indexed.GetProperty("access_path").GetString());
+        Assert.Contains(
+            indexed.GetProperty("hits").EnumerateArray(),
+            hit =>
+            {
+                JsonElement reference = hit.GetProperty("reference");
+                return reference.GetProperty("kind").GetString() + ":"
+                    + reference.GetProperty("id").GetString()
+                    == expected.GetProperty("indexed_reference").GetString();
+            });
+        await api.CallAsync(
+            OperationId.VectorPayloadIndexEnsure,
+            index.GetProperty("spare_payload_index"),
+            Options("payload-index-spare", session, mutation: true),
+            TestContext.Current.CancellationToken);
+        await api.CallAsync(
+            OperationId.VectorPayloadIndexDelete,
+            index.GetProperty("delete_payload_index"),
+            Options("payload-index-delete", session, mutation: true),
+            TestContext.Current.CancellationToken);
+
         JsonElement changes = await api.CallAsync(
             OperationId.ChangefeedRead,
             changefeed.GetProperty("read"),

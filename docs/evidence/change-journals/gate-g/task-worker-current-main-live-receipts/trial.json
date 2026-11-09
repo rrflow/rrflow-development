@@ -1,0 +1,111 @@
+{
+  "sourceCommit": "604c196df473105b041998e1266bb5727f846a04",
+  "binarySha256": "76e2572ddaca05ce2ae00f434984b6006ece6d6b8f37e5ebf3153406a1c54951",
+  "acceptedProposal": {
+    "contract_version": 1,
+    "purpose": "experimental_proposal",
+    "scope": "instance:instance-28392edc7c85a7b7f75bec63",
+    "task_id": "task-7a414f5fc18801e1fe53242370a3c2582deddc8b9965ce8c27b496ea074144f9",
+    "attempt_id": "actual-proposal-c730bc94c03543e5b6286261842a7c1c",
+    "task_sha256": "117417276d3c2243885afbf53a21df050048b2cb3e880ff20ccc270197fc87ee",
+    "packet_sha256": "dec4cb15b00fdb2716e09f275127b3ecedd6e6713342d630ea09766fd7f6a0b9",
+    "configuration_sha256": "3d1c3fce910838b7c4335688c40b115c5c2497a5ebd3185e000dce0590d4aee4",
+    "allowance_sha256": "ac1c38352d9d016ea841d3023743a11dab97322a474fb328192049dbbd483419",
+    "controller_binding_id": "swag-custom-bf16",
+    "service_id": "swag-qwen3-coder-intent-20261028",
+    "request_sha256": "f79223ec0883bba92caeb9338c186d26e5e8a05da49326ef953e547ba092779d",
+    "response_sha256": "5c22fe7c6e170dde373b0ff162871b25f78e96911a3fc0382814d0d19e1c4f4d",
+    "content_sha256": "f00ec144e84b0093c575418c45be469717d1725ba11736e3f0070c2fa666e6a2",
+    "choice": {
+      "kind": "select",
+      "binding_id": "swag-custom-bf16",
+      "effort": null
+    },
+    "usage": {
+      "prompt_tokens": 1805,
+      "completion_tokens": 20,
+      "total_tokens": 1825
+    },
+    "elapsed_ms": 2010,
+    "http_status": 200
+  },
+  "acceptedWorkerDraft": {
+    "contract_version": 1,
+    "scope": "instance:instance-28392edc7c85a7b7f75bec63",
+    "task_id": "task-7a414f5fc18801e1fe53242370a3c2582deddc8b9965ce8c27b496ea074144f9",
+    "attempt_id": "actual-worker-82b94041a5024bbaa5c64cf488cf5816",
+    "selection_attempt_id": "actual-proposal-c730bc94c03543e5b6286261842a7c1c",
+    "selection_sha256": "b4d9fca2ed07cee1d6dc3fa6fe1c3b093c008d4506415e51f47c14b361ced78b",
+    "task_sha256": "117417276d3c2243885afbf53a21df050048b2cb3e880ff20ccc270197fc87ee",
+    "configuration_sha256": "3d1c3fce910838b7c4335688c40b115c5c2497a5ebd3185e000dce0590d4aee4",
+    "binding_id": "swag-custom-bf16",
+    "service_id": "swag-qwen3-coder-intent-20261028",
+    "packet_sha256": "be261e73c32efb8bc069a6e4508de53761ebca11628c6a115da417682e0ed1a6",
+    "request_sha256": "6b2e2062fb8dba7971f23b4e8020481000881a118819f4ff8195b164f6e8a6c8",
+    "response_sha256": "9451fc0b4dc8c75a32297f815ea9cc201b483d1164842859679a9f88340fc181",
+    "content_sha256": "351b2b28bbe948a778d69c60ed78a701a12c8a7a9dde8d2f2cb9ebafa1851b12",
+    "content": "{\n  \"implementation_steps\": [\n    \"Integrate the selected worker model into the engine's task execution pipeline with proper authority recheck and budget reservation.\",\n    \"Implement the `task-worker-execute` binding to manage task, selection receipt, and configuration while updating the task-attempt ledger.\",\n    \"Ensure draft and actual usage tracking is maintained in the ledger without redispatching on readback or replay.\"\n  ],\n  \"verification_steps\": [\n    \"Confirm that the engine correctly binds the task and worker model using the provided selection receipt and configuration.\",\n    \"Validate that the task budget and shared endpoint capacity are properly reserved and reflected in the ledger.\",\n    \"Check that the task-attempt ledger accurately records both draft and actual usage without unintended side effects.\"\n  ],\n  \"unresolved_questions\": [\n    \"How will the engine handle cases where the selected worker model fails during execution?\",\n    \"What is the expected behavior if the task budget or endpoint capacity is insufficient for the selected worker?\",\n    \"Will the current reconciliation process affect any future updates to the worker model or task configurations?\"\n  ]\n}",
+    "read": {
+      "runtime_manifest_sha256": "ad2578cbccd8744151ecd25d6a8ffbd594426361515e9f3e707a0f97cee3840e",
+      "runtime_cursor": 7,
+      "schema_revision": 3,
+      "catalogue_revision": 0
+    },
+    "context": null,
+    "usage": {
+      "prompt_tokens": 1301,
+      "completion_tokens": 222,
+      "total_tokens": 1523
+    },
+    "elapsed_ms": 16814,
+    "http_status": 200
+  },
+  "workerAttempt": {
+    "attempt": {
+      "attempt_id": "actual-worker-82b94041a5024bbaa5c64cf488cf5816",
+      "ordinal": 2,
+      "status": "accepted",
+      "outcome_sha256": "b60d002e3395a1db703a57a87ccc47247fc601fed5b57595cd9737055b3923f8",
+      "result": null,
+      "worker_output": {
+        "contract_version": 1,
+        "scope": "instance:instance-28392edc7c85a7b7f75bec63",
+        "task_id": "task-7a414f5fc18801e1fe53242370a3c2582deddc8b9965ce8c27b496ea074144f9",
+        "attempt_id": "actual-worker-82b94041a5024bbaa5c64cf488cf5816",
+        "selection_attempt_id": "actual-proposal-c730bc94c03543e5b6286261842a7c1c",
+        "selection_sha256": "b4d9fca2ed07cee1d6dc3fa6fe1c3b093c008d4506415e51f47c14b361ced78b",
+        "task_sha256": "117417276d3c2243885afbf53a21df050048b2cb3e880ff20ccc270197fc87ee",
+        "configuration_sha256": "3d1c3fce910838b7c4335688c40b115c5c2497a5ebd3185e000dce0590d4aee4",
+        "binding_id": "swag-custom-bf16",
+        "service_id": "swag-qwen3-coder-intent-20261028",
+        "packet_sha256": "be261e73c32efb8bc069a6e4508de53761ebca11628c6a115da417682e0ed1a6",
+        "request_sha256": "6b2e2062fb8dba7971f23b4e8020481000881a118819f4ff8195b164f6e8a6c8",
+        "response_sha256": "9451fc0b4dc8c75a32297f815ea9cc201b483d1164842859679a9f88340fc181",
+        "content_sha256": "351b2b28bbe948a778d69c60ed78a701a12c8a7a9dde8d2f2cb9ebafa1851b12",
+        "content": "{\n  \"implementation_steps\": [\n    \"Integrate the selected worker model into the engine's task execution pipeline with proper authority recheck and budget reservation.\",\n    \"Implement the `task-worker-execute` binding to manage task, selection receipt, and configuration while updating the task-attempt ledger.\",\n    \"Ensure draft and actual usage tracking is maintained in the ledger without redispatching on readback or replay.\"\n  ],\n  \"verification_steps\": [\n    \"Confirm that the engine correctly binds the task and worker model using the provided selection receipt and configuration.\",\n    \"Validate that the task budget and shared endpoint capacity are properly reserved and reflected in the ledger.\",\n    \"Check that the task-attempt ledger accurately records both draft and actual usage without unintended side effects.\"\n  ],\n  \"unresolved_questions\": [\n    \"How will the engine handle cases where the selected worker model fails during execution?\",\n    \"What is the expected behavior if the task budget or endpoint capacity is insufficient for the selected worker?\",\n    \"Will the current reconciliation process affect any future updates to the worker model or task configurations?\"\n  ]\n}",
+        "read": {
+          "runtime_manifest_sha256": "ad2578cbccd8744151ecd25d6a8ffbd594426361515e9f3e707a0f97cee3840e",
+          "runtime_cursor": 7,
+          "schema_revision": 3,
+          "catalogue_revision": 0
+        },
+        "context": null,
+        "usage": {
+          "prompt_tokens": 1301,
+          "completion_tokens": 222,
+          "total_tokens": 1523
+        },
+        "elapsed_ms": 16814,
+        "http_status": 200
+      }
+    }
+  },
+  "runnerSha256": "15b26a3f15833eef69467cb7f252eef18ca71d64f275bff9ddabea08f0f2ca83",
+  "restartReadbackEqual": true,
+  "sameAttemptReplayRejected": true,
+  "ownedServersStopped": true,
+  "engineDispatchObserved": true,
+  "modelQualityQualified": false,
+  "trainingDataCreated": false,
+  "scope": "actual controller and worker draft admission, missing credentials, restart and replay; no project effects, source-edit plan proof or quality labels"
+}

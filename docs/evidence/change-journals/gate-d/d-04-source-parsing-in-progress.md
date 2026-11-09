@@ -490,3 +490,20 @@ parser_worker` passed both primary-executable tests. Native process limits,
 cancellation/reaping, source rechecks and
 installed publication remain open, so this remains a draft and the earlier
 real installed-process Parse failure is unresolved.
+
+## 2026-11-09 absorption onto main
+
+Merged `development/main` (235 commits ahead of this branch's base) by an
+ordinary merge. Six source conflicts were additive on both sides and both
+were kept: the Parse inventory loader beside main's accepted-source loader,
+the selected-source reader beside main's inventory exports, the adaptive
+selection test module beside main's shared test base. Generated SDK
+projections and reference pages were regenerated from the merged catalogue
+(82 operations, OpenAPI digest bcd7fafb…). On the merged tree:
+`rrd-attunement` suites pass, `rrd-contract` public contract 47 passed,
+`rrd-engine --lib attunement` 63 passed with 7 ignored, installation
+inventory tests 18 passed, `rrflow-cli` parser worker tests 2 passed; clippy
+and fmt clean; generated surfaces verified. The installed Parse step remains
+as this package left it; a further 514-file integration from a later session
+is preserved on `agent/d04-source-spans-reconcile-wip-20261109` and is not
+part of this merge.

@@ -440,6 +440,15 @@ impl InstallationPlan {
     }
 }
 
+/// Canonical initial grant choices for a newly installed estate. The optional
+/// source-read action is explicit and never accepts caller-authored grant sets.
+pub fn installation_initial_grants(project_source_read: bool) -> Vec<SecurityAction> {
+    SecurityAction::ALL
+        .into_iter()
+        .filter(|action| *action != SecurityAction::ProjectSourceRead || project_source_read)
+        .collect()
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct InstallationActionResult {

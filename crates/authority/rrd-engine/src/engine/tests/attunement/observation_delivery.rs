@@ -17,6 +17,7 @@ fn profile(engine: &RrdEngine, retained: u32) -> EndpointProfileInput {
         contract_version: 1,
         name: CanonicalId::new("observation-test").unwrap(),
         selection_policy: None,
+        worker_policy: None,
         bindings: vec![EndpointBinding {
             id: CanonicalId::new("observation-sink").unwrap(),
             class: WorkloadClass::BehaviorUpdates,
@@ -53,6 +54,7 @@ fn profile(engine: &RrdEngine, retained: u32) -> EndpointProfileInput {
             retry_delay_ms: 10,
             max_response_bytes: 1024,
         }),
+        assessment_policy: None,
     }
 }
 fn credential() -> CredentialReference {
