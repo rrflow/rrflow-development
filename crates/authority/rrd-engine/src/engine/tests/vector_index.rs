@@ -20,6 +20,9 @@ use rrd_contract::{
 use std::collections::BTreeMap;
 
 mod catalogue_reads;
+mod collection_moves;
+mod incremental_generations;
+mod index_identities;
 mod point_reads;
 mod quantization_replay;
 mod turboquant_overlay;
@@ -333,9 +336,12 @@ fn gpu_hnsw_build_evidence_is_public_durable_and_search_accounted() {
             &lease.session_id,
             &lease.token,
             &request,
+            &mutation_context(
+                &id("operation-gpu-index-build"),
+                "request-gpu-index-build",
+                "operation-gpu-index-build",
+            ),
             400,
-            "request-gpu-index-build",
-            "operation-gpu-index-build",
         )
         .unwrap();
     let evidence = built.index.build_evidence.clone().unwrap();
@@ -368,9 +374,12 @@ fn gpu_hnsw_build_evidence_is_public_durable_and_search_accounted() {
             &lease.session_id,
             &lease.token,
             &request,
+            &mutation_context(
+                &id("operation-gpu-index-replay"),
+                "request-gpu-index-replay",
+                "operation-gpu-index-replay",
+            ),
             401,
-            "request-gpu-index-replay",
-            "operation-gpu-index-replay",
         )
         .unwrap();
     assert!(replay.idempotent_replay);
@@ -416,9 +425,12 @@ fn gpu_hnsw_build_evidence_is_public_durable_and_search_accounted() {
             &lease.session_id,
             &lease.token,
             &request,
+            &mutation_context(
+                &id("operation-gpu-index-recovered"),
+                "request-gpu-index-recovered",
+                "operation-gpu-index-recovered",
+            ),
             600,
-            "request-gpu-index-recovered",
-            "operation-gpu-index-recovered",
         )
         .unwrap();
     assert!(recovered.idempotent_replay);
@@ -471,9 +483,12 @@ fn gpu_hnsw_failure_falls_back_and_require_mode_cannot_publish() {
             &lease.session_id,
             &lease.token,
             &fallback_request,
+            &mutation_context(
+                &id("operation-gpu-fallback"),
+                "request-gpu-fallback",
+                "operation-gpu-fallback",
+            ),
             400,
-            "request-gpu-fallback",
-            "operation-gpu-fallback",
         )
         .unwrap();
     let fallback_evidence = fallback.index.build_evidence.unwrap();
@@ -503,9 +518,12 @@ fn gpu_hnsw_failure_falls_back_and_require_mode_cannot_publish() {
             &lease.session_id,
             &lease.token,
             &require_request,
+            &mutation_context(
+                &id("operation-gpu-required-failure"),
+                "request-gpu-required-failure",
+                "operation-gpu-required-failure"
+            ),
             410,
-            "request-gpu-required-failure",
-            "operation-gpu-required-failure",
         )
         .is_err());
     let entries_after_require =
@@ -529,9 +547,12 @@ fn gpu_hnsw_failure_falls_back_and_require_mode_cannot_publish() {
             &lease.session_id,
             &lease.token,
             &corrupt_request,
+            &mutation_context(
+                &id("operation-gpu-corrupt-fallback"),
+                "request-gpu-corrupt-fallback",
+                "operation-gpu-corrupt-fallback",
+            ),
             420,
-            "request-gpu-corrupt-fallback",
-            "operation-gpu-corrupt-fallback",
         )
         .unwrap();
     let corrupt_evidence = corrupt_fallback.index.build_evidence.unwrap();
@@ -622,9 +643,12 @@ fn engine_vector_memory_tiers_are_physical_bounded_and_restart_safe() {
             &lease.session_id,
             &lease.token,
             &index_request(),
+            &mutation_context(
+                &id("operation-residency-index"),
+                "request-residency-index",
+                "operation-residency-index",
+            ),
             400,
-            "request-residency-index",
-            "operation-residency-index",
         )
         .unwrap();
     let require_approximate = search_request(VectorSearchMode::RequireApproximate {
@@ -893,6 +917,7 @@ fn quantization_build_list_activate_retire_update_and_recovery_share_exact_truth
         VectorQuantizationMethod::TurboQuant {
             bits: VectorQuantizationBits::Bits1,
             seed: 91,
+            estimator: rrd_contract::VectorQuantizationEstimator::Mse,
         },
     ];
     let mut built = Vec::new();
@@ -1223,9 +1248,12 @@ fn persistent_retrieval_indexes_and_hybrid_fusion_survive_reopen_and_staleness()
             &lease.session_id,
             &lease.token,
             &index_request(),
+            &mutation_context(
+                &id("operation-index-1"),
+                "request-index-1",
+                "operation-index-1",
+            ),
             400,
-            "request-index-1",
-            "operation-index-1",
         )
         .unwrap();
     assert_eq!(first.index.kind.as_str(), "hnsw");
@@ -1248,9 +1276,12 @@ fn persistent_retrieval_indexes_and_hybrid_fusion_survive_reopen_and_staleness()
             &lease.session_id,
             &lease.token,
             &index_request(),
+            &mutation_context(
+                &id("operation-index-replay"),
+                "request-index-replay",
+                "operation-index-replay",
+            ),
             401,
-            "request-index-replay",
-            "operation-index-replay",
         )
         .unwrap();
     assert_eq!(replay.index, first.index);
@@ -1337,9 +1368,12 @@ fn persistent_retrieval_indexes_and_hybrid_fusion_survive_reopen_and_staleness()
             &lease.session_id,
             &lease.token,
             &index_request(),
+            &mutation_context(
+                &id("operation-index-2"),
+                "request-index-2",
+                "operation-index-2",
+            ),
             800,
-            "request-index-2",
-            "operation-index-2",
         )
         .unwrap();
     assert_eq!(rebuilt.index.generation, 2);
@@ -1373,6 +1407,7 @@ fn persistent_retrieval_indexes_and_hybrid_fusion_survive_reopen_and_staleness()
             &quantization_build(VectorQuantizationMethod::TurboQuant {
                 bits: VectorQuantizationBits::Bits2,
                 seed: 23,
+                estimator: rrd_contract::VectorQuantizationEstimator::Mse,
             }),
             &mutation_context(
                 &id("request-turboquant-build"),
@@ -1387,6 +1422,7 @@ fn persistent_retrieval_indexes_and_hybrid_fusion_survive_reopen_and_staleness()
         VectorQuantizationMethod::TurboQuant {
             bits: VectorQuantizationBits::Bits2,
             seed: 23,
+            estimator: rrd_contract::VectorQuantizationEstimator::Mse,
         }
     );
     assert_eq!(turboquant_build.artifact.generation, 1);
@@ -1642,6 +1678,7 @@ fn application_backup_restores_turboquant_payload_before_instance_activation() {
             &quantization_build(VectorQuantizationMethod::TurboQuant {
                 bits: VectorQuantizationBits::Bits2,
                 seed: 23,
+                estimator: rrd_contract::VectorQuantizationEstimator::Mse,
             }),
             &mutation_context(
                 &id("request-backup-turboquant-build"),
@@ -1898,9 +1935,12 @@ fn collection_filtered_hnsw_overlays_retirement_and_protects_payload_index() {
             &lease.session_id,
             &lease.token,
             &index,
+            &mutation_context(
+                &id("operation-filter-index"),
+                "request-filter-index",
+                "operation-filter-index",
+            ),
             400,
-            "request-filter-index",
-            "operation-filter-index",
         )
         .unwrap();
     let search = SearchVectors {
@@ -1987,9 +2027,12 @@ fn collection_filtered_hnsw_overlays_retirement_and_protects_payload_index() {
             &lease.session_id,
             &lease.token,
             &index,
+            &mutation_context(
+                &id("operation-filter-index-incremental"),
+                "request-filter-index-incremental",
+                "operation-filter-index-incremental",
+            ),
             800,
-            "request-filter-index-incremental",
-            "operation-filter-index-incremental",
         )
         .unwrap();
     assert_eq!(

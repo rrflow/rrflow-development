@@ -191,6 +191,38 @@ final class SdkConformanceTest {
         assertTrue(containsVector(
                 quantized.path("hits"), expected.path("vector_reference").asString()));
 
+        // The graph index and its payload index. The changefeed read below proves
+        // the scope stays readable with an index in it.
+        JsonNode index = vector.path("index");
+        api.call(
+                OperationId.VECTOR_PAYLOAD_INDEX_ENSURE,
+                index.path("payload_index"),
+                options("payload-index-ensure", session, true, Map.of(), null));
+        JsonNode builtIndex = api.call(
+                OperationId.VECTOR_INDEX_ENSURE,
+                index.path("ensure"),
+                options("index-ensure", session, true, Map.of(), null));
+        assertEquals(
+                expected.path("indexed_access_path").asString(),
+                builtIndex.path("index").path("kind").asString());
+        JsonNode indexed = api.call(
+                OperationId.VECTOR_SEARCH,
+                index.path("search"),
+                options("indexed-search", session, false, Map.of(), null));
+        assertEquals(
+                expected.path("indexed_access_path").asString(),
+                indexed.path("access_path").asString());
+        assertTrue(containsVector(
+                indexed.path("hits"), expected.path("indexed_reference").asString()));
+        api.call(
+                OperationId.VECTOR_PAYLOAD_INDEX_ENSURE,
+                index.path("spare_payload_index"),
+                options("payload-index-spare", session, true, Map.of(), null));
+        api.call(
+                OperationId.VECTOR_PAYLOAD_INDEX_DELETE,
+                index.path("delete_payload_index"),
+                options("payload-index-delete", session, true, Map.of(), null));
+
         JsonNode changes = api.call(
                 OperationId.CHANGEFEED_READ,
                 changefeed.path("read"),

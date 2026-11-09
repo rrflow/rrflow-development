@@ -1,7 +1,7 @@
 //! Typed public operations, envelope construction, and outcome correlation.
 
 use crate::error::{contract, decode};
-use crate::generated_operations as generated;
+use crate::operations as generated;
 use crate::{Error, Result, RrdClient, Session};
 use hyper::{Method, StatusCode};
 use rrd_contract::{
@@ -9,11 +9,13 @@ use rrd_contract::{
     AssembleContext, AuditExport, AuditPage, BeginTransaction, BuildVectorQuantizationArtifact,
     BuildVectorQuantizationArtifactResult, CanonicalId, ChangefeedFollowResult, ChangefeedPage,
     CloseTask, CommitReceipt, CommitTransaction, ContextPacket, CorrelationId,
-    CreateInstanceBackup, CreateInstanceBackupResult, DiagnosticSnapshot, EnsureVectorCollection,
-    EnsureVectorCollectionResult, EstateSnapshot, ExecuteQuery, ExportAudit, FollowChangefeed,
-    InstanceBackupCatalogueSnapshot, KnowledgeTreeCatalogue, LaunchPromptFlight,
-    LaunchPromptFlightResult, ListInstanceBackups, ListKnowledgeTrees, ListPromptFlights,
-    ListTasks, ListVectorCollections, ListVectorQuantizationArtifacts,
+    CreateInstanceBackup, CreateInstanceBackupResult, DeleteVectorPayloadIndex,
+    DeleteVectorPayloadIndexResult, DiagnosticSnapshot, EnsureVectorCollection,
+    EnsureVectorCollectionResult, EnsureVectorIndex, EnsureVectorIndexResult,
+    EnsureVectorPayloadIndex, EnsureVectorPayloadIndexResult, EstateSnapshot, ExecuteQuery,
+    ExportAudit, FollowChangefeed, InstanceBackupCatalogueSnapshot, KnowledgeTreeCatalogue,
+    LaunchPromptFlight, LaunchPromptFlightResult, ListInstanceBackups, ListKnowledgeTrees,
+    ListPromptFlights, ListTasks, ListVectorCollections, ListVectorQuantizationArtifacts,
     ListVectorQuantizationArtifactsResult, OpenTask, PreviewTransaction, PromptFlightPage,
     PromptFlightReadResult, QueryResult, ReadAudit, ReadChangefeed, ReadDiagnosticSnapshot,
     ReadEstate, ReadPromptFlight, ReadTask, ReplaceKnowledgeTrees, ReplaceKnowledgeTreesResult,
@@ -74,6 +76,23 @@ impl RequestOptions {
 }
 
 impl RrdClient {
+    /// Discover stored installed jobs without deriving engine identities locally.
+    pub async fn list_attunement_jobs(
+        &self,
+        session: &Session,
+        request: rrd_contract::ListAttunementJobs,
+        options: RequestOptions,
+    ) -> Result<rrd_contract::AttunementJobPage> {
+        request.validate().map_err(contract)?;
+        let result: rrd_contract::AttunementJobPage = self
+            .generated_attunement_call::<generated::AttunementJobList>(session, &request, options)
+            .await?;
+        result
+            .validate_for(&request, &self.instance)
+            .map_err(contract)?;
+        Ok(result)
+    }
+
     /// Request cancellation; the returned state does not imply worker termination.
     pub async fn cancel_attunement(
         &self,
@@ -421,6 +440,63 @@ impl RrdClient {
         self.session_call(
             Method::POST,
             "/v1/vector/collections/ensure",
+            session,
+            request,
+            options,
+            true,
+        )
+        .await
+    }
+
+    /// Builds or advances the graph index of one named dense vector, and
+    /// publishes it for approximate search. The request needs an idempotency
+    /// key: the same key and request return the generation that key built.
+    pub async fn ensure_vector_index(
+        &self,
+        session: &Session,
+        request: EnsureVectorIndex,
+        options: RequestOptions,
+    ) -> Result<EnsureVectorIndexResult> {
+        self.session_call(
+            Method::POST,
+            "/v1/vector/indexes/ensure",
+            session,
+            request,
+            options,
+            true,
+        )
+        .await
+    }
+
+    /// Declares a typed payload index, so a filter can use that property.
+    pub async fn ensure_vector_payload_index(
+        &self,
+        session: &Session,
+        request: EnsureVectorPayloadIndex,
+        options: RequestOptions,
+    ) -> Result<EnsureVectorPayloadIndexResult> {
+        self.session_call(
+            Method::POST,
+            "/v1/vector/payload-indexes/ensure",
+            session,
+            request,
+            options,
+            true,
+        )
+        .await
+    }
+
+    /// Deletes a payload index, refused while an active generation filters on
+    /// it.
+    pub async fn delete_vector_payload_index(
+        &self,
+        session: &Session,
+        request: DeleteVectorPayloadIndex,
+        options: RequestOptions,
+    ) -> Result<DeleteVectorPayloadIndexResult> {
+        self.session_call(
+            Method::POST,
+            "/v1/vector/payload-indexes/delete",
             session,
             request,
             options,

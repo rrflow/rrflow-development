@@ -10,7 +10,7 @@ use hyper::{Method, Request, Uri};
 use hyper_rustls::HttpsConnector;
 use hyper_util::client::legacy::connect::HttpConnector;
 use hyper_util::client::legacy::Client;
-use rrd_contract::{ResponseEnvelope, ResponseOutcome, PROTOCOL, PROTOCOL_VERSION};
+use rrd_contract::{RequestContext, ResponseEnvelope, ResponseOutcome, PROTOCOL, PROTOCOL_VERSION};
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
 
@@ -49,7 +49,7 @@ impl RrdClient {
             let remaining = request_timeout(self.config.request_timeout, deadline_unix_ms)?;
             match tokio::time::timeout(
                 remaining,
-                self.send_once(method.clone(), path, body.clone(), headers),
+                self.send_once(method.clone(), path, body.clone(), headers, None),
             )
             .await
             {
@@ -62,12 +62,31 @@ impl RrdClient {
         Err(last_error.unwrap_or(Error::Timeout))
     }
 
+    /// Catalogue-bound effects get exactly one send. A lost response is uncertain,
+    /// irrespective of the legacy transport's configured retry count.
+    pub(crate) async fn send_operation<O: DeserializeOwned>(
+        &self,
+        path: &str,
+        body: Vec<u8>,
+        headers: &[(&str, &str)],
+        expected: &RequestContext,
+    ) -> Result<ResponseEnvelope<O>> {
+        let remaining = request_timeout(self.config.request_timeout, expected.deadline_unix_ms)?;
+        tokio::time::timeout(
+            remaining,
+            self.send_once(Method::POST, path, body, headers, Some(expected)),
+        )
+        .await
+        .map_err(|_| Error::Timeout)?
+    }
+
     async fn send_once<O: DeserializeOwned>(
         &self,
         method: Method,
         path: &str,
         body: Vec<u8>,
         headers: &[(&str, &str)],
+        expected: Option<&RequestContext>,
     ) -> Result<ResponseEnvelope<O>> {
         let uri: Uri = format!("{}{path}", self.endpoint)
             .parse()
@@ -88,6 +107,28 @@ impl RrdClient {
         }
         .map_err(|error| Error::Transport(error.to_string()))?;
         let status = response.status();
+        if expected.is_some() {
+            let mut media = response.headers().get_all(CONTENT_TYPE).iter();
+            let json = media
+                .next()
+                .and_then(|value| value.to_str().ok())
+                .is_some_and(|value| {
+                    value
+                        .split(';')
+                        .next()
+                        .unwrap_or_default()
+                        .trim()
+                        .eq_ignore_ascii_case("application/json")
+                });
+            if !json || media.next().is_some() {
+                return Err(Error::Decode(
+                    "operation response requires one application/json content type".into(),
+                ));
+            }
+            if status.is_success() && status != hyper::StatusCode::OK {
+                return Err(Error::Decode("operation success requires HTTP 200".into()));
+            }
+        }
         let mut incoming = response.into_body();
         let mut bytes = BytesMut::new();
         while let Some(frame) = incoming.frame().await {
@@ -109,6 +150,11 @@ impl RrdClient {
             });
         }
         let decoded: ResponseEnvelope<O> = serde_json::from_slice(&bytes).map_err(decode)?;
+        if expected.is_some_and(|context| {
+            decoded.request_id != context.request_id || decoded.operation_id != context.operation_id
+        }) {
+            return Err(Error::ResponseIdentityMismatch);
+        }
         if status.is_success() != matches!(decoded.outcome, ResponseOutcome::Ok { .. }) {
             return Err(Error::Decode(
                 "HTTP status and response outcome disagree".into(),

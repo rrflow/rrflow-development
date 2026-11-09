@@ -51,7 +51,7 @@ make paths, policy, storage, and multi-project aggregation ambiguous.
 
 | Identity or term | Meaning | Required relationship | Not allowed to mean |
 |---|---|---|---|
-| **project** | One external software/product repository or explicitly bounded source estate whose development RRFlow governs. | Exactly one project identity is bound by a first-alpha installation. | A filesystem path, Cargo workspace, tenant, database, or operator fleet. |
+| **project** | An explicitly user-bounded unit of software or product work whose selected source may contain one repository or several related repositories. | Exactly one project identity is bound by a first-alpha installation; the selected repository boundaries are part of that binding. | A filesystem path, Cargo workspace, tenant, database, or operator fleet. |
 | **estate** | The complete project-scoped RRFlow semantic boundary: governed knowledge, temporal graph, memories, reasoning state, indexes, evidence, automation, and operations. It is the logical rrflowDB. | Exactly one estate governs exactly one project in the first alpha. | A fleet of projects, a deployment controller, cluster, storage directory, or JSON aggregate. |
 | **RRD instance** | The stable identity of one installed embedded or daemon runtime serving one estate. | Exactly one instance serves one estate; all public faces resolve to its one logical `RrdEngine`. | A process ID, host, endpoint, project path, node, database namespace, or client session. |
 | **environment** | An explicit named project context such as development, test, staging, production, device, or region, captured with source and observation evidence. | Zero or more environment descriptors belong to the project estate; every environment-scoped fact names one explicitly. | A required ancestor of the estate/instance, an inferred directory name, or a hidden selector for another database. |
@@ -70,6 +70,30 @@ Multi-project views do not weaken these cardinalities. Connectome or another
 operator can aggregate several independently authenticated RRD instances as a
 client. No local estate becomes a fleet database, and no instance silently
 opens another project's state.
+
+### User-selected repository boundaries
+
+A repository is a source boundary, not automatically an estate. When setup finds
+a nested repository, it offers the user the choice of excluding it, treating it
+as a separate project with its own estate and RRD instance, or including both
+repositories in one explicitly bounded project and estate. Recommend separate
+projects by default; the user decides. Source membership and any cross-project
+link are distinct choices. A discovery or recommendation has no effect until the
+user accepts an exact installation plan.
+
+In the shared choice, each selected repository retains its own source identity,
+Git inputs and revision evidence inside one project, while the estate keeps one
+engine, authorization boundary, transaction cursor and backup. In the separate
+choice, each project has an independent identity, engine, store, credentials,
+read stamp and lifecycle; cross-project reads require the existing explicitly
+authorized project-link contract and do not become cross-estate transactions.
+No selection silently claims another already-installed estate or merges its data.
+
+The [D-03 and H-06 acceptance](../roadmap/rrflow-1.0/gate-d.md#nested-repository-setup)
+requires this choice on the real RRFlow and Connectome checkouts. It is a target:
+the current installer cannot yet admit the submodule Git metadata or implement
+this choice. The [verified gap](../poam/rrflow-1.0-alpha/poam-006.md#nested-repository-setup-gap)
+records the observed failures.
 
 ## Logical estate model
 

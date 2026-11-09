@@ -1,0 +1,25 @@
+{
+  "recorded_at": "2026-10-31T17:42:39.025114+00:00",
+  "source_commit": "43d18059fa5387fac91125b28a7a10d612965f26",
+  "source_tree": "f27a0aafb78d0bf73e2afafbb03b5a3f6d439842",
+  "source_content_sha256": "bca4dde8d8d71e881a5a757d329c8203c20b968110ef6f29d5267d93d4a4e78b",
+  "dirty": false,
+  "cargo_lock_sha256": "b3afd7f79f5ac0cd5c7e0616812ccc2cdd2cf6e2825cbec6aecbe3c4f776ce89",
+  "command": [
+    "cargo",
+    "build",
+    "--locked",
+    "-p",
+    "rrd-client",
+    "--example",
+    "task_model_call",
+    "--all-features"
+  ],
+  "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+  "build_environment_sha256": "8e52bbda6b4976726b443f3df4611758249e8ee5cc43d19007083c64739a9973",
+  "build_log_sha256": "b2f631e548357db6db995dbe5f9a01a397a0e223799756409e06429df755fab1",
+  "binary": "D:\\projects\\swag\\.swag\\evidence\\20261031\\worker-native-client\\task_model_call.exe",
+  "binary_sha256": "06a8b717ffae2cdce3a2af44eabcccefc7f07e6ec17064fc55b2d1ba5ad1862f",
+  "binary_bytes": 9657344,
+  "qualification": "unqualified engineering SDK example; external build observation, not embedded release attestation"
+}

@@ -26,6 +26,86 @@ const ACTOR: &str = "test:graph-traversal";
 
 type Rows = BTreeMap<String, BTreeMap<String, RuntimeValue>>;
 
+#[test]
+fn mixed_kind_traversal_paths_preserve_component_boundaries_after_reopen() {
+    let root = tempfile::tempdir().unwrap();
+    let store = RrflowKvStore::open(root.path()).unwrap();
+    let mut registry = RuntimeSchemaRegistry::empty(1, "identity traversal");
+    for kind in ["node", "a-b", "a"] {
+        registry
+            .define_record_table(
+                RuntimeType::new(kind).unwrap(),
+                RuntimeLogicalModel::Relational,
+                RuntimeRecordSchema::default(),
+            )
+            .unwrap();
+    }
+    registry
+        .define_relation_table(
+            RuntimeType::new("link").unwrap(),
+            RuntimeRelationSchema {
+                from: BTreeSet::from([RuntimeType::new("node").unwrap()]),
+                to: BTreeSet::from([
+                    RuntimeType::new("a-b").unwrap(),
+                    RuntimeType::new("a").unwrap(),
+                ]),
+                ..RuntimeRelationSchema::default()
+            },
+        )
+        .unwrap();
+    let start = RuntimeRef::new("node", "root").unwrap();
+    let left = RuntimeRef::new("a-b", "c").unwrap();
+    // An event identity holds the one colon an identifier can, so a path has to escape it.
+    let right = RuntimeRef::event(RuntimeType::new("a").unwrap(), 9);
+    let mut mutations = vec![RuntimeMutation::Schema { registry }];
+    mutations.extend(
+        [start.clone(), left.clone(), right.clone()]
+            .into_iter()
+            .map(|reference| RuntimeMutation::Record {
+                record: RuntimeRecord {
+                    reference,
+                    valid_from: 10,
+                    valid_to: None,
+                    properties: RuntimeProperties::new(),
+                },
+            }),
+    );
+    mutations.extend([left, right].into_iter().enumerate().map(|(i, to)| {
+        RuntimeMutation::Relation {
+            relation: RuntimeRelation {
+                reference: RuntimeRef::new("link", format!("edge-{i}")).unwrap(),
+                from: start.clone(),
+                to,
+                valid_from: 10,
+                valid_to: None,
+                properties: RuntimeProperties::new(),
+            },
+        }
+    }));
+    commit(&store, 1, mutations);
+    let query = "FROM traverse:link START node:root DIRECTION OUTGOING DEPTH 1 AT VALID 100 KNOWN HEAD PROJECT node_kind, node_id, path";
+    let evaluate = |store: &RrflowKvStore| {
+        let read = store.runtime().read_stamp(&scope()).unwrap();
+        rows(&run(store, &read, query))
+            .into_values()
+            .map(|row| row["path"].clone())
+            .collect::<Vec<_>>()
+    };
+    let paths = evaluate(&store);
+    assert_eq!(paths.len(), 2);
+    assert!(paths.contains(&RuntimeValue::List(vec![
+        RuntimeValue::String("node:root".into()),
+        RuntimeValue::String("a-b:c".into())
+    ])));
+    assert!(paths.contains(&RuntimeValue::List(vec![
+        RuntimeValue::String("node:root".into()),
+        RuntimeValue::String("a:cursor%3A9".into())
+    ])));
+    drop(store);
+    let store = RrflowKvStore::open(root.path()).unwrap();
+    assert_eq!(evaluate(&store), paths);
+}
+
 fn scope() -> ScopeId {
     ScopeId::new("project:graph-traversal").unwrap()
 }
@@ -330,11 +410,12 @@ fn oracle_rows(
             ]);
             rows.insert(
                 format!(
-                    "traversal:{relation_kind}:{}:{}:{}:{}:{}",
+                    "traversal:{relation_kind}:{}:{}:{}:{}:{}:{}",
                     start.kind,
                     start.id,
                     depth + 1,
                     relation.reference.id,
+                    next.kind,
                     next.id
                 ),
                 values,
@@ -371,6 +452,50 @@ fn rows(execution: &QueryExecution) -> Rows {
         .flat_map(|batch| &batch.rows)
         .map(|row| (row.identity.clone(), row.values.clone()))
         .collect()
+}
+
+#[test]
+fn quoted_digest_start_reaches_the_persisted_graph_after_reopen() {
+    let root = tempfile::tempdir().unwrap();
+    let start = "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
+    let query = format!("FROM traverse:link START node:\"{start}\" DIRECTION OUTGOING DEPTH 1 AT VALID 10 KNOWN HEAD PROJECT node_id, depth");
+    {
+        let engine = RrflowKvStore::open(root.path()).unwrap();
+        commit(
+            &engine,
+            1,
+            vec![
+                RuntimeMutation::Schema { registry: schema() },
+                record(start, None),
+                record("child", None),
+                RuntimeMutation::Relation {
+                    relation: RuntimeRelation {
+                        reference: RuntimeRef::new("link", "edge").unwrap(),
+                        from: node(start),
+                        to: node("child"),
+                        valid_from: 0,
+                        valid_to: None,
+                        properties: RuntimeProperties::new(),
+                    },
+                },
+            ],
+        );
+        let read = engine.runtime().read_stamp(&scope()).unwrap();
+        let values = rows(&run(&engine, &read, &query));
+        assert_eq!(values.len(), 1);
+        assert_eq!(
+            values.values().next().unwrap()["node_id"],
+            RuntimeValue::String("child".into())
+        );
+    }
+    let reopened = RrflowKvStore::open(root.path()).unwrap();
+    let read = reopened.runtime().read_stamp(&scope()).unwrap();
+    let values = rows(&run(&reopened, &read, &query));
+    assert_eq!(values.len(), 1);
+    assert_eq!(
+        values.values().next().unwrap()["node_id"],
+        RuntimeValue::String("child".into())
+    );
 }
 
 fn exercise<E: StorageEngine>(engine: &E, seed: u64) -> Vec<QueryExecution> {

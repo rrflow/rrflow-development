@@ -5,8 +5,8 @@ use rrd_contract::{
 };
 use rrd_core::{
     RuntimeCommit, RuntimeEventSchema, RuntimeLogicalModel, RuntimeMutation, RuntimeProperties,
-    RuntimePropertySchema, RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry,
-    RuntimeType, RuntimeValue, RuntimeValueType, ScopeId,
+    RuntimePropertySchema, RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeRelationSchema,
+    RuntimeSchemaRegistry, RuntimeType, RuntimeValue, RuntimeValueType, ScopeId,
 };
 use rrd_engine::RrdEngine;
 use rrd_security::{
@@ -106,6 +106,61 @@ impl Drop for RunningServerProcess {
         }
         let _ = child.kill();
         let _ = child.wait();
+    }
+}
+
+fn start_installed_process(
+    server_binary: &Path,
+    project: &Path,
+    executable: &Path,
+    temporary: &Path,
+    name: &str,
+) -> RunningServerProcess {
+    let ready = temporary.join(format!("{name}.READY"));
+    let shutdown_request = temporary.join(format!("{name}.SHUTDOWN.REQUEST"));
+    let shutdown_complete = temporary.join(format!("{name}.SHUTDOWN.COMPLETE"));
+    let mut child = Command::new(server_binary)
+        .args([
+            "--project",
+            project.to_str().unwrap(),
+            "--distribution-executable",
+            executable.to_str().unwrap(),
+            "--bind",
+            "127.0.0.1:0",
+            "--ready-file",
+            ready.to_str().unwrap(),
+            "--shutdown-request-file",
+            shutdown_request.to_str().unwrap(),
+            "--shutdown-complete-file",
+            shutdown_complete.to_str().unwrap(),
+        ])
+        .spawn()
+        .unwrap();
+    let deadline = Instant::now() + INTEGRATION_IO_TIMEOUT;
+    while !ready.is_file() {
+        if let Some(status) = child.try_wait().unwrap() {
+            panic!("rrd-server child exited before readiness: {status}");
+        }
+        if Instant::now() >= deadline {
+            let _ = child.kill();
+            let _ = child.wait();
+            panic!("rrd-server child did not publish readiness");
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    let readiness: Value = serde_json::from_slice(&std::fs::read(&ready).unwrap()).unwrap();
+    let address = readiness["url"]
+        .as_str()
+        .unwrap()
+        .strip_prefix("http://")
+        .unwrap()
+        .parse()
+        .unwrap();
+    RunningServerProcess {
+        address,
+        child: Some(child),
+        shutdown_request,
+        shutdown_complete,
     }
 }
 
@@ -343,23 +398,26 @@ fn authenticated_storage_diagnostic_trace_correlates_store_without_secrets() {
 
     const CHILD: &str = "RRFLOW_TEST_DIAGNOSTIC_TRACE_CHILD";
     if std::env::var_os(CHILD).is_none() {
-        let result = Command::new(std::env::current_exe().unwrap())
-            .args([
-                "--exact",
-                "authenticated_storage_diagnostic_trace_correlates_store_without_secrets",
-                "--nocapture",
-            ])
-            .env(CHILD, "1")
-            .output()
-            .unwrap();
-        assert!(
-            result.status.success(),
-            "isolated diagnostic trace test failed: stdout={} stderr={}",
-            String::from_utf8_lossy(&result.stdout),
-            String::from_utf8_lossy(&result.stderr)
-        );
+        for mode in ["enabled", "disabled"] {
+            let result = Command::new(std::env::current_exe().unwrap())
+                .args([
+                    "--exact",
+                    "authenticated_storage_diagnostic_trace_correlates_store_without_secrets",
+                    "--nocapture",
+                ])
+                .env(CHILD, mode)
+                .output()
+                .unwrap();
+            assert!(
+                result.status.success(),
+                "isolated diagnostic trace test ({mode}) failed: stdout={} stderr={}",
+                String::from_utf8_lossy(&result.stdout),
+                String::from_utf8_lossy(&result.stderr)
+            );
+        }
         return;
     }
+    let timing_enabled = std::env::var(CHILD).unwrap() == "enabled";
 
     #[derive(Clone)]
     struct Capture(Arc<Mutex<Vec<u8>>>);
@@ -374,11 +432,14 @@ fn authenticated_storage_diagnostic_trace_correlates_store_without_secrets() {
     }
     let output = Arc::new(Mutex::new(Vec::new()));
     let writer_output = output.clone();
+    let filter = if timing_enabled {
+        "rrd_store::diagnostic=debug,rrd_server::diagnostic=debug,rrd_engine::transaction_diagnostic=debug"
+    } else {
+        "rrd_store::diagnostic=debug,rrd_server::diagnostic=debug"
+    };
     let subscriber = tracing_subscriber::fmt()
         .json()
-        .with_env_filter(tracing_subscriber::EnvFilter::new(
-            "rrd_store::diagnostic=debug,rrd_server::diagnostic=debug",
-        ))
+        .with_env_filter(tracing_subscriber::EnvFilter::new(filter))
         .with_writer(move || Capture(writer_output.clone()))
         .finish();
     tracing::subscriber::set_global_default(subscriber).unwrap();
@@ -406,6 +467,7 @@ fn authenticated_storage_diagnostic_trace_correlates_store_without_secrets() {
         grants: [
             SecurityAction::SessionCreate,
             SecurityAction::DiagnosticsRead,
+            SecurityAction::TransactionBegin,
         ]
         .into_iter()
         .map(|action| ResourceGrant {
@@ -457,17 +519,87 @@ fn authenticated_storage_diagnostic_trace_correlates_store_without_secrets() {
         Some((session, token)),
     );
     assert_eq!(status, 200, "{response}");
+    let mut begin = envelope(
+        json!({"scope": "claims", "timeout_ms": 5000}),
+        Some("private-begin-key"),
+        None,
+    );
+    begin["context"]["request_id"] = json!("private-begin-sentinel");
+    let (status, created_tx) = post(&server, "/v1/transactions", &begin, Some((session, token)));
+    assert_eq!(status, 200, "{created_tx}");
+    let (status, replayed_tx) = post(&server, "/v1/transactions", &begin, Some((session, token)));
+    assert_eq!(status, 200, "{replayed_tx}");
+    assert_eq!(payload(&created_tx), payload(&replayed_tx));
+    let mut second_begin = begin.clone();
+    second_begin["context"]["idempotency_key"] = json!("second-begin");
+    let (status, second) = post(
+        &server,
+        "/v1/transactions",
+        &second_begin,
+        Some((session, token)),
+    );
+    assert_eq!(status, 200, "{second}");
+    let mut over_quota = begin.clone();
+    over_quota["context"]["idempotency_key"] = json!("third-begin");
+    over_quota["context"]["request_id"] = json!("private-error-sentinel");
+    let (status, rejection) = post(
+        &server,
+        "/v1/transactions",
+        &over_quota,
+        Some((session, token)),
+    );
+    assert_eq!(status, 429, "{rejection}");
     server.stop();
 
     let bytes = output.lock().unwrap().clone();
     let raw = std::str::from_utf8(&bytes).unwrap();
     assert!(!raw.contains("private-request-sentinel"));
     assert!(!raw.contains("trace-test-api-key"));
+    assert!(!raw.contains("private-begin-sentinel"));
+    assert!(!raw.contains("private-begin-key"));
+    assert!(!raw.contains("private-error-sentinel"));
     assert!(!raw.contains(token));
     let events: Vec<Value> = raw
         .lines()
         .map(|line| serde_json::from_str(line).unwrap())
         .collect();
+    let begin_events: Vec<_> = events
+        .iter()
+        .filter(|event| event["target"] == "rrd_engine::transaction_diagnostic")
+        .collect();
+    if !timing_enabled {
+        assert!(begin_events.is_empty());
+    } else {
+        for outcome in ["created", "replayed"] {
+            let event = begin_events
+                .iter()
+                .find(|event| event["fields"]["outcome"] == outcome)
+                .expect("HTTP transaction begin must emit its actual outcome");
+            assert_eq!(
+                event["fields"]["request_sha256"],
+                rrd_core::digest::sha256_hex(b"private-begin-sentinel")
+            );
+            for field in [
+                "validation_ns",
+                "admission_ns",
+                "authentication_ns",
+                "replay_ns",
+                "snapshot_ns",
+                "publication_ns",
+                "total_ns",
+            ] {
+                assert!(event["fields"][field].is_u64(), "missing {field}: {event}");
+            }
+        }
+        let rejection = begin_events
+            .iter()
+            .find(|event| event["fields"]["outcome"] == "error")
+            .expect("quota rejection must emit an error timing");
+        assert_eq!(
+            rejection["fields"]["request_sha256"],
+            rrd_core::digest::sha256_hex(b"private-error-sentinel")
+        );
+    }
     let event = events
         .iter()
         .find(|event| event["target"] == "rrd_store::diagnostic")
@@ -611,6 +743,16 @@ fn extend_installed_schema_for_deployment_corpus(root: &Path, scope: &str) {
                     RuntimePropertySchema::required(RuntimeValueType::String),
                 )]),
                 ..RuntimeRecordSchema::default()
+            },
+        )
+        .unwrap();
+    registry
+        .define_relation_table(
+            RuntimeType::new("deployment_link").unwrap(),
+            RuntimeRelationSchema {
+                from: BTreeSet::from([RuntimeType::new("document").unwrap()]),
+                to: BTreeSet::from([RuntimeType::new("document").unwrap()]),
+                ..RuntimeRelationSchema::default()
             },
         )
         .unwrap();
@@ -900,6 +1042,37 @@ fn initialized_security_authority_binds_sessions_and_denies_ungranted_routes() {
     let encoded = serde_json::to_string(records).unwrap();
     assert!(!encoded.contains("local-api-key"));
     assert!(!encoded.contains("wrong"));
+
+    // Authorization adds later audit events. Compare only the stable prefix
+    // already observed, not the moving end of the journal.
+    for limit in 1..=14 {
+        let request = envelope(json!({"after_sequence": 0, "limit": limit}), None, None);
+        let (status, page) = post(&server, "/v1/audit/read", &request, Some((session, token)));
+        assert_eq!(status, 200, "limit {limit}: {page}");
+        let page = payload(&page);
+        assert_eq!(page["records"].as_array().unwrap(), &records[..limit]);
+        let (status, export) = post(
+            &server,
+            "/v1/audit/export",
+            &request,
+            Some((session, token)),
+        );
+        assert_eq!(status, 200, "limit {limit}: {export}");
+        let export = payload(&export);
+        let lines = export["json_lines"].as_str().unwrap();
+        let exported: Vec<serde_json::Value> = lines
+            .lines()
+            .map(|line| serde_json::from_str(line).unwrap())
+            .collect();
+        assert_eq!(exported, records[..limit]);
+        assert_eq!(export["through_sequence"], page["through_sequence"]);
+        assert_eq!(export["chain_anchor_sha256"], page["chain_anchor_sha256"]);
+        assert_eq!(export["chain_head_sha256"], page["chain_head_sha256"]);
+        assert_eq!(
+            export["content_sha256"],
+            rrd_core::digest::sha256_hex(lines.as_bytes())
+        );
+    }
 
     let export = envelope(json!({"after_sequence": 0, "limit": 64}), None, None);
     let (status, exported) = post(&server, "/v1/audit/export", &export, Some((session, token)));
@@ -1361,6 +1534,7 @@ fn bounded_changefeed_follow_wakes_on_a_commit_and_times_out_at_the_same_cursor(
             "query": "FROM record:document AT VALID 100 KNOWN HEAD PROJECT title",
             "parameters": {},
             "after_cursor": 3,
+            "result_identity_version": rrd_core::result_identity::RESULT_IDENTITY_VERSION,
             "budget": {
                 "max_storage_keys": 100,
                 "max_rows": 10,
@@ -1373,6 +1547,20 @@ fn bounded_changefeed_follow_wakes_on_a_commit_and_times_out_at_the_same_cursor(
         None,
         None,
     );
+    let mut old_live = live.clone();
+    old_live["payload"]
+        .as_object_mut()
+        .unwrap()
+        .remove("result_identity_version");
+    old_live["payload"]["wait_timeout_ms"] = json!(0);
+    let (status, refused) = post(
+        &server,
+        "/v1/query/live/poll",
+        &old_live,
+        Some((&session_id, &token)),
+    );
+    assert_eq!(status, 400, "{refused}");
+    assert!(refused.to_string().contains("result identity version"));
     let address = server.address;
     let live_body = serde_json::to_vec(&live).unwrap();
     let live_session = session_id.clone();
@@ -1444,6 +1632,7 @@ fn bounded_changefeed_follow_wakes_on_a_commit_and_times_out_at_the_same_cursor(
             "query": "FROM record:document AT VALID 100 KNOWN HEAD PROJECT title",
             "parameters": {},
             "after_cursor": 4,
+            "result_identity_version": rrd_core::result_identity::RESULT_IDENTITY_VERSION,
             "budget": {
                 "max_storage_keys": 100,
                 "max_rows": 10,
@@ -2096,12 +2285,12 @@ fn data_transaction_atomically_commits_every_public_model_and_replays_after_rest
     for (query, identity, expected) in [
         (
             "FROM series:series AT VALID 100 KNOWN HEAD WHERE series_id = \"latency\" PROJECT observed_at, value",
-            "series:series:latency:100:latency-100",
+            "series:sample:latency-100",
             ("value", "unsigned", json!(17)),
         ),
         (
             "FROM series:series AT VALID 100 KNOWN HEAD WHERE observed_at >= 100 AND series_id != \"other\" PROJECT observed_at",
-            "series:series:latency:100:latency-100",
+            "series:sample:latency-100",
             ("observed_at", "unsigned", json!(100)),
         ),
         (
@@ -2111,7 +2300,7 @@ fn data_transaction_atomically_commits_every_public_model_and_replays_after_rest
         ),
         (
             "FROM traverse:linked START document:alpha DIRECTION OUTGOING DEPTH 3 AT VALID 100 KNOWN HEAD PROJECT node_id, depth, path",
-            "traversal:linked:document:alpha:1:alpha-beta:beta",
+            "traversal:linked:document:alpha:1:alpha-beta:document:beta",
             ("node_id", "string", json!("beta")),
         ),
     ] {
@@ -2147,6 +2336,39 @@ fn data_transaction_atomically_commits_every_public_model_and_replays_after_rest
             expected.2
         );
     }
+    let select_relationship = envelope(
+        json!({
+            "scope": "instance:socket-test",
+            "query": "SELECT left.id, right.to_id FROM record:document JOIN relation:linked ON id = from_id AT VALID 100 KNOWN HEAD WHERE left.id = \"alpha\"",
+            "parameters": {},
+            "budget": {
+                "max_storage_keys": 100,
+                "max_rows": 10,
+                "max_output_bytes": 4096,
+                "max_batch_rows": 10
+            }
+        }),
+        None,
+        None,
+    );
+    let (status, denied) = post(&server, "/v1/query", &select_relationship, None);
+    assert_eq!(status, 401, "{denied}");
+    let (status, selected) = post(
+        &server,
+        "/v1/query",
+        &select_relationship,
+        Some((&session_id, &token)),
+    );
+    assert_eq!(status, 200, "{selected}");
+    let selected = payload(&selected);
+    assert_eq!(selected["known_at_cursor"], 11);
+    assert_eq!(selected["rows"].as_array().unwrap().len(), 1);
+    assert_eq!(selected["rows"][0]["values"]["left.id"]["value"], "alpha");
+    assert_eq!(
+        selected["rows"][0]["values"]["right.to_id"]["value"],
+        "beta"
+    );
+    let selected_rows = selected["rows"].clone();
     let live_query = envelope(
         json!({
             "scope": "instance:socket-test",
@@ -2176,10 +2398,7 @@ fn data_transaction_atomically_commits_every_public_model_and_replays_after_rest
     let live = payload(&live);
     assert_eq!(live["from_cursor"], 0);
     assert_eq!(live["through_cursor"], 11);
-    assert_eq!(
-        live["added"][0]["identity"],
-        "series:series:latency:100:latency-100"
-    );
+    assert_eq!(live["added"][0]["identity"], "series:sample:latency-100");
     assert!(live["updated"].as_array().unwrap().is_empty());
     assert!(live["removed"].as_array().unwrap().is_empty());
     let ensure_index = envelope(
@@ -2359,6 +2578,15 @@ fn data_transaction_atomically_commits_every_public_model_and_replays_after_rest
     server.stop();
 
     let server = start(&root);
+    let (status, selected_after_restart) = post(
+        &server,
+        "/v1/query",
+        &select_relationship,
+        Some((&session_id, &token)),
+    );
+    assert_eq!(status, 200, "{selected_after_restart}");
+    assert_eq!(payload(&selected_after_restart)["known_at_cursor"], 11);
+    assert_eq!(payload(&selected_after_restart)["rows"], selected_rows);
     let (status, replayed) = post(&server, &path, &commit, Some((&session_id, &token)));
     assert_eq!(status, 200, "{replayed}");
     assert_eq!(payload(&replayed)["idempotent_replay"], true);
@@ -2572,52 +2800,13 @@ fn standalone_daemon_process_passes_the_shared_corpus_and_exclusively_owns_its_r
         value
     };
 
-    let ready = temporary.path().join("RRD.READY");
-    let shutdown_request = temporary.path().join("SHUTDOWN.REQUEST");
-    let shutdown_complete = temporary.path().join("SHUTDOWN.COMPLETE");
-    let mut child = Command::new(&server_binary)
-        .args([
-            "--project",
-            project.to_str().unwrap(),
-            "--distribution-executable",
-            executable.to_str().unwrap(),
-            "--bind",
-            "127.0.0.1:0",
-            "--ready-file",
-            ready.to_str().unwrap(),
-            "--shutdown-request-file",
-            shutdown_request.to_str().unwrap(),
-            "--shutdown-complete-file",
-            shutdown_complete.to_str().unwrap(),
-        ])
-        .spawn()
-        .unwrap();
-    let deadline = Instant::now() + INTEGRATION_IO_TIMEOUT;
-    while !ready.is_file() {
-        if let Some(status) = child.try_wait().unwrap() {
-            panic!("rrd-server child exited before readiness: {status}");
-        }
-        if Instant::now() >= deadline {
-            let _ = child.kill();
-            let _ = child.wait();
-            panic!("rrd-server child did not publish readiness");
-        }
-        std::thread::sleep(Duration::from_millis(10));
-    }
-    let readiness: Value = serde_json::from_slice(&std::fs::read(&ready).unwrap()).unwrap();
-    let address = readiness["url"]
-        .as_str()
-        .unwrap()
-        .strip_prefix("http://")
-        .unwrap()
-        .parse()
-        .unwrap();
-    let process = RunningServerProcess {
-        address,
-        child: Some(child),
-        shutdown_request,
-        shutdown_complete,
-    };
+    let process = start_installed_process(
+        &server_binary,
+        &project,
+        &executable,
+        temporary.path(),
+        "first",
+    );
 
     assert!(RrflowKvStore::open(&root).is_err());
     let (status, capabilities) = http(process.address, "GET", "/v1/capabilities", &[], &[]);
@@ -2688,10 +2877,21 @@ fn standalone_daemon_process_passes_the_shared_corpus_and_exclusively_owns_its_r
         .as_str()
         .unwrap()
         .to_owned();
-    let mutations = deployment_mutations()
+    let mut mutations = deployment_mutations()
         .into_iter()
         .skip(1)
         .collect::<Vec<_>>();
+    mutations.push(
+        serde_json::from_value(json!({
+            "mutation": "put_relation",
+            "reference": {"kind": "deployment_link", "id": "alpha-gamma"},
+            "from": {"kind": "document", "id": "alpha"},
+            "to": {"kind": "document", "id": "gamma"},
+            "valid_from": 100,
+            "properties": {}
+        }))
+        .unwrap(),
+    );
     let operation_sha256 = transaction_operation_sha256(&mutations);
     let commit = installed_envelope(
         json!({
@@ -2715,8 +2915,8 @@ fn standalone_daemon_process_passes_the_shared_corpus_and_exclusively_owns_its_r
     );
     assert_eq!(status, 200, "{committed}");
     assert_eq!(payload(&committed)["first_runtime_cursor"], 4);
-    assert_eq!(payload(&committed)["last_runtime_cursor"], 5);
-    assert_eq!(payload(&committed)["mutation_count"], 2);
+    assert_eq!(payload(&committed)["last_runtime_cursor"], 6);
+    assert_eq!(payload(&committed)["mutation_count"], 3);
 
     let corpus = deployment_corpus();
     let query = installed_envelope(
@@ -2780,9 +2980,75 @@ fn standalone_daemon_process_passes_the_shared_corpus_and_exclusively_owns_its_r
         ReadAccessPath::RecordVersions,
     );
 
+    let relationship_query = installed_envelope(
+        json!({
+            "scope": scope,
+            "query": "SELECT left.id, right.to_id FROM record:document JOIN relation:deployment_link ON id = from_id AT VALID 100 KNOWN HEAD WHERE left.id = \"alpha\"",
+            "parameters": {},
+            "budget": {
+                "max_storage_keys": 100,
+                "max_rows": 10,
+                "max_output_bytes": 16384,
+                "max_batch_rows": 10
+            }
+        }),
+        None,
+        None,
+    );
+    let (status, relationship) = http(
+        process.address,
+        "POST",
+        "/v1/query",
+        &[
+            ("Content-Type", "application/json"),
+            ("X-RRD-Session", session),
+            ("Authorization", &authorization),
+        ],
+        &serde_json::to_vec(&relationship_query).unwrap(),
+    );
+    assert_eq!(status, 200, "{relationship}");
+    let relationship = payload(&relationship);
+    assert_eq!(relationship["known_at_cursor"], 6);
+    assert_eq!(relationship["rows"].as_array().unwrap().len(), 1);
+    assert_eq!(
+        relationship["rows"][0]["values"]["left.id"]["value"],
+        "alpha"
+    );
+    assert_eq!(
+        relationship["rows"][0]["values"]["right.to_id"]["value"],
+        "gamma"
+    );
+    let expected_relationship_rows = relationship["rows"].clone();
+
     process.stop();
     let reopened = RrflowKvStore::open(&root).unwrap();
-    assert_eq!(reopened.runtime().cursor().unwrap(), 5);
+    assert_eq!(reopened.runtime().cursor().unwrap(), 6);
+    drop(reopened);
+    let process = start_installed_process(
+        &server_binary,
+        &project,
+        &executable,
+        temporary.path(),
+        "restarted",
+    );
+    let (status, restored_relationship) = http(
+        process.address,
+        "POST",
+        "/v1/query",
+        &[
+            ("Content-Type", "application/json"),
+            ("X-RRD-Session", session),
+            ("Authorization", &authorization),
+        ],
+        &serde_json::to_vec(&relationship_query).unwrap(),
+    );
+    assert_eq!(status, 200, "{restored_relationship}");
+    assert_eq!(payload(&restored_relationship)["known_at_cursor"], 6);
+    assert_eq!(
+        payload(&restored_relationship)["rows"],
+        expected_relationship_rows
+    );
+    process.stop();
 }
 
 #[test]

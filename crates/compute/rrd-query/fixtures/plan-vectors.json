@@ -4,6 +4,7 @@
     "plan": {
       "logical": {
         "contract_version": 1,
+        "result_identity_version": 2,
         "read": {
           "contract_version": 1,
           "scope": "instance:golden",
@@ -112,7 +113,7 @@
           }
         ]
       },
-      "digest": "665d7df9e6523b16ac6efa09fb37a4f6d8628f8f708999b4d996fefd9d40d908"
+      "digest": "d9a77d3acfba0c85f73c1aa92caeb20262ffe0da0d6e7c2234fdcf84529965fa"
     }
   },
   {
@@ -120,6 +121,7 @@
     "plan": {
       "logical": {
         "contract_version": 1,
+        "result_identity_version": 2,
         "read": {
           "contract_version": 1,
           "scope": "instance:golden",
@@ -257,7 +259,7 @@
           }
         ]
       },
-      "digest": "aee1390cddabb5df241c75c1be74a4c04d0dc6148d690c883a017c5049686dd4"
+      "digest": "97e19ec16d49faa57fa633fd3cf89d9c9ab955b7b16c392ac95b9591cb428294"
     }
   },
   {
@@ -265,6 +267,7 @@
     "plan": {
       "logical": {
         "contract_version": 1,
+        "result_identity_version": 2,
         "read": {
           "contract_version": 1,
           "scope": "instance:golden",
@@ -407,7 +410,7 @@
           }
         ]
       },
-      "digest": "51e0bb6bf5a40bbbb46dd71a1f4119afd4a9c99e5687c7aea45fa4a112b8822e"
+      "digest": "c84240d8653d0f05cee5bc5e9c9cd9c517aff13dea6cc0229c63377718bcd471"
     }
   }
 ]

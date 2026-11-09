@@ -1,0 +1,19 @@
+{
+  "at": "2026-10-30T19:35:00.489135+00:00",
+  "observations": {
+    "health": {
+      "status": 200
+    },
+    "v1/models": {
+      "status": 200,
+      "aliases": [
+        "swag-qwen3-coder-intent-20261028"
+      ]
+    },
+    "metrics": {
+      "status": 200,
+      "idle": true
+    }
+  },
+  "providerDispatchRequested": false
+}

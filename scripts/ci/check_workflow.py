@@ -112,8 +112,58 @@ def job_blocks(workflow: str) -> dict[str, str]:
     }
 
 
+def verify_linux_arm64_ci(caller: str, reusable: str) -> None:
+    """Require a native ARM64 result without routing fork code to private hosts."""
+    routing = (
+        "      linux-arm64-runner: >-\n"
+        "        ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)\n"
+        "            && vars.CI_SELF_HOSTED_ENABLED == 'true'\n"
+        "            && (vars.CI_LINUX_ARM64_RUNNER || '[\"ubuntu-24.04-arm\"]')\n"
+        "            || '[\"ubuntu-24.04-arm\"]' }}\n"
+    )
+    require(caller.count(routing) == 1, "native ARM64 routing or fork isolation is missing")
+    require("      linux-arm64-runner:\n" in reusable,
+            "reusable CI must require its ARM64 runner input")
+    jobs = job_blocks(reusable)
+    require("native-arm64" in jobs, "native ARM64 qualification job is missing")
+    arm = jobs["native-arm64"]
+    for required in [
+        "runs-on: ${{ fromJSON(inputs.linux-arm64-runner) }}",
+        'test "$RUNNER_OS" = Linux',
+        'test "$RUNNER_ARCH" = ARM64',
+        'test "$(uname -m)" = aarch64',
+        "host: aarch64-unknown-linux-gnu",
+        "cargo test -p rrd-lsm --test filesystem --test manifest --locked",
+        "cargo test -p rrd-store --test installed_lifecycle --test semantic_commit_atomicity --locked",
+        "cargo test -p rrd-attunement --locked",
+        "cargo test -p rrflow-cli --test installed_lifecycle --locked -- --nocapture",
+    ]:
+        require(arm.count(required) == 1, f"native ARM64 qualification missing: {required}")
+    require("continue-on-error:" not in arm and not re.search(r"(?m)^\s+if:", arm),
+            "native ARM64 qualification cannot be skipped or ignored")
+    gate = jobs.get("ci-gate", "")
+    require("      - native-arm64\n" in gate
+            and "ARM64_RESULT: ${{ needs.native-arm64.result }}" in gate
+            and 'test "$ARM64_RESULT" = success' in gate,
+            "candidate gate must require the native ARM64 result")
+    require(reusable.count("python3 scripts/ci/test_linux_arm64_policy.py") == 1,
+            "native ARM64 policy regressions must run exactly once")
+
+
 def verify_native_sample_worker_ci(reopen: str, verify: str) -> None:
     """Keep bounded failure, Windows lifecycle and Linux image oracles required."""
+    marker = "      - name: Require installed stale-snapshot conflict safety\n"
+    require(reopen.count(marker) == 1, "installed conflict safety CI step must occur once")
+    block = reopen.split(marker, 1)[1].split("      - name:", 1)[0]
+    required = (
+        "        timeout-minutes: 5\n"
+        "        shell: bash\n"
+        "        run: |\n"
+        "          set -euo pipefail\n"
+        "          cargo test -p rrflow-cli --test installed_reopen --release --locked -- --ignored --list | grep -Fx 'sustained::installed_disjoint_writes_from_one_stamp_conflict_without_partial_effect: test'\n"
+        "          cargo test -p rrflow-cli --test installed_reopen --release --locked -- sustained::installed_disjoint_writes_from_one_stamp_conflict_without_partial_effect --exact --ignored --nocapture\n"
+    )
+    require(block == required, "installed conflict safety step must retain its exact matrix-wide list check, timeout and command")
     marker = "      - name: Require bounded native sampler failure\n"
     require(reopen.count(marker) == 1, "bounded native sampler failure CI step must occur once")
     block = reopen.split(marker, 1)[1].split("      - name:", 1)[0]
@@ -234,14 +284,104 @@ def verify_macos_reopen_cache_warm(workflow: str, reopen: str) -> None:
             "shared-key: installed-reopen-${{ matrix.os }}" in reopen and
             "cache-on-failure: false" in job and "cache-on-failure: false" in reopen,
             "cache warmer key or failure behavior differs from reopen")
+    isolation = """      - name: Isolate macOS reopen toolchain
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          toolchain_home="${RUNNER_TEMP}/rrflow-reopen-rustup"
+          test ! -e "$toolchain_home"
+          printf 'RUSTUP_HOME=%s\\n' "$toolchain_home" >> "$GITHUB_ENV"
+"""
+    for surface in (job, reopen):
+        require(surface.count(isolation) == 1,
+                "macOS reopen toolchain isolation must match exactly")
+        require(surface.index(isolation) < surface.index("- uses: dtolnay/rust-toolchain@") <
+                surface.index("- uses: Swatinem/rust-cache@"),
+                "toolchain isolation must precede installation and cache lookup")
     actions = lambda text: re.findall(r"(?m)^\s*- uses: ([^\s#]+)", text)
     require(actions(job) == actions(reopen)[:3], "cache warmer actions differ from reopen")
     expected = "cargo test -p rrflow-cli --test installed_reopen --release --locked --no-run"
-    require(re.findall(r"(?m)^\s*(?:-\s*)?run: (.+)$", job) == [expected] and
+    require(re.findall(r"(?m)^\s*(?:-\s*)?run: (.+)$", job) == ["|", expected] and
             f"run: {expected}" in reopen, "cache warmer build differs from reopen")
     for _, body in checkout_steps(workflow):
         require(not any(re.match(r"(?:ref|repository|path)\s*:", item) for item in body),
                 "cache warmer must use the triggering main revision")
+
+
+def verify_windows_reopen_cache_warm(workflow: str, reopen: str) -> None:
+    """Warm only trusted main with the Windows candidate's dependency inputs."""
+    require(re.findall(r"(?m)^([A-Za-z][A-Za-z0-9_-]*):", workflow) ==
+            ["name", "on", "permissions", "concurrency", "env", "jobs"],
+            "Windows cache warmer has unexpected or duplicate top-level settings")
+    trigger = re.search(r"(?ms)^on:\n(.*?)(?=^\S)", workflow)
+    require(trigger is not None and trigger.group(1) == "  workflow_dispatch:\n\n",
+            "Windows cache warmer must be manual-only")
+    permissions = re.search(r"(?ms)^permissions:\n(.*?)(?=^\S)", workflow)
+    require(permissions is not None and permissions.group(1) == "  contents: read\n\n",
+            "Windows cache warmer permissions must be read-only")
+    require("concurrency:\n  group: trusted-windows-reopen-cache-warm\n"
+            "  cancel-in-progress: false\n\n" in workflow,
+            "Windows cache warming must not cancel another warm run")
+    jobs = job_blocks(workflow)
+    job_names = re.findall(r"(?m)^  ([a-z][a-z0-9-]*):\s*$", workflow.split("\njobs:\n", 1)[1])
+    require(job_names == ["cache-reopen"] and set(jobs) == {"cache-reopen"},
+            "Windows cache warmer must have one unique job")
+    job = jobs["cache-reopen"]
+    require(re.findall(r"(?m)^    ([A-Za-z][A-Za-z0-9_-]*):", job) ==
+            ["if", "runs-on", "timeout-minutes", "env", "steps"],
+            "Windows cache warmer has unexpected or duplicate job settings")
+    require(re.findall(r"(?m)^    if: (.+)$", job) == ["${{ github.ref == 'refs/heads/main' }}"],
+            "Windows cache warmer must use the trusted main ref")
+    require("    runs-on: windows-latest\n" in job and "- windows-latest" in reopen,
+            "Windows cache warmer must use the candidate runner")
+    require("    timeout-minutes: 120\n" in job,
+            "Windows cache warmer must have its own finite preparation deadline")
+    root_env = re.search(r"(?ms)^env:\n(.*?)(?=^\S)", workflow)
+    require(root_env is not None and root_env.group(1) ==
+            '  CARGO_INCREMENTAL: "0"\n  CARGO_TERM_COLOR: always\n\n',
+            "Windows cache warmer environment differs from reusable CI")
+    expected_env = ('      CARGO_BUILD_JOBS: "2"\n'
+                    '      CARGO_PROFILE_DEV_DEBUG: "0"\n'
+                    '      CARGO_PROFILE_TEST_DEBUG: "0"\n')
+    env = re.search(r"(?ms)^    env:\n(.*?)(?=^    \S)", job)
+    require(env is not None and env.group(1) == expected_env,
+            "Windows cache warmer job environment differs from the candidate")
+    require("CARGO_BUILD_JOBS: ${{ matrix.os == 'windows-latest' && '2' || '1' }}" in reopen
+            and 'CARGO_PROFILE_DEV_DEBUG: "0"' in reopen
+            and 'CARGO_PROFILE_TEST_DEBUG: "0"' in reopen,
+            "Windows candidate build settings differ")
+    require("shared-key: installed-reopen-windows-latest" in job
+            and "shared-key: installed-reopen-${{ matrix.os }}" in reopen
+            and "cache-on-failure: false" in job and "cache-on-failure: false" in reopen,
+            "Windows cache key or failure handling differs")
+    actions = lambda text: re.findall(r"(?m)^\s*- uses: ([^\s#]+)", text)
+    selected = actions(job)
+    require(selected == actions(reopen)[:3],
+            "Windows cache warmer actions differ from the reopen candidate")
+    require(len(re.findall(r"(?m)^      - (?:uses|name):", job)) == 4,
+            "Windows cache warmer contains unexpected steps")
+    checkout = checkout_steps(workflow)
+    require(len(checkout) == 1
+            and checkout[0][1] == ["with:", "persist-credentials: false", "submodules: recursive"],
+            "Windows cache warmer checkout must use the main revision and recursive submodules")
+    for action, settings in [
+        (selected[1], "        with:\n          components: clippy\n"),
+        (selected[2], "        with:\n          shared-key: installed-reopen-windows-latest\n"
+                      "          cache-on-failure: false\n"),
+    ]:
+        block = re.search(r"(?ms)^      - uses: " + re.escape(action) +
+                          r"(?: #[^\n]*)?\n(.*?)(?=^      - |\Z)", job)
+        require(block is not None and block.group(1) == settings,
+                "Windows cache warmer action settings differ")
+    expected = "cargo test -p rrflow-cli --test installed_reopen --release --locked --no-run"
+    require(re.findall(r"(?m)^\s*(?:-\s*)?run: (.+)$", job) == [expected]
+            and f"run: {expected}" in reopen,
+            "Windows cache warmer build differs from the candidate")
+    require(job.endswith("      - name: Build cache inputs only\n        run: " + expected + "\n"),
+            "Windows cache warmer build step must not add other configuration")
+    require("continue-on-error:" not in job and not re.search(r"(?m)^        if:", job),
+            "Windows cache warmer cannot bypass or condition its steps")
 
 
 def verify_execution_inventory_ci(verify: str) -> None:
@@ -260,8 +400,11 @@ def verify_execution_inventory_ci(verify: str) -> None:
         "git rev-parse --verify HEAD > target/rrflow-inventory-revision.txt",
         'test "$(cat target/rrflow-inventory-revision.txt)" = "$GITHUB_SHA"',
         "python3 scripts/ci/build_execution_inventory.py --check",
+        "          python3 scripts/ci/test_analyze_sustained_conflicts.py\n",
     ):
         require(block.count(required) == 1, f"CI inventory generation missing: {required.strip()}")
+    require("continue-on-error:" not in block and "    if:" not in block,
+            "CI inventory and conflict analysis cannot be bypassed")
     order = (
         "set -euo pipefail",
         "git diff --exit-code",
@@ -738,6 +881,80 @@ def verify_development_container(reusable: str, pgvector_job: str) -> int:
     return len(expected) + len(CONTAINER_CHECKSUMS)
 
 
+def verify_merge_group_rust_cache_scope(reusable: str) -> None:
+    """Keep transient queue-ref Rust caches from evicting reusable entries."""
+    actions = list(re.finditer(r"(?m)^      - uses: Swatinem/rust-cache@[^\n]+\n", reusable))
+    require(actions, "reusable CI must retain its Rust cache actions")
+    expected = "${{ github.event_name != 'merge_group' }}"
+    for action in actions:
+        rest = reusable[action.end():]
+        end = re.search(r"(?m)^(?:      - |  [a-z0-9-]+:)", rest)
+        block = rest[:end.start()] if end else rest
+        conditions = re.findall(r"(?m)^          save-if:\s*(.+)$", block)
+        require(conditions == [expected], "Rust cache must not save merge-group entries")
+
+
+def verify_storage_contract_preflight(jobs: dict[str, str]) -> None:
+    """The expensive reopen matrix requires the candidate's synthetic contract."""
+    preflight = jobs.get("storage-contract-preflight", "")
+    reopen = jobs.get("installed-reopen", "")
+    gate = jobs.get("ci-gate", "")
+    require(bool(preflight), "storage contract preflight is missing")
+    require(
+        "runs-on: ${{ fromJSON(inputs.linux-standard-runner) }}" in preflight
+        and "cache-on-failure: false" in preflight
+        and not re.search(r"(?m)^\s+if\s*:", preflight)
+        and "continue-on-error:" not in preflight,
+        "storage preflight must run on the selected trusted lane without bypass",
+    )
+    command = (
+        "      - name: Validate candidate catalogue and synthetic storage projections\n"
+        "        shell: bash\n"
+        "        run: |\n"
+        "          set -euo pipefail\n"
+        "          cargo test --locked -p rrflow-eval --test storage_contract "
+        "generated_schemas_and_synthetic_receipts_match_goldens -- --exact --list | "
+        "grep -Fx 'generated_schemas_and_synthetic_receipts_match_goldens: test'\n"
+        "          cargo test --locked -p rrflow-eval --test storage_contract "
+        "generated_schemas_and_synthetic_receipts_match_goldens -- --exact"
+    )
+    require(preflight.count(command + "\n") == 1, "storage preflight must run the exact golden test")
+    require(
+        re.search(r"(?m)^    needs: storage-contract-preflight\s*$", reopen) is not None
+        and not re.search(r"(?m)^    if:", reopen)
+        and "continue-on-error:" not in reopen,
+        "installed reopen must depend on successful storage preflight without bypass",
+    )
+    step_sections = gate.split("    steps:\n")
+    require(len(step_sections) == 2, "ci-gate must have one steps block")
+    steps = step_sections[1]
+    require(
+        len(re.findall(r"(?m)^      - ", steps)) == 1
+        and not re.search(r"(?m)^        if\s*:", steps),
+        "ci-gate reduction step must be unconditional and unique",
+    )
+    result_variables = re.findall(
+        r"(?m)^          ([A-Z][A-Z0-9_]+):\s+\$\{\{\s*needs\.[a-z0-9-]+\.result\s*}}\s*$",
+        steps,
+    )
+    run_sections = steps.split("        run: |\n")
+    require(len(run_sections) == 2 and result_variables, "ci-gate reduction body is missing")
+    run_lines = [line for line in run_sections[1].splitlines() if line.strip()]
+    require(
+        run_lines == [f'          test "${variable}" = success' for variable in result_variables],
+        "ci-gate reduction must contain only exact success checks",
+    )
+    require(
+        "    if: ${{ always() }}\n" in gate
+        and "continue-on-error:" not in gate
+        and "      - name: Require every CI partition\n        env:\n" in gate
+        and "      - storage-contract-preflight\n" in gate
+        and "STORAGE_PREFLIGHT_RESULT: ${{ needs.storage-contract-preflight.result }}" in gate
+        and 'test "$STORAGE_PREFLIGHT_RESULT" = success' in gate,
+        "ci-gate must require the storage preflight result to be success",
+    )
+
+
 def main() -> None:
     workflows = workflow_sources()
     require(NATIVE_PREFLIGHT in workflows, "native macOS preflight workflow missing")
@@ -745,10 +962,16 @@ def main() -> None:
     caller = workflows[CALLER]
     reusable = workflows[REUSABLE]
     jobs = job_blocks(reusable)
+    verify_merge_group_rust_cache_scope(reusable)
+    verify_storage_contract_preflight(jobs)
     verify_candidate_admission(caller)
+    verify_linux_arm64_ci(caller, reusable)
     warmer = workflows.get(WORKFLOW_DIRECTORY / "ci-cache-warm.yml")
     require(warmer is not None, "trusted macOS reopen cache warmer is absent")
     verify_macos_reopen_cache_warm(warmer, jobs["installed-reopen"])
+    windows_warmer = workflows.get(WORKFLOW_DIRECTORY / "ci-windows-cache-warm.yml")
+    require(windows_warmer is not None, "trusted Windows reopen cache warmer is absent")
+    verify_windows_reopen_cache_warm(windows_warmer, jobs["installed-reopen"])
     verify_execution_inventory_ci(jobs["verify"])
     verify_native_sample_worker_ci(jobs["installed-reopen"], jobs["verify"])
     require(
@@ -798,11 +1021,14 @@ def main() -> None:
         reusable.count("python3 scripts/knowledge/render_capacity_profiles.py --check") == 1
         and reusable.count("python3 scripts/knowledge/test_capacity_profiles.py") == 1
         and reusable.count("python3 scripts/ci/test_collect_storage_acceptance.py") == 1
-        and reusable.count("python3 scripts/ci/test_sustained_launch.py") == 1,
+        and reusable.count("python3 scripts/ci/test_sustained_launch.py") == 1
+        and reusable.count("python3 scripts/ci/test_analyze_sustained_conflicts.py") == 1,
         "the owning J-04 capacity projection must be checked exactly once",
     )
 
     expected_jobs = {
+        "native-arm64",
+        "storage-contract-preflight",
         "installed-reopen",
         "installed-crash",
         "topology-smoke",

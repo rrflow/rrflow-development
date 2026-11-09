@@ -8,13 +8,18 @@ This chapter is part of the canonical RRFlow 1.0 roadmap. The parent
 record owns release order and completion status; this file cannot change
 either independently.
 
+The [adaptive developer-build design](adaptive-developer-build-design.md)
+maps the fixed default sequence to a proposed capability-selected replacement
+and a real-project acceptance oracle. It is supporting design, not accepted
+implementation or a change to the release gates below.
+
 | Done | ID | Required change | Owning boundary | Acceptance evidence |
 |---|---|---|---|---|
 | [x] | D-01 | Implement the [installed lifecycle](../../reference/deployment/installed-lifecycle.md) foundation and first walking product spine. The default release exposes one primary `rrflow`/`rrflow.exe` command tree. `rrflow install plan` resolves only bundle-resident, versioned project-bootstrap templates, provider-neutral specialization manifests, and attunement profiles; is byte-deterministic and side-effect free; and covers every file, record, process, adapter candidate, principal/role/grant, credential action, permission, budget, digest, and removal rule. `install apply` accepts the exact digest, explicit fresh/existing mode, and a minimal `.rrflow/config.toml` locator with no canonical mutable state or plaintext secret. Split rrflowKV create-new, open-existing, and read-only inspection so normal open never creates or repairs an estate. `initialize_instance` is the only cold-start path and atomically commits the installed binding, initial seat/security authority, checkpoint, audit, and commit evidence before readiness. Compose `serve`, authenticated `ready`, `version`, and baseline read-only `verify` through the same executable and `RrdEngine`; reusable server/MCP code is linked as libraries rather than checkout-built readiness prerequisites. Remove the old supervisor, standalone bootstrap, server initializer, create-on-open/startup binding, private marker/JSON state, and their successful fixtures in the same direct-convergence package after replacement evidence passes. | `rrflow-cli`, `rrd-engine`, `rrd-store`, `rrd-server`, `rrflow-mcp` | Native real-process tests for Linux and the available platform development runners prove `version`; deterministic plan; no-write preview; exact apply; one high-entropy credential through the previewed sink; authenticated readiness; one commit/query; close/reopen; and baseline read-only verification through the primary executable, with outbound network denied and sibling directories absent. Fresh and existing projects preserve user content and any managed instruction edit is ownership/digest bound. Interruption tests cover staging, credential prepare/delivery, engine commit, locator publication, acknowledgement, and cleanup with no duplicate credential/policy/audit outcome. Drift, path/link/mount replacement, ACL/mode, provider revision, partial state, stale lease, unsupported format, missing installed binding, and already-installed cold start fail closed. `rrflow dev doctor`, a PID/port/marker, source topology, and separate binaries cannot satisfy or substitute for this proof. |
 | [ ] | D-02 | Persist attunement jobs and checkpoints through `RrdEngine`; implement status, resume, cancel, leases, idempotency, and phase input/output digests. | `rrd-engine` | Kill/restart tests at each transition resume committed work once and never infer completion from emitted events. |
 | [ ] | D-03 | Implement only deterministic project-tree inventory: engine-authorized metadata/content reads, pure proposal building, Git-correct ignore rules, secret/generated/vendor/cache exclusions, stable root-relative identities, Merkle tree digest, containment edges, incremental change set, explicit errors, and bounded work accounting. | `rrd-attunement` through `rrd-engine` | This repository produces the same committed `SourceTreeSnapshot` digest under different traversal schedules; excludes `.git`, `target`, `node_modules`, rrflowDB files, generated bulk data, and secret payloads; handles tracked ignored files, non-Git roots, hidden source, symlink/mount escape, file races, cancellation/restart, and close/reopen; an unchanged rerun reads zero content bytes and commits a no-work checkpoint. |
 | [ ] | D-04 | Add incremental Tree-sitter parsing pinned to one committed source-tree snapshot/change-set digest and parser/language revisions; preserve incomplete syntax and errors as evidence. | `rrd-attunement` through `rrd-engine` | Parse is denied before the D-03 snapshot/checkpoint commit; edit-one-file reparses only the changed source, preserves unaffected identities, records `ERROR`/`MISSING` nodes, and resumes after process restart. |
-| [ ] | D-05 | With the specific canonical E/F access, index and streaming prerequisites needed by each phase, implement normalize, entity-link, lexical-index, embed, vector-index, graph, ground, and verify one at a time against the accepted persistent/index/Arrow paths; add no temporary snapshot index or parallel attunement store. | `rrd-engine` plus owning subsystem | Every phase has an exact fixture, durable checkpoint, failure/retry case, output digest, physical-plan/trace evidence, and independent acceptance test before the next phase begins; lexical/vector/graph output is readable through the same native and analytical paths used outside attunement. |
+| [ ] | D-05 | Implement configurable source normalization, entity linking, lexical and vector indexing, relationship/graph derivation, grounding and verification as engine capabilities over the accepted persistent and analytical paths. Select only work required by the project, prompt, configuration, available capabilities, permissions and budget; only actual data/effect dependencies constrain order. Add no temporary snapshot index or parallel attunement store. | `rrd-engine` plus owning subsystem | Different projects and policies select different valid capability sets, including no optional model; unavailable capabilities remain explicit. Each selected durable effect has a bounded input, checkpoint, failure/retry outcome and independently checked output. Source-derived results are readable through the same authorized paths after reopen. |
 | [ ] | D-06 | Classify project generators, package scripts, build/test/evaluation harnesses, CI/deployment tools, SQL, PostgreSQL, Turso, Dragonfly, object stores, models, meshes, and other application/operator systems as optional external capabilities or sources. Discovery creates an inactive typed candidate; only an exact previewed immutable binding plus explicit configuration, policy, and authorization may activate it. A command binding captures either one authenticated direct-process argv or the complete package-script/toolchain/lockfile/wrapper/lifecycle closure; literal package-manager argv alone is insufficient. Never install, start, execute, or select an external system as RRFlow persistence or lifecycle authority implicitly. | `rrd-contract`, `rrd-attunement`, `rrd-engine` | Fresh/existing fixtures prove RRFlow reaches default readiness without an external capability; discovery executes nothing; preview performs no writes or effects; exact apply/retirement is durable and idempotent; a generator or harness binding is source- and digest-bound and declares its permissions, sandbox, budgets, cancellation, uncertainty, verification, and output policy without invoking it; mutable/incomplete closures and unavailable enforcement fail closed; credentials are never copied; and clean uninstall removes only RRFlow-owned integration state. Project-command execution and output re-inventory are accepted later by I-03/I-07. |
 | [ ] | D-07 | Bind installation to the DevForge CoW placement contract: immutable tools/models may live in the shared lower layer; workspace changes and all rrflowKV WAL, manifest, segment, catalogue, and graph state live in the writable upper layer. | `rrflow-cli`, DevForge adapter | Two clones share the same lower digest while independent writes, crash recovery, and deletion in one upper layer cannot affect the other. |
 | [ ] | D-08 | Recognize content-addressed dependency mounts as shared immutable inputs rather than copying or attuning dependency caches into each estate. | `rrd-attunement`, DevForge adapter | Rust, Go, Node, and model-cache fixture proves stable mount digests, zero duplicate ingestion, and correct invalidation when a mounted digest changes. |
@@ -28,8 +33,9 @@ D-02 is the next runtime outcome, subject to D-02a admission. Installation curre
 `AttunementJob`; `installation/inventory.rs` explicitly supplies installation
 preconditions, not a committed D-03 source snapshot. Job types and Connectome's
 phase descriptions do not execute ingestion. Complete the existing job state
-machine at `RrdEngine`, then implement D-03/D-04 and each D-05 phase at their
-canonical owners in the dependency spine. No client-side ingestion database,
+machine at `RrdEngine`, then implement D-03/D-04 and the D-05 capabilities
+their selected inputs require at their canonical owners. No fixed number of
+runtime reasoning or attunement steps is implied. No client-side ingestion database,
 fixture-loaded demo or temporary snapshot index substitutes for these packages.
 
 The configured project must resolve global defaults plus project overrides to
@@ -54,6 +60,40 @@ Each package proves its particular before/after transition. D-02 alone does not
 claim parsing or retrieval; a configured embedding provider alone does not prove
 vectors were generated. The complete journey requires all relevant package
 receipts and does not erase remaining release qualification.
+
+## Nested repository setup
+
+The owner's 2026-10-31 direction makes a discovered nested repository a user
+choice. Offer exclude, separate project/instance (recommended), and one project
+instance containing both selected repositories. Explain that independent
+instances retain separate stores and authentication and that any cross-project
+read requires its own explicit link. The one-instance choice is one bounded
+project with independently identified source repositories and one estate, not
+a silent merge of pre-existing estates. The
+[topology owner](../../architecture/instance-topology.md#user-selected-repository-boundaries)
+defines the semantics.
+
+D-01/D-03 must expose source-bound repository candidates in a no-effect preview,
+carry the selected membership and every admitted Git metadata root into the
+exact plan, and revalidate them before apply and during inventory. An assistant
+may explain the choices and ask the user, but cannot accept a choice or expand
+its own filesystem authority. Gitfile, parent index, configuration, ignore and
+back-reference inputs need explicit bounded admission and identity/race checks;
+external metadata is not followed merely because an untrusted file names it.
+The selected repositories remain source inputs, not engine dependencies or an
+excuse to execute Git or fetch during installation.
+
+Acceptance must use the real RRFlow repository and its pinned Connectome
+submodule as well as adverse inputs. Verify each of exclude, separate and
+shared choices; exact preview and stale-plan denial; no changes before apply;
+independent authenticated instances and read isolation for separate projects;
+one transaction/read-stamp authority and source-specific provenance for the
+shared project; edit/delete, restart and readback; wrong Gitfile target,
+changed parent index, symlink/mount escape, missing metadata and cancellation.
+Run the installed primary binary and the public client path; report unsupported
+choices explicitly until they work. The [real-checkout gap](../../poam/rrflow-1.0-alpha/poam-006.md#nested-repository-setup-gap)
+remains open. This requirement does not by itself qualify later graph/vector
+indexing, project links, UI or cloud behavior.
 
 ## Project-workflow build packages
 
@@ -89,7 +129,7 @@ owns exact tests and remaining qualification.
 |---|---|---|
 | D-02a admission decision; before executor implementation | Existing `rrd-contract/src/attunement.rs` job/plan/resume/cancel validators, `src/lib.rs::endpoint_catalogue`, CLI installed command dispatch and installation preview. Map each public action to authorization and actual engine dispatch. | The initial audit found only contract types. The embedded package above adds authenticated engine dispatch; public HTTP/SDK dispatch remains absent. Installation previews `CreateAttunementJob`, not unlimited execution. Publish the exact operation/permission/activation decision before source effects. Preserve existing APIs. On 2026-10-26 the owner allowed adding the missing planned job list, read, status, resume, cancel, receipt-read and job-transition journal operations to the operation catalogue under existing grants ([OBJ-14](../../objectives/rrflow-1.0-alpha.md#required-outcomes), [POAM-040](../../poam/rrflow-1.0-alpha/poam-040.md)); global configuration operations remain undecided. Do not reinterpret task-open, readiness, install or arbitrary query as an ingestion command. |
 | D-02b durable worker; after D-02a | Extend `RrdEngine` at `engine/attunement.rs`, using the existing installed job, `AttunementJob::validate_transition`, lease generation and canonical transaction authority. Input binds job revision, plan, principal, configuration and source identity; output is the job transition and checkpoint with effect evidence. | Two workers compete for one revision; only the fenced winner publishes. Crash before effect, after effect and before ACK; retry resolves the same receipt. Expired generation cannot commit. Cancel releases owned resources and never publishes a false success. An unimplemented phase stops explicitly, never gets a fabricated checkpoint. Planned `tests/attunement_resume.rs` plus real installed-process proof. |
-| D-02c bounded scheduling and settings; required before unattended work | Existing estate configuration, reasoning/query budgets and phase estimates. Engine owns effective limits and field origins; pure preference resolution cannot grant effects. State the exact configuration apply operation and how changed settings affect pending/running jobs. | Estimated item/byte/duration fields are not enforcement. Admit memory/input/output/elapsed/retry/worker limits before work; one remaining budget is charged across retries. Blocked/paused/rejected states identify the exhausted limit. Global changes do not silently rewrite projects; concurrent changes use revision checks. Public settings controls remain blocked until their admission mapping is resolved. |
+| D-02c bounded scheduling and settings; required before unattended work | Existing estate configuration, reasoning/query budgets and phase estimates. Engine owns effective limits and field origins; pure preference resolution cannot grant effects. State the exact configuration apply operation and how changed settings affect pending/running jobs. | Estimated item/byte/duration fields are not enforcement. Admit memory/input/output/elapsed/retry/worker limits before work; one remaining budget is charged across retries. Blocked/paused/rejected states identify the exhausted limit. Global changes do not silently rewrite projects; concurrent changes use revision checks. Public settings controls remain blocked until their admission mapping is resolved. On 2026-10-31 the owner asked that unattended relationship and index maintenance run only inside operator-set idle windows and budgets, adjusted from Connectome ([first complete cycle](executable-dependency-spine.md#first-complete-cycle)). |
 | D-03 source snapshot; after durable worker and bounded filesystem admission | Planned `rrd-attunement/src/inventory.rs` builds pure proposals from engine-authorized reads; existing `installation/inventory.rs` remains installation precondition logic. Commit stable root-relative source identities, content digests, containment, exclusions and a change set through engine transactions. | Ordered/shuffled traversal gives identical snapshot; unchanged rerun reads zero content bytes. Git tracked/ignored rules, non-Git roots, secrets, symlink/mount escape and concurrent source edits have explicit outcomes. Interrupt/restart never exposes a partial snapshot as complete. Planned inventory test target; real repository fixture after small authored adversarial fixtures. |
 | D-04 parse and source spans; after D-03 | Planned `rrd-attunement/src/parse.rs`; pinned parser/language revisions consume one committed change set. Output is source-linked syntax/symbol/chunk proposals with byte ranges and parse errors. | One-file edit reparses only affected inputs; delete invalidates their spans. Unsupported languages remain explicit and incomplete syntax retains errors. Parser/model guesses cannot overwrite source facts. Planned incremental-parse target and installed readback prove digest/range identity after restart. |
 | D-05a normalize and entity links; after D-04 and consumed E-01/E-02 paths | Planned `normalize.rs`/`entity_link.rs` plus canonical schema/data/relation commits. Deterministic source facts and inferred relationships carry distinct method/source/configuration identities. | Duplicate source or ambiguous symbol names cannot merge unrelated identities. Reprocessing is idempotent; source change/delete retires dependents at a new cursor, old-stamp reads remain valid. Semantic effects and checkpoint are atomically visible or explicitly staged then published. |
@@ -322,24 +362,15 @@ and bidirectional synchronization remains H-07.
 
 ## DuckDB interoperability packages
 
-The [DuckDB contract](../../reference/data/duckdb.md) refines D-06 for the
-owner-requested analytical integration. Native rrflowDB remains Rust-owned;
-DuckDB's C/C++ runtime is optional third-party capability code. No row below
-is implemented or qualified. The real-project workflow has priority in the
-[current dependency spine](executable-dependency-spine.md). Keep
-Gate F's DataFusion provider and H-08's PostgreSQL profile independent.
-
-| Package | Prerequisites and deliverable | First falsifying oracle and exit |
-|---|---|---|
-| D-06 DuckDB export conformance | C-07 acceptance; existing bounded Parquet export. Pin an actual DuckDB client and a closed supported type/profile matrix. This first bounded prerequisite may precede full Gate F streaming, as the existing bounded export does. | A real client consumes the authenticated installed engine's export and independently compares identities, values and source metadata before/after reopen. Wrong digest/profile, lossy types, truncation and cross-estate disclosure deny. External client evidence does not qualify bundled execution. |
-| D-06 DuckDB binding and containment | Accepted export profile, D-06 configuration/discovery, C-07 resource/lifetime evidence, F-04 budget integration. Pin runtime/features/license/build and optional owned worker; no new authority or default readiness requirement. | Preview has no effects; missing authorization/enforcement, changed artifact, SQL settings/extension/file escape, exhausted memory/temp/output, timeout and worker death fail without engine loss or secret exposure. Native offline tests on every declared platform enforce aggregate bounds and cleanup. |
-| D-06 DuckDB source/import | Qualified binding, D-02 checkpoints, D-03 source identity, D-05 provenance and full Parquet/F streaming where required. Read immutable export or qualified consistent read-only source; stage and validate through native engine commits. | Actual source lock/conflict, schema drift, malformed input, revoked ACL, duplicate delivery, lost response and restart preserve source bytes and publish each accepted group once. No partial groups or invented local stamp for foreign data; later valid work still succeeds. |
-| D-06 DuckDB analytical worker and delivery | Qualified containment/source contracts; F-01/F-04 stamped streaming and budgets. Implement bounded query execution and source receipts; H-04/H-06 client parity and J signed-bundle proof complete delivery. | Real aggregate/filter/join workload matches independent expected values, including cancellation and worker crash. Result carries source/query/runtime identity; default estate works without activation; offline install/update/removal and two-estate isolation pass on the exact bundle. |
-
-Each row needs its own reviewed PR, failure oracle and exact-candidate CI.
-The [POA&M](../../poam/rrflow-1.0-alpha/poam-036.md) remains sequenced until
-those prerequisites exist. No cross-database transaction or cloud sync is
-implied by any of these profiles.
+**Withdrawn by the owner:** the earlier DuckDB interoperability and optional-worker
+packages. DuckDB and ClickHouse are implementation research inputs, not
+RRFlow runtime dependencies or integration requirements. Adapt selected
+behaviors or eligible source to the existing native rrflowDB/rrflowKV and
+rrd-query boundaries with file-level provenance, compatible licensing,
+semantic and resource tests, and exact-candidate evidence. The existing D-05,
+D-06 Parquet, E/F query and C-07 durability requirements continue unchanged.
+[Research and prior direction](../../reference/data/duckdb.md) and
+[POAM-036](../../poam/rrflow-1.0-alpha/poam-036.md) preserve history.
 
 ## Exit condition
 

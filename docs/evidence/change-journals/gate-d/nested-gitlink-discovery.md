@@ -147,3 +147,125 @@ mapping; primary research; resource and trace choice; focused and owning tests;
 actual project readback; retained limits and failures; no upstream code copied.
 Generated indexes, documentation checks, complete diff review and candidate CI
 must be completed before ready/merge.
+
+## 2026-11-09 main reconciliation
+
+Starting revision `0505e2e7042cee9f66b64f9f7703d4e4e6fb59e8` on
+`codex/nested-gitlink-discovery`, with a clean worktree. The locally available
+`development/main` was `a9f1b0fb8d948e113dca347e5eeac10dd224330a`, 421 commits
+ahead. This bounded reconciliation retains OBJ-07 / OBJ-14's D-01 / D-03
+discovery prerequisite and does not change roadmap or POA&M status. The owner
+explicitly requested an ordinary local merge, the five acceptance checks below,
+and local commits only; no push or pull-request creation/edit is authorized.
+That instruction supersedes the procedure's PR-edit and push steps for this run.
+
+Change brief and traceability: merge main's current implementation and carry
+`NestedRepositoryDiscovery`, `RrdEngine::discover_nested_repositories`,
+`inventory::discover_gitlinks`, `GitInputs::has_verified_index`, the
+`InstallAction::Discover` route, the two engine discovery tests, the CLI
+read-only discovery test, this journal and the installed-lifecycle reference
+into the same canonical files. Keep main's explicit installation source-read
+choice, installed job discovery and adaptive selection records. The failure
+oracle is the installation-filtered engine suite followed by the entire CLI
+package; no failing test may be deleted. Stop if completing this scope requires
+an unauthorized effect or unavailable filesystem/tool access.
+
+`git merge development/main` stopped with four content conflicts:
+
+- `crates/authority/rrd-engine/src/engine/installation.rs`: retained the new
+  discovery response alongside main's engram configuration loader and retained
+  source-level estate loader alias.
+- `crates/authority/rrd-engine/src/engine/mod.rs` and `src/lib.rs`: retained
+  discovery exports alongside `InstallationPlanningOptions` and main's
+  `ProjectMapSummary` exports.
+- `docs/evidence/change-journals/gate-d/README.md`: generated index requires
+  regeneration, not a hand merge.
+
+The CLI route, focused tests, inventory walker/Git-input changes and lifecycle
+reference merged automatically. The added reference paragraph now says
+"engram"; historical receipts and main's retained wire/source identifiers are
+preserved. No test expectation or production discovery behavior has been
+changed during conflict resolution. No new dependency, source adaptation,
+external research, runtime trace or performance claim is needed for this merge.
+Compiler/test output supplies the diagnostic evidence.
+
+Reviewed AGENTS, README, the change-authoring procedure, the alpha objective,
+Gate D and POAM-006 ownership, the independent-engine integration rules, the
+original branch diff and journal, and the relevant installation, inventory,
+Git-input, export, CLI dispatch and lifecycle-test sections. These are scoped
+reads, not a claim of reviewing all 421 incoming commits. The generated-index
+renderer and documentation checker entry points were inspected for validation.
+
+Environment: Windows; Rust `1.99.1-x86_64-pc-windows-msvc`;
+`CARGO_TARGET_DIR=./target`; `TEMP` and `TMP` set to this worktree's
+`target/tmp` so test/build temporary files remain local. No shared target is
+used. Validation and final state will be recorded below.
+
+Surfaced environment failures so far:
+
+- `git restore --source=development/main --worktree --
+  docs/evidence/change-journals/gate-d/README.md` and `git add --` the three
+  resolved Rust files: denied creating `.git/index.lock`. The session's
+  filesystem policy marks this worktree's `.git` read-only.
+- `python scripts/knowledge/render_navigation.py`: `python` was not on PATH.
+  Retrying with a session alias to the available `python3.15.exe` launcher
+  failed: `uv trampoline failed to spawn Python child process`, permission
+  denied (OS error 5). Navigation has not been regenerated yet.
+
+Acceptance results, executed in the requested order against the merged working
+tree (HEAD is still the starting revision because a commit is blocked):
+
+| Command | Actual result |
+|---|---|
+| `cargo test --locked -p rrd-engine --lib installation` | Passed: 64 passed, 0 failed, 1 ignored subprocess fixture, 336 filtered out; build 2m14s, tests 2.47s. Both discovery tests and the explicit source-read choice test passed unchanged. |
+| `cargo test --locked -p rrflow-cli` | Passed: 71 passed, 0 failed, 15 ignored across all targets; build 2m23s. The installed-lifecycle target passed all 9 tests in 20.75s, including read-only repository discovery and explicit source-read installation/reopen. |
+| `cargo clippy --locked -p rrd-engine -p rrflow-cli --all-targets -- -D warnings` | Passed, 51.48s. |
+| `cargo fmt --all -- --check` | Initially failed only on wrapping the reconciled `src/lib.rs` exports. `cargo fmt --all` corrected that formatting; the repeated check passed. |
+| `python scripts/ci/check_documentation.py` | Attempted with `python` aliased to the available Python 3.15 launcher; interpreter startup denied with OS error 5. The checker did not execute. |
+
+CLI counts by target: binary unit tests 8; backup controller 1; build identity 1;
+estate admin 1; installed lifecycle 9; installed quantization 1; installed reopen
+39 passed / 14 ignored; lifecycle process 11 passed / 1 ignored. Ignored native
+campaign/fixture tests were not enabled. No failing test was removed, no
+assertion changed, and no test asserted a replaced main contract in these runs.
+The only correction after testing was rustfmt's whitespace-only export layout.
+
+`git diff --check --` the affected engine, CLI, lifecycle reference and journal
+paths passed before final journal completion. Reviewed the complete discovery
+delta against `development/main`, including the shared revalidation helper,
+exports, unchanged focused tests and CLI route. Main's source-read authorization
+and adaptive selection implementations were preserved, not replaced by a
+compatibility path. No broader engine suite, workspace suite, native campaign,
+candidate CI, push or PR action was run; those are outside this local check list.
+
+Final stop: Git index writes and Python execution remain unavailable. An
+explicit `git merge --abort` also failed with permission denied creating
+`.git/index.lock`; the environment therefore prevents both permitted consistent
+end states (commit or clean abort). No commit was created. The merge remains in
+progress: the three Rust conflict bodies are resolved but cannot be staged;
+the generated Gate D index still has its conflict pending Python regeneration.
+Main's staged Connectome gitlink is `4da67e27f52ef20861fd9ee8c8351ce48920f49a`;
+its unchanged, clean nested checkout remains at
+`38142b77110a8f1db77e306e7d1ad375fd918267`. No submodule checkout was attempted
+because its Git metadata is also under the read-only `.git` directory.
+
+The dated journal is also copied to ignored `target/main-reconciliation-journal.md`
+for preservation if the merge is later aborted. All writes were confined to
+this worktree. No release/objective/roadmap/POA&M status changed; these are local
+execution-environment blockers, not a newly demonstrated product deficiency.
+The branch is **not ready for candidate CI**. Resume with writable worktree Git
+metadata and an executable Python: regenerate navigation, run the documentation
+check, stage the resolutions, align the clean submodule checkout to main's pin,
+review the final diff, and commit the ordinary merge locally. Do not push or
+edit PR233 as part of this task.
+
+### Completion of the 2026-11-09 reconciliation
+
+The merge Codex resolved was completed from a shell with writable Git
+metadata: the three Rust resolutions were staged unchanged, the generated
+Gate D index was regenerated with `render_navigation.py`, the Connectome
+gitlink was aligned to main's pin `4da67e27`, and the stray `Microsoft/`
+directory created by the blocked Python launcher was removed. Documentation
+policy, navigation check, formatting, the engine installation tests, the
+CLI tests and strict Clippy were rerun before the merge commit; results are
+in the commit message. Candidate CI remains the acceptance.

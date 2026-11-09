@@ -12,16 +12,28 @@ and review understandable without hiding their limits. The existing roadmap's
 [project-to-learning journey](docs/roadmap/rrflow-1.0/executable-dependency-spine.md#project-to-learning-acceptance-journey)
 maps that experience to its implementation dependencies and real-world tests.
 
-**rrflowDB is the database within RRFlow: a pure Rust, PostgreSQL-inspired
-database dedicated to AI and designed for AI use, with PostgreSQL compatibility
-as a product requirement.** It stores the knowledge, memory, reasoning state,
-and evidence of each project estate. The [database identity and compatibility
+**rrflowDB is RRFlow's native Rust, AI-oriented multi-model database.** Its
+target includes relational tables, documents, durable and dynamically derived
+relationships, graphs, vectors, memory, reasoning state and evidence under one
+transaction authority. rrflowQL is its relational, SQL-like query and planning
+layer; graph generation and traversal are capabilities over the same data, not
+the definition of the language. A record's logical identity is its table/kind
+and ID within its estate. PostgreSQL and SQLite compatibility are product
+targets whose exact SQL, client/API and file-format surfaces require separate
+qualification; neither compatibility claim is established today. The
+[database identity and compatibility
 boundary](docs/architecture/system-overview.md#persistence-and-memory-boundary)
 separates that target from current implementation and compatibility evidence.
 The [PostgreSQL compatibility and independent database contract](docs/reference/protocol/postgresql.md)
 defines the first SQL/client profile, native-engine integration, Turso exit,
 data portability and qualification. [H-08](docs/roadmap/rrflow-1.0/gate-h.md#h-08-postgresql-compatibility-packages)
 owns its implementation packages; compatibility is not yet implemented.
+
+rrflowKV supplies the native write-optimized durable state and recovery path;
+prompt-local working state has a separate bounded lifetime. The requested
+background Parquet cold-storage lifecycle for history, audit and analytics is
+not implemented by the existing bounded query export. Its implementation and
+proof are owned by [Gate F](docs/roadmap/rrflow-1.0/gate-f.md).
 
 This README is the bootstrap product entry point and knowledge map. It owns
 RRFlow's identity, non-negotiable architecture invariants, and current status;
@@ -43,6 +55,15 @@ and [next build packages](docs/roadmap/rrflow-1.0/gate-d.md#project-workflow-bui
 separate planned behavior from executable work. Known admission/configuration
 blockers are [explicitly recorded](docs/poam/rrflow-1.0-alpha/poam-006.md#build-plan-admission-gaps);
 a roadmap is not evidence that those capabilities already work.
+
+The immediate priority is a developer build that can open and index a real
+project, serve source-grounded context, and show its work in Connectome. Once
+that build is usable, use measured baselines to tune it. The later direction is
+to derive configurable reasoning shards from project boundaries and evaluate
+custom KV-cache strategies on large projects such as platform_devpulse and
+RRFlow itself. These are targets, not implemented or competitive-performance
+claims. The [scale rationale](docs/architecture/engine-scale-and-contracts.md#boundary-based-reasoning-after-the-developer-build)
+records the intended relationship and proof.
 
 ## Engine, UI, cloud, and desktop
 
@@ -126,7 +147,7 @@ bulk import and streaming exchange remain unqualified.
 | Configure CPU analysis, System One model selection and scoped inference caches | [LFG and SWAG target contract](docs/reference/inference/lfg-swag.md) |
 | Prepare Spark experiments, qualify SWAG candidates and govern RROFLOW improvement | [Learning reference](docs/reference/inference/learning/README.md) |
 | Discover connector requirements and build source-grounded knowledge trees | [Knowledge connectors and Parquet target contract](docs/reference/data/knowledge-connectors.md) |
-| Follow planned DuckDB analytical exchange and optional execution | [DuckDB interoperability contract](docs/reference/data/duckdb.md) — unimplemented; native rrflowDB remains authoritative |
+| Study analytical database techniques for native rrflowDB | [Native analytical database research](docs/reference/data/duckdb.md) - research input; no DuckDB or ClickHouse runtime is planned |
 | Understand project, estate, RRD instance, environment, deployment, and physical placement | [RRFlow instance topology](docs/architecture/instance-topology.md) |
 | Select and prove deployment form, storage profile, and endpoint presentation independently | [RRFlow deployment profiles](docs/reference/deployment/modes.md) |
 | Install, serve, verify, repair, restore, and remove one project estate through the shipped binary | [RRFlow installed lifecycle](docs/reference/deployment/installed-lifecycle.md) |

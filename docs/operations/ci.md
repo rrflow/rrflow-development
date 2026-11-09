@@ -11,6 +11,28 @@ defines risk-based package widening, and the [POA&M](../poam/rrflow-1.0-alpha.md
 owns deficiencies. A green workflow proves only the commands and assertions it
 actually executes.
 
+## C-07 installed campaign progress
+
+The existing `scripts/ci/run_sustained_capacity.py` launcher accepts the opt-in
+`--observe-progress`, `--progress-interval-ms` (1,000–60,000; default 15,000)
+and `--progress-max-bytes` (4,096–16,777,216; default 1,048,576) flags. It
+exclusively creates `<evidence>.observations.jsonl` alongside the campaign
+directory and emits the same bounded, cumulative event-kind counts to stderr.
+No event payload, record ID, prompt or credential is copied. A source-available
+flag distinguishes a not-yet-created stream from zero observed events. Linux
+observations include available owned-cgroup counters; Windows reports these as
+unavailable. The observer stops on malformed, replaced or truncated input or
+when its output limit is reached and reports an error to stderr; the campaign
+continues. It starts after the Linux cgroup is created or, on Windows, after
+the harness image is pinned and before the owned job is launched. Observations
+are best-effort, buffered diagnostics, not durable audit, proof of completed
+records, the campaign verifier, or a qualification result. Observer startup
+requires a fresh sidecar path. Its thread is joined on exit; a blocked read is
+reported after a bounded stop wait and may finish after native cleanup. The
+observer runs in the launcher outside the owned native job/cgroup, and its
+reads and sidecar writes add overhead; compare performance only with the same
+observation settings and report them.
+
 ## C-07 storage-diagnostic attribution
 
 To characterize a slow installed `rrflow` storage-diagnostic request, start the
@@ -54,6 +76,20 @@ The [integrated trace journal](../evidence/change-journals/gate-c/c-07g-installe
 records the small installed mixed-family and restart proof; it is not capacity
 or soak qualification.
 
+For transaction-begin attribution, add
+`rrd_engine::transaction_diagnostic=debug` to the process's `RRFLOW_TRACE`
+filter. Each enabled event reports the SHA-256 of the request ID, the outcome
+(`created`, `replayed`, or `error`), the last phase reached, total time and
+elapsed nanoseconds for validation, admission, authentication and policy,
+replay lookup, snapshot preparation, and control-state publication. A zero
+phase may mean it was not reached, not that it was free. Snapshot preparation
+also includes lease checks and transaction-record construction. Time in the
+client and HTTP transport is outside these measurements. Emission occurs after
+the admission permit is released; tracing can nevertheless affect the caller's
+latency. Use a bounded sink and treat the digest as potentially guessable. These
+optional events are not durable audit records, may be filtered or lost, and
+cannot establish a percentile or a capacity qualification by themselves.
+
 ## Candidate chain
 
 RRFlow has one candidate CI chain. The thin caller is
@@ -81,6 +117,39 @@ the default activity list does not include readiness transitions. The local
 and rejects missing transitions, filters and lost merge/manual coverage; it
 does not emulate GitHub execution. Full checks still run for merge groups.
 No path filter or reduced ready-candidate lane substitutes for acceptance.
+
+Rust cache steps still restore compatible entries on every candidate, but do
+not save new entries from `merge_group` runs. Queue-ref entries are scoped to
+the temporary ref and cannot warm the next candidate's base; disabling those
+saves reduces one source of eviction pressure. Pull-request saves and the
+explicit main-only macOS and Windows warmers remain available. Other language
+caches are unchanged.
+This does not create a main cache or guarantee a hit, speedup, or reduced bill.
+GitHub documents [cache scope and eviction](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching);
+the pinned [rust-cache action](https://github.com/Swatinem/rust-cache/blob/6323deb102c322ba6fcbdcafc7e3dddab59af2b6/action.yml)
+documents that `save-if` controls saving, not restore. Inspect later run logs
+and cache usage rather than inferring impact from the workflow text.
+
+The Windows warmer is `.github/workflows/ci-windows-cache-warm.yml`; after
+that file reaches public `main`, an operator can dispatch the main revision:
+
+```sh
+gh workflow run ci-windows-cache-warm.yml --repo rrflow/rrflow-development --ref main
+```
+
+Inspect the resulting run's exact head and cache-save log, then check the next
+candidate's restore log and timing. The manual job uses the candidate's fixed
+Windows runner, toolchain, two Cargo workers, cache key and locked release
+build; its separate 120-minute ceiling does not extend the 90-minute
+candidate job or run the tests. It never qualifies the candidate. Cache
+scopes, eviction, dependency-only caching and runner variability can still
+produce a miss or leave workspace compilation slow. Standard hosted runners
+for this public repository are documented as free by
+[GitHub](https://docs.github.com/en/actions/reference/runners/github-hosted-runners);
+cache storage beyond the included allowance may incur charges depending on
+account settings. Do not add untrusted public jobs to a private self-hosted
+runner to populate this cache.
+
 The reusable workflow reduces every partition into one stable `ci-gate`
 check for branch protection:
 
@@ -92,6 +161,10 @@ check for branch protection:
   and `product-operations`;
 - one current shared SDK harness, isolated optional-feature checks, and a real
   PostgreSQL/pgvector integration;
+- a synthetic storage-contract preflight on the selected standard Linux runner;
+  the ordinary 100-cycle reopen matrix starts only after this candidate's
+  catalogue and synthetic fixture projections pass. The job first verifies that
+  the named test exists, so an empty test selection cannot pass;
 - installed lifecycle and daemon portability on GitHub-hosted Windows and
   macOS runners;
 - separately identified installed domain-crash diagnostics and ordinary-build
@@ -99,6 +172,43 @@ check for branch protection:
 - ordinary-primary fresh/existing 100-cycle acknowledged kill/reopen histories
   on those same three native platforms; and
 - one always-evaluated gate which fails unless every partition succeeded.
+
+The preflight responds to a candidate whose changed operation catalogue left a
+stale synthetic fixture: the native reopen smoke rejected that identity only
+after its release build. On a valid candidate the added dependency can increase
+wall-clock time; measure the actual preflight and matrix durations before
+claiming a speedup. It does not replace a native smoke, reopen, crash, capacity
+or soak test. The aggregate gate explicitly rejects a skipped, cancelled or
+failed preflight and the same outcomes from every other required partition.
+
+### Inspect candidate failures while jobs are running
+
+Use the existing authenticated GitHub CLI to examine one explicit Actions run
+or compare two attempts' current snapshots:
+
+```sh
+python3 scripts/ci/inspect_candidate_runs.py 40991825021 40996295111 --pr 208
+```
+
+When a candidate or protected merge group fails, inspect its exact run and, if
+available, the preceding candidate before deciding whether to rerun or repair.
+Record the failed command and native platform, run and attempt IDs, tested
+source/tree, job link and any retained artifact in the owning package journal.
+Use the result to choose a focused reproduction; do not infer a root cause from
+a duration or replace the original failure with a later unrelated pass.
+
+The report identifies the event head, tested reusable-workflow revision and
+tree, attempt, incomplete or failed jobs and steps, matching named failure
+durations, and up to ten longest completed steps with valid timestamps. The
+timing list includes successful steps and is a snapshot, not a diagnosis. It
+compares event heads with the current PR head, so a merge-group
+head will normally differ. A shared tree does not establish identical execution
+environment or PR association. Inspect the run and job links and logs before
+diagnosis; timestamps and unfinished job inventories can be incomplete. The
+tool refuses inconsistent source/attempt metadata and incomplete paginated
+inventories. Its JSON is an informational snapshot, not a CI receipt, acceptance
+decision, root-cause diagnosis, or authority to skip a gate. The existing
+`rrflow-eval storage acceptance ci-receipt` remains the evidence boundary.
 
 The Linux lifecycle and Windows/macOS portability lanes also build the native
 `rrflow` primary and Rust `rrflowdb` example, stage separate digest-checked
@@ -194,8 +304,8 @@ Its child guards retain the fixture until the process is reaped.
 
 All three native lanes require `python scripts/ci/run_offline_lifecycle.py
 --receipt <runner-temp>/rrflow-offline.json` (Linux uses `python3`). The runner
-requires exactly five declared cases and exactly five passing results with no
-ignored or filtered cases. Fresh/existing receipts bind the actual executable,
+requires exactly the cases in its `REQUIRED_CASES` set, each passing once with
+no ignored or filtered cases. Fresh/existing receipts bind the actual executable,
 build metadata, public-contract and signal digests, installation/restore plans,
 backup, read manifest and asserted durable cursors. Unknown receipt fields are
 rejected. Retained artifacts contain these bounded, non-secret receipts and
@@ -204,6 +314,16 @@ uploaded. The [D-01 acceptance record](../roadmap/rrflow-1.0/gate-d-evidence.md#
 binds the first accepted three-platform result to its exact candidate. Later
 changes still require their own candidate CI; this result cannot qualify a
 different revision or a signed platform bundle.
+
+The `native-arm64` candidate job additionally requires an actual Linux ARM64
+runner and an `aarch64-unknown-linux-gnu` Rust host before executing the native
+storage/recovery, source-admission and primary-executable installed-lifecycle
+tests. Its result is part of the same aggregate gate for ready PRs and merge
+groups. The job log identifies its candidate and host; a cross-compile or a
+skipped job is not native evidence. This bounded lane does not run the full
+offline-denial, 100-cycle, native-capacity matrix or 24-hour soak on ARM64 and
+does not claim those qualifications. Those remain with their existing owners.
+
 The C-07c client-history extension runs after each fresh/existing restore
 fixture. A bounded test-owned relay forwards one commit and suppresses its
 entire response. The public client records uncertainty; three forced native
@@ -240,7 +360,7 @@ power loss, hard resource limits, disk exhaustion or a 24-hour soak.
 The existing `lifecycle_process` target also qualifies the relay with forced
 nonblocking accepted sockets, fragmented header/body input, interrupted I/O,
 native read expiry, bounded malformed-input denial, redacted errors and idle
-guard cleanup. These helper cases preserve the five-case installed corpus.
+guard cleanup. These helper cases preserve the required installed lifecycle corpus.
 
 Preflight failures retain a bounded failed receipt even before build hashes are
 available; cleanup failure always overrides any prior passed receipt.
@@ -343,6 +463,19 @@ command plus `--check`. Newly created paths become current inventory records;
 the pull request description still binds their intended scope. This removes a
 shared generated merge-conflict point without removing any candidate CI test.
 
+For a local conflict preview, run
+`python3 scripts/ci/inspect_merge_conflicts.py BASE_REVISION HEAD_REVISION`.
+The report binds both revisions to commit IDs and marks only paths in the
+existing generated-projection registry with their generator. Every other path
+requires review, including authored digest citations. Git may report a conflict
+without individual paths; that is still a conflict. The command does not modify
+the index, working files, or refs, but Git may write unreachable merge-tree
+objects. It does not resolve anything or authorize a merge. The existing
+candidate and protected merge-queue checks remain required. The command refuses
+configured external merge drivers and is intended for trusted checkouts; it is
+not a security sandbox. `python3 scripts/ci/test_inspect_merge_conflicts.py`
+in the verify job covers these behaviors with temporary Git repositories.
+
 The Connectome UI is optional for engine operation, while candidate CI follows
 repository policy and recursively materializes every declared submodule. The
 Connectome development repository is public and can be acquired anonymously.
@@ -372,7 +505,7 @@ outputs remain temporary and are never editable documentation authority.
 The five engine suites cover every workspace package exactly once, but package
 names do not define product ownership. The partitioning avoids one
 workspace-wide test/link target graph on the hosted fallback without turning
-all 20 implementation packages into separate product checks.
+each implementation package into a separate product check.
 
 The installed-reopen release build is bounded to two Cargo workers on
 `windows-latest` and one on Linux/macOS. In PR150 candidate run 40503118473
@@ -683,6 +816,7 @@ The repository variables below contain JSON `runs-on` values:
 | `CI_SELF_HOSTED_ENABLED` | `true` | disabled |
 | `CI_LINUX_STANDARD_RUNNER` | `["rrflow-standard"]` | `["ubuntu-latest"]` |
 | `CI_LINUX_HEAVY_RUNNER` | `["rrflow-heavy"]` | `["ubuntu-latest"]` |
+| `CI_LINUX_ARM64_RUNNER` | operator-provisioned Linux ARM64 labels | `["ubuntu-24.04-arm"]` |
 
 A pull request whose head repository differs from the base repository is
 forced onto GitHub-hosted Linux even when the variables exist. Missing or
@@ -821,7 +955,9 @@ not replace the full native capacity matrix or permit retry-until-green.
 
 An owned APFS image creation failure records bounded `hdiutil create -verbose`
 output, the failing mode and point, harness digest and CI run coordinates in a
-dedicated runner-temp JSON file. The macOS job attempts to upload only those
+dedicated runner-temp JSON file. A non-zero exit is recorded this way even when
+a descendant keeps the command's output open; the record then names which stream
+stayed open. The macOS job attempts to upload only those
 diagnostic JSON files, including after a failed capacity step. No disk image or
 product output is uploaded. A lost runner or failed artifact upload can still
 prevent retention. The record does not classify the cause, retry the case, or

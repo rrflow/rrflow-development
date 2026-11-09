@@ -34,6 +34,33 @@ class NativeSamplePolicyTests(unittest.TestCase):
         )
         self.assertEqual(self.reopen.count(self.failure_step), 1)
 
+    def test_installed_conflict_oracle_is_required(self):
+        step = (
+            "      - name: Require installed stale-snapshot conflict safety\n"
+            "        timeout-minutes: 5\n"
+            "        shell: bash\n"
+            "        run: |\n"
+            "          set -euo pipefail\n"
+            "          cargo test -p rrflow-cli --test installed_reopen --release --locked -- --ignored --list | grep -Fx 'sustained::installed_disjoint_writes_from_one_stamp_conflict_without_partial_effect: test'\n"
+            "          cargo test -p rrflow-cli --test installed_reopen --release --locked -- sustained::installed_disjoint_writes_from_one_stamp_conflict_without_partial_effect --exact --ignored --nocapture\n"
+        )
+        self.assertEqual(self.reopen.count(step), 1)
+        verify_native_sample_worker_ci(self.reopen, self.verify)
+        for changed in (
+            "", step + step,
+            step.replace("        shell: bash\n", "        if: runner.os == 'Windows'\n        shell: bash\n"),
+            step.replace("          set -euo pipefail\n", ""),
+            step.replace(" -- --ignored --list | grep -Fx", " -- --ignored --list | grep -F"),
+            step.replace(" -- --ignored --list | grep -Fx", " -- --list | grep -Fx"),
+            step.replace(" --exact --ignored --nocapture", " --exact --nocapture"),
+            step.replace(" --exact --ignored --nocapture", " --ignored --nocapture"),
+            step.replace("timeout-minutes: 5", "timeout-minutes: 0"),
+            step + "        continue-on-error: true\n",
+        ):
+            with self.subTest(changed=changed):
+                with self.assertRaises(PolicyError):
+                    verify_native_sample_worker_ci(self.reopen.replace(step, changed), self.verify)
+
     def test_checked_in_lane_and_policy_are_accepted(self):
         verify_native_sample_worker_ci(self.reopen, self.verify)
 
