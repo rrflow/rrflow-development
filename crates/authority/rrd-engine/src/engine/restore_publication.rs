@@ -16,7 +16,7 @@ use super::estate_layout::{
     BACKUPS_DIRECTORY_NAME, RESTORES_DIRECTORY_NAME, STORAGE_DIRECTORY,
 };
 use super::installation::{
-    canonical_prefixed, decode_control, estate_configuration_key, json_sha256, read_locator,
+    canonical_prefixed, decode_control, engram_configuration_key, json_sha256, read_locator,
     require_locator_record_match, runtime_manifest_from_inspection, sha256_file,
     DefaultInstallProfile, InstallationVerificationStatus, InstalledEstateRecord, ProjectLocator,
     INSTALLED_RECORD_KEY,
@@ -649,7 +649,7 @@ impl RootReading {
         installed.validate()?;
         let configuration: EstateConfiguration = decode_control(
             &inspector,
-            &estate_configuration_key(&locator.identity.instance_id),
+            &engram_configuration_key(&locator.identity.instance_id),
             "estate configuration",
         )?;
         configuration.validate().map_err(contract_error)?;

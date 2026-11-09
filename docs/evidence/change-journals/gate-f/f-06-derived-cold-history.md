@@ -151,3 +151,20 @@ The complete diff and each changed file must be reread, generated navigation and
 inventory refreshed, the installed driver and owning suites run, and current
 main integrated before the draft is ready. Candidate CI, merge-group CI and
 merge are not yet evidence. No F-06, C-07, alpha or release gate changes status.
+
+## 2026-11-09 absorption onto main
+
+The 53-file implementation that sat uncommitted was committed (051921e2) and
+merged with `development/main`, 232 commits ahead of its base. Twenty-three
+conflicts: generated SDK projections and reference pages regenerated from the
+merged catalogue (83 operations, OpenAPI digest b3f27207…); both the `parquet`
+dependency and main's dev-dependency kept; main's `installed_lifecycle.rs` with
+this package's `configured_cold_history_publishes_and_reads_after_process_restart`
+case re-appended; the client's `ColdHistoryRead` validation beside main's task
+worker and assessment impls; `rrflow_kv.rs` moved from `try_lock` to
+`try_write` after main changed the database lock to a `RwLock`; the SDK
+conformance corpus endpoint count set to 83. On the merged tree: public
+contract 47 passed; `rrd-lsm --lib` 59 passed; engine cold-history tests 6
+passed; the lifecycle case passed; clippy and fmt clean; generated surfaces
+verified; documentation policy OK. A build-and-test absorption, not F-06
+acceptance: no interruption matrix, soak or capacity claim is made.

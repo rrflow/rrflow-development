@@ -526,6 +526,7 @@ fn query_contract_is_transport_neutral_bounded_and_strict() {
         scope: request.scope.clone(),
         read_manifest_sha256: "a".repeat(64),
         known_at_cursor: 7,
+        result_identity_version: rrd_core::result_identity::RESULT_IDENTITY_VERSION,
         schema_revision: 1,
         plan: QueryPlanSnapshot {
             plan_sha256: "b".repeat(64),
@@ -677,6 +678,7 @@ fn live_query_contract_is_resumable_bounded_and_strict() {
         query: "FROM record:document AT VALID 42 KNOWN HEAD PROJECT title".into(),
         parameters: BTreeMap::new(),
         after_cursor: 41,
+        result_identity_version: Some(rrd_core::result_identity::RESULT_IDENTITY_VERSION),
         budget: QueryBudget::default(),
         max_delta_rows: 256,
         wait_timeout_ms: 1_000,
@@ -1480,6 +1482,34 @@ fn openapi_is_derived_from_every_catalogue_operation_and_wire_type() {
     );
 }
 
+/// `rrd-contract` has no workspace dependencies, so `CanonicalId` keeps its own
+/// copy of the kernel's grammar. This proves they cannot drift apart.
+#[test]
+fn canonical_id_agrees_with_the_kernel_grammar() {
+    let mut values = vec![
+        String::new(),
+        "a".repeat(rrd_core::ident::MAX_CANONICAL_ID_BYTES),
+        "a".repeat(rrd_core::ident::MAX_CANONICAL_ID_BYTES + 1),
+    ];
+    for byte in 0..=u8::MAX {
+        let character = char::from(byte);
+        values.push(character.to_string());
+        values.push(format!("a{character}"));
+        values.push(format!("{character}a"));
+    }
+    assert_eq!(
+        rrd_contract::MAX_ID_BYTES,
+        rrd_core::ident::MAX_CANONICAL_ID_BYTES
+    );
+    for value in values {
+        assert_eq!(
+            rrd_contract::CanonicalId::new(value.clone()).is_ok(),
+            rrd_core::ident::canonical_id_problem(&value).is_none(),
+            "the two grammars disagree on {value:?}"
+        );
+    }
+}
+
 #[test]
 fn every_catalogue_operation_carries_its_own_reference_text() {
     let catalogue = rrd_contract::endpoint_catalogue();
@@ -1668,6 +1698,7 @@ fn durable_subscription_contract_bounds_retention_backpressure_and_stream_shape(
             parameters: std::collections::BTreeMap::new(),
             budget: rrd_contract::QueryBudget::default(),
             max_delta_rows: 128,
+            result_identity_version: None,
         },
         after_cursor: 0,
         batch_size: 16,
@@ -2660,7 +2691,7 @@ fn prompt_flight_contract_is_bounded_strict_and_separately_authorized() {
             Some(rrd_contract::SecurityAction::FlightRead)
         );
     }
-    assert_eq!(rrd_contract::SecurityAction::ALL.len(), 57);
+    assert_eq!(rrd_contract::SecurityAction::ALL.len(), 59);
 }
 
 fn task_record() -> rrd_contract::TaskRecord {

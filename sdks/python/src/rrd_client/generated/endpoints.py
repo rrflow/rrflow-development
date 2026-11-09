@@ -1,9 +1,9 @@
 # Generated from rrd-contract; do not edit.
-# OpenAPI SHA-256: 60d01903f277eede2c2a585d20477e213a64af19471a902df87fcfb24f89b99e
+# OpenAPI SHA-256: b3f27207c4d9ef6bb83149d5657557bd5c81d4b28507b0a30aa757f907e16404
 from typing import Final, Literal, TypedDict
 
 ENDPOINT_OPENAPI_DOCUMENT_SHA256: Final[str] = (
-    "60d01903f277eede2c2a585d20477e213a64af19471a902df87fcfb24f89b99e"
+    "b3f27207c4d9ef6bb83149d5657557bd5c81d4b28507b0a30aa757f907e16404"
 )
 
 OperationId = Literal[
@@ -60,9 +60,12 @@ OperationId = Literal[
     "session-renew",
     "subscription-close",
     "subscription-open",
+    "task-assessment-execute",
+    "task-assessment-read",
     "task-attempt-read",
     "task-budget-configure",
     "task-budget-read",
+    "task-budget-resume",
     "task-budget-stop",
     "task-close",
     "task-embedding-execute",
@@ -70,12 +73,16 @@ OperationId = Literal[
     "task-list",
     "task-open",
     "task-read",
+    "task-worker-execute",
     "transaction-abort",
     "transaction-begin",
     "transaction-commit",
     "transaction-preview",
     "vector-collection-ensure",
     "vector-collection-list",
+    "vector-index-ensure",
+    "vector-payload-index-delete",
+    "vector-payload-index-ensure",
     "vector-point-retrieve",
     "vector-point-scroll",
     "vector-quantization-activate",
@@ -412,6 +419,18 @@ ENDPOINTS: Final[dict[OperationId, Endpoint]] = {
         "mutation": True,
         "path": "/v1/subscriptions/open",
     },
+    "task-assessment-execute": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": True,
+        "path": "/v1/tasks/assessment/execute",
+    },
+    "task-assessment-read": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": False,
+        "path": "/v1/tasks/assessment/read",
+    },
     "task-attempt-read": {
         "authentication": "session_bearer",
         "method": "POST",
@@ -429,6 +448,12 @@ ENDPOINTS: Final[dict[OperationId, Endpoint]] = {
         "method": "POST",
         "mutation": False,
         "path": "/v1/tasks/budget/read",
+    },
+    "task-budget-resume": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": True,
+        "path": "/v1/tasks/budget/resume",
     },
     "task-budget-stop": {
         "authentication": "session_bearer",
@@ -472,6 +497,12 @@ ENDPOINTS: Final[dict[OperationId, Endpoint]] = {
         "mutation": False,
         "path": "/v1/tasks/read",
     },
+    "task-worker-execute": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": True,
+        "path": "/v1/tasks/worker/execute",
+    },
     "transaction-abort": {
         "authentication": "session_bearer",
         "method": "DELETE",
@@ -507,6 +538,24 @@ ENDPOINTS: Final[dict[OperationId, Endpoint]] = {
         "method": "POST",
         "mutation": False,
         "path": "/v1/vector/collections/list",
+    },
+    "vector-index-ensure": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": True,
+        "path": "/v1/vector/indexes/ensure",
+    },
+    "vector-payload-index-delete": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": True,
+        "path": "/v1/vector/payload-indexes/delete",
+    },
+    "vector-payload-index-ensure": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": True,
+        "path": "/v1/vector/payload-indexes/ensure",
     },
     "vector-point-retrieve": {
         "authentication": "session_bearer",

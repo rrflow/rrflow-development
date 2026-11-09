@@ -108,6 +108,7 @@ mod diagnostic;
 mod distributed;
 mod endpoint_configuration;
 mod endpoint_proposal;
+mod endpoint_worker;
 pub use endpoint_proposal::EndpointCredentials;
 mod error;
 mod estate;
@@ -119,6 +120,7 @@ mod inference;
 mod installation;
 mod observation_delivery;
 mod observation_source;
+mod project_map;
 pub use attunement::{
     AttunementCommand, AttunementControlResult, AttunementReceiptView, AttunementReplanPreview,
     AttunementReplanReceiptView, AttunementReplanResult,
@@ -126,6 +128,7 @@ pub use attunement::{
 mod invocation;
 mod knowledge;
 mod maintenance;
+mod memory_engram;
 mod memory_estate;
 mod model;
 mod query;
@@ -146,6 +149,7 @@ mod session;
 mod session_transactions;
 mod subscription;
 mod task;
+mod task_assessment;
 mod token_key;
 mod transaction;
 mod transaction_admission;
@@ -168,14 +172,15 @@ pub use estate_control::{
 pub use installation::{
     attunement_proposal_schema, load_attunement_proposal, load_estate_configuration,
     AttunementProposal, AttunementProposalStep, DefaultAttunementPhase, DefaultInstallProfile,
-    InstallationPreview, InstallationVerificationCheck, InstallationVerificationReport,
-    InstallationVerificationStatus, InstalledEstateRecord, ProjectLocator,
-    ATTUNEMENT_PROPOSAL_FORMAT_VERSION, INSTALLATION_PREVIEW_FORMAT_VERSION,
+    InstallationPlanningOptions, InstallationPreview, InstallationVerificationCheck,
+    InstallationVerificationReport, InstallationVerificationStatus, InstalledEstateRecord,
+    ProjectLocator, ATTUNEMENT_PROPOSAL_FORMAT_VERSION, INSTALLATION_PREVIEW_FORMAT_VERSION,
 };
 pub use invocation::{
     AuthorizedInvocation, Invocation, InvocationCompletion, InvocationCredential, RrdOperation,
 };
 use model::*;
+pub use project_map::{ProjectMapSummary, PROJECT_MAP_RELATIVE_PATH};
 pub use security::{MAX_AUDIT_PAGE_RECORDS, MAX_JWT_CREDENTIAL_BYTES};
 pub use serving::{ServingPublisher, ServingRecord, ServingRegistration};
 use session::*;

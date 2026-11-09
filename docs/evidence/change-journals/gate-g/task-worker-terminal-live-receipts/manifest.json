@@ -1,0 +1,94 @@
+{
+  "harnessSource": "69250d34806e8cb6d3a94424cdd6d3981b5ce1e1",
+  "engineSource": "75c26a80d5d1d07550070096df463d006aca6680",
+  "binarySha256": "c9f481103d6ba2a2cf1e0b42e386b084d92530bc42375b0039c7cf6722243636",
+  "runnerSha256": "5bfcb1365442f6cba8279bbd6e0237fcaac60dbfed329587f2a07443bb8839cb",
+  "relaySha256": "af3b9eb9a9e42bd8fb081d8ac9556578c9484e8f01c44009d3ca412767deca7b",
+  "actualProviderCalls": 3,
+  "files": {
+    "relay-1-provider-response.json": {
+      "sha256": "c53c6373b877246c9253b7fc74ed829b283c2cbf9bab2e589c520bcae2922ec9",
+      "bytes": 651
+    },
+    "relay-1-observation.json": {
+      "sha256": "29136c65dbef8a6d056bec8b6353da5dc768a19f9b1a644aa685e763381a7f55",
+      "bytes": 308
+    },
+    "relay-2-provider-response.json": {
+      "sha256": "4eba51fd53014751841b6e717050196dec2e1b091d2ca658ccf3ae03c76f6087",
+      "bytes": 595
+    },
+    "relay-2-observation.json": {
+      "sha256": "d1d7acb9bfb845da9b81a66c4800b19ced391356bd55a9e142b7c603020fa333",
+      "bytes": 307
+    },
+    "relay-3-provider-response.json": {
+      "sha256": "9e02902da44fe33cf82ecac3530800bbab8b6667cd09b37414999d31a637b639",
+      "bytes": 651
+    },
+    "relay-3-observation.json": {
+      "sha256": "ae06a557279da9e2f66152727a603e161569dfda29d953ae507161450f251e33",
+      "bytes": 308
+    },
+    "worker-authorized-reserved-worker.json": {
+      "sha256": "d51c03071b476704fa96782a6239c0456ff17fa551cdec2768abc251d062ef3c",
+      "bytes": 1273
+    },
+    "worker-authorized-reserved-budget.json": {
+      "sha256": "c0acb28aa25eb52f4fe1803d1cc47bb4daa6ffc6d5388da50ce989974deac259",
+      "bytes": 2022
+    },
+    "worker-authorized-terminal-worker.json": {
+      "sha256": "99458959cb4cf8d019b7b137678155c5c12bff82f491141616dac569a66cffb1",
+      "bytes": 1765
+    },
+    "worker-authorized-terminal-worker-attempt.json": {
+      "sha256": "a631841f63622782853a5687f190abcf1c6c0e05c833fee8983faf52ad0b7d48",
+      "bytes": 1272
+    },
+    "worker-authorized-terminal-worker-budget.json": {
+      "sha256": "62168706687171b60bfa9758ff1bd9ab668cf2f5fab39707a9105ec2ad7afdeb",
+      "bytes": 1991
+    },
+    "worker-terminal-reopened-budget.json": {
+      "sha256": "bfebade43995b98fd93d8879519e9eff7a2370ab8bdf3e6e5b9e057440d13e53",
+      "bytes": 1991
+    },
+    "capacity-authorized-original-worker-replay.json": {
+      "sha256": "51b19cc584fbfe2973e3166693bf612050be85b523eda678681ec95bd725acbf",
+      "bytes": 1689
+    },
+    "capacity-authorized-capacity-proposal.json": {
+      "sha256": "dfdeec8281f77e7a4724a92fcf700a459f0d7987a25de8d78204b648ea344ecf",
+      "bytes": 2772
+    },
+    "capacity-authorized-original-budget-after-capacity.json": {
+      "sha256": "d38a17fa3a542c6167fae171b6fef10c44b1c0f5647da5bfad322ac080505812",
+      "bytes": 1991
+    },
+    "capacity-reopened-budget.json": {
+      "sha256": "35325286ba3ba2e015d48822c42be78db38fe7c3e4eff062bc3e716fa4cc474f",
+      "bytes": 1991
+    },
+    "capacity-reopened-capacity-attempt.json": {
+      "sha256": "aec5d2b291d739f65ed5a956242107adea2a78cf3311b83ca09c73893449476c",
+      "bytes": 2934
+    },
+    "capacity-reopened-capacity-budget.json": {
+      "sha256": "6cd0e0b80000e14cd6bb0c7e3fb0acd93d30745611d3597a7dc5632d7e6df3cf",
+      "bytes": 1979
+    },
+    "result.json": {
+      "sha256": "56e48008f64ea967bcd1e2cb183c806c826739f693999e79818fe699384da0fd",
+      "bytes": 9272
+    },
+    "independent-recovery.json": {
+      "sha256": "b5e09613072838b2a9493ce4926eb30031b90d05b9ceeee4ff07ea054038da7e",
+      "bytes": 3388
+    }
+  },
+  "independentRecoveryEqual": true,
+  "originalStoppedBudgetPreserved": true,
+  "publicResumeImplemented": false,
+  "trainingDataCreated": false
+}
