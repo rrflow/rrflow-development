@@ -35,7 +35,9 @@ pub enum HnswMaintenanceKind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HnswKernel {
     Scalar,
-    /// Runtime-dispatched AVX2 on supported x86_64 hosts, otherwise scalar.
+    /// Runtime-dispatched AVX2 on supported x86_64 hosts, NEON on aarch64,
+    /// otherwise scalar. Lanes are f32, so traversal can round differently
+    /// from scalar, and final exact reranking stays authoritative.
     Auto,
 }
 
@@ -1094,65 +1096,233 @@ fn score_dense_values(
     match kernel {
         HnswKernel::Scalar => score_dense(query, candidate, metric),
         HnswKernel::Auto => {
-            #[cfg(target_arch = "x86_64")]
-            if std::arch::is_x86_feature_detected!("avx2") {
-                // SAFETY: AVX2 was detected at runtime and both slices have the
-                // same proven length; the kernel performs only unaligned
-                // in-bounds loads.
-                return Ok(unsafe { score_dense_avx2(query, candidate, metric) });
+            if let Some(simd) = simd_score() {
+                // SAFETY: simd_score only returns a kernel this host can run,
+                // and both slices have the same proven length; a kernel
+                // performs only unaligned in-bounds loads.
+                let score = unsafe { simd(query, candidate, metric) };
+                // A lane that overflowed says nothing about the real score.
+                // A tiny score may have lost whole lanes to f32 underflow
+                // (squares of values below about 1e-19 vanish) while a tail
+                // element kept its f64 value, so it is finite and still wrong.
+                // Either is the scalar f64 kernel's to decide; a duplicate or
+                // orthogonal pair costs one scalar pass and keeps its answer.
+                if score.is_finite() && score.abs() >= SIMD_SCORE_FLOOR {
+                    return Ok(score);
+                }
             }
             score_dense(query, candidate, metric)
         }
     }
 }
 
+/// Below this magnitude a SIMD score is recomputed by the scalar kernel. An
+/// f32 product underflows near 1e-38, so a sum of squares this small can have
+/// dropped most of its terms; every ordinary embedding distance is far above it.
+const SIMD_SCORE_FLOOR: f64 = 1e-15;
+
+type SimdScore = unsafe fn(&[f32], &[f32], ScoreMetric) -> f64;
+
+/// The SIMD kernel this host can run, if it has one. NEON is part of the
+/// aarch64 baseline, so it needs no detection.
+fn simd_score() -> Option<SimdScore> {
+    #[cfg(target_arch = "aarch64")]
+    return Some(score_dense_neon);
+    #[cfg(not(target_arch = "aarch64"))]
+    {
+        #[cfg(target_arch = "x86_64")]
+        if std::arch::is_x86_feature_detected!("avx2") {
+            return Some(score_dense_avx2);
+        }
+        None
+    }
+}
+
+/// A cosine from f32 lanes. A norm outside the normal f32 range has lost its
+/// meaning, and a zero vector is the scalar kernel's to define, so either
+/// returns NaN for the scalar kernel to decide.
+#[cfg(any(target_arch = "x86_64", target_arch = "aarch64"))]
+fn cosine_from_lanes(dot: f64, left_norm: f64, right_norm: f64) -> f64 {
+    let normal = f64::from(f32::MIN_POSITIVE)..=f64::from(f32::MAX);
+    if normal.contains(&left_norm) && normal.contains(&right_norm) {
+        dot / (left_norm.sqrt() * right_norm.sqrt())
+    } else {
+        f64::NAN
+    }
+}
+
+/// Sums `lane` over the slices sixteen floats at a time, in four groups of
+/// registers so the core can run them in parallel, then `tail` over the rest.
+#[cfg(target_arch = "aarch64")]
+unsafe fn neon_sums<const N: usize>(
+    left: &[f32],
+    right: &[f32],
+    lane: impl Fn(
+        &mut [std::arch::aarch64::float32x4_t; N],
+        std::arch::aarch64::float32x4_t,
+        std::arch::aarch64::float32x4_t,
+    ),
+    tail: impl Fn(&mut [f64; N], f64, f64),
+) -> [f64; N] {
+    use std::arch::aarch64::*;
+    let mut groups = [[vdupq_n_f32(0.0); N]; 4];
+    let mut index = 0;
+    while index + 16 <= left.len() {
+        for (offset, group) in groups.iter_mut().enumerate() {
+            let at = index + offset * 4;
+            lane(
+                group,
+                vld1q_f32(left.as_ptr().add(at)),
+                vld1q_f32(right.as_ptr().add(at)),
+            );
+        }
+        index += 16;
+    }
+    let mut sums = [0.0_f64; N];
+    for (which, sum) in sums.iter_mut().enumerate() {
+        let first = vaddq_f32(groups[0][which], groups[1][which]);
+        let second = vaddq_f32(groups[2][which], groups[3][which]);
+        *sum = f64::from(vaddvq_f32(vaddq_f32(first, second)));
+    }
+    for (lhs, rhs) in left[index..].iter().zip(&right[index..]) {
+        tail(&mut sums, f64::from(*lhs), f64::from(*rhs));
+    }
+    sums
+}
+
+/// Computes only what its metric needs. NEON is part of the aarch64 baseline.
+#[cfg(target_arch = "aarch64")]
+unsafe fn score_dense_neon(left: &[f32], right: &[f32], metric: ScoreMetric) -> f64 {
+    use std::arch::aarch64::*;
+    match metric {
+        ScoreMetric::Dot => neon_sums::<1>(
+            left,
+            right,
+            |[dot], lhs, rhs| *dot = vfmaq_f32(*dot, lhs, rhs),
+            |[dot], lhs, rhs| *dot += lhs * rhs,
+        )[0],
+        ScoreMetric::Cosine => {
+            let [dot, left_norm, right_norm] = neon_sums::<3>(
+                left,
+                right,
+                |[dot, left_norm, right_norm], lhs, rhs| {
+                    *dot = vfmaq_f32(*dot, lhs, rhs);
+                    *left_norm = vfmaq_f32(*left_norm, lhs, lhs);
+                    *right_norm = vfmaq_f32(*right_norm, rhs, rhs);
+                },
+                |[dot, left_norm, right_norm], lhs, rhs| {
+                    *dot += lhs * rhs;
+                    *left_norm += lhs * lhs;
+                    *right_norm += rhs * rhs;
+                },
+            );
+            cosine_from_lanes(dot, left_norm, right_norm)
+        }
+        ScoreMetric::Euclidean => -neon_sums::<1>(
+            left,
+            right,
+            |[sum], lhs, rhs| {
+                let delta = vsubq_f32(lhs, rhs);
+                *sum = vfmaq_f32(*sum, delta, delta);
+            },
+            |[sum], lhs, rhs| *sum += (lhs - rhs).powi(2),
+        )[0]
+        .sqrt(),
+        ScoreMetric::Manhattan => -neon_sums::<1>(
+            left,
+            right,
+            |[sum], lhs, rhs| *sum = vaddq_f32(*sum, vabdq_f32(lhs, rhs)),
+            |[sum], lhs, rhs| *sum += (lhs - rhs).abs(),
+        )[0],
+    }
+}
+
+/// Sums `lane` over the slices eight floats at a time, then `tail` over the rest.
+#[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "avx2")]
+unsafe fn avx2_sums<const N: usize>(
+    left: &[f32],
+    right: &[f32],
+    lane: impl Fn(
+        &mut [std::arch::x86_64::__m256; N],
+        std::arch::x86_64::__m256,
+        std::arch::x86_64::__m256,
+    ),
+    tail: impl Fn(&mut [f64; N], f64, f64),
+) -> [f64; N] {
+    use std::arch::x86_64::*;
+    let mut lanes = [_mm256_setzero_ps(); N];
+    let mut index = 0;
+    while index + 8 <= left.len() {
+        lane(
+            &mut lanes,
+            _mm256_loadu_ps(left.as_ptr().add(index)),
+            _mm256_loadu_ps(right.as_ptr().add(index)),
+        );
+        index += 8;
+    }
+    let mut sums = [0.0_f64; N];
+    for (sum, register) in sums.iter_mut().zip(&lanes) {
+        let mut values = [0.0_f32; 8];
+        _mm256_storeu_ps(values.as_mut_ptr(), *register);
+        *sum = values.iter().map(|value| f64::from(*value)).sum();
+    }
+    for (lhs, rhs) in left[index..].iter().zip(&right[index..]) {
+        tail(&mut sums, f64::from(*lhs), f64::from(*rhs));
+    }
+    sums
+}
+
+/// Computes only what its metric needs.
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2")]
 unsafe fn score_dense_avx2(left: &[f32], right: &[f32], metric: ScoreMetric) -> f64 {
     use std::arch::x86_64::*;
-    let mut dot = _mm256_setzero_ps();
-    let mut left_norm = _mm256_setzero_ps();
-    let mut right_norm = _mm256_setzero_ps();
-    let mut distance = _mm256_setzero_ps();
-    let mut manhattan = _mm256_setzero_ps();
-    let sign_mask = _mm256_set1_ps(-0.0);
-    let mut index = 0;
-    while index + 8 <= left.len() {
-        let lhs = _mm256_loadu_ps(left.as_ptr().add(index));
-        let rhs = _mm256_loadu_ps(right.as_ptr().add(index));
-        let delta = _mm256_sub_ps(lhs, rhs);
-        dot = _mm256_add_ps(dot, _mm256_mul_ps(lhs, rhs));
-        left_norm = _mm256_add_ps(left_norm, _mm256_mul_ps(lhs, lhs));
-        right_norm = _mm256_add_ps(right_norm, _mm256_mul_ps(rhs, rhs));
-        distance = _mm256_add_ps(distance, _mm256_mul_ps(delta, delta));
-        manhattan = _mm256_add_ps(manhattan, _mm256_andnot_ps(sign_mask, delta));
-        index += 8;
-    }
-    let mut lanes = [0.0_f32; 8];
-    let reduce = |value: __m256, lanes: &mut [f32; 8]| {
-        _mm256_storeu_ps(lanes.as_mut_ptr(), value);
-        lanes.iter().map(|value| f64::from(*value)).sum::<f64>()
-    };
-    let mut dot = reduce(dot, &mut lanes);
-    let mut left_norm = reduce(left_norm, &mut lanes);
-    let mut right_norm = reduce(right_norm, &mut lanes);
-    let mut distance = reduce(distance, &mut lanes);
-    let mut manhattan = reduce(manhattan, &mut lanes);
-    for (lhs, rhs) in left[index..].iter().zip(&right[index..]) {
-        let lhs = f64::from(*lhs);
-        let rhs = f64::from(*rhs);
-        dot += lhs * rhs;
-        left_norm += lhs * lhs;
-        right_norm += rhs * rhs;
-        distance += (lhs - rhs).powi(2);
-        manhattan += (lhs - rhs).abs();
-    }
     match metric {
-        ScoreMetric::Dot => dot,
-        ScoreMetric::Cosine if right_norm == 0.0 => 0.0,
-        ScoreMetric::Cosine => dot / (left_norm.sqrt() * right_norm.sqrt()),
-        ScoreMetric::Euclidean => -distance.sqrt(),
-        ScoreMetric::Manhattan => -manhattan,
+        ScoreMetric::Dot => avx2_sums::<1>(
+            left,
+            right,
+            |[dot], lhs, rhs| *dot = _mm256_add_ps(*dot, _mm256_mul_ps(lhs, rhs)),
+            |[dot], lhs, rhs| *dot += lhs * rhs,
+        )[0],
+        ScoreMetric::Cosine => {
+            let [dot, left_norm, right_norm] = avx2_sums::<3>(
+                left,
+                right,
+                |[dot, left_norm, right_norm], lhs, rhs| {
+                    *dot = _mm256_add_ps(*dot, _mm256_mul_ps(lhs, rhs));
+                    *left_norm = _mm256_add_ps(*left_norm, _mm256_mul_ps(lhs, lhs));
+                    *right_norm = _mm256_add_ps(*right_norm, _mm256_mul_ps(rhs, rhs));
+                },
+                |[dot, left_norm, right_norm], lhs, rhs| {
+                    *dot += lhs * rhs;
+                    *left_norm += lhs * lhs;
+                    *right_norm += rhs * rhs;
+                },
+            );
+            cosine_from_lanes(dot, left_norm, right_norm)
+        }
+        ScoreMetric::Euclidean => -avx2_sums::<1>(
+            left,
+            right,
+            |[sum], lhs, rhs| {
+                let delta = _mm256_sub_ps(lhs, rhs);
+                *sum = _mm256_add_ps(*sum, _mm256_mul_ps(delta, delta));
+            },
+            |[sum], lhs, rhs| *sum += (lhs - rhs).powi(2),
+        )[0]
+        .sqrt(),
+        ScoreMetric::Manhattan => {
+            let sign = _mm256_set1_ps(-0.0);
+            -avx2_sums::<1>(
+                left,
+                right,
+                |[sum], lhs, rhs| {
+                    *sum = _mm256_add_ps(*sum, _mm256_andnot_ps(sign, _mm256_sub_ps(lhs, rhs)));
+                },
+                |[sum], lhs, rhs| *sum += (lhs - rhs).abs(),
+            )[0]
+        }
     }
 }
 
@@ -1269,6 +1439,142 @@ mod tests {
         ReadStamp, RuntimeProperties, RuntimeRef, RuntimeValue, RuntimeVector,
         VectorCollectionAddress,
     };
+
+    const KERNEL_METRICS: [ScoreMetric; 4] = [
+        ScoreMetric::Dot,
+        ScoreMetric::Cosine,
+        ScoreMetric::Euclidean,
+        ScoreMetric::Manhattan,
+    ];
+
+    fn kernel_vectors(length: usize, seed: u32) -> (Vec<f32>, Vec<f32>) {
+        let mut state = seed;
+        let mut next = move || {
+            state = state
+                .wrapping_mul(2_654_435_761)
+                .wrapping_add(1_013_904_223);
+            (state >> 8) as f32 / (1_u32 << 24) as f32 * 2.0 - 1.0
+        };
+        let left = (0..length).map(|_| next()).collect();
+        let right = (0..length).map(|_| next()).collect();
+        (left, right)
+    }
+
+    fn both_kernels(left: &[f32], right: &[f32], metric: ScoreMetric) -> (f64, f64) {
+        (
+            score_dense_values(left, right, metric, HnswKernel::Scalar).unwrap(),
+            score_dense_values(left, right, metric, HnswKernel::Auto).unwrap(),
+        )
+    }
+
+    /// A lost lane or tail element moves a score far more than this rounding
+    /// allowance at the short lengths, where each element is a large share.
+    #[test]
+    fn the_automatic_kernel_agrees_with_the_scalar_kernel_at_every_length() {
+        for length in (0..=67).chain([128, 384, 512, 1024]) {
+            let (left, right) = kernel_vectors(length, length as u32 + 1);
+            let allowance = 1e-5 * length.max(1) as f64;
+            for metric in KERNEL_METRICS {
+                let (scalar, automatic) = both_kernels(&left, &right, metric);
+                assert!(
+                    (scalar - automatic).abs() <= allowance,
+                    "{metric:?} at {length}: {scalar} and {automatic}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn a_zero_vector_scores_as_the_scalar_kernel_scores_it() {
+        let zero = vec![0.0_f32; 33];
+        let (other, _) = kernel_vectors(33, 7);
+        for metric in KERNEL_METRICS {
+            for (left, right) in [(&zero, &other), (&other, &zero), (&zero, &zero)] {
+                let (scalar, automatic) = both_kernels(left, right, metric);
+                assert!(
+                    (scalar.is_nan() && automatic.is_nan()) || (scalar - automatic).abs() <= 1e-3,
+                    "{metric:?}: {scalar} and {automatic}"
+                );
+            }
+        }
+    }
+
+    /// Lanes are f32 and the scalar kernel is f64. A product can overflow the
+    /// first where the second is finite, and that must not change a score.
+    #[test]
+    fn a_lane_that_overflows_gets_the_scalar_kernels_score() {
+        let same = vec![1e30_f32; 33];
+        let opposite = same.iter().map(|value| -value).collect::<Vec<_>>();
+        let alternating = same
+            .iter()
+            .enumerate()
+            .map(|(index, value)| if index % 2 == 0 { *value } else { -value })
+            .collect::<Vec<_>>();
+        for metric in KERNEL_METRICS {
+            for other in [&same, &opposite, &alternating] {
+                let (scalar, automatic) = both_kernels(&same, other, metric);
+                assert!(scalar.is_finite(), "{metric:?}: {scalar}");
+                assert_eq!(automatic, scalar, "{metric:?}");
+            }
+        }
+    }
+
+    /// Lanes are f32. Squares of small-magnitude values underflow there where
+    /// the f64 scalar kernel keeps them, so distinct distances would become
+    /// ties, or keep only their tail element, and the nearest candidates
+    /// would be lost at traversal. Vectors of 33 leave one tail element.
+    #[test]
+    fn a_lane_that_underflows_gets_the_scalar_kernels_score() {
+        let tiny = vec![1e-30_f32; 33];
+        let zero = vec![0.0_f32; 33];
+        let doubled = tiny.iter().map(|value| value * 2.0).collect::<Vec<_>>();
+        for metric in KERNEL_METRICS {
+            for (left, right) in [(&tiny, &zero), (&tiny, &doubled), (&doubled, &tiny)] {
+                let (scalar, automatic) = both_kernels(left, right, metric);
+                assert!(scalar.is_finite(), "{metric:?}: {scalar}");
+                // A metric whose lanes stay normal (Manhattan here) keeps its
+                // f32 rounding; one that underflowed must be the scalar score.
+                assert!(
+                    (scalar - automatic).abs() <= scalar.abs() * 1e-5,
+                    "{metric:?}: {scalar} and {automatic}"
+                );
+            }
+        }
+    }
+
+    /// A norm that overflows or underflows f32 can still give a finite score,
+    /// and that score is wrong, so being finite is not enough.
+    #[test]
+    fn a_cosine_norm_outside_the_normal_f32_range_gets_the_scalar_kernels_score() {
+        let huge = vec![1e30_f32; 33];
+        let tiny = vec![1e-30_f32; 33];
+        let (ordinary, _) = kernel_vectors(33, 11);
+        for (left, right) in [
+            (&huge, &tiny),
+            (&tiny, &huge),
+            (&tiny, &tiny),
+            (&huge, &ordinary),
+            (&ordinary, &tiny),
+        ] {
+            let (scalar, automatic) = both_kernels(left, right, ScoreMetric::Cosine);
+            assert!(scalar.is_finite(), "{scalar}");
+            assert_eq!(automatic, scalar);
+        }
+    }
+
+    #[test]
+    fn a_host_with_simd_uses_it() {
+        #[cfg(target_arch = "aarch64")]
+        assert!(
+            simd_score().is_some(),
+            "NEON is part of the aarch64 baseline"
+        );
+        #[cfg(target_arch = "x86_64")]
+        assert_eq!(
+            simd_score().is_some(),
+            std::arch::is_x86_feature_detected!("avx2")
+        );
+    }
 
     fn candidate(scope: &ScopeId, cursor: u64, id: usize, values: Vec<f32>) -> VectorCandidate {
         VectorCandidate {
