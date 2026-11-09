@@ -152,6 +152,44 @@ lane condition and the gate to check each result by lane;
 `test_select_ci_lanes.py` and `test_ci_lanes_policy.py` are its regressions and
 run in the `changes` job and the verify policy step.
 
+## Pull request limits
+
+After lane selection, the `changes` job runs `scripts/ci/check_pr_governance.py`
+and fails a pull request that breaks a work-in-progress limit. The limits
+exist because on 2026-11-09 the repository held 27 open pull requests, 20 of
+them drafts, most 130 to 420 commits behind `main`, with two merged into
+`main` carrying no file changes; prose in `AGENTS.md` had not prevented any
+of it.
+
+| Limit | Value | Lifted by the `integration` label | Evidence |
+|---|---|---|---|
+| changed files | at least one | never | #298 and #299 merged with zero changes |
+| base branch | `main` | never | eight stacked lab pull requests could not enter the queue in turn |
+| merge-base age | 3 days | never | DORA's trunk-based capability: merge to trunk at least daily, three or fewer active branches |
+| changed lines | 400 | yes | Google reviews a median change of about 24 lines and approves most in under four hours (Sadowski et al., ICSE-SEIP 2018); the Cisco/SmartBear study of 2,500 reviews found review effectiveness fall past 200 to 400 lines |
+| open pull requests | 5 | yes | teams running parallel agents size concurrency by pull requests awaiting review; conflicts grow faster than linearly with parallel agents |
+| open per author | 3 | yes | open-source projects admitting agents cap contributors at about three open pull requests |
+
+Pull requests opened before 2026-11-10 are the backlog being absorbed: the
+empty-diff, base-branch and merge-base rules apply to them, the two counts
+and the size limit do not, and they are not counted against newer ones.
+`scripts/ci/test_pr_governance.py` is the regression corpus. The evidence is
+correlational and partly vendor-reported; the numbers are starting values
+to be changed from measurement, in this record, not from taste.
+
+Sources: [DORA, trunk-based development](https://dora.dev/capabilities/trunk-based-development/);
+[Sadowski et al., Modern Code Review: A Case Study at Google, ICSE-SEIP 2018](https://sback.it/publications/icse2018seip.pdf);
+[SmartBear/Cisco peer review study](https://smartbear.com/resources/white-papers/11-best-practices-for-peer-code-review/);
+[Osmani, Your AI coding agents need a manager](https://addyosmani.com/blog/coding-agents-manager/);
+[CircleCI, parallel coding agents without piling up PRs](https://circleci.com/blog/parallel-coding-agents/);
+[Wessel et al., AI policies in popular open source projects](https://arxiv.org/html/2609.07542);
+[AgenticFlict, merge conflicts in AI-generated contributions](https://arxiv.org/pdf/2601.20109).
+
+`scripts/ci/check_session_end.py` is the agent-side guard: it fails while the
+worktree holds uncommitted or unpushed work, so a session cannot end with
+hundreds of staged files that no pull request carries, as five did on
+2026-11-09.
+
 Rust cache steps still restore compatible entries on every candidate, but do
 not save new entries from `merge_group` runs. Queue-ref entries are scoped to
 the temporary ref and cannot warm the next candidate's base; disabling those

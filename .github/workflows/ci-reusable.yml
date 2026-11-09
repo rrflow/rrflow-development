@@ -31,6 +31,9 @@ env:
 jobs:
   changes:
     name: select CI lanes
+    permissions:
+      contents: read
+      pull-requests: read
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
@@ -69,6 +72,13 @@ jobs:
             python3 scripts/ci/select_ci_lanes.py --base "$BASE_SHA" --head "$HEAD_SHA" --github-output "$GITHUB_OUTPUT"
           fi
           cat "$GITHUB_OUTPUT"
+      - name: Enforce pull-request limits
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python3 scripts/ci/test_pr_governance.py
+          python3 scripts/ci/check_pr_governance.py
 
   native-arm64:
     name: native Linux ARM64 installed lifecycle
@@ -366,6 +376,7 @@ jobs:
           python3 scripts/ci/test_inspect_merge_conflicts.py
           python3 scripts/ci/test_select_ci_lanes.py
           python3 scripts/ci/test_ci_lanes_policy.py
+          python3 scripts/ci/test_pr_governance.py
           python3 scripts/ci/check_workflow.py
           python3 scripts/ci/test_inspect_candidate_runs.py
       - name: Test offline qualification input and artifact policy

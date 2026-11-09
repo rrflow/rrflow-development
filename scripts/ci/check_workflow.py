@@ -1020,6 +1020,15 @@ def verify_lane_selection(jobs: dict[str, str], reusable: str) -> None:
         require(changes.count(required) == 1, f"lane selection is missing: {required}")
     require(not re.search(r"(?m)^    if:", changes) and "continue-on-error:" not in changes,
             "lane selection itself cannot be conditional or ignored")
+    for required in (
+        "      - name: Enforce pull-request limits\n",
+        "          python3 scripts/ci/test_pr_governance.py\n",
+        "          python3 scripts/ci/check_pr_governance.py\n",
+        "      pull-requests: read\n",
+    ):
+        require(changes.count(required) == 1, f"pull-request limits are missing from lane selection: {required.strip()}")
+    require(not re.search(r"(?m)^        if:.*\n(?:.*\n){0,3}.*check_pr_governance", changes),
+            "pull-request limits cannot be conditional")
     for name in ("full", "docs", "scripts", "engine", "sdk", "packages", "dependents"):
         require(f"      {name}: ${{{{ steps.lanes.outputs.{name} }}}}" in changes,
                 f"lane selection must publish the {name} output")
