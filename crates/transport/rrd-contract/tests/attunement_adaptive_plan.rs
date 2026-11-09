@@ -41,6 +41,7 @@ fn plan(selected: &[AttunementPhase]) -> AttunementPlan {
 }
 
 #[test]
+#[ignore = "POAM-006: adaptive attunement selection is not implemented; the contract still requires a final Verify phase and the engine still installs the fixed eleven-phase default"]
 fn selected_effects_need_not_end_in_an_unavailable_verification_phase() {
     for selected in [
         vec![AttunementPhase::Connect],
@@ -69,6 +70,7 @@ fn adaptive_plans_still_reject_empty_bad_sequence_and_changed_content() {
 }
 
 #[test]
+#[ignore = "POAM-006: adaptive attunement selection is not implemented; the contract still requires a final Verify phase and the engine still installs the fixed eleven-phase default"]
 fn completed_non_verification_effect_cannot_forge_a_passed_verification() {
     let plan = plan(&[AttunementPhase::Connect]);
     let mut checkpoint = AttunementPhaseCheckpoint {

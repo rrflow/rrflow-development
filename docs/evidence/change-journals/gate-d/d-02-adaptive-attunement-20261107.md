@@ -236,3 +236,15 @@ updated the Gate D journal index; `python scripts/knowledge/render_navigation.py
 scripts/ci/check_documentation.py` passed (1,023 document statuses). `git diff
 --check` passed for tracked changes. The current worktree also contains the
 untracked test and this journal; their presence is not candidate CI evidence.
+
+## 2026-11-09 absorption onto main
+
+The two contract tests that describe the target behaviour fail on main as
+intended: `AttunementPlan::validate` still requires exactly one final Verify
+phase, and no selection exists. The owner directed that every authored line
+be absorbed into main rather than left on a branch, so both tests land
+marked `#[ignore]` with the POAM-006 reason in the attribute. They are the
+red oracle for D-02; un-ignoring them is the first step of the package that
+implements selection. The third test, which checks the unchanged rules,
+runs. `cargo test -p rrd-contract --test attunement_adaptive_plan`: 1
+passed, 2 ignored. Clippy, fmt and documentation policy pass.
