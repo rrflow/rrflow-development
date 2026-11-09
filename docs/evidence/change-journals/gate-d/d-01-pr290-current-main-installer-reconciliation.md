@@ -18,9 +18,27 @@ first-failure or characterization oracle and result: initial `cargo check -p rrd
 acceptance commands and exact results: `cargo check -p rrd-engine --lib --locked` passed; `cargo check -p rrd-engine --tests --locked` passed; `cargo test -p rrd-contract --locked` passed all test binaries; `cargo test -p rrd-engine --locked` passed 395 tests, with 4 ignored and 0 failures. `cargo fmt --all` completed. `git diff --check HEAD` was run before the latest identity correction and must be rerun on the committed candidate.
 surfaced failures and corrections: first full engine run failed 121 tests because sealed installation validation still expected an unrestricted grant list and the `engram` rename changed the canonical `estate` target/identity seed. Updated validation to derive the only permitted grant set from the explicit preview scope, restored `estate` identity derivation, then reran the full engine package successfully. Contract tests passed after restoring missing operations/models and recalculating the owned OpenAPI digest.
 checks not run and reason: full workspace CI, SDK matrix, Linux/Windows native capacity/soak lanes, crash matrix, and merge-group CI are not run locally; they are required from the updated candidate PR. No end-to-end installed project indexing journey was claimed.
-remaining known errors and owner: PR #290 still needs generated SDK/conformance and protected candidate CI, review, and merge-queue acceptance. The alpha's end-to-end real-project indexing and query/readback evidence remains owned by Gate D and the current execution driver.
-full-file reread and diff review: all candidate changes and the merge diff were reviewed at their owning symbols; `git diff --check` and the full changed-path inventory are required after journal/index generation.
+remaining known errors and owner: PR #290 still needs the updated candidate CI, review, and merge-queue acceptance. The alpha's end-to-end real-project indexing and query/readback evidence remains owned by Gate D and the current execution driver.
+full-file reread and diff review: all candidate changes and the merge diff were reviewed at their owning symbols; `git diff --check HEAD` passes after journal/index generation. The current workflow diff and selector changes were reread after the CI-policy repair.
 change checklist: outcome/owners named; current and target behavior recorded; complete package scope mapped; tests and failure oracle retained; no upstream adaptation; no runtime trace claim; paths recorded; stop conditions retained.
 roadmap/POA&M status change: none.
-pull request, CI run, and merge evidence: PR #290 remains draft and unmerged. Candidate CI will start only after this integration commit is pushed to the public development PR branch. No protected merge is claimed.
+pull request, CI run, and merge evidence: PR #290 is ready for review and remains unmerged. The pushed d40 candidate CI exposed missing `rrd-engram` package selectors and a missing storage-contract preflight. The candidate workflow was corrected locally to use the canonical `rrd-estate` package/bin/test names, restore the storage preflight required by `scripts/ci/check_workflow.py`, add its dependency and gate result, rename `engram-portability` to `estate-portability`, and restore `save-if: ${{ github.event_name != 'merge_group' }}` for all ten Rust caches. `python scripts/ci/check_workflow.py` now passes (6 workflows, 11 substantive jobs, 5 cohesive engine suites, 22 default-feature packages, 6 optional-feature packages, 19 development-container pins); `python scripts/check_version.py` passes; `git diff --check HEAD` passes after normalizing the edited workflow to LF. `cargo test -p rrd-server --test local_estate_driver --locked` passes (4/4); `cargo build -p rrflow-cli --bin rrd-estate-controller --locked` passes. PR #270 merge-group rerun attempt 2 is successful, though the queue entry still reports `AWAITING_CHECKS` and PR state OPEN at this journal update. This repaired workflow has not yet been pushed, so no candidate CI result exists for these corrections. No protected merge is claimed.
 ```
+
+## Implementation traceability: duplicate `rrd-engram` package
+
+The pushed candidate CI provided a new concrete blocker: `verify` rejects the
+unlisted `crates/authority/rrd-engram/Cargo.toml`; engine and installed-process
+jobs invoke `-p rrd-engram` and `rrd-engram-controller`, neither of which is a
+workspace package or CLI target. The branch contains a second source tree and
+test tree beside the canonical `crates/authority/rrd-estate` package.
+
+| Existing behavior/source | Canonical destination | Characterization and replacement evidence |
+|---|---|---|
+| 18 files under `crates/authority/rrd-engram/{src,tests}` | Existing paired files under `crates/authority/rrd-estate/{src,tests}` | All 18 relative paths pair. After identifier normalization, the behavioral modules match except for case-damaged public names and fields; e.g. `estates` becomes `Estates`, `estate_id` becomes `ESTATE_id`, and `estate_revision` becomes `ESTATE_revision`. Those serialized/API changes are rejected. |
+| Backup, recovery, local authorization, deployment and authority implementation | `rrd-estate` implementations, already consumed by `rrd-engine`, `rrd-client`, `rrd-server`, and `rrflow-cli` | `cargo test -p rrd-estate --locked` passed all test binaries (22 tests total, 0 failed); `cargo test -p rrd-engine --locked` passed 395 tests (4 ignored). The package test suite is the replacement behavior proof. |
+| CI package/bin/test selectors in `.github/workflows/ci-reusable.yml` | `rrd-estate`, `rrd-estate-controller`, `local_estate_driver`, and `installed_two_estate_isolation_under_concurrent_load` | Exact CI errors name the unavailable `rrd-engram` package/binary; repository files confirm the canonical test target names. |
+
+The duplicate directory is removed from the candidate only after this mapping;
+Git retains its history, while current source and tests remain in the existing
+estate owner. No runtime fallback, package alias, or second authority is added.
