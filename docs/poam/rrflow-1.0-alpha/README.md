@@ -62,4 +62,7 @@
 - [POAM-050 — a task's attempts can be read only by an id the reader already holds](poam-050.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-050`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-050) — active parent-owned POA&M detail
 - [POAM-051 — no public read joins a committed change to the request that made it](poam-051.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-051`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-051) — active parent-owned POA&M detail
 - [POAM-052 — context ranking cannot be configured or experimented with](poam-052.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-052`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-052) — active parent-owned POA&M detail
+- [POAM-053 — clients cannot build RRFlow's HNSW or payload indexes](poam-053.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-053`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-053) — active parent-owned POA&M detail
+- [POAM-054 — a default install accepts a vector corpus its search then refuses](poam-054.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-054`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-054) — active parent-owned POA&M detail
+- [POAM-055 — a vector search the engine will refuse first reads every vector](poam-055.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-055`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-055) — active parent-owned POA&M detail
 <!-- rrflow:generated-index:end -->

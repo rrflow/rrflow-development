@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "source": {
+    "id": "locomo",
+    "title": "LoCoMo, as each system reports it",
+    "url": "https://snap-research.github.io/locomo/",
+    "checked_on": "2026-11-03"
+  },
+  "answers": [
+    {
+      "system": "Zep, current figure",
+      "score": 94.7,
+      "score_name": "accuracy %, raw count",
+      "benchmark": "LoCoMo",
+      "origin": {
+        "url": "https://www.getzep.com/research/",
+        "quote": "Accuracy 94.7 % 1,459 / 1,540 correct; Reader: gpt-5.4 (reasoning = medium). Judge: gpt-5.4 with chain-of-thought grading.",
+        "measured_by": "Zep",
+        "provenance": "vendor_own"
+      },
+      "reader_model": "gpt-5.4",
+      "judge_model": "gpt-5.4",
+      "disputed": true,
+      "limits": [
+        "Zep measured its own product, and it is above the audit's ceiling.",
+        "A third-party audit, dial481/locomo-audit, estimates a scoring ceiling of 93.57% from answer-key errors, and that its judge accepted 62.81% of vague wrong answers."
+      ]
+    },
+    {
+      "system": "Mem0 Platform v3",
+      "score": 92.5,
+      "score_name": "accuracy %, raw count",
+      "benchmark": "LoCoMo",
+      "origin": {
+        "url": "https://github.com/mem0ai/memory-benchmarks/blob/main/README.md",
+        "quote": "| **Overall** | **92.5%** (1425/1540) | **91.8%** (1414/1540) |",
+        "measured_by": "Mem0",
+        "provenance": "vendor_own",
+        "published": "2026-05-13"
+      },
+      "disputed": true,
+      "limits": [
+        "Mem0 measured its own managed platform. The README states this figure, and the per-question file it commits shows 91.56%.",
+        "A third-party audit, dial481/locomo-audit, estimates a scoring ceiling of 93.57% from answer-key errors, and that its judge accepted 62.81% of vague wrong answers."
+      ]
+    },
+    {
+      "system": "Mem0 Platform v3, committed per-question file",
+      "score": 91.56,
+      "score_name": "accuracy %, raw count",
+      "benchmark": "LoCoMo",
+      "origin": {
+        "url": "https://raw.githubusercontent.com/mem0ai/memory-benchmarks/main/results/platform/locomo_results.json",
+        "quote": "\"answerer_model\": \"gpt-5\", \"judge_model\": \"gpt-5\"; \"top_200\": {\"overall\": {\"total\": 1540, \"correct\": 1410, \"errors\": 1, \"accuracy\": 91.55844155844156",
+        "measured_by": "Mem0",
+        "provenance": "vendor_own",
+        "published": "2026-04-09"
+      },
+      "reader_model": "gpt-5",
+      "judge_model": "gpt-5",
+      "disputed": true,
+      "limits": [
+        "Mem0 measured its own managed platform.",
+        "A third-party audit, dial481/locomo-audit, estimates a scoring ceiling of 93.57% from answer-key errors, and that its judge accepted 62.81% of vague wrong answers."
+      ]
+    },
+    {
+      "system": "Zep, 2025, as Zep states it",
+      "score": 75.14,
+      "score_name": "J score %, mean of 10 runs",
+      "benchmark": "LoCoMo",
+      "origin": {
+        "url": "https://github.com/getzep/zep-papers/issues/5",
+        "quote": "The corrected score is 75.14% +/- 0.17 (over 10 runs), with Zep outperforming Mem0 by ~10%.",
+        "measured_by": "Zep",
+        "provenance": "vendor_own",
+        "published": "2025-05-12"
+      },
+      "disputed": true,
+      "limits": [
+        "A public dispute that was never settled. Zep conceded its earlier 84% was a calculation error."
+      ]
+    },
+    {
+      "system": "Zep, 2025, as Mem0 states it",
+      "score": 58.44,
+      "score_name": "accuracy %, mean of 10 runs",
+      "benchmark": "LoCoMo",
+      "origin": {
+        "url": "https://github.com/getzep/zep-papers/issues/5",
+        "quote": "With these adjustments, Zep’s mean accuracy is **58.44 % ± 0.20**, versus **65.99 % ± 0.16** for previous version of Zep’s algorithm reported in the Mem0 paper.",
+        "measured_by": "Mem0",
+        "provenance": "competitor",
+        "published": "2025-05-08"
+      },
+      "disputed": true,
+      "limits": [
+        "A public dispute that was never settled. Zep replied that Mem0's setup does not reflect how Zep works."
+      ]
+    }
+  ]
+}

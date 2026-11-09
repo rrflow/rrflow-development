@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "binding": {
+    "id": "qdrant",
+    "label": "Qdrant 1.20.0",
+    "kind": "qdrant",
+    "location": "loopback",
+    "endpoint": "http://127.0.0.1:16333",
+    "artifact": "qdrant/qdrant@sha256:9bfc89f9914fc14876a88c05270685921a55b8877b254a98bcc1cc2f0a424cd2",
+    "storage_profile": "default on-disk storage in a container volume",
+    "availability": {
+      "state": "available"
+    },
+    "index": {
+      "index": "hnsw",
+      "m": 16,
+      "ef_construction": 100
+    },
+    "search_ladder": [
+      {
+        "id": "ef-16",
+        "ef": 16
+      },
+      {
+        "id": "ef-32",
+        "ef": 32
+      },
+      {
+        "id": "ef-64",
+        "ef": 64
+      },
+      {
+        "id": "ef-128",
+        "ef": 128
+      },
+      {
+        "id": "ef-256",
+        "ef": 256
+      }
+    ],
+    "memory_probe": [
+      "eval/lab/probe.sh",
+      "memory",
+      "lab-qdrant"
+    ],
+    "disk_probe": [
+      "eval/lab/probe.sh",
+      "disk",
+      "lab-qdrant"
+    ]
+  },
+  "launch": {
+    "kind": "container",
+    "image": "qdrant/qdrant@sha256:9bfc89f9914fc14876a88c05270685921a55b8877b254a98bcc1cc2f0a424cd2",
+    "name": "lab-qdrant",
+    "ports": [
+      "127.0.0.1:16333:6333"
+    ],
+    "volume": {
+      "container_path": "/qdrant/storage"
+    },
+    "ready": {
+      "url": "http://127.0.0.1:16333/",
+      "seconds": 60
+    }
+  },
+  "vectordbbench": [
+    "qdrantlocal",
+    "--url",
+    "http://127.0.0.1:16333",
+    "--m",
+    "16",
+    "--ef-construct",
+    "100",
+    "--hnsw-ef",
+    "{ef}"
+  ]
+}

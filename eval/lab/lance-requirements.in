@@ -1,0 +1,4 @@
+lancedb==0.41.0
+pylance==14.0.2
+numpy
+pyarrow

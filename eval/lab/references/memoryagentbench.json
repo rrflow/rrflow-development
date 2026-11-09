@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "source": {
+    "id": "memoryagentbench",
+    "title": "MemoryAgentBench, ICLR 2026",
+    "url": "https://arxiv.org/abs/2507.05257",
+    "checked_on": "2026-11-03"
+  },
+  "answers": [
+    {
+      "system": "GPT-5-mini (400K), a long-context model with no memory system",
+      "score": 60.6,
+      "score_name": "overall score, composite",
+      "benchmark": "MemoryAgentBench",
+      "origin": {
+        "url": "https://arxiv.org/pdf/2507.05257",
+        "quote": "GPT-5-mini (400K) | 85.0 71.0 63.3 78.2 74.4 | 84.0 13.2 48.6 | 56.3 76.1 66.2 | 78.0 28.0 53.0 | 60.6",
+        "measured_by": "MemoryAgentBench authors (Hu, Wang et al.), ICLR 2026",
+        "provenance": "peer_reviewed",
+        "published": "2026-06-28"
+      },
+      "reader_model": "GPT-5-mini",
+      "limits": [
+        "A composite of four categories that mix metrics such as accuracy, Recall@5 and F1, so it is not one task or one judge.",
+        "Uses a different model from the other rows here, so it does not compare with them directly."
+      ]
+    },
+    {
+      "system": "BM25",
+      "score": 41.5,
+      "score_name": "overall score, composite",
+      "benchmark": "MemoryAgentBench",
+      "origin": {
+        "url": "https://arxiv.org/pdf/2507.05257",
+        "quote": "BM25 | 66.0 56.0 45.3 74.6 60.5 | 75.4 13.6 44.5 | 19.0 52.1 35.6 | 48.0 3.0 25.5 | 41.5",
+        "measured_by": "MemoryAgentBench authors (Hu, Wang et al.), ICLR 2026",
+        "provenance": "peer_reviewed",
+        "published": "2026-06-28"
+      },
+      "reader_model": "GPT-4o-mini",
+      "limits": [
+        "A composite of four categories that mix metrics such as accuracy, Recall@5 and F1, so it is not one task or one judge."
+      ]
+    },
+    {
+      "system": "Zep",
+      "score": 24.0,
+      "score_name": "overall score, composite",
+      "benchmark": "MemoryAgentBench",
+      "origin": {
+        "url": "https://arxiv.org/pdf/2507.05257",
+        "quote": "Zep | 44.0 25.0 38.3 42.5 37.5 | 62.8 12.1 37.5 | 4.2 28.2 16.2 | 7.0 3.0 5.0 | 24.0",
+        "measured_by": "MemoryAgentBench authors (Hu, Wang et al.), ICLR 2026",
+        "provenance": "peer_reviewed",
+        "published": "2026-06-28"
+      },
+      "reader_model": "GPT-4o-mini",
+      "limits": [
+        "A composite of four categories that mix metrics such as accuracy, Recall@5 and F1, so it is not one task or one judge."
+      ]
+    },
+    {
+      "system": "Mem0",
+      "score": 21.1,
+      "score_name": "overall score, composite",
+      "benchmark": "MemoryAgentBench",
+      "origin": {
+        "url": "https://arxiv.org/pdf/2507.05257",
+        "quote": "Mem0 | 25.0 32.0 36.0 37.5 32.6 | 32.4 10.0 21.2 | 4.8 36.6 20.7 | 18.0 2.0 10.0 | 21.1",
+        "measured_by": "MemoryAgentBench authors (Hu, Wang et al.), ICLR 2026",
+        "provenance": "peer_reviewed",
+        "published": "2026-06-28"
+      },
+      "reader_model": "GPT-4o-mini",
+      "limits": [
+        "A composite of four categories that mix metrics such as accuracy, Recall@5 and F1, so it is not one task or one judge.",
+        "Measures Mem0's open-source path, and not its managed platform."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,571 @@
+{
+  "$defs": {
+    "Availability": {
+      "description": "A declared gap is reported as such. It can never read as a passing result.",
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "state": {
+              "const": "available",
+              "type": "string"
+            }
+          },
+          "required": [
+            "state"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "reason": {
+              "type": "string"
+            },
+            "state": {
+              "const": "unavailable",
+              "type": "string"
+            }
+          },
+          "required": [
+            "state",
+            "reason"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "reason": {
+              "type": "string"
+            },
+            "state": {
+              "const": "unimplemented",
+              "type": "string"
+            }
+          },
+          "required": [
+            "state",
+            "reason"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "reason": {
+              "type": "string"
+            },
+            "state": {
+              "const": "not_applicable",
+              "type": "string"
+            }
+          },
+          "required": [
+            "state",
+            "reason"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "CredentialReferences": {
+      "additionalProperties": false,
+      "description": "Environment variable names only. The values never enter a file.",
+      "properties": {
+        "instance_env": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "principal_env": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "secret_env": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "Id": {
+      "maxLength": 96,
+      "minLength": 1,
+      "pattern": "^[a-z0-9][a-z0-9_.-]*$",
+      "type": "string"
+    },
+    "IndexSpec": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "index": {
+              "const": "exact",
+              "type": "string"
+            }
+          },
+          "required": [
+            "index"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "ef_construction": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "index": {
+              "const": "hnsw",
+              "type": "string"
+            },
+            "m": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "index",
+            "m",
+            "ef_construction"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "bits": {
+              "type": "string"
+            },
+            "index": {
+              "const": "turbo_quant",
+              "type": "string"
+            },
+            "seed": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "index",
+            "bits",
+            "seed"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "index": {
+              "const": "ivf_rq",
+              "type": "string"
+            },
+            "partitions": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "index",
+            "partitions"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "LaunchSpec": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "description": "An image pinned by digest. The container is removed after the run.",
+          "properties": {
+            "arguments": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "env": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "description": "Plain settings, never secrets.",
+              "type": "object"
+            },
+            "env_from_host": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "description": "Container settings passed by name from `host_env` or `generated_secrets`.",
+              "type": "object"
+            },
+            "generated_secrets": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "description": "Names in the container, each given a value generated for this run under the host's name.",
+              "type": "object"
+            },
+            "host_env": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "description": "Fixed host variables a client needs, such as a user name. Never secrets.",
+              "type": "object"
+            },
+            "image": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "container",
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "ports": {
+              "description": "`127.0.0.1:HOST:CONTAINER`. Nothing is published beyond this machine.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "ready": {
+              "$ref": "#/$defs/ReadyCheck"
+            },
+            "user": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "volume": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/VolumeMount"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "image",
+            "name",
+            "ports",
+            "ready"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "A local process. `{lab}` is `eval/lab`, `{data}` the run's data folder, and `{env:NAME}`\na variable that must be set.",
+          "properties": {
+            "command": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "embedded_under_vectordbbench": {
+              "default": false,
+              "description": "A harness that embeds the system needs no server from here.",
+              "type": "boolean"
+            },
+            "kind": {
+              "const": "process",
+              "type": "string"
+            },
+            "pid_file": {
+              "description": "Written under the run's folder for a probe to find the process.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "port": {
+              "format": "uint16",
+              "maximum": 65535,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "ready": {
+              "$ref": "#/$defs/ReadyCheck"
+            }
+          },
+          "required": [
+            "kind",
+            "command",
+            "port",
+            "ready"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "RRFlow's own install and serve path.",
+          "properties": {
+            "kind": {
+              "const": "rrflow_engine",
+              "type": "string"
+            },
+            "port": {
+              "format": "uint16",
+              "maximum": 65535,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "kind",
+            "port"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "A declared gap, with nothing to start.",
+          "properties": {
+            "kind": {
+              "const": "none",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ReadyCheck": {
+      "additionalProperties": false,
+      "description": "How to tell a system is up.",
+      "properties": {
+        "contains": {
+          "description": "Text the reply must hold, for a route that answers before the system is ready.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "seconds": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "url",
+        "seconds"
+      ],
+      "type": "object"
+    },
+    "SearchSetting": {
+      "additionalProperties": false,
+      "properties": {
+        "ef": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "exact_rerank": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "nprobes": {
+          "description": "How many partitions an IVF index probes.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "SystemBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact": {
+          "description": "Pinned image or build identity, compared with what the server reports.",
+          "type": "string"
+        },
+        "availability": {
+          "$ref": "#/$defs/Availability"
+        },
+        "credentials": {
+          "$ref": "#/$defs/CredentialReferences",
+          "default": {}
+        },
+        "disk_probe": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "endpoint": {
+          "type": "string"
+        },
+        "engine_settings": {
+          "additionalProperties": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "description": "RRFlow `[storage]` settings the runner writes before the engine starts, so a run\naway from the installed defaults says so in the manifest it is bound to.",
+          "type": "object"
+        },
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "index": {
+          "$ref": "#/$defs/IndexSpec"
+        },
+        "kind": {
+          "$ref": "#/$defs/SystemKind"
+        },
+        "label": {
+          "type": "string"
+        },
+        "limits": {
+          "description": "What a reader must know about this system's results, repeated in the report.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "location": {
+          "$ref": "#/$defs/SystemLocation"
+        },
+        "memory_probe": {
+          "description": "Commands that print one integer byte count on standard output.",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "search_ladder": {
+          "items": {
+            "$ref": "#/$defs/SearchSetting"
+          },
+          "type": "array"
+        },
+        "storage_profile": {
+          "description": "What backs the data, because memory and durable disk are different claims.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "kind",
+        "location",
+        "endpoint",
+        "artifact",
+        "storage_profile",
+        "availability",
+        "index",
+        "search_ladder"
+      ],
+      "type": "object"
+    },
+    "SystemKind": {
+      "enum": [
+        "rrflow",
+        "qdrant",
+        "surrealdb",
+        "milvus",
+        "custom"
+      ],
+      "type": "string"
+    },
+    "SystemLocation": {
+      "description": "A reader must be able to see when a result crossed a network.",
+      "enum": [
+        "loopback",
+        "lan"
+      ],
+      "type": "string"
+    },
+    "VolumeMount": {
+      "additionalProperties": false,
+      "description": "A folder inside the run's private directory, mounted into a container.",
+      "properties": {
+        "container_path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "container_path"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "binding": {
+      "$ref": "#/$defs/SystemBinding"
+    },
+    "launch": {
+      "$ref": "#/$defs/LaunchSpec"
+    },
+    "schema_version": {
+      "format": "uint16",
+      "maximum": 65535,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "vectordbbench": {
+      "description": "Arguments that drive it under VectorDBBench. `{ef}` is the search setting and `{data}`\nthe run's data folder.",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "binding",
+    "launch"
+  ],
+  "title": "SystemDefinition",
+  "type": "object"
+}

@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "source": {
+    "id": "mlperf-storage",
+    "title": "MLPerf Storage v3.0",
+    "url": "https://mlcommons.org/benchmarks/storage/",
+    "checked_on": "2026-11-03"
+  },
+  "seek": [
+    {
+      "system": "Milvus with DiskANN on NewFW's Solidigm system",
+      "queries_per_second": 140.375982,
+      "recall": 0.5652,
+      "dataset": "mlperf-storage-10m-1536",
+      "hardware": "One host, one Solidigm D7-PS1010 NVMe drive",
+      "hardware_class": "not_stated",
+      "origin": {
+        "url": "https://docs.google.com/spreadsheets/d/1FVCYZryZ6gvkHMn2PHHd9hlRi7ClSLgNcGBeRZv1hLI/edit",
+        "quote": "v3.0-0082, NewFW, CLOSED, vector_database, Available, nodes 1, 10000000, 1536, DISKANN, 140.375982, 8.991336823, 56.52",
+        "measured_by": "NewFW (Solidigm's benchmarking partner), MLCommons submission",
+        "provenance": "peer_reviewed",
+        "published": "2026-09-01"
+      },
+      "latency_p99_ms": 8.991336823,
+      "dimensions": 1536,
+      "k": 10,
+      "limits": [
+        "A storage benchmark, and its recall of 56.52% is too low to say much about search.",
+        "MLCommons names no best result. This row has the highest recall of the four vector rows."
+      ]
+    }
+  ]
+}

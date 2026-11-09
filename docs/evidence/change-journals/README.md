@@ -23,6 +23,7 @@ a record in its owning group, then run
 - [Gate G change journals](gate-g/) — [`rrflow://rrflow-instance/data/evidence-index/change-journals/gate-g`](rrflow://rrflow-instance/data/evidence-index/change-journals/gate-g) — active generated change-journal group index
 - [Gate H change journals](gate-h/) — [`rrflow://rrflow-instance/data/evidence-index/change-journals/gate-h`](rrflow://rrflow-instance/data/evidence-index/change-journals/gate-h) — active generated change-journal group index
 - [Gate I change journals](gate-i/) — [`rrflow://rrflow-instance/data/evidence-index/change-journals/gate-i`](rrflow://rrflow-instance/data/evidence-index/change-journals/gate-i) — active generated change-journal group index
+- [Gate J change journals](gate-j/) — [`rrflow://rrflow-instance/data/evidence-index/change-journals/gate-j`](rrflow://rrflow-instance/data/evidence-index/change-journals/gate-j) — active generated change-journal group index
 - [KB-05 classification journals](kb-05/) — [`rrflow://rrflow-instance/data/evidence-index/change-journals/kb-05`](rrflow://rrflow-instance/data/evidence-index/change-journals/kb-05) — active generated change-journal group index
 - [Repository engineering change journals](repository/) — [`rrflow://rrflow-instance/data/evidence-index/change-journals/repository`](rrflow://rrflow-instance/data/evidence-index/change-journals/repository) — active generated change-journal group index
 <!-- rrflow:generated-index:end -->

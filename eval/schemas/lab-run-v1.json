@@ -1,0 +1,296 @@
+{
+  "$defs": {
+    "CaseResult": {
+      "additionalProperties": false,
+      "properties": {
+        "attempted": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "concurrency": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "errors": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "filtered": {
+          "type": "boolean"
+        },
+        "first_error": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "latency_max_ms": {
+          "format": "double",
+          "type": "number"
+        },
+        "latency_p50_ms": {
+          "format": "double",
+          "type": "number"
+        },
+        "latency_p95_ms": {
+          "format": "double",
+          "type": "number"
+        },
+        "latency_p99_ms": {
+          "format": "double",
+          "type": "number"
+        },
+        "queries_per_second": {
+          "format": "double",
+          "type": "number"
+        },
+        "recall_high": {
+          "format": "double",
+          "type": "number"
+        },
+        "recall_low": {
+          "format": "double",
+          "type": "number"
+        },
+        "recall_mean": {
+          "format": "double",
+          "type": "number"
+        },
+        "recall_min": {
+          "format": "double",
+          "type": "number"
+        },
+        "setting": {
+          "$ref": "#/$defs/Id"
+        },
+        "succeeded": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "truncated": {
+          "description": "The case reached its time limit before finishing every query.",
+          "type": "boolean"
+        },
+        "wall_seconds": {
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "setting",
+        "filtered",
+        "concurrency",
+        "attempted",
+        "succeeded",
+        "errors",
+        "truncated",
+        "wall_seconds",
+        "queries_per_second",
+        "latency_p50_ms",
+        "latency_p95_ms",
+        "latency_p99_ms",
+        "latency_max_ms",
+        "recall_mean",
+        "recall_low",
+        "recall_high",
+        "recall_min"
+      ],
+      "type": "object"
+    },
+    "Digest": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "Id": {
+      "maxLength": 96,
+      "minLength": 1,
+      "pattern": "^[a-z0-9][a-z0-9_.-]*$",
+      "type": "string"
+    },
+    "IngestResult": {
+      "additionalProperties": false,
+      "properties": {
+        "points": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "points_per_second": {
+          "format": "double",
+          "type": "number"
+        },
+        "ready_seconds": {
+          "format": "double",
+          "type": "number"
+        },
+        "seconds": {
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "points",
+        "seconds",
+        "points_per_second",
+        "ready_seconds"
+      ],
+      "type": "object"
+    },
+    "RequestFloor": {
+      "additionalProperties": false,
+      "description": "What a system's cheapest request costs, the one that reads its version. A search cannot\nbe faster than this, so a latency close to it measured the transport and not the system.",
+      "properties": {
+        "clients": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "p50_ms": {
+          "format": "double",
+          "type": "number"
+        },
+        "p95_ms": {
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "clients",
+        "p50_ms",
+        "p95_ms"
+      ],
+      "type": "object"
+    },
+    "SystemStatus": {
+      "enum": [
+        "completed",
+        "failed",
+        "unavailable",
+        "unimplemented",
+        "not_applicable",
+        "not_run"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "binding_sha256": {
+      "$ref": "#/$defs/Digest",
+      "description": "The binding this run was made under, so a changed binding cannot reuse it."
+    },
+    "cases": {
+      "items": {
+        "$ref": "#/$defs/CaseResult"
+      },
+      "type": "array"
+    },
+    "disk_bytes": {
+      "format": "uint64",
+      "minimum": 0,
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "environment": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "type": "object"
+    },
+    "finished_at_unix_ms": {
+      "format": "uint64",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "identities": {
+      "additionalProperties": {
+        "$ref": "#/$defs/Digest"
+      },
+      "type": "object"
+    },
+    "index_evidence": {
+      "description": "What served the searches, in the system's own words.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "ingest": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/IngestResult"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "memory_bytes": {
+      "format": "uint64",
+      "minimum": 0,
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "observed_version": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "reason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "request_floor": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/RequestFloor"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "schema_version": {
+      "format": "uint16",
+      "maximum": 65535,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "started_at_unix_ms": {
+      "format": "uint64",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "status": {
+      "$ref": "#/$defs/SystemStatus"
+    },
+    "system": {
+      "$ref": "#/$defs/Id"
+    }
+  },
+  "required": [
+    "schema_version",
+    "system",
+    "identities",
+    "binding_sha256",
+    "environment",
+    "status",
+    "cases",
+    "started_at_unix_ms",
+    "finished_at_unix_ms"
+  ],
+  "title": "SystemRun",
+  "type": "object"
+}
