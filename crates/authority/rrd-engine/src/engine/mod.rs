@@ -127,6 +127,7 @@ pub use attunement::{
 mod invocation;
 mod knowledge;
 mod maintenance;
+mod memory_engram;
 mod memory_estate;
 mod model;
 mod query;
@@ -147,6 +148,7 @@ mod session;
 mod session_transactions;
 mod subscription;
 mod task;
+mod task_assessment;
 mod token_key;
 mod transaction;
 mod transaction_admission;
@@ -169,9 +171,9 @@ pub use estate_control::{
 pub use installation::{
     attunement_proposal_schema, load_attunement_proposal, load_estate_configuration,
     AttunementProposal, AttunementProposalStep, DefaultAttunementPhase, DefaultInstallProfile,
-    InstallationPreview, InstallationVerificationCheck, InstallationVerificationReport,
-    InstallationVerificationStatus, InstalledEstateRecord, ProjectLocator,
-    ATTUNEMENT_PROPOSAL_FORMAT_VERSION, INSTALLATION_PREVIEW_FORMAT_VERSION,
+    InstallationPlanningOptions, InstallationPreview, InstallationVerificationCheck,
+    InstallationVerificationReport, InstallationVerificationStatus, InstalledEstateRecord,
+    ProjectLocator, ATTUNEMENT_PROPOSAL_FORMAT_VERSION, INSTALLATION_PREVIEW_FORMAT_VERSION,
 };
 pub use invocation::{
     AuthorizedInvocation, Invocation, InvocationCompletion, InvocationCredential, RrdOperation,

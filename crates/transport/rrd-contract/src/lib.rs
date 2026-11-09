@@ -26,6 +26,7 @@ pub use endpoint_worker::{
 mod endpoint_policy;
 mod endpoint_proposal;
 mod endpoint_selection;
+mod task_assessment;
 pub use endpoint_policy::EndpointSelectionPolicy;
 pub use endpoint_proposal::*;
 pub use endpoint_selection::{
@@ -33,6 +34,7 @@ pub use endpoint_selection::{
     EndpointSelectionCandidate, EndpointSelectionChoice, EndpointSelectionLimits,
     ENDPOINT_SELECTION_VERSION,
 };
+pub use task_assessment::*;
 mod observation_source;
 pub use observation_source::*;
 mod observation_delivery;
@@ -45,6 +47,7 @@ mod inference;
 mod knowledge;
 mod knowledge_tree;
 mod memory_context;
+mod memory_engram;
 mod memory_estate;
 mod model_manifest;
 mod operation_reference;
@@ -63,11 +66,11 @@ mod websocket;
 pub use attunement::{
     attunement_checkpoint_sha256, attunement_plan_sha256, attunement_replan_accept_sha256,
     attunement_replan_preview_sha256, attunement_replan_seed, attunement_verification_sha256,
-    installation_plan_sha256, installation_result_sha256, AcceptAttunementReplan,
-    AttunementCancelResult, AttunementControlResponse, AttunementFailure, AttunementJob,
-    AttunementJobPage, AttunementJobState, AttunementJobSummary, AttunementLease, AttunementPhase,
-    AttunementPhaseCheckpoint, AttunementPhasePlan, AttunementPlan, AttunementReadResult,
-    AttunementReceipt, AttunementReceiptReadResult, AttunementReplanPreview,
+    installation_initial_grants, installation_plan_sha256, installation_result_sha256,
+    AcceptAttunementReplan, AttunementCancelResult, AttunementControlResponse, AttunementFailure,
+    AttunementJob, AttunementJobPage, AttunementJobState, AttunementJobSummary, AttunementLease,
+    AttunementPhase, AttunementPhaseCheckpoint, AttunementPhasePlan, AttunementPlan,
+    AttunementReadResult, AttunementReceipt, AttunementReceiptReadResult, AttunementReplanPreview,
     AttunementReplanReceiptReadResult, AttunementReplanReceiptView, AttunementReplanResult,
     AttunementRuntimeCoordinates, AttunementSourceVerification, AttunementStatus,
     AttunementVerification, AttunementVerificationCheck, AttunementVerificationStatus,
@@ -182,6 +185,7 @@ pub use memory_context::{
     ContextPlanStageStatus, ContextReadStamp, MAX_CONTEXT_GRAPH_DEPTH, MAX_CONTEXT_ITEMS,
     MAX_CONTEXT_OUTPUT_BYTES, MAX_CONTEXT_QUERY_BYTES, MAX_CONTEXT_SEEDS, MAX_CONTEXT_STORAGE_KEYS,
 };
+pub use memory_engram::{MemoryengramPlan, PersistMemoryengram};
 pub use memory_estate::{
     MemoryEstatePlan, MemorySeatDefinition, MemoryWarp, PersistMemoryEstate,
     ProviderRepresentation, ProviderRepresentationDefinition, ResolveMemoryWarp,
@@ -273,7 +277,7 @@ use std::fmt;
 pub const PROTOCOL: &str = "rrd";
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const OPENAPI_DOCUMENT_SHA256: &str =
-    "f14071c71318062cd2b1a9fca491a16d91b4481e98c3e0bcefeeaf98359ed580";
+    "355e5482791fc6a9705b6c1bc9ba7303d1549b69b7dfbe8819c029bb7074c507";
 pub const MAX_ID_BYTES: usize = 128;
 pub const MAX_MESSAGE_BYTES: usize = 4_096;
 pub const MAX_CAPABILITIES: usize = 512;
@@ -3104,27 +3108,25 @@ pub enum SecurityAction {
     BackupCreate,
     BackupList,
     RestoreCreate,
-EstateRead,
-EstateAdmin,
-engarmRead,
-engarmAdmin,
-AuditRead,
-AuditExport,
-FunctionCatalogueRead,
-FunctionCatalogueWrite,
-FunctionExecute,
-DiagnosticsRead,
-FlightLaunch,
-FlightRead,
-TaskWrite,
-TaskRead,
-SecurityAdmin,
-MemoryContextRead,
-ReasoningRead,
-ReasoningWrite,
-EndpointPropose,
-WorkerExecute,
-ProjectSourceRead,
+    EstateRead,
+    EstateAdmin,
+    AuditRead,
+    AuditExport,
+    FunctionCatalogueRead,
+    FunctionCatalogueWrite,
+    FunctionExecute,
+    DiagnosticsRead,
+    FlightLaunch,
+    FlightRead,
+    TaskWrite,
+    TaskRead,
+    SecurityAdmin,
+    MemoryContextRead,
+    ReasoningRead,
+    ReasoningWrite,
+    EndpointPropose,
+    WorkerExecute,
+    ProjectSourceRead,
     ObservationPrepare,
     ObservationDeliver,
     ObservationRead,
@@ -3135,7 +3137,7 @@ ProjectSourceRead,
 impl SecurityAction {
     /// Canonical policy-action catalogue. Installation profiles and other
     /// projections consume this list instead of maintaining parallel copies.
-pub const ALL: [Self; 59] = [
+    pub const ALL: [Self; 59] = [
         Self::ServiceInspect,
         Self::UnknownRequest,
         Self::SessionCreate,
@@ -3171,25 +3173,25 @@ pub const ALL: [Self; 59] = [
         Self::BackupCreate,
         Self::BackupList,
         Self::RestoreCreate,
-    Self::EstateRead,
-    Self::EstateAdmin,
-    Self::AuditRead,
-    Self::AuditExport,
-    Self::FunctionCatalogueRead,
-    Self::FunctionCatalogueWrite,
-    Self::FunctionExecute,
-    Self::DiagnosticsRead,
-    Self::FlightLaunch,
-    Self::FlightRead,
-    Self::TaskWrite,
-    Self::TaskRead,
-    Self::SecurityAdmin,
-    Self::MemoryContextRead,
-    Self::ReasoningRead,
-    Self::ReasoningWrite,
-    Self::EndpointPropose,
-    Self::WorkerExecute,
-    Self::ProjectSourceRead,
+        Self::EstateRead,
+        Self::EstateAdmin,
+        Self::AuditRead,
+        Self::AuditExport,
+        Self::FunctionCatalogueRead,
+        Self::FunctionCatalogueWrite,
+        Self::FunctionExecute,
+        Self::DiagnosticsRead,
+        Self::FlightLaunch,
+        Self::FlightRead,
+        Self::TaskWrite,
+        Self::TaskRead,
+        Self::SecurityAdmin,
+        Self::MemoryContextRead,
+        Self::ReasoningRead,
+        Self::ReasoningWrite,
+        Self::EndpointPropose,
+        Self::WorkerExecute,
+        Self::ProjectSourceRead,
         Self::ObservationPrepare,
         Self::ObservationDeliver,
         Self::ObservationRead,
@@ -4150,6 +4152,16 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             "TaskBudgetView",
         ),
         endpoint(
+            "task-budget-resume",
+            HttpMethod::Post,
+            "/v1/tasks/budget/resume",
+            EndpointAuthentication::SessionBearer,
+            true,
+            SecurityAction::ReasoningWrite,
+            "ResumeTaskBudget",
+            "TaskBudgetView",
+        ),
+        endpoint(
             "task-budget-stop",
             HttpMethod::Post,
             "/v1/tasks/budget/stop",
@@ -4158,6 +4170,26 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             SecurityAction::ReasoningWrite,
             "StopTaskBudget",
             "TaskBudgetView",
+        ),
+        endpoint(
+            "task-assessment-execute",
+            HttpMethod::Post,
+            "/v1/tasks/assessment/execute",
+            EndpointAuthentication::SessionBearer,
+            true,
+            SecurityAction::EndpointPropose,
+            "TaskAssessmentRequest",
+            "TaskAssessmentOutput",
+        ),
+        endpoint(
+            "task-assessment-read",
+            HttpMethod::Post,
+            "/v1/tasks/assessment/read",
+            EndpointAuthentication::SessionBearer,
+            false,
+            SecurityAction::ReasoningRead,
+            "ReadTaskAssessment",
+            "TaskAssessmentView",
         ),
         endpoint(
             "task-embedding-execute",
@@ -4757,14 +4789,17 @@ fn request_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "ExecuteTaskEmbedding" => schema_json::<RequestEnvelope<ExecuteTaskEmbedding>>(),
         "EndpointSelectionRequest" => schema_json::<RequestEnvelope<EndpointSelectionRequest>>(),
         "TaskWorkerRequest" => schema_json::<RequestEnvelope<TaskWorkerRequest>>(),
+        "TaskAssessmentRequest" => schema_json::<RequestEnvelope<TaskAssessmentRequest>>(),
         "PrepareObservationDelivery" => {
             schema_json::<RequestEnvelope<PrepareObservationDelivery>>()
         }
         "DeliverObservation" => schema_json::<RequestEnvelope<DeliverObservation>>(),
         "ReadObservationDelivery" => schema_json::<RequestEnvelope<ReadObservationDelivery>>(),
+        "ReadTaskAssessment" => schema_json::<RequestEnvelope<ReadTaskAssessment>>(),
         "ReadTaskAttempt" => schema_json::<RequestEnvelope<ReadTaskAttempt>>(),
         "ReadTaskBudget" => schema_json::<RequestEnvelope<ReadTaskBudget>>(),
         "StopTaskBudget" => schema_json::<RequestEnvelope<StopTaskBudget>>(),
+        "ResumeTaskBudget" => schema_json::<RequestEnvelope<ResumeTaskBudget>>(),
         "AbortTransaction" => schema_json::<RequestEnvelope<AbortTransaction>>(),
         "AssembleContext" => schema_json::<RequestEnvelope<AssembleContext>>(),
         "BeginTransaction" => schema_json::<RequestEnvelope<BeginTransaction>>(),
@@ -4849,6 +4884,8 @@ fn response_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "EmbeddingModelCatalogue" => schema_json::<ResponseEnvelope<EmbeddingModelCatalogue>>(),
         "GenerateEmbeddingsResult" => schema_json::<ResponseEnvelope<GenerateEmbeddingsResult>>(),
         "TaskAttemptView" => schema_json::<ResponseEnvelope<TaskAttemptView>>(),
+        "TaskAssessmentView" => schema_json::<ResponseEnvelope<TaskAssessmentView>>(),
+        "TaskAssessmentOutput" => schema_json::<ResponseEnvelope<TaskAssessmentOutput>>(),
         "EndpointSelectionProposal" => schema_json::<ResponseEnvelope<EndpointSelectionProposal>>(),
         "TaskWorkerOutput" => schema_json::<ResponseEnvelope<TaskWorkerOutput>>(),
         "TaskBudgetView" => schema_json::<ResponseEnvelope<TaskBudgetView>>(),
@@ -5882,8 +5919,8 @@ pub struct ServiceCapabilities {
     pub implementation_version: String,
     pub deployment: DeploymentProfile,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub installed_engram: Option<InstalledengramIdentity>,
-    pub configuration: engramConfiguration,
+    pub installed_estate: Option<InstalledEstateIdentity>,
+    pub configuration: EstateConfiguration,
     pub instance: ResourceId,
     pub capabilities: Vec<CapabilityDescriptor>,
     pub product_capabilities: ProductCapabilityCatalogue,
@@ -5897,7 +5934,7 @@ impl ServiceCapabilities {
         if self.instance.kind != ResourceKind::Instance {
             return invalid("service capability identity must be an instance resource");
         }
-        if let Some(installed) = &self.installed_engram {
+        if let Some(installed) = &self.installed_estate {
             installed.validate()?;
             if installed.instance_id != self.instance.id {
                 return invalid(
@@ -6373,7 +6410,7 @@ pub struct DataTagReference {
 /// identity starts with `rrflow-`.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct DataengramOrganisation {
+pub struct DataEstateOrganisation {
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub domains: BTreeMap<CanonicalId, DataDomainSchema>,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
@@ -6386,7 +6423,7 @@ pub struct DataengramOrganisation {
     pub kind_tags: BTreeMap<CanonicalId, BTreeSet<DataTagReference>>,
 }
 
-impl DataengramOrganisation {
+impl DataEstateOrganisation {
     pub fn is_default(&self) -> bool {
         self.domains.is_empty()
             && self.categories.is_empty()
@@ -6411,6 +6448,10 @@ impl DataengramOrganisation {
     }
 }
 
+/// Internal engram terminology maps to the existing public organization type.
+/// There is one serialized and validated representation.
+pub type DataengramOrganisation = DataEstateOrganisation;
+
 fn default_data_domain(identity: &str) -> &'static str {
     if identity.starts_with(DATA_ENGINE_OWNED_PREFIX) {
         DATA_ENGINE_DOMAIN
@@ -6424,8 +6465,8 @@ fn default_data_domain(identity: &str) -> &'static str {
 pub struct DataSchemaRegistry {
     pub revision: u64,
     pub migration: String,
-    #[serde(default, skip_serializing_if = "DataengramOrganisation::is_default")]
-    pub organisation: DataengramOrganisation,
+    #[serde(default, skip_serializing_if = "DataEstateOrganisation::is_default")]
+    pub organisation: DataEstateOrganisation,
     pub tables: BTreeMap<CanonicalId, DataTableSchema>,
     #[serde(default)]
     pub records: BTreeMap<CanonicalId, DataRecordSchema>,

@@ -23,6 +23,9 @@ use std::time::Instant;
 
 mod discovery;
 mod inventory;
+#[cfg(test)]
+pub(crate) use inventory::LegacySourceFileProjectionGuard;
+pub(super) use inventory::{load_accepted_source, source_head_key};
 
 const MAX_CONTROL_BYTES: usize = 64 * 1024;
 const MAX_JOB_TRANSITIONS: u64 = 1024;
@@ -196,7 +199,7 @@ impl RrdEngine {
         let (_, authorization) = self.authorize(
             session,
             token,
-            SecurityAction::engramRead,
+            SecurityAction::EstateRead,
             now,
             request_id,
             operation_id,
@@ -215,7 +218,7 @@ impl RrdEngine {
             .map(Some)
     }
 
-    fn attunement_installed_record(&self) -> Result<InstalledengramRecord> {
+    pub(super) fn attunement_installed_record(&self) -> Result<InstalledengramRecord> {
         let record: InstalledengramRecord = decode(
             &self
                 .storage
@@ -224,7 +227,7 @@ impl RrdEngine {
                 .ok_or_else(|| ServiceError::Storage("installed engram record missing".into()))?,
         )?;
         record.validate()?;
-        if self.installed_engram_identity() != Some(&record.installation.target) {
+        if self.installed_estate_identity() != Some(&record.installation.target) {
             return Err(ServiceError::ProjectBindingMismatch);
         }
         Ok(record)
@@ -350,7 +353,7 @@ impl RrdEngine {
         self.authorize(
             session,
             token,
-            SecurityAction::engramAdmin,
+            SecurityAction::EstateAdmin,
             now,
             request_id,
             operation_id,
@@ -365,7 +368,7 @@ impl RrdEngine {
         self.authorize(
             session,
             token,
-            SecurityAction::engramAdmin,
+            SecurityAction::EstateAdmin,
             elapsed_time(now, started)?,
             request_id,
             operation_id,
@@ -390,7 +393,7 @@ impl RrdEngine {
         let (_, auth) = self.authorize(
             session,
             token,
-            SecurityAction::engramAdmin,
+            SecurityAction::EstateAdmin,
             now,
             context.request_id.as_str(),
             context.operation_id.as_str(),
@@ -420,7 +423,7 @@ impl RrdEngine {
         self.authorize(
             session,
             token,
-            SecurityAction::engramAdmin,
+            SecurityAction::EstateAdmin,
             at,
             context.request_id.as_str(),
             context.operation_id.as_str(),
@@ -457,7 +460,7 @@ impl RrdEngine {
         self.authorize(
             session,
             token,
-            SecurityAction::engramAdmin,
+            SecurityAction::EstateAdmin,
             at,
             context.request_id.as_str(),
             context.operation_id.as_str(),
@@ -599,7 +602,7 @@ impl RrdEngine {
         self.authorize(
             session,
             token,
-            SecurityAction::engramRead,
+            SecurityAction::EstateRead,
             now,
             request_id,
             operation_id,
@@ -630,7 +633,7 @@ impl RrdEngine {
         let (_, authorization) = self.authorize(
             session,
             token,
-            SecurityAction::engramRead,
+            SecurityAction::EstateRead,
             now,
             request_id,
             operation_id,
@@ -639,7 +642,7 @@ impl RrdEngine {
             .principal_id
             .ok_or(ServiceError::Unauthenticated)?;
         let identity = self
-            .installed_engram_identity()
+            .installed_estate_identity()
             .ok_or(ServiceError::ProjectBindingMismatch)?;
         let key = attunement_receipt_key(&self.instance, job_id, &principal, idempotency_key)?;
         let Some(bytes) = self.storage.control().get(&key)? else {
@@ -701,7 +704,7 @@ impl RrdEngine {
         let (_, auth) = self.authorize(
             session,
             token,
-            SecurityAction::engramAdmin,
+            SecurityAction::EstateAdmin,
             now,
             context.request_id.as_str(),
             context.operation_id.as_str(),
@@ -729,7 +732,7 @@ impl RrdEngine {
         self.authorize(
             session,
             token,
-            SecurityAction::engramAdmin,
+            SecurityAction::EstateAdmin,
             admitted_at,
             context.request_id.as_str(),
             context.operation_id.as_str(),
@@ -916,7 +919,7 @@ impl RrdEngine {
         self.authorize(
             session,
             token,
-            SecurityAction::engramAdmin,
+            SecurityAction::EstateAdmin,
             authorization_at,
             context.request_id.as_str(),
             context.operation_id.as_str(),
@@ -978,7 +981,7 @@ impl RrdEngine {
         id: &CanonicalId,
     ) -> Result<(Vec<u8>, AttunementJob, AttunementPlan)> {
         let identity = self
-            .installed_engram_identity()
+            .installed_estate_identity()
             .ok_or(ServiceError::ProjectBindingMismatch)?;
         let bytes = self
             .storage
@@ -1009,7 +1012,7 @@ impl RrdEngine {
         next: &mut AttunementJob,
         at: u64,
     ) -> Result<()> {
-        let configuration: engramConfiguration = decode(
+        let configuration: EstateConfiguration = decode(
             &self
                 .storage
                 .control()
@@ -1017,7 +1020,7 @@ impl RrdEngine {
                 .ok_or_else(|| ServiceError::Storage("installed configuration missing".into()))?,
         )?;
         configuration.validate().map_err(contract)?;
-        if configuration != self.engram_configuration {
+        if configuration != self.estate_configuration {
             return Err(ServiceError::ProjectBindingMismatch);
         }
         let read = self
