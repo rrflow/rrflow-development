@@ -11,6 +11,28 @@ defines risk-based package widening, and the [POA&M](../poam/rrflow-1.0-alpha.md
 owns deficiencies. A green workflow proves only the commands and assertions it
 actually executes.
 
+## C-07 installed campaign progress
+
+The existing `scripts/ci/run_sustained_capacity.py` launcher accepts the opt-in
+`--observe-progress`, `--progress-interval-ms` (1,000–60,000; default 15,000)
+and `--progress-max-bytes` (4,096–16,777,216; default 1,048,576) flags. It
+exclusively creates `<evidence>.observations.jsonl` alongside the campaign
+directory and emits the same bounded, cumulative event-kind counts to stderr.
+No event payload, record ID, prompt or credential is copied. A source-available
+flag distinguishes a not-yet-created stream from zero observed events. Linux
+observations include available owned-cgroup counters; Windows reports these as
+unavailable. The observer stops on malformed, replaced or truncated input or
+when its output limit is reached and reports an error to stderr; the campaign
+continues. It starts after the Linux cgroup is created or, on Windows, after
+the harness image is pinned and before the owned job is launched. Observations
+are best-effort, buffered diagnostics, not durable audit, proof of completed
+records, the campaign verifier, or a qualification result. Observer startup
+requires a fresh sidecar path. Its thread is joined on exit; a blocked read is
+reported after a bounded stop wait and may finish after native cleanup. The
+observer runs in the launcher outside the owned native job/cgroup, and its
+reads and sidecar writes add overhead; compare performance only with the same
+observation settings and report them.
+
 ## C-07 storage-diagnostic attribution
 
 To characterize a slow installed `rrflow` storage-diagnostic request, start the
@@ -54,6 +76,20 @@ The [integrated trace journal](../evidence/change-journals/gate-c/c-07g-installe
 records the small installed mixed-family and restart proof; it is not capacity
 or soak qualification.
 
+For transaction-begin attribution, add
+`rrd_engine::transaction_diagnostic=debug` to the process's `RRFLOW_TRACE`
+filter. Each enabled event reports the SHA-256 of the request ID, the outcome
+(`created`, `replayed`, or `error`), the last phase reached, total time and
+elapsed nanoseconds for validation, admission, authentication and policy,
+replay lookup, snapshot preparation, and control-state publication. A zero
+phase may mean it was not reached, not that it was free. Snapshot preparation
+also includes lease checks and transaction-record construction. Time in the
+client and HTTP transport is outside these measurements. Emission occurs after
+the admission permit is released; tracing can nevertheless affect the caller's
+latency. Use a bounded sink and treat the digest as potentially guessable. These
+optional events are not durable audit records, may be filtered or lost, and
+cannot establish a percentile or a capacity qualification by themselves.
+
 ## Candidate chain
 
 RRFlow has one candidate CI chain. The thin caller is
@@ -71,16 +107,83 @@ not cancel a ready run already in progress; a subsequent ready candidate for
 the same PR supersedes that run. Other PRs and non-PR refs remain isolated.
 A skipped draft run is not candidate acceptance. GitHub does not guarantee
 concurrency start order, and a local grouping test cannot prove live delivery
-order. The required gate continues to fail unless every partition succeeds.
-Manual dispatch remains available for an explicitly requested full run on a
-draft branch.
+order. The required gate fails unless every partition the change selected
+succeeded and every partition it did not select was skipped by its lane
+condition. Manual dispatch remains available for an explicitly requested full
+run on a draft branch.
 
 This uses GitHub's documented [pull-request activity types](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#pull_request);
 the default activity list does not include readiness transitions. The local
 `test_candidate_admission.py` corpus verifies the checked-in admission shape
 and rejects missing transitions, filters and lost merge/manual coverage; it
-does not emulate GitHub execution. Full checks still run for merge groups.
-No path filter or reduced ready-candidate lane substitutes for acceptance.
+does not emulate GitHub execution. Merge-group candidates select lanes from
+their own diff against the queue base, exactly as pull requests do. The caller
+has no path filter; lane selection lives inside the reusable workflow, where
+`ci-gate` can see it.
+
+## Proportional lanes
+
+Candidate CI is proportional to the change (owner decision, 2026-11-09, which
+replaces the 2026-11-01 decision to run the full matrix on every candidate).
+The first job, `changes`, diffs the candidate against its base and runs
+`scripts/ci/select_ci_lanes.py`, which maps every changed path to a lane:
+
+| Lane | Selected by | Partitions |
+|---|---|---|
+| `docs` | `docs/**`, Markdown anywhere, issue and PR templates, `LICENSE` | `docs-policy`: documentation authority and local links, generated navigation, execution inventory, capacity projection rendering, whitespace |
+| `scripts` | `scripts/**` except `scripts/ci`, `eval/**` | `scripts-policy`: the repository's Python test files that need no build |
+| `engine` | `crates/**` outside the full-lane paths | `engine-fast` on Linux: formatting, generated-surface parity, `cargo test` and clippy for the changed crates, `cargo check --all-targets` for every workspace dependent |
+| `sdk` | `sdks/**`, `fixtures/**`, `crates/transport/**` | `sdk-conformance`; transport crate edits also run `engine-fast` |
+| `full` | `.github/**` except templates, `scripts/ci/**`, `.cargo/**`, `.devcontainer/**`, `.gitmodules`, `rust-toolchain.toml`, `Cargo.toml`, `Cargo.lock`, `VERSION`, `deploy/**`, the Connectome gitlink, `crates/kernel/**`, `crates/persistence/**`, `crates/adapters/rrflow-cli/**`, `rrd-maintenance`, and the engine's transaction, installation, estate layout, token key, maintenance, attunement supervisor, backup, control, configuration, estate-control, flight, function, knowledge, observation, reasoning-budget persistence, restore, session, subscription, task, query, and tail-repair effect modules; also engine test modules, `.gitignore`, `.gitattributes`, any path the classifier does not recognize, a manual dispatch, a `scope: full` call, or an event without a base revision | every partition below, exactly as before |
+
+A `full` selection absorbs the light lanes, so their jobs skip and the full
+partitions carry their checks. The `engine` lane never links the whole
+workspace in one target graph; a root manifest or lock change takes the
+partitioned full matrix instead. The classifier fails closed: an unrecognized
+path routes to `full` and is named in the job log.
+
+`.github/workflows/ci-nightly.yml` calls the reusable workflow with
+`scope: full` against `main` once a day and on manual dispatch, so a dated
+complete result exists for the current main revision regardless of what the
+day's candidates selected. It is evidence about main, not candidate acceptance.
+
+`scripts/ci/check_workflow.py` requires every partition to declare exactly its
+lane condition and the gate to check each result by lane;
+`test_select_ci_lanes.py` and `test_ci_lanes_policy.py` are its regressions and
+run in the `changes` job and the verify policy step.
+
+Rust cache steps still restore compatible entries on every candidate, but do
+not save new entries from `merge_group` runs. Queue-ref entries are scoped to
+the temporary ref and cannot warm the next candidate's base; disabling those
+saves reduces one source of eviction pressure. Pull-request saves and the
+explicit main-only macOS and Windows warmers remain available. Other language
+caches are unchanged.
+This does not create a main cache or guarantee a hit, speedup, or reduced bill.
+GitHub documents [cache scope and eviction](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching);
+the pinned [rust-cache action](https://github.com/Swatinem/rust-cache/blob/6323deb102c322ba6fcbdcafc7e3dddab59af2b6/action.yml)
+documents that `save-if` controls saving, not restore. Inspect later run logs
+and cache usage rather than inferring impact from the workflow text.
+
+The Windows warmer is `.github/workflows/ci-windows-cache-warm.yml`; after
+that file reaches public `main`, an operator can dispatch the main revision:
+
+```sh
+gh workflow run ci-windows-cache-warm.yml --repo rrflow/rrflow-development --ref main
+```
+
+Inspect the resulting run's exact head and cache-save log, then check the next
+candidate's restore log and timing. The manual job uses the candidate's fixed
+Windows runner, toolchain, two Cargo workers, cache key and locked release
+build; its separate 120-minute ceiling does not extend the 90-minute
+candidate job or run the tests. It never qualifies the candidate. Cache
+scopes, eviction, dependency-only caching and runner variability can still
+produce a miss or leave workspace compilation slow. Standard hosted runners
+for this public repository are documented as free by
+[GitHub](https://docs.github.com/en/actions/reference/runners/github-hosted-runners);
+cache storage beyond the included allowance may incur charges depending on
+account settings. Do not add untrusted public jobs to a private self-hosted
+runner to populate this cache.
+
 The reusable workflow reduces every partition into one stable `ci-gate`
 check for branch protection:
 
@@ -92,13 +195,28 @@ check for branch protection:
   and `product-operations`;
 - one current shared SDK harness, isolated optional-feature checks, and a real
   PostgreSQL/pgvector integration;
+- a synthetic storage-contract preflight on the selected standard Linux runner;
+  the ordinary 100-cycle reopen matrix starts only after this candidate's
+  catalogue and synthetic fixture projections pass. The job first verifies that
+  the named test exists, so an empty test selection cannot pass;
 - installed lifecycle and daemon portability on GitHub-hosted Windows and
   macOS runners;
 - separately identified installed domain-crash diagnostics and ordinary-build
   exclusion on GitHub-hosted Linux, macOS and Windows;
 - ordinary-primary fresh/existing 100-cycle acknowledged kill/reopen histories
   on those same three native platforms; and
-- one always-evaluated gate which fails unless every partition succeeded.
+- the three light lanes, `docs-policy`, `scripts-policy` and `engine-fast`,
+  described under proportional lanes; and
+- one always-evaluated gate which fails unless every selected partition
+  succeeded and every unselected partition was skipped.
+
+The preflight responds to a candidate whose changed operation catalogue left a
+stale synthetic fixture: the native reopen smoke rejected that identity only
+after its release build. On a valid candidate the added dependency can increase
+wall-clock time; measure the actual preflight and matrix durations before
+claiming a speedup. It does not replace a native smoke, reopen, crash, capacity
+or soak test. The aggregate gate explicitly rejects a skipped, cancelled or
+failed preflight and the same outcomes from every other required partition.
 
 ### Inspect candidate failures while jobs are running
 

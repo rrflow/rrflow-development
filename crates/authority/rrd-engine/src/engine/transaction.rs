@@ -1,5 +1,65 @@
 use super::*;
 
+// This diagnostic is independent of the durable runtime log. It is created
+// before the transaction permit so its Drop runs after the permit is released.
+struct BeginTiming {
+    request_sha256: String,
+    started: std::time::Instant,
+    stage_started: std::time::Instant,
+    stage: usize,
+    elapsed_ns: [u64; 6],
+    outcome: &'static str,
+}
+
+impl BeginTiming {
+    fn new(request_id: &str) -> Option<Self> {
+        if !tracing::enabled!(target: "rrd_engine::transaction_diagnostic", tracing::Level::DEBUG) {
+            return None;
+        }
+        let now = std::time::Instant::now();
+        Some(Self {
+            request_sha256: rrd_core::digest::sha256_hex(request_id.as_bytes()),
+            started: now,
+            stage_started: now,
+            stage: 0,
+            elapsed_ns: [0; 6],
+            outcome: "error",
+        })
+    }
+
+    fn advance(&mut self, stage: usize) {
+        let now = std::time::Instant::now();
+        self.elapsed_ns[self.stage] = nanos(now.duration_since(self.stage_started));
+        self.stage_started = now;
+        self.stage = stage;
+    }
+}
+
+fn nanos(duration: std::time::Duration) -> u64 {
+    u64::try_from(duration.as_nanos()).unwrap_or(u64::MAX)
+}
+
+impl Drop for BeginTiming {
+    fn drop(&mut self) {
+        let now = std::time::Instant::now();
+        self.elapsed_ns[self.stage] = nanos(now.duration_since(self.stage_started));
+        tracing::debug!(
+            target: "rrd_engine::transaction_diagnostic",
+            request_sha256 = %self.request_sha256,
+            outcome = self.outcome,
+            last_stage = ["validation", "admission", "authentication", "replay", "snapshot", "publication"][self.stage],
+            validation_ns = self.elapsed_ns[0],
+            admission_ns = self.elapsed_ns[1],
+            authentication_ns = self.elapsed_ns[2],
+            replay_ns = self.elapsed_ns[3],
+            snapshot_ns = self.elapsed_ns[4],
+            publication_ns = self.elapsed_ns[5],
+            total_ns = nanos(now.duration_since(self.started)),
+            "transaction begin phase timings"
+        );
+    }
+}
+
 impl RrdEngine {
     pub fn begin_transaction(
         &self,
@@ -24,6 +84,7 @@ impl RrdEngine {
         now: u64,
         intent_sha256: Option<&str>,
     ) -> Result<TransactionLease> {
+        let mut timing = BeginTiming::new(context.request_id.as_str());
         context
             .validate(true)
             .map_err(|error| ServiceError::Contract(error.to_string()))?;
@@ -36,13 +97,22 @@ impl RrdEngine {
         if !matches!(request.scope.as_str(), "claims" | "data") {
             return Err(ServiceError::WrongScope);
         }
+        if let Some(timing) = &mut timing {
+            timing.advance(1);
+        }
         let _transaction_guard = self.admit_transaction(
             request,
             context.request_id.as_str(),
             context.operation_id.as_str(),
         )?;
+        if let Some(timing) = &mut timing {
+            timing.advance(2);
+        }
         let (bytes, mut state) = self.load_authenticated(session_id, token)?;
         self.authorize_session_policy(&state, SecurityAction::TransactionBegin, now)?;
+        if let Some(timing) = &mut timing {
+            timing.advance(3);
+        }
         let operation_sha256 = match intent_sha256 {
             Some(intent_sha256) => operation_digest(&(request, intent_sha256))?,
             None => operation_digest(request)?,
@@ -57,7 +127,13 @@ impl RrdEngine {
             {
                 return Err(ServiceError::IdempotencyConflict);
             }
+            if let Some(timing) = &mut timing {
+                timing.outcome = "replayed";
+            }
             return Ok(existing.lease.clone());
+        }
+        if let Some(timing) = &mut timing {
+            timing.advance(4);
         }
         // Exact idempotent replays above remain observable after the session
         // lease expires. Only creation of a new transaction requires a live
@@ -109,6 +185,9 @@ impl RrdEngine {
             },
         );
         touch_session(&mut state, now);
+        if let Some(timing) = &mut timing {
+            timing.advance(5);
+        }
         self.replace_session(
             session_id,
             bytes,
@@ -118,6 +197,9 @@ impl RrdEngine {
             context.request_id.as_str(),
             context.operation_id.as_str(),
         )?;
+        if let Some(timing) = &mut timing {
+            timing.outcome = "created";
+        }
         Ok(transaction)
     }
 

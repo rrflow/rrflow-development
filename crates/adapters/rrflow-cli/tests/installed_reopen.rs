@@ -6,6 +6,8 @@ mod owned_directory;
 mod process;
 #[path = "support/sustained.rs"]
 mod sustained;
+#[path = "support/transaction_trace.rs"]
+mod transaction_trace;
 
 use rrd_client::{ClientConfig, RequestOptions, RrdClient};
 use rrd_contract::{
@@ -197,13 +199,33 @@ impl Estate {
         lifetime: Duration,
         trace: bool,
     ) -> (process::Process, RrdClient, Value) {
+        self.start_for_with_filter(
+            clock,
+            lifetime,
+            trace.then_some("rrd_server::diagnostic=debug,rrd_store::diagnostic=debug"),
+        )
+    }
+
+    fn start_for_with_filter(
+        &self,
+        clock: Instant,
+        lifetime: Duration,
+        filter: Option<&str>,
+    ) -> (process::Process, RrdClient, Value) {
+        self.start_for_with_capture(clock, lifetime, filter, None)
+    }
+
+    fn start_for_with_capture(
+        &self,
+        clock: Instant,
+        lifetime: Duration,
+        filter: Option<&str>,
+        capture: Option<&transaction_trace::Capture>,
+    ) -> (process::Process, RrdClient, Value) {
         let started_ns = clock.elapsed().as_nanos() as u64;
         let mut command = self.command();
-        if trace {
-            command.env(
-                "RRFLOW_TRACE",
-                "rrd_server::diagnostic=debug,rrd_store::diagnostic=debug",
-            );
+        if let Some(filter) = filter {
+            command.env("RRFLOW_TRACE", filter);
             command.env("RRFLOW_TRACE_FORMAT", "json");
         }
         command
@@ -211,8 +233,18 @@ impl Estate {
             .arg(&self.project)
             .args(["--bind", "127.0.0.1:0"]);
         let (send, receive) = mpsc::sync_channel(1);
-        let mut child =
-            process::Process::start(&mut command, lifetime, STREAM_LIMIT, Some(send)).unwrap();
+        let mut child = if let Some(capture) = capture {
+            process::Process::start_with_redacted_stderr(
+                &mut command,
+                lifetime,
+                STREAM_LIMIT,
+                Some(send),
+                capture.observer(),
+            )
+        } else {
+            process::Process::start(&mut command, lifetime, STREAM_LIMIT, Some(send))
+        }
+        .unwrap();
         let readiness = receive
             .recv_timeout(Duration::from_secs(60))
             .map_err(|error| error.to_string())
@@ -275,13 +307,108 @@ impl Estate {
 fn kill(mut child: process::Process, clock: Instant) -> Value {
     assert!(child.running(), "owned server exited before requested kill");
     let pid = child.id();
+    let stderr_redacted = child.stderr_is_redacted();
     let killed_ns = clock.elapsed().as_nanos() as u64;
     child.terminate();
     let output = child.finish().expect("reap every owned server");
     assert!(!output.status.success());
     assert!(output.stdout.len() <= STREAM_LIMIT && output.stderr.len() <= STREAM_LIMIT);
-    json!({"pid":pid,"killed_ns":killed_ns,"reaped_ns":clock.elapsed().as_nanos() as u64,
-        "exit_status":output.status.to_string(),"stdout_bytes":output.stdout.len(),"stderr_bytes":output.stderr.len()})
+    let mut result = json!({"pid":pid,"killed_ns":killed_ns,"reaped_ns":clock.elapsed().as_nanos() as u64,
+        "exit_status":output.status.to_string(),"stdout_bytes":output.stdout.len(),"stderr_bytes":output.stderr.len()});
+    if stderr_redacted {
+        result["stderr_redacted"] = Value::Bool(true);
+    }
+    result
+}
+
+#[test]
+fn installed_redacted_transaction_capture_survives_restart() {
+    let estate = Estate::install("fresh");
+    let capture = transaction_trace::Capture::new(2).unwrap();
+    let clock = Instant::now();
+    let credential = RrdEngine::read_installed_api_key(&estate.project).unwrap();
+    let begin_options = options("private-redacted-begin");
+    let begin_digest = rrd_core::digest::sha256_hex(begin_options.request_id.as_str().as_bytes());
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+    let filter = Some("rrd_engine::transaction_diagnostic=debug");
+    let (mut first, client, _) =
+        estate.start_for_with_capture(clock, Duration::from_secs(180), filter, Some(&capture));
+    let (session, transaction) = runtime.block_on(async {
+        let session = client
+            .create_session(
+                credential.principal_id.clone(),
+                credential.credential(),
+                CreateSession {
+                    limits: SessionLimits {
+                        idle_timeout_ms: 300_000,
+                        absolute_timeout_ms: 600_000,
+                        max_open_transactions: 2,
+                    },
+                },
+                options("redacted-session"),
+            )
+            .await
+            .unwrap();
+        let transaction = client
+            .begin_transaction(
+                &session,
+                BeginTransaction {
+                    scope: CanonicalId::new("claims").unwrap(),
+                    timeout_ms: 300_000,
+                },
+                begin_options.clone(),
+            )
+            .await
+            .unwrap();
+        (session, transaction)
+    });
+    let first_pid = first.id();
+    first.terminate();
+    let first_output = first.finish().unwrap();
+    assert!(
+        first_output.stderr.is_empty(),
+        "raw stderr must not be retained"
+    );
+
+    let (second, client, _) =
+        estate.start_for_with_capture(clock, Duration::from_secs(180), filter, Some(&capture));
+    let second_pid = second.id();
+    let replay = runtime
+        .block_on(client.begin_transaction(
+            &session,
+            BeginTransaction {
+                scope: CanonicalId::new("claims").unwrap(),
+                timeout_ms: 300_000,
+            },
+            begin_options,
+        ))
+        .unwrap();
+    assert_eq!(replay, transaction);
+    let termination = kill(second, clock);
+    assert_eq!(termination["stderr_redacted"], true);
+    assert_eq!(termination["stderr_bytes"], 0);
+    let report = capture.report();
+    let events = report["events"].as_array().unwrap();
+    assert_eq!(report["valid_events"], 2);
+    assert_eq!(report["dropped_events"], 0);
+    assert_eq!(report["registered_observers"], 2);
+    assert_eq!(report["finished_readers"], 2);
+    assert_eq!(report["failed_readers"], 0);
+    assert!(events
+        .iter()
+        .all(|event| event["request_sha256"] == begin_digest));
+    assert!(events.iter().any(|event| event["pid"] == first_pid
+        && event["observer_ordinal"] == 1
+        && event["outcome"] == "created"));
+    assert!(events.iter().any(|event| event["pid"] == second_pid
+        && event["observer_ordinal"] == 2
+        && event["outcome"] == "replayed"));
+    let output = report.to_string();
+    assert!(!output.contains("private-redacted-begin"));
+    assert!(!output.contains(credential.credential()));
 }
 
 fn options(name: &str) -> RequestOptions {
@@ -310,7 +437,12 @@ fn expected(cycle: usize) -> BTreeMap<String, String> {
     (0..2)
         .map(|part| {
             (
-                format!("claim:reopen-{cycle}-{part}:reopen"),
+                format!(
+                    "claim:{}",
+                    rrd_core::digest::sha256_hex(
+                        format!("rrd-context-claim-v1\0reopen-{cycle}-{part}\0reopen").as_bytes()
+                    )
+                ),
                 format!("expected-{cycle}-{part}"),
             )
         })
@@ -499,15 +631,14 @@ fn run(mode: &str) {
             }
             read(&client, &session, estate.at, cycle + 1).await;
             ledger.readback.clear();
-            for (index, expected) in ledger.expected.iter().take(cycle + 1).enumerate() {
-                let values = observed
-                    .iter()
-                    .filter(|(key, _)| key.starts_with(&format!("claim:reopen-{index}-")))
-                    .map(|(key, value)| (key.clone(), value.clone()))
+            for (index, expected_operation) in ledger.expected.iter().take(cycle + 1).enumerate() {
+                let values = expected(index)
+                    .keys()
+                    .filter_map(|key| observed.get(key).map(|value| (key.clone(), value.clone())))
                     .collect::<BTreeMap<_, _>>();
                 ledger.readback.push(Readback::Present {
-                    logical_id: expected.logical_id.clone(),
-                    request_sha256: expected.request_sha256.clone(),
+                    logical_id: expected_operation.logical_id.clone(),
+                    request_sha256: expected_operation.request_sha256.clone(),
                     effect_sha256: digest("c07c.reopen.effect", &values).unwrap(),
                     receipt_sha256: stable[index].clone(),
                     applications: 1.try_into().unwrap(),

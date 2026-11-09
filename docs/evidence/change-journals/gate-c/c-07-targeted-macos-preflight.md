@@ -83,3 +83,10 @@ tests; focused and owning test results with first failures; one linked
 journal; generated navigation and complete diff review before publication.
 Stop for any change that bypasses required CI, suppresses errors, touches an
 unowned volume or substitutes a preflight for qualification.
+
+## 2026-11-09 main reconciliation
+
+Merged `development/main` (243 commits ahead of this branch's base) by an
+ordinary merge; the only conflict was the generated Gate C index, regenerated.
+`test_macos_native_failure_preflight.py`, `test_native_capacity.py`,
+`check_workflow.py` and documentation policy pass on the merged tree.

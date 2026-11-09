@@ -222,7 +222,7 @@ pub fn derive_graphql_schema(catalog: &Catalog, known_at_cursor: u64) -> Result<
         GraphqlSourceFamily::Series,
         None,
         Source::Series {
-            kind: RuntimeType::new("_graphql_schema_series")
+            kind: RuntimeType::new("graphql-schema-series")
                 .map_err(|error| Error::Graphql(error.to_string()))?,
         },
         registry,
@@ -231,7 +231,7 @@ pub fn derive_graphql_schema(catalog: &Catalog, known_at_cursor: u64) -> Result<
         GraphqlSourceFamily::Geo,
         None,
         Source::Geo {
-            kind: RuntimeType::new("_graphql_schema_geo")
+            kind: RuntimeType::new("graphql-schema-geo")
                 .map_err(|error| Error::Graphql(error.to_string()))?,
         },
         registry,
@@ -254,7 +254,7 @@ pub fn derive_graphql_schema(catalog: &Catalog, known_at_cursor: u64) -> Result<
                 relation: relation.clone(),
                 start: RuntimeRef {
                     kind: start_kind.clone(),
-                    id: RuntimeId::new("_graphql_schema_start")
+                    id: RuntimeId::new("graphql-schema-start")
                         .map_err(|error| Error::Graphql(error.to_string()))?,
                 },
                 direction: TraversalDirection::Both,
@@ -554,7 +554,7 @@ fn lower_source(
             let depth = resolve_u64(required_argument(arguments, "depth")?, parameters, "depth")?;
             Ok(Source::Traversal {
                 relation,
-                start: RuntimeRef::new(start_kind, start_id)
+                start: RuntimeRef::parse(start_kind, start_id)
                     .map_err(|error| Error::Graphql(error.to_string()))?,
                 direction,
                 max_depth: u16::try_from(depth)

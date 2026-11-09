@@ -20,6 +20,9 @@ const MAX_HNSW_NODES: usize = 10_000_000;
 // score-equivalent units is deliberately conservative at filter crossovers;
 // callers may still force ANN through `RequireApproximate`.
 const HNSW_NAVIGATION_COST_MULTIPLIER: usize = 4;
+/// At most this many identities inform one cost estimate. A planner compares costs roughly, and
+/// visiting every identity on every query took 44% of a search's time on 20,000 points.
+const COST_SAMPLE_IDENTITIES: usize = 512;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -32,7 +35,9 @@ pub enum HnswMaintenanceKind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HnswKernel {
     Scalar,
-    /// Runtime-dispatched AVX2 on supported x86_64 hosts, otherwise scalar.
+    /// Runtime-dispatched AVX2 on supported x86_64 hosts, NEON on aarch64,
+    /// otherwise scalar. Lanes are f32, so traversal can round differently
+    /// from scalar, and final exact reranking stays authoritative.
     Auto,
 }
 
@@ -218,6 +223,8 @@ pub struct HnswIndex {
     entrypoint: Option<usize>,
     nodes: Vec<HnswNode>,
     versions: BTreeMap<rrd_core::RuntimeRef, Vec<usize>>,
+    /// The version lists of evenly spaced identities, derived when read and never stored.
+    cost_sample: Vec<Vec<usize>>,
     bytes: Vec<u8>,
 }
 
@@ -257,6 +264,7 @@ impl HnswIndex {
             }
             insert_node(&config, &mut nodes, &mut entrypoint, candidate)?;
         }
+        repair_reachability(&config, &mut nodes, entrypoint)?;
         let body = HnswBody {
             config: config.clone(),
             generation,
@@ -333,6 +341,7 @@ impl HnswIndex {
         for candidate in candidates {
             insert_node(&self.config, &mut nodes, &mut entrypoint, candidate)?;
         }
+        repair_reachability(&self.config, &mut nodes, entrypoint)?;
         Self::from_body(HnswBody {
             config: self.config.clone(),
             generation,
@@ -424,12 +433,18 @@ impl HnswIndex {
         for ids in versions.values_mut() {
             ids.sort_by_key(|id| envelope.body.nodes[*id].candidate.source_cursor);
         }
+        let cost_sample = versions
+            .values()
+            .step_by(versions.len().div_ceil(COST_SAMPLE_IDENTITIES).max(1))
+            .cloned()
+            .collect();
         Ok(Self {
             descriptor,
             config: envelope.body.config,
             entrypoint: envelope.body.entrypoint,
             nodes: envelope.body.nodes,
             versions,
+            cost_sample,
             bytes,
         })
     }
@@ -477,18 +492,13 @@ impl HnswIndex {
                 .max(1)
                 .saturating_mul(HNSW_NAVIGATION_COST_MULTIPLIER) as u64);
         }
-        let eligible = self
-            .versions
-            .values()
-            .filter_map(|versions| {
-                versions.iter().rev().find(|version| {
-                    let candidate = &self.nodes[**version].candidate;
-                    candidate.source_cursor <= request.read.commit_cursor
-                        && candidate.vector.valid_from <= request.valid_at
-                })
-            })
-            .filter(|id| self.is_visible(request, **id))
-            .count();
+        let mut examined = self.cost_sample.len();
+        let mut eligible = self.eligible_identities(request, self.cost_sample.iter());
+        if eligible == 0 && examined < self.versions.len() {
+            // A filter too rare for the sample to see still has to reach the planner.
+            examined = self.versions.len();
+            eligible = self.eligible_identities(request, self.versions.values());
+        }
         if eligible == 0 {
             return Ok(self
                 .nodes
@@ -497,7 +507,7 @@ impl HnswIndex {
                 .saturating_mul(HNSW_NAVIGATION_COST_MULTIPLIER) as u64);
         }
         let estimated = ef_search
-            .saturating_mul(self.versions.len())
+            .saturating_mul(examined)
             .div_ceil(eligible)
             .min(self.nodes.len())
             .max(1);
@@ -622,23 +632,45 @@ impl HnswIndex {
             .collect())
     }
 
+    /// How many of these identities a request could be answered from.
+    fn eligible_identities<'a>(
+        &self,
+        request: &SearchRequest,
+        identities: impl Iterator<Item = &'a Vec<usize>>,
+    ) -> usize {
+        identities
+            .filter(|versions| {
+                #[cfg(test)]
+                IDENTITIES_VISITED.with(|visited| visited.set(visited.get() + 1));
+                self.latest_version(request, versions)
+                    .is_some_and(|id| self.admits(request, id))
+            })
+            .count()
+    }
+
+    fn latest_version(&self, request: &SearchRequest, versions: &[usize]) -> Option<usize> {
+        versions.iter().rev().copied().find(|version| {
+            let version = &self.nodes[*version].candidate;
+            version.source_cursor <= request.read.commit_cursor
+                && version.vector.valid_from <= request.valid_at
+        })
+    }
+
     fn is_visible(&self, request: &SearchRequest, id: usize) -> bool {
+        self.versions
+            .get(&self.nodes[id].candidate.vector.reference)
+            .and_then(|versions| self.latest_version(request, versions))
+            == Some(id)
+            && self.admits(request, id)
+    }
+
+    /// Whether this version is still valid at the request's time and passes its filter.
+    fn admits(&self, request: &SearchRequest, id: usize) -> bool {
         let candidate = &self.nodes[id].candidate;
-        let latest = self
-            .versions
-            .get(&candidate.vector.reference)
-            .and_then(|versions| {
-                versions.iter().rev().find(|version| {
-                    let version = &self.nodes[**version].candidate;
-                    version.source_cursor <= request.read.commit_cursor
-                        && version.vector.valid_from <= request.valid_at
-                })
-            });
-        if latest.copied() != Some(id)
-            || candidate
-                .vector
-                .valid_to
-                .is_some_and(|valid_to| request.valid_at >= valid_to)
+        if candidate
+            .vector
+            .valid_to
+            .is_some_and(|valid_to| request.valid_at >= valid_to)
         {
             return false;
         }
@@ -647,6 +679,12 @@ impl HnswIndex {
             .as_ref()
             .is_none_or(|filter| filter.matches(candidate.filter_properties()))
     }
+}
+
+#[cfg(test)]
+thread_local! {
+    /// How many identities were checked for visibility, for a test of how much one estimate reads.
+    static IDENTITIES_VISITED: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -720,7 +758,7 @@ fn insert_node(
                 eligible: None,
             },
         )?;
-        let selected = select_neighbors(found, layer_limit(config.m, layer as usize));
+        let selected = select_neighbors(nodes, found, config.m, config.metric)?;
         if let Some(best) = selected.first() {
             current = best.id;
         }
@@ -740,13 +778,15 @@ fn insert_node(
             if !nodes[scored.id].neighbors[layer].contains(&new_id) {
                 nodes[scored.id].neighbors[layer].push(new_id);
             }
-            prune_neighbors(
-                nodes,
-                scored.id,
-                layer,
-                layer_limit(config.m, layer),
-                config.metric,
-            )?;
+            if nodes[scored.id].neighbors[layer].len() > layer_limit(config.m, layer) {
+                prune_neighbors(
+                    nodes,
+                    scored.id,
+                    layer,
+                    layer_limit(config.m, layer),
+                    config.metric,
+                )?;
+            }
         }
     }
     if level > entry_level {
@@ -773,17 +813,138 @@ fn prune_neighbors(
             })
         })
         .collect::<Result<Vec<_>>>()?;
-    nodes[node].neighbors[layer] = select_neighbors(scored, m)
+    nodes[node].neighbors[layer] = select_neighbors(nodes, scored, m, metric)?
         .into_iter()
         .map(|value| value.id)
         .collect();
     Ok(())
 }
 
-fn select_neighbors(mut candidates: Vec<ScoredNode>, limit: usize) -> Vec<ScoredNode> {
+/// Chooses a node's neighbors from `candidates`, each scored against that node, by the heuristic
+/// of Malkov and Yashunin's Algorithm 4. A candidate is kept only if it is closer to the node than
+/// to any neighbor already kept, since otherwise that neighbor already leads to it. Keeping only
+/// the closest would fill a node's list from its own cluster and cut the links between clusters.
+fn select_neighbors(
+    nodes: &[HnswNode],
+    mut candidates: Vec<ScoredNode>,
+    limit: usize,
+    metric: ScoreMetric,
+) -> Result<Vec<ScoredNode>> {
     sort_scored(&mut candidates);
-    candidates.truncate(limit);
-    candidates
+    if candidates.len() <= limit {
+        return Ok(candidates);
+    }
+    let mut selected: Vec<ScoredNode> = Vec::with_capacity(limit);
+    for candidate in candidates {
+        if selected.len() == limit {
+            break;
+        }
+        let values = dense_candidate(&nodes[candidate.id].candidate)?;
+        let mut closer_to_the_node = true;
+        for kept in &selected {
+            let to_kept = score_dense_query(
+                values,
+                &nodes[kept.id].candidate,
+                metric,
+                HnswKernel::Scalar,
+            )?;
+            if to_kept > candidate.score {
+                closer_to_the_node = false;
+                break;
+            }
+        }
+        if closer_to_the_node {
+            selected.push(candidate);
+        }
+    }
+    Ok(selected)
+}
+
+/// Marks everything reachable on layer zero from `start`, on top of what is already marked.
+fn mark_reachable(nodes: &[HnswNode], reachable: &mut [bool], start: usize) {
+    reachable[start] = true;
+    let mut pending = vec![start];
+    while let Some(node) = pending.pop() {
+        for neighbor in &nodes[node].neighbors[0] {
+            if !reachable[*neighbor] {
+                reachable[*neighbor] = true;
+                pending.push(*neighbor);
+            }
+        }
+    }
+}
+
+/// The heuristic makes a connected graph likely and does not promise one, and a node no search can
+/// reach is a wrong answer waiting to happen. So anything left unreachable on layer zero is linked
+/// from its closest reachable node with room for it, in a fixed order, so a build stays
+/// deterministic. Pruning never runs here, so no link that already reaches a node is lost.
+fn repair_reachability(
+    config: &HnswConfig,
+    nodes: &mut [HnswNode],
+    entrypoint: Option<usize>,
+) -> Result<()> {
+    let Some(entrypoint) = entrypoint else {
+        return Ok(());
+    };
+    let limit = layer_limit(config.m, 0);
+    let mut reachable = vec![false; nodes.len()];
+    mark_reachable(nodes, &mut reachable, entrypoint);
+    for orphan in 0..nodes.len() {
+        if reachable[orphan] {
+            continue;
+        }
+        let query = dense_candidate(&nodes[orphan].candidate)?.to_vec();
+        let mut found = search_layer(
+            nodes,
+            &query,
+            &[entrypoint],
+            SearchLayerOptions {
+                ef: config.ef_construction,
+                layer: 0,
+                metric: config.metric,
+                kernel: HnswKernel::Scalar,
+                eligible: None,
+            },
+        )?;
+        sort_scored(&mut found);
+        let nearby = found
+            .iter()
+            .find(|scored| nodes[scored.id].neighbors[0].len() < limit)
+            .map(|scored| scored.id);
+        let host = match nearby {
+            Some(host) => Some(host),
+            // Everything the search reached is full, so look at every reachable node.
+            None => {
+                let mut best: Option<ScoredNode> = None;
+                for (id, node) in nodes.iter().enumerate() {
+                    if reachable[id] && node.neighbors[0].len() < limit {
+                        let score = score_dense_query(
+                            &query,
+                            &node.candidate,
+                            config.metric,
+                            HnswKernel::Scalar,
+                        )?;
+                        let scored = ScoredNode { id, score };
+                        if best.is_none_or(|current| scored > current) {
+                            best = Some(scored);
+                        }
+                    }
+                }
+                best.map(|scored| scored.id)
+            }
+        };
+        // With no room anywhere, the validator refuses the graph, as it would have before.
+        let Some(host) = host else {
+            return Ok(());
+        };
+        nodes[host].neighbors[0].push(orphan);
+        // Pruning is one-way, so the orphan may already point at its host.
+        if nodes[orphan].neighbors[0].len() < limit && !nodes[orphan].neighbors[0].contains(&host) {
+            nodes[orphan].neighbors[0].push(host);
+        }
+        mark_reachable(nodes, &mut reachable, orphan);
+    }
+    Ok(())
 }
 
 fn layer_limit(m: usize, layer: usize) -> usize {
@@ -935,65 +1096,233 @@ fn score_dense_values(
     match kernel {
         HnswKernel::Scalar => score_dense(query, candidate, metric),
         HnswKernel::Auto => {
-            #[cfg(target_arch = "x86_64")]
-            if std::arch::is_x86_feature_detected!("avx2") {
-                // SAFETY: AVX2 was detected at runtime and both slices have the
-                // same proven length; the kernel performs only unaligned
-                // in-bounds loads.
-                return Ok(unsafe { score_dense_avx2(query, candidate, metric) });
+            if let Some(simd) = simd_score() {
+                // SAFETY: simd_score only returns a kernel this host can run,
+                // and both slices have the same proven length; a kernel
+                // performs only unaligned in-bounds loads.
+                let score = unsafe { simd(query, candidate, metric) };
+                // A lane that overflowed says nothing about the real score.
+                // A tiny score may have lost whole lanes to f32 underflow
+                // (squares of values below about 1e-19 vanish) while a tail
+                // element kept its f64 value, so it is finite and still wrong.
+                // Either is the scalar f64 kernel's to decide; a duplicate or
+                // orthogonal pair costs one scalar pass and keeps its answer.
+                if score.is_finite() && score.abs() >= SIMD_SCORE_FLOOR {
+                    return Ok(score);
+                }
             }
             score_dense(query, candidate, metric)
         }
     }
 }
 
+/// Below this magnitude a SIMD score is recomputed by the scalar kernel. An
+/// f32 product underflows near 1e-38, so a sum of squares this small can have
+/// dropped most of its terms; every ordinary embedding distance is far above it.
+const SIMD_SCORE_FLOOR: f64 = 1e-15;
+
+type SimdScore = unsafe fn(&[f32], &[f32], ScoreMetric) -> f64;
+
+/// The SIMD kernel this host can run, if it has one. NEON is part of the
+/// aarch64 baseline, so it needs no detection.
+fn simd_score() -> Option<SimdScore> {
+    #[cfg(target_arch = "aarch64")]
+    return Some(score_dense_neon);
+    #[cfg(not(target_arch = "aarch64"))]
+    {
+        #[cfg(target_arch = "x86_64")]
+        if std::arch::is_x86_feature_detected!("avx2") {
+            return Some(score_dense_avx2);
+        }
+        None
+    }
+}
+
+/// A cosine from f32 lanes. A norm outside the normal f32 range has lost its
+/// meaning, and a zero vector is the scalar kernel's to define, so either
+/// returns NaN for the scalar kernel to decide.
+#[cfg(any(target_arch = "x86_64", target_arch = "aarch64"))]
+fn cosine_from_lanes(dot: f64, left_norm: f64, right_norm: f64) -> f64 {
+    let normal = f64::from(f32::MIN_POSITIVE)..=f64::from(f32::MAX);
+    if normal.contains(&left_norm) && normal.contains(&right_norm) {
+        dot / (left_norm.sqrt() * right_norm.sqrt())
+    } else {
+        f64::NAN
+    }
+}
+
+/// Sums `lane` over the slices sixteen floats at a time, in four groups of
+/// registers so the core can run them in parallel, then `tail` over the rest.
+#[cfg(target_arch = "aarch64")]
+unsafe fn neon_sums<const N: usize>(
+    left: &[f32],
+    right: &[f32],
+    lane: impl Fn(
+        &mut [std::arch::aarch64::float32x4_t; N],
+        std::arch::aarch64::float32x4_t,
+        std::arch::aarch64::float32x4_t,
+    ),
+    tail: impl Fn(&mut [f64; N], f64, f64),
+) -> [f64; N] {
+    use std::arch::aarch64::*;
+    let mut groups = [[vdupq_n_f32(0.0); N]; 4];
+    let mut index = 0;
+    while index + 16 <= left.len() {
+        for (offset, group) in groups.iter_mut().enumerate() {
+            let at = index + offset * 4;
+            lane(
+                group,
+                vld1q_f32(left.as_ptr().add(at)),
+                vld1q_f32(right.as_ptr().add(at)),
+            );
+        }
+        index += 16;
+    }
+    let mut sums = [0.0_f64; N];
+    for (which, sum) in sums.iter_mut().enumerate() {
+        let first = vaddq_f32(groups[0][which], groups[1][which]);
+        let second = vaddq_f32(groups[2][which], groups[3][which]);
+        *sum = f64::from(vaddvq_f32(vaddq_f32(first, second)));
+    }
+    for (lhs, rhs) in left[index..].iter().zip(&right[index..]) {
+        tail(&mut sums, f64::from(*lhs), f64::from(*rhs));
+    }
+    sums
+}
+
+/// Computes only what its metric needs. NEON is part of the aarch64 baseline.
+#[cfg(target_arch = "aarch64")]
+unsafe fn score_dense_neon(left: &[f32], right: &[f32], metric: ScoreMetric) -> f64 {
+    use std::arch::aarch64::*;
+    match metric {
+        ScoreMetric::Dot => neon_sums::<1>(
+            left,
+            right,
+            |[dot], lhs, rhs| *dot = vfmaq_f32(*dot, lhs, rhs),
+            |[dot], lhs, rhs| *dot += lhs * rhs,
+        )[0],
+        ScoreMetric::Cosine => {
+            let [dot, left_norm, right_norm] = neon_sums::<3>(
+                left,
+                right,
+                |[dot, left_norm, right_norm], lhs, rhs| {
+                    *dot = vfmaq_f32(*dot, lhs, rhs);
+                    *left_norm = vfmaq_f32(*left_norm, lhs, lhs);
+                    *right_norm = vfmaq_f32(*right_norm, rhs, rhs);
+                },
+                |[dot, left_norm, right_norm], lhs, rhs| {
+                    *dot += lhs * rhs;
+                    *left_norm += lhs * lhs;
+                    *right_norm += rhs * rhs;
+                },
+            );
+            cosine_from_lanes(dot, left_norm, right_norm)
+        }
+        ScoreMetric::Euclidean => -neon_sums::<1>(
+            left,
+            right,
+            |[sum], lhs, rhs| {
+                let delta = vsubq_f32(lhs, rhs);
+                *sum = vfmaq_f32(*sum, delta, delta);
+            },
+            |[sum], lhs, rhs| *sum += (lhs - rhs).powi(2),
+        )[0]
+        .sqrt(),
+        ScoreMetric::Manhattan => -neon_sums::<1>(
+            left,
+            right,
+            |[sum], lhs, rhs| *sum = vaddq_f32(*sum, vabdq_f32(lhs, rhs)),
+            |[sum], lhs, rhs| *sum += (lhs - rhs).abs(),
+        )[0],
+    }
+}
+
+/// Sums `lane` over the slices eight floats at a time, then `tail` over the rest.
+#[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "avx2")]
+unsafe fn avx2_sums<const N: usize>(
+    left: &[f32],
+    right: &[f32],
+    lane: impl Fn(
+        &mut [std::arch::x86_64::__m256; N],
+        std::arch::x86_64::__m256,
+        std::arch::x86_64::__m256,
+    ),
+    tail: impl Fn(&mut [f64; N], f64, f64),
+) -> [f64; N] {
+    use std::arch::x86_64::*;
+    let mut lanes = [_mm256_setzero_ps(); N];
+    let mut index = 0;
+    while index + 8 <= left.len() {
+        lane(
+            &mut lanes,
+            _mm256_loadu_ps(left.as_ptr().add(index)),
+            _mm256_loadu_ps(right.as_ptr().add(index)),
+        );
+        index += 8;
+    }
+    let mut sums = [0.0_f64; N];
+    for (sum, register) in sums.iter_mut().zip(&lanes) {
+        let mut values = [0.0_f32; 8];
+        _mm256_storeu_ps(values.as_mut_ptr(), *register);
+        *sum = values.iter().map(|value| f64::from(*value)).sum();
+    }
+    for (lhs, rhs) in left[index..].iter().zip(&right[index..]) {
+        tail(&mut sums, f64::from(*lhs), f64::from(*rhs));
+    }
+    sums
+}
+
+/// Computes only what its metric needs.
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2")]
 unsafe fn score_dense_avx2(left: &[f32], right: &[f32], metric: ScoreMetric) -> f64 {
     use std::arch::x86_64::*;
-    let mut dot = _mm256_setzero_ps();
-    let mut left_norm = _mm256_setzero_ps();
-    let mut right_norm = _mm256_setzero_ps();
-    let mut distance = _mm256_setzero_ps();
-    let mut manhattan = _mm256_setzero_ps();
-    let sign_mask = _mm256_set1_ps(-0.0);
-    let mut index = 0;
-    while index + 8 <= left.len() {
-        let lhs = _mm256_loadu_ps(left.as_ptr().add(index));
-        let rhs = _mm256_loadu_ps(right.as_ptr().add(index));
-        let delta = _mm256_sub_ps(lhs, rhs);
-        dot = _mm256_add_ps(dot, _mm256_mul_ps(lhs, rhs));
-        left_norm = _mm256_add_ps(left_norm, _mm256_mul_ps(lhs, lhs));
-        right_norm = _mm256_add_ps(right_norm, _mm256_mul_ps(rhs, rhs));
-        distance = _mm256_add_ps(distance, _mm256_mul_ps(delta, delta));
-        manhattan = _mm256_add_ps(manhattan, _mm256_andnot_ps(sign_mask, delta));
-        index += 8;
-    }
-    let mut lanes = [0.0_f32; 8];
-    let reduce = |value: __m256, lanes: &mut [f32; 8]| {
-        _mm256_storeu_ps(lanes.as_mut_ptr(), value);
-        lanes.iter().map(|value| f64::from(*value)).sum::<f64>()
-    };
-    let mut dot = reduce(dot, &mut lanes);
-    let mut left_norm = reduce(left_norm, &mut lanes);
-    let mut right_norm = reduce(right_norm, &mut lanes);
-    let mut distance = reduce(distance, &mut lanes);
-    let mut manhattan = reduce(manhattan, &mut lanes);
-    for (lhs, rhs) in left[index..].iter().zip(&right[index..]) {
-        let lhs = f64::from(*lhs);
-        let rhs = f64::from(*rhs);
-        dot += lhs * rhs;
-        left_norm += lhs * lhs;
-        right_norm += rhs * rhs;
-        distance += (lhs - rhs).powi(2);
-        manhattan += (lhs - rhs).abs();
-    }
     match metric {
-        ScoreMetric::Dot => dot,
-        ScoreMetric::Cosine if right_norm == 0.0 => 0.0,
-        ScoreMetric::Cosine => dot / (left_norm.sqrt() * right_norm.sqrt()),
-        ScoreMetric::Euclidean => -distance.sqrt(),
-        ScoreMetric::Manhattan => -manhattan,
+        ScoreMetric::Dot => avx2_sums::<1>(
+            left,
+            right,
+            |[dot], lhs, rhs| *dot = _mm256_add_ps(*dot, _mm256_mul_ps(lhs, rhs)),
+            |[dot], lhs, rhs| *dot += lhs * rhs,
+        )[0],
+        ScoreMetric::Cosine => {
+            let [dot, left_norm, right_norm] = avx2_sums::<3>(
+                left,
+                right,
+                |[dot, left_norm, right_norm], lhs, rhs| {
+                    *dot = _mm256_add_ps(*dot, _mm256_mul_ps(lhs, rhs));
+                    *left_norm = _mm256_add_ps(*left_norm, _mm256_mul_ps(lhs, lhs));
+                    *right_norm = _mm256_add_ps(*right_norm, _mm256_mul_ps(rhs, rhs));
+                },
+                |[dot, left_norm, right_norm], lhs, rhs| {
+                    *dot += lhs * rhs;
+                    *left_norm += lhs * lhs;
+                    *right_norm += rhs * rhs;
+                },
+            );
+            cosine_from_lanes(dot, left_norm, right_norm)
+        }
+        ScoreMetric::Euclidean => -avx2_sums::<1>(
+            left,
+            right,
+            |[sum], lhs, rhs| {
+                let delta = _mm256_sub_ps(lhs, rhs);
+                *sum = _mm256_add_ps(*sum, _mm256_mul_ps(delta, delta));
+            },
+            |[sum], lhs, rhs| *sum += (lhs - rhs).powi(2),
+        )[0]
+        .sqrt(),
+        ScoreMetric::Manhattan => {
+            let sign = _mm256_set1_ps(-0.0);
+            -avx2_sums::<1>(
+                left,
+                right,
+                |[sum], lhs, rhs| {
+                    *sum = _mm256_add_ps(*sum, _mm256_andnot_ps(sign, _mm256_sub_ps(lhs, rhs)));
+                },
+                |[sum], lhs, rhs| *sum += (lhs - rhs).abs(),
+            )[0]
+        }
     }
 }
 
@@ -1111,6 +1440,142 @@ mod tests {
         VectorCollectionAddress,
     };
 
+    const KERNEL_METRICS: [ScoreMetric; 4] = [
+        ScoreMetric::Dot,
+        ScoreMetric::Cosine,
+        ScoreMetric::Euclidean,
+        ScoreMetric::Manhattan,
+    ];
+
+    fn kernel_vectors(length: usize, seed: u32) -> (Vec<f32>, Vec<f32>) {
+        let mut state = seed;
+        let mut next = move || {
+            state = state
+                .wrapping_mul(2_654_435_761)
+                .wrapping_add(1_013_904_223);
+            (state >> 8) as f32 / (1_u32 << 24) as f32 * 2.0 - 1.0
+        };
+        let left = (0..length).map(|_| next()).collect();
+        let right = (0..length).map(|_| next()).collect();
+        (left, right)
+    }
+
+    fn both_kernels(left: &[f32], right: &[f32], metric: ScoreMetric) -> (f64, f64) {
+        (
+            score_dense_values(left, right, metric, HnswKernel::Scalar).unwrap(),
+            score_dense_values(left, right, metric, HnswKernel::Auto).unwrap(),
+        )
+    }
+
+    /// A lost lane or tail element moves a score far more than this rounding
+    /// allowance at the short lengths, where each element is a large share.
+    #[test]
+    fn the_automatic_kernel_agrees_with_the_scalar_kernel_at_every_length() {
+        for length in (0..=67).chain([128, 384, 512, 1024]) {
+            let (left, right) = kernel_vectors(length, length as u32 + 1);
+            let allowance = 1e-5 * length.max(1) as f64;
+            for metric in KERNEL_METRICS {
+                let (scalar, automatic) = both_kernels(&left, &right, metric);
+                assert!(
+                    (scalar - automatic).abs() <= allowance,
+                    "{metric:?} at {length}: {scalar} and {automatic}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn a_zero_vector_scores_as_the_scalar_kernel_scores_it() {
+        let zero = vec![0.0_f32; 33];
+        let (other, _) = kernel_vectors(33, 7);
+        for metric in KERNEL_METRICS {
+            for (left, right) in [(&zero, &other), (&other, &zero), (&zero, &zero)] {
+                let (scalar, automatic) = both_kernels(left, right, metric);
+                assert!(
+                    (scalar.is_nan() && automatic.is_nan()) || (scalar - automatic).abs() <= 1e-3,
+                    "{metric:?}: {scalar} and {automatic}"
+                );
+            }
+        }
+    }
+
+    /// Lanes are f32 and the scalar kernel is f64. A product can overflow the
+    /// first where the second is finite, and that must not change a score.
+    #[test]
+    fn a_lane_that_overflows_gets_the_scalar_kernels_score() {
+        let same = vec![1e30_f32; 33];
+        let opposite = same.iter().map(|value| -value).collect::<Vec<_>>();
+        let alternating = same
+            .iter()
+            .enumerate()
+            .map(|(index, value)| if index % 2 == 0 { *value } else { -value })
+            .collect::<Vec<_>>();
+        for metric in KERNEL_METRICS {
+            for other in [&same, &opposite, &alternating] {
+                let (scalar, automatic) = both_kernels(&same, other, metric);
+                assert!(scalar.is_finite(), "{metric:?}: {scalar}");
+                assert_eq!(automatic, scalar, "{metric:?}");
+            }
+        }
+    }
+
+    /// Lanes are f32. Squares of small-magnitude values underflow there where
+    /// the f64 scalar kernel keeps them, so distinct distances would become
+    /// ties, or keep only their tail element, and the nearest candidates
+    /// would be lost at traversal. Vectors of 33 leave one tail element.
+    #[test]
+    fn a_lane_that_underflows_gets_the_scalar_kernels_score() {
+        let tiny = vec![1e-30_f32; 33];
+        let zero = vec![0.0_f32; 33];
+        let doubled = tiny.iter().map(|value| value * 2.0).collect::<Vec<_>>();
+        for metric in KERNEL_METRICS {
+            for (left, right) in [(&tiny, &zero), (&tiny, &doubled), (&doubled, &tiny)] {
+                let (scalar, automatic) = both_kernels(left, right, metric);
+                assert!(scalar.is_finite(), "{metric:?}: {scalar}");
+                // A metric whose lanes stay normal (Manhattan here) keeps its
+                // f32 rounding; one that underflowed must be the scalar score.
+                assert!(
+                    (scalar - automatic).abs() <= scalar.abs() * 1e-5,
+                    "{metric:?}: {scalar} and {automatic}"
+                );
+            }
+        }
+    }
+
+    /// A norm that overflows or underflows f32 can still give a finite score,
+    /// and that score is wrong, so being finite is not enough.
+    #[test]
+    fn a_cosine_norm_outside_the_normal_f32_range_gets_the_scalar_kernels_score() {
+        let huge = vec![1e30_f32; 33];
+        let tiny = vec![1e-30_f32; 33];
+        let (ordinary, _) = kernel_vectors(33, 11);
+        for (left, right) in [
+            (&huge, &tiny),
+            (&tiny, &huge),
+            (&tiny, &tiny),
+            (&huge, &ordinary),
+            (&ordinary, &tiny),
+        ] {
+            let (scalar, automatic) = both_kernels(left, right, ScoreMetric::Cosine);
+            assert!(scalar.is_finite(), "{scalar}");
+            assert_eq!(automatic, scalar);
+        }
+    }
+
+    #[test]
+    fn a_host_with_simd_uses_it() {
+        #[cfg(target_arch = "aarch64")]
+        assert!(
+            simd_score().is_some(),
+            "NEON is part of the aarch64 baseline"
+        );
+        #[cfg(target_arch = "x86_64")]
+        assert_eq!(
+            simd_score().is_some(),
+            std::arch::is_x86_feature_detected!("avx2")
+        );
+    }
+
     fn candidate(scope: &ScopeId, cursor: u64, id: usize, values: Vec<f32>) -> VectorCandidate {
         VectorCandidate {
             scope: scope.clone(),
@@ -1134,7 +1599,7 @@ mod tests {
 
     fn config(scope: &ScopeId) -> HnswConfig {
         HnswConfig {
-            id: ProjectionId::new("vector:hnsw:body").unwrap(),
+            id: ProjectionId::new("vector-hnsw-body").unwrap(),
             scope: scope.clone(),
             field: "body".into(),
             dimensions: 2,
@@ -1146,6 +1611,531 @@ mod tests {
             seed: 7,
             filter_properties: BTreeSet::new(),
         }
+    }
+
+    /// A fixed stream of normal values, so a corpus is the same on every run and every machine.
+    struct Stream(u64);
+
+    impl Stream {
+        fn uniform(&mut self) -> f64 {
+            // xorshift64*, whose whole output is fixed by the seed.
+            self.0 ^= self.0 >> 12;
+            self.0 ^= self.0 << 25;
+            self.0 ^= self.0 >> 27;
+            let value = self.0.wrapping_mul(0x9E37_79B9_7F4A_7C15);
+            ((value >> 11) as f64 + 0.5) / (1_u64 << 53) as f64
+        }
+
+        fn normal(&mut self) -> f32 {
+            let radius = (-2.0 * self.uniform().ln()).sqrt();
+            (radius * (std::f64::consts::TAU * self.uniform()).cos()) as f32
+        }
+    }
+
+    /// Points around cluster centres, drawn as the lab's mixture draws them: real embeddings
+    /// cluster, and uniform data cannot show what clustering does to a graph.
+    fn clustered(
+        scope: &ScopeId,
+        first_id: usize,
+        points: usize,
+        clusters: usize,
+        dimensions: usize,
+        spread: f32,
+        seed: u64,
+    ) -> Vec<VectorCandidate> {
+        let mut stream = Stream(seed);
+        let centres = (0..clusters)
+            .map(|_| {
+                (0..dimensions)
+                    .map(|_| stream.normal())
+                    .collect::<Vec<f32>>()
+            })
+            .collect::<Vec<_>>();
+        (0..points)
+            .map(|index| {
+                let centre = &centres[index % clusters];
+                let values = centre
+                    .iter()
+                    .map(|value| value + spread * stream.normal())
+                    .collect();
+                let id = first_id + index;
+                candidate(scope, id as u64 + 1, id, values)
+            })
+            .collect()
+    }
+
+    fn clustered_config(scope: &ScopeId, dimensions: usize, m: usize, ef: usize) -> HnswConfig {
+        HnswConfig {
+            dimensions,
+            m,
+            ef_construction: ef,
+            max_level: 6,
+            ..config(scope)
+        }
+    }
+
+    fn reachable_nodes(index: &HnswIndex) -> usize {
+        let Some(entrypoint) = index.entrypoint else {
+            return 0;
+        };
+        let mut seen = vec![false; index.nodes.len()];
+        seen[entrypoint] = true;
+        let mut pending = vec![entrypoint];
+        while let Some(node) = pending.pop() {
+            for neighbor in &index.nodes[node].neighbors[0] {
+                if !seen[*neighbor] {
+                    seen[*neighbor] = true;
+                    pending.push(*neighbor);
+                }
+            }
+        }
+        seen.iter().filter(|seen| **seen).count()
+    }
+
+    /// The share of the true top ten a search finds, over queries drawn from the corpus's clusters.
+    fn recall(index: &HnswIndex, corpus: &[VectorCandidate], ef_search: usize) -> f64 {
+        let scope = &index.config.scope;
+        let cursor = index.descriptor.stamp.source_cursor;
+        let mut stream = Stream(0xC0FF_EE00_D15E_A5E5);
+        let mut found = 0;
+        let mut wanted = 0;
+        for query in corpus.iter().step_by(corpus.len() / 50) {
+            let values = dense_candidate(query)
+                .unwrap()
+                .iter()
+                .map(|value| value + 0.05 * stream.normal())
+                .collect::<Vec<f32>>();
+            let mut exact = corpus
+                .iter()
+                .map(|candidate| {
+                    (
+                        score_dense_query(
+                            &values,
+                            candidate,
+                            ScoreMetric::Cosine,
+                            HnswKernel::Scalar,
+                        )
+                        .unwrap(),
+                        candidate.vector.reference.clone(),
+                    )
+                })
+                .collect::<Vec<_>>();
+            exact.sort_by(|left, right| right.0.total_cmp(&left.0));
+            let truth = exact
+                .into_iter()
+                .take(10)
+                .map(|(_, reference)| reference)
+                .collect::<BTreeSet<_>>();
+            let request = SearchRequest {
+                scope: scope.clone(),
+                read: ReadStamp::new(scope.clone(), None, 0, cursor, Some("11".repeat(32)))
+                    .unwrap(),
+                valid_at: 2,
+                field: "body".into(),
+                query: VectorQuery::Dense { values },
+                metric: ScoreMetric::Cosine,
+                embedding_model: None,
+                top_k: 10,
+                mode: SearchMode::RequireApproximate {
+                    exact_rerank: ef_search,
+                },
+                filter: None,
+            };
+            let hits = index.search(&request, ef_search).unwrap();
+            found += hits
+                .iter()
+                .filter(|hit| truth.contains(&hit.reference))
+                .count();
+            wanted += truth.len();
+        }
+        found as f64 / wanted as f64
+    }
+
+    #[test]
+    fn a_clustered_corpus_builds_with_every_node_reachable_and_answers() {
+        let scope = ScopeId::new("instance:hnsw").unwrap();
+        let corpus = clustered(&scope, 0, 3_000, 32, 24, 0.35, 0x5EED_0001);
+        let index = HnswIndex::build(
+            clustered_config(&scope, 24, 16, 100),
+            1,
+            corpus.len() as u64,
+            corpus.clone(),
+        )
+        .unwrap();
+        assert_eq!(reachable_nodes(&index), corpus.len());
+        for node in &index.nodes {
+            for (layer, neighbors) in node.neighbors.iter().enumerate() {
+                assert!(neighbors.len() <= layer_limit(16, layer));
+            }
+        }
+        let found = recall(&index, &corpus, 128);
+        assert!(found >= 0.95, "recall was {found}");
+    }
+
+    #[test]
+    fn two_tight_clusters_far_apart_stay_connected() {
+        let scope = ScopeId::new("instance:hnsw").unwrap();
+        let corpus = (0..400)
+            .map(|index| {
+                let side = if index % 2 == 0 { 1.0 } else { -1.0 };
+                let wobble = index as f32 * 1e-4;
+                candidate(
+                    &scope,
+                    index as u64 + 1,
+                    index,
+                    vec![side, wobble, side * wobble],
+                )
+            })
+            .collect::<Vec<_>>();
+        let index = HnswIndex::build(
+            clustered_config(&scope, 3, 4, 32),
+            1,
+            corpus.len() as u64,
+            corpus.clone(),
+        )
+        .unwrap();
+        assert_eq!(reachable_nodes(&index), corpus.len());
+    }
+
+    #[test]
+    fn many_small_clusters_stay_connected() {
+        let scope = ScopeId::new("instance:hnsw").unwrap();
+        let corpus = clustered(&scope, 0, 1_200, 120, 16, 0.02, 0x5EED_0002);
+        let index = HnswIndex::build(
+            clustered_config(&scope, 16, 4, 32),
+            1,
+            corpus.len() as u64,
+            corpus.clone(),
+        )
+        .unwrap();
+        assert_eq!(reachable_nodes(&index), corpus.len());
+    }
+
+    #[test]
+    fn identical_vectors_stay_connected() {
+        let scope = ScopeId::new("instance:hnsw").unwrap();
+        let corpus = (0..300)
+            .map(|index| candidate(&scope, index as u64 + 1, index, vec![0.6, 0.8]))
+            .collect::<Vec<_>>();
+        let index = HnswIndex::build(
+            clustered_config(&scope, 2, 4, 32),
+            1,
+            corpus.len() as u64,
+            corpus.clone(),
+        )
+        .unwrap();
+        assert_eq!(reachable_nodes(&index), corpus.len());
+    }
+
+    #[test]
+    fn an_advance_into_new_clusters_stays_connected() {
+        let scope = ScopeId::new("instance:hnsw").unwrap();
+        let first = clustered(&scope, 0, 1_000, 8, 16, 0.2, 0x5EED_0003);
+        let index = HnswIndex::build(
+            clustered_config(&scope, 16, 8, 64),
+            1,
+            first.len() as u64,
+            first.clone(),
+        )
+        .unwrap();
+        let second = clustered(&scope, 1_000, 500, 8, 16, 0.2, 0x5EED_0004);
+        let advanced = index.advance(2, 1_500, second.clone()).unwrap();
+        assert_eq!(reachable_nodes(&advanced), first.len() + second.len());
+        let mut whole = first;
+        whole.extend(second);
+        let found = recall(&advanced, &whole, 128);
+        assert!(found >= 0.95, "recall was {found}");
+    }
+
+    #[test]
+    fn a_clustered_build_is_deterministic() {
+        let scope = ScopeId::new("instance:hnsw").unwrap();
+        let corpus = clustered(&scope, 0, 600, 16, 16, 0.2, 0x5EED_0005);
+        let build = || {
+            HnswIndex::build(
+                clustered_config(&scope, 16, 8, 64),
+                1,
+                corpus.len() as u64,
+                corpus.clone(),
+            )
+            .unwrap()
+        };
+        assert_eq!(build().as_bytes(), build().as_bytes());
+    }
+
+    #[test]
+    fn repair_links_each_orphan_from_its_closest_reachable_node_with_room() {
+        let scope = ScopeId::new("instance:hnsw").unwrap();
+        let node = |id: usize, values: Vec<f32>, neighbors: Vec<usize>| HnswNode {
+            candidate: candidate(&scope, id as u64 + 1, id, values),
+            level: 0,
+            neighbors: vec![neighbors],
+        };
+        // Node 1 is closest to the orphan, node 2, and has room. Node 0 is farther. Node 3 is
+        // reached through the orphan, so it must come along without a link of its own.
+        let mut nodes = vec![
+            node(0, vec![1.0, 0.0], vec![1]),
+            node(1, vec![0.7, 0.7], vec![0]),
+            node(2, vec![0.5, 0.9], vec![3]),
+            node(3, vec![0.0, 1.0], Vec::new()),
+        ];
+        let settings = clustered_config(&scope, 2, 2, 8);
+        repair_reachability(&settings, &mut nodes, Some(0)).unwrap();
+        assert_eq!(nodes[1].neighbors[0], vec![0, 2]);
+        assert_eq!(nodes[0].neighbors[0], vec![1]);
+        assert_eq!(nodes[2].neighbors[0], vec![3, 1]);
+        assert_eq!(nodes[3].neighbors[0], Vec::<usize>::new());
+    }
+
+    #[test]
+    fn repair_does_not_repeat_a_link_the_orphan_already_has() {
+        let scope = ScopeId::new("instance:hnsw").unwrap();
+        let node = |id: usize, values: Vec<f32>, neighbors: Vec<usize>| HnswNode {
+            candidate: candidate(&scope, id as u64 + 1, id, values),
+            level: 0,
+            neighbors: vec![neighbors],
+        };
+        // Pruning is one-way, so the orphan can still point at its closest reachable node after
+        // that node dropped it. The validator refuses a repeated link.
+        let mut nodes = vec![
+            node(0, vec![1.0, 0.0], Vec::new()),
+            node(1, vec![0.9, 0.1], vec![0]),
+        ];
+        let settings = clustered_config(&scope, 2, 2, 8);
+        repair_reachability(&settings, &mut nodes, Some(0)).unwrap();
+        assert_eq!(nodes[0].neighbors[0], vec![1]);
+        assert_eq!(nodes[1].neighbors[0], vec![0]);
+    }
+
+    /// The lab's own shape of data at the lab's own size. It takes a minute in a release build, so
+    /// it runs by hand: `cargo test --release -p rrd-vector --lib hnsw -- --ignored --nocapture`.
+    #[test]
+    #[ignore = "a minute in a release build"]
+    fn the_labs_mixture_at_its_full_size_builds_and_answers() {
+        let scope = ScopeId::new("instance:hnsw").unwrap();
+        let corpus = clustered(&scope, 0, 20_000, 64, 384, 0.35, 20_261_103);
+        let started = std::time::Instant::now();
+        let index = HnswIndex::build(
+            HnswConfig {
+                filter_properties: BTreeSet::from(["category".into()]),
+                ..clustered_config(&scope, 384, 16, 100)
+            },
+            1,
+            corpus.len() as u64,
+            corpus.clone(),
+        )
+        .unwrap();
+        eprintln!(
+            "built in {:?}, {} bytes",
+            started.elapsed(),
+            index.as_bytes().len()
+        );
+        assert_eq!(reachable_nodes(&index), corpus.len());
+        for ef in [16, 32, 64, 128] {
+            let found = recall(&index, &corpus, ef);
+            eprintln!("ef {ef}: recall {found}");
+        }
+        let found = recall(&index, &corpus, 128);
+        assert!(found >= 0.95, "recall was {found}");
+    }
+
+    #[test]
+    fn repair_stays_within_the_degree_limit_and_leaves_a_full_graph_to_the_validator() {
+        let scope = ScopeId::new("instance:hnsw").unwrap();
+        let node = |id: usize, values: Vec<f32>, neighbors: Vec<usize>| HnswNode {
+            candidate: candidate(&scope, id as u64 + 1, id, values),
+            level: 0,
+            neighbors: vec![neighbors],
+        };
+        // A limit of two at layer zero, with both reachable nodes already full of each other and
+        // of a third, leaves nowhere to attach the orphan.
+        let mut nodes = vec![
+            node(0, vec![1.0, 0.0], vec![1, 2]),
+            node(1, vec![0.9, 0.1], vec![0, 2]),
+            node(2, vec![0.8, 0.2], vec![0, 1]),
+            node(3, vec![0.0, 1.0], Vec::new()),
+        ];
+        let settings = clustered_config(&scope, 2, 1, 8);
+        repair_reachability(&settings, &mut nodes, Some(0)).unwrap();
+        assert!(nodes.iter().all(|node| node.neighbors[0].len() <= 2));
+        assert!(nodes[3].neighbors[0].is_empty());
+    }
+
+    #[test]
+    fn selection_keeps_a_link_across_clusters_that_closeness_alone_would_drop() {
+        let scope = ScopeId::new("instance:hnsw").unwrap();
+        let node = |id: usize, values: Vec<f32>| HnswNode {
+            candidate: candidate(&scope, id as u64 + 1, id, values),
+            level: 0,
+            neighbors: vec![Vec::new()],
+        };
+        // Three neighbors crowd one direction and one lies in another, with the query between
+        // them. Closeness alone keeps two of the crowd, and node 3 would lose its link.
+        let nodes = vec![
+            node(0, vec![1.0, 0.00]),
+            node(1, vec![1.0, 0.01]),
+            node(2, vec![1.0, 0.02]),
+            node(3, vec![0.0, 1.00]),
+        ];
+        let query = [0.7_f32, 0.7];
+        let scored = (0..4)
+            .map(|id| ScoredNode {
+                id,
+                score: score_dense_query(
+                    &query,
+                    &nodes[id].candidate,
+                    ScoreMetric::Cosine,
+                    HnswKernel::Scalar,
+                )
+                .unwrap(),
+            })
+            .collect::<Vec<_>>();
+        let selected = select_neighbors(&nodes, scored, 2, ScoreMetric::Cosine).unwrap();
+        assert_eq!(
+            selected.iter().map(|scored| scored.id).collect::<Vec<_>>(),
+            vec![2, 3]
+        );
+    }
+
+    #[test]
+    fn a_graph_that_leaves_a_node_unreachable_is_still_refused() {
+        let scope = ScopeId::new("instance:hnsw").unwrap();
+        let node = |id: usize, values: Vec<f32>| HnswNode {
+            candidate: candidate(&scope, id as u64 + 1, id, values),
+            level: 0,
+            neighbors: vec![Vec::new()],
+        };
+        let Err(error) = HnswIndex::from_body(HnswBody {
+            config: config(&scope),
+            generation: 1,
+            source_cursor: 2,
+            entrypoint: Some(0),
+            indexed_delta_vectors: 2,
+            nodes: vec![node(0, vec![1.0, 0.0]), node(1, vec![0.0, 1.0])],
+            maintenance: HnswMaintenanceKind::FullBuild,
+            previous_generation: None,
+        }) else {
+            panic!("an unreachable node must be refused");
+        };
+        let error = error.to_string();
+        assert!(error.contains("not reachable"), "{error}");
+    }
+
+    #[test]
+    fn the_sample_changes_no_bytes_and_is_derived_on_read() {
+        let (index, _) = flagged_index(1_000, |id| id % 2 == 0);
+        assert!(index.cost_sample.len() <= COST_SAMPLE_IDENTITIES);
+        let decoded = HnswIndex::from_bytes(index.as_bytes()).unwrap();
+        assert_eq!(index.cost_sample, decoded.cost_sample);
+        assert_eq!(index.as_bytes(), decoded.as_bytes());
+        let text = String::from_utf8_lossy(index.as_bytes());
+        assert!(
+            !text.contains("cost_sample"),
+            "the sample must not be stored"
+        );
+    }
+
+    /// A graph over `points` two-dimensional vectors, where `selected` says who carries the flag.
+    fn flagged_index(points: usize, selected: impl Fn(usize) -> bool) -> (HnswIndex, ScopeId) {
+        let scope = ScopeId::new("instance:hnsw-cost").unwrap();
+        let values = (0..points).map(|index| {
+            let angle = index as f32 * std::f32::consts::TAU / points as f32;
+            let mut value = candidate(
+                &scope,
+                index as u64 + 1,
+                index,
+                vec![angle.cos(), angle.sin()],
+            );
+            value
+                .vector
+                .properties
+                .insert("selected".into(), RuntimeValue::Bool(selected(index)));
+            value
+        });
+        let mut build = config(&scope);
+        build.filter_properties.insert("selected".into());
+        let index = HnswIndex::build(build, 1, points as u64, values).unwrap();
+        (index, scope)
+    }
+
+    /// A read past the generation's own cursor, as every read is once it has been published.
+    fn cost_request(scope: &ScopeId, cursor: u64, filtered: bool) -> SearchRequest {
+        SearchRequest {
+            scope: scope.clone(),
+            read: ReadStamp::new(scope.clone(), None, 0, cursor, Some("11".repeat(32))).unwrap(),
+            valid_at: 2,
+            field: "body".into(),
+            query: VectorQuery::Dense {
+                values: vec![1.0, 0.0],
+            },
+            metric: ScoreMetric::Cosine,
+            embedding_model: None,
+            top_k: 1,
+            mode: SearchMode::RequireApproximate { exact_rerank: 10 },
+            filter: filtered.then(|| FilterExpression::Condition {
+                condition: FilterCondition {
+                    property: "selected".into(),
+                    operator: FilterOperator::Equals {
+                        value: RuntimeValue::Bool(true),
+                    },
+                },
+            }),
+        }
+    }
+
+    #[test]
+    fn an_estimate_does_not_visit_the_whole_corpus() {
+        let (index, scope) = flagged_index(4_000, |id| id % 2 == 0);
+        for filtered in [false, true] {
+            let request = cost_request(&scope, 4_001, filtered);
+            IDENTITIES_VISITED.with(|visited| visited.set(0));
+            index.estimated_search_cost(&request, 32).unwrap();
+            let visited = IDENTITIES_VISITED.with(std::cell::Cell::get);
+            assert!(visited <= 512, "one estimate visited {visited} identities");
+        }
+    }
+
+    #[test]
+    fn a_common_filter_estimates_close_to_the_exact_count() {
+        // One in ten carry the flag, so a search needs about ten times the candidates.
+        let (index, scope) = flagged_index(4_000, |id| (id * 7) % 10 == 0);
+        let cost = index
+            .estimated_search_cost(&cost_request(&scope, 4_001, true), 32)
+            .unwrap();
+        let exact = 32 * 10 * HNSW_NAVIGATION_COST_MULTIPLIER as u64;
+        assert!(
+            cost >= exact / 2 && cost <= exact * 2,
+            "estimated {cost} against {exact}"
+        );
+    }
+
+    #[test]
+    fn no_filter_costs_about_what_ef_asks_for() {
+        let (index, scope) = flagged_index(4_000, |_| true);
+        let cost = index
+            .estimated_search_cost(&cost_request(&scope, 4_001, false), 32)
+            .unwrap();
+        assert_eq!(cost, 32 * HNSW_NAVIGATION_COST_MULTIPLIER as u64);
+    }
+
+    #[test]
+    fn a_rare_filter_the_sample_misses_is_still_seen() {
+        // Exactly one identity carries the flag, at a position an even stride skips.
+        let (index, scope) = flagged_index(4_000, |id| id == 1_233);
+        let cost = index
+            .estimated_search_cost(&cost_request(&scope, 4_001, true), 10)
+            .unwrap();
+        // The same answer an exact count gives: one match, so the whole graph is worth walking.
+        assert_eq!(cost, 4_000 * HNSW_NAVIGATION_COST_MULTIPLIER as u64);
+    }
+
+    #[test]
+    fn a_filter_nothing_matches_gives_the_cost_of_the_whole_graph() {
+        let (index, scope) = flagged_index(1_000, |_| false);
+        let cost = index
+            .estimated_search_cost(&cost_request(&scope, 1_001, true), 10)
+            .unwrap();
+        assert_eq!(cost, 1_000 * HNSW_NAVIGATION_COST_MULTIPLIER as u64);
     }
 
     #[test]

@@ -545,3 +545,175 @@ fn concurrent_session_transactions_preserve_leases_and_release_quota() {
         .unwrap();
     assert_eq!(next.state, TransactionState::Open);
 }
+
+#[test]
+fn begin_timing_emits_after_admission_release_without_runtime_changes() {
+    use std::io::Write;
+    use std::sync::{Arc, Mutex};
+
+    #[derive(Clone)]
+    struct ObserveGate {
+        engine: Arc<RrdEngine>,
+        states: Arc<Mutex<Vec<bool>>>,
+    }
+    impl Write for ObserveGate {
+        fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+            let admission = self.engine.transaction_admission_snapshot().unwrap();
+            self.states.lock().unwrap().push(admission.active);
+            Ok(bytes.len())
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
+    let (_root, engine) = isolated_engine();
+    let engine = Arc::new(engine);
+    let session = engine
+        .create_session(
+            &session_request(9_000, 1),
+            &id("timing-session"),
+            1_000,
+            "timing-session",
+            "timing-session",
+        )
+        .unwrap();
+    let before = engine.storage.runtime().cursor().unwrap();
+    let states = Arc::new(Mutex::new(Vec::new()));
+    let writer = ObserveGate {
+        engine: engine.clone(),
+        states: states.clone(),
+    };
+    let subscriber = tracing_subscriber::fmt()
+        .with_env_filter("rrd_engine::transaction_diagnostic=debug")
+        .with_writer(move || writer.clone())
+        .finish();
+    tracing::subscriber::with_default(subscriber, || {
+        let context = mutation_context(&id("timing-begin"), "timing-begin", "timing-begin");
+        let created = engine
+            .begin_transaction(
+                &session.session_id,
+                &session.token,
+                &begin_request(),
+                &context,
+                1_100,
+            )
+            .unwrap();
+        let replay = engine
+            .begin_transaction(
+                &session.session_id,
+                &session.token,
+                &begin_request(),
+                &context,
+                1_100,
+            )
+            .unwrap();
+        assert_eq!(created, replay);
+        let over_quota = mutation_context(&id("timing-quota"), "timing-quota", "timing-quota");
+        assert!(matches!(
+            engine.begin_transaction(
+                &session.session_id,
+                &session.token,
+                &begin_request(),
+                &over_quota,
+                1_100
+            ),
+            Err(ServiceError::TransactionQuota)
+        ));
+    });
+    let states = states.lock().unwrap();
+    assert!(
+        states.len() >= 3,
+        "all outcomes must emit a diagnostic event"
+    );
+    assert!(
+        states.iter().all(|active| !active),
+        "trace writer observed an active permit"
+    );
+    assert_eq!(engine.storage.runtime().cursor().unwrap(), before);
+}
+
+#[test]
+fn blocked_begin_trace_does_not_hold_transaction_admission() {
+    use std::io::Write;
+    use std::sync::{mpsc, Arc, Mutex};
+    use std::time::Duration;
+
+    #[derive(Clone)]
+    struct HeldWriter {
+        entered: mpsc::SyncSender<()>,
+        release: Arc<Mutex<mpsc::Receiver<()>>>,
+    }
+    impl Write for HeldWriter {
+        fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+            self.entered.send(()).map_err(std::io::Error::other)?;
+            self.release
+                .lock()
+                .unwrap()
+                .recv_timeout(Duration::from_secs(10))
+                .map_err(std::io::Error::other)?;
+            Ok(bytes.len())
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
+    let (_root, engine) = isolated_engine();
+    let engine = Arc::new(engine);
+    let session = engine
+        .create_session(
+            &session_request(9_000, 2),
+            &id("held-trace-session"),
+            1_000,
+            "held-trace-session",
+            "held-trace-session",
+        )
+        .unwrap();
+    let before = engine.storage.runtime().cursor().unwrap();
+    let (entered_tx, entered_rx) = mpsc::sync_channel(1);
+    let (release_tx, release_rx) = mpsc::sync_channel(1);
+    let writer = HeldWriter {
+        entered: entered_tx,
+        release: Arc::new(Mutex::new(release_rx)),
+    };
+    let first_engine = engine.clone();
+    let first_session = session.clone();
+    let first = std::thread::spawn(move || {
+        let subscriber = tracing_subscriber::fmt()
+            .with_env_filter("rrd_engine::transaction_diagnostic=debug")
+            .with_writer(move || writer.clone())
+            .finish();
+        tracing::subscriber::with_default(subscriber, || {
+            first_engine.begin_transaction(
+                &first_session.session_id,
+                &first_session.token,
+                &begin_request(),
+                &mutation_context(&id("held-first"), "held-first", "held-first"),
+                1_100,
+            )
+        })
+    });
+    entered_rx.recv_timeout(Duration::from_secs(10)).unwrap();
+    let (second_tx, second_rx) = mpsc::sync_channel(1);
+    let second_engine = engine.clone();
+    let second = std::thread::spawn(move || {
+        let result = second_engine.begin_transaction(
+            &session.session_id,
+            &session.token,
+            &begin_request(),
+            &mutation_context(&id("held-second"), "held-second", "held-second"),
+            1_100,
+        );
+        second_tx.send(result).unwrap();
+    });
+    let while_held = second_rx.recv_timeout(Duration::from_secs(5));
+    release_tx.send(()).unwrap();
+    let first = first.join().unwrap().unwrap();
+    second.join().unwrap();
+    let second = while_held
+        .expect("second begin blocked behind the diagnostic writer")
+        .unwrap();
+    assert_ne!(first.transaction_id, second.transaction_id);
+    assert_eq!(engine.storage.runtime().cursor().unwrap(), before);
+}

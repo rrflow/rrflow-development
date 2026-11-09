@@ -223,8 +223,8 @@ pub struct RrdRaftNode {
 
 impl RrdRaftNode {
     pub fn validate(&self) -> ClusterResult<()> {
+        NodeId::new(self.canonical_id.as_str())?;
         for (label, value) in [
-            ("canonical id", self.canonical_id.as_str()),
             ("zone", self.zone.as_str()),
             ("endpoint", self.endpoint.as_str()),
         ] {
@@ -2008,6 +2008,19 @@ fn range_contains<R: RangeBounds<u64>>(range: &R, value: u64) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Callers build a peer's NodeId with `.expect` once this has passed, so a
+    /// bad id must stop here as a configuration error and not panic later.
+    #[test]
+    fn a_raft_node_id_outside_the_canonical_grammar_is_refused() {
+        let node = |canonical_id: &str| RrdRaftNode {
+            canonical_id: canonical_id.into(),
+            zone: "zone-a".into(),
+            endpoint: "127.0.0.1:1".into(),
+        };
+        node("node-a").validate().unwrap();
+        assert!(node("node:a").validate().is_err());
+    }
 
     #[test]
     fn request_history_retains_exactly_the_declared_log_window() {
