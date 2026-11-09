@@ -5,6 +5,7 @@ use rrflow_eval::lab::corpus::{exact_answers, generate, GroundTruth, VectorSet};
 use rrflow_eval::lab::custom::CustomProtocol;
 use rrflow_eval::lab::driver::{
     combine, prepare_inputs, run_system, run_system_with_progress, Inputs, LabProgress, SystemRun,
+    LEGACY_RUN_SCHEMA_VERSION, RUN_SCHEMA_VERSION,
 };
 use rrflow_eval::lab::manifest::{
     Availability, CorpusSource, CorpusSpec, CredentialReferences, IndexSpec, LabMetric,
@@ -226,6 +227,107 @@ fn run_with(
 }
 
 #[test]
+fn legacy_v1_and_current_v2_runs_combine_without_relabeling_history() {
+    let manifest = manifest(vec![binding("legacy"), binding("current")]);
+    let inputs = prepare_inputs(&manifest).unwrap();
+    let mut legacy = run_with(&manifest, "legacy", &PerfectSystem::new(), &inputs);
+    let current = run_with(&manifest, "current", &PerfectSystem::new(), &inputs);
+    legacy.schema_version = LEGACY_RUN_SCHEMA_VERSION;
+    legacy.scratch_resource = None;
+    assert_eq!(current.schema_version, RUN_SCHEMA_VERSION);
+    assert!(current.scratch_resource.is_some());
+    assert_eq!(legacy.schema_version, LEGACY_RUN_SCHEMA_VERSION);
+    assert!(legacy.scratch_resource.is_none());
+
+    let mut unsupported = current.clone();
+    unsupported.schema_version = 99;
+    assert!(combine(&manifest, &[unsupported], Vec::new()).is_err());
+
+    let report = combine(&manifest, &[legacy, current], Vec::new()).unwrap();
+    assert_eq!(report.systems.len(), 2);
+}
+
+#[test]
+fn scratch_identity_is_unique_per_attempt_and_recorded_on_prepare_failure() {
+    let manifest = manifest(vec![binding("scratch")]);
+    let inputs = prepare_inputs(&manifest).unwrap();
+    let first = run_with(&manifest, "scratch", &FailingSystem::new(true, 0), &inputs);
+    let second = run_with(&manifest, "scratch", &FailingSystem::new(true, 0), &inputs);
+    assert_eq!(first.status, SystemStatus::Failed);
+    let first_name = first.scratch_resource.unwrap();
+    let second_name = second.scratch_resource.unwrap();
+    assert_ne!(first_name, second_name);
+    assert_eq!(first_name.len(), 36);
+    assert!(first_name.starts_with("lab_"));
+    assert!(first_name[4..]
+        .bytes()
+        .all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase()));
+}
+
+#[test]
+fn failed_scratch_intent_prevents_preparation() {
+    struct MustNotPrepare;
+    impl SystemAdapter for MustNotPrepare {
+        fn observed_version(&self) -> Result<String> {
+            Ok("fixture".into())
+        }
+        fn prepare(&self, _: &CollectionSpec<'_>) -> Result<()> {
+            panic!("prepare was not authorized")
+        }
+        fn ingest(&self, _: &PointBatch<'_>) -> Result<()> {
+            panic!("unexpected ingest")
+        }
+        fn finish_ingest(&self, _: Instant) -> Result<()> {
+            panic!("unexpected finish")
+        }
+        fn search(&self, _: &SearchRequest<'_>) -> Result<Vec<u64>> {
+            panic!("unexpected search")
+        }
+        fn teardown(&self) -> Result<()> {
+            panic!("unexpected teardown")
+        }
+    }
+    let manifest = manifest(vec![binding("intent")]);
+    let inputs = prepare_inputs(&manifest).unwrap();
+    let (run, _) = run_system_with_progress(
+        &manifest,
+        manifest.binding("intent").unwrap(),
+        &MustNotPrepare,
+        &inputs,
+        BTreeMap::new(),
+        &mut |_| Err("intent write refused".into()),
+    );
+    assert_eq!(run.status, SystemStatus::Failed);
+    assert_eq!(run.reason.as_deref(), Some("intent write refused"));
+    assert!(run.scratch_resource.is_some());
+}
+
+#[test]
+fn failed_progress_after_a_case_keeps_its_measured_samples() {
+    let manifest = manifest(vec![binding("observer")]);
+    let inputs = prepare_inputs(&manifest).unwrap();
+    let (run, raw) = run_system_with_progress(
+        &manifest,
+        manifest.binding("observer").unwrap(),
+        &PerfectSystem::new(),
+        &inputs,
+        BTreeMap::new(),
+        &mut |event| {
+            if matches!(event, LabProgress::CaseCompleted { .. }) {
+                Err("observer failed".into())
+            } else {
+                Ok(())
+            }
+        },
+    );
+    assert_eq!(run.status, SystemStatus::Failed);
+    assert_eq!(run.reason.as_deref(), Some("observer failed"));
+    assert_eq!(run.cases.len(), 1);
+    assert_eq!(raw.len(), 1);
+    assert_eq!(raw[0].latency_ns.len(), run.cases[0].succeeded as usize);
+}
+
+#[test]
 fn progress_reports_completed_work_and_never_invents_failed_stages() {
     let manifest = manifest(vec![binding("progress")]);
     let inputs = prepare_inputs(&manifest).unwrap();
@@ -237,10 +339,17 @@ fn progress_reports_completed_work_and_never_invents_failed_stages() {
         &PerfectSystem::new(),
         &inputs,
         BTreeMap::new(),
-        &mut |event| events.push(event),
+        &mut |event| {
+            events.push(event);
+            Ok(())
+        },
     );
     assert_eq!(run.status, SystemStatus::Completed);
-    assert_eq!(events.first(), Some(&LabProgress::Prepared));
+    assert!(matches!(
+        events.first(),
+        Some(LabProgress::ScratchSelected { .. })
+    ));
+    assert_eq!(events.get(1), Some(&LabProgress::Prepared));
     let completed: Vec<_> = events
         .iter()
         .filter_map(|event| match event {
@@ -275,13 +384,16 @@ fn progress_reports_completed_work_and_never_invents_failed_stages() {
         &FailingSystem::new(true, 0),
         &inputs,
         BTreeMap::new(),
-        &mut |event| failed_events.push(event),
+        &mut |event| {
+            failed_events.push(event);
+            Ok(())
+        },
     );
     assert_eq!(failed.status, SystemStatus::Failed);
-    assert!(
-        failed_events.is_empty(),
-        "a refused prepare completed no stage"
-    );
+    assert!(matches!(
+        failed_events.as_slice(),
+        [LabProgress::ScratchSelected { .. }]
+    ));
 }
 
 fn verdict(report: &LabReport, verdict_id: &str) -> VerdictOutcome {
@@ -722,7 +834,7 @@ fn generated_schemas_match_the_checked_in_projections() {
     let directory = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../eval/schemas");
     for (name, generated) in [
         ("lab-manifest-v1.json", schema::<VectorComparisonManifest>()),
-        ("lab-run-v1.json", schema::<SystemRun>()),
+        ("lab-run-v2.json", schema::<SystemRun>()),
         ("lab-report-v1.json", schema::<LabReport>()),
         ("lab-custom-protocol-v1.json", schema::<CustomProtocol>()),
     ] {

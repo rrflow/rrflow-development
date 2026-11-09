@@ -35,7 +35,7 @@ cargo build --locked --release -p rrflow-eval --bin rrflow-lab -p rrflow-cli --b
 export RRFLOW_LAB_BIN=$PWD/target/release/rrflow-lab RRFLOW_BIN=$PWD/target/release/rrflow
 export RRFLOW_LAB_CPUSET=5-9,15-19 RRFLOW_LAB_CLIENT_CPUSET=0-4,10-14 TMPDIR=$HOME/lab-tmp
 mkdir -p "$TMPDIR"
-for system in qdrant milvus surrealdb custom-reference rrflow-exact rrflow-hnsw rrflow-turboquant; do
+for system in qdrant surrealdb rrflow-exact rrflow-hnsw rrflow-turboquant; do
   eval/lab/run_system.sh "$system" runs/vector-small
 done
 "$RRFLOW_LAB_BIN" combine --manifest eval/lab/vector-small.json --in runs/vector-small \
@@ -48,8 +48,34 @@ test, since a RAM-backed `/tmp` would flatter whatever stores its data there.
 Keep the run directory: it holds every latency and recall sample, and the report
 binds those files by digest.
 
-The lab prints transient JSON progress events on stderr for prepared
-collections, started and completed ingest batches, index build, and search
+The draft lifecycle repair is incomplete and this lab must not be pointed at
+user-owned services. Qdrant and SurrealDB now attempt a fresh random scratch
+identity without preemptively deleting a same-named collection or table. Their
+scratch objects are retained because these adapters do not have a fenced delete;
+only dispose of a whole container that the operator created for the run. This
+does not establish safety against a different actor replacing an object while a
+run is active. Milvus creation may return success for an existing collection; its adapter
+now refuses preparation before contacting the service, so Milvus comparisons are
+unavailable until an owned isolated-service boundary is implemented. The RRFlow
+arm writes additively to random run-scoped names and retains them, so use an
+explicitly isolated RRFlow instance and account for retained space. Custom
+Protocol v1 is disabled in the adapter: it has no scoped resource identity and
+its unscoped teardown could affect unrelated state. The disabled adapter sends
+no request; custom endpoints remain unavailable until a new resource-scoped
+protocol is implemented and qualified. Do not point these comparisons at shared
+services.
+
+Before preparation, the CLI creates `<system>.scratch-intent.json` exclusively
+in the output directory and syncs its contents. It records the attempted name,
+system and manifest digest, not proof of creation or ownership; an intent-write
+failure prevents preparation. A process interruption may leave the intent and a
+remote object without a completed report. Sudden-power-loss directory durability
+and automatic cleanup have not been established. HTTP and database statement
+error bodies are omitted; arbitrary custom and RRFlow diagnostics still need a
+complete sensitive-data review.
+
+The lab prints transient JSON progress events on stderr for chosen scratch
+identities, prepared collections, started and completed ingest batches, index build, and search
 cases. Completed batch counts mean the adapter call returned successfully;
 they do not establish durable recovery or search readiness. Progress output is
 not an audit record or a completed report. Capture stderr explicitly if it is
@@ -68,25 +94,28 @@ trusting a surprising number: a single run cannot tell a slow system from a busy
 
 ## Add a system
 
-Any system can join through the [custom protocol](../schemas/lab-custom-protocol-v1.json),
-usually behind a thin shim. It is a small HTTP API:
+The [custom protocol schema](../schemas/lab-custom-protocol-v1.json) describes
+the retired v1 wire format for reference only; the RRFlow adapter currently
+refuses it without contacting the endpoint. A usable custom adapter requires a
+new version with create-only resource admission and the same per-run resource
+identity on every operation. The old v1 endpoints are:
 
 | Route | Purpose |
 |---|---|
 | `GET /health` | Protocol version, name and version. |
-| `POST /prepare` | Drop earlier lab data and create an empty collection. |
+| `POST /prepare` | **Unsafe v1 behavior:** drop earlier lab data and create an empty collection. |
 | `POST /ingest` | Store a batch of identities, vectors and categories. |
 | `POST /finish` | Reply `{"ready": true}` once search reflects every point. It is polled. |
 | `POST /search` | Reply with the identities of the nearest points, best first. |
-| `POST /teardown` | Remove the lab data. |
+| `POST /teardown` | **Unsafe v1 behavior:** remove lab data without naming its resource. |
 
-[`reference_custom_system.py`](reference_custom_system.py) is a complete
-implementation in about 90 lines of standard-library Python. To add a system:
-write the shim, add a binding to the manifest with its pinned artifact and
-storage profile, and add a start case to `run_system.sh`. Its results then appear
-beside the others without any new client code. A system with its own built-in
-adapter, like Qdrant, implements `SystemAdapter` in `crates/evaluation/rrflow-eval/src/lab/`
-and its responses are captured into `tests/lab_adapters.rs`.
+[`reference_custom_system.py`](reference_custom_system.py) demonstrates only
+the retired v1 protocol and is not safe to run against user data. To add a
+custom system, first implement and qualify a resource-scoped protocol version;
+then add its versioned binding and isolated-service lifecycle. A system with a
+built-in adapter implements `SystemAdapter` in
+`crates/evaluation/rrflow-eval/src/lab/` and has its wire behavior covered in
+`tests/lab_adapters.rs`.
 
 If a system lacks a capability, declare that in the binding's `availability`
 with a reason. Do not leave it out, since a gap is a result. The RRFlow HNSW
@@ -109,6 +138,58 @@ this same report.
 
 Change a manifest deliberately: changing it changes its digest, and runs from
 before and after cannot be combined.
+
+## Project journey and task-quality comparison
+
+The installed project journey begins with a bounded, source-authorized inventory
+and enough questions to choose the project boundary and approve effects. A
+user-configurable initial time budget may suggest five to ten minutes, but no
+single file-count threshold or completion time is established for every machine
+and project. Measure a bounded initial sample, estimate from observed work and
+resources, and, when the estimate exceeds the configured warning threshold,
+offer the user the configured initial budget and explain what remains. An
+unknown or low-confidence estimate stays visibly unknown; it must not be used
+as a promise or a reason to block unrelated work. Expose partial coverage and
+continue permitted work under background limits. A file
+watcher is an optimization: missed or overflowing events require reconciliation
+against source, as described by [Watchman's overflow handling](https://facebook.github.io/watchman/docs/install.html).
+These are targets for D-03/D-05, not capabilities supplied by this lab.
+
+During each prompt, durable source records and the authorized project snapshot
+are inputs to bounded prompt-local relationships; they are not evidence that
+the system learned. Source edits invalidate affected links, and background
+reconciliation may refresh them. Any persistent ranking or routing adjustment
+needs a versioned configuration, recorded signals and provenance, an explicit
+evaluation against a held-out baseline, and a way to revert an ineffective
+change. LFG, SWAG and custom adapters are separately configured interventions,
+not required for the local engine to become usable.
+
+For real task evaluation, use an authorized, held-out project snapshot and
+the same task, model, baseline tools, resource budgets and input state for
+paired baseline and RRFlow arms; declare RRFlow's added capabilities as the
+intervention. Preserve prompts and source privately unless
+explicitly approved. Measure grounded citations, independently verified task
+outcome, regressions, time, tokens, cost and resource usage. A historical file
+match is a diagnostic, not proof of a correct plan; incomplete, failed and
+inconclusive trials remain visible. The user's five-to-ten-minute suggestion
+and a statistically meaningful quality threshold must be evaluated rather than
+assumed to hold across projects or hardware.
+
+[SWE-bench Multilingual](https://www.swebench.com/multilingual) provides
+real-issue Rust and Go tasks with fail-to-pass and pass-to-pass tests.
+[SWE-bench Pro V2](https://github.com/scaleapi/SWE-bench_Pro-os) is a
+separate longer-horizon reference. Pin each dataset, harness and configuration;
+check applicability and contamination instead of assuming a leaderboard score
+transfers to this product. Protect the verifier and held-out tests from the
+agent where possible, and inspect violations: [METR's 2026 observations](https://metr.org/blog/2026-05-19-frontier-risk-report/)
+show why a passing test alone cannot exclude reward hacking. These suites are
+proposed inputs; they are not integrated or run by this draft.
+
+The November 2026 [SurrealDB 4.0 smoke](../../docs/evidence/change-journals/gate-j/comparison-lab-scratch-ownership-2026-11-07.md#surrealdb-40-isolated-functional-reference)
+checks a filtered vector query and its reported access path. Its tiny synthetic
+in-memory corpus is not a performance or task-quality comparison. Safe
+RRFlow, custom, Milvus and shared-service execution, a Connectome report reader,
+and engine-owned comparison authorization remain incomplete.
 
 ## Reading a result
 

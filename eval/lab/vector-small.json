@@ -181,7 +181,10 @@
       "endpoint": "http://127.0.0.1:19530",
       "artifact": "milvusdb/milvus@sha256:b9b79b4a284b41cd12d60abc418310f84621fa4c977d409b38f501519a7ccf8a",
       "storage_profile": "standalone with embedded etcd and local object storage in a container volume",
-      "availability": {"state": "available"},
+      "availability": {
+        "state": "unavailable",
+        "reason": "Milvus v2 create may accept an existing collection; owned isolated-service admission is not implemented."
+      },
       "index": {"index": "hnsw", "m": 16, "ef_construction": 100},
       "search_ladder": [
         {"id": "ef-16", "ef": 16},
@@ -201,7 +204,10 @@
       "endpoint": "http://127.0.0.1:18089",
       "artifact": "eval/lab/reference_custom_system.py",
       "storage_profile": "memory only",
-      "availability": {"state": "available"},
+      "availability": {
+        "state": "unavailable",
+        "reason": "Custom protocol v1 is disabled because it cannot scope ownership for each run."
+      },
       "index": {"index": "exact"},
       "search_ladder": [{"id": "exact"}]
     }

@@ -2,13 +2,14 @@
 use rrflow_eval::lab::adapter::connect;
 use rrflow_eval::lab::custom::CustomProtocol;
 use rrflow_eval::lab::driver::{
-    combine, empty_run, prepare_inputs, run_system_with_progress, SystemRun,
+    combine, empty_run, prepare_inputs, run_system_with_progress, LabProgress, SystemRun,
 };
 use rrflow_eval::lab::manifest::{Availability, VectorComparisonManifest};
 use rrflow_eval::lab::report::{ArtifactReference, LabReport, SystemStatus};
 use rrflow_eval::lab::{canonical_json, sha256_hex, Result};
 use rrflow_eval::storage::{schema, Digest};
 use std::collections::BTreeMap;
+use std::io::Write as _;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
@@ -111,6 +112,30 @@ fn publish(path: &Path, bytes: &[u8]) -> Result<()> {
     std::fs::rename(&temporary, path).map_err(|error| error.to_string())
 }
 
+/// Write the intended identity before a comparator can mutate remote state.
+/// This records intent, not ownership or a successful remote create.
+fn persist_scratch_intent(
+    directory: &Path,
+    system: &str,
+    name: &str,
+    digest: &Digest,
+) -> Result<()> {
+    let path = directory.join(format!("{system}.scratch-intent.json"));
+    let contents = serde_json::to_vec(&serde_json::json!({
+        "schema_version": 1, "system": system, "scratch_resource": name,
+        "manifest_sha256": digest
+    }))
+    .map_err(|error| error.to_string())?;
+    let mut file = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&path)
+        .map_err(|error| format!("cannot create scratch intent: {error}"))?;
+    file.write_all(&contents)
+        .and_then(|()| file.sync_all())
+        .map_err(|error| format!("cannot persist scratch intent: {error}"))
+}
+
 fn run(arguments: &Arguments) -> Result<ExitCode> {
     let manifest = load_manifest(arguments.required("manifest")?)?;
     let id = arguments.required("system")?;
@@ -135,10 +160,18 @@ fn run(arguments: &Arguments) -> Result<ExitCode> {
             &inputs,
             environment,
             &mut |progress| {
+                if let LabProgress::ScratchSelected { name } = &progress {
+                    let digest = inputs
+                        .identities
+                        .get("manifest")
+                        .ok_or("manifest identity missing")?;
+                    persist_scratch_intent(&directory, id, name, digest)?;
+                }
                 eprintln!(
                     "{}",
                     serde_json::json!({"system": id, "progress": progress})
                 );
+                Ok(())
             },
         ),
         Err(error) => {
@@ -216,7 +249,7 @@ fn write_schemas(arguments: &Arguments) -> Result<ExitCode> {
     let directory = PathBuf::from(arguments.required("out")?);
     for (name, value) in [
         ("lab-manifest-v1.json", schema::<VectorComparisonManifest>()),
-        ("lab-run-v1.json", schema::<SystemRun>()),
+        ("lab-run-v2.json", schema::<SystemRun>()),
         ("lab-report-v1.json", schema::<LabReport>()),
         ("lab-custom-protocol-v1.json", schema::<CustomProtocol>()),
     ] {

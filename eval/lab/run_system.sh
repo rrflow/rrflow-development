@@ -9,6 +9,16 @@
 # process's environment.
 set -euo pipefail
 system=$1
+case "$system" in
+  milvus)
+    echo "Milvus comparisons are unavailable until isolated-service admission is implemented" >&2
+    exit 3
+    ;;
+  custom-reference)
+    echo "custom protocol v1 is disabled: per-run resource ownership is not implemented" >&2
+    exit 3
+    ;;
+esac
 run_directory=$(mkdir -p "$2" && cd "$2" && pwd)
 here=$(cd "$(dirname "$0")" && pwd)
 repository=$(cd "$here/../.." && pwd)
@@ -107,8 +117,6 @@ case "$system" in
   rrflow-*) require_port_free 19477 ;;
   qdrant) require_port_free 16333 ;;
   surrealdb) require_port_free 18000 ;;
-  milvus) require_port_free 19530 ;;
-  custom-reference) require_port_free 18089 ;;
 esac
 
 case "$system" in
@@ -130,22 +138,6 @@ case "$system" in
       surrealdb/surrealdb@sha256:3db515b88e79737aa828c05fbf1515748004ba57495ff89a013851cc3f1ad4b9 \
       start surrealkv:///data/lab
     wait_http http://127.0.0.1:18000/version 60
-    ;;
-  milvus)
-    start_container --name lab-milvus "${docker_cpus[@]}" -e ETCD_USE_EMBED=true \
-      -e ETCD_DATA_DIR=/var/lib/milvus/etcd -e COMMON_STORAGETYPE=local -e DEPLOY_MODE=STANDALONE \
-      -p 127.0.0.1:19530:19530 -p 127.0.0.1:19091:9091 -v "$work/data:/var/lib/milvus" \
-      milvusdb/milvus@sha256:b9b79b4a284b41cd12d60abc418310f84621fa4c977d409b38f501519a7ccf8a \
-      milvus run standalone
-    for _ in $(seq 1 180); do
-      curl -s --max-time 2 http://127.0.0.1:19091/healthz | grep -q OK && break
-      sleep 1
-    done
-    ;;
-  custom-reference)
-    "${pinned[@]}" python3 "$here/reference_custom_system.py" 18089 &
-    background=$!
-    wait_http http://127.0.0.1:18089/health 30
     ;;
   *)
     echo "unknown system $system; a new custom system adds its own start case here" >&2

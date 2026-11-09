@@ -5230,6 +5230,7 @@ dependencies = [
 name = "rrflow-eval"
 version = "1.0.0"
 dependencies = [
+ "getrandom 0.3.4",
  "rrd-client",
  "rrd-contract",
  "schemars",

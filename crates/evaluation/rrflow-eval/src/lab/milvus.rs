@@ -2,7 +2,7 @@
 use super::adapter::{
     describe, wait_until, CollectionSpec, Http, PointBatch, SearchRequest, SystemAdapter,
 };
-use super::manifest::{IndexSpec, LabMetric, SystemBinding, WorkloadSpec};
+use super::manifest::{SystemBinding, WorkloadSpec};
 use super::Result;
 use serde_json::{json, Value};
 use std::sync::OnceLock;
@@ -38,7 +38,10 @@ impl MilvusAdapter {
         if value["code"].as_i64() == Some(0) {
             Ok(value)
         } else {
-            Err(format!("{path}: {}", describe(&value)))
+            Err(match value["code"].as_i64() {
+                Some(code) => format!("{path}: Milvus code {code} (body omitted)"),
+                None => format!("{path}: missing Milvus result code (body omitted)"),
+            })
         }
     }
 }
@@ -58,46 +61,13 @@ impl SystemAdapter for MilvusAdapter {
             .map(|_| "reachable; version from pinned image".to_string())
     }
 
-    fn prepare(&self, spec: &CollectionSpec<'_>) -> Result<()> {
-        let name = spec.name.replace('-', "_");
-        let _ = self.collection.set(name.clone());
-        self.call("/collections/drop", &json!({"collectionName": name}))?;
-        let metric = match spec.metric {
-            LabMetric::Cosine => "COSINE",
-            LabMetric::Dot => "IP",
-            LabMetric::Euclidean => "L2",
-        };
-        let index = match spec.index {
-            IndexSpec::Hnsw { m, ef_construction } => json!({
-                "fieldName": VECTOR_FIELD, "metricType": metric, "indexName": VECTOR_FIELD,
-                "indexType": "HNSW", "params": {"M": m, "efConstruction": ef_construction}
-            }),
-            IndexSpec::Exact => json!({
-                "fieldName": VECTOR_FIELD, "metricType": metric, "indexName": VECTOR_FIELD,
-                "indexType": "FLAT"
-            }),
-            IndexSpec::TurboQuant { .. } => {
-                return Err("TurboQuant is available only for RRFlow".into())
-            }
-        };
-        self.call(
-            "/collections/create",
-            &json!({
-                "collectionName": name,
-                "schema": {
-                    "autoId": false,
-                    "enableDynamicField": false,
-                    "fields": [
-                        {"fieldName": "id", "dataType": "Int64", "isPrimary": true},
-                        {"fieldName": VECTOR_FIELD, "dataType": "FloatVector",
-                         "elementTypeParams": {"dim": spec.dimensions.to_string()}},
-                        {"fieldName": "category", "dataType": "Int64"}
-                    ]
-                },
-                "indexParams": [index]
-            }),
-        )?;
-        Ok(())
+    fn prepare(&self, _spec: &CollectionSpec<'_>) -> Result<()> {
+        // Milvus 3.0.5 may report success when a collection already exists.
+        // A random name is not authority to write or delete an existing one.
+        Err(
+            "Milvus lab mutations require an owned isolated service; admission is not implemented"
+                .into(),
+        )
     }
 
     fn ingest(&self, batch: &PointBatch<'_>) -> Result<()> {
@@ -127,7 +97,7 @@ impl SystemAdapter for MilvusAdapter {
             )?;
             let index = &value["data"][0];
             if index["indexState"] == "Failed" {
-                return Err(format!("index build failed: {}", describe(index)));
+                return Err("index build failed (server detail omitted)".into());
             }
             Ok(index["indexState"] == "Finished"
                 && index["pendingRows"].as_u64() == Some(0)

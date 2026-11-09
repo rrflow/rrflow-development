@@ -42,7 +42,7 @@ pub struct SearchRequest<'a> {
 pub trait SystemAdapter: Sync {
     /// What the running server reports about itself, not what the manifest says.
     fn observed_version(&self) -> Result<String>;
-    /// Removes any earlier lab collection, then creates an empty one.
+    /// Prepares a scratch collection. Provider-specific ownership constraints apply.
     fn prepare(&self, spec: &CollectionSpec<'_>) -> Result<()>;
     fn ingest(&self, batch: &PointBatch<'_>) -> Result<()>;
     /// Returns once indexes are built and search reflects every point.
@@ -54,6 +54,19 @@ pub trait SystemAdapter: Sync {
         Ok(None)
     }
     fn teardown(&self) -> Result<()>;
+}
+
+/// Resource identifiers enter URL paths and SQL identifiers; never accept arbitrary syntax.
+pub(crate) fn validate_scratch_name(name: &str) -> Result<()> {
+    if name.len() > 80
+        || !name.starts_with("lab_")
+        || !name
+            .bytes()
+            .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'_')
+    {
+        return Err("invalid scratch resource name".into());
+    }
+    Ok(())
 }
 
 /// Groups consecutive items so each group fits a server's request-body limit. A single
@@ -80,8 +93,8 @@ pub(crate) fn split_by_size(
     groups
 }
 
-/// A small blocking client. Responses are bounded and error text is truncated, so
-/// a misbehaving server cannot exhaust memory or flood a report.
+/// A small blocking client. Responses are bounded and server error bodies are
+/// excluded from diagnostics because they may contain credentials or user data.
 pub(crate) struct Http {
     agent: ureq::Agent,
     base: String,
@@ -89,15 +102,6 @@ pub(crate) struct Http {
 }
 
 const MAX_RESPONSE_BYTES: u64 = 256 * 1024 * 1024;
-const MAX_ERROR_TEXT_BYTES: usize = 300;
-
-fn truncated(text: &str) -> String {
-    let mut end = text.len().min(MAX_ERROR_TEXT_BYTES);
-    while !text.is_char_boundary(end) {
-        end -= 1;
-    }
-    text[..end].to_string()
-}
 
 impl Http {
     pub(crate) fn new(base: &str, workload: &WorkloadSpec, headers: Vec<(String, String)>) -> Self {
@@ -130,24 +134,24 @@ impl Http {
                 let request = builder
                     .header("Content-Type", content_type)
                     .body(bytes)
-                    .map_err(|error| format!("{label}: {error}"))?;
+                    .map_err(|_| format!("{label}: invalid request"))?;
                 self.agent.run(request)
             }
             None => {
                 let request = builder
                     .body(())
-                    .map_err(|error| format!("{label}: {error}"))?;
+                    .map_err(|_| format!("{label}: invalid request"))?;
                 self.agent.run(request)
             }
         };
-        let mut response = response.map_err(|error| format!("{label}: {error}"))?;
+        let mut response = response.map_err(|_| format!("{label}: transport failed"))?;
         let status = response.status().as_u16();
         let text = response
             .body_mut()
             .with_config()
             .limit(MAX_RESPONSE_BYTES)
             .read_to_string()
-            .map_err(|error| format!("{label}: {error}"))?;
+            .map_err(|_| format!("{label}: response read failed"))?;
         Ok((status, text))
     }
 
@@ -162,22 +166,15 @@ impl Http {
         };
         let (status, text) = self.raw(method, path, payload)?;
         if !(200..300).contains(&status) {
-            return Err(format!(
-                "{method} {path}: HTTP {status}: {}",
-                truncated(&text)
-            ));
+            return Err(format!("{method} {path}: HTTP {status} (body omitted)"));
         }
-        serde_json::from_str(&text).map_err(|error| {
-            format!(
-                "{method} {path}: invalid JSON ({error}): {}",
-                truncated(&text)
-            )
-        })
+        serde_json::from_str(&text)
+            .map_err(|_| format!("{method} {path}: invalid JSON (body omitted)"))
     }
 }
 
-pub(crate) fn describe(value: &Value) -> String {
-    truncated(&value.to_string())
+pub(crate) fn describe(_value: &Value) -> String {
+    "response body omitted".to_string()
 }
 
 pub(crate) fn wait_until(

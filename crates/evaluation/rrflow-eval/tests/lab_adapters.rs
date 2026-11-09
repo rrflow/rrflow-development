@@ -187,7 +187,6 @@ fn qdrant_speaks_its_real_wire_format() {
             r#"{"title":"qdrant - vector search engine","version":"1.20.0"}"#,
         ),
         (200, ok),
-        (200, ok),
         (200, upsert),
         (200, upsert),
     ];
@@ -196,7 +195,6 @@ fn qdrant_speaks_its_real_wire_format() {
         200,
         r#"{"result":{"points":[{"id":4,"version":3,"score":0.95},{"id":10,"version":3,"score":0.74}]},"status":"ok"}"#,
     ));
-    script.push((200, ok));
     let server = ScriptedServer::start(&script);
     let adapter = QdrantAdapter::new(
         &binding(
@@ -208,7 +206,7 @@ fn qdrant_speaks_its_real_wire_format() {
     );
     assert_eq!(adapter.observed_version().unwrap(), "1.20.0");
     adapter.prepare(&spec(&HNSW)).unwrap();
-    let create = server.request(2);
+    let create = server.request(1);
     assert_eq!(
         (create.method.as_str(), create.path.as_str()),
         ("PUT", "/collections/lab_unit")
@@ -221,26 +219,114 @@ fn qdrant_speaks_its_real_wire_format() {
         create.json()["hnsw_config"],
         json!({"m": 16, "ef_construct": 100})
     );
-    assert_eq!(server.request(3).json()["field_name"], "category");
+    assert_eq!(server.request(2).json()["field_name"], "category");
     adapter.ingest(&batch()).unwrap();
-    let upserted = server.request(4);
+    let upserted = server.request(3);
     assert_eq!(upserted.path, "/collections/lab_unit/points?wait=true");
     assert_eq!(upserted.json()["points"][1]["payload"]["category"], 1);
     adapter.finish_ingest(deadline()).unwrap();
     assert_eq!(search_filtered(&adapter), vec![4, 10]);
-    let query = server.request(13).json();
+    let query = server.request(12).json();
     assert_eq!(query["params"]["hnsw_ef"], 32);
     assert_eq!(query["filter"]["must"][0]["match"]["value"], 1);
     adapter.teardown().unwrap();
-    assert_eq!(server.request(14).method, "DELETE");
+    assert_eq!(server.requests.lock().unwrap().len(), 13);
 }
 
 #[test]
-fn qdrant_http_errors_surface_with_their_text() {
+fn qdrant_collision_does_not_delete_or_ingest() {
+    let server = ScriptedServer::start(&[(409, r#"{"status":{"error":"already exists"}}"#)]);
+    let adapter = QdrantAdapter::new(
+        &binding(
+            &server.endpoint,
+            SystemKind::Qdrant,
+            CredentialReferences::default(),
+        ),
+        &workload(),
+    );
+    assert!(adapter.prepare(&spec(&HNSW)).is_err());
+    assert!(adapter.ingest(&batch()).is_err());
+    adapter.teardown().unwrap();
+    let requests = server.requests.lock().unwrap();
+    assert_eq!(requests.len(), 1);
+    assert_eq!(requests[0].method, "PUT");
+}
+
+#[test]
+fn qdrant_lost_creation_ack_does_not_authorize_further_mutation() {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let endpoint = format!("http://{}", listener.local_addr().unwrap());
+    let server = std::thread::spawn(move || {
+        let (mut stream, _) = listener.accept().unwrap();
+        let mut request = [0_u8; 4096];
+        let read = stream.read(&mut request).unwrap();
+        assert!(String::from_utf8_lossy(&request[..read]).starts_with("PUT /collections/lab_unit "));
+        // The server closes the connection without confirming whether it created the resource.
+    });
+    let adapter = QdrantAdapter::new(
+        &binding(
+            &endpoint,
+            SystemKind::Qdrant,
+            CredentialReferences::default(),
+        ),
+        &workload(),
+    );
+    assert!(adapter.prepare(&spec(&HNSW)).is_err());
+    server.join().unwrap();
+    assert!(adapter.ingest(&batch()).is_err());
+    adapter.teardown().unwrap();
+}
+
+#[test]
+fn surreal_collision_stops_before_index_creation_and_never_removes_table() {
     let server = ScriptedServer::start(&[
-        (200, r#"{"result":true}"#),
-        (400, r#"{"status":{"error":"bad vector size"}}"#),
+        (200, r#"[{"result":null,"status":"OK"}]"#),
+        (200, r#"[{"result":"already exists","status":"ERR"}]"#),
     ]);
+    let adapter = SurrealAdapter::new(
+        &binding(
+            &server.endpoint,
+            SystemKind::Surrealdb,
+            surreal_credentials(),
+        ),
+        &workload(),
+    )
+    .unwrap();
+    assert!(adapter.prepare(&spec(&HNSW)).is_err());
+    assert!(adapter.ingest(&batch()).is_err());
+    adapter.teardown().unwrap();
+    let requests = server.requests.lock().unwrap();
+    assert_eq!(requests.len(), 2);
+    assert!(requests[1]
+        .body
+        .contains("DEFINE TABLE lab_unit SCHEMALESS"));
+    assert!(requests
+        .iter()
+        .all(|request| !request.body.contains("REMOVE TABLE")));
+}
+
+#[test]
+fn invalid_scratch_identifier_is_rejected_before_any_request() {
+    let server = ScriptedServer::start(&[]);
+    let adapter = QdrantAdapter::new(
+        &binding(
+            &server.endpoint,
+            SystemKind::Qdrant,
+            CredentialReferences::default(),
+        ),
+        &workload(),
+    );
+    let invalid = CollectionSpec {
+        name: "lab_x/points",
+        ..spec(&HNSW)
+    };
+    assert!(adapter.prepare(&invalid).is_err());
+    assert!(server.requests.lock().unwrap().is_empty());
+}
+
+#[test]
+fn qdrant_http_errors_exclude_server_text() {
+    let server = ScriptedServer::start(&[(400, r#"{"status":{"error":"bad vector size"}}"#)]);
     let adapter = QdrantAdapter::new(
         &binding(
             &server.endpoint,
@@ -251,7 +337,7 @@ fn qdrant_http_errors_surface_with_their_text() {
     );
     let error = adapter.prepare(&spec(&HNSW)).unwrap_err();
     assert!(
-        error.contains("HTTP 400") && error.contains("bad vector size"),
+        error.contains("HTTP 400") && !error.contains("bad vector size"),
         "{error}"
     );
 }
@@ -271,6 +357,8 @@ fn surrealdb_speaks_its_real_wire_format() {
     let ok = r#"[{"result":null,"status":"OK","time":"1ms","type":null}]"#;
     let server = ScriptedServer::start(&[
         (200, "surrealdb-3.3.5"),
+        (200, ok),
+        (200, ok),
         (200, ok),
         (200, ok),
         (
@@ -297,13 +385,18 @@ fn surrealdb_speaks_its_real_wire_format() {
     .unwrap();
     assert_eq!(adapter.observed_version().unwrap(), "surrealdb-3.3.5");
     adapter.prepare(&spec(&HNSW)).unwrap();
-    let define = server.request(1);
+    let define = server.request(3);
     assert!(
         define.headers.contains("Basic cm9vdDpyb290"),
         "{}",
         define.headers
     );
     assert!(define.headers.to_lowercase().contains("surreal-ns: lab"));
+    assert!(server
+        .request(2)
+        .body
+        .contains("DEFINE TABLE lab_unit SCHEMALESS"));
+    assert!(!server.request(2).body.contains("REMOVE TABLE"));
     assert!(
         define
             .body
@@ -314,15 +407,15 @@ fn surrealdb_speaks_its_real_wire_format() {
     adapter.ingest(&batch()).unwrap();
     assert!(
         server
-            .request(2)
+            .request(4)
             .body
             .contains("{id:2,v:[0.0,1.0],category:1}"),
         "{}",
-        server.request(2).body
+        server.request(4).body
     );
     adapter.finish_ingest(deadline()).unwrap();
     assert_eq!(search_filtered(&adapter), vec![4, 10]);
-    let search = server.request(5).body;
+    let search = server.request(7).body;
     assert!(
         search.contains("category = 1 AND v <|3,32|> [1.0,0.0]"),
         "{search}"
@@ -363,6 +456,7 @@ fn surrealdb_requires_credentials_by_reference() {
 }
 
 #[test]
+#[ignore = "Milvus mutation admission is disabled until isolated ownership is implemented"]
 fn milvus_speaks_its_real_wire_format() {
     let ok = r#"{"code":0,"data":{}}"#;
     let server = ScriptedServer::start(&[
@@ -455,11 +549,12 @@ fn milvus_failures_are_noticed_despite_http_200() {
         ),
         &workload(),
     );
-    let error = adapter.prepare(&spec(&HNSW)).unwrap_err();
+    let error = adapter.observed_version().unwrap_err();
     assert!(error.contains("1100"), "{error}");
 }
 
 #[test]
+#[ignore = "Milvus mutation admission is disabled until isolated ownership is implemented"]
 fn milvus_failed_index_builds_stop_instead_of_waiting_out_the_deadline() {
     let ok = r#"{"code":0,"data":{}}"#;
     let server = ScriptedServer::start(&[
@@ -481,96 +576,77 @@ fn milvus_failed_index_builds_stop_instead_of_waiting_out_the_deadline() {
     );
     adapter.prepare(&spec(&HNSW)).unwrap();
     let error = adapter.finish_ingest(deadline()).unwrap_err();
-    assert!(error.contains("out of memory"), "{error}");
+    assert!(
+        error.contains("index build failed") && !error.contains("out of memory"),
+        "{error}"
+    );
 }
 
 #[test]
-fn custom_systems_follow_the_documented_protocol() {
-    let server = ScriptedServer::start(&[
-        (
-            200,
-            r#"{"protocol_version":1,"name":"my-store","version":"2.1"}"#,
-        ),
-        (200, "{}"),
-        (200, "{}"),
-        (200, r#"{"ready":false}"#),
-        (200, r#"{"ready":true}"#),
-        (200, r#"{"ids":[4,10]}"#),
-        (200, "{}"),
-    ]);
-    let adapter = CustomAdapter::new(
+fn milvus_refuses_mutations_without_owned_service_before_contacting_endpoint() {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    listener.set_nonblocking(true).unwrap();
+    let endpoint = format!("http://{}", listener.local_addr().unwrap());
+    let adapter = MilvusAdapter::new(
         &binding(
-            &server.endpoint,
-            SystemKind::Custom,
+            &endpoint,
+            SystemKind::Milvus,
             CredentialReferences::default(),
         ),
         &workload(),
     );
-    assert_eq!(adapter.observed_version().unwrap(), "my-store 2.1");
-    adapter.prepare(&spec(&HNSW)).unwrap();
-    assert_eq!(server.request(1).path, "/prepare");
-    assert_eq!(
-        server.request(1).json()["index"],
-        json!({"index": "hnsw", "m": 16, "ef_construction": 100})
-    );
-    adapter.ingest(&batch()).unwrap();
-    assert_eq!(
-        server.request(2).json()["vectors"],
-        json!([[1.0, 0.0], [0.0, 1.0]])
-    );
-    adapter.finish_ingest(deadline()).unwrap();
-    assert_eq!(search_filtered(&adapter), vec![4, 10]);
-    assert_eq!(server.request(5).json()["category"], 1);
-    adapter.teardown().unwrap();
-    assert_eq!(server.request(6).path, "/teardown");
-}
-
-#[test]
-fn custom_systems_on_another_protocol_version_are_refused() {
-    let server = ScriptedServer::start(&[(
-        200,
-        r#"{"protocol_version":99,"name":"my-store","version":"2.1"}"#,
-    )]);
-    let adapter = CustomAdapter::new(
-        &binding(
-            &server.endpoint,
-            SystemKind::Custom,
-            CredentialReferences::default(),
-        ),
-        &workload(),
-    );
+    let error = adapter.prepare(&spec(&HNSW)).unwrap_err();
+    assert!(error.contains("owned isolated service"), "{error}");
+    assert!(adapter.ingest(&batch()).is_err());
+    assert!(adapter.finish_ingest(deadline()).is_err());
     assert!(adapter
-        .observed_version()
-        .unwrap_err()
-        .contains("protocol 99"));
-}
-
-#[test]
-fn custom_responses_outside_the_protocol_are_violations() {
-    let server = ScriptedServer::start(&[(200, r#"{"ids":[1],"cheating":true}"#)]);
-    let adapter = CustomAdapter::new(
-        &binding(
-            &server.endpoint,
-            SystemKind::Custom,
-            CredentialReferences::default(),
-        ),
-        &workload(),
-    );
-    let error = adapter
         .search(&SearchRequest {
-            vector: &[1.0],
+            vector: &[1.0, 0.0],
             k: 1,
             category: None,
             setting: &setting(),
         })
-        .unwrap_err();
-    assert!(error.contains("protocol violation"), "{error}");
+        .is_err());
+    assert!(adapter.teardown().is_err());
+    let error = listener.accept().unwrap_err();
+    assert_eq!(error.kind(), std::io::ErrorKind::WouldBlock);
+}
+
+#[test]
+fn custom_v1_adapter_fails_closed_without_contacting_endpoint() {
+    let server = ScriptedServer::start(&[]);
+    let adapter = CustomAdapter::new(
+        &binding(
+            &server.endpoint,
+            SystemKind::Custom,
+            CredentialReferences::default(),
+        ),
+        &workload(),
+    );
+    let expected = "custom protocol v1 has no scoped resource ownership; adapter disabled";
+    assert_eq!(adapter.observed_version().unwrap_err(), expected);
+    assert_eq!(adapter.prepare(&spec(&HNSW)).unwrap_err(), expected);
+    assert_eq!(adapter.ingest(&batch()).unwrap_err(), expected);
+    assert_eq!(adapter.finish_ingest(deadline()).unwrap_err(), expected);
+    assert_eq!(
+        adapter
+            .search(&SearchRequest {
+                vector: &[1.0, 0.0],
+                k: 1,
+                category: None,
+                setting: &setting(),
+            })
+            .unwrap_err(),
+        expected
+    );
+    adapter.teardown().unwrap();
+    assert!(server.requests.lock().unwrap().is_empty());
 }
 
 #[test]
 fn surrealdb_splits_inserts_under_its_body_limit() {
     let ok = r#"[{"result":null,"status":"OK","time":"1ms","type":null}]"#;
-    let server = ScriptedServer::start(&[(200, ok), (200, ok), (200, ok)]);
+    let server = ScriptedServer::start(&[(200, ok), (200, ok), (200, ok), (200, ok), (200, ok)]);
     let adapter = SurrealAdapter::new(
         &binding(
             &server.endpoint,
@@ -590,8 +666,8 @@ fn surrealdb_splits_inserts_under_its_body_limit() {
             dimensions: 60_000,
         })
         .unwrap();
-    let first = server.request(1).body;
-    let second = server.request(2).body;
+    let first = server.request(3).body;
+    let second = server.request(4).body;
     assert!(first.len() < 1024 * 1024 && first.contains("{id:1,"));
     assert!(second.len() < 1024 * 1024 && second.contains("{id:2,"));
 }
@@ -600,7 +676,7 @@ fn surrealdb_splits_inserts_under_its_body_limit() {
 fn index_evidence_quotes_what_each_system_reports() {
     let info = r#"{"result":{"status":"green","indexed_vectors_count":0,"points_count":40,"segments_count":8}}"#;
     let ok = r#"{"result":true}"#;
-    let server = ScriptedServer::start(&[(200, ok), (200, ok), (200, ok), (200, info)]);
+    let server = ScriptedServer::start(&[(200, ok), (200, ok), (200, info)]);
     let adapter = QdrantAdapter::new(
         &binding(
             &server.endpoint,

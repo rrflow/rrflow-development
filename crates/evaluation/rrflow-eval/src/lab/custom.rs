@@ -1,11 +1,10 @@
 //! Any other system joins through this small HTTP protocol, usually behind a thin
 //! shim. The types below own the protocol; its schema is generated from them.
-use super::adapter::{wait_until, CollectionSpec, Http, PointBatch, SearchRequest, SystemAdapter};
+use super::adapter::{CollectionSpec, PointBatch, SearchRequest, SystemAdapter};
 use super::manifest::{IndexSpec, LabMetric, SearchSetting, SystemBinding, WorkloadSpec};
 use super::Result;
 use schemars::JsonSchema;
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde::{Deserialize, Serialize};
 use std::time::Instant;
 
 pub const CUSTOM_PROTOCOL_VERSION: u16 = 1;
@@ -71,88 +70,41 @@ pub struct CustomProtocol {
 }
 
 pub struct CustomAdapter {
-    http: Http,
+    _disabled: (),
 }
 
 impl CustomAdapter {
-    pub fn new(binding: &SystemBinding, workload: &WorkloadSpec) -> Self {
-        Self {
-            http: Http::new(&binding.endpoint, workload, Vec::new()),
-        }
-    }
-
-    fn decode<T: DeserializeOwned>(value: Value) -> Result<T> {
-        serde_json::from_value(value).map_err(|error| format!("protocol violation: {error}"))
-    }
-
-    fn post<T: DeserializeOwned>(&self, path: &str, body: &impl Serialize) -> Result<T> {
-        let body = serde_json::to_value(body).map_err(|error| error.to_string())?;
-        Self::decode(self.http.json("POST", path, Some(&body))?)
+    pub fn new(_binding: &SystemBinding, _workload: &WorkloadSpec) -> Self {
+        Self { _disabled: () }
     }
 }
 
 impl SystemAdapter for CustomAdapter {
     fn observed_version(&self) -> Result<String> {
-        let health: CustomHealth = Self::decode(self.http.json("GET", "/health", None)?)?;
-        if health.protocol_version != CUSTOM_PROTOCOL_VERSION {
-            return Err(format!(
-                "custom system speaks protocol {}, this harness speaks {CUSTOM_PROTOCOL_VERSION}",
-                health.protocol_version
-            ));
-        }
-        Ok(format!("{} {}", health.name, health.version))
+        Err(ownership_error())
     }
 
-    fn prepare(&self, spec: &CollectionSpec<'_>) -> Result<()> {
-        let _: Value = self.post(
-            "/prepare",
-            &CustomPrepare {
-                name: spec.name.to_string(),
-                dimensions: spec.dimensions,
-                metric: spec.metric,
-                categories: spec.categories,
-                index: spec.index.clone(),
-            },
-        )?;
-        Ok(())
+    fn prepare(&self, _spec: &CollectionSpec<'_>) -> Result<()> {
+        Err(ownership_error())
     }
 
-    fn ingest(&self, batch: &PointBatch<'_>) -> Result<()> {
-        let _: Value = self.post(
-            "/ingest",
-            &CustomIngest {
-                ids: batch.ids.to_vec(),
-                vectors: (0..batch.ids.len())
-                    .map(|index| batch.vector(index).to_vec())
-                    .collect(),
-                categories: batch.categories.to_vec(),
-            },
-        )?;
-        Ok(())
+    fn ingest(&self, _batch: &PointBatch<'_>) -> Result<()> {
+        Err(ownership_error())
     }
 
-    fn finish_ingest(&self, deadline: Instant) -> Result<()> {
-        wait_until(deadline, "custom system", || {
-            let ready: CustomReady = self.post("/finish", &json!({}))?;
-            Ok(ready.ready)
-        })
+    fn finish_ingest(&self, _deadline: Instant) -> Result<()> {
+        Err(ownership_error())
     }
 
-    fn search(&self, request: &SearchRequest<'_>) -> Result<Vec<u64>> {
-        let result: CustomSearchResult = self.post(
-            "/search",
-            &CustomSearch {
-                vector: request.vector.to_vec(),
-                k: request.k,
-                category: request.category,
-                setting: request.setting.clone(),
-            },
-        )?;
-        Ok(result.ids)
+    fn search(&self, _request: &SearchRequest<'_>) -> Result<Vec<u64>> {
+        Err(ownership_error())
     }
 
     fn teardown(&self) -> Result<()> {
-        let _: Value = self.post("/teardown", &json!({}))?;
         Ok(())
     }
+}
+
+fn ownership_error() -> String {
+    "custom protocol v1 has no scoped resource ownership; adapter disabled".into()
 }

@@ -19,15 +19,22 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-pub const RUN_SCHEMA_VERSION: u16 = 1;
+pub const LEGACY_RUN_SCHEMA_VERSION: u16 = 1;
+pub const RUN_SCHEMA_VERSION: u16 = 2;
+const SUPPORTED_RUN_SCHEMA_VERSIONS: [u16; 2] = [LEGACY_RUN_SCHEMA_VERSION, RUN_SCHEMA_VERSION];
 /// Stop hammering a system that has answered nothing but errors.
 const ERRORS_BEFORE_GIVING_UP: usize = 20;
 const Z95: f64 = 1.96;
 
-/// Transient operator observations. These are not a durable audit or a run result.
+/// Progress observations; the CLI persists the scratch-selection intent separately.
+/// Neither progress nor intent proves remote ownership or a completed run.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "stage", rename_all = "snake_case", deny_unknown_fields)]
 pub enum LabProgress {
+    /// Chosen identity, not proof that a remote resource exists or is owned.
+    ScratchSelected {
+        name: String,
+    },
     Prepared,
     IngestBatchStarted {
         completed: u64,
@@ -106,6 +113,9 @@ pub struct SystemRun {
     pub status: SystemStatus,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
+    /// Attempted scratch identity, recorded even when preparation fails. It does not prove ownership.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scratch_resource: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub observed_version: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -378,8 +388,16 @@ fn probe(argv: &Option<Vec<String>>) -> Option<u64> {
     String::from_utf8_lossy(&output.stdout).trim().parse().ok()
 }
 
-fn collection_name(manifest: &VectorComparisonManifest) -> String {
-    format!("lab_{}", manifest.test.id.as_str().replace(['.', '-'], "_"))
+fn collection_name() -> Result<String> {
+    let mut random = [0_u8; 16];
+    getrandom::fill(&mut random)
+        .map_err(|_| "operating system randomness unavailable".to_string())?;
+    let mut name = String::from("lab_");
+    use std::fmt::Write as _;
+    for byte in random {
+        write!(name, "{byte:02x}").map_err(|_| "cannot format scratch identity".to_string())?;
+    }
+    Ok(name)
 }
 
 fn run_phases(
@@ -389,17 +407,20 @@ fn run_phases(
     inputs: &Inputs,
     run: &mut SystemRun,
     raw: &mut Vec<RawCase>,
-    progress: &mut dyn FnMut(LabProgress),
+    progress: &mut dyn FnMut(LabProgress) -> Result<()>,
 ) -> Result<()> {
     run.observed_version = Some(adapter.observed_version()?);
+    let name = collection_name()?;
+    run.scratch_resource = Some(name.clone());
+    progress(LabProgress::ScratchSelected { name: name.clone() })?;
     adapter.prepare(&CollectionSpec {
-        name: &collection_name(manifest),
+        name: &name,
         dimensions: manifest.corpus.dimensions,
         metric: manifest.corpus.metric,
         categories: manifest.corpus.categories,
         index: &binding.index,
     })?;
-    progress(LabProgress::Prepared);
+    progress(LabProgress::Prepared)?;
     let points = &inputs.points;
     let ids: Vec<u64> = (0..points.len()).map(VectorSet::point_id).collect();
     let batch_size = manifest.workload.ingest_batch as usize;
@@ -410,7 +431,7 @@ fn run_phases(
         progress(LabProgress::IngestBatchStarted {
             completed: start as u64,
             total: points.len() as u64,
-        });
+        })?;
         adapter.ingest(&PointBatch {
             ids: &ids[start..end],
             vectors: &points.values[start * points.dimensions..end * points.dimensions],
@@ -422,11 +443,11 @@ fn run_phases(
             completed: start as u64,
             total: points.len() as u64,
             elapsed_ms: elapsed_ms(started),
-        });
+        })?;
     }
     let seconds = started.elapsed().as_secs_f64();
     let ready_started = Instant::now();
-    progress(LabProgress::IndexBuildStarted);
+    progress(LabProgress::IndexBuildStarted)?;
     let ready = adapter.finish_ingest(
         ready_started + Duration::from_millis(manifest.workload.readiness_timeout_ms),
     );
@@ -440,7 +461,7 @@ fn run_phases(
     ready?;
     progress(LabProgress::IndexReady {
         elapsed_ms: elapsed_ms(ready_started),
-    });
+    })?;
     for setting in &binding.search_ladder {
         for filtered in [false, true] {
             let truth = if filtered {
@@ -456,7 +477,7 @@ fn run_phases(
                     setting: setting.id.clone(),
                     filtered,
                     concurrency: *concurrency,
-                });
+                })?;
                 let (case, samples) = measure_case(
                     adapter,
                     manifest,
@@ -468,7 +489,7 @@ fn run_phases(
                         concurrency: *concurrency,
                     },
                 );
-                progress(LabProgress::CaseCompleted {
+                let event = LabProgress::CaseCompleted {
                     setting: setting.id.clone(),
                     filtered,
                     concurrency: *concurrency,
@@ -476,9 +497,11 @@ fn run_phases(
                     succeeded: case.succeeded,
                     errors: case.errors,
                     truncated: case.truncated,
-                });
+                };
+                // Preserve the measured result even if the observer refuses the event.
                 run.cases.push(case);
                 raw.push(samples);
+                progress(event)?;
             }
         }
     }
@@ -504,6 +527,7 @@ pub fn empty_run(
         environment,
         status: SystemStatus::Failed,
         reason: None,
+        scratch_resource: None,
         observed_version: None,
         ingest: None,
         cases: Vec::new(),
@@ -523,17 +547,20 @@ pub fn run_system(
     inputs: &Inputs,
     environment: BTreeMap<String, String>,
 ) -> (SystemRun, Vec<RawCase>) {
-    run_system_with_progress(manifest, binding, adapter, inputs, environment, &mut |_| {})
+    run_system_with_progress(manifest, binding, adapter, inputs, environment, &mut |_| {
+        Ok(())
+    })
 }
 
-/// Progress callbacks run outside measured query cases and must not mutate the system.
+/// Callbacks run outside measured query cases and must not mutate the compared system.
+/// A refused scratch-selection event prevents preparation.
 pub fn run_system_with_progress(
     manifest: &VectorComparisonManifest,
     binding: &SystemBinding,
     adapter: &dyn SystemAdapter,
     inputs: &Inputs,
     environment: BTreeMap<String, String>,
-    progress: &mut dyn FnMut(LabProgress),
+    progress: &mut dyn FnMut(LabProgress) -> Result<()>,
 ) -> (SystemRun, Vec<RawCase>) {
     let mut run = empty_run(binding, inputs, environment);
     let mut raw = Vec::new();
@@ -964,7 +991,7 @@ pub fn combine(
     let mut identities: Option<&BTreeMap<String, Digest>> = None;
     for run in runs {
         require(
-            run.schema_version == RUN_SCHEMA_VERSION,
+            SUPPORTED_RUN_SCHEMA_VERSIONS.contains(&run.schema_version),
             "unsupported run schema version",
         )?;
         require(

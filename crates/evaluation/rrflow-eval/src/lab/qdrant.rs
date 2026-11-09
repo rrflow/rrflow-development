@@ -1,6 +1,7 @@
 //! Qdrant over its public REST API, as probed on v1.20.0.
 use super::adapter::{
-    describe, wait_until, CollectionSpec, Http, PointBatch, SearchRequest, SystemAdapter,
+    describe, validate_scratch_name, wait_until, CollectionSpec, Http, PointBatch, SearchRequest,
+    SystemAdapter,
 };
 use super::manifest::{IndexSpec, LabMetric, SystemBinding, WorkloadSpec};
 use super::Result;
@@ -43,10 +44,11 @@ impl SystemAdapter for QdrantAdapter {
     }
 
     fn prepare(&self, spec: &CollectionSpec<'_>) -> Result<()> {
-        let _ = self.collection.set(spec.name.to_string());
-        let _ = self.exact.set(matches!(spec.index, IndexSpec::Exact));
-        let path = self.path("")?;
-        self.http.json("DELETE", &path, None)?;
+        validate_scratch_name(spec.name)?;
+        if self.collection.get().is_some() {
+            return Err("adapter is already prepared".into());
+        }
+        let path = format!("/collections/{}", spec.name);
         let distance = match spec.metric {
             LabMetric::Cosine => "Cosine",
             LabMetric::Dot => "Dot",
@@ -56,7 +58,16 @@ impl SystemAdapter for QdrantAdapter {
         if let IndexSpec::Hnsw { m, ef_construction } = spec.index {
             body["hnsw_config"] = json!({"m": m, "ef_construct": ef_construction});
         }
-        self.http.json("PUT", &path, Some(&body))?;
+        let created = self.http.json("PUT", &path, Some(&body))?;
+        if created["result"] != true {
+            return Err("Qdrant did not confirm collection creation".into());
+        }
+        self.collection
+            .set(spec.name.to_string())
+            .map_err(|_| "adapter is already prepared")?;
+        self.exact
+            .set(matches!(spec.index, IndexSpec::Exact))
+            .map_err(|_| "adapter is already prepared")?;
         self.http.json(
             "PUT",
             &self.path("/index?wait=true")?,
@@ -137,7 +148,7 @@ impl SystemAdapter for QdrantAdapter {
     }
 
     fn teardown(&self) -> Result<()> {
-        self.http.json("DELETE", &self.path("")?, None)?;
+        // No conditional delete binds ownership to the created collection. Retain it.
         Ok(())
     }
 }

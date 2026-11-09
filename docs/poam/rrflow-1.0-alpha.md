@@ -70,3 +70,4 @@
 | POAM-054 | High | Open | [a default install accepts a vector corpus its search then refuses](rrflow-1.0-alpha/poam-054.md) |
 | POAM-055 | High | Open | [a vector search the engine will refuse first reads every vector](rrflow-1.0-alpha/poam-055.md) |
 | POAM-056 | High | Open | [HNSW search reads the vector-version source before traversal](rrflow-1.0-alpha/poam-056.md) |
+| POAM-057 | High | Open | [comparison lab cannot establish exclusive scratch ownership](rrflow-1.0-alpha/poam-057.md) |

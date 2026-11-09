@@ -384,7 +384,8 @@
       "artifact": "milvusdb/milvus@sha256:b9b79b4a284b41cd12d60abc418310f84621fa4c977d409b38f501519a7ccf8a",
       "storage_profile": "standalone with embedded etcd and local object storage in a container volume",
       "availability": {
-        "state": "available"
+        "state": "unavailable",
+        "reason": "Milvus v2 create may accept an existing collection; owned isolated-service admission is not implemented."
       },
       "index": {
         "index": "hnsw",

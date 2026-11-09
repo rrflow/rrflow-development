@@ -1,7 +1,7 @@
 //! SurrealDB over its public `/sql` endpoint, as probed on 3.3.5.
 use super::adapter::{
-    describe, required_credentials, split_by_size, wait_until, CollectionSpec, Http, PointBatch,
-    SearchRequest, SystemAdapter,
+    describe, required_credentials, split_by_size, validate_scratch_name, wait_until,
+    CollectionSpec, Http, PointBatch, SearchRequest, SystemAdapter,
 };
 use super::manifest::{IndexSpec, LabMetric, SystemBinding, WorkloadSpec};
 use super::Result;
@@ -97,10 +97,7 @@ impl SurrealAdapter {
             Some(("text/plain", statements.into_bytes())),
         )?;
         if !(200..300).contains(&status) {
-            return Err(format!(
-                "/sql HTTP {status}: {}",
-                &text[..text.len().min(300)]
-            ));
+            return Err(format!("/sql HTTP {status} (body omitted)"));
         }
         let value: Value = serde_json::from_str(&text).map_err(|error| error.to_string())?;
         let statements = value
@@ -130,6 +127,7 @@ impl SystemAdapter for SurrealAdapter {
     }
 
     fn prepare(&self, spec: &CollectionSpec<'_>) -> Result<()> {
+        validate_scratch_name(spec.name)?;
         let distance = match spec.metric {
             LabMetric::Cosine => "COSINE",
             LabMetric::Euclidean => "EUCLIDEAN",
@@ -137,16 +135,23 @@ impl SystemAdapter for SurrealAdapter {
         };
         let name = spec.name.replace('-', "_");
         let exact_distance = matches!(spec.index, IndexSpec::Exact).then_some(distance);
-        let _ = self.table.set(Table {
-            name: name.clone(),
-            exact_distance,
-        });
-        let mut statements = format!(
+        if self.table.get().is_some() {
+            return Err("adapter is already prepared".into());
+        }
+        self.sql(format!(
             "DEFINE NAMESPACE IF NOT EXISTS {NAMESPACE}; USE NS {NAMESPACE}; \
-             DEFINE DATABASE IF NOT EXISTS {DATABASE}; USE DB {DATABASE}; \
-             REMOVE TABLE IF EXISTS {name}; DEFINE TABLE {name} SCHEMALESS; \
-             DEFINE INDEX {name}_category ON {name} FIELDS category;"
-        );
+             DEFINE DATABASE IF NOT EXISTS {DATABASE}; USE DB {DATABASE};"
+        ))?;
+        // Separate the exclusive table creation from index definitions: SurrealDB can
+        // execute later statements after an earlier statement reports an error.
+        self.sql(format!("DEFINE TABLE {name} SCHEMALESS;"))?;
+        self.table
+            .set(Table {
+                name: name.clone(),
+                exact_distance,
+            })
+            .map_err(|_| "adapter is already prepared")?;
+        let mut statements = format!("DEFINE INDEX {name}_category ON {name} FIELDS category;");
         if let IndexSpec::Hnsw { m, ef_construction } = spec.index {
             let _ = write!(
                 statements,
@@ -239,7 +244,7 @@ impl SystemAdapter for SurrealAdapter {
     }
 
     fn teardown(&self) -> Result<()> {
-        self.sql(format!("REMOVE TABLE IF EXISTS {};", self.table()?.name))?;
+        // A check followed by REMOVE could delete a replacement table. Retain it.
         Ok(())
     }
 }
