@@ -269,3 +269,11 @@ directory created by the blocked Python launcher was removed. Documentation
 policy, navigation check, formatting, the engine installation tests, the
 CLI tests and strict Clippy were rerun before the merge commit; results are
 in the commit message. Candidate CI remains the acceptance.
+
+### Candidate CI, 2026-11-09
+
+The first run on the merged tree failed the offline lifecycle harness policy
+in three jobs: `run_offline_lifecycle.py` requires the installed lifecycle
+harness to contain exactly its listed cases, and this package adds
+`repository_discovery_is_read_only_without_an_installed_engine`. The case is
+now listed; `test_offline_lifecycle.py` and `check_workflow.py` pass.
