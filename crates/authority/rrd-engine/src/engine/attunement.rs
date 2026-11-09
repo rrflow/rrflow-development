@@ -4,8 +4,8 @@
 //! checkpoint. Other phases fail explicitly until their implementation is present.
 
 use super::installation::{
-    attunement_job_key, attunement_plan_key, canonical_prefixed, estate_configuration_key,
-    project_inventory_sha256, DefaultInstallProfile, InstalledEstateRecord, INSTALLED_RECORD_KEY,
+    attunement_job_key, attunement_plan_key, canonical_prefixed, engram_configuration_key,
+    project_inventory_sha256, DefaultInstallProfile, InstalledengramRecord, INSTALLED_RECORD_KEY,
 };
 use super::*;
 use rrd_contract::{
@@ -25,7 +25,7 @@ mod discovery;
 mod inventory;
 #[cfg(test)]
 pub(crate) use inventory::LegacySourceFileProjectionGuard;
-pub(in crate::engine) use inventory::{load_accepted_source, source_head_key};
+pub(super) use inventory::{load_accepted_source, source_head_key};
 
 const MAX_CONTROL_BYTES: usize = 64 * 1024;
 const MAX_JOB_TRANSITIONS: u64 = 1024;
@@ -218,13 +218,13 @@ impl RrdEngine {
             .map(Some)
     }
 
-    pub(in crate::engine) fn attunement_installed_record(&self) -> Result<InstalledEstateRecord> {
-        let record: InstalledEstateRecord = decode(
+    pub(super) fn attunement_installed_record(&self) -> Result<InstalledengramRecord> {
+        let record: InstalledengramRecord = decode(
             &self
                 .storage
                 .control()
                 .get(INSTALLED_RECORD_KEY)?
-                .ok_or_else(|| ServiceError::Storage("installed estate record missing".into()))?,
+                .ok_or_else(|| ServiceError::Storage("installed engram record missing".into()))?,
         )?;
         record.validate()?;
         if self.installed_estate_identity() != Some(&record.installation.target) {
@@ -562,7 +562,7 @@ impl RrdEngine {
         Ok(result)
     }
 
-    /// Read the installed job through current estate authorization.
+    /// Read the installed job through current engram authorization.
     #[allow(clippy::too_many_arguments)]
     pub fn read_attunement(
         &self,
@@ -1016,7 +1016,7 @@ impl RrdEngine {
             &self
                 .storage
                 .control()
-                .get(&estate_configuration_key(&self.instance))?
+                .get(&engram_configuration_key(&self.instance))?
                 .ok_or_else(|| ServiceError::Storage("installed configuration missing".into()))?,
         )?;
         configuration.validate().map_err(contract)?;

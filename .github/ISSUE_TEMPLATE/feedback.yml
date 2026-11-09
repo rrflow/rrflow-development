@@ -1,0 +1,32 @@
+name: Feedback or an idea
+description: Something was confusing, missing or harder than it should be, or you have an idea.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Plain words are fine. Please remove secrets before you post.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Installing or starting RRFlow
+        - Storing or querying data
+        - Vector search
+        - Connectome
+        - Documentation
+        - Something else
+    validations:
+      required: true
+  - type: textarea
+    id: trying
+    attributes:
+      label: What were you trying to do?
+    validations:
+      required: true
+  - type: textarea
+    id: friction
+    attributes:
+      label: What got in the way, or what would help?
+    validations:
+      required: true

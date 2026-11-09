@@ -7,19 +7,18 @@ use crate::engine::estate_layout::{
     validate_managed_relative, validate_recovery_estate, EstateFilesystem, EstateLayout,
     LOCATOR_RELATIVE_PATH, STORAGE_DIRECTORY,
 };
-use crate::engine::memory_estate::build_memory_estate_plan;
+use crate::engine::memory_engram::build_memory_engram_plan;
 use crate::engine::token_key::{
     read_api_key_document_anchored as read_api_key_document,
     read_token_key_anchored as read_token_key, ApiKeyDocument,
 };
 use rrd_contract::{
-    attunement_plan_sha256, installation_initial_grants, installation_plan_sha256,
-    installation_result_sha256, AttunementJob, AttunementJobState, AttunementPhase,
-    AttunementPhasePlan, AttunementPlan, DeploymentProfile, EstateConfiguration,
-    EstateConfigurationInput, InstallationActionDisposition, InstallationActionKind,
-    InstallationActionResult, InstallationManagedPathKind, InstallationPlan,
-    InstallationPlanAction, InstallationResult, InstallationTargetKind, InstalledEstateIdentity,
-    PersistMemoryEstate, StorageProfileKind, ATTUNEMENT_CONTRACT_VERSION,
+    attunement_plan_sha256, installation_plan_sha256, installation_result_sha256, AttunementJob,
+    AttunementJobState, AttunementPhase, AttunementPhasePlan, AttunementPlan, DeploymentProfile,
+    EstateConfiguration, EstateConfigurationInput, InstallationActionDisposition,
+    InstallationActionKind, InstallationActionResult, InstallationManagedPathKind,
+    InstallationPlan, InstallationPlanAction, InstallationResult, InstallationTargetKind,
+    InstalledEstateIdentity, PersistMemoryengram, StorageProfileKind, ATTUNEMENT_CONTRACT_VERSION,
     INSTALLATION_PLAN_CONTRACT_VERSION, INSTALL_ATTUNEMENT_CONTRACT_VERSION, MAX_ATTUNEMENT_PHASES,
 };
 use rrd_core::digest::Sha256 as IncrementalSha256;
@@ -47,18 +46,25 @@ const MAX_ATTUNEMENT_DESCRIPTION_BYTES: usize = 1_024;
 pub const INSTALLATION_PREVIEW_FORMAT_VERSION: u16 = 1;
 pub const ATTUNEMENT_PROPOSAL_FORMAT_VERSION: u16 = 1;
 
+/// Explicit, preview-bound choices that affect installation authority.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct InstallationPlanningOptions {
+    pub attunement_proposal: Option<AttunementProposal>,
+    pub allow_project_source_read: bool,
+}
+
 mod admission;
 mod bootstrap;
 mod inventory;
-pub(in crate::engine) use inventory::{
-    read_admitted_inventory_file, validate_selected_inventory_path,
-};
 mod lease;
 mod policy;
 pub(super) mod recovery;
 
 use inventory::project_inventory_sha256_excluding;
-pub(super) use inventory::{prepare_project_inventory, project_inventory_sha256};
+pub(super) use inventory::{
+    prepare_project_inventory, project_entries, project_inventory_sha256,
+    read_admitted_inventory_file, validate_selected_inventory_path, ProjectEntry,
+};
 
 use recovery::{
     acknowledge_intent, load_or_create_intent, materialize_secret, read_existing_intent,
@@ -296,7 +302,7 @@ impl DefaultInstallProfile {
 /// Loads the bundled default or one explicitly selected, bounded operator
 /// configuration. Planning is the only lifecycle stage that reads this file;
 /// apply consumes the effective configuration sealed into the plan.
-pub fn load_estate_configuration(path: Option<&Path>) -> Result<EstateConfiguration> {
+pub fn load_engram_configuration(path: Option<&Path>) -> Result<EstateConfiguration> {
     let bytes = match path {
         None => DEFAULT_CONFIGURATION_BYTES.to_vec(),
         Some(path) => read_regular_bounded(
@@ -314,6 +320,12 @@ pub fn load_estate_configuration(path: Option<&Path>) -> Result<EstateConfigurat
     Ok(configuration)
 }
 
+/// Retained source-level name for existing engine callers; the engram-facing
+/// installer and the established configuration contract share one loader.
+pub fn load_estate_configuration(path: Option<&Path>) -> Result<EstateConfiguration> {
+    load_engram_configuration(path)
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct InstallationPreview {
@@ -322,16 +334,8 @@ pub struct InstallationPreview {
     pub attunement: AttunementPlan,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub attunement_proposal: Option<AttunementProposal>,
-    /// Explicit source grant scope. Absent in the unchanged default preview.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub source_read_resource_scope: Option<String>,
-}
-
-/// Explicit inputs that alter the canonical new-install preview.
-#[derive(Debug, Clone, Copy, Default)]
-pub struct InstallationPlanningOptions<'a> {
-    pub attunement_proposal: Option<&'a AttunementProposal>,
-    pub allow_project_source_read: bool,
 }
 
 impl InstallationPreview {
@@ -350,14 +354,19 @@ impl InstallationPreview {
                 return Err(ServiceError::ProjectBindingMismatch);
             }
         }
-        let source_read_enabled = self
+        let source_read_granted = self
             .installation
             .initial_grants
             .contains(&SecurityAction::ProjectSourceRead);
-        if self.source_read_resource_scope.as_deref()
-            != source_read_enabled.then_some("instance_prefix")
+        if source_read_granted != self.source_read_resource_scope.is_some()
+            || self
+                .source_read_resource_scope
+                .as_deref()
+                .is_some_and(|scope| scope != "instance_prefix")
         {
-            return Err(ServiceError::ProjectBindingMismatch);
+            return Err(ServiceError::Contract(
+                "project source-read authority and resource scope do not match".into(),
+            ));
         }
         self.installation
             .validate_attunement_plan(&self.attunement)
@@ -417,7 +426,7 @@ impl ProjectLocator {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct InstalledEstateRecord {
+pub struct InstalledengramRecord {
     pub format_version: u16,
     pub installation: InstallationPlan,
     pub attunement_plan_sha256: String,
@@ -430,7 +439,9 @@ pub struct InstalledEstateRecord {
     pub record_sha256: String,
 }
 
-impl InstalledEstateRecord {
+pub type InstalledEstateRecord = InstalledengramRecord;
+
+impl InstalledengramRecord {
     pub(super) fn validate(&self) -> Result<()> {
         self.installation
             .validate()
@@ -445,7 +456,7 @@ impl InstalledEstateRecord {
             || self.record_sha256 != installed_record_sha256(self)?
         {
             return Err(ServiceError::Contract(
-                "installed estate record is inconsistent or corrupt".into(),
+                "installed engram record is inconsistent or corrupt".into(),
             ));
         }
         self.clock_anchor.validate()
@@ -517,7 +528,7 @@ pub struct InstallationVerificationReport {
 }
 
 // Private inspection facts deliberately contain no claimed current-source
-// digest. Opening the estate consumes its verified binding; explicit full
+// digest. Opening the engram consumes its verified binding; explicit full
 // inspection additionally observes project inputs and constructs the report.
 struct InstalledBindingInspection {
     profile: DefaultInstallProfile,
@@ -532,7 +543,7 @@ struct InstalledBindingInspection {
 impl RrdEngine {
     /// Allocate one explicit, non-secret identity input before deterministic
     /// planning. Callers retain it across previews and generate a new value for
-    /// each independent estate; allocation creates no project or engine state.
+    /// each independent engram; allocation creates no project or engine state.
     pub fn generate_installation_identity() -> Result<String> {
         let entropy = crate::engine::token_key::generate_token_key()
             .map_err(|error| ServiceError::Storage(error.to_string()))?;
@@ -547,13 +558,13 @@ impl RrdEngine {
         configuration_path: Option<&Path>,
         executable: &Path,
     ) -> Result<InstallationPreview> {
-        Self::plan_installation_with_proposal(
+        Self::plan_installation_with_options(
             project,
             target_kind,
             installation_identity,
             profile_id,
             configuration_path,
-            None,
+            InstallationPlanningOptions::default(),
             executable,
         )
     }
@@ -575,27 +586,25 @@ impl RrdEngine {
             profile_id,
             configuration_path,
             InstallationPlanningOptions {
-                attunement_proposal: proposal,
+                attunement_proposal: proposal.cloned(),
                 allow_project_source_read: false,
             },
             executable,
         )
     }
 
-    /// Produce an exact installation preview with explicit bounded choices.
-    /// Initial source grants remain the unchanged default or that list plus
-    /// ProjectSourceRead; this is not a general grant editor.
+    /// Plan installation with explicit authorization decisions included in the
+    /// immutable preview and its installation digest.
     pub fn plan_installation_with_options(
         project: &Path,
         target_kind: InstallationTargetKind,
         installation_identity: &str,
         profile_id: &str,
         configuration_path: Option<&Path>,
-        options: InstallationPlanningOptions<'_>,
+        options: InstallationPlanningOptions,
         executable: &Path,
     ) -> Result<InstallationPreview> {
-        let proposal = options.attunement_proposal;
-        let allow_project_source_read = options.allow_project_source_read;
+        let proposal = options.attunement_proposal.as_ref();
         if let Some(proposal) = proposal {
             proposal.validate()?;
         }
@@ -607,7 +616,7 @@ impl RrdEngine {
         let project = canonical_project(project, target_kind)?;
         reject_existing_estate(&project)?;
         let (profile, profile_sha256) = DefaultInstallProfile::load(profile_id)?;
-        let configuration = load_estate_configuration(configuration_path)?;
+        let configuration = load_engram_configuration(configuration_path)?;
         let executable_sha256 = sha256_file(executable)?;
         let project_precondition_sha256 = project_inventory_sha256(project.project(), &profile)?;
         let identity_seed = installation_identity_seed(
@@ -681,7 +690,9 @@ impl RrdEngine {
             initial_seat: profile.specialization.seat.clone(),
             bootstrap,
             initial_principal_id: profile.initial_principal_id,
-            initial_grants: installation_initial_grants(allow_project_source_read),
+            initial_grants: rrd_contract::installation_initial_grants(
+                options.allow_project_source_read,
+            ),
             credential_bytes: profile.credential_bytes,
             inactive_capabilities: profile.inactive_capabilities,
             managed_paths,
@@ -697,7 +708,8 @@ impl RrdEngine {
             installation,
             attunement,
             attunement_proposal: proposal.cloned(),
-            source_read_resource_scope: allow_project_source_read
+            source_read_resource_scope: options
+                .allow_project_source_read
                 .then(|| "instance_prefix".to_owned()),
         };
         preview.validate()?;
@@ -1054,8 +1066,8 @@ impl RrdEngine {
         let token_key_sha256 = intent.token_key_sha256().to_owned();
         let installed_at_unix_ms = intent.clock_anchor().observed_at_unix_ms;
 
-        let memory_plan = build_memory_estate_plan(
-            &PersistMemoryEstate {
+        let memory_plan = build_memory_engram_plan(
+            &PersistMemoryengram {
                 scope: format!("instance:{instance_id}"),
                 seat: preview.installation.initial_seat.clone(),
                 representations: Vec::new(),
@@ -1134,7 +1146,7 @@ impl RrdEngine {
             &operation_id,
         )?;
         let bootstrap_control_sequence = transitions.len() as u64 + 5;
-        let mut installed = InstalledEstateRecord {
+        let mut installed = InstalledengramRecord {
             format_version: INSTALLED_RECORD_FORMAT,
             installation: preview.installation.clone(),
             attunement_plan_sha256: preview.attunement.plan_sha256.clone(),
@@ -1178,7 +1190,7 @@ impl RrdEngine {
             .map_err(|error| ServiceError::Contract(error.to_string()))?;
         transitions.extend([
             control_create(
-                &estate_configuration_key(&instance_id),
+                &engram_configuration_key(&instance_id),
                 &preview.installation.configuration,
                 installed_at_unix_ms,
                 &request_id,
@@ -1358,8 +1370,8 @@ impl RrdEngine {
             .storage
             .control()
             .get(INSTALLED_RECORD_KEY)?
-            .ok_or_else(|| ServiceError::Storage("installed estate record is missing".into()))?;
-        let installed: InstalledEstateRecord = decode_json(&bytes, "installed estate record")?;
+            .ok_or_else(|| ServiceError::Storage("installed engram record is missing".into()))?;
+        let installed: InstalledengramRecord = decode_json(&bytes, "installed engram record")?;
         installed.validate()?;
         require_locator_record_match(&locator, &installed)?;
         bootstrap::verify(&project, &installed.installation)?;
@@ -1372,10 +1384,10 @@ impl RrdEngine {
         let configuration_bytes = engine
             .storage
             .control()
-            .get(&estate_configuration_key(&locator.identity.instance_id))?
-            .ok_or_else(|| ServiceError::Storage("estate configuration is missing".into()))?;
+            .get(&engram_configuration_key(&locator.identity.instance_id))?
+            .ok_or_else(|| ServiceError::Storage("engram configuration is missing".into()))?;
         let configuration: EstateConfiguration =
-            decode_json(&configuration_bytes, "estate configuration")?;
+            decode_json(&configuration_bytes, "engram configuration")?;
         configuration
             .validate()
             .map_err(|error| ServiceError::Contract(error.to_string()))?;
@@ -1516,8 +1528,8 @@ impl RrdEngine {
             &storage_root,
             super::core::installed_storage_options(&locator.storage)?,
         )?;
-        let installed: InstalledEstateRecord =
-            decode_control(&inspector, INSTALLED_RECORD_KEY, "installed estate record")?;
+        let installed: InstalledengramRecord =
+            decode_control(&inspector, INSTALLED_RECORD_KEY, "installed engram record")?;
         installed.validate()?;
         require_locator_record_match(&locator, &installed)?;
         bootstrap::verify(&project, &installed.installation)?;
@@ -1530,8 +1542,8 @@ impl RrdEngine {
         }
         let configuration: EstateConfiguration = decode_control(
             &inspector,
-            &estate_configuration_key(&locator.identity.instance_id),
-            "estate configuration",
+            &engram_configuration_key(&locator.identity.instance_id),
+            "engram configuration",
         )?;
         configuration
             .validate()
@@ -1792,10 +1804,8 @@ fn validate_sealed_preview(
             )?
         || installation.initial_principal_id != profile.initial_principal_id
         || installation.initial_grants
-            != installation_initial_grants(
-                installation
-                    .initial_grants
-                    .contains(&SecurityAction::ProjectSourceRead),
+            != rrd_contract::installation_initial_grants(
+                preview.source_read_resource_scope.is_some(),
             )
         || installation.credential_bytes != profile.credential_bytes
         || installation.inactive_capabilities != profile.inactive_capabilities
@@ -2123,8 +2133,8 @@ fn replay_installation_result(
         &safe_join(project, &locator.storage_root)?,
         super::core::installed_storage_options(&locator.storage)?,
     )?;
-    let installed: InstalledEstateRecord =
-        decode_control(&inspector, INSTALLED_RECORD_KEY, "installed estate record")?;
+    let installed: InstalledengramRecord =
+        decode_control(&inspector, INSTALLED_RECORD_KEY, "installed engram record")?;
     let job_id = canonical_prefixed("job", &preview.attunement.plan_sha256)?;
     build_installation_result(
         preview,
@@ -2143,7 +2153,7 @@ fn replay_installation_result(
 fn build_installation_result(
     preview: &InstallationPreview,
     job_id: &CanonicalId,
-    installed: &InstalledEstateRecord,
+    installed: &InstalledengramRecord,
     runtime_manifest_sha256: &str,
     runtime_cursor: u64,
     control_journal_sequence: u64,
@@ -2245,7 +2255,7 @@ fn decode_json<T: DeserializeOwned>(bytes: &[u8], label: &str) -> Result<T> {
 
 pub(super) fn require_locator_record_match(
     locator: &ProjectLocator,
-    installed: &InstalledEstateRecord,
+    installed: &InstalledengramRecord,
 ) -> Result<()> {
     if locator.plan_sha256 != installed.installation.plan_sha256
         || locator.profile_id != installed.installation.profile_id
@@ -2285,7 +2295,7 @@ pub(super) fn attunement_job_key(instance: &CanonicalId, job: &CanonicalId) -> S
     format!("server/state/{instance}/attunement/job/{job}")
 }
 
-pub(super) fn estate_configuration_key(instance: &CanonicalId) -> String {
+pub(super) fn engram_configuration_key(instance: &CanonicalId) -> String {
     format!("server/state/{instance}/configuration/active")
 }
 
@@ -2304,7 +2314,7 @@ pub(super) fn runtime_manifest_from_inspection(
     Ok(read.manifest_id)
 }
 
-fn installed_record_sha256(record: &InstalledEstateRecord) -> Result<String> {
+fn installed_record_sha256(record: &InstalledengramRecord) -> Result<String> {
     json_sha256(&(
         record.format_version,
         &record.installation,
