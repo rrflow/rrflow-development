@@ -1,10 +1,11 @@
-//! Optional, stateless transport for an explicitly prepared selector request.
+//! Optional, stateless transport for explicitly prepared model requests.
 //! This is not engine admission, a worker dispatcher, or a provider hard-stop.
 use crate::{EmbeddingDispatchError, EmbeddingExecutionControl, NetworkPolicy};
 use rrd_contract::{
-    CanonicalId, CredentialReference, EndpointConfiguration, EndpointLocator,
-    EndpointSelectionAllowance, EndpointSelectionChoice, EndpointTokenUsage, WorkloadClass,
-    MAX_ROUTE_REQUEST_BYTES,
+    CanonicalId, CredentialReference, EndpointConfiguration, EndpointGenerationSettings,
+    EndpointLocator, EndpointResponseFormat, EndpointSelectionAllowance, EndpointSelectionChoice,
+    EndpointTokenParameter, EndpointTokenUsage, WorkloadClass, MAX_ROUTE_REQUEST_BYTES,
+    MAX_ROUTE_RESPONSE_BYTES,
 };
 use rrd_core::digest::sha256_hex;
 use serde::{Deserialize, Serialize};
@@ -45,12 +46,58 @@ pub struct EndpointChatRequest {
     pub response_format: ChatResponseFormat,
 }
 
+/// Consistent wire input, not an engine authorization or a project effect.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ModelChatRequest {
+    pub model: CanonicalId,
+    pub messages: Vec<ChatMessage>,
+    pub settings: EndpointGenerationSettings,
+    /// Exact configured value; the engine must verify support and selection.
+    pub reasoning_effort: Option<String>,
+}
+
+#[derive(Serialize)]
+struct ModelWireRequest<'a> {
+    model: &'a CanonicalId,
+    messages: &'a [ChatMessage],
+    #[serde(skip_serializing_if = "Option::is_none")]
+    max_tokens: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    max_completion_tokens: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    temperature: Option<f64>,
+    response_format: EndpointResponseFormat,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    reasoning_effort: Option<&'a str>,
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct EndpointChatFailure {
     pub reason: &'static str,
-    /// Conservative after the HTTP call begins; never permission to retry.
-    pub dispatch_may_have_occurred: bool,
+    pub outcome: EndpointChatOutcome,
     pub http_status: Option<u16>,
+}
+
+/// Transport observation, not attested model identity or permission to retry.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum EndpointChatOutcome {
+    NotDispatched,
+    Unknown,
+    /// A bounded, matching, terminal generation response was decoded. Its
+    /// content can still be rejected and must never bypass engine admission.
+    ResponseComplete,
+}
+
+impl EndpointChatFailure {
+    pub fn dispatch_may_have_occurred(&self) -> bool {
+        self.outcome != EndpointChatOutcome::NotDispatched
+    }
+
+    pub fn execution_may_continue(&self) -> bool {
+        self.outcome == EndpointChatOutcome::Unknown
+    }
 }
 impl std::fmt::Display for EndpointChatFailure {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -62,7 +109,19 @@ type Result<T> = std::result::Result<T, EndpointChatFailure>;
 fn failure(reason: &'static str, sent: bool) -> EndpointChatFailure {
     EndpointChatFailure {
         reason,
-        dispatch_may_have_occurred: sent,
+        outcome: if sent {
+            EndpointChatOutcome::Unknown
+        } else {
+            EndpointChatOutcome::NotDispatched
+        },
+        http_status: None,
+    }
+}
+
+fn completed_failure(reason: &'static str) -> EndpointChatFailure {
+    EndpointChatFailure {
+        reason,
+        outcome: EndpointChatOutcome::ResponseComplete,
         http_status: None,
     }
 }
@@ -101,11 +160,29 @@ pub struct EndpointChatObservation {
     pub response_bytes: Vec<u8>,
 }
 
+/// A bounded provider report. Content is a draft and usage/identity are not
+/// independently attested. No correctness, mutation or training claim follows.
+#[derive(Debug, Serialize)]
+pub struct ModelChatObservation {
+    pub content: String,
+    pub service_id: String,
+    pub configuration_sha256: String,
+    pub request_sha256: String,
+    pub response_sha256: String,
+    pub content_sha256: String,
+    pub usage: Option<EndpointTokenUsage>,
+    pub elapsed_ms: Option<u64>,
+    pub http_status: Option<u16>,
+    #[serde(skip)]
+    pub response_bytes: Vec<u8>,
+}
+
 /// Validates configuration and prepares bytes without resolving credentials or
 /// performing network work. Construction proves consistency, not authorization.
-pub struct PreparedEndpointChat<'a> {
-    configuration: &'a EndpointConfiguration,
-    allowance: &'a EndpointSelectionAllowance,
+pub struct PreparedModelChat<'a> {
+    configuration_sha256: String,
+    maximum_response_bytes: u64,
+    response_format: EndpointResponseFormat,
     credential: Option<&'a CredentialReference>,
     service_id: &'a CanonicalId,
     url: String,
@@ -113,38 +190,82 @@ pub struct PreparedEndpointChat<'a> {
     timeout: Duration,
 }
 
-impl<'a> PreparedEndpointChat<'a> {
+impl<'a> PreparedModelChat<'a> {
     pub fn new(
         configuration: &'a EndpointConfiguration,
-        controller_binding: &CanonicalId,
-        allowance: &'a EndpointSelectionAllowance,
-        request: &EndpointChatRequest,
+        binding_id: &CanonicalId,
+        request: &ModelChatRequest,
+        maximum_response_bytes: u64,
     ) -> Result<Self> {
-        allowance
-            .validate_for(configuration)
-            .map_err(|_| failure("invalid selection configuration or allowance", false))?;
+        request
+            .settings
+            .validate()
+            .map_err(|_| failure("invalid chat generation bounds", false))?;
+        if request.reasoning_effort.as_ref().is_some_and(|value| {
+            value.is_empty()
+                || value.len() as u64 > MAX_ROUTE_REQUEST_BYTES
+                || value.trim() != value
+                || value.chars().any(char::is_control)
+        }) {
+            return Err(failure("invalid configured reasoning effort", false));
+        }
+        let settings = &request.settings;
+        let wire = ModelWireRequest {
+            model: &request.model,
+            messages: &request.messages,
+            max_tokens: (settings.token_parameter == EndpointTokenParameter::MaxTokens)
+                .then_some(settings.maximum_output_tokens),
+            max_completion_tokens: (settings.token_parameter
+                == EndpointTokenParameter::MaxCompletionTokens)
+                .then_some(settings.maximum_output_tokens),
+            temperature: settings
+                .temperature_milli
+                .map(|value| f64::from(value) / 1000.0),
+            response_format: settings.response_format,
+            reasoning_effort: request.reasoning_effort.as_deref(),
+        };
+        Self::prepare(
+            configuration,
+            binding_id,
+            &request.model,
+            &request.messages,
+            &wire,
+            maximum_response_bytes,
+            settings.response_format,
+        )
+    }
+
+    fn prepare(
+        configuration: &'a EndpointConfiguration,
+        binding_id: &CanonicalId,
+        model: &CanonicalId,
+        messages: &[ChatMessage],
+        wire: &impl Serialize,
+        maximum_response_bytes: u64,
+        response_format: EndpointResponseFormat,
+    ) -> Result<Self> {
+        let configuration_sha256 = configuration
+            .sha256()
+            .map_err(|_| failure("invalid endpoint configuration", false))?;
+        if maximum_response_bytes == 0 || maximum_response_bytes > MAX_ROUTE_RESPONSE_BYTES {
+            return Err(failure("invalid chat response bound", false));
+        }
         let binding = configuration
             .profile
             .as_ref()
-            .and_then(|p| p.bindings.iter().find(|b| &b.id == controller_binding))
-            .ok_or_else(|| failure("controller binding is not configured", false))?;
+            .and_then(|p| p.bindings.iter().find(|b| &b.id == binding_id))
+            .ok_or_else(|| failure("model binding is not configured", false))?;
         if !matches!(
             binding.class,
             WorkloadClass::LargeModelServing | WorkloadClass::AlwaysWarmSmallModels
-        ) || binding.service_id != request.model
+        ) || &binding.service_id != model
         {
             return Err(failure(
-                "controller request differs from configured model binding",
+                "request differs from configured model binding",
                 false,
             ));
         }
-        if request.messages.is_empty()
-            || request.messages.len() > 128
-            || request.max_tokens == 0
-            || request.max_tokens > 65_536
-            || !request.temperature.is_finite()
-            || !(0.0..=2.0).contains(&request.temperature)
-        {
+        if messages.is_empty() || messages.len() > 128 {
             return Err(failure("invalid chat generation bounds", false));
         }
         let EndpointLocator::Url { url } = &binding.endpoint else {
@@ -172,10 +293,11 @@ impl<'a> PreparedEndpointChat<'a> {
             ));
         }
         let limit = binding.limits.max_input_bytes.min(MAX_ROUTE_REQUEST_BYTES);
-        let request = encode_bounded(request, limit)?;
+        let request = encode_bounded(wire, limit)?;
         Ok(Self {
-            configuration,
-            allowance,
+            configuration_sha256,
+            maximum_response_bytes,
+            response_format,
             credential: binding.credential.as_ref(),
             service_id: &binding.service_id,
             url: format!("{}/chat/completions", url.trim_end_matches('/')),
@@ -200,7 +322,7 @@ impl<'a> PreparedEndpointChat<'a> {
             &CredentialReference,
             &EmbeddingExecutionControl,
         ) -> std::result::Result<String, String>,
-    ) -> Result<EndpointChatObservation> {
+    ) -> Result<ModelChatObservation> {
         if network != NetworkPolicy::Allow {
             return Err(failure("network denied", false));
         }
@@ -254,7 +376,7 @@ impl<'a> PreparedEndpointChat<'a> {
             error.http_status = Some(status);
             return Err(error);
         }
-        let maximum = self.allowance.limits.maximum_response_bytes;
+        let maximum = self.maximum_response_bytes;
         let mut bytes = Vec::new();
         response
             .body_mut()
@@ -262,12 +384,17 @@ impl<'a> PreparedEndpointChat<'a> {
             .take(maximum + 1)
             .read_to_end(&mut bytes)
             .map_err(|_| failure("chat response read failed; remote outcome unknown", true))?;
-        checkpoint(&control, true)?;
         if bytes.len() as u64 > maximum {
             return Err(failure("chat response exceeds byte limit", true));
         }
-        let mut observation = self.decode_response(bytes)?;
-        checkpoint(&control, true)?;
+        // Decode the bounded body before the final cancellation check so a
+        // completed response is not confused with an unknown remote outcome.
+        // Cancellation still forbids returning its content as accepted output.
+        let mut observation = self.decode_response(bytes).map_err(|mut error| {
+            error.http_status = Some(status);
+            error
+        })?;
+        completed_checkpoint(&control)?;
         observation.elapsed_ms =
             Some(u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX));
         observation.http_status = Some(status);
@@ -276,8 +403,8 @@ impl<'a> PreparedEndpointChat<'a> {
 
     /// Offline decoding of actual retained output. No usage or identity field
     /// is independently attested merely because the provider supplied it.
-    pub fn decode_response(&self, bytes: Vec<u8>) -> Result<EndpointChatObservation> {
-        if bytes.len() as u64 > self.allowance.limits.maximum_response_bytes {
+    pub fn decode_response(&self, bytes: Vec<u8>) -> Result<ModelChatObservation> {
+        if bytes.len() as u64 > self.maximum_response_bytes {
             return Err(failure("chat response exceeds byte limit", true));
         }
         let response: WireResponse = serde_json::from_slice(&bytes)
@@ -286,12 +413,12 @@ impl<'a> PreparedEndpointChat<'a> {
             return Err(failure("chat response model or choice count differs", true));
         }
         let item = &response.choices[0];
-        if item.finish_reason != "stop"
-            || item.message.role != "assistant"
-            || item.message.refusal.is_some()
+        if item.message.role != "assistant"
+            || !matches!(
+                item.finish_reason.as_str(),
+                "stop" | "length" | "content_filter"
+            )
             || item.message.function_call.is_some()
-            || item.message.reasoning.is_some()
-            || item.message.reasoning_content.is_some()
             || item
                 .message
                 .tool_calls
@@ -303,28 +430,38 @@ impl<'a> PreparedEndpointChat<'a> {
                 true,
             ));
         }
+        if item.finish_reason != "stop"
+            || item.message.refusal.is_some()
+            || item.message.reasoning.is_some()
+            || item.message.reasoning_content.is_some()
+        {
+            return Err(completed_failure(
+                "chat response is incomplete or requests unsupported effects",
+            ));
+        }
         let content = item
             .message
             .content
             .as_ref()
-            .ok_or_else(|| failure("chat response has no content", true))?;
-        let choice =
-            EndpointSelectionChoice::decode(content.as_bytes(), self.allowance, self.configuration)
-                .map_err(|_| failure("invalid endpoint selection choice", true))?;
+            .ok_or_else(|| completed_failure("chat response has no content"))?;
+        if self.response_format == EndpointResponseFormat::JsonObject
+            && !serde_json::from_str::<serde_json::Value>(content)
+                .is_ok_and(|value| value.is_object())
+        {
+            return Err(completed_failure(
+                "chat content is not the requested JSON object",
+            ));
+        }
         let usage: Option<EndpointTokenUsage> = response.usage.map(Into::into);
         if let Some(usage) = &usage {
             usage
                 .validate()
-                .map_err(|_| failure("inconsistent reported usage", true))?;
+                .map_err(|_| completed_failure("inconsistent reported usage"))?;
         }
-        Ok(EndpointChatObservation {
-            choice,
+        Ok(ModelChatObservation {
+            content: content.clone(),
             service_id: response.model,
-            configuration_sha256: self.allowance.configuration_sha256.clone(),
-            allowance_sha256: self
-                .allowance
-                .sha256(self.configuration)
-                .map_err(|_| failure("invalid selection allowance", true))?,
+            configuration_sha256: self.configuration_sha256.clone(),
             request_sha256: sha256_hex(&self.request),
             response_sha256: sha256_hex(&bytes),
             content_sha256: sha256_hex(content.as_bytes()),
@@ -332,6 +469,104 @@ impl<'a> PreparedEndpointChat<'a> {
             elapsed_ms: None,
             http_status: None,
             response_bytes: bytes,
+        })
+    }
+}
+
+/// Strict selector decoder over the same transport. Generation text never
+/// bypasses the configured allowance or becomes an eligible selection by itself.
+pub struct PreparedEndpointChat<'a> {
+    configuration: &'a EndpointConfiguration,
+    allowance: &'a EndpointSelectionAllowance,
+    transport: PreparedModelChat<'a>,
+}
+
+impl<'a> PreparedEndpointChat<'a> {
+    pub fn new(
+        configuration: &'a EndpointConfiguration,
+        controller_binding: &CanonicalId,
+        allowance: &'a EndpointSelectionAllowance,
+        request: &EndpointChatRequest,
+    ) -> Result<Self> {
+        allowance
+            .validate_for(configuration)
+            .map_err(|_| failure("invalid selection configuration or allowance", false))?;
+        if request.max_tokens == 0
+            || request.max_tokens > 65_536
+            || !request.temperature.is_finite()
+            || !(0.0..=2.0).contains(&request.temperature)
+        {
+            return Err(failure("invalid chat generation bounds", false));
+        }
+        // Serialize the existing selector wire unchanged, including field order.
+        let transport = PreparedModelChat::prepare(
+            configuration,
+            controller_binding,
+            &request.model,
+            &request.messages,
+            request,
+            allowance.limits.maximum_response_bytes,
+            EndpointResponseFormat::JsonObject,
+        )?;
+        Ok(Self {
+            configuration,
+            allowance,
+            transport,
+        })
+    }
+
+    pub fn request_bytes(&self) -> &[u8] {
+        self.transport.request_bytes()
+    }
+
+    pub fn execute(
+        &self,
+        network: NetworkPolicy,
+        control: &EmbeddingExecutionControl,
+        resolve: impl FnOnce(
+            &CredentialReference,
+            &EmbeddingExecutionControl,
+        ) -> std::result::Result<String, String>,
+    ) -> Result<EndpointChatObservation> {
+        let started = Instant::now();
+        let deadline = started
+            .checked_add(self.transport.timeout)
+            .ok_or_else(|| failure("invalid chat deadline", false))?;
+        let control = control.with_deadline(deadline);
+        let observed = self.transport.execute(network, &control, resolve)?;
+        let mut selection = self.selection(observed)?;
+        completed_checkpoint(&control)?;
+        selection.elapsed_ms =
+            Some(u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX));
+        Ok(selection)
+    }
+
+    pub fn decode_response(&self, bytes: Vec<u8>) -> Result<EndpointChatObservation> {
+        self.selection(self.transport.decode_response(bytes)?)
+    }
+
+    fn selection(&self, observed: ModelChatObservation) -> Result<EndpointChatObservation> {
+        let choice = EndpointSelectionChoice::decode(
+            observed.content.as_bytes(),
+            self.allowance,
+            self.configuration,
+        )
+        .map_err(|_| completed_failure("invalid endpoint selection choice"))?;
+        Ok(EndpointChatObservation {
+            choice,
+            service_id: observed.service_id,
+            configuration_sha256: observed.configuration_sha256,
+            allowance_sha256: self
+                .allowance
+                .sha256(self.configuration)
+                .map_err(|_| completed_failure("invalid selection allowance"))?,
+            request_sha256: observed.request_sha256,
+            response_sha256: observed.response_sha256,
+            content_sha256: observed.content_sha256,
+            usage: observed.usage,
+            elapsed_ms: observed.elapsed_ms,
+            http_status: observed.http_status,
+            response_bytes: observed.response_bytes,
         })
     }
 }
@@ -346,6 +581,10 @@ fn checkpoint(control: &EmbeddingExecutionControl, sent: bool) -> Result<()> {
             sent,
         )
     })
+}
+
+fn completed_checkpoint(control: &EmbeddingExecutionControl) -> Result<()> {
+    checkpoint(control, true).map_err(|error| completed_failure(error.reason))
 }
 
 fn encode_bounded(value: &impl Serialize, maximum: u64) -> Result<Vec<u8>> {
