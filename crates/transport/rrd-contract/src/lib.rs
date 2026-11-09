@@ -3103,6 +3103,7 @@ pub enum SecurityAction {
     BackupCreate,
     BackupList,
     RestoreCreate,
+    ProjectSourceRead,
     engramRead,
     engramAdmin,
     AuditRead,
@@ -3167,6 +3168,7 @@ impl SecurityAction {
         Self::BackupCreate,
         Self::BackupList,
         Self::RestoreCreate,
+        Self::ProjectSourceRead,
         Self::engramRead,
         Self::engramAdmin,
         Self::AuditRead,
@@ -5584,7 +5586,8 @@ impl<'de> Deserialize<'de> for CanonicalId {
 #[serde(rename_all = "snake_case")]
 pub enum ResourceKind {
     Organization,
-    engram,
+    Estate,
+    Engram,
     Project,
     Instance,
     Tenant,
