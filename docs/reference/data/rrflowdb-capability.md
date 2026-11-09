@@ -37,8 +37,8 @@ model. It is one Rust engine with one mutation authority
 
 | Postgres property | rrflowDB equivalent | State |
 |---|---|---|
-| ACID transactions | One `RuntimeCommit` per transaction, CAS against the authenticated read stamp's cursor, all-or-none across every family | Implemented (C-02, C-03) |
-| MVCC snapshot reads | Every read is bound to one authenticated `ReadStamp`; historical stamps are proved against the RFC 9162 accumulator | Implemented (C-04) |
+| Transaction foundation | One `RuntimeCommit` per transaction, CAS against the authenticated read stamp's cursor, all-or-none across modeled families | C-02/C-03 provide bounded evidence; complete ACID and C-07 installed failure qualification remain open |
+| MVCC snapshot reads | Reads bind an authenticated `ReadStamp`; supported historical stamps use the runtime accumulator | Direct-read foundation exists; C-04 is reopened and complete freshness/visibility proof remains open |
 | Time travel | Bi-temporal: valid time and known cursor on every read (`AT VALID … KNOWN …`) | Implemented; Postgres has no equivalent |
 | Typed schema and DDL | `RuntimeSchemaRegistry`: record, relation, event, vector, series, geo, and object tables with logical models, revisioned per scope ([schema catalogue](schema-catalogue.md)) | Implemented |
 | B-tree and unique indexes | Scalar and unique entries written with each record mutation | Write side implemented; native reader is E-02 |
@@ -72,13 +72,14 @@ models.
 ## Prompt graph families
 
 A prompt graph family is a named, versioned set of record kinds and relation
-kinds that one producer writes when a prompt is submitted. Families are
+kinds that an available producer can use for a prompt. Families are
 typed relation families inside the one temporal graph, never separate graph
 databases, and rrflowQL traverses them with the same native adjacency reader.
 
 ### Default set
 
-Eight families ship as the default configuration. The owner's notes name
+Eight families are the proposed baseline configuration, not mandatory work for
+every prompt. The owner's notes name
 lexicon, evidence, source, knowledge, and governance; classification,
 reasoning, and plan/task come from the same notes (LFG notes v2, v2.1, v3;
 the Notion RRO and LFG records). Knowledge includes memory.
@@ -98,7 +99,10 @@ the Notion RRO and LFG records). Knowledge includes memory.
 
 - **Definitions** live in the schema registry. A family definition names its
   record and relation kinds, its producer capability, its retention, and its
-  revision. Changing a definition is a schema revision through `RrdEngine`.
+  revision. Operators can add or change definitions through an authorized
+  schema revision in `RrdEngine`; a bundled release is not the only source of
+  configurable families. Unknown producer effects remain unavailable until an
+  executable capability is registered and admitted.
 - **Activation** lives in the estate configuration revision (the
   UI-managed revision of build-order step 2). It selects which families a
   flight forms, per project, with no hardcoded list: the default set is the
@@ -110,13 +114,16 @@ the Notion RRO and LFG records). Knowledge includes memory.
   but never formed" stays distinguishable from "formed". A configuration is
   promoted only when its grade meets the threshold **and** its sample meets
   the minimum; promotion is an authorized, reversible configuration revision.
-- **Formation is atomic.** One prompt submission forms every active family
-  whose producer has output in the flight's own commit, at the flight's read
-  stamp. A family whose producer is absent or disabled is recorded as skipped
-  with the reason, never silently missing.
-- **Every edge carries provenance**: producer, revision, tier, and
-  probability where the producer is probabilistic. A family is replayable
-  from its committed inputs.
+- **Selection and lifetime are explicit.** A request selects relevant enabled
+  families from the effective policy and available producers; absent, disabled
+  or skipped families have visible reasons. Prompt-local relationships can
+  expire without becoming durable facts. When publication is authorized, its
+  selected durable records, relationships and receipts use the existing
+  transaction boundary at the declared source/read identity.
+- **Every retained edge carries provenance**: producer, revision, tier, and
+  probability where the producer is probabilistic. A durable family is
+  replayable from its committed inputs; expired ephemeral state is not claimed
+  to be a durable replay record.
 
 ## SQL access
 
@@ -171,7 +178,7 @@ builds separately as H-08a to H-08h.
 |---|---|---|---|
 | M1 | This record and roadmap items H-09 and H-10 | — | Documentation, navigation, and inventory checks |
 | M2 | Graph-family definitions in the schema registry, activation in the configuration revision, the bundled default set | Build-order step 2 (configuration revisions) | Golden registry fixture; activation revision round trip; unknown family rejected |
-| M3 | Flight commits form every active family atomically with per-edge provenance; evidence and plan/task move onto the registry | M2, H-06a–H-06c (pull requests #17–#19) | One commit per flight; skipped families recorded with reason; rrflowQL walks each family; replay is identical |
+| M3 | Select relevant families per request; keep prompt-local state ephemeral and atomically publish only authorized durable results with per-edge provenance | M2, H-06a–H-06c (pull requests #17–#19) | Different requests select different sets; skipped reasons and lifetime are visible; durable results reopen and replay correctly; rrflowQL walks admitted families |
 | M4 | Memory contract: `AssertClaim` gains `valid_to`, tier, promotion, and supersession; memory reads by subject, predicate, and time | — | Correction supersedes without loss; promotion is reversible; old stamps unchanged |
 | M5 | Experiment arms: assignment, exposure, and outcome events; promotion by grade and sample | M2, M3 | A seeded two-arm fixture promotes only past both thresholds |
 | M6 | Source family from the committed project tree and commit provenance | D-03, D-05 | Every ingested record resolves to its file and revision |
@@ -196,7 +203,7 @@ builds separately as H-08a to H-08h.
 | Decision | Options | Blocks |
 |---|---|---|
 | Who may accept a link when the owner of both projects is the same account | Explicit acceptance every time; or account-level standing approval | L1 |
-| Whether prompt graph families may be added at runtime by an operator, or only by a schema revision shipped with a release | Operator-defined families; or bundled families only | M2 |
+| How an operator-defined family is packaged, validated and retired without interrupting existing stamped readers | Versioned schema revision and capability admission at the existing engine boundary | M2 |
 | Default retention per family (for example, keep lexicon and classification nodes forever but compact evidence after N days) | Per-family policy values | M2 |
 
 ## Sources

@@ -1,5 +1,5 @@
 // Generated from rrd-contract; do not edit.
-// OpenAPI SHA-256: d5e161a58a26c53ccfde018f3bff782f6e899a4b7c224c10f22f6abb8a8ea7b1
+// OpenAPI SHA-256: 99ca6b7ea9c4c18cbef7789bb551eb4cbe7ea605175e92c98e44e215720b15d9
 namespace Rrflow.Rrd;
 
 public enum OperationId
@@ -59,6 +59,7 @@ public enum OperationId
     TaskAttemptRead,
     TaskBudgetConfigure,
     TaskBudgetRead,
+    TaskBudgetResume,
     TaskBudgetStop,
     TaskClose,
     TaskEmbeddingExecute,
@@ -66,12 +67,16 @@ public enum OperationId
     TaskList,
     TaskOpen,
     TaskRead,
+    TaskWorkerExecute,
     TransactionAbort,
     TransactionBegin,
     TransactionCommit,
     TransactionPreview,
     VectorCollectionEnsure,
     VectorCollectionList,
+    VectorIndexEnsure,
+    VectorPayloadIndexDelete,
+    VectorPayloadIndexEnsure,
     VectorPointRetrieve,
     VectorPointScroll,
     VectorQuantizationActivate,
@@ -97,8 +102,8 @@ public sealed record Endpoint(
 
 public static class EndpointCatalog
 {
-    public const string OpenApiDocumentSha256 = "d5e161a58a26c53ccfde018f3bff782f6e899a4b7c224c10f22f6abb8a8ea7b1";
-    public const int Count = 75;
+    public const string OpenApiDocumentSha256 = "99ca6b7ea9c4c18cbef7789bb551eb4cbe7ea605175e92c98e44e215720b15d9";
+    public const int Count = 80;
 
     public static Endpoint Get(OperationId operation) => operation switch
     {
@@ -157,6 +162,7 @@ public static class EndpointCatalog
         OperationId.TaskAttemptRead => new("task-attempt-read", "POST", "/v1/tasks/attempt/read", Authentication.SessionBearer, false),
         OperationId.TaskBudgetConfigure => new("task-budget-configure", "POST", "/v1/tasks/budget/configure", Authentication.SessionBearer, true),
         OperationId.TaskBudgetRead => new("task-budget-read", "POST", "/v1/tasks/budget/read", Authentication.SessionBearer, false),
+        OperationId.TaskBudgetResume => new("task-budget-resume", "POST", "/v1/tasks/budget/resume", Authentication.SessionBearer, true),
         OperationId.TaskBudgetStop => new("task-budget-stop", "POST", "/v1/tasks/budget/stop", Authentication.SessionBearer, true),
         OperationId.TaskClose => new("task-close", "POST", "/v1/tasks/close", Authentication.SessionBearer, true),
         OperationId.TaskEmbeddingExecute => new("task-embedding-execute", "POST", "/v1/tasks/embedding/execute", Authentication.SessionBearer, true),
@@ -164,12 +170,16 @@ public static class EndpointCatalog
         OperationId.TaskList => new("task-list", "POST", "/v1/tasks/list", Authentication.SessionBearer, false),
         OperationId.TaskOpen => new("task-open", "POST", "/v1/tasks", Authentication.SessionBearer, true),
         OperationId.TaskRead => new("task-read", "POST", "/v1/tasks/read", Authentication.SessionBearer, false),
+        OperationId.TaskWorkerExecute => new("task-worker-execute", "POST", "/v1/tasks/worker/execute", Authentication.SessionBearer, true),
         OperationId.TransactionAbort => new("transaction-abort", "DELETE", "/v1/transactions/{transaction}", Authentication.SessionBearer, true),
         OperationId.TransactionBegin => new("transaction-begin", "POST", "/v1/transactions", Authentication.SessionBearer, true),
         OperationId.TransactionCommit => new("transaction-commit", "POST", "/v1/transactions/{transaction}/commit", Authentication.SessionBearer, true),
         OperationId.TransactionPreview => new("transaction-preview", "POST", "/v1/transactions/{transaction}/preview", Authentication.SessionBearer, true),
         OperationId.VectorCollectionEnsure => new("vector-collection-ensure", "POST", "/v1/vector/collections/ensure", Authentication.SessionBearer, true),
         OperationId.VectorCollectionList => new("vector-collection-list", "POST", "/v1/vector/collections/list", Authentication.SessionBearer, false),
+        OperationId.VectorIndexEnsure => new("vector-index-ensure", "POST", "/v1/vector/indexes/ensure", Authentication.SessionBearer, true),
+        OperationId.VectorPayloadIndexDelete => new("vector-payload-index-delete", "POST", "/v1/vector/payload-indexes/delete", Authentication.SessionBearer, true),
+        OperationId.VectorPayloadIndexEnsure => new("vector-payload-index-ensure", "POST", "/v1/vector/payload-indexes/ensure", Authentication.SessionBearer, true),
         OperationId.VectorPointRetrieve => new("vector-point-retrieve", "POST", "/v1/vector/points/retrieve", Authentication.SessionBearer, false),
         OperationId.VectorPointScroll => new("vector-point-scroll", "POST", "/v1/vector/points/scroll", Authentication.SessionBearer, false),
         OperationId.VectorQuantizationActivate => new("vector-quantization-activate", "POST", "/v1/vector/quantizations/activate", Authentication.SessionBearer, true),

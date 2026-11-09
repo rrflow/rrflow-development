@@ -95,6 +95,7 @@ pub enum LogicalOperator {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LogicalPlan {
     pub contract_version: u16,
+    pub result_identity_version: u16,
     pub read: ReadStamp,
     pub schema_revision: u64,
     pub source_cursor: u64,
@@ -295,6 +296,10 @@ pub(crate) fn prepare_binding(
             .values()
             .filter(|entry| entry.definition.source == query.source)
             .filter(|entry| entry.maintenance.is_some())
+            .filter(|entry| {
+                entry.result_identity_version
+                    == Some(rrd_core::result_identity::RESULT_IDENTITY_VERSION)
+            })
             .filter_map(|entry| {
                 let matched_prefix = entry
                     .definition
@@ -422,6 +427,7 @@ pub fn plan(bound: &BoundQuery) -> Result<PhysicalPlan> {
     }
     let logical = LogicalPlan {
         contract_version: bound.contract_version,
+        result_identity_version: rrd_core::result_identity::RESULT_IDENTITY_VERSION,
         read: bound.read.clone(),
         schema_revision: bound.schema_revision,
         source_cursor: bound.source_cursor,
@@ -720,7 +726,8 @@ fn bound_version_sources(
                 }) {
                     // An arbitrary comparison string need not be a valid
                     // runtime ID. Preserve its existing empty-result behavior.
-                    if let Ok(reference) = rrd_core::RuntimeRef::new(kind.to_string(), id.clone()) {
+                    if let Ok(reference) = rrd_core::RuntimeRef::parse(kind.to_string(), id.clone())
+                    {
                         let model = schema
                             .logical_model(kind)
                             .map_err(|error| Error::Binding(error.to_string()))?;
@@ -754,11 +761,7 @@ fn bound_version_sources(
                 }
                 return Ok(vec![RuntimeVersionedSource::Identity {
                     model,
-                    reference: rrd_core::RuntimeRef::new(
-                        kind.to_string(),
-                        format!("cursor:{cursor}"),
-                    )
-                    .map_err(|error| Error::Binding(error.to_string()))?,
+                    reference: rrd_core::RuntimeRef::event(kind.clone(), cursor),
                 }]);
             }
         }
@@ -831,7 +834,7 @@ fn bound_adjacency_source(
                 .then(|| allowed.first().expect("one allowed endpoint kind").as_str())
         });
         let Some(node_kind) = node_kind else { continue };
-        let Ok(node) = rrd_core::RuntimeRef::new(node_kind, id) else {
+        let Ok(node) = rrd_core::RuntimeRef::parse(node_kind, id) else {
             continue;
         };
         return Some(RuntimeVersionedSource::Adjacency {
@@ -858,7 +861,7 @@ fn bound_identity_range(
         let RuntimeValue::String(value) = &filter.value else {
             continue;
         };
-        let Ok(id) = rrd_core::RuntimeId::new(value.clone()) else {
+        let Ok(id) = rrd_core::RuntimeId::parse(value.clone()) else {
             continue;
         };
         match filter.comparison {
@@ -916,6 +919,13 @@ impl PhysicalPlan {
                 "unsupported query contract version {}",
                 self.logical.contract_version
             )));
+        }
+        if self.logical.result_identity_version
+            != rrd_core::result_identity::RESULT_IDENTITY_VERSION
+        {
+            return Err(Error::Integrity(
+                "physical plan has an unsupported result identity version".into(),
+            ));
         }
         self.logical
             .read

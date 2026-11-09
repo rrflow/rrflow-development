@@ -113,7 +113,7 @@ The current `endpoints_gen.go` contains:
   `7efde511a5ba3b1cad630d2c63c473a966fb871182c8bd3a5fb85c3673924a11`.
 
 That audit describes an earlier projection. The current generated OpenAPI
-SHA-256 is `d5e161a58a26c53ccfde018f3bff782f6e899a4b7c224c10f22f6abb8a8ea7b1`.
+SHA-256 is `99ca6b7ea9c4c18cbef7789bb551eb4cbe7ea605175e92c98e44e215720b15d9`.
 
 It does not generate request/result/error types, path-parameter sets, security
 actions, exact success statuses, media types, causal identity rules,

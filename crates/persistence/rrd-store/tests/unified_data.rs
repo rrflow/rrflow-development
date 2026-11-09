@@ -96,7 +96,7 @@ fn unified_mutations(object: rrd_core::ObjectReference) -> Vec<RuntimeMutation> 
     vec![
         RuntimeMutation::Claim {
             claim: Claim::new(
-                Subject::new("entity:a").unwrap(),
+                Subject::new("entity-a").unwrap(),
                 Predicate::new("status").unwrap(),
                 "ready",
                 101,

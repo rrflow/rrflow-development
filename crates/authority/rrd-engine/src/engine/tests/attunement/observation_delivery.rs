@@ -17,6 +17,7 @@ fn profile(engine: &RrdEngine, retained: u32) -> EndpointProfileInput {
         contract_version: 1,
         name: CanonicalId::new("observation-test").unwrap(),
         selection_policy: None,
+        worker_policy: None,
         bindings: vec![EndpointBinding {
             id: CanonicalId::new("observation-sink").unwrap(),
             class: WorkloadClass::BehaviorUpdates,

@@ -12,16 +12,28 @@ and review understandable without hiding their limits. The existing roadmap's
 [project-to-learning journey](docs/roadmap/rrflow-1.0/executable-dependency-spine.md#project-to-learning-acceptance-journey)
 maps that experience to its implementation dependencies and real-world tests.
 
-**rrflowDB is the database within RRFlow: a pure Rust, PostgreSQL-inspired
-database dedicated to AI and designed for AI use, with PostgreSQL compatibility
-as a product requirement.** It stores the knowledge, memory, reasoning state,
-and evidence of each project estate. The [database identity and compatibility
+**rrflowDB is RRFlow's native Rust, AI-oriented multi-model database.** Its
+target includes relational tables, documents, durable and dynamically derived
+relationships, graphs, vectors, memory, reasoning state and evidence under one
+transaction authority. rrflowQL is its relational, SQL-like query and planning
+layer; graph generation and traversal are capabilities over the same data, not
+the definition of the language. A record's logical identity is its table/kind
+and ID within its estate. PostgreSQL and SQLite compatibility are product
+targets whose exact SQL, client/API and file-format surfaces require separate
+qualification; neither compatibility claim is established today. The
+[database identity and compatibility
 boundary](docs/architecture/system-overview.md#persistence-and-memory-boundary)
 separates that target from current implementation and compatibility evidence.
 The [PostgreSQL compatibility and independent database contract](docs/reference/protocol/postgresql.md)
 defines the first SQL/client profile, native-engine integration, Turso exit,
 data portability and qualification. [H-08](docs/roadmap/rrflow-1.0/gate-h.md#h-08-postgresql-compatibility-packages)
 owns its implementation packages; compatibility is not yet implemented.
+
+rrflowKV supplies the native write-optimized durable state and recovery path;
+prompt-local working state has a separate bounded lifetime. The requested
+background Parquet cold-storage lifecycle for history, audit and analytics is
+not implemented by the existing bounded query export. Its implementation and
+proof are owned by [Gate F](docs/roadmap/rrflow-1.0/gate-f.md).
 
 This README is the bootstrap product entry point and knowledge map. It owns
 RRFlow's identity, non-negotiable architecture invariants, and current status;

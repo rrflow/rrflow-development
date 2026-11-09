@@ -81,7 +81,7 @@ impl DenseArtifactBuilder for FakeGpu {
 fn fixture() -> (VectorSegmentConfig, Vec<VectorCandidate>) {
     let scope = ScopeId::new("instance:accelerator").unwrap();
     let config = VectorSegmentConfig {
-        id: ProjectionId::new("vector:accelerated:body").unwrap(),
+        id: ProjectionId::new("vector-accelerated-body").unwrap(),
         scope: scope.clone(),
         field: "body".into(),
         dimensions: 2,
