@@ -20,7 +20,8 @@ pub use endpoint_generation::{
 };
 pub use endpoint_worker::{
     EndpointWorkerAdapter, EndpointWorkerBinding, EndpointWorkerPolicy, TaskWorkerContext,
-    TaskWorkerOutput, TaskWorkerRequest, ENDPOINT_WORKER_VERSION,
+    TaskWorkerOutput, TaskWorkerRequest, TaskWorkerSourceProvenance, TaskWorkerSourceRequest,
+    ENDPOINT_WORKER_VERSION, TASK_WORKER_SOURCE_VERSION,
 };
 mod endpoint_policy;
 mod endpoint_proposal;
@@ -44,7 +45,7 @@ mod inference;
 mod knowledge;
 mod knowledge_tree;
 mod memory_context;
-mod memory_engram;
+mod memory_estate;
 mod model_manifest;
 mod operation_reference;
 mod platform;
@@ -89,10 +90,10 @@ pub use capability_surface::{
     SurfaceDisposition,
 };
 pub use deployment::{
-    engram_configuration_sha256, ClockPolicy, DeploymentForm, DeploymentProfile,
-    EndpointPresentation, engramConfiguration, engramConfigurationInput, InstalledengramIdentity,
+    estate_configuration_sha256, ClockPolicy, DeploymentForm, DeploymentProfile,
+    EndpointPresentation, EstateConfiguration, EstateConfigurationInput, InstalledEstateIdentity,
     ReasoningLimits, RecallLimits, StorageLimits, StorageProfileKind,
-    DEPLOYMENT_PROFILE_CONTRACT_VERSION, engram_CONFIGURATION_FORMAT_VERSION,
+    DEPLOYMENT_PROFILE_CONTRACT_VERSION, ESTATE_CONFIGURATION_FORMAT_VERSION,
     MAX_CLOCK_ROLLBACK_MS, MAX_REASONING_RUN_ELAPSED_MS, MAX_REASONING_STEPS,
     MAX_REASONING_STEP_ELAPSED_MS,
 };
@@ -181,8 +182,8 @@ pub use memory_context::{
     ContextPlanStageStatus, ContextReadStamp, MAX_CONTEXT_GRAPH_DEPTH, MAX_CONTEXT_ITEMS,
     MAX_CONTEXT_OUTPUT_BYTES, MAX_CONTEXT_QUERY_BYTES, MAX_CONTEXT_SEEDS, MAX_CONTEXT_STORAGE_KEYS,
 };
-pub use memory_engram::{
-    MemoryengramPlan, MemorySeatDefinition, MemoryWarp, PersistMemoryengram,
+pub use memory_estate::{
+    MemoryEstatePlan, MemorySeatDefinition, MemoryWarp, PersistMemoryEstate,
     ProviderRepresentation, ProviderRepresentationDefinition, ResolveMemoryWarp,
     ResolveSeatIdentity, ResolvedMemoryWarp, SeatIdentity, MAX_PROVIDER_REPRESENTATIONS,
     MEMORY_PROVIDER_IDENTITY_KIND, MEMORY_REPRESENTS_KIND, MEMORY_SEAT_KIND,
@@ -253,7 +254,7 @@ pub use websocket::{
     WebSocketAcknowledged, WebSocketBackpressure, WebSocketBackpressureTarget, WebSocketCancel,
     WebSocketCancellation, WebSocketCancellationDisposition, WebSocketConnected, WebSocketDelivery,
     WebSocketError, WebSocketErrorTarget, WebSocketFrame, WebSocketHeartbeat, WebSocketLimits,
-    WebSocketPayload, WebSocketPeer, WebSocketReceivengram, WebSocketRequest,
+    WebSocketPayload, WebSocketPeer, WebSocketReceiveState, WebSocketRequest,
     WebSocketRequestTarget, WebSocketResponse, WebSocketSendState, WebSocketSubscribe,
     WebSocketSubscribed, WebSocketUnsubscribe, WebSocketUnsubscribed, MAX_WEBSOCKET_BUFFER_BYTES,
     MAX_WEBSOCKET_CANCEL_REASON_BYTES, MAX_WEBSOCKET_ERROR_BYTES, MAX_WEBSOCKET_ERROR_DETAILS,
@@ -3103,25 +3104,25 @@ pub enum SecurityAction {
     BackupCreate,
     BackupList,
     RestoreCreate,
-    ProjectSourceRead,
-    engramRead,
-    engramAdmin,
-    AuditRead,
-    AuditExport,
-    FunctionCatalogueRead,
-    FunctionCatalogueWrite,
-    FunctionExecute,
-    DiagnosticsRead,
-    FlightLaunch,
-    FlightRead,
-    TaskWrite,
-    TaskRead,
-    SecurityAdmin,
-    MemoryContextRead,
-    ReasoningRead,
-    ReasoningWrite,
-    EndpointPropose,
-    WorkerExecute,
+EstateRead,
+EstateAdmin,
+AuditRead,
+AuditExport,
+FunctionCatalogueRead,
+FunctionCatalogueWrite,
+FunctionExecute,
+DiagnosticsRead,
+FlightLaunch,
+FlightRead,
+TaskWrite,
+TaskRead,
+SecurityAdmin,
+MemoryContextRead,
+ReasoningRead,
+ReasoningWrite,
+EndpointPropose,
+WorkerExecute,
+ProjectSourceRead,
     ObservationPrepare,
     ObservationDeliver,
     ObservationRead,
@@ -3132,7 +3133,7 @@ pub enum SecurityAction {
 impl SecurityAction {
     /// Canonical policy-action catalogue. Installation profiles and other
     /// projections consume this list instead of maintaining parallel copies.
-    pub const ALL: [Self; 58] = [
+pub const ALL: [Self; 59] = [
         Self::ServiceInspect,
         Self::UnknownRequest,
         Self::SessionCreate,
@@ -3168,25 +3169,25 @@ impl SecurityAction {
         Self::BackupCreate,
         Self::BackupList,
         Self::RestoreCreate,
-        Self::ProjectSourceRead,
-        Self::engramRead,
-        Self::engramAdmin,
-        Self::AuditRead,
-        Self::AuditExport,
-        Self::FunctionCatalogueRead,
-        Self::FunctionCatalogueWrite,
-        Self::FunctionExecute,
-        Self::DiagnosticsRead,
-        Self::FlightLaunch,
-        Self::FlightRead,
-        Self::TaskWrite,
-        Self::TaskRead,
-        Self::SecurityAdmin,
-        Self::MemoryContextRead,
-        Self::ReasoningRead,
-        Self::ReasoningWrite,
-        Self::EndpointPropose,
-        Self::WorkerExecute,
+    Self::EstateRead,
+    Self::EstateAdmin,
+    Self::AuditRead,
+    Self::AuditExport,
+    Self::FunctionCatalogueRead,
+    Self::FunctionCatalogueWrite,
+    Self::FunctionExecute,
+    Self::DiagnosticsRead,
+    Self::FlightLaunch,
+    Self::FlightRead,
+    Self::TaskWrite,
+    Self::TaskRead,
+    Self::SecurityAdmin,
+    Self::MemoryContextRead,
+    Self::ReasoningRead,
+    Self::ReasoningWrite,
+    Self::EndpointPropose,
+    Self::WorkerExecute,
+    Self::ProjectSourceRead,
         Self::ObservationPrepare,
         Self::ObservationDeliver,
         Self::ObservationRead,
