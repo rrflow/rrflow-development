@@ -2,9 +2,9 @@
 
 package rrd
 
-// OpenAPI SHA-256: 7ff11cd88d5fa1e5c1f4b4810b7daeb5f90037de3c801522ce625725a3e79d40
+// OpenAPI SHA-256: 45225c46967d7a8b974087452f27b2e1ca6142d05f8bcd068e4ea143bba01f2a
 
-const EndpointOpenAPIDocumentSHA256 = "7ff11cd88d5fa1e5c1f4b4810b7daeb5f90037de3c801522ce625725a3e79d40"
+const EndpointOpenAPIDocumentSHA256 = "45225c46967d7a8b974087452f27b2e1ca6142d05f8bcd068e4ea143bba01f2a"
 
 type OperationID string
 
@@ -61,9 +61,12 @@ const (
 	OperationSessionRenew                 OperationID = "session-renew"
 	OperationSubscriptionClose            OperationID = "subscription-close"
 	OperationSubscriptionOpen             OperationID = "subscription-open"
+	OperationTaskAssessmentExecute        OperationID = "task-assessment-execute"
+	OperationTaskAssessmentRead           OperationID = "task-assessment-read"
 	OperationTaskAttemptRead              OperationID = "task-attempt-read"
 	OperationTaskBudgetConfigure          OperationID = "task-budget-configure"
 	OperationTaskBudgetRead               OperationID = "task-budget-read"
+	OperationTaskBudgetResume             OperationID = "task-budget-resume"
 	OperationTaskBudgetStop               OperationID = "task-budget-stop"
 	OperationTaskClose                    OperationID = "task-close"
 	OperationTaskEmbeddingExecute         OperationID = "task-embedding-execute"
@@ -143,9 +146,12 @@ var endpoints = map[OperationID]Endpoint{
 	OperationSessionRenew:                 {Method: "POST", Path: "/v1/sessions/{session}/renew", Authentication: "session_bearer", Mutation: true},
 	OperationSubscriptionClose:            {Method: "POST", Path: "/v1/subscriptions/close", Authentication: "session_bearer", Mutation: true},
 	OperationSubscriptionOpen:             {Method: "POST", Path: "/v1/subscriptions/open", Authentication: "session_bearer", Mutation: true},
+	OperationTaskAssessmentExecute:        {Method: "POST", Path: "/v1/tasks/assessment/execute", Authentication: "session_bearer", Mutation: true},
+	OperationTaskAssessmentRead:           {Method: "POST", Path: "/v1/tasks/assessment/read", Authentication: "session_bearer", Mutation: false},
 	OperationTaskAttemptRead:              {Method: "POST", Path: "/v1/tasks/attempt/read", Authentication: "session_bearer", Mutation: false},
 	OperationTaskBudgetConfigure:          {Method: "POST", Path: "/v1/tasks/budget/configure", Authentication: "session_bearer", Mutation: true},
 	OperationTaskBudgetRead:               {Method: "POST", Path: "/v1/tasks/budget/read", Authentication: "session_bearer", Mutation: false},
+	OperationTaskBudgetResume:             {Method: "POST", Path: "/v1/tasks/budget/resume", Authentication: "session_bearer", Mutation: true},
 	OperationTaskBudgetStop:               {Method: "POST", Path: "/v1/tasks/budget/stop", Authentication: "session_bearer", Mutation: true},
 	OperationTaskClose:                    {Method: "POST", Path: "/v1/tasks/close", Authentication: "session_bearer", Mutation: true},
 	OperationTaskEmbeddingExecute:         {Method: "POST", Path: "/v1/tasks/embedding/execute", Authentication: "session_bearer", Mutation: true},

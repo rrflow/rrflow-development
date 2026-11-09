@@ -19,19 +19,22 @@ pub use endpoint_generation::{
     EndpointGenerationSettings, EndpointResponseFormat, EndpointTokenParameter,
 };
 pub use endpoint_worker::{
-    EndpointWorkerBinding, EndpointWorkerPolicy, TaskWorkerContext, TaskWorkerOutput,
-    TaskWorkerRequest, ENDPOINT_WORKER_VERSION,
+    EndpointWorkerAdapter, EndpointWorkerBinding, EndpointWorkerPolicy, TaskWorkerContext,
+    TaskWorkerOutput, TaskWorkerRequest, TaskWorkerSourceProvenance, TaskWorkerSourceRequest,
+    ENDPOINT_WORKER_VERSION, TASK_WORKER_SOURCE_VERSION,
 };
 mod endpoint_policy;
 mod endpoint_proposal;
 mod endpoint_selection;
 pub use endpoint_policy::{EndpointSelectionPolicy, LfgAnalysisPolicy};
+mod task_assessment;
 pub use endpoint_proposal::*;
 pub use endpoint_selection::{
     EndpointAbstentionReason, EndpointEffortSupport, EndpointSelectionAllowance,
     EndpointSelectionCandidate, EndpointSelectionChoice, EndpointSelectionLimits,
     ENDPOINT_SELECTION_VERSION,
 };
+pub use task_assessment::*;
 mod observation_source;
 pub use observation_source::*;
 mod observation_delivery;
@@ -44,6 +47,7 @@ mod inference;
 mod knowledge;
 mod knowledge_tree;
 mod memory_context;
+mod memory_engram;
 mod memory_estate;
 mod model_manifest;
 mod operation_reference;
@@ -62,11 +66,11 @@ mod websocket;
 pub use attunement::{
     attunement_checkpoint_sha256, attunement_plan_sha256, attunement_replan_accept_sha256,
     attunement_replan_preview_sha256, attunement_replan_seed, attunement_verification_sha256,
-    installation_plan_sha256, installation_result_sha256, AcceptAttunementReplan,
-    AttunementCancelResult, AttunementControlResponse, AttunementFailure, AttunementJob,
-    AttunementJobPage, AttunementJobState, AttunementJobSummary, AttunementLease, AttunementPhase,
-    AttunementPhaseCheckpoint, AttunementPhasePlan, AttunementPlan, AttunementReadResult,
-    AttunementReceipt, AttunementReceiptReadResult, AttunementReplanPreview,
+    installation_initial_grants, installation_plan_sha256, installation_result_sha256,
+    AcceptAttunementReplan, AttunementCancelResult, AttunementControlResponse, AttunementFailure,
+    AttunementJob, AttunementJobPage, AttunementJobState, AttunementJobSummary, AttunementLease,
+    AttunementPhase, AttunementPhaseCheckpoint, AttunementPhasePlan, AttunementPlan,
+    AttunementReadResult, AttunementReceipt, AttunementReceiptReadResult, AttunementReplanPreview,
     AttunementReplanReceiptReadResult, AttunementReplanReceiptView, AttunementReplanResult,
     AttunementRuntimeCoordinates, AttunementSourceVerification, AttunementStatus,
     AttunementVerification, AttunementVerificationCheck, AttunementVerificationStatus,
@@ -181,6 +185,7 @@ pub use memory_context::{
     ContextPlanStageStatus, ContextReadStamp, MAX_CONTEXT_GRAPH_DEPTH, MAX_CONTEXT_ITEMS,
     MAX_CONTEXT_OUTPUT_BYTES, MAX_CONTEXT_QUERY_BYTES, MAX_CONTEXT_SEEDS, MAX_CONTEXT_STORAGE_KEYS,
 };
+pub use memory_engram::{MemoryengramPlan, PersistMemoryengram};
 pub use memory_estate::{
     MemoryEstatePlan, MemorySeatDefinition, MemoryWarp, PersistMemoryEstate,
     ProviderRepresentation, ProviderRepresentationDefinition, ResolveMemoryWarp,
@@ -272,7 +277,7 @@ use std::fmt;
 pub const PROTOCOL: &str = "rrd";
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const OPENAPI_DOCUMENT_SHA256: &str =
-    "7ff11cd88d5fa1e5c1f4b4810b7daeb5f90037de3c801522ce625725a3e79d40";
+    "45225c46967d7a8b974087452f27b2e1ca6142d05f8bcd068e4ea143bba01f2a";
 pub const MAX_ID_BYTES: usize = 128;
 pub const MAX_MESSAGE_BYTES: usize = 4_096;
 pub const MAX_CAPABILITIES: usize = 512;
@@ -2968,9 +2973,9 @@ pub struct InstanceBackupSnapshot {
     pub claims: BackupCoverageSnapshot,
     pub typed_runtime: BackupCoverageSnapshot,
     pub catalogues: BackupCoverageSnapshot,
-    /// The estate's control state outside the catalogues: installed record
+    /// The engram's control state outside the catalogues: installed record
     /// and checkpoint, active configuration, security policy and audit chain,
-    /// attunement plan and job state, and estate documents. `included` means
+    /// attunement plan and job state, and engram documents. `included` means
     /// the backup carries them as a replayable control-journal archive; the
     /// token key and operator credential are never carried.
     pub installed_control: BackupCoverageSnapshot,
@@ -3121,6 +3126,7 @@ pub enum SecurityAction {
     ReasoningWrite,
     EndpointPropose,
     WorkerExecute,
+    ProjectSourceRead,
     ObservationPrepare,
     ObservationDeliver,
     ObservationRead,
@@ -3131,7 +3137,7 @@ pub enum SecurityAction {
 impl SecurityAction {
     /// Canonical policy-action catalogue. Installation profiles and other
     /// projections consume this list instead of maintaining parallel copies.
-    pub const ALL: [Self; 58] = [
+    pub const ALL: [Self; 59] = [
         Self::ServiceInspect,
         Self::UnknownRequest,
         Self::SessionCreate,
@@ -3185,6 +3191,7 @@ impl SecurityAction {
         Self::ReasoningWrite,
         Self::EndpointPropose,
         Self::WorkerExecute,
+        Self::ProjectSourceRead,
         Self::ObservationPrepare,
         Self::ObservationDeliver,
         Self::ObservationRead,
@@ -4145,6 +4152,16 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             "TaskBudgetView",
         ),
         endpoint(
+            "task-budget-resume",
+            HttpMethod::Post,
+            "/v1/tasks/budget/resume",
+            EndpointAuthentication::SessionBearer,
+            true,
+            SecurityAction::ReasoningWrite,
+            "ResumeTaskBudget",
+            "TaskBudgetView",
+        ),
+        endpoint(
             "task-budget-stop",
             HttpMethod::Post,
             "/v1/tasks/budget/stop",
@@ -4153,6 +4170,26 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             SecurityAction::ReasoningWrite,
             "StopTaskBudget",
             "TaskBudgetView",
+        ),
+        endpoint(
+            "task-assessment-execute",
+            HttpMethod::Post,
+            "/v1/tasks/assessment/execute",
+            EndpointAuthentication::SessionBearer,
+            true,
+            SecurityAction::EndpointPropose,
+            "TaskAssessmentRequest",
+            "TaskAssessmentOutput",
+        ),
+        endpoint(
+            "task-assessment-read",
+            HttpMethod::Post,
+            "/v1/tasks/assessment/read",
+            EndpointAuthentication::SessionBearer,
+            false,
+            SecurityAction::ReasoningRead,
+            "ReadTaskAssessment",
+            "TaskAssessmentView",
         ),
         endpoint(
             "task-embedding-execute",
@@ -4709,7 +4746,7 @@ fn openapi_vector_payload_filter_schema() -> Result<serde_json::Value> {
 
 fn openapi_parameters(descriptor: &EndpointDescriptor) -> Vec<serde_json::Value> {
     let mut parameters = Vec::new();
-    for name in ["estate", "session", "transaction"] {
+    for name in ["engram", "session", "transaction"] {
         if descriptor.path.contains(&format!("{{{name}}}")) {
             parameters.push(serde_json::json!({
                 "name": name,
@@ -4752,14 +4789,17 @@ fn request_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "ExecuteTaskEmbedding" => schema_json::<RequestEnvelope<ExecuteTaskEmbedding>>(),
         "EndpointSelectionRequest" => schema_json::<RequestEnvelope<EndpointSelectionRequest>>(),
         "TaskWorkerRequest" => schema_json::<RequestEnvelope<TaskWorkerRequest>>(),
+        "TaskAssessmentRequest" => schema_json::<RequestEnvelope<TaskAssessmentRequest>>(),
         "PrepareObservationDelivery" => {
             schema_json::<RequestEnvelope<PrepareObservationDelivery>>()
         }
         "DeliverObservation" => schema_json::<RequestEnvelope<DeliverObservation>>(),
         "ReadObservationDelivery" => schema_json::<RequestEnvelope<ReadObservationDelivery>>(),
+        "ReadTaskAssessment" => schema_json::<RequestEnvelope<ReadTaskAssessment>>(),
         "ReadTaskAttempt" => schema_json::<RequestEnvelope<ReadTaskAttempt>>(),
         "ReadTaskBudget" => schema_json::<RequestEnvelope<ReadTaskBudget>>(),
         "StopTaskBudget" => schema_json::<RequestEnvelope<StopTaskBudget>>(),
+        "ResumeTaskBudget" => schema_json::<RequestEnvelope<ResumeTaskBudget>>(),
         "AbortTransaction" => schema_json::<RequestEnvelope<AbortTransaction>>(),
         "AssembleContext" => schema_json::<RequestEnvelope<AssembleContext>>(),
         "BeginTransaction" => schema_json::<RequestEnvelope<BeginTransaction>>(),
@@ -4844,6 +4884,8 @@ fn response_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "EmbeddingModelCatalogue" => schema_json::<ResponseEnvelope<EmbeddingModelCatalogue>>(),
         "GenerateEmbeddingsResult" => schema_json::<ResponseEnvelope<GenerateEmbeddingsResult>>(),
         "TaskAttemptView" => schema_json::<ResponseEnvelope<TaskAttemptView>>(),
+        "TaskAssessmentView" => schema_json::<ResponseEnvelope<TaskAssessmentView>>(),
+        "TaskAssessmentOutput" => schema_json::<ResponseEnvelope<TaskAssessmentOutput>>(),
         "EndpointSelectionProposal" => schema_json::<ResponseEnvelope<EndpointSelectionProposal>>(),
         "TaskWorkerOutput" => schema_json::<ResponseEnvelope<TaskWorkerOutput>>(),
         "TaskBudgetView" => schema_json::<ResponseEnvelope<TaskBudgetView>>(),
@@ -5585,6 +5627,7 @@ impl<'de> Deserialize<'de> for CanonicalId {
 pub enum ResourceKind {
     Organization,
     Estate,
+    Engram,
     Project,
     Instance,
     Tenant,
@@ -5895,7 +5938,7 @@ impl ServiceCapabilities {
             installed.validate()?;
             if installed.instance_id != self.instance.id {
                 return invalid(
-                    "service capability instance differs from installed estate identity",
+                    "service capability instance differs from installed engram identity",
                 );
             }
         }
@@ -6302,8 +6345,8 @@ pub const MAX_DATA_TAGS_PER_KIND: usize = 64;
 pub const MAX_DATA_ORGANISATION_TITLE_BYTES: usize = 128;
 pub const MAX_DATA_ORGANISATION_DESCRIPTION_BYTES: usize = 1_024;
 
-/// One configurable part of an estate's catalogue, such as a service, package
-/// or subject area. The estate organisation contract owns its rules.
+/// One configurable part of an engram's catalogue, such as a service, package
+/// or subject area. The engram organisation contract owns its rules.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct DataDomainSchema {
@@ -6362,7 +6405,7 @@ pub struct DataTagReference {
     pub tag: CanonicalId,
 }
 
-/// Domains, categories and memberships of one estate catalogue. A kind or
+/// Domains, categories and memberships of one engram catalogue. A kind or
 /// collection without an entry belongs to `default`, or to `rrflow` when its
 /// identity starts with `rrflow-`.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -6404,6 +6447,10 @@ impl DataEstateOrganisation {
         )
     }
 }
+
+/// Internal engram terminology maps to the existing public organization type.
+/// There is one serialized and validated representation.
+pub type DataengramOrganisation = DataEstateOrganisation;
 
 fn default_data_domain(identity: &str) -> &'static str {
     if identity.starts_with(DATA_ENGINE_OWNED_PREFIX) {
@@ -6936,7 +6983,7 @@ fn validate_data_schema(registry: &DataSchemaRegistry) -> Result<()> {
     validate_data_organisation(registry)
 }
 
-/// Public-boundary checks of the estate organisation. `rrd-core` repeats them
+/// Public-boundary checks of the engram organisation. `rrd-core` repeats them
 /// as the authority at commit; an engine parity test keeps the two aligned.
 fn validate_data_organisation(registry: &DataSchemaRegistry) -> Result<()> {
     let organisation = &registry.organisation;
@@ -6945,7 +6992,7 @@ fn validate_data_organisation(registry: &DataSchemaRegistry) -> Result<()> {
         |id: &str| id == DATA_ENGINE_DOMAIN || id.starts_with(DATA_ENGINE_OWNED_PREFIX);
     if organisation.domains.len() + 2 > MAX_DATA_DOMAINS {
         return invalid(format!(
-            "an estate may declare at most {} domains besides default and rrflow",
+            "an engram may declare at most {} domains besides default and rrflow",
             MAX_DATA_DOMAINS - 2
         ));
     }
@@ -7035,7 +7082,7 @@ fn validate_data_organisation(registry: &DataSchemaRegistry) -> Result<()> {
     }
     if organisation.categories.len() > MAX_DATA_CATEGORIES {
         return invalid(format!(
-            "an estate may declare at most {MAX_DATA_CATEGORIES} categories"
+            "an engram may declare at most {MAX_DATA_CATEGORIES} categories"
         ));
     }
     for (id, category) in &organisation.categories {

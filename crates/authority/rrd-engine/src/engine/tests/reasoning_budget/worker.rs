@@ -1,5 +1,7 @@
 //! Admission probes, not model-quality observations or learning records.
 mod observation;
+mod resume;
+mod source_bound;
 mod terminal_response;
 use super::*;
 use crate::engine::operation_digest;
@@ -89,10 +91,12 @@ fn admitted_fixture(
         bindings,
         selection_policy: Some(selector.clone()),
         observation_policy: None,
+        assessment_policy: None,
         worker_policy: Some(EndpointWorkerPolicy {
             contract_version: 1,
             allow_network: true,
             allow_context_export: true,
+            allow_source_export: false,
             allow_unverified_identity: true,
             maximum_concurrent_calls: 1,
             bindings: vec![EndpointWorkerBinding {
@@ -100,6 +104,7 @@ fn admitted_fixture(
                 protocol_evidence_sha256: digest::sha256_hex(
                     b"controlled protocol fixture, not provider qualification",
                 ),
+                adapter: Default::default(),
                 system_prompt: "Return a protocol-test draft, no project effects.".into(),
                 generation: EndpointGenerationSettings {
                     maximum_output_tokens: 256,
@@ -162,6 +167,8 @@ fn admitted_fixture(
             .unwrap()
             .task_sha256,
         expected_configuration_sha256: configuration.sha256().unwrap(),
+        flight: None,
+        routing: None,
     };
     (root, engine, lease, request)
 }
@@ -299,6 +306,7 @@ fn worker_consumes_retained_selection_reserves_before_http_and_reopens_without_r
             expected_configuration_sha256: selection.configuration_sha256,
             max_storage_keys: MAX_TASK_STORAGE_KEYS,
             context: None,
+            source: None,
         };
         let before = budget(&engine, &lease, &request.task_id);
         let output = engine
@@ -407,6 +415,7 @@ fn worker_requires_initialized_authority_before_reservation() {
         expected_configuration_sha256: digest::sha256_hex(b"explicit absent configuration probe"),
         max_storage_keys: MAX_TASK_STORAGE_KEYS,
         context: None,
+        source: None,
     };
     assert!(matches!(
         engine.execute_task_worker_with_clock(
@@ -486,6 +495,7 @@ fn selected_request(
         expected_configuration_sha256: proposal.configuration_sha256,
         max_storage_keys: MAX_TASK_STORAGE_KEYS,
         context: None,
+        source: None,
     }
 }
 
@@ -510,6 +520,7 @@ fn replace_profile(
         bindings: profile.bindings,
         selection_policy: profile.selection_policy,
         observation_policy: profile.observation_policy,
+        assessment_policy: profile.assessment_policy,
         worker_policy: profile.worker_policy,
     };
     edit(&mut input);

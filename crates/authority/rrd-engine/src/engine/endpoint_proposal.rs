@@ -188,6 +188,7 @@ impl RrdEngine {
                 .allowance(&configuration)
                 .map_err(|e| ServiceError::Contract(e.to_string()))?,
             lfg: None,
+            routing: request.routing.clone(),
         };
         if packet.task.task_sha256 != request.expected_task_sha256 {
             return Err(ServiceError::TaskAttemptInvalidated(
@@ -496,6 +497,8 @@ impl RrdEngine {
                 controller_binding_id: binding.id.clone(),
                 service_id: CanonicalId::new(observed.service_id)
                     .map_err(|e| ServiceError::Contract(e.to_string()))?,
+                flight: request.flight.clone(),
+                routing: packet.routing.clone(),
                 request_sha256: observed.request_sha256,
                 response_sha256: observed.response_sha256,
                 content_sha256: observed.content_sha256,
@@ -549,7 +552,9 @@ impl RrdEngine {
             &context,
         )? {
             TaskAttemptOutput::EndpointProposal(proposal) => Ok(*proposal),
-            TaskAttemptOutput::Embedding(_) | TaskAttemptOutput::Worker(_) => {
+            TaskAttemptOutput::Embedding(_)
+            | TaskAttemptOutput::Worker(_)
+            | TaskAttemptOutput::Assessment(_) => {
                 Err(ServiceError::Storage("unexpected task output kind".into()))
             }
         }

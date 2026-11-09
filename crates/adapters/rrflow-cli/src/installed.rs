@@ -256,6 +256,7 @@ fn install(action: &InstallAction, json: bool) -> Result<Execution, BoxError> {
             profile,
             configuration,
             attunement_proposal,
+            allow_project_source_read,
             test_distribution_executable,
         } => {
             let started = Instant::now();
@@ -264,13 +265,16 @@ fn install(action: &InstallAction, json: bool) -> Result<Execution, BoxError> {
                 .as_deref()
                 .map(rrd_engine::load_attunement_proposal)
                 .transpose()?;
-            let preview = RrdEngine::plan_installation_with_proposal(
+            let preview = RrdEngine::plan_installation_with_options(
                 project,
                 target_kind(*mode),
                 identity,
                 profile,
                 configuration.as_deref(),
-                proposal.as_ref(),
+                rrd_engine::InstallationPlanningOptions {
+                    attunement_proposal: proposal,
+                    allow_project_source_read: *allow_project_source_read,
+                },
                 &executable,
             )?;
             tracing::info!(

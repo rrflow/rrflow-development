@@ -247,10 +247,12 @@ fn run_flow(scenario: Scenario, real_lfg: Option<String>) {
         contract_version: 1,
         allow_network: true,
         allow_context_export: true,
+        allow_source_export: false,
         allow_unverified_identity: true,
         maximum_concurrent_calls: 1,
         bindings: vec![rrd_contract::EndpointWorkerBinding {
             binding_id: policy.candidates[0].binding_id.clone(),
+            adapter: Default::default(),
             protocol_evidence_sha256: digest::sha256_hex(b"synthetic worker protocol only"),
             system_prompt: "Return a synthetic draft without project effects.".into(),
             generation: rrd_contract::EndpointGenerationSettings {
@@ -271,6 +273,7 @@ fn run_flow(scenario: Scenario, real_lfg: Option<String>) {
         selection_policy: profile.selection_policy.clone(),
         observation_policy: profile.observation_policy.clone(),
         worker_policy: profile.worker_policy.clone(),
+        assessment_policy: None,
     };
     let mut next_input = input.clone();
     next_input
@@ -542,6 +545,7 @@ fn run_flow(scenario: Scenario, real_lfg: Option<String>) {
             expected_configuration_sha256: selected.configuration_sha256.clone(),
             max_storage_keys: rrd_contract::MAX_TASK_STORAGE_KEYS,
             context: None,
+            source: None,
         };
         let expected_selection = worker_request.expected_selection_sha256.clone();
         let worker_thread = std::thread::spawn(move || {

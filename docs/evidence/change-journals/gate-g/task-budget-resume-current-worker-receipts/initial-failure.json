@@ -1,0 +1,43 @@
+{
+  "status": 412,
+  "request": {
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "context": {
+      "request_id": "controller-proof-55c5801363874c3bb849df7a9754aa88",
+      "operation_id": "controller-proof-55c5801363874c3bb849df7a9754aa88",
+      "idempotency_key": "controller-proof-55c5801363874c3bb849df7a9754aa88",
+      "deadline_unix_ms": null
+    },
+    "resource": {
+      "segments": [
+        {
+          "kind": "instance",
+          "id": "instance-1a890c4ae8ab1baf8bcee1cf"
+        }
+      ]
+    },
+    "payload": {
+      "scope": "instance:instance-1a890c4ae8ab1baf8bcee1cf",
+      "task_id": "task-6eef56ffe6521ec45d846ccaee03aaf67ffe2911aa52e35bf50790c76026728f",
+      "attempt_id": "actual-proposal-ffff544367a54d418db74b92df3d9444",
+      "max_storage_keys": 1000000,
+      "expected_task_sha256": "2398a6f7cdad29fd8d8ace28f100e0cc0167b28b529fd9420af7a52fd696c0d6",
+      "expected_configuration_sha256": "9ea0dde031d945f09083840dac1ca6ce657ca60d53600f4c385b0216863e79fb"
+    }
+  },
+  "response": {
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "request_id": "controller-proof-55c5801363874c3bb849df7a9754aa88",
+    "operation_id": "controller-proof-55c5801363874c3bb849df7a9754aa88",
+    "outcome": {
+      "status": "error",
+      "error": {
+        "code": "failed_precondition",
+        "message": "EndpointCallFailed { reason: \"chat transport failed; remote outcome unknown\", execution_may_continue: true }",
+        "retryable": false
+      }
+    }
+  }
+}

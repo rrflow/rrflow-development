@@ -10,6 +10,37 @@ independently.
 
 ## Observed deficiency
 
+The [controller-assessment package](../../evidence/change-journals/gate-g/task-controller-assessments.md)
+records the landed selected-source prerequisites and actual matching desktop
+recovery. A real source-bound BF16 worker response and correlated metadata
+delivery were observed; this is not correctness or comparative training evidence.
+Strict binary/score/choice assessment is being added under PR292, with its engine
+behavioral tests and subsequent Tasks consumer still incomplete. Governed project
+effects, bounded LFG/SWAG cycles and independently reviewed learning remain open.
+
+The assessment package also reproduced a same-task recovery gap: after
+`repeated_work` stops a budget, an ordinary selected-file edit and accepted
+replan still cannot resume it under the landed cancelled/failed-only contract.
+Its published amendment permits explicit recovery while retaining repetition
+history, spent allowance and all active/unknown-work fences. The draft's focused
+positive recovery and authenticated tracking-limit denial tests passed with
+controlled responses. Final combined validation, matching UI control and
+protected landing remain pending; this does not yet prove installed UI recovery.
+
+The [reconciled installed recovery trial](../../evidence/change-journals/gate-g/task-budget-resume-current-installed.md)
+proves explicit same-task resume on clean source `a99d577a`: four actual provider
+responses, preserved original effort/deadline/history and independent credential-free
+readback. An earlier disconnected attempt remains stopped with unknown execution;
+it was not retried or cleared. Native candidate/protected CI, UI PR29/PR30,
+source-grounded context, project effects and reviewed learning remain required.
+
+The [explicit budget-resume increment](../../evidence/change-journals/gate-g/task-budget-resume.md)
+adds the existing engine's authenticated transition for safely completed stopped
+work while retaining original effort/deadline and attempt history. Unknown or
+active work remains denied. Installed same-task BF16 recovery, UI composition,
+candidate/dependency landing and the broader project workflow remain required;
+this does not qualify automatic retry or unknown-outcome reconciliation.
+
 The [current installed worker trial](../../evidence/change-journals/gate-g/task-worker-main-installed-live-20261106.md)
 uses real model responses on reconciled source `604c196d`, with native selection
 and worker calls, restart/replay checks and independent recovery without provider

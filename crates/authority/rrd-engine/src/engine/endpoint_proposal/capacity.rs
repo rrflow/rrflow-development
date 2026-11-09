@@ -19,6 +19,21 @@ pub(in crate::engine) struct WorkerCapacityLease {
     pub binding_id: CanonicalId,
 }
 
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(in crate::engine) struct AssessmentCapacityLease {
+    pub scope: String,
+    pub task_id: CanonicalId,
+    pub attempt_id: CorrelationId,
+    pub binding_id: CanonicalId,
+}
+
+impl AssessmentCapacityLease {
+    fn identity(&self) -> Result<String> {
+        operation_digest(&(&self.scope, &self.task_id, &self.attempt_id))
+    }
+}
+
 impl WorkerCapacityLease {
     fn identity(&self) -> Result<String> {
         operation_digest(&(&self.scope, &self.task_id, &self.attempt_id))
@@ -32,6 +47,8 @@ struct CapacityState {
     outstanding: BTreeMap<String, CapacityLease>,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     workers: BTreeMap<String, WorkerCapacityLease>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    assessments: BTreeMap<String, AssessmentCapacityLease>,
 }
 
 impl RrdEngine {
@@ -43,12 +60,15 @@ impl RrdEngine {
         let (key, expected, mut state) = self.load_endpoint_capacity()?;
         let id = capacity_identity(lease)?;
         if let Some((aggregate, binding)) = limits {
-            if state.outstanding.contains_key(&id) || state.workers.contains_key(&id) {
+            if state.outstanding.contains_key(&id)
+                || state.workers.contains_key(&id)
+                || state.assessments.contains_key(&id)
+            {
                 return Err(ServiceError::ReasoningAttemptRecorded {
                     outcome_sha256: None,
                 });
             }
-            if state.outstanding.len() >= aggregate as usize
+            if state.outstanding.len() + state.assessments.len() >= aggregate as usize
                 || state.len() >= rrd_contract::MAX_PROFILE_BINDINGS
                 || state.binding_count(&lease.controller_binding_id) >= binding as usize
             {
@@ -74,7 +94,10 @@ impl RrdEngine {
         let (key, expected, mut state) = self.load_endpoint_capacity()?;
         let id = lease.identity()?;
         if let Some((aggregate, binding)) = limits {
-            if state.outstanding.contains_key(&id) || state.workers.contains_key(&id) {
+            if state.outstanding.contains_key(&id)
+                || state.workers.contains_key(&id)
+                || state.assessments.contains_key(&id)
+            {
                 return Err(ServiceError::ReasoningAttemptRecorded {
                     outcome_sha256: None,
                 });
@@ -97,6 +120,40 @@ impl RrdEngine {
         capacity_write(key, expected, state)
     }
 
+    pub(in crate::engine) fn assessment_capacity_transition(
+        &self,
+        lease: &AssessmentCapacityLease,
+        limits: Option<(u32, u32)>,
+    ) -> Result<AttemptControlWrite> {
+        let (key, expected, mut state) = self.load_endpoint_capacity()?;
+        let id = lease.identity()?;
+        if let Some((aggregate, binding)) = limits {
+            if state.outstanding.contains_key(&id)
+                || state.workers.contains_key(&id)
+                || state.assessments.contains_key(&id)
+            {
+                return Err(ServiceError::ReasoningAttemptRecorded {
+                    outcome_sha256: None,
+                });
+            }
+            if state.outstanding.len() + state.assessments.len() >= aggregate as usize
+                || state.len() >= rrd_contract::MAX_PROFILE_BINDINGS
+                || state.binding_count(&lease.binding_id) >= binding as usize
+            {
+                return Err(ServiceError::InferenceBusy);
+            }
+            state.assessments.insert(id, lease.clone());
+        } else {
+            if state.assessments.get(&id) != Some(lease) {
+                return Err(ServiceError::StorageConflict(
+                    "assessment capacity ownership changed".into(),
+                ));
+            }
+            state.assessments.remove(&id);
+        }
+        capacity_write(key, expected, state)
+    }
+
     fn load_endpoint_capacity(&self) -> Result<(String, Option<Vec<u8>>, CapacityState)> {
         let key = format!("server/state/{}/endpoint-proposal/capacity", self.instance);
         let expected = self.storage.control().get(&key)?;
@@ -112,6 +169,7 @@ impl RrdEngine {
                 format_version: 1,
                 outstanding: BTreeMap::new(),
                 workers: BTreeMap::new(),
+                assessments: BTreeMap::new(),
             },
         };
         if state.format_version != 1 || state.len() > rrd_contract::MAX_PROFILE_BINDINGS {
@@ -138,9 +196,29 @@ impl RrdEngine {
             }
             .validate()
             .map_err(|e| ServiceError::Storage(e.to_string()))?;
-            if *id != stored.identity()? || state.outstanding.contains_key(id) {
+            if *id != stored.identity()?
+                || state.outstanding.contains_key(id)
+                || state.assessments.contains_key(id)
+            {
                 return Err(ServiceError::Storage(
                     "worker capacity identity is corrupt".into(),
+                ));
+            }
+        }
+        for (id, stored) in &state.assessments {
+            rrd_contract::ReadTaskAttempt {
+                scope: stored.scope.clone(),
+                task_id: stored.task_id.clone(),
+                attempt_id: stored.attempt_id.clone(),
+            }
+            .validate()
+            .map_err(|e| ServiceError::Storage(e.to_string()))?;
+            if *id != stored.identity()?
+                || state.outstanding.contains_key(id)
+                || state.workers.contains_key(id)
+            {
+                return Err(ServiceError::Storage(
+                    "assessment capacity identity is corrupt".into(),
                 ));
             }
         }
@@ -150,7 +228,7 @@ impl RrdEngine {
 
 impl CapacityState {
     fn len(&self) -> usize {
-        self.outstanding.len() + self.workers.len()
+        self.outstanding.len() + self.workers.len() + self.assessments.len()
     }
     fn binding_count(&self, binding_id: &CanonicalId) -> usize {
         self.outstanding
@@ -159,6 +237,11 @@ impl CapacityState {
             .count()
             + self
                 .workers
+                .values()
+                .filter(|entry| &entry.binding_id == binding_id)
+                .count()
+            + self
+                .assessments
                 .values()
                 .filter(|entry| &entry.binding_id == binding_id)
                 .count()
@@ -189,4 +272,21 @@ fn capacity_identity(lease: &CapacityLease) -> Result<String> {
         &lease.request.task_id,
         &lease.request.attempt_id,
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::CapacityState;
+
+    #[test]
+    fn legacy_capacity_state_defaults_new_maps_without_changing_legacy_shape() {
+        let legacy = br#"{"format_version":1,"outstanding":{}}"#;
+        let state: CapacityState = serde_json::from_slice(legacy).unwrap();
+        assert!(state.workers.is_empty());
+        assert!(state.assessments.is_empty());
+        assert_eq!(
+            serde_json::to_value(state).unwrap(),
+            serde_json::json!({"format_version": 1, "outstanding": {}})
+        );
+    }
 }

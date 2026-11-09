@@ -20,6 +20,7 @@ fn profile(name: &str) -> EndpointProfileInput {
         selection_policy: None,
         worker_policy: None,
         observation_policy: None,
+        assessment_policy: None,
         bindings: vec![EndpointBinding {
             id: CanonicalId::new("knowledge-source").unwrap(),
             class: WorkloadClass::VectorStore,
@@ -170,12 +171,14 @@ fn configuration_policy_reopens(include_worker: bool, include_observation: bool)
             contract_version: rrd_contract::ENDPOINT_WORKER_VERSION,
             allow_network: true,
             allow_context_export: true,
+            allow_source_export: false,
             allow_unverified_identity: true,
             maximum_concurrent_calls: 1,
             bindings: vec![rrd_contract::EndpointWorkerBinding {
                 binding_id: candidate.binding_id.clone(),
                 // Protocol persistence probe, not a new capability observation.
                 protocol_evidence_sha256: evidence_sha256.clone(),
+                adapter: Default::default(),
                 system_prompt: "Return a bounded draft.".into(),
                 generation: rrd_contract::EndpointGenerationSettings {
                     maximum_output_tokens: 256,
@@ -233,6 +236,7 @@ fn configuration_policy_reopens(include_worker: bool, include_observation: bool)
         selection_policy: Some(policy.clone()),
         worker_policy: worker_policy.clone(),
         observation_policy: observation_policy.clone(),
+        assessment_policy: None,
     };
     let (root, mut engine) = isolated_engine();
     bind(&mut engine, "selector-policy-persistence");

@@ -10,7 +10,8 @@ use super::*;
 use rrd_contract::{
     ContextPacket, ContextReadStamp, EndpointSelectionChoice, EndpointSelectionTask, ReadTask,
     ReadTaskAttempt, TaskAttemptInvalidation, TaskAttemptStatus, TaskWorkerContext,
-    TaskWorkerOutput, TaskWorkerRequest, ENDPOINT_WORKER_VERSION,
+    TaskWorkerOutput, TaskWorkerRequest, TaskWorkerSourceProvenance, TaskWorkerSourceRequest,
+    ENDPOINT_WORKER_VERSION, TASK_WORKER_SOURCE_VERSION,
 };
 use rrd_inference::endpoint_chat::{ChatMessage, ChatRole, ModelChatRequest, PreparedModelChat};
 use rrd_inference::{EmbeddingCancellation, NetworkPolicy};
@@ -31,13 +32,279 @@ struct WorkerPacket {
     configuration_sha256: String,
     read: ContextReadStamp,
     context: Option<ContextPacket>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    source: Option<WorkerSourcePacket>,
+}
+
+#[derive(Clone, Serialize)]
+pub(super) struct WorkerSourcePacket {
+    pub(super) content: String,
+    pub(super) provenance: TaskWorkerSourceProvenance,
+}
+
+pub(super) struct WorkerSourceCapture {
+    pub(super) packet: WorkerSourcePacket,
+    pub(super) head_key: String,
+    pub(super) head_bytes: Vec<u8>,
+}
+
+impl WorkerSourceCapture {
+    pub(super) fn provenance(&self) -> &TaskWorkerSourceProvenance {
+        &self.packet.provenance
+    }
 }
 
 struct WorkerAuthority {
     guards: Vec<(AttemptAuthorityGuard, TaskAttemptInvalidation)>,
 }
 
+struct SelectedSourceReadbackContext<'a> {
+    session: &'a CorrelationId,
+    token: &'a CorrelationId,
+    now: u64,
+    request_id: &'a str,
+    operation_id: &'a str,
+}
+
 impl RrdEngine {
+    pub(in crate::engine) fn authorize_worker_source_readback(
+        &self,
+        session: &CorrelationId,
+        token: &CorrelationId,
+        source: &TaskWorkerSourceProvenance,
+        now: u64,
+        request_id: &str,
+        operation_id: &str,
+    ) -> Result<()> {
+        self.authorize_selected_source_readback(
+            SelectedSourceReadbackContext {
+                session,
+                token,
+                now,
+                request_id,
+                operation_id,
+            },
+            source,
+            false,
+        )
+    }
+
+    pub(in crate::engine) fn authorize_assessment_source_readback(
+        &self,
+        session: &CorrelationId,
+        token: &CorrelationId,
+        source: &TaskWorkerSourceProvenance,
+        now: u64,
+        request_id: &str,
+        operation_id: &str,
+    ) -> Result<()> {
+        self.authorize_selected_source_readback(
+            SelectedSourceReadbackContext {
+                session,
+                token,
+                now,
+                request_id,
+                operation_id,
+            },
+            source,
+            true,
+        )
+    }
+
+    fn authorize_selected_source_readback(
+        &self,
+        context: SelectedSourceReadbackContext<'_>,
+        source: &TaskWorkerSourceProvenance,
+        assessment: bool,
+    ) -> Result<()> {
+        let resource =
+            worker_source_resource(&self.instance, &source.project_id, &source.entry_identity)?;
+        self.authorize_resource_without_data_policy(
+            context.session,
+            context.token,
+            SecurityAction::ProjectSourceRead,
+            &resource,
+            context.now,
+            context.request_id,
+            context.operation_id,
+        )?;
+        self.authorize_resource_without_data_policy(
+            context.session,
+            context.token,
+            SecurityAction::MemoryContextRead,
+            &self.instance_resource(),
+            context.now,
+            context.request_id,
+            context.operation_id,
+        )?;
+
+        let configuration = self.load_endpoint_configuration()?.1;
+        let allowed =
+            configuration.profile.as_ref().is_some_and(|profile| {
+                if assessment {
+                    profile.assessment_policy.as_ref().is_some_and(|policy| {
+                        policy.allow_context_export && policy.allow_source_export
+                    })
+                } else {
+                    profile.worker_policy.as_ref().is_some_and(|policy| {
+                        policy.allow_context_export && policy.allow_source_export
+                    })
+                }
+            });
+        if !allowed {
+            return Err(ServiceError::PermissionDenied);
+        }
+
+        let installed = self.attunement_installed_record()?;
+        let (profile, profile_sha256) = super::installation::DefaultInstallProfile::load(
+            installed.installation.profile_id.as_str(),
+        )?;
+        if profile_sha256 != installed.installation.profile_sha256
+            || profile_sha256 != source.profile_sha256
+            || installed.installation.target.instance_id != self.instance
+            || installed.installation.target.project_id != source.project_id
+        {
+            return Err(ServiceError::ProjectBindingMismatch);
+        }
+        let root = self
+            .installed_project_root
+            .as_ref()
+            .ok_or(ServiceError::ProjectBindingMismatch)?;
+        let limits = &profile.inventory_policy.limits;
+        let accepted = super::attunement::load_accepted_source(
+            self,
+            &source.project_id,
+            limits.output_bytes,
+            limits.entries,
+        )?;
+        let entry = accepted
+            .proposal
+            .entries()
+            .iter()
+            .find(|entry| entry.identity == source.entry_identity)
+            .ok_or(ServiceError::ProjectBindingMismatch)?;
+        if digest::sha256_hex(entry.path.as_bytes()) != source.path_sha256 {
+            return Err(ServiceError::ProjectBindingMismatch);
+        }
+        super::installation::validate_selected_inventory_path(
+            root,
+            &profile,
+            std::path::Path::new(&entry.path),
+            limits.file_bytes,
+            &|| Ok(()),
+        )
+    }
+
+    pub(super) fn capture_worker_source(
+        &self,
+        request: &TaskWorkerSourceRequest,
+        maximum_input_bytes: u64,
+        clock: &dyn ClockSource,
+        check: &dyn Fn() -> Result<()>,
+    ) -> Result<WorkerSourceCapture> {
+        let installed = self.attunement_installed_record()?;
+        let (profile, profile_sha256) = super::installation::DefaultInstallProfile::load(
+            installed.installation.profile_id.as_str(),
+        )?;
+        if profile_sha256 != installed.installation.profile_sha256
+            || installed.installation.target.instance_id != self.instance
+        {
+            return Err(ServiceError::ProjectBindingMismatch);
+        }
+        let root = self
+            .installed_project_root
+            .as_ref()
+            .ok_or(ServiceError::ProjectBindingMismatch)?;
+        let limits = &profile.inventory_policy.limits;
+        let accepted = super::attunement::load_accepted_source(
+            self,
+            &installed.installation.target.project_id,
+            limits.output_bytes,
+            limits.entries,
+        )?;
+        let proposal = &accepted.proposal;
+        let scope = proposal.scope();
+        if accepted.project_id != installed.installation.target.project_id
+            || scope.project != installed.installation.target.project_id.as_str()
+            || scope.estate != installed.installation.target.estate_id.as_str()
+            || scope.root != profile.inventory_policy.logical_root.as_str()
+        {
+            return Err(ServiceError::ProjectBindingMismatch);
+        }
+        let entry = proposal
+            .entries()
+            .iter()
+            .find(|entry| entry.identity == request.entry_identity)
+            .ok_or(ServiceError::ProjectBindingMismatch)?;
+        let rrd_attunement::inventory::EntryKind::File {
+            observation,
+            content_sha256,
+        } = &entry.kind
+        else {
+            return Err(ServiceError::ProjectBindingMismatch);
+        };
+        let read_limit = request
+            .maximum_input_bytes
+            .min(maximum_input_bytes)
+            .min(limits.file_bytes);
+        if content_sha256 != &request.expected_content_sha256
+            || observation.bytes > read_limit
+            || observation.classification_sha256
+                != digest::sha256_hex(b"rrflow-content-only-v1:unclassified")
+        {
+            return Err(ServiceError::ProjectBindingMismatch);
+        }
+        check()?;
+        super::installation::validate_selected_inventory_path(
+            root,
+            &profile,
+            std::path::Path::new(&entry.path),
+            read_limit,
+            check,
+        )?;
+        let (bytes, actual_digest) = super::installation::read_admitted_inventory_file(
+            root,
+            std::path::Path::new(&entry.path),
+            observation,
+            read_limit,
+            limits.elapsed_ms,
+            check,
+        )?;
+        if actual_digest != *content_sha256 {
+            return Err(ServiceError::ProjectBindingMismatch);
+        }
+        let content = String::from_utf8(bytes)
+            .map_err(|_| ServiceError::Contract("selected source is not UTF-8".into()))?;
+        let observed_at_unix_ms =
+            observe_required(clock, "worker-source-observed")?.observed_at_unix_ms;
+        let head_read = context_read_stamp(&accepted.read);
+        let path_sha256 = digest::sha256_hex(entry.path.as_bytes());
+        let provenance = TaskWorkerSourceProvenance {
+            contract_version: TASK_WORKER_SOURCE_VERSION,
+            captured_snapshot_sha256: accepted.proposal_sha256.clone(),
+            captured_read: head_read.clone(),
+            project_id: installed.installation.target.project_id.clone(),
+            entry_identity: entry.identity.clone(),
+            path_sha256,
+            content_sha256: actual_digest,
+            policy_sha256: proposal.revisions().policy_sha256.clone(),
+            profile_sha256,
+            captured_at_unix_ms: observed_at_unix_ms,
+            validated_snapshot_sha256: proposal.proposal_sha256().to_owned(),
+            validated_read: head_read,
+            validated_at_unix_ms: observed_at_unix_ms,
+        };
+        provenance.validate().map_err(worker_contract)?;
+        Ok(WorkerSourceCapture {
+            packet: WorkerSourcePacket {
+                content,
+                provenance,
+            },
+            head_key: super::attunement::source_head_key(&self.instance),
+            head_bytes: accepted.head_bytes,
+        })
+    }
+
     pub fn execute_task_worker(
         &self,
         session: &CorrelationId,
@@ -93,6 +360,9 @@ impl RrdEngine {
             || !policy.allow_context_export
             || !policy.allow_unverified_identity
         {
+            return Err(ServiceError::PermissionDenied);
+        }
+        if request.source.is_some() && !policy.allow_source_export {
             return Err(ServiceError::PermissionDenied);
         }
         let (selection_guard, retained) = self.read_task_attempt_record(&ReadTaskAttempt {
@@ -152,6 +422,18 @@ impl RrdEngine {
             .iter()
             .find(|binding| &binding.id == binding_id)
             .ok_or_else(|| ServiceError::Contract("selected binding is absent".into()))?;
+        let source_capture = request
+            .source
+            .as_ref()
+            .map(|source| {
+                self.capture_worker_source(
+                    source,
+                    binding.limits.max_input_bytes,
+                    clock,
+                    &|| Ok(()),
+                )
+            })
+            .transpose()?;
         let read = self
             .storage
             .runtime()
@@ -196,6 +478,10 @@ impl RrdEngine {
                 catalogue_revision: read.catalog_revision,
             },
             context,
+            source: source_capture
+                .as_ref()
+                .map(|capture| &capture.packet)
+                .cloned(),
         };
         let packet_bytes = serde_json::to_vec(&packet).map_err(contract_json)?;
         if packet_bytes.len() as u64 > rrd_contract::MAX_ROUTE_REQUEST_BYTES {
@@ -318,19 +604,7 @@ impl RrdEngine {
                 // work binds semantic inputs, not that incidental cursor or a
                 // newly numbered selection receipt. Exact packet provenance is
                 // still retained separately in the accepted output.
-                || {
-                    operation_digest(&(
-                        "task-worker",
-                        &packet.task,
-                        &packet.configuration_sha256,
-                        &packet.choice,
-                        &request.context,
-                        packet
-                            .context
-                            .as_ref()
-                            .map(|context| (&context.items, context.truncated)),
-                    ))
-                },
+                || equivalent_worker_work_digest(&packet, request, source_capture.as_ref()),
                 &admission,
                 clock,
                 &control_context,
@@ -346,6 +620,21 @@ impl RrdEngine {
         let result = (|| {
             let at = observe_required(clock, "worker-dispatch")?.observed_at_unix_ms;
             self.authorize_worker(session, token, request, at, request_id, operation_id)?;
+            if let (Some(source_request), Some(captured)) =
+                (request.source.as_ref(), source_capture.as_ref())
+            {
+                let current = self.capture_worker_source(
+                    source_request,
+                    binding.limits.max_input_bytes,
+                    clock,
+                    &|| Ok(()),
+                )?;
+                if !equivalent_worker_source(captured.provenance(), current.provenance()) {
+                    return Err(ServiceError::TaskAttemptInvalidated(
+                        TaskAttemptInvalidation::InputsChanged,
+                    ));
+                }
+            }
             let current = self
                 .storage
                 .runtime()
@@ -386,7 +675,11 @@ impl RrdEngine {
                 content_sha256: observed.content_sha256,
                 content: observed.content,
                 read: packet.read.clone(),
+                source: source_capture
+                    .as_ref()
+                    .map(|capture| capture.packet.provenance.clone()),
                 context: context_reference,
+                routing: None,
                 usage: observed.usage,
                 elapsed_ms: observed.elapsed_ms,
                 http_status: observed.http_status,
@@ -407,11 +700,53 @@ impl RrdEngine {
             |read| {
                 let mut admission = self.worker_completion_admission(&authority, request, read)?;
                 let at = observe_required(clock, "worker-completion")?.observed_at_unix_ms;
-                if self
+                let currently_authorized = self
                     .authorize_worker(session, token, request, at, request_id, operation_id)
-                    .is_err()
-                {
+                    .is_ok();
+                if !currently_authorized {
                     admission.invalidation = Some(TaskAttemptInvalidation::AuthorizationChanged);
+                }
+                if currently_authorized {
+                    if let (Some(source_request), Some(captured)) =
+                        (request.source.as_ref(), source_capture.as_ref())
+                    {
+                        match self.capture_worker_source(
+                            source_request,
+                            binding.limits.max_input_bytes,
+                            clock,
+                            &|| Ok(()),
+                        ) {
+                            Ok(current)
+                                if equivalent_worker_source(
+                                    captured.provenance(),
+                                    current.provenance(),
+                                ) =>
+                            {
+                                admission.guards.push(AttemptAuthorityGuard {
+                                    key: current.head_key,
+                                    expected: current.head_bytes,
+                                });
+                                let mut provenance = captured.packet.provenance.clone();
+                                provenance.validated_snapshot_sha256 =
+                                    current.packet.provenance.captured_snapshot_sha256;
+                                provenance.validated_read = current.packet.provenance.captured_read;
+                                provenance.validated_at_unix_ms =
+                                    current.packet.provenance.captured_at_unix_ms;
+                                admission.worker_source = Some(provenance);
+                            }
+                            Ok(_) => {
+                                admission.invalidation =
+                                    Some(TaskAttemptInvalidation::InputsChanged);
+                            }
+                            Err(ServiceError::ProjectBindingMismatch)
+                            | Err(ServiceError::Contract(_))
+                            | Err(ServiceError::ConfigurationLimit(_)) => {
+                                admission.invalidation =
+                                    Some(TaskAttemptInvalidation::InputsChanged);
+                            }
+                            Err(error) => return Err(error),
+                        }
+                    }
                 }
                 if !uncertain {
                     admission
@@ -449,7 +784,29 @@ impl RrdEngine {
             }
             session_bytes = Some(bytes);
         }
-        if request.context.is_some() {
+        if let Some(source) = &request.source {
+            let installed = self.attunement_installed_record()?;
+            let resource = worker_source_resource(
+                &self.instance,
+                &installed.installation.target.project_id,
+                &source.entry_identity,
+            )?;
+            let (bytes, _, _) = self.authorize_resource_without_data_policy(
+                session,
+                token,
+                SecurityAction::ProjectSourceRead,
+                &resource,
+                now,
+                request_id,
+                operation_id,
+            )?;
+            if session_bytes.as_ref() != Some(&bytes) {
+                return Err(ServiceError::TaskAttemptInvalidated(
+                    TaskAttemptInvalidation::AuthorizationChanged,
+                ));
+            }
+        }
+        if request.context.is_some() || request.source.is_some() {
             let (bytes, _, _) = self.authorize_resource_without_data_policy(
                 session,
                 token,
@@ -502,6 +859,224 @@ fn worker_task_read(request: &TaskWorkerRequest) -> ReadTask {
         max_storage_keys: request.max_storage_keys,
     }
 }
+
+pub(super) fn context_read_stamp(read: &ReadStamp) -> ContextReadStamp {
+    ContextReadStamp {
+        runtime_manifest_sha256: read.manifest_id.clone(),
+        runtime_cursor: read.commit_cursor,
+        schema_revision: read.schema_revision,
+        catalogue_revision: read.catalog_revision,
+    }
+}
+
+pub(super) fn worker_source_resource(
+    instance: &CanonicalId,
+    project: &CanonicalId,
+    entry_identity: &str,
+) -> Result<ResourcePath> {
+    Ok(ResourcePath {
+        segments: vec![
+            ResourceId::new(ResourceKind::Instance, instance.as_str().to_owned())
+                .map_err(worker_contract)?,
+            ResourceId::new(ResourceKind::Project, project.as_str().to_owned())
+                .map_err(worker_contract)?,
+            ResourceId::new(ResourceKind::Record, entry_identity.to_owned())
+                .map_err(worker_contract)?,
+        ],
+    })
+}
+
+pub(super) fn equivalent_worker_source(
+    captured: &TaskWorkerSourceProvenance,
+    validated: &TaskWorkerSourceProvenance,
+) -> bool {
+    captured.project_id == validated.project_id
+        && captured.entry_identity == validated.entry_identity
+        && captured.path_sha256 == validated.path_sha256
+        && captured.content_sha256 == validated.content_sha256
+        && captured.profile_sha256 == validated.profile_sha256
+}
+
+fn equivalent_worker_work_digest(
+    packet: &WorkerPacket,
+    request: &TaskWorkerRequest,
+    source: Option<&WorkerSourceCapture>,
+) -> Result<String> {
+    let context_identity = packet
+        .context
+        .as_ref()
+        .map(|context| (&context.items, context.truncated));
+    if let Some(source) = source {
+        let provenance = source.provenance();
+        operation_digest(&(
+            "task-worker-source-v1",
+            &packet.task,
+            &packet.configuration_sha256,
+            &packet.choice,
+            &request.context,
+            (
+                &provenance.project_id,
+                &provenance.entry_identity,
+                &provenance.path_sha256,
+                &provenance.content_sha256,
+                &provenance.profile_sha256,
+            ),
+            context_identity,
+        ))
+    } else {
+        // Preserve the exact legacy serialization and repetition identity for
+        // no-source worker calls. Existing budget records use this digest.
+        operation_digest(&(
+            "task-worker",
+            &packet.task,
+            &packet.configuration_sha256,
+            &packet.choice,
+            &request.context,
+            context_identity,
+        ))
+    }
+}
+
 fn worker_contract(error: impl std::fmt::Display) -> ServiceError {
     ServiceError::Contract(error.to_string())
+}
+
+#[cfg(test)]
+mod legacy_fingerprint_tests {
+    use super::*;
+
+    #[test]
+    fn no_source_worker_fingerprint_keeps_pre_source_tuple_bytes() {
+        let packet = WorkerPacket {
+            contract_version: ENDPOINT_WORKER_VERSION,
+            task: EndpointSelectionTask {
+                scope: "instance:test".into(),
+                task_id: CanonicalId::new("task-a").unwrap(),
+                title: "Review".into(),
+                goal: "Inspect".into(),
+                task_sha256: "1".repeat(64),
+                known_at_cursor: 7,
+            },
+            selection_sha256: "2".repeat(64),
+            choice: EndpointSelectionChoice::Select {
+                binding_id: CanonicalId::new("binding-a").unwrap(),
+                effort: None,
+            },
+            configuration_sha256: "3".repeat(64),
+            read: ContextReadStamp {
+                runtime_manifest_sha256: "4".repeat(64),
+                runtime_cursor: 8,
+                schema_revision: None,
+                catalogue_revision: 1,
+            },
+            context: None,
+            source: None,
+        };
+        let request = TaskWorkerRequest {
+            scope: "instance:test".into(),
+            task_id: CanonicalId::new("task-a").unwrap(),
+            attempt_id: rrd_contract::CorrelationId::new("attempt-a").unwrap(),
+            selection_attempt_id: rrd_contract::CorrelationId::new("selection-a").unwrap(),
+            expected_selection_sha256: "2".repeat(64),
+            expected_task_sha256: "1".repeat(64),
+            expected_configuration_sha256: "3".repeat(64),
+            max_storage_keys: 100,
+            context: None,
+            source: None,
+        };
+        let legacy = (
+            "task-worker",
+            &packet.task,
+            &packet.configuration_sha256,
+            &packet.choice,
+            &request.context,
+            None::<(&Vec<rrd_contract::ContextItem>, bool)>,
+        );
+        let bytes = serde_json::to_vec(&legacy).unwrap();
+        let expected_bytes = br#"["task-worker",{"scope":"instance:test","task_id":"task-a","title":"Review","goal":"Inspect","task_sha256":"1111111111111111111111111111111111111111111111111111111111111111","known_at_cursor":7},"3333333333333333333333333333333333333333333333333333333333333333",{"kind":"select","binding_id":"binding-a","effort":null},null,null]"#;
+        assert_eq!(bytes, expected_bytes);
+        assert_eq!(
+            equivalent_worker_work_digest(&packet, &request, None).unwrap(),
+            digest::sha256_hex(expected_bytes)
+        );
+    }
+
+    #[test]
+    fn source_repetition_fingerprint_ignores_global_policy_and_snapshot_refreshes() {
+        let packet = WorkerPacket {
+            contract_version: ENDPOINT_WORKER_VERSION,
+            task: EndpointSelectionTask {
+                scope: "instance:test".into(),
+                task_id: CanonicalId::new("task-a").unwrap(),
+                title: "Review".into(),
+                goal: "Inspect".into(),
+                task_sha256: "1".repeat(64),
+                known_at_cursor: 7,
+            },
+            selection_sha256: "2".repeat(64),
+            choice: EndpointSelectionChoice::Select {
+                binding_id: CanonicalId::new("binding-a").unwrap(),
+                effort: None,
+            },
+            configuration_sha256: "3".repeat(64),
+            read: ContextReadStamp {
+                runtime_manifest_sha256: "4".repeat(64),
+                runtime_cursor: 8,
+                schema_revision: None,
+                catalogue_revision: 1,
+            },
+            context: None,
+            source: None,
+        };
+        let request = TaskWorkerRequest {
+            scope: "instance:test".into(),
+            task_id: CanonicalId::new("task-a").unwrap(),
+            attempt_id: rrd_contract::CorrelationId::new("attempt-a").unwrap(),
+            selection_attempt_id: rrd_contract::CorrelationId::new("selection-a").unwrap(),
+            expected_selection_sha256: "2".repeat(64),
+            expected_task_sha256: "1".repeat(64),
+            expected_configuration_sha256: "3".repeat(64),
+            max_storage_keys: 100,
+            context: None,
+            source: None,
+        };
+        let capture = |snapshot: &str, policy: &str, at| WorkerSourceCapture {
+            packet: WorkerSourcePacket {
+                content: "selected source bytes".into(),
+                provenance: TaskWorkerSourceProvenance {
+                    contract_version: TASK_WORKER_SOURCE_VERSION,
+                    captured_snapshot_sha256: snapshot.into(),
+                    captured_read: ContextReadStamp {
+                        runtime_manifest_sha256: "5".repeat(64),
+                        runtime_cursor: 12,
+                        schema_revision: None,
+                        catalogue_revision: 2,
+                    },
+                    project_id: CanonicalId::new("project-a").unwrap(),
+                    entry_identity: "6".repeat(64),
+                    path_sha256: "7".repeat(64),
+                    content_sha256: digest::sha256_hex(b"selected source bytes"),
+                    policy_sha256: policy.into(),
+                    profile_sha256: "8".repeat(64),
+                    captured_at_unix_ms: at,
+                    validated_snapshot_sha256: "9".repeat(64),
+                    validated_read: ContextReadStamp {
+                        runtime_manifest_sha256: "a".repeat(64),
+                        runtime_cursor: 12,
+                        schema_revision: None,
+                        catalogue_revision: 2,
+                    },
+                    validated_at_unix_ms: at + 1,
+                },
+            },
+            head_key: "head".into(),
+            head_bytes: vec![1],
+        };
+        let before = capture(&"b".repeat(64), &"c".repeat(64), 10);
+        let after = capture(&"d".repeat(64), &"e".repeat(64), 20);
+        assert_eq!(
+            equivalent_worker_work_digest(&packet, &request, Some(&before)).unwrap(),
+            equivalent_worker_work_digest(&packet, &request, Some(&after)).unwrap()
+        );
+    }
 }

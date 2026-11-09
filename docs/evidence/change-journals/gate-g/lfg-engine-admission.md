@@ -38,3 +38,18 @@ Remaining: extend the existing provider-neutral semantic/endpoint contracts with
 - [ ] Complete provider-neutral engine contract, explicit binding and controlled attempt integration.
 - [ ] Prove the real installed RRFlow-to-LFG-to-controller flow, stale denial, interruption/restart and audit readback.
 - [ ] Complete full-file/diff review, generated checks, final package evidence and candidate CI before ready or merge.
+
+## 2026-11-09 absorption onto main
+
+Merged `development/main` (107 commits ahead of this branch's base). Five
+source conflicts were additive on both sides and both sides were kept: the
+LFG advisory beside main's routing input on the selection packet and
+proposal, the advisory beside main's assessment output on the attempt
+record, and both policy exports. Main's `assessment_output` attempt-record
+field keeps its `skip_serializing_if` attribute so the legacy v1 wire-shape
+test holds. Generated projections (OpenAPI digest, Python, Java, .NET, Go
+and TypeScript endpoints) were regenerated from the merged catalogue; the
+LFG flow test gained main's new contract fields. On the merged tree:
+`rrd-contract` suites pass (public contract 47), `rrd-inference` LFG
+observation and transport tests pass, `rrd-engine --lib` 405 passed, 6
+ignored; clippy and fmt clean; documentation policy OK.

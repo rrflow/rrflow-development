@@ -10,7 +10,7 @@ fn contract(error: rrd_contract::ContractError) -> ServiceError {
     ServiceError::Contract(error.to_string())
 }
 
-fn view(budget: Option<TaskReasoningBudget>) -> Result<TaskBudgetView> {
+pub(super) fn view(budget: Option<TaskReasoningBudget>) -> Result<TaskBudgetView> {
     let budget_sha256 = budget.as_ref().map(operation_digest).transpose()?;
     let result = TaskBudgetView {
         budget,
@@ -256,30 +256,44 @@ impl RrdEngine {
             operation_id,
         )?;
         self.query_scope(&request.scope)?;
-        let (_, result) = self.read_task_attempt_record(request)?;
-        if let Some(output) = result
-            .attempt
-            .as_ref()
-            .and_then(|attempt| attempt.worker_output.as_ref())
-        {
-            self.authorize(
-                session,
-                token,
-                SecurityAction::TaskRead,
-                now,
-                request_id,
-                operation_id,
-            )?;
-            if output.context.is_some() {
-                self.authorize_resource_without_data_policy(
+        let (_, mut result) = self.read_task_attempt_record(request)?;
+        if let Some(attempt) = result.attempt.as_mut() {
+            if let Some(output) = attempt.worker_output.as_ref() {
+                self.authorize(
                     session,
                     token,
-                    SecurityAction::MemoryContextRead,
-                    &self.instance_resource(),
+                    SecurityAction::TaskRead,
                     now,
                     request_id,
                     operation_id,
                 )?;
+                let source_allowed = if let Some(source) = &output.source {
+                    self.authorize_worker_source_readback(
+                        session,
+                        token,
+                        source,
+                        now,
+                        request_id,
+                        operation_id,
+                    )
+                    .is_ok()
+                } else {
+                    true
+                };
+                if output.source.is_none() && output.context.is_some() {
+                    self.authorize_resource_without_data_policy(
+                        session,
+                        token,
+                        SecurityAction::MemoryContextRead,
+                        &self.instance_resource(),
+                        now,
+                        request_id,
+                        operation_id,
+                    )?;
+                }
+                if !source_allowed {
+                    attempt.worker_output = None;
+                }
             }
         }
         Ok(result)
@@ -311,6 +325,21 @@ impl RrdEngine {
                 })
                 || record.worker_output.as_ref().is_some_and(|output| {
                     output.scope != request.scope || output.task_id != request.task_id
+                })
+                || record.assessment_output.as_ref().is_some_and(|output| {
+                    output.validate().is_err()
+                        || output.scope != request.scope
+                        || output.task_id != request.task_id
+                        || output.attempt_id != request.attempt_id
+                        || record.outcome != super::AttemptOutcome::Accepted
+                        || record.result.is_some()
+                        || record.endpoint_proposal.is_some()
+                        || record.worker_output.is_some()
+                        || serde_json::to_vec(output)
+                            .ok()
+                            .map(|bytes| digest::sha256_hex(&bytes))
+                            .as_deref()
+                            != record.outcome_sha256.as_deref()
                 })
         }) {
             return Err(ServiceError::Storage(
