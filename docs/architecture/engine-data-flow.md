@@ -121,6 +121,69 @@ remain Gate E-01 work. A structural differential is neither a committed mutation
 nor a live query result until its owning `RrdEngine` operation validates and
 commits the corresponding proposal.
 
+### Relationship access behind the relational interface
+
+Canonical relationships are typed, temporal records under the same rrflowDB
+transaction authority as endpoint records, audit and index deltas. Changes
+belonging to one accepted operation commit atomically. Relationship and
+endpoint identities remain estate-scoped `(table, id)` pairs;
+schemaless record properties do not change identity. A graph view is a bounded,
+request-specific projection of those relationships, not a graph database,
+second transaction owner or a reason to require a custom graph query language.
+Some relationships may be durable while others are ephemeral; their source,
+authorization, lifetime and provenance are explicit.
+
+The E-01/F-01/F-03 target derives outgoing and incoming adjacency from those
+canonical records into rrflowKV's typed ordered key/version spine and
+authenticated page-compatible binary metadata. On flush and compaction,
+preserve row/version identity and Arrow-compatible layout; do not turn file
+offsets or process addresses into durable record identities. An owner-bound,
+generation-scoped handle may accelerate access only while its snapshot and
+mapping lease remain valid. Memtable changes merge at the same read stamp as
+immutable pages. Relationship queries and internal expansion use the same
+bounded projected storage stream, authorization and configured physical page
+cache as the rest of the read path; they cannot open a separate raw pointer
+path around it. A mutable memtable is not an immutable-page cache entry.
+
+Implementation placement and present gap:
+
+- `rrd-store/src/keyspaces.rs` and `access/semantic_commit.rs` own canonical
+  relationship changes and both ordered adjacency directions in the same
+  transaction; source/history, deletes and moves must stay equivalent.
+- `rrd-store/src/access/versioned_read.rs` and `rrd-query/src/physical/graph.rs`
+  currently select authenticated adjacency ranges and relation histories.
+  `rrd-query/src/execute.rs` uses expanding semantic reads and materializes
+  changes. On rrflowKV, the repository transaction's range scan calls
+  `rrd-lsm/src/transaction/scan.rs::bounded`, which already uses the C-06g
+  projected reader underneath, then copies the batches into owned rows. This
+  is not a streamed Arrow query or proof that every point/other read uses the
+  physical page cache.
+- `rrd-lsm/src/database.rs::begin_projected_read` and
+  `rrd-lsm/src/segment/reader.rs::ProjectedReadStream` own the existing C-06g
+  physical stream and page/lease accounting. F-01 must adapt it through the
+  same stamped query boundary; F-03 must make relationship expansion consume
+  that path. The F-01 provider and streamed relationship execution do not yet
+  exist. Native physical execution may optimize this stream; it cannot bypass
+  its identity, authorization, limits, cache policy or lifetime accounting.
+
+For a selected neighborhood, the design goal is work proportional to visited
+edges and relevant versions rather than a scan of all `N` records. Ordered
+index seeks, frontier size, overlapping LSM runs, version histories, proof
+validation, cache misses and decoded pages add real work, so an unconditional
+`O(E)` bound independent of all those inputs is not established. E-01/F-01
+must hold the neighborhood and relevant history fixed while increasing
+unrelated estate size and report edge visits, seeks, examined keys and pages,
+versions, bytes, cache hits/misses, allocations, CPU and tail latency. Include
+high-degree/cyclic graphs, cold/warm cache, many runs, updates, deletes, old
+stamps, interruption, compaction and restart. Compare against an independent
+exact relational oracle and both configured cache policies; neither a passing
+small test nor an adjacency-key count proves an asymptotic or speed claim.
+Borrow raw mmap buffers only where format, alignment and authentication permit
+it and retain the mapping lease for every consumer; compressed or incompatible
+pages require bounded owned decode. PostgreSQL recursive queries illustrate a
+relational way to express walks, but this is not a claim that rrflowQL or the
+H-08 profile already implements recursive SQL.
+
 ## rrflowKV physical target
 
 rrflowKV combines write-optimized state with scan-optimized immutable storage
@@ -369,8 +432,8 @@ provider credential or local principal
                  |
  RrdEngine builds bounded route packet
                  |
- RouterBackend returns one proposal
- select_recipe | advance_branch | request_context
+ RouterBackend proposes a supported semantic decision
+ current contract: select_recipe | advance_branch | request_context
                  |
  RrdEngine validates cursor, policy, fields, and budget
           +------+------+
@@ -390,10 +453,12 @@ operation. Ordinary policy can still deny the represented seat, and an actor
 label supplied by a caller is never identity evidence.
 
 Clyffy is the primary seat specialization for this repository, not a routing
-model or a parallel orchestration runtime. A provider-neutral `RouterBackend`
-can propose only the three decisions above. It cannot evaluate protected edge
-conditions, select physical keys or indexes, invoke DataFusion directly,
-authorize itself, or write state. A `request_context` proposal becomes the same
+model or a parallel orchestration runtime. The three decisions above describe
+the current router contract, not a permanent or universal reasoning sequence.
+The G-03 target extends versioned decisions and capabilities as justified by
+actual tasks and policy. A router cannot evaluate protected edge conditions,
+select physical keys or indexes, invoke DataFusion directly, authorize itself,
+or write state. A `request_context` proposal becomes the same
 stamped semantic rrflowQL/context request available to other public clients;
 `RrdEngine` and the planner select native graph, BM25, vector, or analytical
 access.
@@ -471,11 +536,12 @@ Every returned item carries one or more evidence entries with the source kind,
 source identifier, rank, source score, reciprocal-rank contribution, physical
 plan digest, and evidence digest. The packet carries the read stamp, query
 digest, exact encoded-item byte count, truncation state, and packet digest. Its
-plan records all five canonical stages—seed, lexical, semantic, graph, and
-fusion—in order, including whether each was selected or skipped, the selected
-access path, exactness, reason, decision digest, compiled security-policy
-revision, and authorization digest. The plan and packet must validate against
-the same read stamp.
+current plan records five stage decisions: seed, lexical, semantic, graph, and
+fusion, including whether each was selected or skipped, the selected access
+path, exactness, reason, decision digest, compiled security-policy revision, and
+authorization digest. This present contract is not a requirement to execute
+all five or a permanent limit on configurable retrieval capabilities. The plan
+and packet must validate against the same read stamp.
 
 With the same validated request, authorization state, persisted read
 coordinate, catalogue, and installed deterministic model set, assembly order,
@@ -1125,11 +1191,11 @@ reduction percentage is policy input, never a hardcoded deletion target.
 
 ## Project-tree inventory and incremental attunement
 
-Durable attunement begins with a deterministic project-tree snapshot. The
-snapshot is the input boundary for claims that RRFlow persists about a project
-and for reproducible parse, embedding, index, graph, routine, or evidence work.
-Those durable phases cannot guess what a project contained or combine bytes
-from a changing filesystem walk.
+A deterministic project-tree snapshot is the input boundary for an indexing
+run or a completeness claim that covers the project. Other durable effects bind
+their complete relevant source boundary, which can be narrower. Reproducible
+parse, embedding, index, graph, routine, and evidence work cannot guess its
+inputs or combine unverified bytes from a changing filesystem walk.
 
 This requirement does not gate exploratory inspection. An AI or authorized
 tool may read available project material, search live files, and form a
@@ -1225,9 +1291,11 @@ versioned policy template and its tests, not prose-only special cases.
 
 ### Incremental refresh and downstream phases
 
-An incremental run compares the previous committed entries and policy to the
-new metadata pass. It reads content only when metadata, policy, detector, or
-hash revision requires it. Unchanged entries preserve their identity and
+An incremental run compares previous committed entries and policy with a new
+observation. Metadata, filesystem events, or cached digests can reduce content
+reads only when the selected policy can justify their freshness; metadata alone
+cannot prove unchanged content. When it cannot, read and verify the content or
+report a weaker guarantee. Unchanged entries preserve their identity and
 digest. Rename is a deterministic change classification supported by matching
 content and entry evidence; correctness never depends on an operating-system
 rename notification.
@@ -1237,13 +1305,15 @@ explicit inventory operation without a watcher. After Gate I defines canonical
 engine events, an explicitly installed watcher may submit a bounded external
 event, but still cannot update a snapshot, call a parser, or mutate an index.
 Overflow, dropped-event, or rescan signals force a fresh authoritative
-inventory diff. An unchanged run still commits an explicit no-work checkpoint
-with zero content reads, so resume and verification never infer completion
-from silence.
+inventory diff. A completed no-work refresh records its observation and
+receipt. A zero-content-read refresh is a measured optimization only when its
+freshness evidence supports the claimed result; resume and verification never
+infer completion from silence.
 
-Each durable downstream phase consumes an exact committed snapshot/change-set
-digest. Exploratory reasoning may use provisional material but cannot present
-it as this evidence:
+When a selected downstream capability depends on a committed inventory, it
+consumes the relevant exact snapshot/change-set digest. Exploratory reasoning
+may use provisional material but cannot present it as committed evidence. The
+following are capability examples, not mandatory stages:
 
 - parse incrementally reuses prior syntax trees only when source digest,
   grammar revision, and parser revision match;
@@ -1254,20 +1324,22 @@ it as this evidence:
 - ground and verify prove source coordinates, projection cursors, package
   digest, restart readback, and every skipped/failed phase.
 
-Every durable project-development operation has the same precondition. Before
-`RrdEngine` accepts a source-mutation proposal, persists derived project state,
-or claims a reproducible plan, it resolves the relevant complete authorized
-project-tree snapshot at the operation's `ReadStamp`. A missing, failed,
-truncated, policy-stale, or explicitly out-of-date snapshot returns a typed
-`inventory-required` precondition for that effect or claim, or proposes the
-inventory operation. Live `find` output, an editor file list, a model
-observation, or a provider cache may inform provisional exploration but cannot
-satisfy the durable precondition. The governed context planner queries bounded
-tree records and `contains` relations plus later grounded semantic edges; it
+Before `RrdEngine` accepts a source mutation, persists derived project state,
+or claims reproducible evidence, it binds and checks the complete authorized
+inputs relevant to that effect or claim at its read boundary. A claim about an
+entire project requires a complete current project snapshot; an effect with a
+complete, narrower dependency set need not wait for an unrelated full-project
+scan. Missing, failed, truncated, policy-stale, or out-of-date evidence blocks
+only the dependent effect or claim and may cause an inventory or successor-plan
+proposal. If dependency completeness cannot be established, refresh the
+relevant boundary conservatively and report the weaker guarantee. Live `find`
+output, an editor file list, a model observation, or a provider cache may inform
+provisional exploration but does not by itself prove a durable precondition.
+The context planner queries bounded authorized records and relationships; it
 never passes the entire project tree merely because the tree exists.
 
-A source-mutation proposal binds its input snapshot and affected entry
-digests. The authorized filesystem activity verifies those preconditions,
+A source-mutation proposal binds the relevant source observation and affected
+entry digests. The authorized filesystem activity verifies those preconditions,
 applies only the previewed changes, and then requests a new authoritative
 inventory pass. Downstream durable knowledge and effects bind the resulting
 committed change set; explicitly provisional exploration may continue without
@@ -1280,13 +1352,14 @@ digests under different traversal schedules; add/edit/remove/rename; Git ignore
 precedence including tracked ignored files; non-Git and hidden source;
 symlink escape/loop and mount boundaries; unreadable, vanished, and racing
 files; secret candidates; generated/vendor/cache exclusions; cancellation and
-restart; resource ceilings; close/reopen; and an unchanged rerun with zero
-content reads. It must prove parse cannot start before the snapshot and
-inventory checkpoint share a successful commit receipt. Gate I's first
-durable project-development routine must additionally prove that no current
-complete snapshot returns `inventory-required` for the dependent effect or
-claim, a changed-since-plan file fails its precondition, and no model or adapter
-can authorize a path outside the committed tree/root policy.
+restart; resource ceilings; close/reopen; and unchanged reruns with measured
+content reads and a justified freshness guarantee. It must prove that parse
+which claims a committed inventory cannot start before its relevant snapshot
+and checkpoint share a successful receipt. Gate I's first durable project-
+development routine must additionally prove that missing required input evidence
+blocks the dependent effect or claim, a changed-since-plan dependency fails its
+precondition, unrelated edits do not unnecessarily block independent effects,
+and no model or adapter can authorize a path outside the admitted root policy.
 
 ## Automation, routine, and skill flow
 
@@ -1532,7 +1605,7 @@ compile cannot substitute for this proof.
 | Transactions, identity, and audit | C-02 supplies one snapshot-isolation point/range/write transaction and one set of repositories for rrflowMX and rrflowKV. Accepted C-03 publishes record/relation temporal state, both adjacency directions, schema-bound scalar/unique changes, BM25/vector source deltas, generic projection work, runtime entry, prepared governed-function receipts and proposals, semantic audit, outbox, cursor, and outcome through one plan. Exact semantic-key comparison passes at prepared, WAL-appended, WAL-synced, and visible-before-acknowledgement failures; catalogue maxima fit one physical batch; corrupt runtime substitution fails closed; and lost-acknowledgement recovery consumes the durable receipt without guest re-execution. | H-04/H-05 must complete same-stamp effect authorization plus identity/trace parity across embedded and transport paths. |
 | Arrow conversion | C-06g emits bounded Arrow-compatible key and optional value offset/data buffers from a projected physical stream, but rrflowQL still converts materialized `QueryRow` values into newly allocated typed Arrow arrays. | Adapt eligible segment buffers and bounded decoded/memtable overlays into `RecordBatch` streams through one stamped provider; measure every borrow and copy. |
 | DataFusion | Real bounded execution over the materialized Arrow snapshot; it does not yet consume the C-06g storage stream. | Push projection/predicate/limit through the provider into rrflowKV and compose native graph/BM25/vector operators at one stamp. |
-| Project discovery and attunement | B-01 freezes the provider-neutral eleven-phase plan/job/checkpoint contract, but no engine-persisted executor, project-tree snapshot, inventory phase implementation, or parse phase exists. | D-01 through D-05 must prove preview/apply, a deterministic committed tree snapshot and change set, pure phase proposals, restartable checkpoints, and downstream work pinned to exact source/policy/tool revisions. |
+| Project discovery and attunement | On public main `ed3027b79e41dfcdf5b27e57f07346f11f6da347`, both bundled profiles supply the same eleven-step default, copied when no proposal is supplied; the versioned plan requires a terminal Verify. The installed engine persists jobs and executes Connect and Inventory; unsupported steps report `phase-unavailable`, so the default cannot finish. An inventory publication exists, but the interrupted-refresh isolation regression in PR #252 and installed Parse remain unresolved. | D-01 through D-05 must replace the universal list with capability- and policy-selected work, preserve authorized source identities and receipts, replan relevant changes, and prove installed index/query/restart behavior. The [indexing implementation plan](../roadmap/rrflow-1.0/project-indexing-execution-plan.md) distinguishes current evidence from proposed behavior. |
 | Embedding and vectors | Deterministic local embedding, model/provenance binding, exact search, filtered planning, compact dense artifacts, HNSW, quantization, and accelerator differential checks exist. Canonical vector heads retain their source commit coordinate and commit temporal versions plus collection/name/field pointer deltas atomically; that address is required across the public mutation, kernel, inference, commit digest, source keys, and every derived artifact, and no accelerator is built in the write path. Generic publication is exact/compact/HNSW-only; scalar/product/binary/TurboQuant artifacts use one explicit lifecycle and join the same planner only after activation. | D-05/E-04/E-05/F-03 must consume committed deltas incrementally, bind every derived artifact to its source cursor, and preserve exact fallback/reranking inside the stamped native/Arrow plan. |
 | Graph, scalar, and BM25 | Current and temporal bidirectional adjacency keys commit with relation changes. Schema-bound scalar/unique entries and exact BM25 old/new source fields commit with record changes and survive rrflowKV reopen. Normal state selection now uses C-04's authenticated direct versions. rrflowQL traversal selects the native temporal adjacency reader, but context graph expansion still materializes selected state and no native scalar reader or incremental term dictionary/posting materializer is planner-selected. | E-01 through E-03 must expose bounded stamped access, prove graph/scalar/BM25 results against exact oracles, and make stale/corrupt projections fall back or fail exactly as declared. |
 | Reasoning and context | Generic reasoning-tree, router, context-plan, evidence, and bounded context contracts exist; current assembly uses snapshot BM25, exact vectors, graph BFS, and RRF. | G/H must persist CAS tree execution and dynamically select native or analytical paths without adding another model, planner, or context authority. |

@@ -5,6 +5,9 @@ bounded context assembly. RRD is its embedded and daemon runtime; rrflowDB,
 rrflowKV, rrflowMX, rrflowQL, Arrow/DataFusion, graph, lexical, vector,
 inference, and client capabilities remain parts of that one system.
 
+**Want to try it?** Start at [Try RRFlow](#try-rrflow): what works today, how to
+run it from source, and where to report what you find.
+
 RRFlow is being built as an open-source reasoning engine for people building
 with AI, including vibe coders learning professional development practices.
 Connectome should make project context, evidence, change previews, verification
@@ -12,16 +15,28 @@ and review understandable without hiding their limits. The existing roadmap's
 [project-to-learning journey](docs/roadmap/rrflow-1.0/executable-dependency-spine.md#project-to-learning-acceptance-journey)
 maps that experience to its implementation dependencies and real-world tests.
 
-**rrflowDB is the database within RRFlow: a pure Rust, PostgreSQL-inspired
-database dedicated to AI and designed for AI use, with PostgreSQL compatibility
-as a product requirement.** It stores the knowledge, memory, reasoning state,
-and evidence of each project estate. The [database identity and compatibility
+**rrflowDB is RRFlow's native Rust, AI-oriented multi-model database.** Its
+target includes relational tables, documents, durable and dynamically derived
+relationships, graphs, vectors, memory, reasoning state and evidence under one
+transaction authority. rrflowQL is its relational, SQL-like query and planning
+layer; graph generation and traversal are capabilities over the same data, not
+the definition of the language. A record's logical identity is its table/kind
+and ID within its estate. PostgreSQL and SQLite compatibility are product
+targets whose exact SQL, client/API and file-format surfaces require separate
+qualification; neither compatibility claim is established today. The
+[database identity and compatibility
 boundary](docs/architecture/system-overview.md#persistence-and-memory-boundary)
 separates that target from current implementation and compatibility evidence.
 The [PostgreSQL compatibility and independent database contract](docs/reference/protocol/postgresql.md)
 defines the first SQL/client profile, native-engine integration, Turso exit,
 data portability and qualification. [H-08](docs/roadmap/rrflow-1.0/gate-h.md#h-08-postgresql-compatibility-packages)
 owns its implementation packages; compatibility is not yet implemented.
+
+rrflowKV supplies the native write-optimized durable state and recovery path;
+prompt-local working state has a separate bounded lifetime. The requested
+background Parquet cold-storage lifecycle for history, audit and analytics is
+not implemented by the existing bounded query export. Its implementation and
+proof are owned by [Gate F](docs/roadmap/rrflow-1.0/gate-f.md).
 
 This README is the bootstrap product entry point and knowledge map. It owns
 RRFlow's identity, non-negotiable architecture invariants, and current status;
@@ -43,6 +58,70 @@ and [next build packages](docs/roadmap/rrflow-1.0/gate-d.md#project-workflow-bui
 separate planned behavior from executable work. Known admission/configuration
 blockers are [explicitly recorded](docs/poam/rrflow-1.0-alpha/poam-006.md#build-plan-admission-gaps);
 a roadmap is not evidence that those capabilities already work.
+
+The immediate priority is a developer build that can open and index a real
+project, serve source-grounded context, and show its work in Connectome. Once
+that build is usable, use measured baselines to tune it. The later direction is
+to derive configurable reasoning shards from project boundaries and evaluate
+custom KV-cache strategies on large projects such as platform_devpulse and
+RRFlow itself. These are targets, not implemented or competitive-performance
+claims. The [scale rationale](docs/architecture/engine-scale-and-contracts.md#boundary-based-reasoning-after-the-developer-build)
+records the intended relationship and proof.
+
+## Try RRFlow
+
+RRFlow is **pre-alpha**. You can build it from source and try it today, but it
+is not a release yet. What works now:
+
+- Preview and apply an installation into one project folder, then serve an
+  authenticated local API.
+- Store typed records, documents and relationships in one transaction, query
+  them with rrflowQL, and read them back after a restart.
+- Create vector collections and payload indexes, and search them exactly or
+  through HNSW and TurboQuant indexes, over the same API.
+- Export a bounded query result as [Parquet](docs/reference/data/knowledge-connectors.md#bundled-query-export).
+- Explore an installed project in the
+  [native Connectome workbench](docs/reference/client/connectome.md#native-local-workbench),
+  a development build.
+
+Not ready yet: signed downloads and installers, automatic project indexing, the
+reasoning runner, uninstall and full repair, PostgreSQL compatibility, cloud
+synchronization, and running LFG or SWAG through RRFlow. The
+[POA&M](docs/poam/rrflow-1.0-alpha.md) lists every known gap, and
+[current status](#current-status) gives the detail.
+
+**Start with [Try RRFlow from source](docs/guides/getting-started.md).** It
+takes a few commands and a first build of a few minutes. Problems and ideas
+are welcome as [issues](https://github.com/rrflow/rrflow-development/issues/new/choose),
+and [CONTRIBUTING.md](CONTRIBUTING.md) explains what helps most. Report a
+vulnerability privately, as [SECURITY.md](SECURITY.md) describes, and never in
+a public issue.
+
+### Projects that work with RRFlow
+
+RRFlow runs without any of these, and each connects to it only through RRFlow's
+public contracts. SWAG and LFG are products of their own and also work without
+RRFlow.
+
+| Project | What it does | Repository |
+|---|---|---|
+| Connectome | RRFlow's operator and developer UI | [rrflow/connectome-development](https://github.com/rrflow/connectome-development), pinned here as `connectome/` |
+| SWAG | A system-one controller that routes a project's coding work and proposes bounded decisions | [rrflow/swag](https://github.com/rrflow/swag) |
+| LFG | A CPU prompt encoder that suggests a prompt's intent, complexity, models and agents | [EonsofStupid/lfg](https://github.com/EonsofStupid/lfg) |
+| RROFLOW | The planned AI observability and learning service | [rrflow/rroflow-development](https://github.com/rrflow/rroflow-development) |
+
+SWAG and LFG are being made public. The
+[LFG and SWAG target contract](docs/reference/inference/lfg-swag.md) defines how
+RRFlow will use them.
+
+### License
+
+RRFlow is source-available under the [Business Source License 1.1](LICENSE).
+You may use it in production for non-commercial purposes, including hosting it
+at no charge for yourself, your household, and your friends and family. Any
+other production use, including offering it as a hosted service, needs a
+commercial license from Angryvibes LLC. Each version becomes Apache-2.0 four
+years after it is published. [LICENSE](LICENSE) has the exact terms.
 
 ## Engine, UI, cloud, and desktop
 
@@ -99,25 +178,7 @@ deployment, or synchronization. The [delivery boundaries](docs/architecture/syst
 define how these experiences share one engine; the existing roadmap and
 pre-alpha status remain authoritative.
 
-## Enter RRFlow
-
-For a local desktop workflow, use the [native Connectome workbench](docs/reference/client/connectome.md#native-local-workbench):
-start the bundled RRFlow engine after an explicit installation preview, explore
-the authenticated schema and data models, query records, and navigate their
-relationships. This is a development build with real-engine evidence; full
-client qualification remains open.
-
-Start with the [runnable local rrflowDB integration](docs/reference/sdk/rrflowdb-local.md):
-build the native engine, create related records, query them with rrflowQL and
-reopen persistent rrflowKV state. [DevPulse and optional shippin.cloud sync](docs/reference/client/devpulse-cloud.md)
-defines local operation without an account and the explicit cloud opt-in boundary.
-Cloud account synchronization and PostgreSQL compatibility remain unimplemented.
-
-The installed engine also exposes an authenticated, bounded
-[Parquet query-result export](docs/reference/data/knowledge-connectors.md#bundled-query-export).
-Apache's Rust writer is linked into the binary. This capability is available
-through the public operation catalogue and clients; a Connectome export control,
-bulk import and streaming exchange remain unqualified.
+## Find your way
 
 | Need | Single owning record |
 |---|---|
@@ -126,7 +187,7 @@ bulk import and streaming exchange remain unqualified.
 | Configure CPU analysis, System One model selection and scoped inference caches | [LFG and SWAG target contract](docs/reference/inference/lfg-swag.md) |
 | Prepare Spark experiments, qualify SWAG candidates and govern RROFLOW improvement | [Learning reference](docs/reference/inference/learning/README.md) |
 | Discover connector requirements and build source-grounded knowledge trees | [Knowledge connectors and Parquet target contract](docs/reference/data/knowledge-connectors.md) |
-| Follow planned DuckDB analytical exchange and optional execution | [DuckDB interoperability contract](docs/reference/data/duckdb.md) — unimplemented; native rrflowDB remains authoritative |
+| Study analytical database techniques for native rrflowDB | [Native analytical database research](docs/reference/data/duckdb.md) - research input; no DuckDB or ClickHouse runtime is planned |
 | Understand project, estate, RRD instance, environment, deployment, and physical placement | [RRFlow instance topology](docs/architecture/instance-topology.md) |
 | Select and prove deployment form, storage profile, and endpoint presentation independently | [RRFlow deployment profiles](docs/reference/deployment/modes.md) |
 | Install, serve, verify, repair, restore, and remove one project estate through the shipped binary | [RRFlow installed lifecycle](docs/reference/deployment/installed-lifecycle.md) |

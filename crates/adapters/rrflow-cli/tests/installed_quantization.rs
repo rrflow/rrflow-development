@@ -448,6 +448,37 @@ fn installed_engine_builds_activates_and_searches_turboquant() {
             assert_eq!(searched.access_path.as_str(), "turboquant");
             assert!(!searched.exact);
             assert_eq!(searched.hits[0].reference.id.as_str(), "alpha-title");
+            let unsupported = client
+                .search_vectors(
+                    &session,
+                    from_json(serde_json::json!({
+                        "scope": scope,
+                        "valid_at": 200,
+                        "collection_id": "documents",
+                        "vector_name": "title",
+                        "query": {"kind": "dense", "values": [0.6, 0.8]},
+                        "filter": {"kind": "condition", "condition": {
+                            "property": "unindexed",
+                            "operator": {"operator": "exists", "value": true}
+                        }},
+                        "top_k": 1,
+                        "mode": {"mode": "require_approximate", "exact_rerank": 3, "ef_search": 3},
+                        "max_storage_keys": 10_000
+                    })),
+                    RequestOptions::read(
+                        "turboquant-unsupported-request",
+                        "turboquant-unsupported-operation",
+                    )
+                    .unwrap(),
+                )
+                .await
+                .unwrap_err();
+            assert!(
+                unsupported
+                    .to_string()
+                    .contains("no vector access path satisfies the request contract"),
+                "unexpected unsupported-filter error: {unsupported}"
+            );
             client
                 .close_session(
                     &session,

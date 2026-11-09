@@ -58,13 +58,37 @@ pub fn sha256_hex(input: &[u8]) -> String {
     hex(sha256(input))
 }
 
-fn hex(digest: [u8; 32]) -> String {
-    let mut output = String::with_capacity(64);
+/// Digests run through this on every authenticated read and commit, so it avoids
+/// `core::fmt`, which a vector search profile showed dominating the proof path.
+pub(crate) fn hex(digest: [u8; 32]) -> String {
+    const DIGITS: &[u8; 16] = b"0123456789abcdef";
+    let mut output = Vec::with_capacity(64);
     for byte in digest {
-        use std::fmt::Write as _;
-        write!(&mut output, "{byte:02x}").expect("writing to String cannot fail");
+        output.push(DIGITS[usize::from(byte >> 4)]);
+        output.push(DIGITS[usize::from(byte & 0x0f)]);
     }
-    output
+    String::from_utf8(output).expect("hexadecimal digits are ASCII")
+}
+
+/// The digest `hex` wrote, or `None` for any other text: uppercase, a sign, a wrong
+/// length and non-ASCII are all refused without slicing the string.
+pub(crate) fn from_hex(value: &str) -> Option<[u8; 32]> {
+    fn digit(byte: u8) -> Option<u8> {
+        match byte {
+            b'0'..=b'9' => Some(byte - b'0'),
+            b'a'..=b'f' => Some(byte - b'a' + 10),
+            _ => None,
+        }
+    }
+    let text = value.as_bytes();
+    if text.len() != 64 {
+        return None;
+    }
+    let mut digest = [0_u8; 32];
+    for (slot, [high, low]) in digest.iter_mut().zip(text.as_chunks::<2>().0) {
+        *slot = (digit(*high)? << 4) | digit(*low)?;
+    }
+    Some(digest)
 }
 
 #[cfg(test)]

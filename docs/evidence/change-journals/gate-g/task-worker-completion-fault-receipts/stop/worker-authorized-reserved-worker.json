@@ -1,0 +1,44 @@
+{
+  "status": 200,
+  "request": {
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "context": {
+      "request_id": "controller-proof-8fa532a881e746eb8b408631732971a8",
+      "operation_id": "controller-proof-8fa532a881e746eb8b408631732971a8",
+      "idempotency_key": null,
+      "deadline_unix_ms": null
+    },
+    "resource": {
+      "segments": [
+        {
+          "kind": "instance",
+          "id": "instance-ff5a41c8d602b5ea81c31036"
+        }
+      ]
+    },
+    "payload": {
+      "scope": "instance:instance-ff5a41c8d602b5ea81c31036",
+      "task_id": "task-18586ba0f21a4b5e6a359660ee4c85ab571250634c0453050493f274dd8a81a0",
+      "attempt_id": "actual-worker-4436966bc17f4f8d942592c11b2b2ec1"
+    }
+  },
+  "response": {
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "request_id": "controller-proof-8fa532a881e746eb8b408631732971a8",
+    "operation_id": "controller-proof-8fa532a881e746eb8b408631732971a8",
+    "outcome": {
+      "status": "ok",
+      "payload": {
+        "attempt": {
+          "attempt_id": "actual-worker-4436966bc17f4f8d942592c11b2b2ec1",
+          "ordinal": 2,
+          "status": "reserved",
+          "outcome_sha256": null,
+          "result": null
+        }
+      }
+    }
+  }
+}

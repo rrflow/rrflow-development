@@ -10,6 +10,20 @@ independently.
 
 ## Observed deficiency
 
+At main `2cadd3a9045e3c1a2d9f873fe4215343680ab18b`, both bundled install
+profiles supply the same fixed eleven-phase attunement sequence when no
+proposal is provided. Callers may propose a different ordered sequence, but
+the phase enum and checkpoint progression remain closed and linear. The
+[adaptive developer-build design](../../roadmap/rrflow-1.0/adaptive-developer-build-design.md)
+maps this verified gap, the existing preservation obligations and the required
+project-to-handoff oracle. Neither that design nor this entry implements
+dynamic selection or changes POAM-006's open status.
+The original Connectome pin and its successor on main
+`c1cbff203ecee89013878609d11aed04e89d0e71` both contain eleven static phase
+declarations and a fixed duration estimate. A Git search at both revisions
+found no references to those constants outside their definitions; visible use
+is unproven. The supporting design records the source and reconciliation.
+
 The immediate remediation is D-02's durable attunement executor, then the
 D-03/D-04/D-05 real-project workflow and consumed E/F prerequisites in the
 [current dependency spine](../../roadmap/rrflow-1.0/executable-dependency-spine.md).
@@ -533,3 +547,13 @@ parsed values. Explicit sorted rendering in the existing test/refresher fixes
 that representation ambiguity without changing runtime hashing or weakening
 byte assertions. Both public feature flows remain at the existing engine
 boundary; combined candidate qualification and the wider lifecycle remain open.
+
+## Linux ARM64 installed evidence gap
+
+At public main `3a72a6b4adc43c842f67a59f4fc91d725eac7580`, the candidate CI
+has Linux x86-64, Windows and macOS jobs but no Linux ARM64 native installed
+lane. The [ARM64 qualification journal](../../evidence/change-journals/gate-d/d-01-linux-arm64-candidate-ci.md)
+records the proposed required lane and its actual results. A checked-in job,
+cross-compilation or another platform's pass does not qualify Linux ARM64;
+native candidate/merge-group execution and the separate capacity, recovery,
+offline and soak evidence remain open.

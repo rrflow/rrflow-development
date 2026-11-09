@@ -15,8 +15,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 import build_execution_inventory as inventory
-import check_workflow as ci_policy
 import check_documentation as docs_policy
+import check_workflow as ci_policy
 
 
 class GitlinkInventoryTests(unittest.TestCase):
@@ -132,6 +132,17 @@ class InventoryDescriptorTests(unittest.TestCase):
 class DefaultOutputPolicyTests(unittest.TestCase):
     def test_default_is_local_ignored_artifact(self) -> None:
         self.assertEqual(inventory.OUTPUT, inventory.ROOT / "target/rrflow-1.0-file-plan.jsonl")
+
+    def test_new_owner_assignments_preserve_prior_package_assignments(self) -> None:
+        cases = (
+            ("crates/kernel/rrd-core/src/schema.rs", "rrd-core", {"H-08", "H-11", "H-12"}),
+            ("crates/compute/rrd-query/src/parquet.rs", "rrd-query", {"D-06", "F-06"}),
+        )
+        for path, package, added in cases:
+            with self.subTest(path=path):
+                assigned = set(inventory.planned_gates(path))
+                self.assertTrue(set(inventory.PACKAGE_GATES[package]).issubset(assigned))
+                self.assertTrue(added.issubset(assigned))
 
 
 class ConflictFreeInventoryTests(unittest.TestCase):

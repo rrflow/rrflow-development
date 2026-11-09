@@ -278,6 +278,13 @@ pub struct EndpointProfileInput {
     /// Absent means no configured selector; never synthesize routing defaults.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub selection_policy: Option<crate::EndpointSelectionPolicy>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub worker_policy: Option<crate::EndpointWorkerPolicy>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub observation_policy: Option<crate::ObservationExportPolicy>,
+    /// Absent means task assessment is disabled.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub assessment_policy: Option<crate::EndpointAssessmentPolicy>,
 }
 
 impl EndpointProfileInput {
@@ -313,6 +320,15 @@ impl EndpointProfileInput {
         if let Some(policy) = &self.selection_policy {
             policy.validate_for(&self.bindings)?;
         }
+        if let Some(policy) = &self.worker_policy {
+            policy.validate_for(&self.bindings, self.selection_policy.as_ref())?;
+        }
+        if let Some(policy) = &self.observation_policy {
+            policy.validate_for(&self.bindings)?;
+        }
+        if let Some(policy) = &self.assessment_policy {
+            policy.validate_for(&self.bindings, self.selection_policy.as_ref())?;
+        }
         Ok(())
     }
 }
@@ -328,6 +344,12 @@ pub struct EndpointProfile {
     pub bindings: Vec<EndpointBinding>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub selection_policy: Option<crate::EndpointSelectionPolicy>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub worker_policy: Option<crate::EndpointWorkerPolicy>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub observation_policy: Option<crate::ObservationExportPolicy>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub assessment_policy: Option<crate::EndpointAssessmentPolicy>,
     pub profile_sha256: String,
 }
 
@@ -343,6 +365,9 @@ impl EndpointProfile {
             revision,
             bindings: input.bindings,
             selection_policy: input.selection_policy,
+            worker_policy: input.worker_policy,
+            observation_policy: input.observation_policy,
+            assessment_policy: input.assessment_policy,
             profile_sha256: String::new(),
         };
         profile.profile_sha256 = endpoint_profile_sha256(&profile)?;
@@ -355,6 +380,9 @@ impl EndpointProfile {
             name: self.name.clone(),
             bindings: self.bindings.clone(),
             selection_policy: self.selection_policy.clone(),
+            worker_policy: self.worker_policy.clone(),
+            observation_policy: self.observation_policy.clone(),
+            assessment_policy: self.assessment_policy.clone(),
         }
         .validate()?;
         if self.revision == 0 {
@@ -466,6 +494,27 @@ pub fn endpoint_profile_sha256(profile: &EndpointProfile) -> Result<String> {
             .extend_from_slice(&serde_json::to_vec(policy).map_err(|_| {
                 crate::ContractError("cannot encode selector policy digest".into())
             })?);
+    }
+    if let Some(policy) = &profile.worker_policy {
+        bytes.extend_from_slice(b"\0endpoint-worker-policy\0");
+        bytes.extend_from_slice(
+            &serde_json::to_vec(policy)
+                .map_err(|_| crate::ContractError("cannot encode worker policy digest".into()))?,
+        );
+    }
+    if let Some(policy) = &profile.observation_policy {
+        bytes.extend_from_slice(b"\0observation-export-policy\0");
+        bytes.extend_from_slice(&serde_json::to_vec(policy).map_err(|_| {
+            crate::ContractError("cannot encode observation export policy digest".into())
+        })?);
+    }
+    if let Some(policy) = &profile.assessment_policy {
+        bytes.extend_from_slice(b"\0task-assessment-policy\0");
+        bytes.extend_from_slice(
+            &serde_json::to_vec(policy).map_err(|_| {
+                crate::ContractError("cannot encode assessment policy digest".into())
+            })?,
+        );
     }
     Ok(sha256_bytes(&bytes))
 }

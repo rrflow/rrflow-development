@@ -11,9 +11,136 @@ use rrd_query::{
 };
 use rrd_query::{parse, Source};
 use rrd_store::{
-    Durability, RrflowKvStore, RrflowMxStore, RuntimeReadAccessPath, RuntimeReadBudget,
-    StorageEngine,
+    ControlTransition, Durability, RrflowKvStore, RrflowMxStore, RuntimeReadAccessPath,
+    RuntimeReadBudget, StorageEngine,
 };
+
+#[test]
+fn legacy_identity_artifact_is_skipped_until_full_rebuild_and_reopen() {
+    let root = tempfile::tempdir().unwrap();
+    let store = RrflowKvStore::open(root.path()).unwrap();
+    let catalog = seed(&store);
+    let index = definition();
+    let repository = IndexCatalogueRepository::new(&store, scope());
+    repository
+        .create(&context(2, "legacy-create"), &catalog, index.clone())
+        .unwrap();
+    let built = repository
+        .build(
+            &context(3, "legacy-build"),
+            &index.id,
+            10,
+            &ExecutionBudget::default(),
+        )
+        .unwrap();
+
+    // Model the earlier artifact bytes as well as its catalogue entry.
+    let entry = &built.entries[&index.id];
+    let artifact_name = format!(
+        "query-index/{}/{}/{}/{}",
+        scope(),
+        index.id,
+        entry.stamp.generation,
+        entry.stamp.artifact_digest
+    );
+    let artifact = store.projections().get(&artifact_name).unwrap().unwrap();
+    let mut legacy_artifact: serde_json::Value = serde_json::from_slice(&artifact).unwrap();
+    legacy_artifact
+        .as_object_mut()
+        .unwrap()
+        .remove("result_identity_version");
+    let legacy_bytes = serde_json::to_vec(&legacy_artifact).unwrap();
+    assert!(IndexArtifact::decode(&legacy_bytes).is_err());
+    let legacy_digest = digest::sha256_hex(&legacy_bytes);
+    let legacy_name = format!(
+        "query-index/{}/{}/{}/{}",
+        scope(),
+        index.id,
+        entry.stamp.generation,
+        legacy_digest
+    );
+    store
+        .projections()
+        .put_with(&legacy_name, &legacy_bytes, Durability::Authoritative)
+        .unwrap();
+
+    // Reproduce an older persisted catalogue entry; do not change authoritative rows.
+    let key = format!("server/state/index-catalogue/{}", scope());
+    let old = store.control().get(&key).unwrap().unwrap();
+    let mut legacy: serde_json::Value = serde_json::from_slice(&old).unwrap();
+    legacy["entries"][index.id.as_str()]
+        .as_object_mut()
+        .unwrap()
+        .remove("result_identity_version");
+    legacy["entries"][index.id.as_str()]["stamp"]["artifact_digest"] = legacy_digest.into();
+    store
+        .control()
+        .commit_batch(&[ControlTransition {
+            key,
+            expected: Some(old),
+            replacement: Some(serde_json::to_vec(&legacy).unwrap()),
+            at: 4,
+            actor: "identity-test".into(),
+            action: "test.legacy_catalogue".into(),
+            request_id: "legacy-fixture".into(),
+            operation_id: "legacy-fixture".into(),
+        }])
+        .unwrap();
+    drop(store);
+
+    let store = RrflowKvStore::open(root.path()).unwrap();
+    let repository = IndexCatalogueRepository::new(&store, scope());
+    let before = repository.load().unwrap();
+    assert!(!before.entries[&index.id].is_usable_at(3, 10));
+    let query =
+        parse("FROM record:document AT VALID 10 KNOWN HEAD WHERE status = \"open\" PROJECT title")
+            .unwrap();
+    let run = |store: &RrflowKvStore| {
+        let bound = bind(&query, &Parameters::new(), &record_catalog(store)).unwrap();
+        let physical = plan(&bound).unwrap();
+        let selected = physical
+            .explanation
+            .candidates
+            .iter()
+            .find(|candidate| candidate.selected)
+            .unwrap()
+            .name
+            .clone();
+        let execution = execute(store, &physical, &ExecutionBudget::default()).unwrap();
+        (
+            selected,
+            execution
+                .batches
+                .into_iter()
+                .flat_map(|batch| batch.rows)
+                .collect::<Vec<_>>(),
+        )
+    };
+    let (selected, rows) = run(&store);
+    assert_eq!(selected, "versioned_source_read");
+    assert_eq!(rows.len(), 1);
+    repository
+        .begin_rebuild(&context(5, "legacy-rebuild"), &index.id)
+        .unwrap();
+    let ready = repository
+        .build(
+            &context(6, "legacy-ready"),
+            &index.id,
+            10,
+            &ExecutionBudget::default(),
+        )
+        .unwrap();
+    assert_eq!(
+        ready.entries[&index.id].maintenance.as_ref().unwrap().mode,
+        "full_build"
+    );
+    let (selected, rebuilt) = run(&store);
+    assert_eq!(selected, "index:document-status-title");
+    assert_eq!(rebuilt, rows);
+    drop(store);
+    let store = RrflowKvStore::open(root.path()).unwrap();
+    assert_eq!(run(&store).1, rows);
+}
 use std::collections::BTreeMap;
 
 fn scope() -> ScopeId {
@@ -127,6 +254,38 @@ fn exercise<E: StorageEngine>(engine: &E) {
     assert_eq!(entry.stamp.generation, 1);
     assert_eq!(entry.stamp.state, ProjectionState::Building);
     assert!(!entry.is_usable_at(3, 10));
+
+    let missing = IndexArtifactPublication {
+        generation: 1,
+        source_cursor: 3,
+        valid_at: 10,
+        artifact_rows: 2,
+        artifact_digest: digest::sha256_hex(b"missing"),
+        maintenance: rrd_query::IndexMaintenanceEvidence {
+            mode: "full_build".into(),
+            prior_source_cursor: None,
+            source_cursor: 3,
+            inserted_rows: 2,
+            updated_rows: 0,
+            removed_rows: 0,
+        },
+        analytics_total_count: None,
+        analytics_group_count: None,
+    };
+    assert!(matches!(
+        repository.publish_ready(
+            &context(2, "missing-artifact"),
+            &entry.definition.id,
+            &missing
+        ),
+        Err(Error::Integrity(_))
+    ));
+    assert_eq!(
+        repository.load().unwrap().entries[&entry.definition.id]
+            .stamp
+            .state,
+        ProjectionState::Building
+    );
 
     let ready = repository
         .build(

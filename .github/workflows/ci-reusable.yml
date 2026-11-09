@@ -11,6 +11,15 @@ on:
         description: JSON runs-on value for a trusted heavy Linux runner
         required: true
         type: string
+      linux-arm64-runner:
+        description: JSON runs-on value for a trusted native Linux ARM64 runner
+        required: true
+        type: string
+      scope:
+        description: "auto selects lanes from the changed paths; full runs every partition"
+        required: false
+        type: string
+        default: auto
 
 permissions:
   contents: read
@@ -20,8 +29,89 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  changes:
+    name: select CI lanes
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      full: ${{ steps.lanes.outputs.full }}
+      docs: ${{ steps.lanes.outputs.docs }}
+      scripts: ${{ steps.lanes.outputs.scripts }}
+      engine: ${{ steps.lanes.outputs.engine }}
+      sdk: ${{ steps.lanes.outputs.sdk }}
+      packages: ${{ steps.lanes.outputs.packages }}
+      dependents: ${{ steps.lanes.outputs.dependents }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          submodules: recursive
+      - uses: dtolnay/rust-toolchain@d124f86f28ff42855784ff3319f48ac182c248f8 # 1.99.1
+      - name: Select lanes from the changed paths
+        id: lanes
+        env:
+          SCOPE: ${{ inputs.scope }}
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          # checkout resolves the PR merge ref or merge-queue candidate. Use
+          # that fetched revision so fork head objects need not be fetched.
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          python3 scripts/ci/test_select_ci_lanes.py
+          # A manual, scheduled or scope=full run, and any event without a base
+          # revision, is the complete matrix. A pull request or merge-group
+          # candidate runs the lanes its changed paths select.
+          if [ "$SCOPE" = full ] || [ -z "$BASE_SHA" ]; then
+            python3 scripts/ci/select_ci_lanes.py --full --github-output "$GITHUB_OUTPUT"
+          else
+            python3 scripts/ci/select_ci_lanes.py --base "$BASE_SHA" --head "$HEAD_SHA" --github-output "$GITHUB_OUTPUT"
+          fi
+          cat "$GITHUB_OUTPUT"
+
+  native-arm64:
+    name: native Linux ARM64 installed lifecycle
+    needs: [changes]
+    if: ${{ needs.changes.outputs.full == 'true' }}
+    runs-on: ${{ fromJSON(inputs.linux-arm64-runner) }}
+    timeout-minutes: 45
+    env:
+      CARGO_BUILD_JOBS: "2"
+      CARGO_PROFILE_DEV_DEBUG: "0"
+      CARGO_PROFILE_TEST_DEBUG: "0"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          submodules: recursive
+      - uses: dtolnay/rust-toolchain@d124f86f28ff42855784ff3319f48ac182c248f8 # 1.99.1
+      - name: Require native Linux ARM64 host
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$RUNNER_OS" = Linux
+          test "$RUNNER_ARCH" = ARM64
+          test "$(uname -m)" = aarch64
+          rustc -vV | grep -Fx 'host: aarch64-unknown-linux-gnu'
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          shared-key: linux-arm64-native
+          cache-on-failure: false
+          save-if: ${{ github.event_name != 'merge_group' }}
+      - name: Test native storage and recovery
+        run: |
+          cargo test -p rrd-lsm --test filesystem --test manifest --locked
+          cargo test -p rrd-store --test installed_lifecycle --test semantic_commit_atomicity --locked
+      - name: Test source inventory and Git admission components
+        run: cargo test -p rrd-attunement --locked
+      - name: Test installed primary executable lifecycle
+        run: cargo test -p rrflow-cli --test installed_lifecycle --locked -- --nocapture
+
   topology-smoke:
     name: installed RRFlow lifecycle
+    needs: [changes]
+    if: ${{ needs.changes.outputs.full == 'true' }}
     runs-on: ${{ fromJSON(inputs.linux-standard-runner) }}
     timeout-minutes: 25
     env:
@@ -37,6 +127,7 @@ jobs:
         with:
           shared-key: linux-topology
           cache-on-failure: true
+          save-if: ${{ github.event_name != 'merge_group' }}
       - name: Test native filesystem containment and publication
         run: cargo test -p rrd-lsm --test filesystem --test manifest --locked
       - name: Test encoded admission accounting boundaries
@@ -112,7 +203,9 @@ jobs:
         run: python3 scripts/build_rrflow.py --profile dev --output "$RUNNER_TEMP/rrflow-build-receipt.json"
 
   estate-portability:
-    name: estate process (${{ matrix.os }})
+    name: engram process (${{ matrix.os }})
+    needs: [changes]
+    if: ${{ needs.changes.outputs.full == 'true' }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 35
     env:
@@ -134,9 +227,10 @@ jobs:
           components: clippy
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
-          shared-key: estate-process-${{ matrix.os }}
+          shared-key: engram-process-${{ matrix.os }}
           cache-on-failure: true
-      - name: Test persistent estate authority and commands
+          save-if: ${{ github.event_name != 'merge_group' }}
+      - name: Test persistent engram authority and commands
         run: cargo test -p rrd-estate --all-targets --locked
       - name: Test RRD daemon process contract
         run: cargo test -p rrd-server --bin rrd-server --locked
@@ -229,6 +323,8 @@ jobs:
 
   verify:
     name: verify
+    needs: [changes]
+    if: ${{ needs.changes.outputs.full == 'true' }}
     runs-on: ${{ fromJSON(inputs.linux-heavy-runner) }}
     # Repository-wide policy and evidence checks run separately from package
     # test binaries so their target graph cannot exhaust the hosted fallback.
@@ -250,6 +346,7 @@ jobs:
         with:
           shared-key: linux-policy-jobs2-test-debug0-lld1
           cache-on-failure: false
+          save-if: ${{ github.event_name != 'merge_group' }}
       - name: Check Rust formatting
         run: cargo fmt --all -- --check
       - name: Enforce owner-controlled release version
@@ -261,11 +358,14 @@ jobs:
       - name: Enforce repository CI policy
         run: |
           python3 scripts/ci/test_candidate_admission.py
+          python3 scripts/ci/test_linux_arm64_policy.py
           python3 scripts/ci/test_native_sample_policy.py
           python3 scripts/ci/test_sdk_attunement_policy.py
           python3 scripts/ci/test_rrflowdb_standalone.py
           python3 scripts/ci/test_cache_warm_policy.py
           python3 scripts/ci/test_inspect_merge_conflicts.py
+          python3 scripts/ci/test_select_ci_lanes.py
+          python3 scripts/ci/test_ci_lanes_policy.py
           python3 scripts/ci/check_workflow.py
           python3 scripts/ci/test_inspect_candidate_runs.py
       - name: Test offline qualification input and artifact policy
@@ -275,6 +375,7 @@ jobs:
           python3 scripts/inference/test_review_outcomes.py
           python3 scripts/inference/test_capture_observations.py
           python3 scripts/inference/test_review_decisions.py
+          python3 scripts/inference/test_installed_controller_fault_relay.py
       - name: Enforce documentation authority and local links
         run: python3 scripts/ci/check_documentation.py
       - name: Enforce knowledge-package drift and reproducibility
@@ -318,8 +419,8 @@ jobs:
         run: cargo test --locked -p rrd-client --test generated_catalogue
       - name: Enforce RRFlow engine ownership
         run: cargo test -p rrd-engine --test workspace_architecture --locked
-      - name: Verify controlled evaluation evidence
-        run: cargo run --locked -p rrflow-eval -- verify eval/results/2026-08-18-summary.json
+      - name: Test provider screening evidence consistency
+        run: cargo test --locked -p rrflow-eval --test provider_compatibility
       - name: Enforce kernel dependency boundary
         run: |
           tree="$(cargo tree --locked -p rrd-core --edges normal --depth 1 --prefix none --format '{p}' --color never)"
@@ -340,6 +441,8 @@ jobs:
 
   engine-suites:
     name: engine suite (${{ matrix.name }})
+    needs: [changes]
+    if: ${{ needs.changes.outputs.full == 'true' }}
     runs-on: ${{ fromJSON(inputs.linux-heavy-runner) }}
     timeout-minutes: 45
     strategy:
@@ -355,7 +458,7 @@ jobs:
           - name: service-protocol
             packages: "-p rrd-server -p rrd-client -p rrflow-mcp -p rrflow-cli"
           - name: product-operations
-            packages: "-p rrd-kubernetes -p rrflow-edge -p rrflow-eval"
+            packages: "-p rrd-kubernetes -p rrd-observation -p rrflow-edge -p rrflow-eval"
     env:
       CARGO_BUILD_JOBS: "2"
       CARGO_PROFILE_TEST_DEBUG: "0"
@@ -373,6 +476,7 @@ jobs:
         with:
           shared-key: linux-engine-${{ matrix.name }}-test-debug0-lld1
           cache-on-failure: false
+          save-if: ${{ github.event_name != 'merge_group' }}
       - name: Build cross-package controller fixture
         if: ${{ matrix.name == 'service-protocol' }}
         run: cargo build -p rrflow-cli --bin rrd-estate-controller --locked
@@ -383,6 +487,8 @@ jobs:
 
   sdk-conformance:
     name: supported SDK conformance
+    needs: [changes]
+    if: ${{ needs.changes.outputs.full == 'true' || needs.changes.outputs.sdk == 'true' }}
     runs-on: ${{ fromJSON(inputs.linux-heavy-runner) }}
     timeout-minutes: 60
     env:
@@ -399,6 +505,7 @@ jobs:
         with:
           shared-key: linux-sdk-conformance-test-debug0-lld1
           cache-on-failure: false
+          save-if: ${{ github.event_name != 'merge_group' }}
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
         with:
           version: 12.14.0
@@ -465,6 +572,8 @@ jobs:
 
   optional-features:
     name: optional feature (${{ matrix.package }})
+    needs: [changes]
+    if: ${{ needs.changes.outputs.full == 'true' }}
     runs-on: ${{ fromJSON(inputs.linux-heavy-runner) }}
     timeout-minutes: 30
     strategy:
@@ -492,6 +601,7 @@ jobs:
         with:
           shared-key: linux-feature-${{ matrix.package }}-test-debug0-lld1
           cache-on-failure: false
+          save-if: ${{ github.event_name != 'merge_group' }}
       - name: Test package optional features
         run: cargo test -p ${{ matrix.package }} --all-targets --all-features --locked --no-fail-fast
       - name: Deny package optional-feature warnings
@@ -499,6 +609,8 @@ jobs:
 
   pgvector-feature:
     name: optional feature (rrd-operator-knowledge)
+    needs: [changes]
+    if: ${{ needs.changes.outputs.full == 'true' }}
     runs-on: ${{ fromJSON(inputs.linux-heavy-runner) }}
     timeout-minutes: 30
     env:
@@ -531,6 +643,7 @@ jobs:
         with:
           shared-key: linux-feature-rrd-operator-knowledge-test-debug0-lld1
           cache-on-failure: false
+          save-if: ${{ github.event_name != 'merge_group' }}
       - name: Test PostgreSQL operator-knowledge feature
         env:
           RRFLOW_PGVECTOR_TEST_URL: postgresql://rrflow_test:rrflow_test_password@127.0.0.1:5432/rrd_operator_knowledge_test?sslmode=disable
@@ -539,8 +652,38 @@ jobs:
       - name: Deny PostgreSQL operator-knowledge warnings
         run: cargo clippy -p rrd-operator-knowledge --all-targets --all-features --locked -- -D warnings
 
+  storage-contract-preflight:
+    name: synthetic storage contract preflight
+    needs: [changes]
+    if: ${{ needs.changes.outputs.full == 'true' }}
+    runs-on: ${{ fromJSON(inputs.linux-standard-runner) }}
+    timeout-minutes: 15
+    env:
+      CARGO_BUILD_JOBS: "2"
+      CARGO_PROFILE_TEST_DEBUG: "0"
+      RUSTFLAGS: "-C link-arg=-Wl,--threads=1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          submodules: recursive
+      - uses: dtolnay/rust-toolchain@d124f86f28ff42855784ff3319f48ac182c248f8 # 1.99.1
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          shared-key: linux-storage-contract-test-debug0-lld1
+          cache-on-failure: false
+          save-if: ${{ github.event_name != 'merge_group' }}
+      - name: Validate candidate catalogue and synthetic storage projections
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo test --locked -p rrflow-eval --test storage_contract generated_schemas_and_synthetic_receipts_match_goldens -- --exact --list | grep -Fx 'generated_schemas_and_synthetic_receipts_match_goldens: test'
+          cargo test --locked -p rrflow-eval --test storage_contract generated_schemas_and_synthetic_receipts_match_goldens -- --exact
+
   installed-reopen:
     name: installed 100-cycle reopen (${{ matrix.os }})
+    needs: [changes, storage-contract-preflight]
+    if: ${{ needs.changes.outputs.full == 'true' }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
     strategy:
@@ -574,6 +717,7 @@ jobs:
         with:
           shared-key: installed-reopen-${{ matrix.os }}
           cache-on-failure: false
+          save-if: ${{ github.event_name != 'merge_group' }}
       - name: Build ordinary primary and fixed reopen corpus
         run: cargo test -p rrflow-cli --test installed_reopen --release --locked --no-run
       - name: Exercise installed capacity workload and backup readback
@@ -604,7 +748,7 @@ jobs:
       - name: Correlate installed sampler and storage traces
         timeout-minutes: 10
         run: cargo test -p rrflow-cli --test installed_reopen --release --locked -- sustained::installed_sampler_trace_matches_server_and_store --exact --ignored --nocapture
-      - name: Independent installed estates under concurrent load
+      - name: Independent installed engrams under concurrent load
         run: cargo test -p rrflow-cli --test installed_reopen --release --locked -- sustained::fleet::installed_two_estate_isolation_under_concurrent_load --exact --ignored --nocapture
       - name: Require fresh and existing installed damage denial
         timeout-minutes: 10
@@ -650,7 +794,7 @@ jobs:
               assert previous['ready_ns'] <= receipt['cleanup']['killed_ns'] <= receipt['cleanup']['reaped_ns']
               builds.append(receipt['build'])
           assert builds[0] == builds[1]
-          print('ordinary reopen evidence: 200 cycles, 10300 reconciled attempts, both estates cleaned up')
+          print('ordinary reopen evidence: 200 cycles, 10300 reconciled attempts, both engrams cleaned up')
           PY
       - name: Retain sanitized ordinary reopen receipts
         if: always()
@@ -665,6 +809,8 @@ jobs:
 
   installed-crash:
     name: installed domain crash (${{ matrix.os }})
+    needs: [changes]
+    if: ${{ needs.changes.outputs.full == 'true' }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 75
     strategy:
@@ -690,6 +836,7 @@ jobs:
         with:
           shared-key: installed-crash-${{ matrix.os }}
           cache-on-failure: false
+          save-if: ${{ github.event_name != 'merge_group' }}
       - name: Build ordinary primary before diagnostic feature activation
         run: cargo build -p rrflow-cli --bin rrflow --locked
       - name: Verify diagnostic protocol is absent from ordinary artifact
@@ -785,10 +932,109 @@ jobs:
       - name: Deny diagnostic-primary and oracle warnings
         run: cargo clippy -p rrflow-cli --bin rrflow --test installed_crash --test lifecycle_process --features crash-test --locked -- -D warnings
 
+  docs-policy:
+    name: documentation policy
+    needs: [changes]
+    if: ${{ needs.changes.outputs.docs == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          submodules: recursive
+      - uses: dtolnay/rust-toolchain@d124f86f28ff42855784ff3319f48ac182c248f8 # 1.99.1
+      - name: Enforce documentation authority and local links
+        run: python3 scripts/ci/check_documentation.py
+      - name: Check generated navigation, inventory and capacity projections
+        run: |
+          set -euo pipefail
+          python3 scripts/knowledge/render_navigation.py --check
+          python3 scripts/ci/build_execution_inventory.py
+          python3 scripts/ci/build_execution_inventory.py --check
+          python3 scripts/knowledge/render_capacity_profiles.py --check
+          git diff --check
+
+  scripts-policy:
+    name: script tests
+    needs: [changes]
+    if: ${{ needs.changes.outputs.scripts == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          submodules: recursive
+      - name: Test repository scripts
+        run: |
+          set -euo pipefail
+          python3 scripts/check_version.py
+          python3 scripts/test_build_rrflow.py
+          python3 scripts/test_controller_trial_package.py
+          python3 scripts/ci/test_offline_lifecycle.py
+          python3 scripts/ci/test_execution_inventory.py
+          python3 scripts/inference/test_review_outcomes.py
+          python3 scripts/inference/test_capture_observations.py
+          python3 scripts/inference/test_review_decisions.py
+          python3 scripts/inference/test_installed_controller_fault_relay.py
+          python3 scripts/knowledge/test_export.py
+          python3 scripts/knowledge/test_capacity_profiles.py
+          python3 scripts/ci/test_collect_storage_acceptance.py
+          python3 scripts/ci/test_sustained_launch.py
+          python3 scripts/ci/test_analyze_sustained_conflicts.py
+
+  engine-fast:
+    name: engine fast lane
+    needs: [changes]
+    if: ${{ needs.changes.outputs.engine == 'true' }}
+    runs-on: ${{ fromJSON(inputs.linux-heavy-runner) }}
+    timeout-minutes: 45
+    env:
+      CARGO_BUILD_JOBS: "2"
+      CARGO_PROFILE_TEST_DEBUG: "0"
+      RUSTFLAGS: "-C link-arg=-Wl,--threads=1"
+      PACKAGES: ${{ needs.changes.outputs.packages }}
+      DEPENDENTS: ${{ needs.changes.outputs.dependents }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          submodules: recursive
+      - uses: dtolnay/rust-toolchain@d124f86f28ff42855784ff3319f48ac182c248f8 # 1.99.1
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          shared-key: linux-engine-fast-test-debug0-lld1
+          cache-on-failure: false
+          save-if: ${{ github.event_name != 'merge_group' }}
+      - name: Check Rust formatting
+        run: cargo fmt --all -- --check
+      - name: Enforce generated product-surface parity
+        run: python3 scripts/ci/check_generated_surfaces.py
+      - name: Test the changed crates
+        run: |
+          set -euo pipefail
+          test -n "$PACKAGES"
+          cargo test $PACKAGES --locked --no-fail-fast
+      - name: Deny warnings in the changed crates
+        run: cargo clippy $PACKAGES --all-targets --locked -- -D warnings
+      - name: Compile the crates that depend on them
+        if: ${{ env.DEPENDENTS != '' }}
+        run: cargo check $DEPENDENTS --all-targets --locked
+
   ci-gate:
     name: ci-gate
     if: ${{ always() }}
     needs:
+      - changes
+      - docs-policy
+      - scripts-policy
+      - engine-fast
+      - native-arm64
       - topology-smoke
       - estate-portability
       - verify
@@ -797,12 +1043,23 @@ jobs:
       - optional-features
       - pgvector-feature
       - installed-crash
+      - storage-contract-preflight
       - installed-reopen
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Require every CI partition
+      - name: Require every selected CI lane
         env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          FULL_LANE: ${{ needs.changes.outputs.full }}
+          DOCS_LANE: ${{ needs.changes.outputs.docs }}
+          SCRIPTS_LANE: ${{ needs.changes.outputs.scripts }}
+          ENGINE_LANE: ${{ needs.changes.outputs.engine }}
+          SDK_LANE: ${{ needs.changes.outputs.sdk }}
+          DOCS_POLICY_RESULT: ${{ needs.docs-policy.result }}
+          SCRIPTS_POLICY_RESULT: ${{ needs.scripts-policy.result }}
+          ENGINE_FAST_RESULT: ${{ needs.engine-fast.result }}
+          ARM64_RESULT: ${{ needs.native-arm64.result }}
           TOPOLOGY_RESULT: ${{ needs.topology-smoke.result }}
           PORTABILITY_RESULT: ${{ needs.estate-portability.result }}
           VERIFY_RESULT: ${{ needs.verify.result }}
@@ -811,14 +1068,33 @@ jobs:
           OPTIONAL_FEATURES_RESULT: ${{ needs.optional-features.result }}
           PGVECTOR_FEATURE_RESULT: ${{ needs.pgvector-feature.result }}
           INSTALLED_CRASH_RESULT: ${{ needs.installed-crash.result }}
+          STORAGE_PREFLIGHT_RESULT: ${{ needs.storage-contract-preflight.result }}
           INSTALLED_REOPEN_RESULT: ${{ needs.installed-reopen.result }}
         run: |
-          test "$TOPOLOGY_RESULT" = success
-          test "$PORTABILITY_RESULT" = success
-          test "$VERIFY_RESULT" = success
-          test "$ENGINE_SUITES_RESULT" = success
-          test "$SDK_CONFORMANCE_RESULT" = success
-          test "$OPTIONAL_FEATURES_RESULT" = success
-          test "$PGVECTOR_FEATURE_RESULT" = success
-          test "$INSTALLED_CRASH_RESULT" = success
-          test "$INSTALLED_REOPEN_RESULT" = success
+          set -euo pipefail
+          # A selected lane must have succeeded; an unselected lane must have
+          # been skipped by its lane condition and nothing else. Any other
+          # result, including a cancelled or failed selection, fails the gate.
+          test "$CHANGES_RESULT" = success
+          expect() {
+            if [ "$1" = true ]; then
+              test "$2" = success || { echo "$3: selected, expected success, got $2"; exit 1; }
+            else
+              test "$2" = skipped || { echo "$3: not selected, expected skipped, got $2"; exit 1; }
+            fi
+          }
+          if [ "$FULL_LANE" = true ] || [ "$SDK_LANE" = true ]; then SDK_SELECTED=true; else SDK_SELECTED=false; fi
+          expect "$DOCS_LANE" "$DOCS_POLICY_RESULT" docs-policy
+          expect "$SCRIPTS_LANE" "$SCRIPTS_POLICY_RESULT" scripts-policy
+          expect "$ENGINE_LANE" "$ENGINE_FAST_RESULT" engine-fast
+          expect "$FULL_LANE" "$ARM64_RESULT" native-arm64
+          expect "$FULL_LANE" "$TOPOLOGY_RESULT" topology-smoke
+          expect "$FULL_LANE" "$PORTABILITY_RESULT" estate-portability
+          expect "$FULL_LANE" "$VERIFY_RESULT" verify
+          expect "$FULL_LANE" "$ENGINE_SUITES_RESULT" engine-suites
+          expect "$SDK_SELECTED" "$SDK_CONFORMANCE_RESULT" sdk-conformance
+          expect "$FULL_LANE" "$OPTIONAL_FEATURES_RESULT" optional-features
+          expect "$FULL_LANE" "$PGVECTOR_FEATURE_RESULT" pgvector-feature
+          expect "$FULL_LANE" "$INSTALLED_CRASH_RESULT" installed-crash
+          expect "$FULL_LANE" "$STORAGE_PREFLIGHT_RESULT" storage-contract-preflight
+          expect "$FULL_LANE" "$INSTALLED_REOPEN_RESULT" installed-reopen

@@ -59,6 +59,9 @@ fn profile_of(bindings: Vec<EndpointBinding>) -> rrd_contract::Result<EndpointPr
             name: id("test"),
             bindings,
             selection_policy: None,
+            worker_policy: None,
+            observation_policy: None,
+            assessment_policy: None,
         },
     )
 }
