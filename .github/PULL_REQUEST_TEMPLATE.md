@@ -10,6 +10,8 @@ Keep incomplete/dependency-blocked work draft. Remove unused prompts. -->
 - Package driver and review handoff (person or named working session):
 - Starting revision; required PRs that must land first (or none):
 - Overlapping files/packages and agreed integration order:
+- For a joined user journey: installed end-to-end driver, current failing
+  boundary, integrated candidate and the next dependency after this package:
 
 ## Change brief
 
@@ -33,6 +35,8 @@ tests -> canonical destination, owning gate and replacement proof:
 
 - Linked package journal; created/changed/deleted/generated paths:
 - Commands actually run and results; failures and checks not run:
+- For claimed source review: exact tree/object identities, reviewed files or
+  ranges, substantive findings and explicitly unreviewed remainder:
 - Remaining blockers, next concrete action and who owns it:
 - Candidate CI run / tested revision (pending until available):
 - For long qualification: frozen source/tree, artifacts/configuration, retained

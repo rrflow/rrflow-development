@@ -122,14 +122,13 @@ control is proof of those downstream capabilities or full H-06 acceptance.
 Newer RRFlow installation-plan contract v2 requires an explicit identity from
 `rrflow install identity`, retained across preview regeneration and supplied
 with `install plan --identity`. The
-[2026-11-01 pin receipt](../../evidence/change-journals/gate-h/h-06-connectome-chain-pin.md)
-moves the pinned workbench to Connectome
-`c1cbff203ecee89013878609d11aed04e89d0e71`. That revision is bound to engine/SDK
-`15f36a8758e32b33c930a20da836def3e5cc3207`. Its native preview allocates that
-identity, serve sends it back, and its real-engine process tests pass against
-that engine. That is component evidence, not qualification of the installation
-contract. Updating its engine bundle again requires updating and testing this
-adapter input as described in the
+[Inventory neighborhood pin receipt](../../evidence/change-journals/gate-h/h-06-connectome-inventory-pin-20261107.md)
+associates this checkout with Connectome
+`4da67e27f52ef20861fd9ee8c8351ce48920f49a`, whose native client is bound to
+engine/SDK `91b6c6789e2e7d217e0873cff532bd53aa937581`. Its process tests are
+component evidence for that pair, not qualification of installation or of
+compatibility with a later engine. Updating its engine bundle again requires
+updating and testing this adapter input as described in the
 [implementation guide](connectome-implementation-guide.md#run-the-current-installed-engine).
 
 The same pin brings these Connectome changes, each landed through Connectome's
@@ -498,8 +497,8 @@ identity. Every metric says whether it is measured, estimated, unsupported or
 unknown. Changing projects isolates caches, sessions and in-flight results;
 concurrent engines never imply context sharing.
 
-The current pinned workbench binds engine/SDK `15f36a8758e32b33c930a20da836def3e5cc3207`
-([2026-11-01 pin receipt](../../evidence/change-journals/gate-h/h-06-connectome-chain-pin.md)).
+The pinned workbench binds engine/SDK `91b6c6789e2e7d217e0873cff532bd53aa937581`
+([Inventory neighborhood pin receipt](../../evidence/change-journals/gate-h/h-06-connectome-inventory-pin-20261107.md)).
 H-06 must keep engine assets, SDK, installation adapter and public-control
 consumers updated together and qualify the resulting exact pair. An existing UI
 data lens does not prove this new user journey or compatibility with a later
@@ -626,7 +625,7 @@ H-06.
 | Separate React/Tauri repository and production build | Connectome remains independently built and released. | The production bundle still carries SurrealDB client/UI/CBOR/Wasm aliases, QL Wasm packages, inherited surfaces, and multi-megabyte chunks. They are removed when the corresponding RRFlow surface exists; no compatibility or migration mode survives. |
 | `src-tauri/src/rrd/client.rs` and `transport.rs` | Native loopback validation, redirect denial, response limits, one authenticated session, and explicit close have four passing focused tests. | The client handwrites a partial RRD contract, exposes generic JSON, supports only capabilities/session/diagnostics/context, has no network TLS or WebSocket path, and is not generated from or conformed against the shared public contract/SDK corpus. |
 | `src/rrflow/runtime.ts` | Bounded URL construction and response-shape checks are useful client defenses. | It duplicates protocol truth and consumes the now-rejected scalar deployment list (`memory`, `embedded`, `local_daemon`, `edge`, `remote`, `distributed`). Replace it with generated types bound to the packaged and advertised RRFlow OpenAPI identity; retain no fallback decoder. |
-| `src/rrflow/attunement.ts` and runtime-connection UI | The eleven phase names and honest progress presentation can be projected from RRD. | The client duplicates attunement phases, estimates, trigger/routine/hook/skill definitions, status, and static automation rows. All lifecycle state must come from public engine job records and capabilities. |
+| `src/rrflow/attunement.ts` and runtime-connection UI | Honest progress presentation can be projected from public engine job records and advertised capabilities. The historical eleven names are not a required or universal plan. | The client duplicates attunement phases, estimates, trigger/routine/hook/skill definitions, status, and static automation rows. All lifecycle state must come from public engine job records and capabilities. |
 | `src/rrflow/diagnostics.ts` | A detailed trace/run inspector and the prompt-flight lens remain required views. | It defines a retired diagnostics protocol, provider-flight state and runners, and private `/api/*` routes that no engine serves. The flight lens is rebuilt on `flight-launch`, `flight-list`, and `flight-read` plus `diagnostics-read`; the retired protocol and routes are replaced by those public operations, not kept as a parallel lifecycle ([POAM-032](../../poam/rrflow-1.0-alpha/poam-032.md)). |
 | `src/rrflow/control-plane.ts` | Multi-instance navigation remains a valid client use case. | It invents a client-owned `rrflow-control` protocol and managed-instance state without an accepted engine/fleet contract. It cannot be treated as current RRFlow capability. |
 | `src/providers/Context/index.tsx` | Connection state belongs in one narrow client service. | It hardcodes an RRFlow cloud hostname, namespace/database, old vendor client, and fixed reconnect loop. Configuration, topology, credentials, and reconnection must come from the accepted endpoint/session contracts. |

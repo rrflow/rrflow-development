@@ -4970,6 +4970,7 @@ dependencies = [
  "rrd-core",
  "rrd-estate",
  "rrd-inference",
+ "rrd-observation",
  "rrd-operator-knowledge",
  "rrd-query",
  "rrd-security",
@@ -4982,6 +4983,7 @@ dependencies = [
  "tempfile",
  "toml",
  "tracing",
+ "tracing-subscriber",
  "wasmi",
  "wat",
  "windows-sys 0.61.2",
@@ -5067,6 +5069,18 @@ dependencies = [
  "serde_json",
  "tempfile",
  "thiserror 2.0.20",
+]
+
+[[package]]
+name = "rrd-observation"
+version = "1.0.0"
+dependencies = [
+ "chrono",
+ "rrd-contract",
+ "rrd-core",
+ "serde",
+ "serde_json",
+ "ureq",
 ]
 
 [[package]]

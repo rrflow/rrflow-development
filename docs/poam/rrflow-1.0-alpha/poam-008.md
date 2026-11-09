@@ -63,6 +63,17 @@ Roadmap owners: [Gate A](../../roadmap/rrflow-1.0/gate-a.md),
 
 ## Closure evidence
 
+Draft [PR235](https://github.com/rrflow/rrflow-development/pull/235) adds a
+bounded engine-observation exporter prerequisite. Its local regression exposed
+an export-retention gap: lowering the configured cap below more than one control
+batch of expired records left preparation capacity-blocked. Local remediation
+retires eligible history in at most three guarded batches and keeps unresolved
+retirement explicitly authorized. The package
+[journal](../../evidence/change-journals/gate-h/h-05-engine-observation-delivery.md)
+retains the failure, correction and installed sender/receiver evidence. Candidate
+acceptance remains pending; this does not close provider capture, generic
+routines, real-task outcome correlation or this POA&M item.
+
 Retain C-03's typed content-addressed state, explicit runtime builds, schema-bound prepared
 receipts, physically admitted atomic publication, direct removal, and fault/reopen evidence.
 Closure still requires same-stamp effect-complete authorization and full receipt
