@@ -1,6 +1,6 @@
 # One-project proof and resource-managed instance direction
 
-**Status:** local documentation and bounded developer-session evidence; no gate closed
+**Status:** active local documentation and bounded developer-session evidence; no gate closed
 **Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/gate-h/one-project-and-resource-managed-instances-20261106`
 **Owner:** H-06/H-07 direction and POAM-011; roadmap owns implementation and acceptance
 
@@ -90,3 +90,25 @@ diff and this record were reviewed; candidate CI, native platform matrices, full
 journey, soak and competitive benchmarks were not run for this documentation
 change. A candidate PR, CI result and merge are not yet established. This
 journal does not change roadmap or POA&M status.
+
+## Candidate reconciliation review (2026-11-09)
+
+Reviewed PR #288 at `12d7decfff66752a89f50bc1ed3ab01c3af3bfa8` against public
+development main `a9f1b0fb8d948e113dca347e5eeac10dd224330a`. The old candidate
+run `42447832343` failed documentation policy, engine architecture, optional
+engine feature, and verification jobs on the old base. The documented C-07
+whitespace finding was checked against refreshed main and is absent there; the
+new candidate also needs its own CI run. A current-main merge preview was
+conflict-free. The package remains documentation-only and does not establish
+the one-project runtime flow or close H-06/H-07.
+
+On the refreshed merge tree, `python scripts/ci/check_documentation.py` passed
+(1,034 statuses and 1,032 classified coordinates),
+`python scripts/knowledge/render_navigation.py --check` passed (18 indexes,
+1,033 nodes, 3,610 edges), and
+`cargo test -p rrd-engine --test workspace_architecture --locked` passed
+(33 tests, including the tracked/untracked trailing-whitespace guard). The
+journal status was normalized to the repository's recognized `active` label;
+the Gate-H index was regenerated. Candidate CI and merge-group CI have not
+been run on the reconciled revision at the time of this record. No release,
+objective, roadmap, or POA&M status changed.

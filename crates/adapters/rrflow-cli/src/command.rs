@@ -163,6 +163,9 @@ pub enum InstallAction {
         /// Bounded JSON proposal for recognized attunement effects.
         #[arg(long)]
         attunement_proposal: Option<std::path::PathBuf>,
+        /// Explicitly include the instance-scoped ProjectSourceRead grant in a new estate.
+        #[arg(long, default_value_t = false)]
+        allow_project_source_read: bool,
         /// Debug-test surrogate for the distribution executable.
         #[arg(long = "test-distribution-executable", hide = true)]
         test_distribution_executable: Option<std::path::PathBuf>,
