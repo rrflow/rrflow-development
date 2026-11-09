@@ -90,7 +90,9 @@ fn a_failed_case_stays_visible_and_an_all_failed_system_is_failed() {
     )
     .unwrap();
     assert_eq!(values(&partly, "failed_cases"), [1.0]);
-    assert_eq!(partly.systems[0].status, SystemStatus::Completed);
+    assert_eq!(partly.systems[0].status, SystemStatus::Partial);
+    assert!(partly.systems[0].reason.as_deref().unwrap().contains("1"));
+    assert!(!values(&partly, "recall_at_k").is_empty());
 
     for case in source["results"].as_array_mut().unwrap() {
         case["label"] = json!("x");

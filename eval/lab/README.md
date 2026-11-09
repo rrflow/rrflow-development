@@ -38,7 +38,7 @@ cargo build --locked --release -p rrflow-eval --bin rrflow-lab -p rrflow-cli --b
 export RRFLOW_LAB_BIN=$PWD/target/release/rrflow-lab RRFLOW_BIN=$PWD/target/release/rrflow
 export RRFLOW_LAB_CPUSET=5-9,15-19 RRFLOW_LAB_CLIENT_CPUSET=0-4,10-14 TMPDIR=$HOME/lab-tmp
 mkdir -p "$TMPDIR"
-for system in qdrant milvus surrealdb custom-reference rrflow-exact rrflow-turboquant; do
+for system in qdrant milvus surrealdb custom-reference rrflow-exact rrflow-hnsw rrflow-turboquant; do
   eval/lab/run_system.sh "$system" runs/vector-small
 done
 "$RRFLOW_LAB_BIN" combine --manifest eval/lab/vector-small.json --in runs/vector-small \
@@ -50,6 +50,20 @@ drive the load. Use your host's topology. `TMPDIR` must be on the disk under
 test, since a RAM-backed `/tmp` would flatter whatever stores its data there.
 Keep the run directory: it holds every latency and recall sample, and the report
 binds those files by digest.
+
+The lab prints transient JSON progress events on stderr for prepared
+collections, started and completed ingest batches, index build, and search
+cases. Completed batch counts mean the adapter call returned successfully;
+they do not establish durable recovery or search readiness. Progress output is
+not an audit record or a completed report. Capture stderr explicitly if it is
+needed later, and review server error text before sharing it. Progress output
+occurs outside query-case timing, but a slow stderr consumer can delay the
+run and affect ingest or index timing and the overall host environment.
+
+Container cleanup uses the ID returned by a successful Docker creation. A
+name conflict or invalid response fails without deleting a pre-existing named
+container. If Docker creates a container but its response is lost or invalid,
+the launcher cannot prove ownership and may leave it for an operator to inspect.
 
 Run on a host with nothing else working. On a GB10 the CPU and GPU share memory and
 power, so GPU work can slow a search without showing as CPU load. Repeat a run before
@@ -289,6 +303,71 @@ lab makes itself: every system on one host, on the same data, under the same rul
 [`check_references.py`](check_references.py) downloads each source and reports any quoted number
 no longer found there. Finding a number shows it is there, and not that a row attributes it
 correctly, so read a source before changing its row.
+## Test whether something helps an agent
+
+Vector tests say how fast a system finds nearest vectors. They say nothing about whether it
+helps an agent do real work. `agent-tasks` measures one planning heuristic, with
+[`tasks/rrflow-package-planning.json`](tasks/rrflow-package-planning.json) as its first package.
+
+Each task comes from a merged pull request: the behavior its brief asked for, at the revision it
+started from, with the files it really changed as an answer the agent never sees.
+[`extract_package_tasks.py`](extract_package_tasks.py) builds them. The design is frozen in the
+manifest before any run, and a run from a different design cannot join a report. Runs are paired
+across arms. A single repetition per task can use an exact paired McNemar test once
+every scheduled pair is usable; repeated runs of a task are correlated, so the
+current report marks their paired verdict inconclusive. Provider failures and
+missing runs remain visible and cannot be counted as incorrect plans. An arm with
+no repository is a leakage check; a low observed file-match rate does not prove
+there is no leakage.
+
+The measured outcome is whether a plan names enough files from one historical
+change. It is not a correctness or completion test: alternative valid plans can
+name other files, and no implementation or test is executed by this score.
+Independent executable test oracles and evaluated answers remain future work.
+
+A study is the small set of choices made over that catalog, in a file like
+[`studies/rrflow-planning-pilot.json`](studies/rrflow-planning-pilot.json): stage, tasks, arms,
+baseline, floor, models, repetitions, spend, and the name of the variable holding the key. Nothing
+runs until it names models and a spend limit, because those are decisions for whoever pays.
+
+[`study-requirements.json`](study-requirements.json) says what any study must do, why, and which
+source that comes from. Check a study against it, then write its frozen plan, which is refused until
+the binding requirements are met:
+
+```bash
+FILES="--catalog eval/lab/tasks/rrflow-package-planning.json --requirements eval/lab/study-requirements.json --sources eval/lab/sources.json"
+rrflow-lab study-check --config eval/lab/studies/rrflow-planning-pilot.json $FILES
+rrflow-lab study-plan --config eval/lab/studies/rrflow-planning-pilot.json $FILES --out plan.json
+```
+
+A pilot may run although it cannot answer the question, and its report says so. A confirmatory study
+needs enough distinct tasks for exact McNemar to reach its alpha, and an audit proving capture.
+
+```bash
+rrflow-lab tasks-order --manifest plan.json
+rrflow-lab tasks-run --manifest plan.json --task ID --arm ID --model ID --repetition N --checkout DIR --empty DIR --out runs/tasks
+rrflow-lab tasks-audit --manifest plan.json --in runs/tasks --out audit.json
+rrflow-lab tasks-combine --manifest plan.json --in runs/tasks --out report.json
+```
+
+`--checkout` is the task's repository at its `revision`, and `--empty` is an empty directory. An arm
+with an MCP tool also takes `--mcp-config` and `--chunks`, the file `tasks-import --chunks-out` wrote.
+Real runs use `claude --bare`, which keeps a person's memory and settings out and needs
+`ANTHROPIC_API_KEY`.
+
+Run one task in each arm first, then audit. The audit reads what the runs hold, per arm and per
+field, and exits non-zero if anything required is missing. A finished run lacking data stays visible
+and does not count, and neither does a run whose MCP server never connected, so a parsing gap costs
+one run per arm and not a whole study. A run that reports no cost is charged at its per-run limit.
+
+RRFlow cannot yet return a repository's content through its own path, so `rrflow-attuned` is a
+declared gap. `rrflow-harness-import` searches text this harness imports through public operations,
+and it measures lexical and graph retrieval and nothing more.
+
+[`retrieval_signal.py`](retrieval_signal.py) measures that retrieval with no model: it sends each
+task to the real `rrflow-mcp` process and scores the files returned, beside plain BM25 over the same
+chunks. The [package journal](../../docs/evidence/change-journals/gate-j/reasoning-tests.md) has its
+first results and what they do not show.
 
 ## Reading a result
 
@@ -296,6 +375,16 @@ The first measured results and their limits are in the
 [package journal](../../docs/evidence/change-journals/gate-j/comparison-lab.md).
 Every report carries its own limits, and these apply to all of them today:
 
+- A system is `partial` when some requested cases fail or are truncated. The CLI
+  exits nonzero, while the run and its raw samples remain available for combine.
+  Incomplete cases retain attempts, successes, failures and truncation but do
+  not enter the normal recall/speed curve or qualify for matched-quality speed.
+  Individual failed-request durations carry a fixed category; the case summary
+  holds the first error, which is untrusted server text and needs review before
+  sharing. A report is not proof that arbitrary server responses contain no secrets.
+- Matching benchmark-client metadata does not establish equivalent server CPU,
+  memory, storage, or deployment. The server-resource verdict remains `not_run`
+  until these conditions can be independently established.
 - Clients are closed-loop, so results understate latency under overload.
 - Ingest is one sequential writer, so it does not show parallel write capacity.
 - `vector-small`, `vector-100k` and `vector-medium` use a synthetic mixture. The imported
@@ -305,3 +394,28 @@ Every report carries its own limits, and these apply to all of them today:
 When an optimization claims to help, rerun the same manifest on the same host and
 compare the two reports. Gate J's rule applies: change one thing at a time, and
 reject regressions or explicitly review the tradeoff.
+
+
+## Workbench integration to implement
+
+The existing Connectome vector lens compares two searches on one engine; it
+is not this cross-system lab. Its next consumer should read the lab's generated
+report schema, show each system and case with failures, limits, input and binary
+identities, and render the report's declared table, bars and curves. Unsupported
+schema versions or view kinds must be reported explicitly. A selected report is
+read-only diagnostic evidence, not an engine lifecycle transition or a parity
+claim. Validate artifact sizes, digests and paths before accessing raw samples;
+reject path escapes and changed bytes. A changed, partial or absent run remains
+visible rather than inheriting a previous success. Tests must import real lab
+output as well as exercise tampered artifacts and unknown views.
+
+Launching a comparison is a separate capability: preview the project, binaries
+and image digests, workload, endpoint scope, resource limits, storage, output
+paths and cleanup before authorization. The selected engine owns authorized
+effects and receipts; the workbench displays them. Preserve explicit adapter
+selection, custom systems and a no-run/unavailable state. No UI action may
+silently start a model, upload data, change a project, or declare a winner. A
+later implementation must prove launch, interruption, restart, result readback
+and comparison on the installed path; importing a report alone proves none of
+those. The current candidate provides neither a Connectome lab report reader
+nor this launch capability.

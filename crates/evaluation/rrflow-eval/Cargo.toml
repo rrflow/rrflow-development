@@ -1,5 +1,6 @@
 [package]
 name = "rrflow-eval"
+default-run = "rrflow-eval"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

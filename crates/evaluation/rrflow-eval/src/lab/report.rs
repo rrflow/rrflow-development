@@ -34,6 +34,7 @@ pub enum LabEvidenceClass {
 #[serde(rename_all = "snake_case")]
 pub enum SystemStatus {
     Completed,
+    Partial,
     Failed,
     Unavailable,
     Unimplemented,
@@ -100,6 +101,8 @@ pub struct Observation {
 pub enum VerdictOutcome {
     Met,
     NotMet,
+    /// The comparison ran but its evidence does not support either conclusion.
+    Inconclusive,
     NotRun,
 }
 
@@ -246,7 +249,7 @@ impl LabReport {
         }
         for system in &self.systems {
             match system.status {
-                SystemStatus::Completed => require(
+                SystemStatus::Completed | SystemStatus::Partial => require(
                     observed.contains(&system.id),
                     "a completed system needs at least one observation",
                 )?,
