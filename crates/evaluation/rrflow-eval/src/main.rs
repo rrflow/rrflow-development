@@ -2,11 +2,14 @@
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::collections::{BTreeMap, BTreeSet};
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::Instant;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct Trial {
     provider: String,
     repository: String,
@@ -17,13 +20,28 @@ struct Trial {
     attempts: u64,
     #[serde(default)]
     retries: u64,
-    tool_calls: u64,
+    tool_calls: Option<u64>,
     input_tokens: Option<u64>,
     output_tokens: Option<u64>,
     latency_ms: u64,
     exit_code: Option<i32>,
     raw_output: String,
     stderr: String,
+}
+
+/// Mechanical screening only: this is not an independent quality oracle or
+/// proof that the named treatment was actually attached to the provider.
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ScreeningSummary {
+    format_version: u16,
+    evidence_class: String,
+    trials: usize,
+    successes: usize,
+    paired_regressions: usize,
+    providers: Vec<String>,
+    repositories: Vec<String>,
+    trials_detail: Vec<Trial>,
 }
 
 fn main() {
@@ -38,9 +56,12 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     match args.get(1).map(String::as_str) {
         Some("storage") => rrflow_eval::storage::cli::run(&args[2..]).map_err(Into::into),
         Some("run") => run_trial(&args[2..]),
-        Some("summarize") => summarize(Path::new(args.get(2).ok_or("result directory required")?)),
+        Some("summarize") => summarize(
+            Path::new(args.get(2).ok_or("result directory required")?),
+            args.get(3).map(Path::new),
+        ),
         Some("verify") => verify(Path::new(args.get(2).ok_or("summary file required")?)),
-        _ => Err("usage: rrflow-eval run <provider> <repo> <scenario> <arm> <expected> <prompt-file> <output-file> | summarize <result-dir> | verify <summary-file> | storage <schema|validate|verify>".into()),
+        _ => Err("usage: rrflow-eval run <provider> <repo> <scenario> <arm> <expected> <prompt-file> <output-file> | summarize <result-dir> [new-summary-file] | verify <summary-file> | storage <schema|validate|verify>".into()),
     }
 }
 
@@ -53,6 +74,14 @@ fn run_trial(args: &[String]) -> Result<(), Box<dyn std::error::Error>> {
     let scenario = &args[2];
     let arm = &args[3];
     let expected = &args[4];
+    if expected.trim().is_empty()
+        || scenario.trim().is_empty()
+        || !matches!(arm.as_str(), "baseline" | "runtime")
+    {
+        return Err(
+            "screening requires a nonempty scenario and expected string and a valid arm".into(),
+        );
+    }
     let prompt = std::fs::read_to_string(&args[5])?;
     let output_file = PathBuf::from(&args[6]);
     let started = Instant::now();
@@ -122,7 +151,11 @@ fn run_trial(args: &[String]) -> Result<(), Box<dyn std::error::Error>> {
     if let Some(parent) = output_file.parent() {
         std::fs::create_dir_all(parent)?;
     }
-    std::fs::write(output_file, serde_json::to_vec_pretty(&trial)?)?;
+    let mut file = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(output_file)?;
+    file.write_all(&serde_json::to_vec_pretty(&trial)?)?;
     println!(
         "{} {} {} {} success={} latency={}ms",
         provider,
@@ -135,7 +168,7 @@ fn run_trial(args: &[String]) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn metrics(provider: &str, output: &str) -> (Option<u64>, Option<u64>, u64) {
+fn metrics(provider: &str, output: &str) -> (Option<u64>, Option<u64>, Option<u64>) {
     match provider {
         "claude" | "gemini" => {
             let value: Value = serde_json::from_str(output).unwrap_or(Value::Null);
@@ -144,28 +177,22 @@ fn metrics(provider: &str, output: &str) -> (Option<u64>, Option<u64>, u64) {
                     .get("stats")
                     .and_then(|v| v.get("models"))
                     .and_then(Value::as_object)
-                    .and_then(|models| models.values().next())
+                    .and_then(|models| {
+                        (models.len() == 1)
+                            .then(|| models.values().next())
+                            .flatten()
+                    })
             });
-            let input = usage.map(|usage| {
-                [
-                    "input_tokens",
-                    "inputTokens",
-                    "cache_creation_input_tokens",
-                    "cache_read_input_tokens",
-                ]
-                .iter()
-                .filter_map(|field| usage.get(field).and_then(Value::as_u64))
-                .sum()
-            });
+            // Provider-native counters have different cache semantics; do not
+            // add cache fields or infer a zero when the field is missing.
+            let input = usage
+                .and_then(|u| u.get("input_tokens").or_else(|| u.get("inputTokens")))
+                .and_then(Value::as_u64);
             let output_tokens = usage
                 .and_then(|u| u.get("output_tokens").or_else(|| u.get("outputTokens")))
                 .and_then(Value::as_u64);
-            let calls = value
-                .get("num_turns")
-                .and_then(Value::as_u64)
-                .unwrap_or(1)
-                .saturating_sub(1);
-            (input, output_tokens, calls)
+            // Model turns are not tool calls, and absence is not zero.
+            (input, output_tokens, None)
         }
         "codex" => {
             let values: Vec<Value> = output
@@ -179,73 +206,164 @@ fn metrics(provider: &str, output: &str) -> (Option<u64>, Option<u64>, u64) {
             let output_tokens = usage
                 .and_then(|u| u.get("output_tokens"))
                 .and_then(Value::as_u64);
-            let calls = values
-                .iter()
-                .filter(|value| {
-                    value
-                        .get("type")
-                        .and_then(Value::as_str)
-                        .is_some_and(|kind| {
-                            kind.contains("tool")
-                                || kind == "item.completed"
-                                    && value.pointer("/item/type").and_then(Value::as_str)
-                                        == Some("command_execution")
-                        })
-                })
-                .count() as u64;
-            (input, output_tokens, calls)
+            // A command-event count is not a complete provider tool count.
+            (input, output_tokens, None)
         }
-        _ => (None, None, 0),
+        _ => (None, None, None),
     }
 }
 
-fn summarize(dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
+const MAX_SCREENING_FILE_BYTES: u64 = 8 * 1024 * 1024;
+const MAX_SCREENING_TRIALS: usize = 256;
+
+fn read_screening_file(path: &Path) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    let mut bytes = Vec::new();
+    std::fs::File::open(path)?
+        .take(MAX_SCREENING_FILE_BYTES + 1)
+        .read_to_end(&mut bytes)?;
+    if bytes.len() as u64 > MAX_SCREENING_FILE_BYTES {
+        return Err("screening file exceeds 8 MiB".into());
+    }
+    Ok(bytes)
+}
+
+fn validate_trial(trial: &Trial) -> Result<(), Box<dyn std::error::Error>> {
+    if trial.provider.trim().is_empty()
+        || trial.repository.trim().is_empty()
+        || trial.scenario.trim().is_empty()
+        || !matches!(trial.arm.as_str(), "baseline" | "runtime")
+        || trial.expected.trim().is_empty()
+        || trial.attempts
+            != trial
+                .retries
+                .checked_add(1)
+                .ok_or("attempt count overflow")?
+        || trial.success
+            != (trial.exit_code == Some(0) && trial.raw_output.contains(&trial.expected))
+    {
+        return Err("invalid or inconsistent screening trial".into());
+    }
+    Ok(())
+}
+
+fn paired_regressions(trials: &[Trial]) -> Result<usize, Box<dyn std::error::Error>> {
+    if trials.is_empty() {
+        return Err("screening has no trials".into());
+    }
+    let mut pairs: BTreeMap<(&str, &str, &str), [Option<bool>; 2]> = BTreeMap::new();
+    for trial in trials {
+        validate_trial(trial)?;
+        let pair = pairs
+            .entry((&trial.provider, &trial.repository, &trial.scenario))
+            .or_default();
+        let arm = usize::from(trial.arm == "runtime");
+        if pair[arm].replace(trial.success).is_some() {
+            return Err("duplicate provider/repository/scenario arm".into());
+        }
+    }
+    if pairs.values().any(|pair| pair.iter().any(Option::is_none)) {
+        return Err("screening has an incomplete provider/repository/scenario pair".into());
+    }
+    Ok(pairs
+        .values()
+        .filter(|pair| pair[0] == Some(true) && pair[1] == Some(false))
+        .count())
+}
+
+fn screening_summary(
+    mut trials: Vec<Trial>,
+) -> Result<ScreeningSummary, Box<dyn std::error::Error>> {
+    if trials.len() < 8 || trials.len() > MAX_SCREENING_TRIALS {
+        return Err("screening summary requires 8 through 256 trials".into());
+    }
+    trials.sort_by(|a, b| {
+        (&a.provider, &a.repository, &a.scenario, &a.arm).cmp(&(
+            &b.provider,
+            &b.repository,
+            &b.scenario,
+            &b.arm,
+        ))
+    });
+    let mut providers = BTreeSet::new();
+    let mut repositories = BTreeSet::new();
+    for trial in &trials {
+        providers.insert(trial.provider.clone());
+        repositories.insert(trial.repository.clone());
+    }
+    if providers.len() < 2 || repositories.len() < 2 {
+        return Err("screening requires at least two distinct providers and repositories".into());
+    }
+    let paired_regressions = paired_regressions(&trials)?;
+    Ok(ScreeningSummary {
+        format_version: 1,
+        evidence_class: "provider_screening_only".into(),
+        trials: trials.len(),
+        successes: trials.iter().filter(|trial| trial.success).count(),
+        paired_regressions,
+        providers: providers.into_iter().collect(),
+        repositories: repositories.into_iter().collect(),
+        trials_detail: trials,
+    })
+}
+
+fn summarize(dir: &Path, output: Option<&Path>) -> Result<(), Box<dyn std::error::Error>> {
     let mut trials = Vec::new();
     for entry in std::fs::read_dir(dir)? {
         let path = entry?.path();
         if path.extension().and_then(|value| value.to_str()) == Some("json") {
-            trials.push(serde_json::from_slice::<Trial>(&std::fs::read(path)?)?);
+            if trials.len() == MAX_SCREENING_TRIALS {
+                return Err("screening exceeds 256 trials".into());
+            }
+            let trial: Trial = serde_json::from_slice(&read_screening_file(&path)?)?;
+            validate_trial(&trial)?;
+            trials.push(trial);
         }
     }
     trials.sort_by(|a, b| {
-        (&a.provider, &a.scenario, &a.arm).cmp(&(&b.provider, &b.scenario, &b.arm))
+        (&a.provider, &a.repository, &a.scenario, &a.arm).cmp(&(
+            &b.provider,
+            &b.repository,
+            &b.scenario,
+            &b.arm,
+        ))
     });
     let success = trials.iter().filter(|trial| trial.success).count();
-    let regressions = trials
+    let regressions = paired_regressions(&trials)?;
+    let latency = trials.iter().try_fold(0u64, |total, trial| {
+        total
+            .checked_add(trial.latency_ms)
+            .ok_or("latency overflow")
+    })?;
+    let known_token_pairs = trials
         .iter()
-        .filter(|trial| {
-            trial.arm == "runtime"
-                && !trial.success
-                && trials.iter().any(|base| {
-                    base.provider == trial.provider
-                        && base.scenario == trial.scenario
-                        && base.arm == "baseline"
-                        && base.success
-                })
-        })
+        .filter(|trial| trial.input_tokens.zip(trial.output_tokens).is_some())
         .count();
-    let latency: u64 = trials.iter().map(|trial| trial.latency_ms).sum();
-    let known_tokens: u64 = trials
-        .iter()
-        .filter_map(|trial| {
-            trial
-                .input_tokens
-                .zip(trial.output_tokens)
-                .map(|(a, b)| a + b)
-        })
-        .sum();
+    if let Some(path) = output {
+        let report = screening_summary(trials.clone())?;
+        let bytes = serde_json::to_vec_pretty(&report)?;
+        if bytes.len() as u64 > MAX_SCREENING_FILE_BYTES {
+            return Err("screening summary exceeds 8 MiB".into());
+        }
+        let mut file = std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(path)?;
+        file.write_all(&bytes)?;
+    }
     println!(
-        "trials={} success={}/{} regressions={} total_latency_ms={} reported_tokens={}",
+        "trials={} success={}/{} regressions={} total_latency_ms={} known_token_pairs={}/{}",
         trials.len(),
         success,
         trials.len(),
         regressions,
         latency,
-        known_tokens
+        known_token_pairs,
+        trials.len()
     );
+    println!("screening only: treatment and answer correctness not verified; provider token counters are not aggregated");
     for trial in trials {
         println!(
-            "{} {} {} success={} retries={} tools={} tokens={:?}+{:?} latency={}ms",
+            "{} {} {} success={} retries={} tools={:?} tokens={:?}+{:?} latency={}ms",
             trial.provider,
             trial.scenario,
             trial.arm,
@@ -261,59 +379,39 @@ fn summarize(dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn verify(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    let value: Value = serde_json::from_slice(&std::fs::read(path)?)?;
-    let trials = value
-        .get("trials")
-        .and_then(Value::as_u64)
-        .ok_or("trials missing")?;
-    let successes = value
-        .get("successes")
-        .and_then(Value::as_u64)
-        .ok_or("successes missing")?;
-    let regressions = value
-        .get("paired_regressions")
-        .and_then(Value::as_u64)
-        .ok_or("paired_regressions missing")?;
-    let providers = value
-        .get("providers")
-        .and_then(Value::as_array)
-        .ok_or("providers missing")?;
-    let repositories = value
-        .get("repositories")
-        .and_then(Value::as_array)
-        .ok_or("repositories missing")?;
-    let detail = value
-        .get("trials_detail")
-        .and_then(Value::as_array)
-        .ok_or("trials_detail missing")?;
-    if trials < 8 || detail.len() as u64 != trials {
-        return Err("evaluation must retain at least eight detailed trials".into());
+    let report: ScreeningSummary = serde_json::from_slice(&read_screening_file(path)?)?;
+    let expected = screening_summary(report.trials_detail)?;
+    if report.format_version != expected.format_version
+        || report.evidence_class != expected.evidence_class
+        || report.trials != expected.trials
+        || report.successes != expected.successes
+        || report.paired_regressions != expected.paired_regressions
+        || report.providers != expected.providers
+        || report.repositories != expected.repositories
+    {
+        return Err("screening summary disagrees with its trial records".into());
     }
-    if providers.len() < 2 || repositories.len() < 2 {
-        return Err("evaluation must cover multiple providers and repositories".into());
-    }
-    if successes > trials {
-        return Err("success count exceeds trial count".into());
-    }
-    if regressions > trials {
-        return Err("regression count exceeds trial count".into());
-    }
-    for trial in detail {
-        for field in [
-            "provider",
-            "scenario",
-            "arm",
-            "success",
-            "input_tokens",
-            "output_tokens",
-            "tool_calls",
-            "latency_ms",
-        ] {
-            if trial.get(field).is_none() {
-                return Err(format!("trial missing {field}").into());
-            }
-        }
-    }
-    println!("verified evaluation evidence: trials={trials} successes={successes} regressions={regressions}");
+    println!("verified screening consistency: trials={} successes={} regressions={}; treatment and answer correctness not verified", expected.trials, expected.successes, expected.paired_regressions);
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::metrics;
+
+    #[test]
+    fn unreported_provider_usage_and_tool_count_are_unknown() {
+        assert_eq!(
+            metrics("claude", r#"{"usage":{},"num_turns":4}"#),
+            (None, None, None)
+        );
+        assert_eq!(metrics("codex", ""), (None, None, None));
+        assert_eq!(
+            metrics(
+                "claude",
+                r#"{"usage":{"input_tokens":10,"cache_read_input_tokens":7,"output_tokens":3}}"#
+            ),
+            (Some(10), Some(3), None)
+        );
+    }
 }
