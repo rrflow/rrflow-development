@@ -232,8 +232,8 @@ const ALLOWED_USES: &[AllowedUse] = &[
     AllowedUse {
         path: "crates/authority/rrd-engine/tests/runtime_vector_artifact_catalog.rs",
         kind: SensitiveReadUse::UnstampedCausalLogPage,
-        count: 1,
-        operation: "vector artifact publication oracle",
+        count: 2,
+        operation: "vector artifact publication and named-source trace link oracles",
     },
     AllowedUse {
         path: "crates/operations/rrd-cluster/tests/openraft_process.rs",

@@ -104,3 +104,7 @@ check reported 18 indexes, 1,018 nodes, 3,579 edges and no updates.
 ## Checklist
 
 [done] PR brief and baseline recorded before test edits; two real-engine failures reproduced; research and preservation constraints recorded. [open] Resolve the single canonical authenticated binding and unambiguous identity with historical-data/recovery semantics; implement; rerun both oracles and owning suites; verify authorization, bounds, reopen, replay and corruption; review every changed file and final diff; regenerate navigation; candidate and protected CI. No roadmap or POA&M status is closed.
+
+## 2026-11-10 candidate correction
+
+Candidate run 42690947540 failed `direct_read_source_closure::causal_log_and_snapshot_reducer_uses_match_the_explicit_allowlist` in the engine-authority suite and the rrd-engine optional-feature job: the new named-source test reads the unstamped causal log once more to prove the runtime trace event carries the `named_vector` source link, so `runtime_vector_artifact_catalog.rs` now has two such reads where the allowlist permitted one. The allowance is raised to two with both oracles named; no engine source path reads the log. Local: the closure test passes, `cargo test -p rrd-engine --all-targets --all-features --locked` otherwise passed 12 of 13 targets before the correction with this the only failure, fmt clean.
