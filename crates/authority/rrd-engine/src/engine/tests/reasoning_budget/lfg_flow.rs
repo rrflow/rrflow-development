@@ -7,18 +7,83 @@ use rrd_contract::{
 use std::io::{Read, Write};
 use std::net::TcpListener;
 
-#[derive(Clone)]
-struct DiagnosticWriter(Arc<std::sync::Mutex<Vec<u8>>>);
+type DiagnosticSink = Arc<std::sync::Mutex<Vec<serde_json::Value>>>;
 
-impl Write for DiagnosticWriter {
-    fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
-        self.0.lock().unwrap().extend_from_slice(bytes);
-        Ok(bytes.len())
-    }
+thread_local! {
+    /// The sink the capturing test installed on this thread, if any.
+    static LFG_SINK: std::cell::RefCell<Option<DiagnosticSink>> = const { std::cell::RefCell::new(None) };
+}
 
-    fn flush(&mut self) -> std::io::Result<()> {
-        Ok(())
+/// Records one event's fields the way `tracing_subscriber::fmt().json()` does.
+#[derive(Default)]
+struct JsonFields(serde_json::Map<String, serde_json::Value>);
+
+impl tracing::field::Visit for JsonFields {
+    fn record_f64(&mut self, field: &tracing::field::Field, value: f64) {
+        self.0.insert(field.name().to_owned(), value.into());
     }
+    fn record_i64(&mut self, field: &tracing::field::Field, value: i64) {
+        self.0.insert(field.name().to_owned(), value.into());
+    }
+    fn record_u64(&mut self, field: &tracing::field::Field, value: u64) {
+        self.0.insert(field.name().to_owned(), value.into());
+    }
+    fn record_bool(&mut self, field: &tracing::field::Field, value: bool) {
+        self.0.insert(field.name().to_owned(), value.into());
+    }
+    fn record_str(&mut self, field: &tracing::field::Field, value: &str) {
+        self.0.insert(field.name().to_owned(), value.into());
+    }
+    fn record_debug(&mut self, field: &tracing::field::Field, value: &dyn std::fmt::Debug) {
+        self.0
+            .insert(field.name().to_owned(), format!("{value:?}").into());
+    }
+}
+
+/// Routes `rrd_engine::lfg` events to the sink of the thread that emits them.
+///
+/// A per-test scoped subscriber is not enough in a parallel test binary:
+/// `tracing` keeps one process-wide maximum level, rebuilt only when the first
+/// scoped subscriber appears or a global one is set, so a DEBUG capture that
+/// starts while another test's scoped subscriber is alive is filtered out
+/// before it reaches the thread's subscriber. One global subscriber whose hint
+/// admits DEBUG keeps the filter open for every thread; tests that still use a
+/// scoped subscriber keep precedence on their own threads.
+struct LfgSinkLayer;
+
+impl<S: tracing::Subscriber> tracing_subscriber::Layer<S> for LfgSinkLayer {
+    fn on_event(
+        &self,
+        event: &tracing::Event<'_>,
+        _context: tracing_subscriber::layer::Context<'_, S>,
+    ) {
+        if event.metadata().target() != "rrd_engine::lfg" {
+            return;
+        }
+        LFG_SINK.with(|sink| {
+            if let Some(sink) = sink.borrow().as_ref() {
+                let mut fields = JsonFields::default();
+                event.record(&mut fields);
+                sink.lock().unwrap().push(serde_json::json!({
+                    "level": event.metadata().level().to_string(),
+                    "target": event.metadata().target(),
+                    "fields": fields.0,
+                }));
+            }
+        });
+    }
+}
+
+fn install_diagnostic_subscriber() {
+    use tracing_subscriber::layer::SubscriberExt;
+    static INSTALLED: std::sync::OnceLock<()> = std::sync::OnceLock::new();
+    INSTALLED.get_or_init(|| {
+        // Another global subscriber, if one ever exists, keeps precedence; the
+        // capture then depends on it admitting DEBUG for this target.
+        let _ = tracing::subscriber::set_global_default(
+            tracing_subscriber::registry().with(LfgSinkLayer),
+        );
+    });
 }
 
 fn serve_once(listener: TcpListener, respond: impl FnOnce(serde_json::Value) -> serde_json::Value) {
@@ -92,31 +157,13 @@ fn task_closed_during_lfg_records_result_without_controller_dispatch() {
 }
 
 fn captured_diagnostics(scenario: Scenario) -> Vec<serde_json::Value> {
-    let bytes = Arc::new(std::sync::Mutex::new(Vec::new()));
-    let writer = DiagnosticWriter(Arc::clone(&bytes));
-    let subscriber = tracing_subscriber::fmt()
-        .json()
-        .without_time()
-        .with_ansi(false)
-        .with_max_level(tracing::Level::DEBUG)
-        .with_writer(move || writer.clone())
-        .finish();
-    tracing::subscriber::with_default(subscriber, || {
-        // A callsite first hit in another test while no subscriber existed
-        // caches "never"; with parallel tests keeping a scoped subscriber alive
-        // the cache is not rebuilt for this one, and the event is dropped. The
-        // rebuild makes every callsite consult this subscriber.
-        tracing::callsite::rebuild_interest_cache();
-        run_flow(scenario, None)
-    });
-
-    let bytes = bytes.lock().unwrap();
-    bytes
-        .split(|byte| *byte == b'\n')
-        .filter(|line| !line.is_empty())
-        .map(|line| serde_json::from_slice(line).unwrap())
-        .filter(|event: &serde_json::Value| event["target"] == "rrd_engine::lfg")
-        .collect()
+    install_diagnostic_subscriber();
+    let sink: DiagnosticSink = Arc::new(std::sync::Mutex::new(Vec::new()));
+    LFG_SINK.with(|slot| *slot.borrow_mut() = Some(Arc::clone(&sink)));
+    run_flow(scenario, None);
+    LFG_SINK.with(|slot| *slot.borrow_mut() = None);
+    let events = sink.lock().unwrap().clone();
+    events
 }
 
 #[test]
