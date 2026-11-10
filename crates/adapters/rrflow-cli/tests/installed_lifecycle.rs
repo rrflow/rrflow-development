@@ -1484,6 +1484,7 @@ fn loopback_worker_profile(
             .into(),
         maximum_output_tokens: 64,
         temperature_milli: 0,
+        lfg: None,
     };
     let worker_binding = selection_policy.candidates[0].binding_id.clone();
     rrd_contract::EndpointProfileInput {

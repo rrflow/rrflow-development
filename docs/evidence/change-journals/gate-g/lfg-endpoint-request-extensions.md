@@ -123,3 +123,5 @@ The combined engine command `cargo test --offline --locked -p rrd-engine
 remaining absent from the typed request. `cargo fmt --all --check`,
 `git diff --cached --check`, and `python -X utf8 scripts/ci/check_workflow.py`
 also passed. These checks do not replace required candidate and merge-group CI.
+
+2026-11-10 candidate correction after run 42750047347: the rrflow-cli installed-lifecycle test builds an `EndpointSelectionPolicy` literal that lacked this package's new `lfg` field, so the lifecycle, service-protocol and ARM64 jobs could not compile; the literal now sets `lfg: None`. The Linux-only `lfg_diagnostics_are_bounded_and_report_invalidated_checkpoint` failure (one event instead of two) passes on Windows and is being reproduced on Linux separately.
