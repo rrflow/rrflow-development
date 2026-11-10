@@ -549,6 +549,17 @@ fn generation_serves(
     artifact: &rrd_vector::VectorArtifact,
     (collection_id, vector_name): (&CanonicalId, &CanonicalId),
 ) -> bool {
+    // A generation bound to a named source serves that source and nothing else,
+    // however many nodes it holds: an empty bound graph must not answer for a
+    // populated collection. Only a legacy unbound generation is judged by its
+    // contents.
+    if let Some(source) = &binding.source {
+        return *source
+            == rrd_core::VectorCollectionAddress {
+                collection_id: collection_id.as_str().into(),
+                vector_name: vector_name.as_str().into(),
+            };
+    }
     match artifact {
         rrd_vector::VectorArtifact::Hnsw(index) => {
             index.serves_collection(&rrd_core::VectorCollectionAddress {
