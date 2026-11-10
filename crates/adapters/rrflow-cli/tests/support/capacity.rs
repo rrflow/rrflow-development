@@ -20,6 +20,25 @@ enum FillBarrier {
 #[path = "capacity_apfs.rs"]
 mod apfs;
 
+// One wall-clock budget bounds a whole owned-volume fill: the data phase, its
+// barriers, every joint settlement round and the metadata fill share the clock
+// started in `Filler::fill`. The budget exists so a filesystem that never
+// denies capacity still terminates the fixture; the entry and byte bounds cap
+// the work itself. It is sized from hosted-runner evidence, not from a quiet
+// machine: on the macOS image a near-full APFS volume creates and attributes a
+// filler file in 15-40 ms, and a healthy fill needs 600-900 files before the
+// first denial (candidate runs 42668299956: 876 files, 13.6 s of creates;
+// 42656889121: 589 files, 22.6 s, expired). A 25 s budget failed five times in
+// the 200 runs before 2026-11-09 with the volume still accepting creates.
+pub(super) const FILL_BOUND: Duration = Duration::from_secs(120);
+
+/// A clock that already exhausted `FILL_BOUND`, for bound tests.
+pub(super) fn expired_fill_clock() -> Instant {
+    Instant::now()
+        .checked_sub(FILL_BOUND)
+        .expect("process uptime exceeds the fill bound")
+}
+
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Volume {
@@ -247,7 +266,7 @@ fn fill_data_with_probe<W: Write>(
     let mut writes = 0u64;
     loop {
         assert!(
-            started.elapsed() < Duration::from_secs(25),
+            started.elapsed() < FILL_BOUND,
             "bounded owned-volume fill: bytes={bytes} writes={writes} request_bytes={write_size} elapsed_ms={}",
             started.elapsed().as_millis()
         );
@@ -353,8 +372,11 @@ fn settle_pressure(
 ) {
     loop {
         assert!(
-            started.elapsed() < Duration::from_secs(25),
-            "bounded joint pressure"
+            started.elapsed() < FILL_BOUND,
+            "bounded joint pressure: bytes={} files={} elapsed_ms={}",
+            previous.0,
+            previous.1,
+            started.elapsed().as_millis()
         );
         let current = round();
         assert!(
@@ -672,7 +694,7 @@ mod filler_tests {
         });
         assert_eq!(calls.get(), 1);
         assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            settle_pressure(Instant::now() - Duration::from_secs(25), (8, 2), || {
+            settle_pressure(expired_fill_clock(), (8, 2), || {
                 calls.set(calls.get() + 1);
                 (8, 2)
             });
@@ -905,7 +927,7 @@ mod filler_tests {
             4,
             "refill exceeded cumulative allowance"
         );
-        let expired = Instant::now() - Duration::from_secs(25);
+        let expired = expired_fill_clock();
         assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             let _ = fill_remaining_data(&mut file, &mut allocated, 20, expired, |_, _| {
                 panic!("expired refill synchronized")
@@ -1052,7 +1074,7 @@ mod filler_tests {
         }))
         .is_err());
         assert_eq!(sink.len(), 13);
-        let expired = Instant::now() - Duration::from_secs(25);
+        let expired = expired_fill_clock();
         let mut file = DelayedAllocation::new();
         assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             let _ = fill_data(&mut file, 1024, expired, |_, _| {

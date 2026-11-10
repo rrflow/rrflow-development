@@ -1,5 +1,5 @@
 //! Bounded metadata creation with a fresh native failure after settlement.
-use super::{capacity_code, Duration, Instant};
+use super::{capacity_code, expired_fill_clock, Instant, FILL_BOUND};
 use std::io;
 
 pub(super) fn fill<C>(
@@ -18,7 +18,7 @@ pub(super) fn fill<C>(
         let before = count(context);
         assert!(before < 8192, "metadata entry bound");
         assert!(
-            started.elapsed() < Duration::from_secs(25),
+            started.elapsed() < FILL_BOUND,
             "bounded metadata fill: files={before} creates={creates} barriers={barriers} create_us={create_us} settle_us={settle_us} elapsed_ms={}",
             started.elapsed().as_millis()
         );
@@ -151,10 +151,7 @@ mod tests {
 
     #[test]
     fn metadata_expired_clock_and_entry_bound_prevent_further_effects() {
-        for (files, started) in [
-            (0, Instant::now() - Duration::from_secs(25)),
-            (8192, Instant::now()),
-        ] {
+        for (files, started) in [(0, expired_fill_clock()), (8192, Instant::now())] {
             let mut state = Allocation {
                 files,
                 available: 1,

@@ -1323,3 +1323,13 @@ records two further macOS `hdiutil create` failures and a controlled Linux
 reproduction in which the wrapper leaves its test-owned stderr holder alive.
 The actual macOS pipe holder and cause of `Resource busy` remain unknown;
 no candidate, native matrix, soak or C-07 acceptance follows.
+
+The [fixture fill-bound record](../../evidence/change-journals/gate-c/c-07-macos-fill-bound-20261109.md)
+attributes five macOS `installed domain crash` failures in the 200 candidate
+runs before 2026-11-09 to the fixture's own 25-second wall budget, shared by
+the data phase, its barriers, every settlement round and the metadata fill,
+expiring while the near-full APFS image still accepted creates at 15-40 ms
+each. The budget is now one evidence-sized constant of 120 seconds with the
+entry and byte bounds unchanged. This is a fixture-side termination guard,
+not an engine deadline, controller limit or retry; it does not change the
+2026-10-24 attribution above, qualify the macOS native matrix, or close C-07.
