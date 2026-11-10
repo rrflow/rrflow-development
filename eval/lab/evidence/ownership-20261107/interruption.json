@@ -1,0 +1,12 @@
+{
+  "create_request_observed": true,
+  "intent_existed_before_termination": true,
+  "intent_read_after_termination": true,
+  "resource_name_format": true,
+  "manifest_identity_recorded": true,
+  "completed_report_exists": false,
+  "requests": [
+    "GET /",
+    "PUT /collections/lab_b899bf2b0405d9141d4843f0fa1fb5ac"
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "qdrant": {
+    "exit_code": 0,
+    "intent_exists": true,
+    "run_exists": true,
+    "status": "completed",
+    "scratch_matches_intent": true,
+    "cases": 2,
+    "reason": null,
+    "own_container_stopped": true
+  },
+  "surrealdb": {
+    "exit_code": 0,
+    "intent_exists": true,
+    "run_exists": true,
+    "status": "completed",
+    "scratch_matches_intent": true,
+    "cases": 2,
+    "reason": null,
+    "own_container_stopped": true
+  }
+}
