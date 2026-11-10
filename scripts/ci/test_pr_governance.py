@@ -84,5 +84,29 @@ class GovernanceTests(unittest.TestCase):
         self.assertEqual(len(violations), 6)
 
 
+class LiveFactsCases(unittest.TestCase):
+    def test_facts_read_the_live_pull_request_not_the_frozen_event(self):
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch
+        import check_pr_governance as governance
+
+        event = {"pull_request": {"number": 7, "labels": [], "user": {"login": "stale"}}}
+        live = {"number": 7, "user": {"login": "owner"}, "base": {"ref": "main", "sha": "b"},
+                "head": {"sha": "h"}, "labels": [{"name": governance.INTEGRATION_LABEL}],
+                "changed_files": 3, "additions": 10, "deletions": 2, "created_at": "2026-11-10T00:00:00Z"}
+        calls = []
+
+        def fake_json(url, token):
+            calls.append(url)
+            return live if url.endswith("/pulls/7") else []
+        with patch.object(governance, "github_json", side_effect=fake_json),                 patch.object(governance, "merge_base_age_days", return_value=0.5):
+            facts = governance.facts_from_github(event, "rrflow/rrflow-development", None, Path(tempfile.gettempdir()))
+        self.assertEqual(facts.author, "owner")
+        self.assertEqual(facts.labels, [governance.INTEGRATION_LABEL])
+        self.assertEqual(facts.changed_lines, 12)
+        self.assertTrue(any(url.endswith("/pulls/7") for url in calls))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -115,8 +115,11 @@ def merge_base_age_days(base: str, head: str, root: Path) -> float:
 
 
 def facts_from_github(event: dict, repository: str, token: str | None, root: Path) -> Facts:
-    pull = event["pull_request"]
+    # The event payload is frozen when the run is first triggered and is reused
+    # by every rerun, so a label the owner applies afterwards never appears in
+    # it. The live pull request is the authority for labels, counts and refs.
     api = f"https://api.github.com/repos/{repository}"
+    pull = github_json(f"{api}/pulls/{event['pull_request']['number']}", token)
     open_prs = github_json(f"{api}/pulls?state=open&per_page=100", token)
     return Facts(
         number=pull["number"],
