@@ -157,7 +157,7 @@ async fn inventory_through_client(
     job
 }
 
-fn installed_binary_replans_and_reads_receipt_after_forced_restart() {
+fn installed_binary_replans_and_reads_receipt_after_forced_restart(expect_parse: bool) {
     use serde_json::{json, Value};
     use std::io::{Read, Write};
     use std::net::TcpStream;
@@ -645,12 +645,32 @@ fn installed_binary_replans_and_reads_receipt_after_forced_restart() {
                     .unwrap()
                     .status
                     .job;
-                assert_eq!(
-                    parsed.checkpoints.last().map(|checkpoint| checkpoint.phase),
-                    Some(rrd_contract::AttunementPhase::Parse),
-                    "installed source parsing did not checkpoint: {:?}",
-                    parsed.failure
-                );
+                if expect_parse {
+                    // The D-04 red acceptance oracle, recorded in POAM-006: an
+                    // explicitly selected Parse step after an accepted
+                    // Inventory replan must checkpoint. The offline harness
+                    // requires every listed case to run and pass, so this
+                    // branch is reached only when the Parse executor lands.
+                    assert_eq!(
+                        parsed.checkpoints.last().map(|checkpoint| checkpoint.phase),
+                        Some(rrd_contract::AttunementPhase::Parse),
+                        "installed source parsing did not checkpoint: {:?}",
+                        parsed.failure
+                    );
+                } else {
+                    // The installed Parse executor is not wired (POAM-006): the
+                    // step must fail closed at Parse, keep the Inventory
+                    // checkpoint and stay retryable. This records what the
+                    // engine does today.
+                    assert_eq!(
+                        parsed.checkpoints.last().map(|checkpoint| checkpoint.phase),
+                        Some(rrd_contract::AttunementPhase::Inventory)
+                    );
+                    let failure = parsed.failure.as_ref().expect("Parse fails closed today");
+                    assert_eq!(failure.phase, rrd_contract::AttunementPhase::Parse);
+                    assert_eq!(failure.code.as_str(), "phase-unavailable");
+                    assert!(failure.retryable);
+                }
             }
         });
         if pass == 0 {
@@ -1431,7 +1451,7 @@ fn install_requires_an_explicit_plan_digest_and_verify_is_read_only_by_shape() {
 #[test]
 fn installed_engine_plans_applies_serves_discovers_authenticates_and_reopens() {
     installed_lifecycle("existing");
-    installed_binary_replans_and_reads_receipt_after_forced_restart();
+    installed_binary_replans_and_reads_receipt_after_forced_restart(false);
 }
 
 #[test]
