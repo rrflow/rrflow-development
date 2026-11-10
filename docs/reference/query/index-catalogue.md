@@ -86,3 +86,8 @@ dictionary/statistics/postings structure, and vector/HNSW projections remain
 in their separate current subsystem. Gates C and E must commit canonical data
 and synchronous index deltas atomically before Gate F can stream their bounded
 native outputs as stamped Arrow batches.
+
+Current execution includes a bounded read optimization for simple limit-only
+index plans: the reader materializes only the requested prefix rows and skips
+full row decoding for the remaining serialized snapshot entries. This reduces
+read-time allocation pressure but does not replace Gate F streaming ownership.
