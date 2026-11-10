@@ -19,3 +19,41 @@ Initial `cargo fmt --all -- --check` identified formatting in the new closure; `
 ## Checklist and next action
 
 [done] Scope/brief before edits; actual main reconciled; second real public consumer exercised before/after reopen; original failing query assertion preserved; exact failure and limits recorded. [open] Complete a code-grounded production design for generation selection, authenticated completeness and stamped reader evidence; amend the PR before changing production; implement and test it across query, full snapshot, context, retrieval and indexes; rerun this unchanged oracle and the installed project driver; review diff and pass package, candidate and protected merge-group checks. Keep this PR draft. No alpha, C-07, roadmap or POA&M completion status changed.
+
+## Current-main integration and Windows red baseline
+
+The PR brief was updated before merging draft head
+`fc543813a7ffd19566a4a3ba8aa38eec262abf73` with public main
+`838c85120621d5d9dde989d7677cc6ec89d20f03`. The read-only merge preview and
+the staged, uncommitted ordinary merge both produced tree
+`df30a7320838237e254262d7b147b40b1c2e426e`; no conflicts were reported.
+This is a local integration preview, not a merge or implementation of the
+visibility repair. The separate unmerged F-06 draft overlaps the runtime
+repository and source-read owner and remains a dependency to reconcile.
+
+On Windows x86-64, with the Cargo target directed to the existing C: task
+build directory, `cargo test --offline --locked -p rrd-engine --lib
+engine::tests::attunement::inventory_delta::interrupted_refresh_does_not_expose_partial_facts_as_completed_snapshot
+-- --exact --nocapture` compiled in 45.95 seconds and failed in 55.84 seconds
+with exit 101. The observed incomplete-refresh root was
+`fc849184d0bb173a33b35cf9212d11b222020be2d080507b1380adae43c06e25`;
+the expected completed root was
+`aebb9936f51ff215d6a24f6865bd38dc74ee994f2291baecaf05d15476d9b9ca`.
+The fixture reached its interrupted/reopened snapshot, unrelated HEAD claim,
+resumed successor, final reopen, and idempotent replay checks before failing
+the data-snapshot equality assertion. The subsequent original rrflowQL root
+assertion did not execute in this run. The retained local log is
+`D:/.usr/Temp/rrflow-d03-df30a732-windows-20261107.log`, SHA-256
+`c3d0924f7cc67f79b1c3e77839eea889ef65972499fc91004f83ea581f923dd0`.
+`git diff --check 838c85120621d5d9dde989d7677cc6ec89d20f03 --` passed
+before this journal addition. This test does not establish the installed
+parser-to-query journey, native capacity, soak, candidate CI, or alpha.
+
+Inspection of the merged source confirms that group commits write semantic
+records before the final control-head transition, and that the stamp's
+accumulator authenticates the global runtime log prefix rather than a proven
+latest source-generation selection index. The existing corruption
+characterization remains relevant: inclusion of a returned selection event
+does not prove a newer one was not omitted. The draft stays open; no public
+generation resolver, visibility fix, or gate status is claimed here. The
+remaining full candidate review and production integration are not complete.
