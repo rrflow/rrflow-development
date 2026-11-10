@@ -512,6 +512,53 @@
       ],
       "type": "object"
     },
+    "DiagnosticRrflowCldSnapshot": {
+      "additionalProperties": false,
+      "description": "Process-local RRFlowCLD trigger observations for cold-served vectors.",
+      "properties": {
+        "cache_bypass_hits": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "cold_mapped_hits": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "cold_owned_hits": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "cold_source_hits": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "last_trigger_at_unix_ms": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "trigger_count": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "trigger_count",
+        "cold_source_hits",
+        "cold_mapped_hits",
+        "cold_owned_hits",
+        "cache_bypass_hits"
+      ],
+      "type": "object"
+    },
     "DiagnosticRrflowKvSnapshot": {
       "additionalProperties": false,
       "description": "rrflowKV physical state and counters.",
@@ -539,6 +586,16 @@
           "format": "uint64",
           "minimum": 0,
           "type": "integer"
+        },
+        "rrflow_cld": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DiagnosticRrflowCldSnapshot"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "segment_io": {
           "$ref": "#/$defs/DiagnosticSegmentIoSnapshot"
