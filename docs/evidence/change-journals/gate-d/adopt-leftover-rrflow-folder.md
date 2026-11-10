@@ -78,3 +78,5 @@ locally; the runner is the acceptance. The same run also failed
 `git_inputs_detect_appearance_change_and_bound_bytes`, a main-line test this
 package does not touch, which passed on the two other Windows runs today; it
 is recorded as a flake to investigate, not fixed here.
+
+2026-11-10 candidate correction after run 42750074866 (Windows engram process): on the hosted Windows runner the leftover `.rrflow` folder is owned by BUILTIN\Administrators, the elevated token's default owner, so adoption set the private DACL but the private-object check still required the user as owner. Adoption now mirrors fresh creation: it sets the protected private DACL through the WRITE_DAC handle the owner always holds, then, only when the owner differs from the user, takes ownership through a second handle opened with the WRITE_OWNER that the new DACL grants. Every failure names its step. Locally (owner already the user) the adoption test, the private-file tests and strict clippy pass; the runner is the oracle for the ownership step.

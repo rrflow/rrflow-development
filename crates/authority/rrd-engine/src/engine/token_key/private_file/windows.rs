@@ -208,8 +208,17 @@ pub(super) fn adopt_directory_relative(parent: &File, name: &std::ffi::OsStr) ->
     use windows_sys::Win32::Security::{
         GetSecurityDescriptorDacl, PROTECTED_DACL_SECURITY_INFORMATION,
     };
-    use windows_sys::Win32::Storage::FileSystem::WRITE_DAC;
-    let file = open_relative_with_access(parent, name, false, true, false, WRITE_DAC)?;
+    use windows_sys::Win32::Storage::FileSystem::{WRITE_DAC, WRITE_OWNER};
+    // The owner holds WRITE_DAC implicitly; WRITE_OWNER is granted only by the
+    // private DACL, so ownership is taken after that DACL is in place.
+    let file = open_relative_with_access(parent, name, false, true, false, WRITE_DAC).map_err(
+        |error| {
+            io::Error::new(
+                error.kind(),
+                format!("cannot open the leftover folder for adoption: {error}"),
+            )
+        },
+    )?;
     let mut information = BY_HANDLE_FILE_INFORMATION::default();
     // SAFETY: file owns the live handle and information is writable.
     if unsafe { GetFileType(file.as_raw_handle()) } != FILE_TYPE_DISK
@@ -280,7 +289,45 @@ pub(super) fn adopt_directory_relative(parent: &File, name: &std::ffi::OsStr) ->
         )
     };
     if status != 0 {
-        return Err(io::Error::from_raw_os_error(status as i32));
+        let error = io::Error::from_raw_os_error(status as i32);
+        return Err(io::Error::new(
+            error.kind(),
+            format!("cannot make the leftover folder private: {error}"),
+        ));
+    }
+    // A fresh private folder is created with the user as its owner. A leftover
+    // made under an elevated token or on a hosted runner is owned by
+    // BUILTIN\Administrators instead; the private DACL just set grants the
+    // user WRITE_OWNER, so ownership is taken through a second handle and the
+    // adopted folder becomes indistinguishable from a fresh one.
+    // SAFETY: owner points into the retained descriptor and user.sid() is live.
+    if unsafe { EqualSid(owner, user.sid()) } == 0 {
+        let owning = open_relative_with_access(parent, name, false, true, false, WRITE_OWNER)
+            .map_err(|error| {
+                io::Error::new(
+                    error.kind(),
+                    format!("cannot open the leftover folder to take ownership: {error}"),
+                )
+            })?;
+        // SAFETY: the handle grants WRITE_OWNER and the SID lives in `user`.
+        let status = unsafe {
+            SetSecurityInfo(
+                owning.as_raw_handle(),
+                SE_FILE_OBJECT,
+                OWNER_SECURITY_INFORMATION,
+                user.sid(),
+                null_mut(),
+                null_mut(),
+                null(),
+            )
+        };
+        if status != 0 {
+            let error = io::Error::from_raw_os_error(status as i32);
+            return Err(io::Error::new(
+                error.kind(),
+                format!("cannot take ownership of the leftover folder: {error}"),
+            ));
+        }
     }
     Ok(file)
 }
