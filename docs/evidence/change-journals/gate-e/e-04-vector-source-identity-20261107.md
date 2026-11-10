@@ -2,7 +2,7 @@
 
 **Status:** active draft; the main-source failures are reproduced and the local repair is under verification
 **Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/gate-e/e-04-vector-source-identity-20261107`
-**Owner:** E-04, OBJ-13, [POAM-053](../../../poam/rrflow-1.0-alpha/poam-053.md), [PR #298](https://github.com/rrflow/rrflow-development/pull/298)
+**Owner:** E-04, OBJ-13, [POAM-058](../../../poam/rrflow-1.0-alpha/poam-058.md), [PR #298](https://github.com/rrflow/rrflow-development/pull/298)
 
 ## Baseline and scope
 
@@ -67,7 +67,7 @@ Review found a remaining lifecycle limitation: the conservative v2 deletion
 guard may block either source sharing an ambiguous old name, while the engine
 has a public quantization-retirement operation but no HNSW retirement operation.
 Rebuilding does not remove the old HNSW entry. This needs an authorized,
-non-destructive lifecycle solution and is recorded under POAM-053. Do not mark
+non-destructive lifecycle solution and is recorded under POAM-058. Do not mark
 the compatibility or complete feature done. Remaining package checks,
 candidate and protected CI remain open. `cargo fmt --all -- --check`,
 `python scripts/knowledge/render_navigation.py --check`, and

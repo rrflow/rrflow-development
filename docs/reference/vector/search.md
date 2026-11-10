@@ -92,43 +92,17 @@ search; it remains readable and can be replaced by a newly built generation.
 Rebuilding does not remove the old generation. An unbound v2 name can still
 conservatively block collection or payload-index deletion, and an authorized
 HNSW retirement operation is not yet exposed
-([POAM-053](../../poam/rrflow-1.0-alpha/poam-053.md)).
+([POAM-058](../../poam/rrflow-1.0-alpha/poam-058.md)).
 Quantized and TurboQuant artifacts use their separate
 build/activate/retire lifecycle and join only the shared process-local planner.
 Unsupported-version or generic-quantized catalogue entries fail before artifact decoding
 or engine replay.
 
-A request that requires an approximate path on a named dense vector reads the
-stamped catalogue first. When one active HNSW or TurboQuant generation is its
-only eligible path, search reads only:
-
-- the catalogue;
-- that source's deltas since the generation;
-- the histories of the identities the generation proposes.
-
-Those candidates and the delta's versions go through the same planner, overlay
-and exact rerank as every search, so its answers equal the general path's over
-the same generation, and its keys grow only with the accumulator proof. A request
-no active generation can serve gets the planner's refusal having read no vector.
-
-The general path remains for a request that only allows approximation, because
-its plan compares the full exact-scan cost, and for a search with more than one
-eligible generation, a scalar, product or binary quantized generation, or no
-named vector. It reads every vector version in the scope, and a query there still
-pays process-local canonical-candidate materialization before planning.
-
-A generation answers only for a collection it holds. A descriptor names a field,
-which two collections may share, so a graph's nodes and a quantized generation's
-lifecycle say which collection it belongs to, and one built for another
-collection is not a path for this one.
-
-Each query also reads its generation through the memory tiers. The HNSW artifact
-is JSON and has no mapped form, so a generation over the cached tier's bound is
-decoded on every query, and one over the pinned tier's bound is refused. That
-decoding, and not storage, is then most of the query's time.
-
-None of this is the final rrflowKV-native incremental vector path, and it does
-not exchange stamped Arrow batches with DataFusion.
+Consequently, a successful HNSW query today is a real approximate traversal
+and exact rerank, but it still pays process-local canonical-candidate
+materialization and runtime-catalogue reconstruction before planning. It is
+not the final rrflowKV-native incremental vector path, and it does not exchange
+stamped Arrow batches with DataFusion.
 
 ## Evidence and remaining gates
 

@@ -1,0 +1,244 @@
+{
+  "$defs": {
+    "AnswerResult": {
+      "additionalProperties": false,
+      "properties": {
+        "benchmark": {
+          "type": "string"
+        },
+        "disputed": {
+          "description": "True when the score or its benchmark is publicly contested. The limits say how.",
+          "type": "boolean"
+        },
+        "judge_model": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "limits": {
+          "description": "What a reader must know before using this number, including any dispute.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "origin": {
+          "$ref": "#/$defs/ReferenceOrigin"
+        },
+        "reader_model": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "score": {
+          "format": "double",
+          "type": "number"
+        },
+        "score_name": {
+          "type": "string"
+        },
+        "system": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "system",
+        "score",
+        "score_name",
+        "benchmark",
+        "origin"
+      ],
+      "type": "object"
+    },
+    "HardwareClass": {
+      "enum": [
+        "single_core",
+        "multi_core_server",
+        "gpu",
+        "managed_cloud",
+        "not_stated"
+      ],
+      "type": "string"
+    },
+    "Id": {
+      "maxLength": 96,
+      "minLength": 1,
+      "pattern": "^[a-z0-9][a-z0-9_.-]*$",
+      "type": "string"
+    },
+    "Provenance": {
+      "description": "Who stands behind a number, in the terms a reader needs to weigh it.",
+      "enum": [
+        "independent",
+        "peer_reviewed",
+        "vendor_own",
+        "competitor",
+        "authors"
+      ],
+      "type": "string"
+    },
+    "ReferenceOrigin": {
+      "additionalProperties": false,
+      "properties": {
+        "measured_by": {
+          "type": "string"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        },
+        "published": {
+          "description": "`YYYY-MM-DD`. Absent when the source gives no day.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "quote": {
+          "description": "The exact words or data row this was read from.",
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "url",
+        "quote",
+        "measured_by",
+        "provenance"
+      ],
+      "type": "object"
+    },
+    "ReferenceSource": {
+      "additionalProperties": false,
+      "properties": {
+        "checked_on": {
+          "description": "`YYYY-MM-DD`, the day these rows were last read at their source.",
+          "type": "string"
+        },
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "title": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "url",
+        "checked_on"
+      ],
+      "type": "object"
+    },
+    "SeekResult": {
+      "additionalProperties": false,
+      "properties": {
+        "dataset": {
+          "type": "string"
+        },
+        "dimensions": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "filtered": {
+          "default": false,
+          "type": "boolean"
+        },
+        "hardware": {
+          "type": "string"
+        },
+        "hardware_class": {
+          "$ref": "#/$defs/HardwareClass"
+        },
+        "k": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "latency_p99_ms": {
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "limits": {
+          "description": "What a reader must know before using this number.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "origin": {
+          "$ref": "#/$defs/ReferenceOrigin"
+        },
+        "queries_per_second": {
+          "format": "double",
+          "type": "number"
+        },
+        "recall": {
+          "format": "double",
+          "type": "number"
+        },
+        "system": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "system",
+        "queries_per_second",
+        "recall",
+        "dataset",
+        "hardware",
+        "hardware_class",
+        "origin"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "One source's published results. One file per source, so its update is a small patch.",
+  "properties": {
+    "answers": {
+      "items": {
+        "$ref": "#/$defs/AnswerResult"
+      },
+      "type": "array"
+    },
+    "schema_version": {
+      "format": "uint16",
+      "maximum": 65535,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "seek": {
+      "items": {
+        "$ref": "#/$defs/SeekResult"
+      },
+      "type": "array"
+    },
+    "source": {
+      "$ref": "#/$defs/ReferenceSource"
+    }
+  },
+  "required": [
+    "schema_version",
+    "source"
+  ],
+  "title": "ReferenceFile",
+  "type": "object"
+}

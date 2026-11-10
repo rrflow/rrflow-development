@@ -1,0 +1,107 @@
+{
+  "schema_version": 1,
+  "source": {
+    "id": "longmemeval-s",
+    "title": "LongMemEval-S, as each system reports it",
+    "url": "https://github.com/xiaowu0162/LongMemEval",
+    "checked_on": "2026-11-03"
+  },
+  "answers": [
+    {
+      "system": "Chronos High",
+      "score": 95.6,
+      "score_name": "accuracy %, raw count",
+      "benchmark": "LongMemEval-S",
+      "origin": {
+        "url": "https://arxiv.org/html/2603.16862v1",
+        "quote": "Chronos High (Ours) | 95.60 | 100.00 | 88.72 | 100.00 | 100.00 | 98.57 | 95.50; 'Chronos High, which uses Claude Opus 4.6'",
+        "measured_by": "Chronos authors (Sen, Lumer, Gulati, Subbiah)",
+        "provenance": "authors",
+        "published": "2026-03-17"
+      },
+      "reader_model": "Claude Opus 4.6",
+      "disputed": true,
+      "limits": [
+        "The authors' own preprint, and it does not name its judge model.",
+        "A 2026 audit, arXiv 2609.38021, reports labels that flipped on re-judging and questionable answer-key rows, though it audited the author's own system and not this one."
+      ]
+    },
+    {
+      "system": "Mastra Observational Memory",
+      "score": 94.87,
+      "score_name": "accuracy %, mean of six categories",
+      "benchmark": "LongMemEval-S",
+      "origin": {
+        "url": "https://mastra.ai/research/observational-memory",
+        "quote": "Model: gpt-5-mini (Actor) / gemini-2.5-flash (Observer, Reflector); Overall Accuracy: 94.87%; 'Overall accuracy is the unweighted average across all 6 categories'",
+        "measured_by": "Mastra",
+        "provenance": "vendor_own",
+        "published": "2026-02-09"
+      },
+      "reader_model": "gpt-5-mini",
+      "judge_model": "gpt-4o",
+      "disputed": true,
+      "limits": [
+        "Mastra measured its own product. This averages categories, so it is not on the raw-count scale. Its raw count is 468 of 500, 93.6%.",
+        "A 2026 audit, arXiv 2609.38021, reports labels that flipped on re-judging and questionable answer-key rows, though it audited the author's own system and not this one."
+      ]
+    },
+    {
+      "system": "Mastra Observational Memory",
+      "score": 84.23,
+      "score_name": "accuracy %, mean of six categories",
+      "benchmark": "LongMemEval-S",
+      "origin": {
+        "url": "https://mastra.ai/research/observational-memory",
+        "quote": "Model: gpt-4o (Actor) / gemini-2.5-flash (Observer, Reflector); Overall Accuracy: 84.23%; 'gpt-4o is used as the judge model'",
+        "measured_by": "Mastra",
+        "provenance": "vendor_own",
+        "published": "2026-02-09"
+      },
+      "reader_model": "gpt-4o",
+      "judge_model": "gpt-4o",
+      "disputed": true,
+      "limits": [
+        "Mastra measured its own product. Its raw count is 424 of 500, 84.8%.",
+        "A 2026 audit, arXiv 2609.38021, reports labels that flipped on re-judging and questionable answer-key rows, though it audited the author's own system and not this one."
+      ]
+    },
+    {
+      "system": "Mem0 Platform v3, top 200",
+      "score": 94.4,
+      "score_name": "accuracy %, raw count",
+      "benchmark": "LongMemEval-S",
+      "origin": {
+        "url": "https://github.com/mem0ai/memory-benchmarks/blob/main/README.md",
+        "quote": "| **Overall** | **94.4%** (472/500) | **94.8%** (474/500) |",
+        "measured_by": "Mem0",
+        "provenance": "vendor_own",
+        "published": "2026-05-13"
+      },
+      "disputed": true,
+      "limits": [
+        "Mem0 measured its own managed platform. The README states this figure. The per-question file it commits shows 93.4%, so this number has no committed evidence, and its reader and judge are not stated.",
+        "A 2026 audit, arXiv 2609.38021, reports labels that flipped on re-judging and questionable answer-key rows, though it audited the author's own system and not this one."
+      ]
+    },
+    {
+      "system": "Mem0 Platform v3, committed per-question file",
+      "score": 93.4,
+      "score_name": "accuracy %, raw count",
+      "benchmark": "LongMemEval-S",
+      "origin": {
+        "url": "https://raw.githubusercontent.com/mem0ai/memory-benchmarks/main/results/platform/longmemeval_results.json",
+        "quote": "\"model\": \"gpt-5\", \"generation_model\": \"gpt-5\"; \"top_200\": {\"overall\": {\"total\": 500, \"passed\": 467, \"failed\": 33, \"errors\": 0, \"pass_rate\": 93.4",
+        "measured_by": "Mem0",
+        "provenance": "vendor_own",
+        "published": "2026-04-09"
+      },
+      "reader_model": "gpt-5",
+      "disputed": true,
+      "limits": [
+        "Mem0 measured its own managed platform.",
+        "A 2026 audit, arXiv 2609.38021, reports labels that flipped on re-judging and questionable answer-key rows, though it audited the author's own system and not this one."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "binding": {
+    "id": "milvus",
+    "label": "Milvus 3.0.5",
+    "kind": "milvus",
+    "location": "loopback",
+    "endpoint": "http://127.0.0.1:19530",
+    "artifact": "milvusdb/milvus@sha256:b9b79b4a284b41cd12d60abc418310f84621fa4c977d409b38f501519a7ccf8a",
+    "storage_profile": "standalone with embedded etcd and local object storage in a container volume",
+    "availability": {
+      "state": "available"
+    },
+    "index": {
+      "index": "hnsw",
+      "m": 16,
+      "ef_construction": 100
+    },
+    "search_ladder": [
+      {
+        "id": "ef-16",
+        "ef": 16
+      },
+      {
+        "id": "ef-32",
+        "ef": 32
+      },
+      {
+        "id": "ef-64",
+        "ef": 64
+      },
+      {
+        "id": "ef-128",
+        "ef": 128
+      },
+      {
+        "id": "ef-256",
+        "ef": 256
+      }
+    ],
+    "memory_probe": [
+      "eval/lab/probe.sh",
+      "memory",
+      "lab-milvus"
+    ],
+    "disk_probe": [
+      "eval/lab/probe.sh",
+      "disk",
+      "lab-milvus"
+    ]
+  },
+  "launch": {
+    "kind": "container",
+    "image": "milvusdb/milvus@sha256:b9b79b4a284b41cd12d60abc418310f84621fa4c977d409b38f501519a7ccf8a",
+    "name": "lab-milvus",
+    "ports": [
+      "127.0.0.1:19530:19530",
+      "127.0.0.1:19091:9091"
+    ],
+    "volume": {
+      "container_path": "/var/lib/milvus"
+    },
+    "env": {
+      "ETCD_USE_EMBED": "true",
+      "ETCD_DATA_DIR": "/var/lib/milvus/etcd",
+      "COMMON_STORAGETYPE": "local",
+      "DEPLOY_MODE": "STANDALONE"
+    },
+    "arguments": [
+      "milvus",
+      "run",
+      "standalone"
+    ],
+    "ready": {
+      "url": "http://127.0.0.1:19091/healthz",
+      "contains": "OK",
+      "seconds": 180
+    }
+  },
+  "vectordbbench": [
+    "milvushnsw",
+    "--uri",
+    "http://127.0.0.1:19530",
+    "--m",
+    "16",
+    "--ef-construction",
+    "100",
+    "--ef-search",
+    "{ef}"
+  ]
+}

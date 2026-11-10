@@ -1,50 +1,66 @@
-# POAM-053 — named HNSW generations lack an authenticated source identity
+# POAM-053 — clients cannot build RRFlow's HNSW or payload indexes
 
 **Status:** active parent-owned POA&M detail
 **Coordinate:** `rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-053`
 **Owner:** [RRFlow 1.0 alpha POA&M](../rrflow-1.0-alpha.md)
 
-This detail is governed by the parent ledger; it cannot independently change
-priority or closure status.
+This detail record is part of the canonical RRFlow 1.0 alpha POA&M. The parent
+ledger owns priority and lifecycle status; this file cannot change either
+independently.
+
+## Current state after public operation landing
+
+The absence described below was observed at the earlier revision. Current main
+exposes the public operations and has a real-server client test; see the
+[H-04 public index evidence](../../evidence/change-journals/gate-h/h-04-vector-index-operations.md).
+The lab's integration and its installed-engine closure evidence remain under
+review in PR #253. Do not treat the historical observations below as a claim
+that current main lacks these operations. The parent ledger remains open until
+the closure evidence is met and reviewed.
 
 ## Observed deficiency
 
-On public main `b555d22c891c511775b5e54a9f9d00c8a51da48e`, a real engine
-fixture demonstrated two related failures. Sources `(a-b, c)` and `(a, b-c)`
-both produced `hnsw-a-b-c`. An empty HNSW generation built for `documents`
-could also answer a named search for populated `mirror`, returning no hits
-where exact search returned `mirror-point`. The generic HNSW catalogue did
-not authenticate the structured source; an empty graph cannot establish it.
-Reproduction commands and the proposed repair are recorded in the
-[change journal](../../evidence/change-journals/gate-e/e-04-vector-source-identity-20261107.md).
+Found while building the [comparison lab](../../../eval/lab/README.md), and
+confirmed in source at `3a72a6b4adc43c842f67a59f4fc91d725eac7580`.
+
+`rrd-contract` defines `EnsureVectorIndex` and `EnsureVectorPayloadIndex`, and
+`RrdEngine` implements `ensure_vector_index`. Neither type appears in the
+executable operation catalogue, and `rrd-client` and `rrd-server` have no route or
+method for them. The catalogue's vector operations are limited to collection
+ensure and list, point retrieve and scroll, the quantization lifecycle, and search.
+
+So a client of an installed engine can use only an exact scan or a quantized
+projection. It cannot build the HNSW generation that the
+[search contract](../../reference/vector/search.md) describes. It also cannot
+declare a payload index, so a quantized generation cannot cover a filter. A
+filtered search that requires an approximate path was refused on a real installed
+engine: `no vector access path satisfies the request contract`.
+
+The vector capability text in `rrd-server/src/http/capabilities.rs` advertises
+typed payload indexes and persisted HNSW artifacts. Both are reachable only by
+embedding the engine.
 
 ## Impact
 
-An approximate read can silently miss records, or two independently named
-indexes can collide. The active candidate binds a versioned source to the
-generation's authenticated operation receipt, checks it on publication and
-read, and uses a domain-separated structured identity. Existing v2 entries
-remain readable but are ineligible for named approximate selection until a
-bound generation is built. This is an unmerged candidate, not closure evidence.
-
-The collection and payload-index deletion guards conservatively refuse an old
-unbound v2 HNSW name that could refer to the source. This can also refuse a
-colliding source, and the current engine exposes quantization retirement but
-no corresponding public HNSW retirement operation. Rebuilding therefore does
-not by itself make those old guards releasable. A safe authorized HNSW
-retirement or other non-destructive resolution must be designed and proven;
-do not present the candidate as a complete legacy lifecycle.
+The lab cannot measure RRFlow's HNSW against Qdrant, SurrealDB or Milvus through
+any public path, so its RRFlow HNSW arm is declared `unimplemented`. An application
+using the public API has no approximate filtered search, and filtered vector
+search falls to an exact scan. The [package journal](../../evidence/change-journals/gate-j/comparison-lab.md)
+holds the measured effect.
 
 ## Owning gates
 
-E-04 owns source identity, generation maintenance and vector recall.
+E-04 (immutable HNSW generations with an exact overlay) and H-04 (public
+operations generated from the one catalogue).
 
-Roadmap owner: [Gate E](../../roadmap/rrflow-1.0/gate-e.md).
+Roadmap owners: [Gate E](../../roadmap/rrflow-1.0/gate-e.md) and
+[Gate H](../../roadmap/rrflow-1.0/gate-h.md).
 
 ## Closure evidence
 
-Closure requires the two baseline failures and same-source reopen/replay to
-pass at the merged revision, along with publication corruption/authorization
-checks, a usable authorized lifecycle for old and new HNSW artifacts, the
-owning package suite and candidate and protected CI. Installed
-real-project recall and comparative quality remain separate alpha evidence.
+A client of an installed engine builds an HNSW generation and declares a payload
+index through operations generated from the one catalogue, and a filtered search
+uses that generation. The lab measures the arm through the same public path, with
+its `unimplemented` declaration removed. Exposing these operations makes
+[POAM-046](poam-046.md) reachable by every client, so that record must be closed or
+its effect stated when this one closes.

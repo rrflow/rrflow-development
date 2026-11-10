@@ -87,6 +87,16 @@ Compare baseline and locally grounded arms at matched quality and account for
 initial construction and updates. A context-size reduction, provider cache hit,
 or successful storage soak alone is not proof of remote-token savings.
 
+The owner's direction of 2026-11-03 adds Lance to the systems the
+[comparison lab](../../../eval/lab/README.md) keeps beside RRFlow, asks that the newest
+outside benchmarks can be brought into it, and names the
+[REA list](https://github.com/AIshihzong/awesome-reverse-engineer-anything) as a source to
+keep in view. The same direction says that Qdrant's capabilities should eventually be
+triggered properly, so that different reasoning can be chosen dynamically. No operation does
+that yet, so the lab declares `rrflow-routed` as `unimplemented`, and it stays a visible gap
+until one exists. `eval/lab/sources.json` records each outside source and its status. None of
+this changes J-04's acceptance requirements.
+
 ## Capacity and optimization qualification
 
 The [researched design rationale](../../architecture/engine-scale-and-contracts.md)
@@ -196,7 +206,12 @@ the engine must not grade its own success.
 | J-04a: executable measurement contract | H-05 build/metric identity plus source/test mapping of `rrflow-eval` and existing component benchmarks; implement the typed manifest/schema and raw result writer at that evaluation boundary | Negative/golden validation, deterministic corpus identities, exact sample accounting, histogram boundary tests and retained failures; no model/service invocation without explicit binding |
 | J-04b: installed workload driver | D-01/C-07 and the exercised E/F/G/H operations; catalogue-derived public client, open-loop schedule or documented coordinated-omission correction | Actual installed binaries complete the declared ladder; unavailable capability is unimplemented/failed, not a skipped success; logical-call and attempt timing stay separate |
 | J-04c: sustained interference and recovery | J-04b; accepted maintenance, cancellation and transfer paths required by each case | Soak, overload/drain, noisy neighbor, disk-full, pinned-buffer and restart histories satisfy declared invariants and ceilings |
-| J-04d: optimization and comparison | J-04a through J-04c and matched quality; existing SurrealDB/Qdrant/Pinecone/Nexus comparison requirements | One change at a time, same corpus/hardware/quality, raw before/after distributions and storage/cost accounting; reject regressions or explicitly review the tradeoff before acceptance |
+| J-04d: optimization and comparison | J-04a through J-04c and matched quality; existing SurrealDB/Qdrant/Milvus/Pinecone/Nexus and custom comparison requirements | One change at a time, same corpus/hardware/quality, raw before/after distributions and storage/cost accounting; reject regressions or explicitly review the tradeoff before acceptance |
+
+The repository owner directed on 2026-11-03 that these comparisons be
+maintained as a lab, including Milvus and custom systems. The
+[comparison lab](../../../eval/lab/README.md) is that tool, and it supplies early
+diagnostic results while these packages remain open; its results satisfy none of them.
 
 J-04a specification and case preparation may begin now; runtime qualification
 obeys the dependency spine. These packages do not postpone early instrumentation

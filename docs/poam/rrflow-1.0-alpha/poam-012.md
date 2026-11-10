@@ -22,6 +22,15 @@ J-04a through J-04d must supply schema validation, installed execution,
 sustained interference/recovery and quality-matched optimization evidence.
 Documented targets are not benchmark results and leave this item sequenced.
 
+The draft comparison lab's adapter may include untrusted response text in an
+error, and a run retains the first case error in its output. Credential values
+are excluded from the manifest, but that alone does not prove a server cannot
+echo them into an error. Before sharing reports across trust boundaries, the
+lab needs a bounded, testable disclosure policy and an adversarial response
+test. Per-request raw failure samples in the partial-run candidate retain only
+timing and a fixed category; that does not repair the existing case summary.
+See the [partial-run evidence](../../evidence/change-journals/gate-j/comparison-lab-truthful-partial-runs.md).
+
 At main `3a72a6b4`, the provider-summary verifier accepted a synthetic report
 claiming eight successes when all eight detailed rows reported failure and the
 provider/repository lists contained duplicates. The provider runner's arm is a
