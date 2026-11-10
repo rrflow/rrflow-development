@@ -21,6 +21,7 @@ use std::collections::BTreeMap;
 
 mod catalogue_reads;
 mod collection_moves;
+mod hnsw_read_path;
 mod incremental_generations;
 mod index_identities;
 mod point_reads;
