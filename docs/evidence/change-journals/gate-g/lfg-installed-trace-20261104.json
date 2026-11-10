@@ -1,0 +1,41 @@
+{
+  "sourceCommit": "2657d40ec635547eba6b1eca53f6e4490a4d374a",
+  "binarySha256": "2b270340c052914e32e063a900b5ea7dd9651b0cf89c633984a3f1eb00dbdbe3",
+  "traceConfiguration": {
+    "filter": "rrd_engine::lfg=debug",
+    "format": "json"
+  },
+  "traceEvents": [
+    {
+      "message": "LFG transport completed",
+      "operation_sha256": "46a28da5db32a6c428c095dd8529d256efa15860cfacaf157be469f912e513b1",
+      "outcome": "transport_completed",
+      "elapsed_ms": 33,
+      "analyzer_request_sha256": "aaa3f50acd5023b9e377effadb05ff93d702c84ff5d83ba3ff7b80cafc4f4c7a",
+      "analyzer_response_sha256": "3318d0b158b2b5a2f6f6765efb819c6e947608b7ee9f9056ab245ce53ea18e1a"
+    },
+    {
+      "message": "LFG checkpoint committed",
+      "operation_sha256": "46a28da5db32a6c428c095dd8529d256efa15860cfacaf157be469f912e513b1",
+      "outcome": "checkpoint_committed",
+      "invalidated": false
+    }
+  ],
+  "verification": {
+    "controllerCalls": 1,
+    "controllerPacketAndLfgDigestsMatchProposal": true,
+    "traceAnalyzerDigestsMatchProposal": true,
+    "traceOperationDigestsMatch": true,
+    "checkpointInvalidated": false,
+    "restartAttemptOutcomeEqual": true,
+    "sameAttemptReplayHttpStatus": 412,
+    "syntheticSecretTaskAndEndpointAbsentFromTraceEvents": true
+  },
+  "limits": [
+    "Synthetic task and controlled HTTP selector; not real SWAG routing or model generation.",
+    "LFG process loaded image not independently attested.",
+    "Developer build and one trace sample; no performance or model quality claim.",
+    "Trace stderr may block; these events are not durable audit records.",
+    "No source-edit invalidation, native capacity, soak, candidate CI or merge proof."
+  ]
+}

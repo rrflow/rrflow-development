@@ -1,4 +1,4 @@
-// OpenAPI SHA-256: bcd7fafb7bae0203c8ef8e4e8c743d253929ab0e6b847691f59179009aac1e0f
+// OpenAPI SHA-256: 45225c46967d7a8b974087452f27b2e1ca6142d05f8bcd068e4ea143bba01f2a
 export interface paths {
     "/v1/attunement/cancel": {
         parameters: {
@@ -4464,32 +4464,6 @@ export interface operations {
                                         estimated_input_bytes: number;
                                         /** Format: uint64 */
                                         estimated_items: number;
-                                        /** @description Versioned, project-selected limits for one authorized Parse step. */
-                                        parse_policy?: {
-                                            bindings: {
-                                                /** @description Case-sensitive final extension, without a leading dot. */
-                                                extension: string;
-                                                /**
-                                                 * @description A canonical public identifier component.
-                                                 *
-                                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
-                                                 *     labels are separate data and may use arbitrary Unicode.
-                                                 */
-                                                language: string;
-                                            }[];
-                                            /** @constant */
-                                            format_version: 1;
-                                            /** @description Maximum encoded bytes in one atomic publication group. */
-                                            max_commit_bytes: number;
-                                            max_depth: number;
-                                            max_elapsed_ms: number;
-                                            max_file_bytes: number;
-                                            max_files: number;
-                                            max_input_bytes: number;
-                                            max_memory_bytes: number;
-                                            max_nodes: number;
-                                            max_output_bytes: number;
-                                        } | null;
                                         /** @enum {string} */
                                         phase: "connect" | "inventory" | "parse" | "normalize" | "entity_link" | "lexical_index" | "embed" | "vector_index" | "graph" | "ground" | "verify";
                                         /** Format: uint16 */
@@ -4695,32 +4669,6 @@ export interface operations {
                                         estimated_input_bytes: number;
                                         /** Format: uint64 */
                                         estimated_items: number;
-                                        /** @description Versioned, project-selected limits for one authorized Parse step. */
-                                        parse_policy?: {
-                                            bindings: {
-                                                /** @description Case-sensitive final extension, without a leading dot. */
-                                                extension: string;
-                                                /**
-                                                 * @description A canonical public identifier component.
-                                                 *
-                                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
-                                                 *     labels are separate data and may use arbitrary Unicode.
-                                                 */
-                                                language: string;
-                                            }[];
-                                            /** @constant */
-                                            format_version: 1;
-                                            /** @description Maximum encoded bytes in one atomic publication group. */
-                                            max_commit_bytes: number;
-                                            max_depth: number;
-                                            max_elapsed_ms: number;
-                                            max_file_bytes: number;
-                                            max_files: number;
-                                            max_input_bytes: number;
-                                            max_memory_bytes: number;
-                                            max_nodes: number;
-                                            max_output_bytes: number;
-                                        } | null;
                                         /** @enum {string} */
                                         phase: "connect" | "inventory" | "parse" | "normalize" | "entity_link" | "lexical_index" | "embed" | "vector_index" | "graph" | "ground" | "verify";
                                         /** Format: uint16 */
@@ -4986,32 +4934,6 @@ export interface operations {
                                             estimated_input_bytes: number;
                                             /** Format: uint64 */
                                             estimated_items: number;
-                                            /** @description Versioned, project-selected limits for one authorized Parse step. */
-                                            parse_policy?: {
-                                                bindings: {
-                                                    /** @description Case-sensitive final extension, without a leading dot. */
-                                                    extension: string;
-                                                    /**
-                                                     * @description A canonical public identifier component.
-                                                     *
-                                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
-                                                     *     labels are separate data and may use arbitrary Unicode.
-                                                     */
-                                                    language: string;
-                                                }[];
-                                                /** @constant */
-                                                format_version: 1;
-                                                /** @description Maximum encoded bytes in one atomic publication group. */
-                                                max_commit_bytes: number;
-                                                max_depth: number;
-                                                max_elapsed_ms: number;
-                                                max_file_bytes: number;
-                                                max_files: number;
-                                                max_input_bytes: number;
-                                                max_memory_bytes: number;
-                                                max_nodes: number;
-                                                max_output_bytes: number;
-                                            } | null;
                                             /** @enum {string} */
                                             phase: "connect" | "inventory" | "parse" | "normalize" | "entity_link" | "lexical_index" | "embed" | "vector_index" | "graph" | "ground" | "verify";
                                             /** Format: uint16 */
@@ -5227,32 +5149,6 @@ export interface operations {
                                             estimated_input_bytes: number;
                                             /** Format: uint64 */
                                             estimated_items: number;
-                                            /** @description Versioned, project-selected limits for one authorized Parse step. */
-                                            parse_policy?: {
-                                                bindings: {
-                                                    /** @description Case-sensitive final extension, without a leading dot. */
-                                                    extension: string;
-                                                    /**
-                                                     * @description A canonical public identifier component.
-                                                     *
-                                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
-                                                     *     labels are separate data and may use arbitrary Unicode.
-                                                     */
-                                                    language: string;
-                                                }[];
-                                                /** @constant */
-                                                format_version: 1;
-                                                /** @description Maximum encoded bytes in one atomic publication group. */
-                                                max_commit_bytes: number;
-                                                max_depth: number;
-                                                max_elapsed_ms: number;
-                                                max_file_bytes: number;
-                                                max_files: number;
-                                                max_input_bytes: number;
-                                                max_memory_bytes: number;
-                                                max_nodes: number;
-                                                max_output_bytes: number;
-                                            } | null;
                                             /** @enum {string} */
                                             phase: "connect" | "inventory" | "parse" | "normalize" | "entity_link" | "lexical_index" | "embed" | "vector_index" | "graph" | "ground" | "verify";
                                             /** Format: uint16 */
@@ -5829,32 +5725,6 @@ export interface operations {
                                     estimated_input_bytes: number;
                                     /** Format: uint64 */
                                     estimated_items: number;
-                                    /** @description Versioned, project-selected limits for one authorized Parse step. */
-                                    parse_policy?: {
-                                        bindings: {
-                                            /** @description Case-sensitive final extension, without a leading dot. */
-                                            extension: string;
-                                            /**
-                                             * @description A canonical public identifier component.
-                                             *
-                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
-                                             *     labels are separate data and may use arbitrary Unicode.
-                                             */
-                                            language: string;
-                                        }[];
-                                        /** @constant */
-                                        format_version: 1;
-                                        /** @description Maximum encoded bytes in one atomic publication group. */
-                                        max_commit_bytes: number;
-                                        max_depth: number;
-                                        max_elapsed_ms: number;
-                                        max_file_bytes: number;
-                                        max_files: number;
-                                        max_input_bytes: number;
-                                        max_memory_bytes: number;
-                                        max_nodes: number;
-                                        max_output_bytes: number;
-                                    } | null;
                                     /** @enum {string} */
                                     phase: "connect" | "inventory" | "parse" | "normalize" | "entity_link" | "lexical_index" | "embed" | "vector_index" | "graph" | "ground" | "verify";
                                     /** Format: uint16 */
@@ -5959,32 +5829,6 @@ export interface operations {
                                         estimated_input_bytes: number;
                                         /** Format: uint64 */
                                         estimated_items: number;
-                                        /** @description Versioned, project-selected limits for one authorized Parse step. */
-                                        parse_policy?: {
-                                            bindings: {
-                                                /** @description Case-sensitive final extension, without a leading dot. */
-                                                extension: string;
-                                                /**
-                                                 * @description A canonical public identifier component.
-                                                 *
-                                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
-                                                 *     labels are separate data and may use arbitrary Unicode.
-                                                 */
-                                                language: string;
-                                            }[];
-                                            /** @constant */
-                                            format_version: 1;
-                                            /** @description Maximum encoded bytes in one atomic publication group. */
-                                            max_commit_bytes: number;
-                                            max_depth: number;
-                                            max_elapsed_ms: number;
-                                            max_file_bytes: number;
-                                            max_files: number;
-                                            max_input_bytes: number;
-                                            max_memory_bytes: number;
-                                            max_nodes: number;
-                                            max_output_bytes: number;
-                                        } | null;
                                         /** @enum {string} */
                                         phase: "connect" | "inventory" | "parse" | "normalize" | "entity_link" | "lexical_index" | "embed" | "vector_index" | "graph" | "ground" | "verify";
                                         /** Format: uint16 */
@@ -6295,32 +6139,6 @@ export interface operations {
                                         estimated_input_bytes: number;
                                         /** Format: uint64 */
                                         estimated_items: number;
-                                        /** @description Versioned, project-selected limits for one authorized Parse step. */
-                                        parse_policy?: {
-                                            bindings: {
-                                                /** @description Case-sensitive final extension, without a leading dot. */
-                                                extension: string;
-                                                /**
-                                                 * @description A canonical public identifier component.
-                                                 *
-                                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
-                                                 *     labels are separate data and may use arbitrary Unicode.
-                                                 */
-                                                language: string;
-                                            }[];
-                                            /** @constant */
-                                            format_version: 1;
-                                            /** @description Maximum encoded bytes in one atomic publication group. */
-                                            max_commit_bytes: number;
-                                            max_depth: number;
-                                            max_elapsed_ms: number;
-                                            max_file_bytes: number;
-                                            max_files: number;
-                                            max_input_bytes: number;
-                                            max_memory_bytes: number;
-                                            max_nodes: number;
-                                            max_output_bytes: number;
-                                        } | null;
                                         /** @enum {string} */
                                         phase: "connect" | "inventory" | "parse" | "normalize" | "entity_link" | "lexical_index" | "embed" | "vector_index" | "graph" | "ground" | "verify";
                                         /** Format: uint16 */
@@ -6691,32 +6509,6 @@ export interface operations {
                                         estimated_input_bytes: number;
                                         /** Format: uint64 */
                                         estimated_items: number;
-                                        /** @description Versioned, project-selected limits for one authorized Parse step. */
-                                        parse_policy?: {
-                                            bindings: {
-                                                /** @description Case-sensitive final extension, without a leading dot. */
-                                                extension: string;
-                                                /**
-                                                 * @description A canonical public identifier component.
-                                                 *
-                                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
-                                                 *     labels are separate data and may use arbitrary Unicode.
-                                                 */
-                                                language: string;
-                                            }[];
-                                            /** @constant */
-                                            format_version: 1;
-                                            /** @description Maximum encoded bytes in one atomic publication group. */
-                                            max_commit_bytes: number;
-                                            max_depth: number;
-                                            max_elapsed_ms: number;
-                                            max_file_bytes: number;
-                                            max_files: number;
-                                            max_input_bytes: number;
-                                            max_memory_bytes: number;
-                                            max_nodes: number;
-                                            max_output_bytes: number;
-                                        } | null;
                                         /** @enum {string} */
                                         phase: "connect" | "inventory" | "parse" | "normalize" | "entity_link" | "lexical_index" | "embed" | "vector_index" | "graph" | "ground" | "verify";
                                         /** Format: uint16 */
@@ -6819,32 +6611,6 @@ export interface operations {
                                         estimated_input_bytes: number;
                                         /** Format: uint64 */
                                         estimated_items: number;
-                                        /** @description Versioned, project-selected limits for one authorized Parse step. */
-                                        parse_policy?: {
-                                            bindings: {
-                                                /** @description Case-sensitive final extension, without a leading dot. */
-                                                extension: string;
-                                                /**
-                                                 * @description A canonical public identifier component.
-                                                 *
-                                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
-                                                 *     labels are separate data and may use arbitrary Unicode.
-                                                 */
-                                                language: string;
-                                            }[];
-                                            /** @constant */
-                                            format_version: 1;
-                                            /** @description Maximum encoded bytes in one atomic publication group. */
-                                            max_commit_bytes: number;
-                                            max_depth: number;
-                                            max_elapsed_ms: number;
-                                            max_file_bytes: number;
-                                            max_files: number;
-                                            max_input_bytes: number;
-                                            max_memory_bytes: number;
-                                            max_nodes: number;
-                                            max_output_bytes: number;
-                                        } | null;
                                         /** @enum {string} */
                                         phase: "connect" | "inventory" | "parse" | "normalize" | "entity_link" | "lexical_index" | "embed" | "vector_index" | "graph" | "ground" | "verify";
                                         /** Format: uint16 */
@@ -7004,32 +6770,6 @@ export interface operations {
                                             estimated_input_bytes: number;
                                             /** Format: uint64 */
                                             estimated_items: number;
-                                            /** @description Versioned, project-selected limits for one authorized Parse step. */
-                                            parse_policy?: {
-                                                bindings: {
-                                                    /** @description Case-sensitive final extension, without a leading dot. */
-                                                    extension: string;
-                                                    /**
-                                                     * @description A canonical public identifier component.
-                                                     *
-                                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
-                                                     *     labels are separate data and may use arbitrary Unicode.
-                                                     */
-                                                    language: string;
-                                                }[];
-                                                /** @constant */
-                                                format_version: 1;
-                                                /** @description Maximum encoded bytes in one atomic publication group. */
-                                                max_commit_bytes: number;
-                                                max_depth: number;
-                                                max_elapsed_ms: number;
-                                                max_file_bytes: number;
-                                                max_files: number;
-                                                max_input_bytes: number;
-                                                max_memory_bytes: number;
-                                                max_nodes: number;
-                                                max_output_bytes: number;
-                                            } | null;
                                             /** @enum {string} */
                                             phase: "connect" | "inventory" | "parse" | "normalize" | "entity_link" | "lexical_index" | "embed" | "vector_index" | "graph" | "ground" | "verify";
                                             /** Format: uint16 */
@@ -7090,32 +6830,6 @@ export interface operations {
                                                 estimated_input_bytes: number;
                                                 /** Format: uint64 */
                                                 estimated_items: number;
-                                                /** @description Versioned, project-selected limits for one authorized Parse step. */
-                                                parse_policy?: {
-                                                    bindings: {
-                                                        /** @description Case-sensitive final extension, without a leading dot. */
-                                                        extension: string;
-                                                        /**
-                                                         * @description A canonical public identifier component.
-                                                         *
-                                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
-                                                         *     labels are separate data and may use arbitrary Unicode.
-                                                         */
-                                                        language: string;
-                                                    }[];
-                                                    /** @constant */
-                                                    format_version: 1;
-                                                    /** @description Maximum encoded bytes in one atomic publication group. */
-                                                    max_commit_bytes: number;
-                                                    max_depth: number;
-                                                    max_elapsed_ms: number;
-                                                    max_file_bytes: number;
-                                                    max_files: number;
-                                                    max_input_bytes: number;
-                                                    max_memory_bytes: number;
-                                                    max_nodes: number;
-                                                    max_output_bytes: number;
-                                                } | null;
                                                 /** @enum {string} */
                                                 phase: "connect" | "inventory" | "parse" | "normalize" | "entity_link" | "lexical_index" | "embed" | "vector_index" | "graph" | "ground" | "verify";
                                                 /** Format: uint16 */
@@ -7192,32 +6906,6 @@ export interface operations {
                                                 estimated_input_bytes: number;
                                                 /** Format: uint64 */
                                                 estimated_items: number;
-                                                /** @description Versioned, project-selected limits for one authorized Parse step. */
-                                                parse_policy?: {
-                                                    bindings: {
-                                                        /** @description Case-sensitive final extension, without a leading dot. */
-                                                        extension: string;
-                                                        /**
-                                                         * @description A canonical public identifier component.
-                                                         *
-                                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
-                                                         *     labels are separate data and may use arbitrary Unicode.
-                                                         */
-                                                        language: string;
-                                                    }[];
-                                                    /** @constant */
-                                                    format_version: 1;
-                                                    /** @description Maximum encoded bytes in one atomic publication group. */
-                                                    max_commit_bytes: number;
-                                                    max_depth: number;
-                                                    max_elapsed_ms: number;
-                                                    max_file_bytes: number;
-                                                    max_files: number;
-                                                    max_input_bytes: number;
-                                                    max_memory_bytes: number;
-                                                    max_nodes: number;
-                                                    max_output_bytes: number;
-                                                } | null;
                                                 /** @enum {string} */
                                                 phase: "connect" | "inventory" | "parse" | "normalize" | "entity_link" | "lexical_index" | "embed" | "vector_index" | "graph" | "ground" | "verify";
                                                 /** Format: uint16 */
@@ -7531,32 +7219,6 @@ export interface operations {
                                             estimated_input_bytes: number;
                                             /** Format: uint64 */
                                             estimated_items: number;
-                                            /** @description Versioned, project-selected limits for one authorized Parse step. */
-                                            parse_policy?: {
-                                                bindings: {
-                                                    /** @description Case-sensitive final extension, without a leading dot. */
-                                                    extension: string;
-                                                    /**
-                                                     * @description A canonical public identifier component.
-                                                     *
-                                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
-                                                     *     labels are separate data and may use arbitrary Unicode.
-                                                     */
-                                                    language: string;
-                                                }[];
-                                                /** @constant */
-                                                format_version: 1;
-                                                /** @description Maximum encoded bytes in one atomic publication group. */
-                                                max_commit_bytes: number;
-                                                max_depth: number;
-                                                max_elapsed_ms: number;
-                                                max_file_bytes: number;
-                                                max_files: number;
-                                                max_input_bytes: number;
-                                                max_memory_bytes: number;
-                                                max_nodes: number;
-                                                max_output_bytes: number;
-                                            } | null;
                                             /** @enum {string} */
                                             phase: "connect" | "inventory" | "parse" | "normalize" | "entity_link" | "lexical_index" | "embed" | "vector_index" | "graph" | "ground" | "verify";
                                             /** Format: uint16 */
@@ -7617,32 +7279,6 @@ export interface operations {
                                                 estimated_input_bytes: number;
                                                 /** Format: uint64 */
                                                 estimated_items: number;
-                                                /** @description Versioned, project-selected limits for one authorized Parse step. */
-                                                parse_policy?: {
-                                                    bindings: {
-                                                        /** @description Case-sensitive final extension, without a leading dot. */
-                                                        extension: string;
-                                                        /**
-                                                         * @description A canonical public identifier component.
-                                                         *
-                                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
-                                                         *     labels are separate data and may use arbitrary Unicode.
-                                                         */
-                                                        language: string;
-                                                    }[];
-                                                    /** @constant */
-                                                    format_version: 1;
-                                                    /** @description Maximum encoded bytes in one atomic publication group. */
-                                                    max_commit_bytes: number;
-                                                    max_depth: number;
-                                                    max_elapsed_ms: number;
-                                                    max_file_bytes: number;
-                                                    max_files: number;
-                                                    max_input_bytes: number;
-                                                    max_memory_bytes: number;
-                                                    max_nodes: number;
-                                                    max_output_bytes: number;
-                                                } | null;
                                                 /** @enum {string} */
                                                 phase: "connect" | "inventory" | "parse" | "normalize" | "entity_link" | "lexical_index" | "embed" | "vector_index" | "graph" | "ground" | "verify";
                                                 /** Format: uint16 */
@@ -7719,32 +7355,6 @@ export interface operations {
                                                 estimated_input_bytes: number;
                                                 /** Format: uint64 */
                                                 estimated_items: number;
-                                                /** @description Versioned, project-selected limits for one authorized Parse step. */
-                                                parse_policy?: {
-                                                    bindings: {
-                                                        /** @description Case-sensitive final extension, without a leading dot. */
-                                                        extension: string;
-                                                        /**
-                                                         * @description A canonical public identifier component.
-                                                         *
-                                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
-                                                         *     labels are separate data and may use arbitrary Unicode.
-                                                         */
-                                                        language: string;
-                                                    }[];
-                                                    /** @constant */
-                                                    format_version: 1;
-                                                    /** @description Maximum encoded bytes in one atomic publication group. */
-                                                    max_commit_bytes: number;
-                                                    max_depth: number;
-                                                    max_elapsed_ms: number;
-                                                    max_file_bytes: number;
-                                                    max_files: number;
-                                                    max_input_bytes: number;
-                                                    max_memory_bytes: number;
-                                                    max_nodes: number;
-                                                    max_output_bytes: number;
-                                                } | null;
                                                 /** @enum {string} */
                                                 phase: "connect" | "inventory" | "parse" | "normalize" | "entity_link" | "lexical_index" | "embed" | "vector_index" | "graph" | "ground" | "verify";
                                                 /** Format: uint16 */
@@ -15040,6 +14650,20 @@ export interface operations {
                                      *     labels are separate data and may use arbitrary Unicode.
                                      */
                                     controller_binding_id: string;
+                                    /** @description Absent means no analyzer dispatch and preserves prior configuration bytes. */
+                                    lfg?: {
+                                        assessment_sha256: string;
+                                        base_url: string;
+                                        /** Format: uint64 */
+                                        maximum_input_bytes: number;
+                                        /** Format: uint64 */
+                                        maximum_request_bytes: number;
+                                        /** Format: uint64 */
+                                        maximum_response_bytes: number;
+                                        rules_sha256: string;
+                                        /** Format: uint64 */
+                                        timeout_ms: number;
+                                    } | null;
                                     /**
                                      * @description Explicit per-adapter limits. Protocol ceilings are resource bounds, not
                                      *     provider rankings or implicit defaults for a configured installation.
@@ -15460,6 +15084,20 @@ export interface operations {
                                          *     labels are separate data and may use arbitrary Unicode.
                                          */
                                         controller_binding_id: string;
+                                        /** @description Absent means no analyzer dispatch and preserves prior configuration bytes. */
+                                        lfg?: {
+                                            assessment_sha256: string;
+                                            base_url: string;
+                                            /** Format: uint64 */
+                                            maximum_input_bytes: number;
+                                            /** Format: uint64 */
+                                            maximum_request_bytes: number;
+                                            /** Format: uint64 */
+                                            maximum_response_bytes: number;
+                                            rules_sha256: string;
+                                            /** Format: uint64 */
+                                            timeout_ms: number;
+                                        } | null;
                                         /**
                                          * @description Explicit per-adapter limits. Protocol ceilings are resource bounds, not
                                          *     provider rankings or implicit defaults for a configured installation.
@@ -15882,6 +15520,20 @@ export interface operations {
                                          *     labels are separate data and may use arbitrary Unicode.
                                          */
                                         controller_binding_id: string;
+                                        /** @description Absent means no analyzer dispatch and preserves prior configuration bytes. */
+                                        lfg?: {
+                                            assessment_sha256: string;
+                                            base_url: string;
+                                            /** Format: uint64 */
+                                            maximum_input_bytes: number;
+                                            /** Format: uint64 */
+                                            maximum_request_bytes: number;
+                                            /** Format: uint64 */
+                                            maximum_response_bytes: number;
+                                            rules_sha256: string;
+                                            /** Format: uint64 */
+                                            timeout_ms: number;
+                                        } | null;
                                         /**
                                          * @description Explicit per-adapter limits. Protocol ceilings are resource bounds, not
                                          *     provider rankings or implicit defaults for a configured installation.
@@ -16279,6 +15931,20 @@ export interface operations {
                                  *     labels are separate data and may use arbitrary Unicode.
                                  */
                                 controller_binding_id: string;
+                                /** @description Absent means no analyzer dispatch and preserves prior configuration bytes. */
+                                lfg?: {
+                                    assessment_sha256: string;
+                                    base_url: string;
+                                    /** Format: uint64 */
+                                    maximum_input_bytes: number;
+                                    /** Format: uint64 */
+                                    maximum_request_bytes: number;
+                                    /** Format: uint64 */
+                                    maximum_response_bytes: number;
+                                    rules_sha256: string;
+                                    /** Format: uint64 */
+                                    timeout_ms: number;
+                                } | null;
                                 /**
                                  * @description Explicit per-adapter limits. Protocol ceilings are resource bounds, not
                                  *     provider rankings or implicit defaults for a configured installation.
@@ -16705,6 +16371,20 @@ export interface operations {
                                          *     labels are separate data and may use arbitrary Unicode.
                                          */
                                         controller_binding_id: string;
+                                        /** @description Absent means no analyzer dispatch and preserves prior configuration bytes. */
+                                        lfg?: {
+                                            assessment_sha256: string;
+                                            base_url: string;
+                                            /** Format: uint64 */
+                                            maximum_input_bytes: number;
+                                            /** Format: uint64 */
+                                            maximum_request_bytes: number;
+                                            /** Format: uint64 */
+                                            maximum_response_bytes: number;
+                                            rules_sha256: string;
+                                            /** Format: uint64 */
+                                            timeout_ms: number;
+                                        } | null;
                                         /**
                                          * @description Explicit per-adapter limits. Protocol ceilings are resource bounds, not
                                          *     provider rankings or implicit defaults for a configured installation.
@@ -17129,6 +16809,20 @@ export interface operations {
                                          *     labels are separate data and may use arbitrary Unicode.
                                          */
                                         controller_binding_id: string;
+                                        /** @description Absent means no analyzer dispatch and preserves prior configuration bytes. */
+                                        lfg?: {
+                                            assessment_sha256: string;
+                                            base_url: string;
+                                            /** Format: uint64 */
+                                            maximum_input_bytes: number;
+                                            /** Format: uint64 */
+                                            maximum_request_bytes: number;
+                                            /** Format: uint64 */
+                                            maximum_response_bytes: number;
+                                            rules_sha256: string;
+                                            /** Format: uint64 */
+                                            timeout_ms: number;
+                                        } | null;
                                         /**
                                          * @description Explicit per-adapter limits. Protocol ceilings are resource bounds, not
                                          *     provider rankings or implicit defaults for a configured installation.
@@ -17592,6 +17286,20 @@ export interface operations {
                                          *     labels are separate data and may use arbitrary Unicode.
                                          */
                                         controller_binding_id: string;
+                                        /** @description Absent means no analyzer dispatch and preserves prior configuration bytes. */
+                                        lfg?: {
+                                            assessment_sha256: string;
+                                            base_url: string;
+                                            /** Format: uint64 */
+                                            maximum_input_bytes: number;
+                                            /** Format: uint64 */
+                                            maximum_request_bytes: number;
+                                            /** Format: uint64 */
+                                            maximum_response_bytes: number;
+                                            rules_sha256: string;
+                                            /** Format: uint64 */
+                                            timeout_ms: number;
+                                        } | null;
                                         /**
                                          * @description Explicit per-adapter limits. Protocol ceilings are resource bounds, not
                                          *     provider rankings or implicit defaults for a configured installation.
@@ -18014,6 +17722,20 @@ export interface operations {
                                          *     labels are separate data and may use arbitrary Unicode.
                                          */
                                         controller_binding_id: string;
+                                        /** @description Absent means no analyzer dispatch and preserves prior configuration bytes. */
+                                        lfg?: {
+                                            assessment_sha256: string;
+                                            base_url: string;
+                                            /** Format: uint64 */
+                                            maximum_input_bytes: number;
+                                            /** Format: uint64 */
+                                            maximum_request_bytes: number;
+                                            /** Format: uint64 */
+                                            maximum_response_bytes: number;
+                                            rules_sha256: string;
+                                            /** Format: uint64 */
+                                            timeout_ms: number;
+                                        } | null;
                                         /**
                                          * @description Explicit per-adapter limits. Protocol ceilings are resource bounds, not
                                          *     provider rankings or implicit defaults for a configured installation.
@@ -35456,6 +35178,28 @@ export interface operations {
                                         } | null;
                                         /** Format: uint16 */
                                         http_status?: number | null;
+                                        /**
+                                         * @description Bounded analyzer output and wire identities. These values are advisory;
+                                         *     they do not attest the producer, grant permission, or select a worker.
+                                         */
+                                        lfg?: {
+                                            assessment_sha256: string;
+                                            /** Format: uint64 */
+                                            elapsed_ms: number;
+                                            input_sha256: string;
+                                            intent_category: string;
+                                            intent_status: string;
+                                            reason_ids: string[];
+                                            request_id: string;
+                                            request_sha256: string;
+                                            response_sha256: string;
+                                            /** Format: uint64 */
+                                            revision: number;
+                                            rules_sha256: string;
+                                            status: string;
+                                            suggested_effort: string;
+                                            suggested_role: string;
+                                        } | null;
                                         packet_sha256: string;
                                         /**
                                          * @description A proposal can describe a choice without qualifying that choice for execution.
@@ -35526,6 +35270,28 @@ export interface operations {
                                      * @enum {string|null}
                                      */
                                     invalidation?: "inputs_changed" | "authorization_changed" | null;
+                                    /**
+                                     * @description Bounded analyzer output and wire identities. These values are advisory;
+                                     *     they do not attest the producer, grant permission, or select a worker.
+                                     */
+                                    lfg?: {
+                                        assessment_sha256: string;
+                                        /** Format: uint64 */
+                                        elapsed_ms: number;
+                                        input_sha256: string;
+                                        intent_category: string;
+                                        intent_status: string;
+                                        reason_ids: string[];
+                                        request_id: string;
+                                        request_sha256: string;
+                                        response_sha256: string;
+                                        /** Format: uint64 */
+                                        revision: number;
+                                        rules_sha256: string;
+                                        status: string;
+                                        suggested_effort: string;
+                                        suggested_role: string;
+                                    } | null;
                                     /** Format: uint64 */
                                     ordinal: number;
                                     outcome_sha256?: string | null;
@@ -35911,6 +35677,28 @@ export interface operations {
                                         } | null;
                                         /** Format: uint16 */
                                         http_status?: number | null;
+                                        /**
+                                         * @description Bounded analyzer output and wire identities. These values are advisory;
+                                         *     they do not attest the producer, grant permission, or select a worker.
+                                         */
+                                        lfg?: {
+                                            assessment_sha256: string;
+                                            /** Format: uint64 */
+                                            elapsed_ms: number;
+                                            input_sha256: string;
+                                            intent_category: string;
+                                            intent_status: string;
+                                            reason_ids: string[];
+                                            request_id: string;
+                                            request_sha256: string;
+                                            response_sha256: string;
+                                            /** Format: uint64 */
+                                            revision: number;
+                                            rules_sha256: string;
+                                            status: string;
+                                            suggested_effort: string;
+                                            suggested_role: string;
+                                        } | null;
                                         packet_sha256: string;
                                         /**
                                          * @description A proposal can describe a choice without qualifying that choice for execution.
@@ -35981,6 +35769,28 @@ export interface operations {
                                      * @enum {string|null}
                                      */
                                     invalidation?: "inputs_changed" | "authorization_changed" | null;
+                                    /**
+                                     * @description Bounded analyzer output and wire identities. These values are advisory;
+                                     *     they do not attest the producer, grant permission, or select a worker.
+                                     */
+                                    lfg?: {
+                                        assessment_sha256: string;
+                                        /** Format: uint64 */
+                                        elapsed_ms: number;
+                                        input_sha256: string;
+                                        intent_category: string;
+                                        intent_status: string;
+                                        reason_ids: string[];
+                                        request_id: string;
+                                        request_sha256: string;
+                                        response_sha256: string;
+                                        /** Format: uint64 */
+                                        revision: number;
+                                        rules_sha256: string;
+                                        status: string;
+                                        suggested_effort: string;
+                                        suggested_role: string;
+                                    } | null;
                                     /** Format: uint64 */
                                     ordinal: number;
                                     outcome_sha256?: string | null;
@@ -38121,6 +37931,28 @@ export interface operations {
                                 } | null;
                                 /** Format: uint16 */
                                 http_status?: number | null;
+                                /**
+                                 * @description Bounded analyzer output and wire identities. These values are advisory;
+                                 *     they do not attest the producer, grant permission, or select a worker.
+                                 */
+                                lfg?: {
+                                    assessment_sha256: string;
+                                    /** Format: uint64 */
+                                    elapsed_ms: number;
+                                    input_sha256: string;
+                                    intent_category: string;
+                                    intent_status: string;
+                                    reason_ids: string[];
+                                    request_id: string;
+                                    request_sha256: string;
+                                    response_sha256: string;
+                                    /** Format: uint64 */
+                                    revision: number;
+                                    rules_sha256: string;
+                                    status: string;
+                                    suggested_effort: string;
+                                    suggested_role: string;
+                                } | null;
                                 packet_sha256: string;
                                 /**
                                  * @description A proposal can describe a choice without qualifying that choice for execution.
@@ -38274,6 +38106,28 @@ export interface operations {
                                 } | null;
                                 /** Format: uint16 */
                                 http_status?: number | null;
+                                /**
+                                 * @description Bounded analyzer output and wire identities. These values are advisory;
+                                 *     they do not attest the producer, grant permission, or select a worker.
+                                 */
+                                lfg?: {
+                                    assessment_sha256: string;
+                                    /** Format: uint64 */
+                                    elapsed_ms: number;
+                                    input_sha256: string;
+                                    intent_category: string;
+                                    intent_status: string;
+                                    reason_ids: string[];
+                                    request_id: string;
+                                    request_sha256: string;
+                                    response_sha256: string;
+                                    /** Format: uint64 */
+                                    revision: number;
+                                    rules_sha256: string;
+                                    status: string;
+                                    suggested_effort: string;
+                                    suggested_role: string;
+                                } | null;
                                 packet_sha256: string;
                                 /**
                                  * @description A proposal can describe a choice without qualifying that choice for execution.

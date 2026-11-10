@@ -1,0 +1,18 @@
+{
+  "sourceCommit": "c60ae40a42c0928636cf925a4949bf9743a61821",
+  "protocol": "POST /v1/decision",
+  "syntheticRequests": 2,
+  "httpStatuses": [
+    200,
+    200
+  ],
+  "modelCalls": 0,
+  "comparedFields": [
+    "routing",
+    "counts",
+    "provider_plan",
+    "decision"
+  ],
+  "equalWithSyntheticLfgField": true,
+  "scope": "independent real SWAG service HTTP exercise; no RRFlow admission, real LFG decision influence, model call, quality, or benchmark"
+}

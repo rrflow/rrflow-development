@@ -1,0 +1,18 @@
+{
+  "sourceCommit": "0fc8c9759032222fcf9d61777eb493095ab33012",
+  "tool": "sccache 0.18.0",
+  "cargoExit": 0,
+  "observedCompilerFailureCount": 1,
+  "failure": {
+    "crate": "proc-macro2",
+    "version": "1.0.107",
+    "purpose": "unstable proc_macro_span build capability probe",
+    "compilerCode": "E0554",
+    "toolchain": "stable Rust 1.99.1"
+  },
+  "interpretation": "The locked dependency build script checks probe exit status and handles failure as unavailable capability.",
+  "limits": [
+    "This debug rerun does not directly establish the exact compiler invocation in the earlier two builds.",
+    "No whole-CI performance, provenance, or cache policy qualification."
+  ]
+}

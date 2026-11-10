@@ -26,8 +26,8 @@ pub use endpoint_worker::{
 mod endpoint_policy;
 mod endpoint_proposal;
 mod endpoint_selection;
+pub use endpoint_policy::{EndpointSelectionPolicy, LfgAnalysisPolicy};
 mod task_assessment;
-pub use endpoint_policy::EndpointSelectionPolicy;
 pub use endpoint_proposal::*;
 pub use endpoint_selection::{
     EndpointAbstentionReason, EndpointEffortSupport, EndpointSelectionAllowance,
@@ -67,11 +67,10 @@ pub use attunement::{
     attunement_checkpoint_sha256, attunement_plan_sha256, attunement_replan_accept_sha256,
     attunement_replan_preview_sha256, attunement_replan_seed, attunement_verification_sha256,
     installation_initial_grants, installation_plan_sha256, installation_result_sha256,
-    validate_adopted_estate_entries, AcceptAttunementReplan, AttunementCancelResult,
-    AttunementControlResponse, AttunementFailure, AttunementJob, AttunementJobPage,
-    AttunementJobState, AttunementJobSummary, AttunementLease, AttunementPhase,
-    AttunementPhaseCheckpoint, AttunementPhasePlan, AttunementPlan, AttunementReadResult,
-    AttunementReceipt, AttunementReceiptReadResult, AttunementReplanPreview,
+    AcceptAttunementReplan, AttunementCancelResult, AttunementControlResponse, AttunementFailure,
+    AttunementJob, AttunementJobPage, AttunementJobState, AttunementJobSummary, AttunementLease,
+    AttunementPhase, AttunementPhaseCheckpoint, AttunementPhasePlan, AttunementPlan,
+    AttunementReadResult, AttunementReceipt, AttunementReceiptReadResult, AttunementReplanPreview,
     AttunementReplanReceiptReadResult, AttunementReplanReceiptView, AttunementReplanResult,
     AttunementRuntimeCoordinates, AttunementSourceVerification, AttunementStatus,
     AttunementVerification, AttunementVerificationCheck, AttunementVerificationStatus,
@@ -82,13 +81,12 @@ pub use attunement::{
     InstallationSpecialization, InstallationStorageGeneration, InstallationTargetKind,
     ListAttunementJobs, PauseAttunement, PreviewAttunementReplan, ReadAttunement,
     ReadAttunementReceipt, RecoverExpiredAttunement, ResumeAttunement, ResumeAttunementWithLease,
-    SourceParseBinding, SourceParsePolicy, StartAttunement, StepAttunement,
-    ADOPTED_ESTATE_DIRECTORY, ATTUNEMENT_CONTRACT_VERSION, INSTALLATION_BOOTSTRAP_VERSION,
+    StartAttunement, StepAttunement, ATTUNEMENT_CONTRACT_VERSION, INSTALLATION_BOOTSTRAP_VERSION,
     INSTALLATION_LEASE_PATH, INSTALLATION_LEASE_PRECONDITION, INSTALLATION_PLAN_CONTRACT_VERSION,
-    INSTALL_ATTUNEMENT_CONTRACT_VERSION, MAX_ADOPTED_ESTATE_ENTRIES,
-    MAX_ATTUNEMENT_CANCEL_REASON_BYTES, MAX_ATTUNEMENT_FAILURE_BYTES, MAX_ATTUNEMENT_JOB_PAGE,
-    MAX_ATTUNEMENT_JOB_PAGE_BYTES, MAX_ATTUNEMENT_PHASES, MAX_ATTUNEMENT_VERIFICATION_CHECKS,
-    MAX_BOOTSTRAP_RECORD_BYTES, MAX_BOOTSTRAP_TEXT_BYTES, MAX_INSTALLATION_ACTIONS,
+    INSTALL_ATTUNEMENT_CONTRACT_VERSION, MAX_ATTUNEMENT_CANCEL_REASON_BYTES,
+    MAX_ATTUNEMENT_FAILURE_BYTES, MAX_ATTUNEMENT_JOB_PAGE, MAX_ATTUNEMENT_JOB_PAGE_BYTES,
+    MAX_ATTUNEMENT_PHASES, MAX_ATTUNEMENT_VERIFICATION_CHECKS, MAX_BOOTSTRAP_RECORD_BYTES,
+    MAX_BOOTSTRAP_TEXT_BYTES, MAX_INSTALLATION_ACTIONS,
 };
 pub use capability_surface::{
     ProductCapability, ProductCapabilityCatalogue, ProductSurface, SurfaceBinding,
@@ -279,7 +277,7 @@ use std::fmt;
 pub const PROTOCOL: &str = "rrd";
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const OPENAPI_DOCUMENT_SHA256: &str =
-    "bcd7fafb7bae0203c8ef8e4e8c743d253929ab0e6b847691f59179009aac1e0f";
+    "45225c46967d7a8b974087452f27b2e1ca6142d05f8bcd068e4ea143bba01f2a";
 pub const MAX_ID_BYTES: usize = 128;
 pub const MAX_MESSAGE_BYTES: usize = 4_096;
 pub const MAX_CAPABILITIES: usize = 512;

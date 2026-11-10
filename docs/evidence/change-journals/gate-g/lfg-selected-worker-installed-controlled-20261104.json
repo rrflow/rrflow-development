@@ -1,0 +1,58 @@
+{
+  "sourceCommit": "0fc8c9759032222fcf9d61777eb493095ab33012",
+  "binarySha256": "19d00c00ae1d31415ed6cc4c1c3913923d7fb9dd4ead35a03483ce8d86f70ca3",
+  "scope": "installed synthetic task, live local LFG, controlled selector and worker; no real SWAG or model",
+  "controlledCalls": [
+    {
+      "kind": "selector",
+      "packetSha256": "054c737bdb3311439e80201866a0c4e9c01614ab363bf41e5db801f7d207849f",
+      "lfgInputSha256": "c401906c977c92be916213d7cdc656d04c1741ef9b455d40c83709e2845fd8f1",
+      "lfgResponseSha256": "91caa355e6521a2a725b8ff2723349b51674afe03b4951f24ffc449831fc9a1a"
+    },
+    {
+      "kind": "worker",
+      "packetSha256": "27c4b7f873d3a8d8f527afff8d5974fb951da7a86784bfe1a60494633e4c311c"
+    }
+  ],
+  "selectionOutcomeSha256": "334bb3fba6a1b9f5ee5b16d2ba8d217cc95268cc84a1188663a440ef6efcc8ee",
+  "taskSha256": "7933d6e2f299c5fcc48c5043ccde4847b03101e5a75a7ec465745973c11d6384",
+  "configurationSha256": "c3ad2c8126e7cfc4383dadec775f0e982ce4f32f986084463d3cb9efefc8dfcd",
+  "lfgRequestSha256": "1045b1d0cc20fe8fb1b12ded247eac2c44de5c21932b29d58dfd245b83d7e390",
+  "lfgResponseSha256": "91caa355e6521a2a725b8ff2723349b51674afe03b4951f24ffc449831fc9a1a",
+  "workerRequestSha256": "7c430107aea6c4c502cc103c30d6f1723fdf6cfe405a3b329128069ea07cd929",
+  "workerResponseSha256": "e512699ed221daf2143ed7469f922dbb1e9908f42188f4d02dfd515c549d4ecf",
+  "traceEvents": [
+    {
+      "message": "LFG transport completed",
+      "operation_sha256": "7a35423dc67132f0567ba63d4fc9e65c486b648d537f953d0a7c6d9cb513e024",
+      "outcome": "transport_completed",
+      "elapsed_ms": 43,
+      "analyzer_request_sha256": "1045b1d0cc20fe8fb1b12ded247eac2c44de5c21932b29d58dfd245b83d7e390",
+      "analyzer_response_sha256": "91caa355e6521a2a725b8ff2723349b51674afe03b4951f24ffc449831fc9a1a"
+    },
+    {
+      "message": "LFG checkpoint committed",
+      "operation_sha256": "7a35423dc67132f0567ba63d4fc9e65c486b648d537f953d0a7c6d9cb513e024",
+      "outcome": "checkpoint_committed",
+      "invalidated": false
+    }
+  ],
+  "verification": {
+    "binaryHashMatched": true,
+    "lfgPacketAndTraceDigestsMatched": true,
+    "selectionAndWorkerPacketsMatched": true,
+    "workerBoundToRetainedSelectionAndInputs": true,
+    "advisoryAndWorkerStoredOnSeparateAttempts": true,
+    "selectionReadbackEqualAfterRestart": true,
+    "workerReadbackEqualAfterRestart": true,
+    "selectionReplayStatus": 412,
+    "workerReplayStatus": 412,
+    "syntheticSecretTaskAndEndpointAbsentFromTraceEvents": true
+  },
+  "limitations": [
+    "Real local LFG process image not independently attested.",
+    "Selector and worker responses are controlled fixtures; no real SWAG decision or model quality evidence.",
+    "No provider-backed prompt flight, project-source editing, capacity/soak, protected CI or release qualification.",
+    "The opt-in stderr diagnostic sink can block and is not durable audit authority."
+  ]
+}
