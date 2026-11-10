@@ -113,14 +113,14 @@ pub use diagnostic::{
     DiagnosticGraphRelationSnapshot, DiagnosticGraphSnapshot, DiagnosticMaintenanceSnapshot,
     DiagnosticMemtableSnapshot, DiagnosticModelCatalogueSnapshot, DiagnosticModelKind,
     DiagnosticModelSnapshot, DiagnosticPageCacheSnapshot, DiagnosticReadStamp,
-    DiagnosticRetentionPin, DiagnosticRetentionSnapshot, DiagnosticRrflowKvSnapshot,
-    DiagnosticRuntimeReference, DiagnosticSectionSnapshot, DiagnosticSegmentIoMode,
-    DiagnosticSegmentIoSnapshot, DiagnosticSegmentSetSnapshot, DiagnosticSnapshot,
-    DiagnosticSnapshotLease, DiagnosticStorageAdmission, DiagnosticStorageEvidenceLevel,
-    DiagnosticStorageSnapshot, DiagnosticVectorArtifactCatalogueSnapshot,
-    DiagnosticVectorArtifactKind, DiagnosticVectorArtifactSnapshot,
-    DiagnosticWriteAheadLogSnapshot, ReadDiagnosticSnapshot, ReadStorageDiagnostics,
-    DIAGNOSTIC_SNAPSHOT_FORMAT_VERSION, MAX_DIAGNOSTIC_AUDIT_RECORDS,
+    DiagnosticRetentionPin, DiagnosticRetentionSnapshot, DiagnosticRrflowCldSnapshot,
+    DiagnosticRrflowKvSnapshot, DiagnosticRuntimeReference, DiagnosticSectionSnapshot,
+    DiagnosticSegmentIoMode, DiagnosticSegmentIoSnapshot, DiagnosticSegmentSetSnapshot,
+    DiagnosticSnapshot, DiagnosticSnapshotLease, DiagnosticStorageAdmission,
+    DiagnosticStorageEvidenceLevel, DiagnosticStorageSnapshot,
+    DiagnosticVectorArtifactCatalogueSnapshot, DiagnosticVectorArtifactKind,
+    DiagnosticVectorArtifactSnapshot, DiagnosticWriteAheadLogSnapshot, ReadDiagnosticSnapshot,
+    ReadStorageDiagnostics, DIAGNOSTIC_SNAPSHOT_FORMAT_VERSION, MAX_DIAGNOSTIC_AUDIT_RECORDS,
     MAX_DIAGNOSTIC_RUNTIME_SCANNED_CHANGES,
 };
 pub use endpoint_binding::{
@@ -284,7 +284,7 @@ use std::fmt;
 pub const PROTOCOL: &str = "rrd";
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const OPENAPI_DOCUMENT_SHA256: &str =
-    "274b9c3536c11c42b8f675e863a9c821b564b0ee9eff800123fffc2df406cc7b";
+    "fef69c50fd394dcfdccf5a23cfc16167c0ef673bf6770e4fb92eb29fb9c43324";
 pub const MAX_ID_BYTES: usize = 128;
 pub const MAX_MESSAGE_BYTES: usize = 4_096;
 pub const MAX_CAPABILITIES: usize = 512;
@@ -1881,6 +1881,10 @@ pub struct VectorSearchResourceEvidence {
     pub selected_generation: Option<u64>,
     pub loaded_artifact_bytes: u64,
     pub result_hits: u64,
+    #[serde(default)]
+    pub cold_source_hits: u64,
+    #[serde(default)]
+    pub rrflowcld_triggered: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]

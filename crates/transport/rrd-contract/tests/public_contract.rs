@@ -1204,6 +1204,7 @@ fn diagnostic_read_contract_is_bounded_strict_and_separately_authorized() {
 
 fn rrflow_kv_storage_counters() -> rrd_contract::DiagnosticRrflowKvSnapshot {
     rrd_contract::DiagnosticRrflowKvSnapshot {
+        rrflow_cld: None,
         physical_sequence: 12,
         manifest_generation: 2,
         durable_sequence: 10,

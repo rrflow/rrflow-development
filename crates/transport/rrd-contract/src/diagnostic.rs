@@ -448,6 +448,21 @@ pub struct DiagnosticRrflowKvSnapshot {
     pub segment_set: DiagnosticSegmentSetSnapshot,
     pub page_cache: DiagnosticPageCacheSnapshot,
     pub segment_io: DiagnosticSegmentIoSnapshot,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rrflow_cld: Option<DiagnosticRrflowCldSnapshot>,
+}
+
+/// Process-local RRFlowCLD trigger observations for cold-served vectors.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct DiagnosticRrflowCldSnapshot {
+    pub trigger_count: u64,
+    pub cold_source_hits: u64,
+    pub cold_mapped_hits: u64,
+    pub cold_owned_hits: u64,
+    pub cache_bypass_hits: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_trigger_at_unix_ms: Option<u64>,
 }
 
 /// Process-local physical storage observation for the instance's storage
@@ -515,6 +530,16 @@ impl DiagnosticStorageSnapshot {
                 DiagnosticStorageEvidenceLevel::RrflowKvCounters,
                 Some(rrflow_kv),
             ) => {
+                if let Some(rrflow_cld) = &rrflow_kv.rrflow_cld {
+                    if rrflow_cld.cold_mapped_hits > rrflow_cld.cold_source_hits
+                        || rrflow_cld.cold_owned_hits > rrflow_cld.cold_source_hits
+                        || rrflow_cld.cache_bypass_hits > rrflow_cld.cold_source_hits
+                        || rrflow_cld.trigger_count < rrflow_cld.cold_source_hits
+                        || rrflow_cld.last_trigger_at_unix_ms == Some(0)
+                    {
+                        return invalid("diagnostic rrflowcld counters are inconsistent");
+                    }
+                }
                 let io = &rrflow_kv.segment_io;
                 if !(1..=4096).contains(&io.max_open_files)
                     || io.open_files > io.peak_open_files

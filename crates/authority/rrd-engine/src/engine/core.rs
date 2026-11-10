@@ -110,6 +110,9 @@ pub struct RrdEngine {
     /// Process-local optional HNSW build adapters. Their bytes are never
     /// authoritative until the CPU differential coordinator admits them.
     pub(crate) hnsw_accelerators: Mutex<rrd_vector::HnswAcceleratorRegistry>,
+    /// Process-local RRFlowCLD lifecycle trigger counters from cold-served
+    /// vector acquisitions. Canonical storage/vector state remains external.
+    pub(crate) rrflow_cld: Mutex<crate::RrflowCldLifecycleState>,
     /// Process-local delivery handles for durable task Stop, keyed by task and
     /// fenced by attempt identity. Control state remains authoritative.
     pub(in crate::engine) active_task_cancellations:
@@ -277,6 +280,7 @@ impl RrdEngine {
             active_invocations: Mutex::new(BTreeMap::new()),
             vector_residency: Mutex::new(vector_residency),
             hnsw_accelerators: Mutex::new(rrd_vector::HnswAcceleratorRegistry::default()),
+            rrflow_cld: Mutex::new(crate::RrflowCldLifecycleState::default()),
             active_task_cancellations: Mutex::new(BTreeMap::new()),
             embedding_backends: Mutex::new(rrd_inference::EmbeddingBackendRegistry::default()),
             endpoint_credentials: None,
@@ -323,6 +327,7 @@ impl RrdEngine {
             active_invocations: Mutex::new(BTreeMap::new()),
             vector_residency: Mutex::new(vector_residency),
             hnsw_accelerators: Mutex::new(rrd_vector::HnswAcceleratorRegistry::default()),
+            rrflow_cld: Mutex::new(crate::RrflowCldLifecycleState::default()),
             active_task_cancellations: Mutex::new(BTreeMap::new()),
             embedding_backends: Mutex::new(rrd_inference::EmbeddingBackendRegistry::default()),
             endpoint_credentials: None,
@@ -335,6 +340,25 @@ impl RrdEngine {
             .lock()
             .map(|manager| manager.snapshot())
             .map_err(|_| ServiceError::Storage("vector residency lock is poisoned".into()))
+    }
+
+    pub(crate) fn record_rrflow_cld_vector_trigger(
+        &self,
+        source: crate::VectorResidencySource,
+        at_unix_ms: u64,
+    ) -> Result<()> {
+        self.rrflow_cld
+            .lock()
+            .map_err(|_| ServiceError::Storage("rrflowcld state lock is poisoned".into()))?
+            .record_vector_residency_source(source, at_unix_ms);
+        Ok(())
+    }
+
+    pub(crate) fn rrflow_cld_snapshot(&self) -> Result<crate::RrflowCldSnapshot> {
+        self.rrflow_cld
+            .lock()
+            .map(|state| state.snapshot())
+            .map_err(|_| ServiceError::Storage("rrflowcld state lock is poisoned".into()))
     }
 
     pub fn has_persistent_root(&self) -> bool {

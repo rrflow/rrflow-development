@@ -57,6 +57,15 @@ pub enum VectorResidencySource {
     CacheBypassOwned,
 }
 
+impl VectorResidencySource {
+    pub const fn is_cold_source(self) -> bool {
+        matches!(
+            self,
+            Self::ColdMapped | Self::ColdOwned | Self::CacheBypassMapped | Self::CacheBypassOwned
+        )
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct VectorResidencyAcquisition {
     pub artifact: Arc<VectorArtifact>,
