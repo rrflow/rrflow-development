@@ -411,6 +411,63 @@ class NativeCapacityCases(unittest.TestCase):
             self.assertEqual(len(calls), 1, flags)
             sleep.assert_not_called()
 
+    def test_macos_volume_detaches_and_removes_a_leftover_image_before_retrying(self):
+        result = subprocess.CompletedProcess([], 1, "native detail", "Resource busy")
+        # The runner names the image by host, even with the platform patched.
+        image = self.root / ("capacity.vhd" if os.name == "nt" else "capacity.dmg")
+        observed = []
+
+        def native(*args, **kwargs):
+            if args[:2] == ("hdiutil", "create"):
+                observed.append(("create", image.exists()))
+                if len([entry for entry in observed if entry[0] == "create"]) == 1:
+                    image.write_bytes(b"partial")
+                    raise runner.NativeCommandFailure(args[0], args[1], result)
+                raise runner.NativeCommandFailure(args[0], args[1],
+                                                  subprocess.CompletedProcess([], 1, "", "permanent"))
+            return subprocess.CompletedProcess([], 0, "", "")
+
+        def detach(path):
+            observed.append(("detach", Path(path) == image, image.exists()))
+        with patch.object(runner.sys, "platform", "darwin"),                 patch.object(runner, "native_command", side_effect=native),                 patch.object(runner, "detach_owned_image", side_effect=detach),                 patch.object(runner.time, "sleep"):
+            with self.assertRaisesRegex(runner.NativeCommandFailure, "permanent"):
+                with runner.volume(self.root, 256):
+                    self.fail("failed creation must not yield a volume")
+        # The leftover is detached while it still exists, removed, and the retry
+        # starts from no image.
+        self.assertEqual(observed, [("create", False), ("detach", True, True), ("create", False)])
+        self.assertFalse(image.exists())
+
+    def test_macos_volume_refuses_to_remove_a_leftover_that_escaped_the_fixture(self):
+        result = subprocess.CompletedProcess([], 1, "native detail", "Resource busy")
+        image = self.root / ("capacity.vhd" if os.name == "nt" else "capacity.dmg")
+        elsewhere = Path(tempfile.mkdtemp(prefix="rrflow-capacity-")).resolve() / "escaped.dmg"
+        self.addCleanup(shutil.rmtree, elsewhere.parent, ignore_errors=True)
+        elsewhere.write_bytes(b"not ours to remove")
+
+        def native(*args, **kwargs):
+            if args[:2] == ("hdiutil", "create"):
+                if hasattr(os, "symlink"):
+                    os.symlink(elsewhere, image)
+                else:
+                    image.write_bytes(b"partial")
+                raise runner.NativeCommandFailure(args[0], args[1], result)
+            return subprocess.CompletedProcess([], 0, "", "")
+        with patch.object(runner.sys, "platform", "darwin"),                 patch.object(runner, "native_command", side_effect=native),                 patch.object(runner, "detach_owned_image") as detach,                 patch.object(runner.time, "sleep"):
+            if not hasattr(os, "symlink"):
+                self.skipTest("symlinks unavailable")
+            try:
+                with self.assertRaisesRegex(RuntimeError, "escaped fixture"):
+                    with runner.volume(self.root, 256):
+                        self.fail("failed creation must not yield a volume")
+            except OSError as error:
+                self.skipTest(f"symlink creation not permitted: {error}")
+        # The retry loop refused before touching the escaped image; only the
+        # exit path's unconditional detach ran, and the target was never removed.
+        self.assertLessEqual(detach.call_count, 1)
+        self.assertTrue(image.is_symlink())
+        self.assertTrue(elsewhere.exists())
+
     def test_macos_volume_retries_busy_create_until_success(self):
         result = subprocess.CompletedProcess([], 1, "native detail", "Resource busy")
         calls = []

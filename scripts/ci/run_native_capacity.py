@@ -280,6 +280,16 @@ def volume(fixture: Path, size: int):
                 except NativeCommandFailure as error:
                     if not is_retryable_darwin_create_failure(error) or attempt == 4:
                         raise
+                    # A busy create can leave a partial image behind, possibly
+                    # still attached; the next attempt must start from no image,
+                    # and only an ordinary file inside the fixture is ever removed.
+                    if image.exists():
+                        require(image.is_file() and not image.is_symlink()
+                                and image.resolve().parent == fixture.resolve(),
+                                "owned APFS image escaped fixture")
+                        detach_owned_image(image)
+                        if image.exists():
+                            image.unlink()
                     time.sleep(2 ** attempt)
             attach = plistlib.loads(native_command("hdiutil", "attach", "-nobrowse", "-mountpoint", str(root),
                                         "-plist", str(image), timeout=60).stdout.encode())
