@@ -168,3 +168,5 @@ contract 47 passed; `rrd-lsm --lib` 59 passed; engine cold-history tests 6
 passed; the lifecycle case passed; clippy and fmt clean; generated surfaces
 verified; documentation policy OK. A build-and-test absorption, not F-06
 acceptance: no interruption matrix, soak or capacity claim is made.
+
+2026-11-10: merged main `cc139164` (#278, #283, #288, #308) without conflicts (`1100a66a`). On that tree: public contract 47 passed; `rrd-lsm --lib` 59 passed, 2 ignored; engine cold-history tests 6 passed; the configured cold-history lifecycle case passed.
