@@ -101,7 +101,14 @@ fn captured_diagnostics(scenario: Scenario) -> Vec<serde_json::Value> {
         .with_max_level(tracing::Level::DEBUG)
         .with_writer(move || writer.clone())
         .finish();
-    tracing::subscriber::with_default(subscriber, || run_flow(scenario, None));
+    tracing::subscriber::with_default(subscriber, || {
+        // A callsite first hit in another test while no subscriber existed
+        // caches "never"; with parallel tests keeping a scoped subscriber alive
+        // the cache is not rebuilt for this one, and the event is dropped. The
+        // rebuild makes every callsite consult this subscriber.
+        tracing::callsite::rebuild_interest_cache();
+        run_flow(scenario, None)
+    });
 
     let bytes = bytes.lock().unwrap();
     bytes
