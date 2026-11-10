@@ -41,12 +41,13 @@ pub use engine::{
     EstateReconcileOutcome, InstallationPlanningOptions, InstallationPreview,
     InstallationVerificationCheck, InstallationVerificationReport, InstallationVerificationStatus,
     InstalledEstateRecord, InstalledTailRepairPlan, InstalledTailRepairReceipt, Invocation,
-    InvocationCompletion, InvocationCredential, PreparedDistributedAuthority, ProjectLocator,
-    ProjectMapSummary, ReasoningBudgetStop, Result, RrdEngine, RrdOperation, ServiceError,
-    ServiceErrorKind, ServingPublisher, ServingRecord, ServingRegistration, TaskEmbeddingAttempt,
-    TaskReasoningBudget, TransactionAdmissionSnapshot, ATTUNEMENT_PROPOSAL_FORMAT_VERSION,
-    CLOCK_OBSERVATION_FORMAT_VERSION, INSTALLATION_PREVIEW_FORMAT_VERSION, MAX_AUDIT_PAGE_RECORDS,
-    MAX_JWT_CREDENTIAL_BYTES, PROJECT_MAP_RELATIVE_PATH, TOKEN_KEY_BYTES,
+    InvocationCompletion, InvocationCredential, NestedRepositoryDiscovery,
+    PreparedDistributedAuthority, ProjectLocator, ProjectMapSummary, ReasoningBudgetStop, Result,
+    RrdEngine, RrdOperation, ServiceError, ServiceErrorKind, ServingPublisher, ServingRecord,
+    ServingRegistration, TaskEmbeddingAttempt, TaskReasoningBudget, TransactionAdmissionSnapshot,
+    ATTUNEMENT_PROPOSAL_FORMAT_VERSION, CLOCK_OBSERVATION_FORMAT_VERSION,
+    INSTALLATION_PREVIEW_FORMAT_VERSION, MAX_AUDIT_PAGE_RECORDS, MAX_JWT_CREDENTIAL_BYTES,
+    PROJECT_MAP_RELATIVE_PATH, TOKEN_KEY_BYTES,
 };
 #[cfg(feature = "full")]
 pub use operator::{
