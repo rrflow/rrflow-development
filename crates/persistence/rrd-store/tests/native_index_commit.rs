@@ -367,12 +367,16 @@ fn unique_backfill_failure_is_atomic_on_every_storage_profile() {
     fn assert_profile(engine: &dyn StorageEngine) {
         bootstrap(engine, true);
         let cursor = engine.runtime().cursor().unwrap();
+        let journal_sequence = engine.control().sequence().unwrap();
+        let journal = engine.control().journal_since(0, 128).unwrap();
         assert!(matches!(
             install_bindings(engine),
             Err(Error::IndexConstraint(message))
                 if message.contains("rejects overlapping duplicate records")
         ));
         assert_eq!(engine.runtime().cursor().unwrap(), cursor);
+        assert_eq!(engine.control().sequence().unwrap(), journal_sequence);
+        assert_eq!(engine.control().journal_since(0, 128).unwrap(), journal);
         assert_eq!(
             engine
                 .runtime()
@@ -390,7 +394,26 @@ fn unique_backfill_failure_is_atomic_on_every_storage_profile() {
 
     let directory = tempfile::tempdir().unwrap();
     assert_profile(&RrflowMxStore::new());
-    assert_profile(&RrflowKvStore::open(&directory.path().join("rrflow-kv")).unwrap());
+    let path = directory.path().join("rrflow-kv");
+    {
+        let store = RrflowKvStore::open(&path).unwrap();
+        assert_profile(&store);
+    }
+    let reopened = RrflowKvStore::open(&path).unwrap();
+    assert_eq!(reopened.control().sequence().unwrap(), 0);
+    assert_eq!(
+        reopened
+            .runtime()
+            .read_stamp(&scope())
+            .unwrap()
+            .catalog_revision,
+        0
+    );
+    assert!(reopened
+        .control()
+        .get(&format!("server/state/index-catalogue/{}", scope()))
+        .unwrap()
+        .is_none());
 }
 
 #[test]
