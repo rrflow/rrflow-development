@@ -104,6 +104,10 @@ materialization and runtime-catalogue reconstruction before planning. It is
 not the final rrflowKV-native incremental vector path, and it does not exchange
 stamped Arrow batches with DataFusion.
 
+The empty-generation defect this path once had, and its repair through the
+authenticated source identity, are recorded in the
+[integration evidence](../../evidence/change-journals/gate-e/e-04-hnsw-read-main-integration-20261107.md).
+
 ## Evidence and remaining gates
 
 Focused tests prove:

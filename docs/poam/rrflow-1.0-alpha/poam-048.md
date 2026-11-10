@@ -46,6 +46,12 @@ E-04 stack at E-04d `f34451ee`, with POAM-045's fix applied:
     HNSW maintenance would then have to remove nodes. A move that takes
     effect later in valid time would still be proposed after it takes effect.
 
+### Empty foreign generation on the HNSW read-path candidate
+
+In the unmerged current-main integration of [PR #278](https://github.com/rrflow/rrflow-development/pull/278), a real engine regression moved every vector out of `documents`, then built its empty HNSW generation with a source cursor covering those moves. A different `mirror` collection shared the vector field and contained a record written before that cursor. Exact search returned that record; required-approximate search selected the empty foreign generation and returned `[]`. The generation contains no node from which to infer its source, and the post-generation delta cannot recover the older mirror record. The [integration journal](../../evidence/change-journals/gate-e/e-04-hnsw-read-main-integration-20261107.md) retains the test and baseline. This is a verified candidate defect, not an assertion that this exact path is already on main. The candidate is draft; a source-binding repair and real-engine/reopen/authorization/budget checks are required before it can land.
+
+The same unmerged integration also reproduced a projection-ID collision: separate source addresses `(a-b, c)` and `(a, b-c)` both received `hnsw-a-b-c` from successful index operations. The linked integration journal records the exact test and source identity. A successor source-binding repair must prevent this collision and bind ownership to the durable generation; no separate mainline execution is claimed.
+
 ## Impact
 
 An approximate search returns fewer hits than it asked for whenever its
