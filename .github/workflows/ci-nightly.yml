@@ -12,6 +12,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 concurrency:
   group: ci-nightly-${{ github.ref }}
@@ -22,6 +23,7 @@ jobs:
     name: pipeline
     permissions:
       contents: read
+      pull-requests: read
     uses: ./.github/workflows/ci-reusable.yml
     with:
       scope: full

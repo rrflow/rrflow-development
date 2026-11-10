@@ -1,11 +1,17 @@
-//! One joined worker driven by the existing server sweep. Offers while busy
-//! are skipped; they never accumulate maintenance jobs behind foreground I/O.
+//! One joined worker driven by native and configured cold-history sweeps.
+//! Offers while busy are skipped; they never accumulate maintenance jobs.
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread::{self, JoinHandle};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum MaintenanceWork {
+    Native,
+    ColdHistory,
+}
+
 #[derive(Default)]
 struct State {
-    pending: bool,
+    pending: Option<MaintenanceWork>,
     running: bool,
     stopped: bool,
 }
@@ -16,7 +22,9 @@ pub(super) struct MaintenanceWorker {
 }
 
 impl MaintenanceWorker {
-    pub(super) fn start(mut step: impl FnMut() + Send + 'static) -> std::io::Result<Self> {
+    pub(super) fn start(
+        mut step: impl FnMut(MaintenanceWork) + Send + 'static,
+    ) -> std::io::Result<Self> {
         let shared = Arc::new((Mutex::new(State::default()), Condvar::new()));
         let worker = Arc::clone(&shared);
         let thread = thread::Builder::new()
@@ -25,16 +33,16 @@ impl MaintenanceWorker {
                 let (state, wake) = &*worker;
                 loop {
                     let mut guard = state.lock().unwrap_or_else(|e| e.into_inner());
-                    while !guard.pending && !guard.stopped {
+                    while guard.pending.is_none() && !guard.stopped {
                         guard = wake.wait(guard).unwrap_or_else(|e| e.into_inner());
                     }
                     if guard.stopped {
                         break;
                     }
-                    guard.pending = false;
+                    let work = guard.pending.take().expect("pending maintenance work");
                     guard.running = true;
                     drop(guard);
-                    step();
+                    step(work);
                     state.lock().unwrap_or_else(|e| e.into_inner()).running = false;
                 }
             })?;
@@ -44,7 +52,7 @@ impl MaintenanceWorker {
         })
     }
 
-    pub(super) fn offer(&self) -> super::Result<bool> {
+    pub(super) fn offer(&self, work: MaintenanceWork) -> super::Result<bool> {
         if self.thread.as_ref().is_none_or(JoinHandle::is_finished) {
             return Err(super::HttpError::Contract(
                 "storage maintenance worker stopped".into(),
@@ -52,10 +60,10 @@ impl MaintenanceWorker {
         }
         let (state, wake) = &*self.shared;
         let mut state = state.lock().unwrap_or_else(|e| e.into_inner());
-        if state.stopped || state.running || state.pending {
+        if state.stopped || state.running || state.pending.is_some() {
             return Ok(false);
         }
-        state.pending = true;
+        state.pending = Some(work);
         wake.notify_one();
         Ok(true)
     }
@@ -67,7 +75,7 @@ impl Drop for MaintenanceWorker {
         {
             let mut state = state.lock().unwrap_or_else(|e| e.into_inner());
             state.stopped = true;
-            state.pending = false;
+            state.pending = None;
             wake.notify_one();
         }
         // An admitted quantum uses installed cooperative I/O/maintenance
@@ -90,15 +98,18 @@ mod tests {
     fn idle_maintenance_skips_busy_offers_and_joins_inflight_work() {
         let (started, began) = mpsc::sync_channel(1);
         let (release, released) = mpsc::sync_channel(0);
-        let worker = MaintenanceWorker::start(move || {
-            started.send(()).unwrap();
+        let worker = MaintenanceWorker::start(move |work| {
+            started.send(work).unwrap();
             released.recv().unwrap();
         })
         .unwrap();
-        assert!(worker.offer().unwrap());
-        began.recv_timeout(Duration::from_secs(5)).unwrap();
+        assert!(worker.offer(MaintenanceWork::ColdHistory).unwrap());
+        assert_eq!(
+            began.recv_timeout(Duration::from_secs(5)).unwrap(),
+            MaintenanceWork::ColdHistory
+        );
         for _ in 0..100 {
-            assert!(!worker.offer().unwrap());
+            assert!(!worker.offer(MaintenanceWork::Native).unwrap());
         }
         let (done, stopped) = mpsc::sync_channel(1);
         let shutdown = thread::spawn(move || {
@@ -114,15 +125,15 @@ mod tests {
 
     #[test]
     fn idle_maintenance_drop_wakes_an_idle_worker_and_panic_is_visible() {
-        drop(MaintenanceWorker::start(|| {}).unwrap());
-        let worker = MaintenanceWorker::start(|| panic!("injected maintenance panic")).unwrap();
-        assert!(worker.offer().unwrap());
+        drop(MaintenanceWorker::start(|_| {}).unwrap());
+        let worker = MaintenanceWorker::start(|_| panic!("injected maintenance panic")).unwrap();
+        assert!(worker.offer(MaintenanceWork::Native).unwrap());
         let deadline = std::time::Instant::now() + Duration::from_secs(5);
         while !worker.thread.as_ref().unwrap().is_finished() {
             assert!(std::time::Instant::now() < deadline);
             thread::yield_now();
         }
-        assert!(worker.offer().is_err());
+        assert!(worker.offer(MaintenanceWork::Native).is_err());
         drop(worker);
     }
 }

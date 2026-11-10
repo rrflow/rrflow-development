@@ -761,10 +761,9 @@ fn require_no_collection_artifacts(
     let entries = crate::vector_artifact_catalog_entries(&engine.storage, scope)
         .map_err(|error| ServiceError::Vector(error.to_string()))?;
     for vector in collection.definition.vectors.values() {
-        let expected = format!("hnsw-{collection_id}-{}", vector.name);
         if entries
             .iter()
-            .any(|entry| entry.descriptor.stamp().id.as_str() == expected)
+            .any(|entry| hnsw_may_belong_to_source(entry, collection_id, &vector.name))
         {
             return Err(ServiceError::Vector(format!(
                 "vector collection {collection_id} still owns an active HNSW artifact; retire it before deletion"
@@ -795,10 +794,9 @@ fn require_payload_index_not_in_use(
         .map_err(|error| ServiceError::Vector(error.to_string()))?;
     for vector in collection.definition.vectors.values() {
         let kind = "hnsw";
-        let expected = format!("{kind}-{collection_id}-{}", vector.name);
-        if let Some(entry) = entries
+        for entry in entries
             .iter()
-            .find(|entry| entry.descriptor.stamp().id.as_str() == expected)
+            .filter(|entry| hnsw_may_belong_to_source(entry, collection_id, &vector.name))
         {
             let rrd_vector::VectorProjectionDescriptor::Hnsw { descriptor } = &entry.descriptor
             else {
@@ -838,6 +836,31 @@ fn require_payload_index_not_in_use(
         }
     }
     Ok(())
+}
+
+fn hnsw_may_belong_to_source(
+    entry: &rrd_vector::VectorArtifactCatalogEntry,
+    collection_id: &CanonicalId,
+    vector_name: &ProjectionId,
+) -> bool {
+    if !matches!(
+        entry.descriptor,
+        rrd_vector::VectorProjectionDescriptor::Hnsw { .. }
+    ) {
+        return false;
+    }
+    match entry.source() {
+        Some(source) => {
+            source.collection_id == collection_id.as_str()
+                && source.vector_name == vector_name.as_str()
+        }
+        // The former name is ambiguous, so use it only to conservatively
+        // refuse deletion, never to authorize a read or establish ownership.
+        None if entry.contract_version == 2 => {
+            entry.descriptor.stamp().id.as_str() == format!("hnsw-{collection_id}-{vector_name}")
+        }
+        None => false,
+    }
 }
 
 pub(in crate::engine) fn validate_collection_query(

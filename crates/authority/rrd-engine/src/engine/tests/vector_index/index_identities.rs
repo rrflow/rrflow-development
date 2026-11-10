@@ -93,7 +93,7 @@ fn publish_exact_segment(engine: &RrdEngine, expected_revision: u64) {
 #[test]
 fn a_scope_with_index_generations_keeps_its_public_changefeed() {
     let (_root, engine, lease) = fixture();
-    engine
+    let built = engine
         .ensure_vector_index(
             &lease.session_id,
             &lease.token,
@@ -127,7 +127,10 @@ fn a_scope_with_index_generations_keeps_its_public_changefeed() {
             _ => None,
         })
         .collect::<BTreeSet<_>>();
-    for artifact in ["hnsw-documents-body.1", "exact-documents-body.1"] {
+    for artifact in [
+        format!("{}.1", built.index.index_id),
+        "exact-documents-body.1".into(),
+    ] {
         assert!(
             identities.contains(&format!("vector_artifact:{artifact}")),
             "{artifact} has no record in {identities:?}"

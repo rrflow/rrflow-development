@@ -136,6 +136,17 @@ The first job, `changes`, diffs the candidate against its base and runs
 | `sdk` | `sdks/**`, `fixtures/**`, `crates/transport/**` | `sdk-conformance`; transport crate edits also run `engine-fast` |
 | `full` | `.github/**` except templates, `scripts/ci/**`, `.cargo/**`, `.devcontainer/**`, `.gitmodules`, `rust-toolchain.toml`, `Cargo.toml`, `Cargo.lock`, `VERSION`, `deploy/**`, the Connectome gitlink, `crates/kernel/**`, `crates/persistence/**`, `crates/adapters/rrflow-cli/**`, `rrd-maintenance`, and the engine's transaction, installation, estate layout, token key, maintenance, attunement supervisor, backup, control, configuration, estate-control, flight, function, knowledge, observation, reasoning-budget persistence, restore, session, subscription, task, query, and tail-repair effect modules; also engine test modules, `.gitignore`, `.gitattributes`, any path the classifier does not recognize, a manual dispatch, a `scope: full` call, or an event without a base revision | every partition below, exactly as before |
 
+Alongside whichever light lanes a change selects, `repository-invariants` runs
+the engine's repository-wide architecture tests
+(`cargo test -p rrd-engine --test workspace_architecture`) on every candidate
+the full matrix does not cover. Those tests scan every tracked file for the
+retired identity, trailing whitespace, untracked target sources and physical
+imports, so a documentation or data change can break them: #308 landed
+evaluation inputs through the docs and scripts lanes on 2026-11-09 and left
+main failing two of them for every engine-lane candidate. The job costs one
+cached `rrd-engine` test build; the full matrix already runs the same tests
+inside `engine-suites`, so it skips there.
+
 A `full` selection absorbs the light lanes, so their jobs skip and the full
 partitions carry their checks. The `engine` lane never links the whole
 workspace in one target graph; a root manifest or lock change takes the
@@ -151,6 +162,44 @@ day's candidates selected. It is evidence about main, not candidate acceptance.
 lane condition and the gate to check each result by lane;
 `test_select_ci_lanes.py` and `test_ci_lanes_policy.py` are its regressions and
 run in the `changes` job and the verify policy step.
+
+## Pull request limits
+
+After lane selection, the `changes` job runs `scripts/ci/check_pr_governance.py`
+and fails a pull request that breaks a work-in-progress limit. The limits
+exist because on 2026-11-09 the repository held 27 open pull requests, 20 of
+them drafts, most 130 to 420 commits behind `main`, with two merged into
+`main` carrying no file changes; prose in `AGENTS.md` had not prevented any
+of it.
+
+| Limit | Value | Lifted by the `integration` label | Evidence |
+|---|---|---|---|
+| changed files | at least one | never | #298 and #299 merged with zero changes |
+| base branch | `main` | never | eight stacked lab pull requests could not enter the queue in turn |
+| merge-base age | 3 days | never | DORA's trunk-based capability: merge to trunk at least daily, three or fewer active branches |
+| changed lines | 400 | yes | Google reviews a median change of about 24 lines and approves most in under four hours (Sadowski et al., ICSE-SEIP 2018); the Cisco/SmartBear study of 2,500 reviews found review effectiveness fall past 200 to 400 lines |
+| open pull requests | 5 | yes | teams running parallel agents size concurrency by pull requests awaiting review; conflicts grow faster than linearly with parallel agents |
+| open per author | 3 | yes | open-source projects admitting agents cap contributors at about three open pull requests |
+
+Pull requests opened before 2026-11-10 are the backlog being absorbed: the
+empty-diff, base-branch and merge-base rules apply to them, the two counts
+and the size limit do not, and they are not counted against newer ones.
+`scripts/ci/test_pr_governance.py` is the regression corpus. The evidence is
+correlational and partly vendor-reported; the numbers are starting values
+to be changed from measurement, in this record, not from taste.
+
+Sources: [DORA, trunk-based development](https://dora.dev/capabilities/trunk-based-development/);
+[Sadowski et al., Modern Code Review: A Case Study at Google, ICSE-SEIP 2018](https://sback.it/publications/icse2018seip.pdf);
+[SmartBear/Cisco peer review study](https://smartbear.com/resources/white-papers/11-best-practices-for-peer-code-review/);
+[Osmani, Your AI coding agents need a manager](https://addyosmani.com/blog/coding-agents-manager/);
+[CircleCI, parallel coding agents without piling up PRs](https://circleci.com/blog/parallel-coding-agents/);
+[Wessel et al., AI policies in popular open source projects](https://arxiv.org/html/2609.07542);
+[AgenticFlict, merge conflicts in AI-generated contributions](https://arxiv.org/pdf/2601.20109).
+
+`scripts/ci/check_session_end.py` is the agent-side guard: it fails while the
+worktree holds uncommitted or unpushed work, so a session cannot end with
+hundreds of staged files that no pull request carries, as five did on
+2026-11-09.
 
 Rust cache steps still restore compatible entries on every candidate, but do
 not save new entries from `merge_group` runs. Queue-ref entries are scoped to
@@ -206,7 +255,8 @@ check for branch protection:
 - ordinary-primary fresh/existing 100-cycle acknowledged kill/reopen histories
   on those same three native platforms; and
 - the three light lanes, `docs-policy`, `scripts-policy` and `engine-fast`,
-  described under proportional lanes; and
+  described under proportional lanes, and the `repository-invariants` job
+  that runs on every candidate the full matrix does not cover; and
 - one always-evaluated gate which fails unless every selected partition
   succeeded and every unselected partition was skipped.
 
@@ -1001,15 +1051,18 @@ prevent retention. The record does not classify the cause, retry the case, or
 turn a failed native test into acceptance; see the
 [C-07 diagnostic journal](../evidence/change-journals/gate-c/c-07-native-create-diagnostics.md).
 
-The separate manual `c07-native-preflight.yml` workflow runs the same three
-fresh/existing APFS pairs and controlled failure diagnostics on one macOS
+The separate manual `c07-native-preflight.yml` workflow defaults to the same
+three fresh/existing APFS pairs and controlled failure diagnostics on one macOS
 runner. First it deliberately supplies an invalid filesystem to the native
 image-create command and verifies that the runner retains the resulting error;
 that injected receipt is uploaded separately from any real capacity failure.
 The injected failure is a diagnostic test, never a capacity pass. Once that
 workflow exists on default `main`, dispatch an exact branch
 with `gh workflow run c07-native-preflight.yml --ref <branch>` and verify the
-run's recorded head and tree. This is a focused diagnostic, not candidate CI,
-the required merge group, the full capacity matrix, or a soak. A passing run
+run's recorded head and tree. To investigate one failure without the other
+cases, for example, add `-f point=wal_before_write -f mode=fresh -f repetitions=1`.
+The wrapper validates these selections against the native runner's point list
+and preserves its failure and cleanup behavior. This is a focused diagnostic,
+not candidate CI, the required merge group, the full capacity matrix, or a soak. A passing run
 does not erase a prior failure or prove its cause. Normal PR and merge-group
 events continue to run the unchanged complete pipeline.

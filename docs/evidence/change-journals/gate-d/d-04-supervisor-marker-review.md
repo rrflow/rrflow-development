@@ -1,0 +1,13 @@
+# D-04 supervisor test marker review
+
+**Status:** active draft test correction; installed Parse remains unavailable
+**Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/gate-d/d-04-supervisor-marker-review`
+**Owner:** D-04 source parsing and [PR #241](https://github.com/rrflow/rrflow-development/pull/241)
+
+Starting candidate `fa2409867fd906a85f5b98b2e512107dd2044c08`; the PR brief was extended before edits. Complete source read covered `windows_supervisor.rs` (blob `5c16f7618b25fb1b312eb2efd63b5c1dcf71fa92`, 260 lines), its `tests.rs` (`c3b2268438fce562c8f258652fb785ae7cb8a06f`, 266 lines), `linux_supervisor.rs` (`c58bbbf4f5057eb1f952059116435119c124ba19`, 134 lines), and its `tests.rs` (`2178ade289ce7d08a88de69ccc9b267ea08112d9`, 210 lines). This is not a whole-repository or independent security review.
+
+Both parent-death fixtures created a marker file before writing its PID. The polling side immediately parsed any readable content, so scheduling between creation and completed write could produce a false test failure. The test-only protocol now accepts a nonzero decimal PID only after its final newline, and retains the existing native process identity/job checks and finite timeout. No product code, marker ownership, process limit, project source access or publication changed. A fixed parser test covers empty, partial, malformed, zero and complete content. The correction does not prove installed indexing or eliminate every possible CI failure.
+
+The new oracle first failed to compile on Windows and the Linux WSL harness with `E0425` because `completed_pid` did not exist. After implementation, Windows `cargo test --offline --locked -p rrd-engine --lib windows_supervisor::tests` passed six tests with three subprocess fixtures ignored. Ubuntu WSL2 x86-64 `cargo test --offline --locked -p rrd-engine --lib linux_supervisor::tests` passed seven with three fixtures ignored, using the isolated pinned toolchain and test debug info disabled. `cargo fmt --all` ran. The full earlier engine suites and native containment evidence remain bound to their earlier exact revisions; this is a test-only correction, and exact-candidate CI has not run. No roadmap or POAM completion status changed.
+
+Checklist: owner, baseline and before/after oracle recorded; both files and process owners read; no code deleted or moved; fixture race corrected with fail-closed parsing; platform-focused tests run. `cargo fmt --all --check`, `python scripts/ci/check_documentation.py`, `python scripts/knowledge/render_navigation.py --check` and `git diff --cached --check` passed. PR push and exact-candidate CI remain required.

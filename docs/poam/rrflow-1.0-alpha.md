@@ -66,3 +66,9 @@
 | POAM-050 | High | Open | [a task's attempts can be read only by an id the reader already holds](rrflow-1.0-alpha/poam-050.md) |
 | POAM-051 | High | Open | [no public read joins a committed change to the request that made it](rrflow-1.0-alpha/poam-051.md) |
 | POAM-052 | High | Open | [context ranking cannot be configured or experimented with](rrflow-1.0-alpha/poam-052.md) |
+| POAM-053 | High | Open | [clients cannot build RRFlow's HNSW or payload indexes](rrflow-1.0-alpha/poam-053.md) |
+| POAM-054 | High | Open | [a default install accepts a vector corpus its search then refuses](rrflow-1.0-alpha/poam-054.md) |
+| POAM-055 | High | Open | [a vector search the engine will refuse first reads every vector](rrflow-1.0-alpha/poam-055.md) |
+| POAM-056 | High | Open | [HNSW search reads the vector-version source before traversal](rrflow-1.0-alpha/poam-056.md) |
+| POAM-057 | High | Open | [comparison lab cannot establish exclusive scratch ownership](rrflow-1.0-alpha/poam-057.md) |
+| POAM-058 | High | Open | [named HNSW generations lack an authenticated source identity](rrflow-1.0-alpha/poam-058.md) |

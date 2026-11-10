@@ -5,13 +5,30 @@ use crate::{
 };
 use rrd_core::{
     digest, ObjectReference, ProjectionId, ProjectionStamp, ProjectionState, Result, RuntimeRef,
-    ScopeId,
+    ScopeId, VectorCollectionAddress,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
-pub const VECTOR_ARTIFACT_CATALOG_VERSION: u16 = 2;
+pub const VECTOR_ARTIFACT_CATALOG_VERSION: u16 = 3;
 pub const VECTOR_ARTIFACT_RECORD_TYPE: &str = "vector_artifact";
+
+/// Stable, domain-separated identity for a structured named-vector source.
+/// The stored address remains authoritative if a digest ever collides.
+pub fn vector_source_digest(source: &VectorCollectionAddress) -> Result<String> {
+    source.validate()?;
+    let mut identity = b"rrflow-hnsw-source-v1\0".to_vec();
+    // Freeze the v1 identity to these two ordered strings instead of the
+    // evolving public struct's serialized fields.
+    identity.extend(
+        serde_json::to_vec(&(&source.collection_id, &source.vector_name)).map_err(|error| {
+            rrd_core::Error::InvalidRuntime {
+                reason: format!("vector source cannot be encoded: {error}"),
+            }
+        })?,
+    );
+    Ok(digest::sha256_hex(&identity))
+}
 
 /// The idempotent operation that published a generation: its key and the
 /// SHA-256 of the request, recorded in the same commit as the generation.
@@ -20,6 +37,16 @@ pub const VECTOR_ARTIFACT_RECORD_TYPE: &str = "vector_artifact";
 pub struct VectorArtifactOperationReceipt {
     pub idempotency_key: String,
     pub operation_sha256: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source: Option<VectorArtifactSource>,
+}
+
+/// Versioned source identity, committed as part of the operation receipt.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct VectorArtifactSource {
+    pub contract_version: u16,
+    pub address: VectorCollectionAddress,
 }
 
 /// One immutable, reconstructable vector projection publication.
@@ -86,6 +113,46 @@ impl VectorArtifactCatalogEntry {
         build_evidence: Option<HnswBuildEvidence>,
         operation: Option<VectorArtifactOperationReceipt>,
     ) -> Result<Self> {
+        Self::new_with_source(
+            catalog_revision,
+            kind,
+            descriptor,
+            object,
+            published_at,
+            build_evidence,
+            operation,
+            None,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn new_with_source(
+        catalog_revision: u64,
+        kind: VectorArtifactKind,
+        descriptor: VectorProjectionDescriptor,
+        object: ObjectReference,
+        published_at: u64,
+        build_evidence: Option<HnswBuildEvidence>,
+        mut operation: Option<VectorArtifactOperationReceipt>,
+        source: Option<VectorCollectionAddress>,
+    ) -> Result<Self> {
+        if operation
+            .as_ref()
+            .is_some_and(|receipt| receipt.source.is_some())
+        {
+            return invalid("source must be bound by the catalogue constructor");
+        }
+        if let Some(address) = source {
+            let receipt = operation
+                .as_mut()
+                .ok_or_else(|| rrd_core::Error::InvalidRuntime {
+                    reason: "named source requires an operation receipt".into(),
+                })?;
+            receipt.source = Some(VectorArtifactSource {
+                contract_version: 1,
+                address,
+            });
+        }
         let mut entry = Self {
             contract_version: VECTOR_ARTIFACT_CATALOG_VERSION,
             catalog_revision,
@@ -115,6 +182,14 @@ impl VectorArtifactCatalogEntry {
         self.descriptor.scope()
     }
 
+    pub fn source(&self) -> Option<&VectorCollectionAddress> {
+        self.operation
+            .as_ref()?
+            .source
+            .as_ref()
+            .map(|source| &source.address)
+    }
+
     pub fn decode_artifact(&self, bytes: &[u8]) -> Result<VectorArtifact> {
         self.validate()?;
         if bytes.len() as u64 != self.object.length
@@ -126,12 +201,33 @@ impl VectorArtifactCatalogEntry {
         if artifact.descriptor() != self.descriptor {
             return invalid("decoded vector artifact differs from its catalog descriptor");
         }
+        if let (Some(source), VectorArtifact::Hnsw(index)) = (self.source(), &artifact) {
+            if !index.contains_only_source(source) {
+                return invalid("HNSW artifact contains a foreign source");
+            }
+        }
         Ok(artifact)
     }
 
     fn validate_components(&self) -> Result<()> {
-        if self.contract_version != VECTOR_ARTIFACT_CATALOG_VERSION || self.catalog_revision == 0 {
+        if !matches!(self.contract_version, 2 | VECTOR_ARTIFACT_CATALOG_VERSION)
+            || self.catalog_revision == 0
+            || (self.contract_version == 2 && self.source().is_some())
+        {
             return invalid("vector artifact catalog version and revision must be valid");
+        }
+        if let Some(source) = self
+            .operation
+            .as_ref()
+            .and_then(|receipt| receipt.source.as_ref())
+        {
+            if source.contract_version != 1 {
+                return invalid("vector source binding version is unsupported");
+            }
+            source.address.validate()?;
+            if self.kind != VectorArtifactKind::Hnsw {
+                return invalid("named source binding requires an HNSW artifact");
+            }
         }
         self.descriptor.validate()?;
         if self.descriptor.stamp().state != ProjectionState::Ready {
@@ -186,7 +282,7 @@ impl VectorArtifactCatalogEntry {
             }
             (VectorProjectionDescriptor::Hnsw { .. }, None) => {}
             (_, Some(_)) => {
-                return invalid("HNSW build evidence cannot describe another artifact kind")
+                return invalid("HNSW build evidence cannot describe another artifact kind");
             }
             (_, None) => {}
         }
@@ -525,6 +621,128 @@ mod tests {
         .unwrap();
         VectorArtifactCatalogEntry::new(1, VectorArtifactKind::ExactSegment, descriptor, object, 1)
             .unwrap()
+    }
+
+    fn hnsw_entry(source: VectorCollectionAddress) -> VectorArtifactCatalogEntry {
+        let scope = ScopeId::new("instance:catalog").unwrap();
+        let index = crate::HnswIndex::build(
+            crate::HnswConfig {
+                id: ProjectionId::new("hnsw-bound").unwrap(),
+                scope,
+                field: "body".into(),
+                dimensions: 2,
+                metric: ScoreMetric::Dot,
+                embedding_model: None,
+                m: 4,
+                ef_construction: 16,
+                max_level: 4,
+                seed: 7,
+                filter_properties: BTreeSet::new(),
+            },
+            1,
+            0,
+            Vec::new(),
+        )
+        .unwrap();
+        let descriptor = VectorProjectionDescriptor::from(index.descriptor().clone());
+        let subject = VectorArtifactCatalogEntry::record_reference(&descriptor).unwrap();
+        let bytes = index.as_bytes();
+        let object = ObjectReference::for_bytes(
+            "hnsw-artifact",
+            Some(subject),
+            VectorArtifactKind::Hnsw.media_type(),
+            bytes,
+            ObjectReceipt {
+                backend: "memory".into(),
+                key: ObjectReference::canonical_key(&digest::sha256_hex(bytes)).unwrap(),
+                version: None,
+                etag: None,
+            },
+        )
+        .unwrap();
+        VectorArtifactCatalogEntry::new_with_source(
+            1,
+            VectorArtifactKind::Hnsw,
+            descriptor,
+            object,
+            1,
+            None,
+            Some(VectorArtifactOperationReceipt {
+                idempotency_key: "source-test".into(),
+                operation_sha256: "11".repeat(32),
+                source: None,
+            }),
+            Some(source),
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn named_source_identity_v1_is_stable_and_delimiter_safe() {
+        let first = VectorCollectionAddress {
+            collection_id: "a-b".into(),
+            vector_name: "c".into(),
+        };
+        let second = VectorCollectionAddress {
+            collection_id: "a".into(),
+            vector_name: "b-c".into(),
+        };
+        assert_eq!(
+            vector_source_digest(&first).unwrap(),
+            "8dd7f0b7ea2710de712692ad9aba5d6d4d8a0535986574f15a6ea5fac7dfd121"
+        );
+        assert_eq!(
+            vector_source_digest(&second).unwrap(),
+            "c61e1886c6a087daa1169ebab7be4f5e6d366a29fc702ae16ef000351b13d9a8"
+        );
+    }
+
+    #[test]
+    fn named_source_is_authenticated_and_older_entries_remain_unbound() {
+        let source = VectorCollectionAddress {
+            collection_id: "documents".into(),
+            vector_name: "body".into(),
+        };
+        let entry = hnsw_entry(source.clone());
+        assert!(entry.validate().is_ok());
+        let mut tampered = entry.clone();
+        tampered
+            .operation
+            .as_mut()
+            .unwrap()
+            .source
+            .as_mut()
+            .unwrap()
+            .address
+            .collection_id = "other".into();
+        assert!(tampered.validate().is_err());
+
+        // Reconstruct the previous format's exact identity calculation rather
+        // than deriving an expected digest from the new implementation.
+        let mut old = entry;
+        old.contract_version = 2;
+        old.operation.as_mut().unwrap().source = None;
+        let bytes = serde_json::to_vec(&(
+            old.contract_version,
+            old.catalog_revision,
+            old.kind,
+            &old.descriptor,
+            &old.object,
+            old.published_at,
+            &old.build_evidence,
+            &old.operation,
+        ))
+        .unwrap();
+        old.entry_digest = digest::sha256_hex(&bytes);
+        let restored: VectorArtifactCatalogEntry =
+            serde_json::from_slice(&serde_json::to_vec(&old).unwrap()).unwrap();
+        assert!(restored.validate().is_ok());
+        assert_eq!(restored.source(), None);
+        old.operation.as_mut().unwrap().source = Some(VectorArtifactSource {
+            contract_version: 1,
+            address: source,
+        });
+        assert!(old.validate().is_err());
     }
 
     fn turboquant_descriptor() -> VectorProjectionDescriptor {

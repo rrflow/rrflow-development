@@ -9,7 +9,7 @@ use std::{
 
 use parquet::{
     arrow::ArrowWriter,
-    basic::Compression,
+    basic::{Compression, ZstdLevel},
     file::metadata::KeyValue,
     file::properties::{EnabledStatistics, WriterProperties},
 };
@@ -26,6 +26,30 @@ pub struct ParquetExportLimits {
     pub row_group_rows: usize,
     pub max_memory_bytes: usize,
     pub deadline: Instant,
+}
+
+/// Explicit writer choices. Callers must admit the work and its memory budget.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ParquetCompression {
+    Uncompressed,
+    Zstd { level: i32 },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ParquetEncoding {
+    pub compression: ParquetCompression,
+    pub dictionary: bool,
+    pub statistics: bool,
+}
+
+impl Default for ParquetEncoding {
+    fn default() -> Self {
+        Self {
+            compression: ParquetCompression::Uncompressed,
+            dictionary: false,
+            statistics: false,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -82,6 +106,24 @@ pub fn export_parquet(
     metadata: &BTreeMap<String, String>,
     limits: ParquetExportLimits,
 ) -> Result<ParquetExport> {
+    export_parquet_encoded(
+        rows,
+        metadata,
+        &QueryFieldTypes::new(),
+        limits,
+        ParquetEncoding::default(),
+    )
+}
+
+/// Encode admitted rows with a declared schema and explicit physical policy.
+/// The result is derived bytes; publication and authorization belong to the caller.
+pub fn export_parquet_encoded(
+    rows: &[QueryRow],
+    metadata: &BTreeMap<String, String>,
+    declared: &QueryFieldTypes,
+    limits: ParquetExportLimits,
+    encoding: ParquetEncoding,
+) -> Result<ParquetExport> {
     check_deadline(limits.deadline)?;
     if limits.max_rows == 0
         || limits.max_columns == 0
@@ -93,7 +135,10 @@ pub fn export_parquet(
     {
         return Err(Error::Budget("invalid or exceeded Parquet limits".into()));
     }
-    let mut fields = BTreeSet::new();
+    let mut fields: BTreeSet<&str> = declared.keys().map(String::as_str).collect();
+    if fields.contains("__rrd_identity") || fields.len() > limits.max_columns {
+        return Err(Error::Budget("invalid declared Parquet columns".into()));
+    }
     let mut cells = 0usize;
     for row in rows {
         for field in row.values.keys() {
@@ -132,12 +177,22 @@ pub fn export_parquet(
         ));
     }
     check_deadline(limits.deadline)?;
-    let batch = rows_to_record_batch(rows, &QueryFieldTypes::new())?;
+    let batch = rows_to_record_batch(rows, declared)?;
     let arrow_bytes = batch.get_array_memory_size();
+    let compression = match encoding.compression {
+        ParquetCompression::Uncompressed => Compression::UNCOMPRESSED,
+        ParquetCompression::Zstd { level } => Compression::ZSTD(
+            ZstdLevel::try_new(level).map_err(|error| Error::Binding(error.to_string()))?,
+        ),
+    };
     let properties = WriterProperties::builder()
-        .set_compression(Compression::UNCOMPRESSED)
-        .set_dictionary_enabled(false)
-        .set_statistics_enabled(EnabledStatistics::None)
+        .set_compression(compression)
+        .set_dictionary_enabled(encoding.dictionary)
+        .set_statistics_enabled(if encoding.statistics {
+            EnabledStatistics::Page
+        } else {
+            EnabledStatistics::None
+        })
         // Explicit flush below bounds groups and permits sampling the buffered
         // writer before a flush discards its memory estimate.
         .set_max_row_group_row_count(None)

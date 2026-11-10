@@ -1,0 +1,112 @@
+{
+  "schema_version": 1,
+  "test": {
+    "id": "vector-small",
+    "title": "Vector search, small corpus",
+    "family": "vector-search",
+    "revision": 1
+  },
+  "corpus": {
+    "source": {
+      "generator": "gaussian_mixture",
+      "seed": 20261103,
+      "clusters": 64,
+      "spread_milli": 350
+    },
+    "points": 20000,
+    "dimensions": 384,
+    "metric": "cosine",
+    "categories": 10
+  },
+  "workload": {
+    "queries": 1000,
+    "k": 10,
+    "warmup_queries": 100,
+    "ingest_batch": 500,
+    "concurrency": [
+      1,
+      8
+    ],
+    "filtered": true,
+    "request_timeout_ms": 120000,
+    "readiness_timeout_ms": 1800000,
+    "max_case_seconds": 300
+  },
+  "quality": {
+    "recall_target": 0.95
+  },
+  "systems": [
+    {
+      "system": "rrflow-exact"
+    },
+    {
+      "system": "rrflow-turboquant"
+    },
+    {
+      "system": "rrflow-hnsw"
+    },
+    {
+      "system": "rrflow-routed"
+    },
+    {
+      "system": "qdrant"
+    },
+    {
+      "system": "surrealdb"
+    },
+    {
+      "system": "surrealdb-4"
+    },
+    {
+      "system": "milvus"
+    },
+    {
+      "system": "lance-hnsw-sq"
+    },
+    {
+      "system": "lance-ivf-rq",
+      "index": {
+        "index": "ivf_rq",
+        "partitions": 141
+      },
+      "search_ladder": [
+        {
+          "id": "nprobes-5",
+          "nprobes": 5,
+          "exact_rerank": 100
+        },
+        {
+          "id": "nprobes-10",
+          "nprobes": 10,
+          "exact_rerank": 100
+        },
+        {
+          "id": "nprobes-20",
+          "nprobes": 20,
+          "exact_rerank": 100
+        },
+        {
+          "id": "nprobes-40",
+          "nprobes": 40,
+          "exact_rerank": 100
+        },
+        {
+          "id": "nprobes-80",
+          "nprobes": 80,
+          "exact_rerank": 100
+        },
+        {
+          "id": "nprobes-141",
+          "nprobes": 141,
+          "exact_rerank": 100
+        }
+      ]
+    },
+    {
+      "system": "custom-reference",
+      "availability": {
+        "state": "available"
+      }
+    }
+  ]
+}

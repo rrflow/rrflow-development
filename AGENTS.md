@@ -120,6 +120,21 @@ commit and `docs/roadmap/rrflow-1.0-active-change.json` record were retired on
 2026-10-16; that file stays unchanged as historical evidence linked from
 earlier journals.
 
+Pull requests are limited by machine, not by this paragraph. The candidate
+lane job fails a pull request that changes no files, that targets a branch
+other than `main`, whose merge base with `main` is older than three days,
+that changes more than 400 lines, or that would make more than five open
+pull requests, or more than three by one author. The repository owner lifts
+the size and count limits for one pull request by applying the
+`integration` label. One agent owns one pull request in one worktree; two
+agents that could touch the same files have the wrong task split, and a
+shared interface lands first in its own pull request. A session ends only
+when `python3 scripts/ci/check_session_end.py` passes: the worktree is clean,
+or its work is committed and pushed to a `*-wip-*` branch named in the
+pull request. Agents never merge; the merge queue and the owner do. The
+evidence behind these numbers is in
+[CI and runner operations](docs/operations/ci.md#pull-request-limits).
+
 For project work:
 
 1. Read `README.md` and follow its relevant owner warp point, then inspect the

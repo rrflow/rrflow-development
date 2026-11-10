@@ -503,6 +503,136 @@ pub(crate) fn change_page(
     })
 }
 
+/// Page a hash-chained log while limiting serialized entries retained for the
+/// page. The storage `get` API materializes one value before its size can be
+/// checked; this limit is not a pre-read allocation or total RSS bound.
+pub(crate) fn change_page_bounded_bytes(
+    reader: &(impl AccessRead + ?Sized),
+    read: &ReadStamp,
+    after: u64,
+    limit: usize,
+    max_bytes: u64,
+    deadline: std::time::Instant,
+) -> Result<RuntimeChangePage> {
+    let head = read.commit_cursor;
+    if std::time::Instant::now() >= deadline {
+        return Err(Error::ColdHistorySourceDeadline);
+    }
+    if limit == 0 || max_bytes == 0 {
+        return Err(Error::Substrate(
+            "cold history page limits must be positive".into(),
+        ));
+    }
+    if after >= head {
+        return Ok(RuntimeChangePage {
+            requested_after: after,
+            through_cursor: after,
+            head_cursor: head,
+            validation: RuntimeReadValidation::new("bounded_hash_chain_page", 0, 0),
+            changes: Vec::new(),
+        });
+    }
+    let root = read
+        .accumulator_root
+        .as_deref()
+        .ok_or_else(|| Error::ReadStampMismatch(read.manifest_id.clone()))?;
+    let accumulator = RuntimeLogAccumulator::from_nodes(head, root, |level, index| {
+        read_accumulator_node(reader, level, index)
+    })?;
+    let mut used = 0u64;
+    let mut proof_nodes = 0usize;
+    let mut previous_digest = if after == 0 {
+        None
+    } else {
+        let bytes = get(
+            reader,
+            keyspaces::RUNTIME_CHANGES,
+            &keyspaces::runtime_change_key(after),
+        )?
+        .ok_or_else(|| Error::Substrate(format!("runtime log is missing cursor {after}")))?;
+        let predecessor_bytes = u64::try_from(bytes.len())
+            .map_err(|_| Error::Substrate("cold history byte count overflow".into()))?;
+        if predecessor_bytes > max_bytes {
+            return Err(Error::ColdHistorySourceLimit {
+                limit: max_bytes,
+                observed: predecessor_bytes,
+            });
+        }
+        let prior: RuntimeChange = serde_json::from_slice(&bytes)?;
+        if prior.cursor != after || !prior.verify_digest() {
+            return Err(Error::Substrate(format!(
+                "runtime change {after} failed digest verification"
+            )));
+        }
+        Some(prior.digest)
+    };
+    let mut through = after;
+    let mut selected = Vec::new();
+    for expected in after + 1..=head {
+        if std::time::Instant::now() >= deadline {
+            return Err(Error::ColdHistorySourceDeadline);
+        }
+        if through.saturating_sub(after) as usize >= limit {
+            break;
+        }
+        let bytes = get(
+            reader,
+            keyspaces::RUNTIME_CHANGES,
+            &keyspaces::runtime_change_key(expected),
+        )?
+        .ok_or_else(|| Error::Substrate(format!("runtime log is missing cursor {expected}")))?;
+        let observed = used
+            .checked_add(
+                u64::try_from(bytes.len())
+                    .map_err(|_| Error::Substrate("cold history byte count overflow".into()))?,
+            )
+            .ok_or_else(|| Error::Substrate("cold history byte count overflow".into()))?;
+        if observed > max_bytes {
+            if through == after {
+                return Err(Error::ColdHistorySourceLimit {
+                    limit: max_bytes,
+                    observed,
+                });
+            }
+            break;
+        }
+        let change: RuntimeChange = serde_json::from_slice(&bytes)?;
+        if change.cursor != expected
+            || change.previous_digest != previous_digest
+            || !change.verify_digest()
+        {
+            return Err(Error::Substrate(format!(
+                "runtime change {expected} failed cursor/hash-chain verification"
+            )));
+        }
+        let proof = accumulator.inclusion_proof(expected - 1, |level, index| {
+            read_accumulator_node(reader, level, index)
+        })?;
+        proof.verify_change(&change, root)?;
+        proof_nodes = proof_nodes.saturating_add(proof.path.len());
+        used = observed;
+        through = expected;
+        previous_digest = Some(change.digest.clone());
+        if change.scope == read.scope {
+            selected.push(change);
+        }
+    }
+    if std::time::Instant::now() >= deadline {
+        return Err(Error::ColdHistorySourceDeadline);
+    }
+    Ok(RuntimeChangePage {
+        requested_after: after,
+        through_cursor: through,
+        head_cursor: head,
+        validation: RuntimeReadValidation::new(
+            "bounded_authenticated_chain_page",
+            through.saturating_sub(after),
+            proof_nodes,
+        ),
+        changes: selected,
+    })
+}
+
 pub(crate) fn values_for_scope<T: DeserializeOwned>(
     reader: &(impl AccessRead + ?Sized),
     space: Space,
@@ -513,4 +643,75 @@ pub(crate) fn values_for_scope<T: DeserializeOwned>(
         .into_iter()
         .map(|(_, value)| serde_json::from_slice(&value).map_err(Error::from))
         .collect()
+}
+
+#[cfg(test)]
+mod cold_history_authentication_tests {
+    use super::*;
+    use crate::{Durability, RrflowKvStore, StorageEngine};
+    use rrd_core::{
+        RuntimeCommit, RuntimeLogicalModel, RuntimeRecord, RuntimeRef, RuntimeTableSchema,
+        RuntimeType,
+    };
+    use std::time::{Duration, Instant};
+
+    #[test]
+    fn bounded_page_rejects_a_self_consistent_change_outside_the_captured_root() {
+        let directory = tempfile::tempdir().unwrap();
+        let store = RrflowKvStore::open(&directory.path().join("estate")).unwrap();
+        let scope = ScopeId::new("instance:proof-test").unwrap();
+        let mut registry = RuntimeSchemaRegistry::empty(1, "proof test");
+        registry.tables.insert(
+            RuntimeType::new("note").unwrap(),
+            RuntimeTableSchema::schemaless(RuntimeLogicalModel::Relational),
+        );
+        let commit = RuntimeCommit {
+            scope: scope.clone(),
+            at: 10,
+            actor: "original".into(),
+            expected_cursor: 0,
+            mutations: vec![
+                RuntimeMutation::Schema { registry },
+                RuntimeMutation::Record {
+                    record: RuntimeRecord {
+                        reference: RuntimeRef::new("note", "one").unwrap(),
+                        valid_from: 10,
+                        valid_to: None,
+                        properties: Default::default(),
+                    },
+                },
+            ],
+        };
+        store.runtime().commit(&commit).unwrap();
+        let stamp = store.runtime().read_stamp(&scope).unwrap();
+        let key = keyspaces::runtime_change_key(1);
+        let mut transaction = store.begin_transaction().unwrap();
+        let original: RuntimeChange =
+            serde_json::from_slice(&transaction.get(&key).unwrap().unwrap()).unwrap();
+        let mut altered_commit = commit;
+        altered_commit.actor = "altered".into();
+        let altered = RuntimeChange::committed(
+            original.cursor,
+            &altered_commit,
+            &original.commit_id,
+            original.commit_ordinal,
+            original.mutation,
+            original.previous_digest,
+        );
+        assert!(altered.verify_digest());
+        transaction
+            .put(key, serde_json::to_vec(&altered).unwrap())
+            .unwrap();
+        transaction.commit(Durability::Authoritative).unwrap();
+        assert!(store
+            .runtime()
+            .read_changes_bounded_bytes(
+                &stamp,
+                0,
+                1,
+                1024 * 1024,
+                Instant::now() + Duration::from_secs(10)
+            )
+            .is_err());
+    }
 }

@@ -1,0 +1,1395 @@
+{
+  "artifacts": [
+    {
+      "bytes": 2211,
+      "description": "one system's measured run",
+      "path": "rrflow-turboquant.run.json",
+      "sha256": "079667ed947dc7d30be458e12604a38e2057688ddc7c52a0d46a787acac904db"
+    },
+    {
+      "bytes": 2795,
+      "description": "every latency and recall sample behind that run",
+      "path": "rrflow-turboquant.samples.json",
+      "sha256": "3b8e59c6ed7e296c5bf4e8f34f702bef5cc69534deab24ac96519cecf10f486f"
+    },
+    {
+      "bytes": 2210,
+      "description": "one system's measured run",
+      "path": "rrflow-hnsw.run.json",
+      "sha256": "5b4b5291383a590b79821b4ee2bb0925f1c61e30edbfaf3c43b46040289a4c81"
+    },
+    {
+      "bytes": 3186,
+      "description": "every latency and recall sample behind that run",
+      "path": "rrflow-hnsw.samples.json",
+      "sha256": "e17bdad87554aee328bd854e31e6650c4baf8d795c3ad33b80c273925f130924"
+    },
+    {
+      "bytes": 2128,
+      "description": "one system's measured run",
+      "path": "qdrant.run.json",
+      "sha256": "62fbf88c7e5778e475227baf2b73e7a6830ab91ff37f76750ef3c689ed249662"
+    },
+    {
+      "bytes": 2570,
+      "description": "every latency and recall sample behind that run",
+      "path": "qdrant.samples.json",
+      "sha256": "3811dee5d72e7c20e99b98d15de18b9a1b3c4ffac7768d4ce1ba38fba47f68fc"
+    },
+    {
+      "bytes": 2254,
+      "description": "one system's measured run",
+      "path": "surrealdb.run.json",
+      "sha256": "92c652f10b1a56e7d605f147c1bf496a7c6d4b06b0c68a6a6e6932ec5c697c1b"
+    },
+    {
+      "bytes": 2786,
+      "description": "every latency and recall sample behind that run",
+      "path": "surrealdb.samples.json",
+      "sha256": "619b873bf5a142c0c89badc0d76ec129cb0ad867dbed55726e1fed86444c5775"
+    }
+  ],
+  "dimensions": [
+    {
+      "id": "filter",
+      "label": "Filter"
+    },
+    {
+      "id": "setting",
+      "label": "Search setting"
+    },
+    {
+      "id": "concurrency",
+      "label": "Concurrent clients"
+    }
+  ],
+  "environment": {
+    "architecture": "aarch64",
+    "logical_cpus": "10",
+    "memory_total_bytes": "130592624640",
+    "note.client_cpuset": "0-4,10-14",
+    "note.server_cpuset": "5-9,15-19",
+    "os": "linux"
+  },
+  "evidence_class": "diagnostic",
+  "generated_at_unix_ms": 1794007481554,
+  "generated_by": "rrflow-lab 1.0.0",
+  "identities": {
+    "filtered_truth": "bb25dd7341029b89df1a374ac43ecb08a5aac8a3fa82c082eda2bb9a65a64962",
+    "manifest": "7859639965b045c230d6ba7c9b6ef3e661396a32d11a974b7590a149e4f1da3f",
+    "points": "3f0e6e665fe38454335671c13f745ed6db04a7969d01d8b6252074c71de31286",
+    "queries": "747fd92695d4b5f6c8654d21a678f2a9e7e24aae2acba306e847d1a078d674a3",
+    "truth": "b9540c373952428a255a5c5cf00788ca8bb7603f91e3738d89f9c166fdc3a6b8"
+  },
+  "limits": [
+    "Diagnostic evidence for optimization: not J-04 acceptance, and no parity or superiority claim.",
+    "Cases with errors or truncation cannot qualify for speed at the recall target. Server resource equivalence is not established by matching client metadata.",
+    "Closed-loop clients: each waits for its reply, so this understates latency under overload and is not an open-loop schedule.",
+    "Ingest is one sequential writer, which does not show any system's parallel write capacity.",
+    "The corpus is a synthetic Gaussian mixture, not embeddings of real content.",
+    "A configured index can go unused at small sizes: check each system's index evidence before reading its result as an index result.",
+    "Latency is measured in the harness and includes its own request encoding and reply parsing.",
+    "Memory compares an engine's resident set with a container's cgroup usage.",
+    "rrflow-turboquant: TurboQuant { bits: \"bits4\", seed: 7 } index, storage rrflowKV on local disk, artifact source-built rrflow, see the run's journal, Loopback endpoint.",
+    "rrflow-hnsw: Hnsw { m: 16, ef_construction: 100 } index, storage rrflowKV on local disk, artifact source-built rrflow, see the run's journal, Loopback endpoint.",
+    "qdrant: Hnsw { m: 16, ef_construction: 100 } index, storage default on-disk storage in a container volume, artifact qdrant/qdrant@sha256:9bfc89f9914fc14876a88c05270685921a55b8877b254a98bcc1cc2f0a424cd2, Loopback endpoint.",
+    "surrealdb: Hnsw { m: 16, ef_construction: 100 } index, storage SurrealKV on disk in a container volume, artifact surrealdb/surrealdb@sha256:3db515b88e79737aa828c05fbf1515748004ba57495ff89a013851cc3f1ad4b9, Loopback endpoint."
+  ],
+  "metrics": [
+    {
+      "better": "higher",
+      "id": "recall_at_k",
+      "label": "Recall at k",
+      "unit": "fraction"
+    },
+    {
+      "better": "higher",
+      "id": "queries_per_second",
+      "label": "Queries per second",
+      "unit": "1/s"
+    },
+    {
+      "better": "higher",
+      "id": "qps_at_recall_target",
+      "label": "Queries per second at target recall",
+      "unit": "1/s"
+    },
+    {
+      "better": "lower",
+      "id": "latency_p50_ms",
+      "label": "Latency p50",
+      "unit": "ms"
+    },
+    {
+      "better": "lower",
+      "id": "latency_p95_ms",
+      "label": "Latency p95",
+      "unit": "ms"
+    },
+    {
+      "better": "lower",
+      "id": "latency_p99_ms",
+      "label": "Latency p99",
+      "unit": "ms"
+    },
+    {
+      "better": "higher",
+      "id": "case_attempted",
+      "label": "Searches attempted",
+      "unit": "count"
+    },
+    {
+      "better": "higher",
+      "id": "case_succeeded",
+      "label": "Searches succeeded",
+      "unit": "count"
+    },
+    {
+      "better": "lower",
+      "id": "search_errors",
+      "label": "Search errors",
+      "unit": "count"
+    },
+    {
+      "better": "lower",
+      "id": "case_truncated",
+      "label": "Case truncated",
+      "unit": "boolean"
+    },
+    {
+      "better": "higher",
+      "id": "ingest_points_per_second",
+      "label": "Ingest rate",
+      "unit": "points/s"
+    },
+    {
+      "better": "lower",
+      "id": "ready_seconds",
+      "label": "Time until search-ready after ingest",
+      "unit": "s"
+    },
+    {
+      "better": "lower",
+      "id": "memory_bytes",
+      "label": "Server memory",
+      "unit": "bytes"
+    },
+    {
+      "better": "lower",
+      "id": "disk_bytes",
+      "label": "Server disk",
+      "unit": "bytes"
+    }
+  ],
+  "observations": [
+    {
+      "metric": "ingest_points_per_second",
+      "samples": 20000,
+      "system": "rrflow-turboquant",
+      "value": 882.0141632460155
+    },
+    {
+      "metric": "ready_seconds",
+      "samples": 1,
+      "system": "rrflow-turboquant",
+      "value": 1.857651979
+    },
+    {
+      "metric": "memory_bytes",
+      "samples": 1,
+      "system": "rrflow-turboquant",
+      "value": 320761856.0
+    },
+    {
+      "metric": "disk_bytes",
+      "samples": 1,
+      "system": "rrflow-turboquant",
+      "value": 269441016.0
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "none",
+        "setting": "rerank-40"
+      },
+      "metric": "case_attempted",
+      "samples": 100,
+      "system": "rrflow-turboquant",
+      "value": 100.0
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "none",
+        "setting": "rerank-40"
+      },
+      "metric": "case_succeeded",
+      "samples": 100,
+      "system": "rrflow-turboquant",
+      "value": 100.0
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "none",
+        "setting": "rerank-40"
+      },
+      "metric": "search_errors",
+      "samples": 100,
+      "system": "rrflow-turboquant",
+      "value": 0.0
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "none",
+        "setting": "rerank-40"
+      },
+      "metric": "case_truncated",
+      "samples": 100,
+      "system": "rrflow-turboquant",
+      "value": 0.0
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "none",
+        "setting": "rerank-40"
+      },
+      "high": 0.9925654451023033,
+      "low": 0.9774345548976974,
+      "metric": "recall_at_k",
+      "samples": 100,
+      "system": "rrflow-turboquant",
+      "value": 0.9850000000000003
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "none",
+        "setting": "rerank-40"
+      },
+      "metric": "queries_per_second",
+      "samples": 100,
+      "system": "rrflow-turboquant",
+      "value": 15.323435761090764
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "none",
+        "setting": "rerank-40"
+      },
+      "metric": "latency_p50_ms",
+      "samples": 100,
+      "system": "rrflow-turboquant",
+      "value": 59.968723
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "none",
+        "setting": "rerank-40"
+      },
+      "metric": "latency_p95_ms",
+      "samples": 100,
+      "system": "rrflow-turboquant",
+      "value": 62.226478
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "none",
+        "setting": "rerank-40"
+      },
+      "metric": "latency_p99_ms",
+      "samples": 100,
+      "system": "rrflow-turboquant",
+      "value": 66.305039
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "category",
+        "setting": "rerank-40"
+      },
+      "metric": "case_attempted",
+      "samples": 100,
+      "system": "rrflow-turboquant",
+      "value": 100.0
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "category",
+        "setting": "rerank-40"
+      },
+      "metric": "case_succeeded",
+      "samples": 100,
+      "system": "rrflow-turboquant",
+      "value": 100.0
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "category",
+        "setting": "rerank-40"
+      },
+      "metric": "search_errors",
+      "samples": 100,
+      "system": "rrflow-turboquant",
+      "value": 0.0
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "category",
+        "setting": "rerank-40"
+      },
+      "metric": "case_truncated",
+      "samples": 100,
+      "system": "rrflow-turboquant",
+      "value": 0.0
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "category",
+        "setting": "rerank-40"
+      },
+      "high": 1.0,
+      "low": 1.0,
+      "metric": "recall_at_k",
+      "samples": 100,
+      "system": "rrflow-turboquant",
+      "value": 1.0
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "category",
+        "setting": "rerank-40"
+      },
+      "metric": "queries_per_second",
+      "samples": 100,
+      "system": "rrflow-turboquant",
+      "value": 31.81066063716123
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "category",
+        "setting": "rerank-40"
+      },
+      "metric": "latency_p50_ms",
+      "samples": 100,
+      "system": "rrflow-turboquant",
+      "value": 31.403817
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "category",
+        "setting": "rerank-40"
+      },
+      "metric": "latency_p95_ms",
+      "samples": 100,
+      "system": "rrflow-turboquant",
+      "value": 33.194349
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "category",
+        "setting": "rerank-40"
+      },
+      "metric": "latency_p99_ms",
+      "samples": 100,
+      "system": "rrflow-turboquant",
+      "value": 35.313799
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "none"
+      },
+      "metric": "qps_at_recall_target",
+      "samples": 100,
+      "system": "rrflow-turboquant",
+      "value": 15.323435761090764
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "category"
+      },
+      "metric": "qps_at_recall_target",
+      "samples": 100,
+      "system": "rrflow-turboquant",
+      "value": 31.81066063716123
+    },
+    {
+      "metric": "ingest_points_per_second",
+      "samples": 20000,
+      "system": "rrflow-hnsw",
+      "value": 875.019240737927
+    },
+    {
+      "metric": "ready_seconds",
+      "samples": 1,
+      "system": "rrflow-hnsw",
+      "value": 11.586203153
+    },
+    {
+      "metric": "memory_bytes",
+      "samples": 1,
+      "system": "rrflow-hnsw",
+      "value": 496648192.0
+    },
+    {
+      "metric": "disk_bytes",
+      "samples": 1,
+      "system": "rrflow-hnsw",
+      "value": 363249823.0
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "none",
+        "setting": "ef-32"
+      },
+      "metric": "case_attempted",
+      "samples": 100,
+      "system": "rrflow-hnsw",
+      "value": 100.0
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "none",
+        "setting": "ef-32"
+      },
+      "metric": "case_succeeded",
+      "samples": 100,
+      "system": "rrflow-hnsw",
+      "value": 100.0
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "none",
+        "setting": "ef-32"
+      },
+      "metric": "search_errors",
+      "samples": 100,
+      "system": "rrflow-hnsw",
+      "value": 0.0
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "none",
+        "setting": "ef-32"
+      },
+      "metric": "case_truncated",
+      "samples": 100,
+      "system": "rrflow-hnsw",
+      "value": 0.0
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "none",
+        "setting": "ef-32"
+      },
+      "high": 0.9909753656125415,
+      "low": 0.9730246343874591,
+      "metric": "recall_at_k",
+      "samples": 100,
+      "system": "rrflow-hnsw",
+      "value": 0.9820000000000003
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "none",
+        "setting": "ef-32"
+      },
+      "metric": "queries_per_second",
+      "samples": 100,
+      "system": "rrflow-hnsw",
+      "value": 0.5656662403859203
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "none",
+        "setting": "ef-32"
+      },
+      "metric": "latency_p50_ms",
+      "samples": 100,
+      "system": "rrflow-hnsw",
+      "value": 1765.842635
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "none",
+        "setting": "ef-32"
+      },
+      "metric": "latency_p95_ms",
+      "samples": 100,
+      "system": "rrflow-hnsw",
+      "value": 1791.324868
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "none",
+        "setting": "ef-32"
+      },
+      "metric": "latency_p99_ms",
+      "samples": 100,
+      "system": "rrflow-hnsw",
+      "value": 1796.912314
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "category",
+        "setting": "ef-32"
+      },
+      "metric": "case_attempted",
+      "samples": 100,
+      "system": "rrflow-hnsw",
+      "value": 100.0
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "category",
+        "setting": "ef-32"
+      },
+      "metric": "case_succeeded",
+      "samples": 100,
+      "system": "rrflow-hnsw",
+      "value": 100.0
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "category",
+        "setting": "ef-32"
+      },
+      "metric": "search_errors",
+      "samples": 100,
+      "system": "rrflow-hnsw",
+      "value": 0.0
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "category",
+        "setting": "ef-32"
+      },
+      "metric": "case_truncated",
+      "samples": 100,
+      "system": "rrflow-hnsw",
+      "value": 0.0
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "category",
+        "setting": "ef-32"
+      },
+      "high": 1.0,
+      "low": 1.0,
+      "metric": "recall_at_k",
+      "samples": 100,
+      "system": "rrflow-hnsw",
+      "value": 1.0
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "category",
+        "setting": "ef-32"
+      },
+      "metric": "queries_per_second",
+      "samples": 100,
+      "system": "rrflow-hnsw",
+      "value": 0.5714802262134472
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "category",
+        "setting": "ef-32"
+      },
+      "metric": "latency_p50_ms",
+      "samples": 100,
+      "system": "rrflow-hnsw",
+      "value": 1743.755606
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "category",
+        "setting": "ef-32"
+      },
+      "metric": "latency_p95_ms",
+      "samples": 100,
+      "system": "rrflow-hnsw",
+      "value": 1782.271342
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "category",
+        "setting": "ef-32"
+      },
+      "metric": "latency_p99_ms",
+      "samples": 100,
+      "system": "rrflow-hnsw",
+      "value": 1802.849432
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "none"
+      },
+      "metric": "qps_at_recall_target",
+      "samples": 100,
+      "system": "rrflow-hnsw",
+      "value": 0.5656662403859203
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "category"
+      },
+      "metric": "qps_at_recall_target",
+      "samples": 100,
+      "system": "rrflow-hnsw",
+      "value": 0.5714802262134472
+    },
+    {
+      "metric": "ingest_points_per_second",
+      "samples": 20000,
+      "system": "qdrant",
+      "value": 17846.42106198921
+    },
+    {
+      "metric": "ready_seconds",
+      "samples": 1,
+      "system": "qdrant",
+      "value": 1.768988596
+    },
+    {
+      "metric": "memory_bytes",
+      "samples": 1,
+      "system": "qdrant",
+      "value": 184549376.0
+    },
+    {
+      "metric": "disk_bytes",
+      "samples": 1,
+      "system": "qdrant",
+      "value": 489134580.0
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "none",
+        "setting": "ef-32"
+      },
+      "metric": "case_attempted",
+      "samples": 100,
+      "system": "qdrant",
+      "value": 100.0
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "none",
+        "setting": "ef-32"
+      },
+      "metric": "case_succeeded",
+      "samples": 100,
+      "system": "qdrant",
+      "value": 100.0
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "none",
+        "setting": "ef-32"
+      },
+      "metric": "search_errors",
+      "samples": 100,
+      "system": "qdrant",
+      "value": 0.0
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "none",
+        "setting": "ef-32"
+      },
+      "metric": "case_truncated",
+      "samples": 100,
+      "system": "qdrant",
+      "value": 0.0
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "none",
+        "setting": "ef-32"
+      },
+      "high": 1.0,
+      "low": 1.0,
+      "metric": "recall_at_k",
+      "samples": 100,
+      "system": "qdrant",
+      "value": 1.0
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "none",
+        "setting": "ef-32"
+      },
+      "metric": "queries_per_second",
+      "samples": 100,
+      "system": "qdrant",
+      "value": 567.2136232006707
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "none",
+        "setting": "ef-32"
+      },
+      "metric": "latency_p50_ms",
+      "samples": 100,
+      "system": "qdrant",
+      "value": 1.814229
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "none",
+        "setting": "ef-32"
+      },
+      "metric": "latency_p95_ms",
+      "samples": 100,
+      "system": "qdrant",
+      "value": 2.092392
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "none",
+        "setting": "ef-32"
+      },
+      "metric": "latency_p99_ms",
+      "samples": 100,
+      "system": "qdrant",
+      "value": 2.139001
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "category",
+        "setting": "ef-32"
+      },
+      "metric": "case_attempted",
+      "samples": 100,
+      "system": "qdrant",
+      "value": 100.0
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "category",
+        "setting": "ef-32"
+      },
+      "metric": "case_succeeded",
+      "samples": 100,
+      "system": "qdrant",
+      "value": 100.0
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "category",
+        "setting": "ef-32"
+      },
+      "metric": "search_errors",
+      "samples": 100,
+      "system": "qdrant",
+      "value": 0.0
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "category",
+        "setting": "ef-32"
+      },
+      "metric": "case_truncated",
+      "samples": 100,
+      "system": "qdrant",
+      "value": 0.0
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "category",
+        "setting": "ef-32"
+      },
+      "high": 1.0,
+      "low": 1.0,
+      "metric": "recall_at_k",
+      "samples": 100,
+      "system": "qdrant",
+      "value": 1.0
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "category",
+        "setting": "ef-32"
+      },
+      "metric": "queries_per_second",
+      "samples": 100,
+      "system": "qdrant",
+      "value": 695.8118790757442
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "category",
+        "setting": "ef-32"
+      },
+      "metric": "latency_p50_ms",
+      "samples": 100,
+      "system": "qdrant",
+      "value": 1.472337
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "category",
+        "setting": "ef-32"
+      },
+      "metric": "latency_p95_ms",
+      "samples": 100,
+      "system": "qdrant",
+      "value": 1.908086
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "category",
+        "setting": "ef-32"
+      },
+      "metric": "latency_p99_ms",
+      "samples": 100,
+      "system": "qdrant",
+      "value": 2.258122
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "none"
+      },
+      "metric": "qps_at_recall_target",
+      "samples": 100,
+      "system": "qdrant",
+      "value": 567.2136232006707
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "category"
+      },
+      "metric": "qps_at_recall_target",
+      "samples": 100,
+      "system": "qdrant",
+      "value": 695.8118790757442
+    },
+    {
+      "metric": "ingest_points_per_second",
+      "samples": 20000,
+      "system": "surrealdb",
+      "value": 3598.5903250756196
+    },
+    {
+      "metric": "ready_seconds",
+      "samples": 1,
+      "system": "surrealdb",
+      "value": 0.014571222
+    },
+    {
+      "metric": "memory_bytes",
+      "samples": 1,
+      "system": "surrealdb",
+      "value": 660707737.0
+    },
+    {
+      "metric": "disk_bytes",
+      "samples": 1,
+      "system": "surrealdb",
+      "value": 293243483.0
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "none",
+        "setting": "ef-32"
+      },
+      "metric": "case_attempted",
+      "samples": 100,
+      "system": "surrealdb",
+      "value": 100.0
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "none",
+        "setting": "ef-32"
+      },
+      "metric": "case_succeeded",
+      "samples": 100,
+      "system": "surrealdb",
+      "value": 100.0
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "none",
+        "setting": "ef-32"
+      },
+      "metric": "search_errors",
+      "samples": 100,
+      "system": "surrealdb",
+      "value": 0.0
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "none",
+        "setting": "ef-32"
+      },
+      "metric": "case_truncated",
+      "samples": 100,
+      "system": "surrealdb",
+      "value": 0.0
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "none",
+        "setting": "ef-32"
+      },
+      "high": 0.9883626025907721,
+      "low": 0.9696373974092285,
+      "metric": "recall_at_k",
+      "samples": 100,
+      "system": "surrealdb",
+      "value": 0.9790000000000003
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "none",
+        "setting": "ef-32"
+      },
+      "metric": "queries_per_second",
+      "samples": 100,
+      "system": "surrealdb",
+      "value": 64.18020005182719
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "none",
+        "setting": "ef-32"
+      },
+      "metric": "latency_p50_ms",
+      "samples": 100,
+      "system": "surrealdb",
+      "value": 15.544945
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "none",
+        "setting": "ef-32"
+      },
+      "metric": "latency_p95_ms",
+      "samples": 100,
+      "system": "surrealdb",
+      "value": 16.546348
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "none",
+        "setting": "ef-32"
+      },
+      "metric": "latency_p99_ms",
+      "samples": 100,
+      "system": "surrealdb",
+      "value": 16.743615
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "category",
+        "setting": "ef-32"
+      },
+      "metric": "case_attempted",
+      "samples": 100,
+      "system": "surrealdb",
+      "value": 100.0
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "category",
+        "setting": "ef-32"
+      },
+      "metric": "case_succeeded",
+      "samples": 100,
+      "system": "surrealdb",
+      "value": 100.0
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "category",
+        "setting": "ef-32"
+      },
+      "metric": "search_errors",
+      "samples": 100,
+      "system": "surrealdb",
+      "value": 0.0
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "category",
+        "setting": "ef-32"
+      },
+      "metric": "case_truncated",
+      "samples": 100,
+      "system": "surrealdb",
+      "value": 0.0
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "category",
+        "setting": "ef-32"
+      },
+      "high": 1.0,
+      "low": 1.0,
+      "metric": "recall_at_k",
+      "samples": 100,
+      "system": "surrealdb",
+      "value": 1.0
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "category",
+        "setting": "ef-32"
+      },
+      "metric": "queries_per_second",
+      "samples": 100,
+      "system": "surrealdb",
+      "value": 42.57550937208493
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "category",
+        "setting": "ef-32"
+      },
+      "metric": "latency_p50_ms",
+      "samples": 100,
+      "system": "surrealdb",
+      "value": 22.752419
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "category",
+        "setting": "ef-32"
+      },
+      "metric": "latency_p95_ms",
+      "samples": 100,
+      "system": "surrealdb",
+      "value": 28.075184
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "category",
+        "setting": "ef-32"
+      },
+      "metric": "latency_p99_ms",
+      "samples": 100,
+      "system": "surrealdb",
+      "value": 30.266536
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "none"
+      },
+      "metric": "qps_at_recall_target",
+      "samples": 100,
+      "system": "surrealdb",
+      "value": 64.18020005182719
+    },
+    {
+      "case": {
+        "concurrency": "1",
+        "filter": "category"
+      },
+      "metric": "qps_at_recall_target",
+      "samples": 100,
+      "system": "surrealdb",
+      "value": 42.57550937208493
+    }
+  ],
+  "schema_version": 1,
+  "systems": [
+    {
+      "configuration": {
+        "artifact": "source-built rrflow, see the run's journal",
+        "index": "{\"index\":\"turbo_quant\",\"bits\":\"bits4\",\"seed\":7}",
+        "index_evidence": "access paths the engine reported: turboquant",
+        "storage_profile": "rrflowKV on local disk"
+      },
+      "id": "rrflow-turboquant",
+      "kind": "rrflow",
+      "label": "RRFlow, TurboQuant with exact rerank",
+      "observed_version": "rrflow 1.0.0",
+      "status": "completed"
+    },
+    {
+      "configuration": {
+        "artifact": "source-built rrflow, see the run's journal",
+        "index": "{\"index\":\"hnsw\",\"m\":16,\"ef_construction\":100}",
+        "index_evidence": "access paths the engine reported: hnsw",
+        "storage_profile": "rrflowKV on local disk"
+      },
+      "id": "rrflow-hnsw",
+      "kind": "rrflow",
+      "label": "RRFlow, HNSW",
+      "observed_version": "rrflow 1.0.0",
+      "status": "completed"
+    },
+    {
+      "configuration": {
+        "artifact": "qdrant/qdrant@sha256:9bfc89f9914fc14876a88c05270685921a55b8877b254a98bcc1cc2f0a424cd2",
+        "index": "{\"index\":\"hnsw\",\"m\":16,\"ef_construction\":100}",
+        "index_evidence": "0 of 20000 points indexed across 5 segments",
+        "storage_profile": "default on-disk storage in a container volume"
+      },
+      "id": "qdrant",
+      "kind": "qdrant",
+      "label": "Qdrant 1.20.0",
+      "observed_version": "1.20.0",
+      "status": "completed"
+    },
+    {
+      "configuration": {
+        "artifact": "surrealdb/surrealdb@sha256:3db515b88e79737aa828c05fbf1515748004ba57495ff89a013851cc3f1ad4b9",
+        "index": "{\"index\":\"hnsw\",\"m\":16,\"ef_construction\":100}",
+        "index_evidence": "HNSW index state {\"compacting\":false,\"initial\":0,\"pending\":0,\"status\":\"ready\",\"updated\":0}",
+        "storage_profile": "SurrealKV on disk in a container volume"
+      },
+      "id": "surrealdb",
+      "kind": "surrealdb",
+      "label": "SurrealDB 3.3.5",
+      "observed_version": "surrealdb-3.3.5",
+      "status": "completed"
+    }
+  ],
+  "test": {
+    "family": "vector-search",
+    "id": "vector-20k-arm-diagnostic",
+    "revision": 1,
+    "title": "20k vectors ARM release diagnostic"
+  },
+  "verdicts": [
+    {
+      "basis": "best error-free mean recall 0.9850",
+      "id": "unfiltered-recall-rrflow-turboquant",
+      "outcome": "met",
+      "question": "Did it reach unfiltered recall of 0.95 at any tested setting?",
+      "system": "rrflow-turboquant"
+    },
+    {
+      "basis": "best error-free mean recall 1.0000",
+      "id": "filtered-recall-rrflow-turboquant",
+      "outcome": "met",
+      "question": "Did it reach filtered recall of 0.95 at any tested setting?",
+      "system": "rrflow-turboquant"
+    },
+    {
+      "basis": "best error-free mean recall 0.9820",
+      "id": "unfiltered-recall-rrflow-hnsw",
+      "outcome": "met",
+      "question": "Did it reach unfiltered recall of 0.95 at any tested setting?",
+      "system": "rrflow-hnsw"
+    },
+    {
+      "basis": "best error-free mean recall 1.0000",
+      "id": "filtered-recall-rrflow-hnsw",
+      "outcome": "met",
+      "question": "Did it reach filtered recall of 0.95 at any tested setting?",
+      "system": "rrflow-hnsw"
+    },
+    {
+      "basis": "best error-free mean recall 1.0000",
+      "id": "unfiltered-recall-qdrant",
+      "outcome": "met",
+      "question": "Did it reach unfiltered recall of 0.95 at any tested setting?",
+      "system": "qdrant"
+    },
+    {
+      "basis": "best error-free mean recall 1.0000",
+      "id": "filtered-recall-qdrant",
+      "outcome": "met",
+      "question": "Did it reach filtered recall of 0.95 at any tested setting?",
+      "system": "qdrant"
+    },
+    {
+      "basis": "best error-free mean recall 0.9790",
+      "id": "unfiltered-recall-surrealdb",
+      "outcome": "met",
+      "question": "Did it reach unfiltered recall of 0.95 at any tested setting?",
+      "system": "surrealdb"
+    },
+    {
+      "basis": "best error-free mean recall 1.0000",
+      "id": "filtered-recall-surrealdb",
+      "outcome": "met",
+      "question": "Did it reach filtered recall of 0.95 at any tested setting?",
+      "system": "surrealdb"
+    },
+    {
+      "basis": "4 completed run(s); client metadata only, not server resource equivalence",
+      "id": "same-environment",
+      "outcome": "met",
+      "question": "Did the benchmark client metadata match across runs?"
+    },
+    {
+      "basis": "Server CPU, memory, storage and deployment equivalence has not been independently established by this report.",
+      "id": "server-resource-equivalence",
+      "outcome": "not_run",
+      "question": "Were the server resource limits and deployment conditions equivalent?"
+    }
+  ],
+  "views": [
+    {
+      "fixed": {
+        "concurrency": "1",
+        "filter": "none"
+      },
+      "id": "recall-speed-none",
+      "kind": "curve",
+      "title": "Recall against speed, filter: none, 1 client(s)",
+      "x": "recall_at_k",
+      "y": "queries_per_second"
+    },
+    {
+      "fixed": {
+        "concurrency": "1",
+        "filter": "none"
+      },
+      "id": "matched-quality-none",
+      "kind": "bars",
+      "metric": "qps_at_recall_target",
+      "title": "Speed at recall 0.95 or better, filter: none"
+    },
+    {
+      "fixed": {
+        "concurrency": "1",
+        "filter": "category"
+      },
+      "id": "recall-speed-category",
+      "kind": "curve",
+      "title": "Recall against speed, filter: category, 1 client(s)",
+      "x": "recall_at_k",
+      "y": "queries_per_second"
+    },
+    {
+      "fixed": {
+        "concurrency": "1",
+        "filter": "category"
+      },
+      "id": "matched-quality-category",
+      "kind": "bars",
+      "metric": "qps_at_recall_target",
+      "title": "Speed at recall 0.95 or better, filter: category"
+    },
+    {
+      "fixed": {},
+      "id": "ingest",
+      "kind": "bars",
+      "metric": "ingest_points_per_second",
+      "title": "Ingest rate"
+    },
+    {
+      "fixed": {},
+      "id": "ready",
+      "kind": "bars",
+      "metric": "ready_seconds",
+      "title": "Time until search-ready"
+    },
+    {
+      "fixed": {},
+      "id": "memory",
+      "kind": "bars",
+      "metric": "memory_bytes",
+      "title": "Server memory"
+    },
+    {
+      "fixed": {},
+      "id": "disk",
+      "kind": "bars",
+      "metric": "disk_bytes",
+      "title": "Server disk"
+    },
+    {
+      "fixed": {},
+      "id": "all-cases",
+      "kind": "table",
+      "metrics": [
+        "recall_at_k",
+        "queries_per_second",
+        "latency_p50_ms",
+        "latency_p95_ms",
+        "latency_p99_ms",
+        "case_attempted",
+        "case_succeeded",
+        "search_errors",
+        "case_truncated"
+      ],
+      "rows": [
+        "setting",
+        "filter",
+        "concurrency"
+      ],
+      "title": "Every measured case"
+    }
+  ]
+}

@@ -1,0 +1,185 @@
+{
+  "$defs": {
+    "Id": {
+      "maxLength": 96,
+      "minLength": 1,
+      "pattern": "^[a-z0-9][a-z0-9_.-]*$",
+      "type": "string"
+    },
+    "OutsideSource": {
+      "additionalProperties": false,
+      "properties": {
+        "checked_on": {
+          "type": "string"
+        },
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "kind": {
+          "$ref": "#/$defs/SourceKind"
+        },
+        "license": {
+          "type": "string"
+        },
+        "pinned": {
+          "description": "The version or revision last looked at. Empty only for a `Manual` source.",
+          "type": "string"
+        },
+        "purpose": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/SourceStatus"
+        },
+        "title": {
+          "type": "string"
+        },
+        "track": {
+          "$ref": "#/$defs/SourceTrack"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "kind",
+        "url",
+        "license",
+        "pinned",
+        "checked_on",
+        "track",
+        "status",
+        "purpose"
+      ],
+      "type": "object"
+    },
+    "SourceKind": {
+      "enum": [
+        "system",
+        "harness",
+        "dataset",
+        "task_suite",
+        "study",
+        "list"
+      ],
+      "type": "string"
+    },
+    "SourceStatus": {
+      "oneOf": [
+        {
+          "const": "in_use",
+          "description": "A checked-in test or tool uses it.",
+          "type": "string"
+        },
+        {
+          "const": "planned",
+          "description": "A named next step will use it.",
+          "type": "string"
+        },
+        {
+          "const": "watching",
+          "description": "Read or noted, with no decision to use it yet.",
+          "type": "string"
+        },
+        {
+          "const": "not_used",
+          "description": "Considered and left out, with the reason in `purpose`.",
+          "type": "string"
+        }
+      ]
+    },
+    "SourceTrack": {
+      "description": "How a check finds what is newest. `Manual` means a person has to look.",
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "from": {
+              "const": "github_release",
+              "type": "string"
+            },
+            "repository": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "from",
+            "repository"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "from": {
+              "const": "github_commit",
+              "type": "string"
+            },
+            "repository": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "from",
+            "repository"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "from": {
+              "const": "pypi",
+              "type": "string"
+            },
+            "package": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "from",
+            "package"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "from": {
+              "const": "manual",
+              "type": "string"
+            }
+          },
+          "required": [
+            "from"
+          ],
+          "type": "object"
+        }
+      ]
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "format": "uint16",
+      "maximum": 65535,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "sources": {
+      "items": {
+        "$ref": "#/$defs/OutsideSource"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "sources"
+  ],
+  "title": "SourceList",
+  "type": "object"
+}

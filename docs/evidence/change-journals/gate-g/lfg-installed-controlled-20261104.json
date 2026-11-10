@@ -1,0 +1,295 @@
+{
+  "format": "rrflow.lfg-integration-evidence.v1",
+  "recorded_at_utc": "2026-11-04",
+  "build": {
+    "commit": "9b0a3b415e3c10d56315062a8b9ceb430705382e",
+    "binary_sha256": "003c45907470f1834a3e2134a35fb5bf615c645a2ba0135f083f523f545593bb",
+    "profile": "dev",
+    "qualification": "unqualified"
+  },
+  "fixtures": {
+    "task": "synthetic",
+    "controller": "single local controlled HTTP fixture; no model executed",
+    "lfg": "existing local service; process identity not attested"
+  },
+  "proof": {
+    "proposal_http_status": 200,
+    "controller_calls": [
+      {
+        "packetSha256": "92e02a80574a4fd1cb366b9f0abec658ce7cdeb74f0646c36df1c59a02cb5cb7",
+        "lfgInputSha256": "1c9aa027491b86d6dba20430e0cd3786277e5b00cae2960c2363b82874fe4ac8",
+        "lfgResponseSha256": "8c3826c19994d76ba32da8b7354a4468797a0e500d48330481f09c7fc5f1fd3a"
+      }
+    ],
+    "accepted_choice": {
+      "kind": "select",
+      "binding_id": "swag-custom-bf16",
+      "effort": null
+    },
+    "usage": null,
+    "lfg_observation": {
+      "request_id": "actual-proposal-5bde8fa5db964c8fa8cac1bc7f0b2161",
+      "revision": 4,
+      "input_sha256": "1c9aa027491b86d6dba20430e0cd3786277e5b00cae2960c2363b82874fe4ac8",
+      "assessment_sha256": "8f89f5f4a3e7815a5ebb2fab0994c31c169cf217a82efef6cb54b02ae868ab19",
+      "rules_sha256": "9e1d4ff2750401f3f754fcb691f39a991193d4bf730a6d478ed5172c3881a7d1",
+      "request_sha256": "bb2f48b1194b1b5ed9beb59279cb3a56cb3256fe1d23cc874e3d0f1c0fc84a94",
+      "response_sha256": "8c3826c19994d76ba32da8b7354a4468797a0e500d48330481f09c7fc5f1fd3a",
+      "status": "available",
+      "intent_status": "available",
+      "intent_category": "build.software",
+      "suggested_role": "standard",
+      "suggested_effort": "medium",
+      "reason_ids": [
+        "intent:build.software",
+        "points:work_kinds=0.75",
+        "points:tasks=2",
+        "points:length=0.33",
+        "points:scope=0",
+        "points:risks=0",
+        "bracket:moderate",
+        "agents:2",
+        "role:standard"
+      ],
+      "elapsed_ms": 38
+    },
+    "attempt_before": {
+      "attempt_id": "actual-proposal-5bde8fa5db964c8fa8cac1bc7f0b2161",
+      "ordinal": 1,
+      "status": "accepted",
+      "outcome_sha256": "506c26f1a83ff7ea339411de85455f121aee93c03fbaf42caf33756c88cab8e8",
+      "result": null,
+      "endpoint_proposal": {
+        "contract_version": 1,
+        "purpose": "experimental_proposal",
+        "scope": "instance:instance-ff3a1c505479d5ee8fbfb8ac",
+        "task_id": "task-de3c495fdecf125fb08c27dedad6db72be229f31670a7a699b87ce7fb874cd02",
+        "attempt_id": "actual-proposal-5bde8fa5db964c8fa8cac1bc7f0b2161",
+        "task_sha256": "c09c06e61ce2e1d7f6cf3a46dec9f75cf6f6a43adab3fd65d35e52bf86dbf312",
+        "packet_sha256": "92e02a80574a4fd1cb366b9f0abec658ce7cdeb74f0646c36df1c59a02cb5cb7",
+        "configuration_sha256": "d0e5c93a2d322e6d6741ee4eb91f6e444e441a29585013afb3b3c0a708421660",
+        "allowance_sha256": "3a64f8d01db56497d34770bfcb32736e63c116ad08fd66e27466848b039536db",
+        "controller_binding_id": "swag-custom-bf16",
+        "service_id": "swag-qwen3-coder-intent-20261028",
+        "request_sha256": "f3272ae05fb35d0e78bbc907d595c7c1d6daa7f1d79fb4326c857d09c7c1b777",
+        "response_sha256": "a6406b63b5a5a2a9364a4ac7aab72d12fc0f953d1859b61207e2d81e0c2c1f22",
+        "content_sha256": "f00ec144e84b0093c575418c45be469717d1725ba11736e3f0070c2fa666e6a2",
+        "choice": {
+          "kind": "select",
+          "binding_id": "swag-custom-bf16",
+          "effort": null
+        },
+        "usage": null,
+        "elapsed_ms": 41,
+        "http_status": 200,
+        "lfg": {
+          "request_id": "actual-proposal-5bde8fa5db964c8fa8cac1bc7f0b2161",
+          "revision": 4,
+          "input_sha256": "1c9aa027491b86d6dba20430e0cd3786277e5b00cae2960c2363b82874fe4ac8",
+          "assessment_sha256": "8f89f5f4a3e7815a5ebb2fab0994c31c169cf217a82efef6cb54b02ae868ab19",
+          "rules_sha256": "9e1d4ff2750401f3f754fcb691f39a991193d4bf730a6d478ed5172c3881a7d1",
+          "request_sha256": "bb2f48b1194b1b5ed9beb59279cb3a56cb3256fe1d23cc874e3d0f1c0fc84a94",
+          "response_sha256": "8c3826c19994d76ba32da8b7354a4468797a0e500d48330481f09c7fc5f1fd3a",
+          "status": "available",
+          "intent_status": "available",
+          "intent_category": "build.software",
+          "suggested_role": "standard",
+          "suggested_effort": "medium",
+          "reason_ids": [
+            "intent:build.software",
+            "points:work_kinds=0.75",
+            "points:tasks=2",
+            "points:length=0.33",
+            "points:scope=0",
+            "points:risks=0",
+            "bracket:moderate",
+            "agents:2",
+            "role:standard"
+          ],
+          "elapsed_ms": 38
+        }
+      },
+      "lfg": {
+        "request_id": "actual-proposal-5bde8fa5db964c8fa8cac1bc7f0b2161",
+        "revision": 4,
+        "input_sha256": "1c9aa027491b86d6dba20430e0cd3786277e5b00cae2960c2363b82874fe4ac8",
+        "assessment_sha256": "8f89f5f4a3e7815a5ebb2fab0994c31c169cf217a82efef6cb54b02ae868ab19",
+        "rules_sha256": "9e1d4ff2750401f3f754fcb691f39a991193d4bf730a6d478ed5172c3881a7d1",
+        "request_sha256": "bb2f48b1194b1b5ed9beb59279cb3a56cb3256fe1d23cc874e3d0f1c0fc84a94",
+        "response_sha256": "8c3826c19994d76ba32da8b7354a4468797a0e500d48330481f09c7fc5f1fd3a",
+        "status": "available",
+        "intent_status": "available",
+        "intent_category": "build.software",
+        "suggested_role": "standard",
+        "suggested_effort": "medium",
+        "reason_ids": [
+          "intent:build.software",
+          "points:work_kinds=0.75",
+          "points:tasks=2",
+          "points:length=0.33",
+          "points:scope=0",
+          "points:risks=0",
+          "bracket:moderate",
+          "agents:2",
+          "role:standard"
+        ],
+        "elapsed_ms": 38
+      }
+    },
+    "attempt_after": {
+      "attempt_id": "actual-proposal-5bde8fa5db964c8fa8cac1bc7f0b2161",
+      "ordinal": 1,
+      "status": "accepted",
+      "outcome_sha256": "506c26f1a83ff7ea339411de85455f121aee93c03fbaf42caf33756c88cab8e8",
+      "result": null,
+      "endpoint_proposal": {
+        "contract_version": 1,
+        "purpose": "experimental_proposal",
+        "scope": "instance:instance-ff3a1c505479d5ee8fbfb8ac",
+        "task_id": "task-de3c495fdecf125fb08c27dedad6db72be229f31670a7a699b87ce7fb874cd02",
+        "attempt_id": "actual-proposal-5bde8fa5db964c8fa8cac1bc7f0b2161",
+        "task_sha256": "c09c06e61ce2e1d7f6cf3a46dec9f75cf6f6a43adab3fd65d35e52bf86dbf312",
+        "packet_sha256": "92e02a80574a4fd1cb366b9f0abec658ce7cdeb74f0646c36df1c59a02cb5cb7",
+        "configuration_sha256": "d0e5c93a2d322e6d6741ee4eb91f6e444e441a29585013afb3b3c0a708421660",
+        "allowance_sha256": "3a64f8d01db56497d34770bfcb32736e63c116ad08fd66e27466848b039536db",
+        "controller_binding_id": "swag-custom-bf16",
+        "service_id": "swag-qwen3-coder-intent-20261028",
+        "request_sha256": "f3272ae05fb35d0e78bbc907d595c7c1d6daa7f1d79fb4326c857d09c7c1b777",
+        "response_sha256": "a6406b63b5a5a2a9364a4ac7aab72d12fc0f953d1859b61207e2d81e0c2c1f22",
+        "content_sha256": "f00ec144e84b0093c575418c45be469717d1725ba11736e3f0070c2fa666e6a2",
+        "choice": {
+          "kind": "select",
+          "binding_id": "swag-custom-bf16",
+          "effort": null
+        },
+        "usage": null,
+        "elapsed_ms": 41,
+        "http_status": 200,
+        "lfg": {
+          "request_id": "actual-proposal-5bde8fa5db964c8fa8cac1bc7f0b2161",
+          "revision": 4,
+          "input_sha256": "1c9aa027491b86d6dba20430e0cd3786277e5b00cae2960c2363b82874fe4ac8",
+          "assessment_sha256": "8f89f5f4a3e7815a5ebb2fab0994c31c169cf217a82efef6cb54b02ae868ab19",
+          "rules_sha256": "9e1d4ff2750401f3f754fcb691f39a991193d4bf730a6d478ed5172c3881a7d1",
+          "request_sha256": "bb2f48b1194b1b5ed9beb59279cb3a56cb3256fe1d23cc874e3d0f1c0fc84a94",
+          "response_sha256": "8c3826c19994d76ba32da8b7354a4468797a0e500d48330481f09c7fc5f1fd3a",
+          "status": "available",
+          "intent_status": "available",
+          "intent_category": "build.software",
+          "suggested_role": "standard",
+          "suggested_effort": "medium",
+          "reason_ids": [
+            "intent:build.software",
+            "points:work_kinds=0.75",
+            "points:tasks=2",
+            "points:length=0.33",
+            "points:scope=0",
+            "points:risks=0",
+            "bracket:moderate",
+            "agents:2",
+            "role:standard"
+          ],
+          "elapsed_ms": 38
+        }
+      },
+      "lfg": {
+        "request_id": "actual-proposal-5bde8fa5db964c8fa8cac1bc7f0b2161",
+        "revision": 4,
+        "input_sha256": "1c9aa027491b86d6dba20430e0cd3786277e5b00cae2960c2363b82874fe4ac8",
+        "assessment_sha256": "8f89f5f4a3e7815a5ebb2fab0994c31c169cf217a82efef6cb54b02ae868ab19",
+        "rules_sha256": "9e1d4ff2750401f3f754fcb691f39a991193d4bf730a6d478ed5172c3881a7d1",
+        "request_sha256": "bb2f48b1194b1b5ed9beb59279cb3a56cb3256fe1d23cc874e3d0f1c0fc84a94",
+        "response_sha256": "8c3826c19994d76ba32da8b7354a4468797a0e500d48330481f09c7fc5f1fd3a",
+        "status": "available",
+        "intent_status": "available",
+        "intent_category": "build.software",
+        "suggested_role": "standard",
+        "suggested_effort": "medium",
+        "reason_ids": [
+          "intent:build.software",
+          "points:work_kinds=0.75",
+          "points:tasks=2",
+          "points:length=0.33",
+          "points:scope=0",
+          "points:risks=0",
+          "bracket:moderate",
+          "agents:2",
+          "role:standard"
+        ],
+        "elapsed_ms": 38
+      }
+    },
+    "replay_http_status": 412,
+    "owned_servers_stopped": true,
+    "result_file_sha256": "5c39a8b2c7c96dfe99c73eed0bcb6fb6f7758498112486659b48a96c44e60755",
+    "proof_driver_sha256": "cea15c6142e2e25e59b6d8a602ff221ac6c8a674ba3b0611dcc231efb4ed3f62",
+    "controlled_driver_sha256": "f980bc3fcae74d97301ae73e124792f741262211f8e283abfbd4308814c2afeb"
+  },
+  "independent_swag_lfg": {
+    "swag_source_commit": "c60ae40a42c0928636cf925a4949bf9743a61821",
+    "lfg_executable_file_sha256": "91f79f04ea56b360654f0c5071925e648a8f0918ec84baa09c2b6145c003e7b0",
+    "lfg_source_checkout_head": "fb6e7508203da6e5fddd4287cb4f24526fc5a715",
+    "input_sha256": "d17aab20b4a8999c35c31e9b6aa444a76964c735274994dbc527d0e779c93727",
+    "result": {
+      "schema": "lfg.observation.v1",
+      "status": "available",
+      "intent_status": "inconclusive",
+      "advisory": true
+    },
+    "traces": [
+      {
+        "file": "74cfb83d24f249cc8d07788fefe4a907-0de89d09adae4656.jsonl",
+        "sha256": "4c0020a6c495112f25349df00a7b970d2cce8213e5c7a716d7abaa18148964b7",
+        "end": {
+          "schema": "swag.trace/v1",
+          "timestamp": "2026-11-04T16:10:16.519755+00:00",
+          "traceId": "74cfb83d24f249cc8d07788fefe4a907",
+          "spanId": "0de89d09adae4656",
+          "parentSpanId": null,
+          "operation": "lfg.exchange",
+          "event": "end",
+          "attributes": {
+            "operation": "lfg.observe",
+            "inputBytes": 504,
+            "httpStatus": 200,
+            "outputBytes": 946
+          },
+          "status": "ok",
+          "durationMs": 26.5022,
+          "errorType": null,
+          "frames": []
+        }
+      },
+      {
+        "file": "c0d6fb1241894e39a4f91e0a274caf9e-22aafe3480554ff8.jsonl",
+        "sha256": "ac3a72cedf97e6e0a6cf3c4430a1329084bbdb5999eb17cd77bb27971a5e011e",
+        "end": {
+          "schema": "swag.trace/v1",
+          "timestamp": "2026-11-04T16:10:16.492379+00:00",
+          "traceId": "c0d6fb1241894e39a4f91e0a274caf9e",
+          "spanId": "22aafe3480554ff8",
+          "parentSpanId": null,
+          "operation": "lfg.exchange",
+          "event": "end",
+          "attributes": {
+            "operation": "lfg.capabilities",
+            "httpStatus": 200,
+            "outputBytes": 433
+          },
+          "status": "ok",
+          "durationMs": 9.1444,
+          "errorType": null,
+          "frames": []
+        }
+      }
+    ],
+    "limits": "Standalone SWAG LFG bridge only; not SWAG routing, RRFlow admission, model execution, loaded-binary attestation or performance benchmark."
+  },
+  "limits": [
+    "No provider-backed prompt flight",
+    "No actual SWAG routing in RRFlow call",
+    "No project-source edit or worker execution",
+    "No model-quality, performance or loaded-binary attestation claim",
+    "No candidate CI or C-07 qualification"
+  ]
+}

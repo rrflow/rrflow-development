@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "binding": {
+    "id": "rrflow-turboquant-raised",
+    "label": "RRFlow, TurboQuant with exact rerank, read limits raised to 16 GiB",
+    "kind": "rrflow",
+    "location": "loopback",
+    "endpoint": "http://127.0.0.1:19477",
+    "artifact": "source-built rrflow, see the run's journal",
+    "storage_profile": "rrflowKV on local disk",
+    "availability": {
+      "state": "available"
+    },
+    "index": {
+      "index": "turbo_quant",
+      "bits": "bits4",
+      "seed": 7
+    },
+    "search_ladder": [
+      {
+        "id": "rerank-40",
+        "ef": 40,
+        "exact_rerank": 40
+      },
+      {
+        "id": "rerank-100",
+        "ef": 100,
+        "exact_rerank": 100
+      },
+      {
+        "id": "rerank-400",
+        "ef": 400,
+        "exact_rerank": 400
+      }
+    ],
+    "credentials": {
+      "principal_env": "RRFLOW_LAB_PRINCIPAL",
+      "secret_env": "RRFLOW_LAB_SECRET",
+      "instance_env": "RRFLOW_LAB_INSTANCE"
+    },
+    "memory_probe": [
+      "eval/lab/probe.sh",
+      "memory",
+      "rrflow"
+    ],
+    "disk_probe": [
+      "eval/lab/probe.sh",
+      "disk",
+      "rrflow"
+    ],
+    "engine_settings": {
+      "projected_output_bytes": 17179869184,
+      "source_page_bytes": 17179869184
+    }
+  },
+  "launch": {
+    "kind": "rrflow_engine",
+    "port": 19477
+  }
+}

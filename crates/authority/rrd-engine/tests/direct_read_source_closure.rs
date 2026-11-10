@@ -50,6 +50,12 @@ const ALLOWED_USES: &[AllowedUse] = &[
         operation: "bounded Inventory mutation, partial-publication and resume-uniqueness oracles",
     },
     AllowedUse {
+        path: "crates/authority/rrd-engine/src/engine/tests/attunement/adaptive_selection.rs",
+        kind: SensitiveReadUse::CausalLogPage,
+        count: 1,
+        operation: "interrupted-reopen inventory snapshot record oracle",
+    },
+    AllowedUse {
         path: "crates/operations/rrd-cluster/src/artifact_transfer.rs",
         kind: SensitiveReadUse::CausalLogPage,
         count: 1,
@@ -230,10 +236,28 @@ const ALLOWED_USES: &[AllowedUse] = &[
         operation: "runtime trace-phase oracle",
     },
     AllowedUse {
-        path: "crates/authority/rrd-engine/tests/runtime_vector_artifact_catalog.rs",
+        path: "crates/authority/rrd-engine/src/engine/cold_history.rs",
+        kind: SensitiveReadUse::CausalLogPage,
+        count: 1,
+        operation: "cold-history publication test oracle",
+    },
+    AllowedUse {
+        path: "crates/compute/rrd-query/tests/cold_history.rs",
+        kind: SensitiveReadUse::SnapshotCausalLogPage,
+        count: 2,
+        operation: "stamped cold-history page oracles",
+    },
+    AllowedUse {
+        path: "crates/persistence/rrd-store/tests/cold_history_paging.rs",
         kind: SensitiveReadUse::UnstampedCausalLogPage,
         count: 1,
-        operation: "vector artifact publication oracle",
+        operation: "cold-history paging oracle",
+    },
+    AllowedUse {
+        path: "crates/authority/rrd-engine/tests/runtime_vector_artifact_catalog.rs",
+        kind: SensitiveReadUse::UnstampedCausalLogPage,
+        count: 2,
+        operation: "vector artifact publication and named-source trace link oracles",
     },
     AllowedUse {
         path: "crates/operations/rrd-cluster/tests/openraft_process.rs",

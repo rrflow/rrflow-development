@@ -1,0 +1,400 @@
+{
+  "$defs": {
+    "AgentTask": {
+      "additionalProperties": false,
+      "properties": {
+        "expected_files": {
+          "description": "The answer key. It stays in the harness and never reaches the agent.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "expected_records": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "prompt": {
+          "type": "string"
+        },
+        "repository": {
+          "type": "string"
+        },
+        "revision": {
+          "description": "The revision the change started from, which holds nothing of its answer.",
+          "type": "string"
+        },
+        "source": {
+          "description": "Where the task and its answer came from.",
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "repository",
+        "revision",
+        "prompt",
+        "expected_files",
+        "source"
+      ],
+      "type": "object"
+    },
+    "Availability": {
+      "description": "A declared gap is reported as such. It can never read as a passing result.",
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "state": {
+              "const": "available",
+              "type": "string"
+            }
+          },
+          "required": [
+            "state"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "reason": {
+              "type": "string"
+            },
+            "state": {
+              "const": "unavailable",
+              "type": "string"
+            }
+          },
+          "required": [
+            "state",
+            "reason"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "reason": {
+              "type": "string"
+            },
+            "state": {
+              "const": "unimplemented",
+              "type": "string"
+            }
+          },
+          "required": [
+            "state",
+            "reason"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "reason": {
+              "type": "string"
+            },
+            "state": {
+              "const": "not_applicable",
+              "type": "string"
+            }
+          },
+          "required": [
+            "state",
+            "reason"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "CaptureField": {
+      "description": "Data a study requires of every finished run.",
+      "enum": [
+        "model",
+        "provider_version",
+        "tokens",
+        "cache_tokens",
+        "cost",
+        "turns",
+        "tool_calls",
+        "retrieval",
+        "transcript"
+      ],
+      "type": "string"
+    },
+    "Id": {
+      "maxLength": 96,
+      "minLength": 1,
+      "pattern": "^[a-z0-9][a-z0-9_.-]*$",
+      "type": "string"
+    },
+    "Preregistration": {
+      "additionalProperties": false,
+      "description": "Frozen before the first run. Changing any of it starts a different study.",
+      "properties": {
+        "alpha": {
+          "format": "double",
+          "type": "number"
+        },
+        "baseline_arm": {
+          "$ref": "#/$defs/Id",
+          "description": "The arm every other arm is compared with, pair by pair."
+        },
+        "floor_arm": {
+          "$ref": "#/$defs/Id",
+          "description": "The arm with no access to the repository. If it scores well, the tasks leak."
+        },
+        "max_floor_file_match_rate": {
+          "format": "double",
+          "type": "number"
+        },
+        "min_file_precision": {
+          "format": "double",
+          "type": "number"
+        },
+        "min_file_recall": {
+          "description": "A plan matches the historical file threshold only at or above both.",
+          "format": "double",
+          "type": "number"
+        },
+        "order_seed": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "question": {
+          "type": "string"
+        },
+        "repetitions": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "required_captures": {
+          "description": "A finished run lacking one of these stays visible and does not count.",
+          "items": {
+            "$ref": "#/$defs/CaptureField"
+          },
+          "type": "array"
+        },
+        "stage": {
+          "$ref": "#/$defs/StudyStage",
+          "default": "confirmatory"
+        }
+      },
+      "required": [
+        "question",
+        "baseline_arm",
+        "floor_arm",
+        "repetitions",
+        "order_seed",
+        "alpha",
+        "min_file_recall",
+        "min_file_precision",
+        "max_floor_file_match_rate"
+      ],
+      "type": "object"
+    },
+    "SpendLimits": {
+      "additionalProperties": false,
+      "description": "A run cannot start without these, and the person who pays decides them.",
+      "properties": {
+        "max_seconds_per_run": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "max_usd_per_run": {
+          "format": "double",
+          "type": "number"
+        },
+        "max_usd_total": {
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "max_seconds_per_run",
+        "max_usd_per_run",
+        "max_usd_total"
+      ],
+      "type": "object"
+    },
+    "StudyStage": {
+      "description": "A pilot tests the test, so its report cannot answer the question. A confirmatory study can.",
+      "enum": [
+        "pilot",
+        "confirmatory"
+      ],
+      "type": "string"
+    },
+    "TaskArm": {
+      "additionalProperties": false,
+      "properties": {
+        "availability": {
+          "$ref": "#/$defs/Availability"
+        },
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "label": {
+          "type": "string"
+        },
+        "limits": {
+          "description": "What a reader must know about this arm's results, repeated in the report.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "preface": {
+          "description": "Text placed ahead of the task, the same for every task in the arm.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "repository_access": {
+          "description": "False runs the agent in an empty directory.",
+          "type": "boolean"
+        },
+        "tools": {
+          "description": "Tool names the agent may use. Empty means none.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "availability",
+        "repository_access"
+      ],
+      "type": "object"
+    },
+    "TaskModel": {
+      "additionalProperties": false,
+      "properties": {
+        "effort": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "model": {
+          "type": "string"
+        },
+        "provider": {
+          "$ref": "#/$defs/TaskProviderKind"
+        }
+      },
+      "required": [
+        "id",
+        "provider",
+        "model"
+      ],
+      "type": "object"
+    },
+    "TaskProviderKind": {
+      "enum": [
+        "claude_code"
+      ],
+      "type": "string"
+    },
+    "TestIdentity": {
+      "additionalProperties": false,
+      "properties": {
+        "family": {
+          "$ref": "#/$defs/Id"
+        },
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "revision": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "family",
+        "revision"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "arms": {
+      "items": {
+        "$ref": "#/$defs/TaskArm"
+      },
+      "type": "array"
+    },
+    "models": {
+      "description": "Empty until the owner chooses, and nothing can run while it is.",
+      "items": {
+        "$ref": "#/$defs/TaskModel"
+      },
+      "type": "array"
+    },
+    "preregistration": {
+      "$ref": "#/$defs/Preregistration"
+    },
+    "schema_version": {
+      "format": "uint16",
+      "maximum": 65535,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "spend": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SpendLimits"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "tasks": {
+      "items": {
+        "$ref": "#/$defs/AgentTask"
+      },
+      "type": "array"
+    },
+    "test": {
+      "$ref": "#/$defs/TestIdentity"
+    }
+  },
+  "required": [
+    "schema_version",
+    "test",
+    "preregistration",
+    "arms",
+    "tasks"
+  ],
+  "title": "TaskComparisonManifest",
+  "type": "object"
+}

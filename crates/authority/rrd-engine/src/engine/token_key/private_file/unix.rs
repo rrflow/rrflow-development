@@ -44,6 +44,30 @@ pub(super) fn open_relative(
     Ok(unsafe { File::from_raw_fd(descriptor) })
 }
 
+/// Make one existing directory, owned by the effective user, private in place.
+/// Its contents are not touched; the caller decides what moves below it.
+pub(super) fn adopt_directory_relative(parent: &File, name: &std::ffi::OsStr) -> io::Result<File> {
+    use std::os::fd::AsRawFd;
+    let file = open_relative(parent, name, false, true)?;
+    let metadata = file.metadata()?;
+    if !metadata.is_dir() {
+        return Err(denied(
+            "the existing .rrflow folder must be a real folder, not a link",
+        ));
+    }
+    // SAFETY: geteuid has no pointer arguments or preconditions.
+    if metadata.uid() != unsafe { libc::geteuid() } {
+        return Err(denied(
+            "the existing .rrflow folder belongs to another account",
+        ));
+    }
+    // SAFETY: the descriptor is live for this call.
+    if unsafe { libc::fchmod(file.as_raw_fd(), 0o700) } != 0 {
+        return Err(io::Error::last_os_error());
+    }
+    Ok(file)
+}
+
 #[cfg(test)]
 pub(super) fn open_directory(path: &Path, create: bool) -> io::Result<File> {
     let path = rrd_store::filesystem::AnchoredPath::from_path(path)?;

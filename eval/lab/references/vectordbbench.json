@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "source": {
+    "id": "vectordbbench",
+    "title": "VectorDBBench leaderboard",
+    "url": "https://zilliz.com/vdbbench-leaderboard",
+    "checked_on": "2026-11-03"
+  },
+  "seek": [
+    {
+      "system": "Zilliz Cloud 8cu-perf",
+      "queries_per_second": 13316.2336,
+      "recall": 0.9383,
+      "dataset": "cohere-1m-768",
+      "hardware": "Zilliz Cloud 8cu-perf, service v2026.4",
+      "hardware_class": "managed_cloud",
+      "origin": {
+        "url": "https://raw.githubusercontent.com/zilliztech/VectorDBBench/main/vectordb_bench/results/leaderboard_v2.json",
+        "quote": "\"db_name\": \"ZillizCloud-8cu-perf\", \"qps\": 13316.2336, \"latency\": 2.0, \"recall\": 0.9383, dataset \"Cohere (Medium)\"",
+        "measured_by": "Zilliz (VectorDBBench repository)",
+        "provenance": "vendor_own",
+        "published": "2026-04-08"
+      },
+      "latency_p99_ms": 2.0,
+      "dimensions": 768,
+      "k": 100,
+      "limits": [
+        "Its queries per second come from a concurrent stage, and its p99 and recall from a single-client stage, so the p99 is not latency at that speed.",
+        "Each row sits at its own recall, so these rows do not compare with each other at one recall.",
+        "Zilliz publishes this board and sells this product."
+      ]
+    },
+    {
+      "system": "Milvus 16c64g",
+      "queries_per_second": 9575.6863,
+      "recall": 0.9189,
+      "dataset": "cohere-1m-768",
+      "hardware": "Milvus 2.6.14, 16 cores and 64 GB, HNSW with SQ4U",
+      "hardware_class": "multi_core_server",
+      "origin": {
+        "url": "https://raw.githubusercontent.com/zilliztech/VectorDBBench/main/vectordb_bench/results/leaderboard_v2.json",
+        "quote": "\"db_name\": \"Milvus-16c64g-sq4u-fp16-force_merge\", \"qps\": 9575.6863, \"latency\": 2.3, \"recall\": 0.9189, dataset \"Cohere (Medium)\"",
+        "measured_by": "Zilliz (VectorDBBench repository)",
+        "provenance": "vendor_own",
+        "published": "2026-04-08"
+      },
+      "latency_p99_ms": 2.3,
+      "dimensions": 768,
+      "k": 100,
+      "limits": [
+        "Its queries per second come from a concurrent stage, and its p99 and recall from a single-client stage, so the p99 is not latency at that speed.",
+        "Each row sits at its own recall, so these rows do not compare with each other at one recall.",
+        "Zilliz publishes this board and leads Milvus."
+      ]
+    },
+    {
+      "system": "Qdrant Cloud 16c64g",
+      "queries_per_second": 1242.428,
+      "recall": 0.9474,
+      "dataset": "cohere-1m-768",
+      "hardware": "Qdrant Cloud 1.14.1, 16 cores and 64 GB, no quantization",
+      "hardware_class": "managed_cloud",
+      "origin": {
+        "url": "https://raw.githubusercontent.com/zilliztech/VectorDBBench/main/vectordb_bench/results/leaderboard_v2.json",
+        "quote": "\"db_name\": \"QdrantCloud-16c64g\", \"qps\": 1242.428, \"latency\": 6.4, \"recall\": 0.9474, dataset \"Cohere (Medium)\"",
+        "measured_by": "Zilliz (VectorDBBench repository)",
+        "provenance": "competitor",
+        "published": "2025-06-02"
+      },
+      "latency_p99_ms": 6.4,
+      "dimensions": 768,
+      "k": 100,
+      "limits": [
+        "Its queries per second come from a concurrent stage, and its p99 and recall from a single-client stage, so the p99 is not latency at that speed.",
+        "Each row sits at its own recall, so these rows do not compare with each other at one recall.",
+        "Run by Zilliz, a competitor of Qdrant, in June 2025 on a version since replaced."
+      ]
+    }
+  ]
+}

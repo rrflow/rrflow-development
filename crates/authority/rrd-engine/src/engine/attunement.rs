@@ -23,6 +23,12 @@ use std::time::Instant;
 
 mod discovery;
 mod inventory;
+#[cfg(target_os = "linux")]
+mod linux_supervisor;
+#[cfg(windows)]
+mod windows_supervisor;
+#[allow(unused_imports)] // The installed Parse executor will consume this binding.
+pub(in crate::engine) use inventory::load_parse_inventory;
 #[cfg(test)]
 pub(crate) use inventory::LegacySourceFileProjectionGuard;
 pub(super) use inventory::{load_accepted_source, source_head_key};
@@ -161,6 +167,8 @@ impl RrdEngine {
             || receipt.operation_sha256 != operation_digest
             || current_generation.checked_add(1) != Some(expected_generation)
             || old.revision < result.predecessor.job.revision
+            || (result.predecessor.job.state == AttunementJobState::Succeeded
+                && old != &result.predecessor.job)
             || result.idempotent_replay
         {
             return Err(ServiceError::Storage(
@@ -294,9 +302,10 @@ impl RrdEngine {
                 | AttunementJobState::Running
                 | AttunementJobState::Paused
                 | AttunementJobState::Failed
+                | AttunementJobState::Succeeded
         ) {
             return Err(ServiceError::StorageConflict(
-                "attunement replan requires an unresolved, locally fenced job".into(),
+                "attunement replan requires a locally fenced job with reconciled effects".into(),
             ));
         }
         if job.state == AttunementJobState::Failed
@@ -473,16 +482,18 @@ impl RrdEngine {
             ));
         }
         let mut predecessor = old.clone();
-        predecessor.revision = old
-            .revision
-            .checked_add(1)
-            .ok_or_else(|| ServiceError::Contract("attunement revision overflow".into()))?;
-        predecessor.updated_at_unix_ms = finished;
-        predecessor.state = AttunementJobState::CancelRequested;
-        predecessor.current_phase = predecessor.next_phase(&old_plan);
-        predecessor.failure = None;
-        old.validate_transition(&predecessor, &old_plan)
-            .map_err(contract)?;
+        if old.state != AttunementJobState::Succeeded {
+            predecessor.revision = old
+                .revision
+                .checked_add(1)
+                .ok_or_else(|| ServiceError::Contract("attunement revision overflow".into()))?;
+            predecessor.updated_at_unix_ms = finished;
+            predecessor.state = AttunementJobState::CancelRequested;
+            predecessor.current_phase = predecessor.next_phase(&old_plan);
+            predecessor.failure = None;
+            old.validate_transition(&predecessor, &old_plan)
+                .map_err(contract)?;
+        }
         let successor = AttunementJob {
             contract_version: ATTUNEMENT_CONTRACT_VERSION,
             id: canonical_prefixed("job", &preview.plan.plan_sha256)?,
@@ -1063,8 +1074,16 @@ impl RrdEngine {
         checkpoint.checkpoint_sha256 =
             attunement_checkpoint_sha256(&checkpoint).map_err(contract)?;
         next.checkpoints.push(checkpoint);
-        next.current_phase = next.next_phase(plan);
+        advance_after_checkpoint(next, plan);
         Ok(())
+    }
+}
+
+fn advance_after_checkpoint(job: &mut AttunementJob, plan: &AttunementPlan) {
+    job.current_phase = job.next_phase(plan);
+    if job.current_phase.is_none() {
+        job.state = AttunementJobState::Succeeded;
+        job.lease = None;
     }
 }
 

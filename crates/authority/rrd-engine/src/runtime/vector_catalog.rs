@@ -11,7 +11,7 @@ use rrd_core::{
     RuntimeCommit, RuntimeCommitOutcome, RuntimeId, RuntimeLogicalModel, RuntimeMutation,
     RuntimeProperties, RuntimePropertySchema, RuntimeRecord, RuntimeRecordSchema, RuntimeRef,
     RuntimeSchemaRegistry, RuntimeTableSchema, RuntimeType, RuntimeValue, RuntimeValueType,
-    ScopeId, TraceBoundary, TraceDataClass, TraceLink, TraceOutcome,
+    ScopeId, TraceBoundary, TraceDataClass, TraceLink, TraceOutcome, VectorCollectionAddress,
 };
 use rrd_store::{
     DataRuntimeAccess, Error as StoreError, ImmutableObjectStore, RuntimeReadBudget,
@@ -122,6 +122,7 @@ pub struct VectorArtifactResidencyKey {
     pub projection_id: ProjectionId,
     pub generation: u64,
     pub object_sha256: String,
+    pub source: Option<(String, String)>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -129,6 +130,7 @@ pub struct VectorArtifactBinding {
     pub kind: rrd_vector::VectorArtifactKind,
     pub descriptor: rrd_vector::VectorProjectionDescriptor,
     pub object: ObjectReference,
+    pub source: Option<VectorCollectionAddress>,
 }
 
 impl VectorArtifactBinding {
@@ -138,6 +140,10 @@ impl VectorArtifactBinding {
             projection_id: self.descriptor.stamp().id.clone(),
             generation: self.descriptor.stamp().generation,
             object_sha256: self.object.sha256.clone(),
+            source: self
+                .source
+                .as_ref()
+                .map(|source| (source.collection_id.clone(), source.vector_name.clone())),
         }
     }
 
@@ -172,6 +178,11 @@ impl VectorArtifactBinding {
         if artifact.kind() != self.kind || artifact.descriptor() != self.descriptor {
             return Err("loaded vector artifact differs from its durable binding".into());
         }
+        if let (Some(source), VectorArtifact::Hnsw(index)) = (&self.source, artifact) {
+            if !index.contains_only_source(source) {
+                return Err("HNSW graph contains a foreign source".into());
+            }
+        }
         Ok(())
     }
 }
@@ -201,6 +212,7 @@ where
         artifact,
         None,
         None,
+        None,
         actor,
         at,
     )
@@ -217,6 +229,7 @@ pub fn publish_traced_vector_artifact_with_evidence<D>(
     artifact: VectorArtifact,
     build_evidence: Option<rrd_vector::HnswBuildEvidence>,
     operation: Option<rrd_vector::VectorArtifactOperationReceipt>,
+    source: Option<VectorCollectionAddress>,
     actor: &str,
     at: Millis,
 ) -> Result<VectorArtifactPublication, Box<dyn std::error::Error>>
@@ -231,6 +244,20 @@ where
             | rrd_vector::VectorArtifactKind::TurboQuant
     ) {
         return Err("quantized publication must use the quantization artifact lifecycle".into());
+    }
+    if operation
+        .as_ref()
+        .is_some_and(|receipt| receipt.source.is_some())
+        || (source.is_some() && operation.is_none())
+    {
+        return Err("named source must be bound by its operation receipt".into());
+    }
+    if let Some(source) = &source {
+        source.validate()?;
+        match &artifact {
+            VectorArtifact::Hnsw(index) if index.contains_only_source(source) => {}
+            _ => return Err("artifact does not match its named source".into()),
+        }
     }
     let descriptor = artifact.descriptor();
     descriptor.validate()?;
@@ -251,7 +278,14 @@ where
         &revision_bytes,
     ])?;
     let read = data.engine().runtime().read_stamp(&scope)?;
-    let links = vec![TraceLink::Read { stamp: read }];
+    let mut links = vec![TraceLink::Read { stamp: read }];
+    if let Some(source) = &source {
+        links.push(TraceLink::Source {
+            source_kind: "named_vector".into(),
+            source_id: rrd_vector::vector_source_digest(source)?,
+            source_revision: format!("cursor:{}", stamp.source_cursor),
+        });
+    }
     let span = DurableTraceSpan::start(
         data.engine(),
         scope.clone(),
@@ -269,7 +303,7 @@ where
     let durable_entries = match vector_artifact_catalog_entries(data.engine(), &scope) {
         Ok(entries) => entries,
         Err(error) => {
-            return finish_publication_error(data.engine(), span, "catalog_preflight", error)
+            return finish_publication_error(data.engine(), span, "catalog_preflight", error);
         }
     };
     let durable_revision = durable_entries
@@ -295,7 +329,7 @@ where
     let (record_reference, object_id) = match identities {
         (Ok(record), Ok(object)) => (record, object),
         (Err(error), _) | (_, Err(error)) => {
-            return finish_publication_error(data.engine(), span, "catalog_identity", error.into())
+            return finish_publication_error(data.engine(), span, "catalog_identity", error.into());
         }
     };
     let bytes = artifact.as_bytes();
@@ -307,10 +341,10 @@ where
     ) {
         Ok(object) => object,
         Err(error) => {
-            return finish_publication_error(data.engine(), span, "object_stage", error.into())
+            return finish_publication_error(data.engine(), span, "object_stage", error.into());
         }
     };
-    let entry = VectorArtifactCatalogEntry::new_with_build_evidence(
+    let entry = VectorArtifactCatalogEntry::new_with_source(
         next_revision,
         artifact.kind(),
         descriptor,
@@ -318,13 +352,14 @@ where
         at,
         build_evidence,
         operation,
+        source,
     )?;
     let record = catalog_record(&entry)?;
 
     let commit = match commit_catalog_record(data, &scope, actor, at, record, object) {
         Ok(commit) => commit,
         Err(error) => {
-            return finish_publication_error(data.engine(), span, "catalog_commit", error)
+            return finish_publication_error(data.engine(), span, "catalog_commit", error);
         }
     };
     *runtime = next_runtime;
@@ -419,6 +454,7 @@ pub(crate) fn vector_runtime_metadata_from_changes(
     let mut runtime = VectorRuntime::new(canonical)?;
     let mut bindings = BTreeMap::new();
     for entry in entries {
+        let source = entry.source().cloned();
         let expected_revision = runtime.catalog().revision;
         runtime.replay_catalog_descriptor(expected_revision, entry.descriptor.clone())?;
         let key = (
@@ -432,6 +468,7 @@ pub(crate) fn vector_runtime_metadata_from_changes(
                     kind: entry.kind,
                     descriptor: entry.descriptor,
                     object: entry.object,
+                    source,
                 },
             )
             .is_some()
@@ -462,6 +499,10 @@ pub(crate) fn vector_runtime_metadata_from_changes(
                     kind: entry.kind,
                     descriptor: entry.descriptor.clone(),
                     object: entry.object.clone(),
+                    source: Some(VectorCollectionAddress {
+                        collection_id: entry.collection_id.to_string(),
+                        vector_name: entry.vector_name.to_string(),
+                    }),
                 },
             )
             .is_some()

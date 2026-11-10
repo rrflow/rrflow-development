@@ -145,10 +145,9 @@ that generation is its only eligible one, search reads only:
 - that source's deltas since the generation;
 - the histories of the generation's unchanged candidates.
 
-Its work then stays the same as unrelated vectors grow. An active HNSW generation
-is served the same way, and the [search contract](search.md#current-persistent-path)
-owns that path. A request that only allows approximation still reads every version
-in the scope, because its plan compares the full exact-scan cost.
+Its work then stays the same as unrelated vectors grow. A request that only
+allows approximation still reads every version in the scope, because its plan
+compares the full exact-scan cost.
 
 A TurboQuant build extends a base when it has one (E-04c). The base is the
 newest published generation of the same artifact whose configuration digest

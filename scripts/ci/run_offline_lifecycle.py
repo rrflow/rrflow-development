@@ -123,6 +123,8 @@ REQUIRED_CASES = frozenset({
     "a_served_engram_is_found_proved_and_not_served_twice",
     "installed_source_read_choice_is_explicit_and_reopens",
     "repository_discovery_is_read_only_without_an_installed_engine",
+    "adaptive_installed::selected_inventory_completes_and_replans_across_primary_process_restarts",
+    "configured_cold_history_publishes_and_reads_after_process_restart",
 })
 
 
@@ -141,7 +143,7 @@ def preflight_lifecycle_harness(harness: Path) -> dict:
 
 
 def require_lifecycle_results(output: str) -> list[str]:
-    cases = re.findall(r"(?m)^test (\w+) \.\.\. ok$", output)
+    cases = re.findall(r"(?m)^test ([\w:]+) \.\.\. ok$", output)
     summaries = re.findall(r"(?m)^test result: (.+)$", output)
     require(len(cases) == len(REQUIRED_CASES) and set(cases) == REQUIRED_CASES,
             "every required lifecycle case must execute exactly once and pass")
@@ -420,7 +422,7 @@ def run(*arguments: str, **kwargs: object) -> subprocess.CompletedProcess:
 def partial_lifecycle_progress(result: subprocess.CompletedProcess) -> dict:
     """Keep only closed fixture identifiers/counts, never arbitrary output."""
     cases = {}
-    for match in re.finditer(r"(?m)^test (\w+) \.\.\. (ok|FAILED|ignored)(?:\s|$)", result.stdout):
+    for match in re.finditer(r"(?m)^test ([\w:]+) \.\.\. (ok|FAILED|ignored)(?:\s|$)", result.stdout):
         name, status = match.groups()
         if name in REQUIRED_CASES:
             entry = cases.setdefault(name, {"case": name, "status": status, "occurrences": 0})
@@ -509,7 +511,7 @@ def qualify_payload(stage: Path, configuration: dict) -> None:
     harness_timeout, _ = lifecycle_timeouts()
     result = run(str(harness), "--nocapture", "--test-threads=2", cwd=stage,
                  env=environment, timeout=harness_timeout, check=False, on_completion=retain_partial)
-    observed = re.findall(r"(?m)^test (\w+) \.\.\. (ok|FAILED|ignored[^\n]*)$", result.stdout)
+    observed = re.findall(r"(?m)^test ([\w:]+) \.\.\. (ok|FAILED|ignored[^\n]*)$", result.stdout)
     outcomes = [{"case": name, "status": status.split()[0]} for name, status in observed if name in REQUIRED_CASES]
     (stage / "receipt.json").write_text(json.dumps({"schema_version": 1, "status": "failed",
         "platform": sys.platform, "sha256": configuration["sha256"], "cases": outcomes,

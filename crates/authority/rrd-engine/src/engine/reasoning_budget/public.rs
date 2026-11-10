@@ -360,6 +360,7 @@ impl RrdEngine {
                 result: record.result,
                 endpoint_proposal: record.endpoint_proposal,
                 worker_output: record.worker_output,
+                lfg: record.lfg,
                 invalidation: record.invalidation,
             }),
         };

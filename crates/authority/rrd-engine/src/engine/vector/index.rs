@@ -50,15 +50,18 @@ impl RrdEngine {
         // The catalogue entry records the key in the commit that published the
         // generation. A retry finds that generation even after the source has
         // moved on, and another request under the key is a conflict.
-        let recorded = crate::vector_artifact_catalog_entries(&self.storage, &scope)
-            .map_err(|error| ServiceError::Vector(error.to_string()))?
-            .into_iter()
-            .find(|entry| {
-                entry
-                    .operation
-                    .as_ref()
-                    .is_some_and(|receipt| receipt.idempotency_key == idempotency_key.as_str())
-            });
+        let persisted = crate::vector_artifact_catalog_entries(&self.storage, &scope)
+            .map_err(|error| ServiceError::Vector(error.to_string()))?;
+        let source = rrd_core::VectorCollectionAddress {
+            collection_id: request.collection_id.as_str().into(),
+            vector_name: request.vector_name.as_str().into(),
+        };
+        let recorded = persisted.iter().find(|entry| {
+            entry
+                .operation
+                .as_ref()
+                .is_some_and(|receipt| receipt.idempotency_key == idempotency_key.as_str())
+        });
         if let Some(entry) = recorded {
             if entry
                 .operation
@@ -67,11 +70,16 @@ impl RrdEngine {
             {
                 return Err(ServiceError::IdempotencyConflict);
             }
+            if entry.source() != Some(&source) {
+                return Err(ServiceError::Vector(
+                    "recorded vector index has no matching authenticated source".into(),
+                ));
+            }
             let read = self.storage.runtime().read_stamp(&scope)?;
             let direct = read_vector_versions(self, &read, request.max_storage_keys)?;
             return replay_vector_index(
                 &self.storage,
-                entry.descriptor,
+                entry.descriptor.clone(),
                 &request.collection_id,
                 &request.vector_name,
                 direct.selected_versions,
@@ -133,15 +141,25 @@ impl RrdEngine {
         let data = rrd_store::DataRuntimeRef::new(&self.storage, &self.objects);
         let mut runtime = crate::reopen_vector_runtime(&data, &scope, candidates.clone())
             .map_err(|error| ServiceError::Vector(error.to_string()))?;
-        let index_kind = "hnsw";
         let index_id = CanonicalId::new(format!(
-            "{index_kind}-{}-{}",
-            request.collection_id, request.vector_name
+            "hnsw-{}",
+            rrd_vector::vector_source_digest(&source).map_err(core_vector)?
         ))
         .map_err(|error| ServiceError::Vector(error.to_string()))?;
         let projection_id = ProjectionId::new(index_id.as_str()).map_err(core_vector)?;
         let previous = runtime.catalog().entries.get(&projection_id).cloned();
         let (artifact, build_evidence) = if let Some(previous) = previous.as_ref() {
+            let binding = persisted
+                .iter()
+                .find(|entry| &entry.descriptor == previous)
+                .ok_or_else(|| {
+                    ServiceError::Vector("active vector index binding is absent".into())
+                })?;
+            if binding.source() != Some(&source) {
+                return Err(ServiceError::Vector(
+                    "vector index source identity differs".into(),
+                ));
+            }
             let active = runtime
                 .artifact(&projection_id, previous.stamp().generation)
                 .ok_or_else(|| {
@@ -255,7 +273,9 @@ impl RrdEngine {
             Some(rrd_vector::VectorArtifactOperationReceipt {
                 idempotency_key: idempotency_key.as_str().into(),
                 operation_sha256,
+                source: None,
             }),
+            Some(source),
             &format!("session:{}", session_id.as_str()),
             now,
         )

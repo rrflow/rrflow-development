@@ -31,6 +31,8 @@ const LOOPBACK_ALLOWANCE_BYTES: &[u8] = include_bytes!(
     "../../../transport/rrd-contract/tests/fixtures/endpoint-selection-observed/available/allowance.json"
 );
 
+#[path = "support/adaptive_installed.rs"]
+mod adaptive_installed;
 #[path = "support/process.rs"]
 mod process;
 #[path = "support/storage_history.rs"]
@@ -155,7 +157,7 @@ async fn inventory_through_client(
     job
 }
 
-fn installed_binary_replans_and_reads_receipt_after_forced_restart() {
+fn installed_binary_replans_and_reads_receipt_after_forced_restart(expect_parse: bool) {
     use serde_json::{json, Value};
     use std::io::{Read, Write};
     use std::net::TcpStream;
@@ -200,6 +202,38 @@ fn installed_binary_replans_and_reads_receipt_after_forced_restart() {
     let project = root.path().join("project");
     std::fs::create_dir(&project).unwrap();
     std::fs::write(project.join("README.md"), "original source\n").unwrap();
+    std::fs::write(
+        project.join("sample.rs"),
+        "pub fn project_answer() -> u32 { 42 }\n",
+    )
+    .unwrap();
+    let proposal_file = root.path().join("source-attunement.json");
+    let step = |phase| {
+        json!({
+            "phase": phase, "description": phase,
+            "estimated_items": 0, "estimated_input_bytes": 0
+        })
+    };
+    let mut parse = step("parse");
+    parse["parse_policy"] = json!({
+        "format_version": 1,
+        "bindings": [{"extension": "rs", "language": "rust"}],
+        "max_files": 64, "max_file_bytes": 1048576,
+        "max_input_bytes": 4194304, "max_nodes": 10000,
+        "max_depth": 64, "max_output_bytes": 1048576,
+        "max_commit_bytes": 262144, "max_elapsed_ms": 10000,
+        "max_memory_bytes": 268435456
+    });
+    std::fs::write(
+        &proposal_file,
+        serde_json::to_vec(&json!({
+            "format_version": 1,
+            "steps": [step("connect"), step("inventory"), parse, step("verify")],
+            "estimated_min_duration_ms": 0, "estimated_max_duration_ms": 30000
+        }))
+        .unwrap(),
+    )
+    .unwrap();
     let identity = invoke(&["install", "identity"]);
     assert_success(&identity, "identity");
     let identity: Value = serde_json::from_slice(&identity.stdout).unwrap();
@@ -213,6 +247,8 @@ fn installed_binary_replans_and_reads_receipt_after_forced_restart() {
         "existing",
         "--project",
         project_arg,
+        "--attunement-proposal",
+        proposal_file.to_str().unwrap(),
     ]);
     assert_success(&plan, "install plan");
     let preview: Value = serde_json::from_slice(&plan.stdout).unwrap();
@@ -490,6 +526,53 @@ fn installed_binary_replans_and_reads_receipt_after_forced_restart() {
                     read.status.job, *inventoried,
                     "acknowledged Inventory survives process death"
                 );
+                // Derive the fixture identities independently of the returned
+                // rows. A job checkpoint alone does not prove that its source
+                // records are reachable through the public query boundary.
+                #[derive(serde::Serialize)]
+                struct SourceScope<'a> {
+                    estate: &'a str,
+                    project: &'a str,
+                    root: &'a str,
+                }
+                let scope = SourceScope {
+                    estate: current_plan.target.estate_id.as_str(),
+                    project: current_plan.target.project_id.as_str(),
+                    root: "project-source",
+                };
+                let checkpoint = &inventoried.checkpoints[1];
+                let result = client
+                    .execute_query(
+                        &session,
+                        ExecuteQuery {
+                            scope: format!("instance:{}", client.instance_id()),
+                            query: format!(
+                                "FROM traverse:source-tree-contains START source-tree-snapshot:\"{}\" DIRECTION OUTGOING DEPTH 2 AT VALID {} KNOWN {} PROJECT node_id, depth",
+                                checkpoint.output_sha256,
+                                checkpoint.committed_at_unix_ms,
+                                checkpoint.coordinates.runtime_cursor,
+                            ),
+                            parameters: BTreeMap::new(),
+                            budget: QueryBudget::default(),
+                        },
+                        RequestOptions::read("binary-source-readback", "binary-source-readback")
+                            .unwrap(),
+                    )
+                    .await
+                    .unwrap();
+                assert_eq!(result.known_at_cursor, checkpoint.coordinates.runtime_cursor);
+                for path in ["README.md", "sample.rs"] {
+                    let bytes = serde_json::to_vec(&("rrflow-source-entry-v1", &scope, path))
+                        .unwrap();
+                    let identity = rrd_engine::digest::sha256_hex(&bytes);
+                    assert!(
+                        result.rows.iter().any(|row| {
+                            row.values.get("node_id") == Some(&QueryValue::String(identity.clone()))
+                        }),
+                        "committed Inventory does not reach fixture source {path}"
+                    );
+                }
+                eprintln!("installed inventory query readback verified after restart");
                 std::fs::write(project.join("README.md"), "edit after durable Inventory\n")
                     .unwrap();
                 let preview = client
@@ -541,6 +624,53 @@ fn installed_binary_replans_and_reads_receipt_after_forced_restart() {
                     next.checkpoints[1].coordinates.runtime_cursor
                         > inventoried.checkpoints[1].coordinates.runtime_cursor
                 );
+                assert_eq!(
+                    next.current_phase,
+                    Some(rrd_contract::AttunementPhase::Parse)
+                );
+                let parsed = client
+                    .step_attunement(
+                        &session,
+                        rrd_contract::StepAttunement {
+                            contract_version: rrd_contract::ATTUNEMENT_CONTRACT_VERSION,
+                            job_id: next.id.clone(),
+                            expected_revision: next.revision,
+                            lease_generation: next.lease.as_ref().unwrap().generation,
+                        },
+                        &successor_plan,
+                        RequestOptions::mutation("binary-parse", "binary-parse", "binary-parse")
+                            .unwrap(),
+                    )
+                    .await
+                    .unwrap()
+                    .status
+                    .job;
+                if expect_parse {
+                    // The D-04 red acceptance oracle, recorded in POAM-006: an
+                    // explicitly selected Parse step after an accepted
+                    // Inventory replan must checkpoint. The offline harness
+                    // requires every listed case to run and pass, so this
+                    // branch is reached only when the Parse executor lands.
+                    assert_eq!(
+                        parsed.checkpoints.last().map(|checkpoint| checkpoint.phase),
+                        Some(rrd_contract::AttunementPhase::Parse),
+                        "installed source parsing did not checkpoint: {:?}",
+                        parsed.failure
+                    );
+                } else {
+                    // The installed Parse executor is not wired (POAM-006): the
+                    // step must fail closed at Parse, keep the Inventory
+                    // checkpoint and stay retryable. This records what the
+                    // engine does today.
+                    assert_eq!(
+                        parsed.checkpoints.last().map(|checkpoint| checkpoint.phase),
+                        Some(rrd_contract::AttunementPhase::Inventory)
+                    );
+                    let failure = parsed.failure.as_ref().expect("Parse fails closed today");
+                    assert_eq!(failure.phase, rrd_contract::AttunementPhase::Parse);
+                    assert_eq!(failure.code.as_str(), "phase-unavailable");
+                    assert!(failure.retryable);
+                }
             }
         });
         if pass == 0 {
@@ -1201,7 +1331,7 @@ fn installed_plan_accepts_selected_attunement_and_rejects_tampering() {
     );
     for invalid in [
         serde_json::json!({"format_version": 1, "steps": [step("unknown-effect", "x"), step("verify", "v")], "estimated_min_duration_ms": 0, "estimated_max_duration_ms": 1}),
-        serde_json::json!({"format_version": 1, "steps": [step("connect", "x")], "estimated_min_duration_ms": 0, "estimated_max_duration_ms": 1}),
+        serde_json::json!({"format_version": 1, "steps": [step("verify", "v"), step("connect", "x")], "estimated_min_duration_ms": 0, "estimated_max_duration_ms": 1}),
         serde_json::json!({"format_version": 99, "steps": [step("verify", "v")], "estimated_min_duration_ms": 0, "estimated_max_duration_ms": 1}),
         serde_json::json!({"format_version": 1, "steps": [step("connect", &"x".repeat(1025)), step("verify", "v")], "estimated_min_duration_ms": 0, "estimated_max_duration_ms": 1}),
         serde_json::json!({"format_version": 1, "steps": vec![step("verify", "v"); rrd_contract::MAX_ATTUNEMENT_PHASES + 1], "estimated_min_duration_ms": 0, "estimated_max_duration_ms": 1}),
@@ -1321,7 +1451,7 @@ fn install_requires_an_explicit_plan_digest_and_verify_is_read_only_by_shape() {
 #[test]
 fn installed_engine_plans_applies_serves_discovers_authenticates_and_reopens() {
     installed_lifecycle("existing");
-    installed_binary_replans_and_reads_receipt_after_forced_restart();
+    installed_binary_replans_and_reads_receipt_after_forced_restart(false);
 }
 
 #[test]
@@ -1484,6 +1614,7 @@ fn loopback_worker_profile(
             .into(),
         maximum_output_tokens: 64,
         temperature_milli: 0,
+        lfg: None,
     };
     let worker_binding = selection_policy.candidates[0].binding_id.clone();
     rrd_contract::EndpointProfileInput {
@@ -3866,4 +3997,151 @@ fn a_served_engram_is_found_proved_and_not_served_twice() {
     assert!(!std::fs::read_to_string(&record_path)
         .unwrap_or_default()
         .contains(credential.credential()));
+}
+#[test]
+fn configured_cold_history_publishes_and_reads_after_process_restart() {
+    let root = tempfile::tempdir().unwrap();
+    let project = root.path().join("project");
+    std::fs::create_dir(&project).unwrap();
+    std::fs::write(project.join("README.md"), "cold history project\n").unwrap();
+    let default = rrd_contract::EstateConfiguration::default();
+    let mut input = rrd_contract::EstateConfigurationInput {
+        format_version: default.format_version,
+        clock: default.clock,
+        storage: default.storage,
+        reasoning: default.reasoning,
+        recall: default.recall,
+        query: default.query,
+    };
+    input.storage.cold_history = Some(rrd_contract::ColdHistoryPolicy {
+        interval_ms: 25,
+        max_changes: 128,
+        max_input_bytes: 1024 * 1024,
+        max_output_bytes: 1024 * 1024,
+        max_memory_bytes: 64 * 1024 * 1024,
+        max_elapsed_ms: 30_000,
+        row_group_rows: 16,
+        compression: rrd_contract::ColdHistoryCompression::Zstd { level: 3 },
+        dictionary: true,
+        statistics: true,
+    });
+    let configuration = root.path().join("cold.toml");
+    std::fs::write(&configuration, toml::to_string(&input).unwrap()).unwrap();
+    let identity = invoke(&["install", "identity"]);
+    assert_success(&identity, "allocate cold-history identity");
+    let identity: serde_json::Value = serde_json::from_slice(&identity.stdout).unwrap();
+    let project_arg = project.to_str().unwrap();
+    let plan = invoke(&[
+        "install",
+        "plan",
+        "--identity",
+        identity["installation_identity"].as_str().unwrap(),
+        "--mode",
+        "existing",
+        "--project",
+        project_arg,
+        "--configuration",
+        configuration.to_str().unwrap(),
+    ]);
+    assert_success(&plan, "cold-history install plan");
+    let preview: serde_json::Value = serde_json::from_slice(&plan.stdout).unwrap();
+    assert_eq!(
+        preview["installation"]["configuration"]["storage"]["cold_history"]["interval_ms"],
+        25
+    );
+    let plan_file = root.path().join("plan.json");
+    std::fs::write(&plan_file, &plan.stdout).unwrap();
+    let applied = invoke(&[
+        "install",
+        "apply",
+        "--mode",
+        "existing",
+        "--project",
+        project_arg,
+        "--plan",
+        plan_file.to_str().unwrap(),
+        "--expect",
+        preview["installation"]["plan_sha256"].as_str().unwrap(),
+    ]);
+    assert_success(&applied, "cold-history install apply");
+    let locator = RrdEngine::read_project_locator(&project).unwrap();
+    let credential = RrdEngine::read_installed_api_key(&project).unwrap();
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+    let mut captured = Vec::new();
+    let mut first = None;
+    for pass in 0..2 {
+        let (mut child, address) = RunningEngine::start(&project, &mut captured);
+        let client = RrdClient::connect_local(
+            address.parse().unwrap(),
+            locator.identity.instance_id.clone(),
+            ClientConfig::default(),
+        )
+        .unwrap();
+        let result = runtime.block_on(async {
+            let session = client
+                .create_session(
+                    credential.principal_id.clone(),
+                    credential.credential(),
+                    CreateSession {
+                        limits: SessionLimits {
+                            idle_timeout_ms: 60_000,
+                            absolute_timeout_ms: 300_000,
+                            max_open_transactions: 1,
+                        },
+                    },
+                    RequestOptions::mutation("cold-session", "cold-session", "cold-session")
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+            let mut request = rrd_contract::ReadColdHistory {
+                scope: format!("instance:{}", client.instance_id()),
+                generation: None,
+                max_artifact_bytes: 1024 * 1024,
+                budget: QueryBudget::default(),
+            };
+            let deadline = std::time::Instant::now() + Duration::from_secs(30);
+            loop {
+                let status = client
+                    .read_cold_history(
+                        &session,
+                        request.clone(),
+                        RequestOptions::read("cold-status", "cold-status").unwrap(),
+                    )
+                    .await
+                    .unwrap();
+                assert!(status.enabled);
+                if status.current_generation > 0 {
+                    break;
+                }
+                assert!(
+                    std::time::Instant::now() < deadline,
+                    "cold history was not published"
+                );
+                tokio::time::sleep(Duration::from_millis(100)).await;
+            }
+            request.generation = Some(1);
+            client
+                .read_cold_history(
+                    &session,
+                    request,
+                    RequestOptions::read("cold-read", "cold-read").unwrap(),
+                )
+                .await
+                .unwrap()
+        });
+        assert!(!result.changes.is_empty());
+        if pass == 0 {
+            first = Some(result);
+            child.terminate(&mut captured);
+        } else {
+            assert_eq!(first.as_ref().unwrap().generation, result.generation);
+            assert_eq!(first.as_ref().unwrap().changes, result.changes);
+            child.stop(&mut captured);
+        }
+    }
+    assert!(!String::from_utf8_lossy(&captured).contains(credential.credential()));
 }

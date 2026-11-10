@@ -96,6 +96,8 @@ pub struct RrdEngine {
     /// already owns the cross-process writer lock; this closes the
     /// in-process race between publishing a unique index and committing data.
     pub(crate) transaction_gate: super::transaction_admission::TransactionGate,
+    /// Serializes background cold-history work without queuing callers.
+    pub(super) cold_history_gate: Mutex<()>,
     /// Tracks invocation reservations currently executing through a supported
     /// adapter. Session-backed methods use this to distinguish a correctly
     /// wrapped call from a direct embedded call and make the latter leave a
@@ -271,6 +273,7 @@ impl RrdEngine {
             instance,
             token_key,
             transaction_gate: super::transaction_admission::TransactionGate::default(),
+            cold_history_gate: Mutex::new(()),
             active_invocations: Mutex::new(BTreeMap::new()),
             vector_residency: Mutex::new(vector_residency),
             hnsw_accelerators: Mutex::new(rrd_vector::HnswAcceleratorRegistry::default()),
@@ -316,6 +319,7 @@ impl RrdEngine {
             instance,
             token_key,
             transaction_gate: super::transaction_admission::TransactionGate::default(),
+            cold_history_gate: Mutex::new(()),
             active_invocations: Mutex::new(BTreeMap::new()),
             vector_residency: Mutex::new(vector_residency),
             hnsw_accelerators: Mutex::new(rrd_vector::HnswAcceleratorRegistry::default()),

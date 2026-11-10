@@ -23,6 +23,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 env:
   CARGO_INCREMENTAL: "0"
@@ -31,6 +32,9 @@ env:
 jobs:
   changes:
     name: select CI lanes
+    permissions:
+      contents: read
+      pull-requests: read
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
@@ -69,6 +73,13 @@ jobs:
             python3 scripts/ci/select_ci_lanes.py --base "$BASE_SHA" --head "$HEAD_SHA" --github-output "$GITHUB_OUTPUT"
           fi
           cat "$GITHUB_OUTPUT"
+      - name: Enforce pull-request limits
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python3 scripts/ci/test_pr_governance.py
+          python3 scripts/ci/check_pr_governance.py
 
   native-arm64:
     name: native Linux ARM64 installed lifecycle
@@ -366,6 +377,7 @@ jobs:
           python3 scripts/ci/test_inspect_merge_conflicts.py
           python3 scripts/ci/test_select_ci_lanes.py
           python3 scripts/ci/test_ci_lanes_policy.py
+          python3 scripts/ci/test_pr_governance.py
           python3 scripts/ci/check_workflow.py
           python3 scripts/ci/test_inspect_candidate_runs.py
       - name: Test offline qualification input and artifact policy
@@ -1027,6 +1039,34 @@ jobs:
         if: ${{ env.DEPENDENTS != '' }}
         run: cargo check $DEPENDENTS --all-targets --locked
 
+  repository-invariants:
+    name: repository invariants
+    needs: [changes]
+    if: ${{ needs.changes.outputs.full != 'true' }}
+    runs-on: ${{ fromJSON(inputs.linux-heavy-runner) }}
+    timeout-minutes: 45
+    env:
+      CARGO_BUILD_JOBS: "2"
+      CARGO_PROFILE_TEST_DEBUG: "0"
+      RUSTFLAGS: "-C link-arg=-Wl,--threads=1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          submodules: recursive
+      - uses: dtolnay/rust-toolchain@d124f86f28ff42855784ff3319f48ac182c248f8 # 1.99.1
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          shared-key: linux-invariants-test-debug0-lld1
+          cache-on-failure: false
+          save-if: ${{ github.event_name != 'merge_group' }}
+      - name: Test the repository-wide invariants
+        # The engine's architecture tests scan every tracked file: identity,
+        # whitespace, tracked sources, physical imports. A docs or data change
+        # can break them, so every candidate the full matrix does not cover
+        # runs them here; the full matrix runs them inside engine-suites.
+        run: cargo test -p rrd-engine --locked --test workspace_architecture
+
   ci-gate:
     name: ci-gate
     if: ${{ always() }}
@@ -1035,6 +1075,7 @@ jobs:
       - docs-policy
       - scripts-policy
       - engine-fast
+      - repository-invariants
       - native-arm64
       - topology-smoke
       - estate-portability
@@ -1071,6 +1112,7 @@ jobs:
           INSTALLED_CRASH_RESULT: ${{ needs.installed-crash.result }}
           STORAGE_PREFLIGHT_RESULT: ${{ needs.storage-contract-preflight.result }}
           INSTALLED_REOPEN_RESULT: ${{ needs.installed-reopen.result }}
+          INVARIANTS_RESULT: ${{ needs.repository-invariants.result }}
         run: |
           set -euo pipefail
           # A selected lane must have succeeded; an unselected lane must have
@@ -1085,6 +1127,7 @@ jobs:
             fi
           }
           if [ "$FULL_LANE" = true ] || [ "$SDK_LANE" = true ]; then SDK_SELECTED=true; else SDK_SELECTED=false; fi
+          if [ "$FULL_LANE" = true ]; then LIGHT_SELECTED=false; else LIGHT_SELECTED=true; fi
           expect "$DOCS_LANE" "$DOCS_POLICY_RESULT" docs-policy
           expect "$SCRIPTS_LANE" "$SCRIPTS_POLICY_RESULT" scripts-policy
           expect "$ENGINE_LANE" "$ENGINE_FAST_RESULT" engine-fast
@@ -1099,3 +1142,4 @@ jobs:
           expect "$FULL_LANE" "$INSTALLED_CRASH_RESULT" installed-crash
           expect "$FULL_LANE" "$STORAGE_PREFLIGHT_RESULT" storage-contract-preflight
           expect "$FULL_LANE" "$INSTALLED_REOPEN_RESULT" installed-reopen
+          expect "$LIGHT_SELECTED" "$INVARIANTS_RESULT" repository-invariants

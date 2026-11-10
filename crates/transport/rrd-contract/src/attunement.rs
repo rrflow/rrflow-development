@@ -206,8 +206,18 @@ pub struct InstallationPlan {
     pub attunement_plan_id: CanonicalId,
     pub attunement_plan_sha256: String,
     pub actions: Vec<InstallationPlanAction>,
+    /// Present when the project already holds a `.rrflow` folder that is not
+    /// an installed estate. Apply makes that folder private in place and moves
+    /// exactly these top-level entries into `.rrflow/previous/<plan id>/`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub adopted_estate_entries: Option<Vec<String>>,
     pub plan_sha256: String,
 }
+
+/// The most entries one adoption moves; a larger leftover tree is refused.
+pub const MAX_ADOPTED_ESTATE_ENTRIES: usize = 256;
+/// The `.rrflow` entry that retains adopted contents; never itself adopted.
+pub const ADOPTED_ESTATE_DIRECTORY: &str = "previous";
 
 impl InstallationPlan {
     pub fn validate(&self) -> Result<()> {
@@ -401,6 +411,9 @@ impl InstallationPlan {
                 return invalid("installation actions are missing, duplicated, or out of order");
             }
         }
+        if let Some(entries) = &self.adopted_estate_entries {
+            validate_adopted_estate_entries(entries)?;
+        }
         validate_sha256(&self.plan_sha256, "installation plan_sha256")?;
         if self.plan_sha256 != installation_plan_sha256(self)? {
             return invalid("installation plan digest does not match its content");
@@ -529,6 +542,131 @@ impl InstallationResult {
     }
 }
 
+/// An explicit suffix-to-parser choice; it is not source discovery or authority.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct SourceParseBinding {
+    /// Case-sensitive final extension, without a leading dot.
+    #[schemars(schema_with = "source_parse_extension_schema")]
+    pub extension: String,
+    pub language: CanonicalId,
+}
+
+/// Versioned, project-selected limits for one authorized Parse step.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct SourceParsePolicy {
+    #[schemars(schema_with = "source_parse_version_schema")]
+    pub format_version: u16,
+    #[schemars(schema_with = "source_parse_bindings_schema")]
+    pub bindings: Vec<SourceParseBinding>,
+    #[schemars(schema_with = "source_parse_limit_schema")]
+    pub max_files: u64,
+    #[schemars(schema_with = "source_parse_file_limit_schema")]
+    pub max_file_bytes: u64,
+    #[schemars(schema_with = "source_parse_limit_schema")]
+    pub max_input_bytes: u64,
+    #[schemars(schema_with = "source_parse_limit_schema")]
+    pub max_nodes: u64,
+    #[schemars(schema_with = "source_parse_limit_schema")]
+    pub max_depth: u64,
+    #[schemars(schema_with = "source_parse_limit_schema")]
+    pub max_output_bytes: u64,
+    /// Maximum encoded bytes in one atomic publication group.
+    #[schemars(schema_with = "source_parse_limit_schema")]
+    pub max_commit_bytes: u64,
+    #[schemars(schema_with = "source_parse_limit_schema")]
+    pub max_elapsed_ms: u64,
+    #[schemars(schema_with = "source_parse_limit_schema")]
+    pub max_memory_bytes: u64,
+}
+
+const SOURCE_PARSE_POLICY_VERSION: u16 = 1;
+const MAX_SOURCE_PARSE_BINDINGS: usize = 64;
+const MAX_SOURCE_PARSE_EXTENSION_BYTES: usize = 32;
+// JSON clients using ECMAScript Number must preserve every integer exactly.
+const MAX_SOURCE_PARSE_WIRE_INTEGER: u64 = (1_u64 << 53) - 1;
+
+fn source_parse_version_schema(_: &mut schemars::SchemaGenerator) -> schemars::Schema {
+    schemars::json_schema!({"type": "integer", "const": SOURCE_PARSE_POLICY_VERSION})
+}
+
+fn source_parse_extension_schema(_: &mut schemars::SchemaGenerator) -> schemars::Schema {
+    schemars::json_schema!({
+        "type": "string", "minLength": 1, "maxLength": MAX_SOURCE_PARSE_EXTENSION_BYTES,
+        "pattern": "^[A-Za-z0-9_+\\-]+$"
+    })
+}
+
+fn source_parse_limit_schema(_: &mut schemars::SchemaGenerator) -> schemars::Schema {
+    schemars::json_schema!({"type": "integer", "minimum": 1, "maximum": MAX_SOURCE_PARSE_WIRE_INTEGER})
+}
+
+fn source_parse_file_limit_schema(_: &mut schemars::SchemaGenerator) -> schemars::Schema {
+    schemars::json_schema!({"type": "integer", "minimum": 1, "maximum": u32::MAX})
+}
+
+fn source_parse_bindings_schema(generator: &mut schemars::SchemaGenerator) -> schemars::Schema {
+    let mut schema = <Vec<SourceParseBinding>>::json_schema(generator);
+    schema.insert("minItems".into(), serde_json::json!(1));
+    schema.insert(
+        "maxItems".into(),
+        serde_json::json!(MAX_SOURCE_PARSE_BINDINGS),
+    );
+    schema
+}
+
+impl SourceParsePolicy {
+    pub fn validate(&self) -> Result<()> {
+        if self.format_version != SOURCE_PARSE_POLICY_VERSION
+            || self.bindings.is_empty()
+            || self.bindings.len() > MAX_SOURCE_PARSE_BINDINGS
+        {
+            return invalid("invalid source parse policy version or binding count");
+        }
+        for binding in &self.bindings {
+            if binding.extension.is_empty()
+                || binding.extension.len() > MAX_SOURCE_PARSE_EXTENSION_BYTES
+                || !binding
+                    .extension
+                    .bytes()
+                    .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-' | b'+'))
+            {
+                return invalid("invalid source parse extension");
+            }
+        }
+        if self
+            .bindings
+            .windows(2)
+            .any(|pair| pair[0].extension >= pair[1].extension)
+        {
+            return invalid("source parse extensions must be unique and ordered");
+        }
+        for value in [
+            self.max_files,
+            self.max_file_bytes,
+            self.max_input_bytes,
+            self.max_nodes,
+            self.max_depth,
+            self.max_output_bytes,
+            self.max_commit_bytes,
+            self.max_elapsed_ms,
+            self.max_memory_bytes,
+        ] {
+            if value == 0 || value > MAX_SOURCE_PARSE_WIRE_INTEGER {
+                return invalid("source parse limit is outside the positive protocol range");
+            }
+        }
+        if self.max_file_bytes > u64::from(u32::MAX)
+            || self.max_file_bytes > self.max_input_bytes
+            || self.max_commit_bytes > self.max_output_bytes
+        {
+            return invalid("source parse file or commit limit exceeds its aggregate limit");
+        }
+        Ok(())
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct AttunementPhasePlan {
@@ -537,6 +675,8 @@ pub struct AttunementPhasePlan {
     pub configuration_sha256: String,
     pub estimated_items: u64,
     pub estimated_input_bytes: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parse_policy: Option<SourceParsePolicy>,
 }
 
 impl AttunementPhasePlan {
@@ -544,7 +684,14 @@ impl AttunementPhasePlan {
         validate_sha256(
             &self.configuration_sha256,
             "attunement phase configuration_sha256",
-        )
+        )?;
+        if let Some(policy) = &self.parse_policy {
+            if self.phase != AttunementPhase::Parse {
+                return invalid("source parse policy requires a Parse step");
+            }
+            policy.validate()?;
+        }
+        Ok(())
     }
 }
 
@@ -588,8 +735,8 @@ impl AttunementPlan {
             if usize::from(phase.sequence) != index + 1 {
                 return invalid("attunement phase sequence must match its plan position");
             }
-            if (phase.phase == AttunementPhase::Verify) != (index + 1 == self.phases.len()) {
-                return invalid("attunement plan must end with exactly one verification step");
+            if phase.phase == AttunementPhase::Verify && index + 1 != self.phases.len() {
+                return invalid("attunement verification must be the final step when selected");
             }
         }
         if self.estimated_min_duration_ms > self.estimated_max_duration_ms {
@@ -958,7 +1105,7 @@ impl AttunementJob {
             return invalid("only a running worker may append one committed checkpoint");
         }
         if next.state == AttunementJobState::Succeeded && !appended_checkpoint {
-            return invalid("attunement success must append the final verify checkpoint");
+            return invalid("attunement success must append the final selected checkpoint");
         }
         if self.state == AttunementJobState::Running
             && next.state == AttunementJobState::Running
@@ -1323,10 +1470,24 @@ impl AttunementReplanResult {
         self.successor.validate(&self.plan)?;
         let expected_successor =
             CanonicalId::new(format!("job-{}", &preview.plan.plan_sha256[..24]))?;
+        let predecessor_lineage = match self.predecessor.job.state {
+            AttunementJobState::CancelRequested => {
+                preview.predecessor_revision.checked_add(1) == Some(self.predecessor.job.revision)
+            }
+            AttunementJobState::Succeeded => {
+                self.predecessor.job.revision == preview.predecessor_revision
+                    && self.predecessor.job.checkpoints.iter().all(|checkpoint| {
+                        matches!(
+                            checkpoint.phase,
+                            AttunementPhase::Connect | AttunementPhase::Inventory
+                        )
+                    })
+            }
+            _ => false,
+        };
         if self.plan != preview.plan
             || self.predecessor.job.id != preview.predecessor_job_id
-            || preview.predecessor_revision.checked_add(1) != Some(self.predecessor.job.revision)
-            || self.predecessor.job.state != AttunementJobState::CancelRequested
+            || !predecessor_lineage
             || self.successor.job.id != expected_successor
             || self.successor.job.state != AttunementJobState::Pending
         {
@@ -1636,6 +1797,7 @@ impl AttunementVerification {
         match self.status {
             AttunementVerificationStatus::Passed
                 if job.state == AttunementJobState::Succeeded
+                    && last_checkpoint.phase == AttunementPhase::Verify
                     && self.checks.iter().all(|check| check.passed) => {}
             AttunementVerificationStatus::Failed
                 if job.state == AttunementJobState::Failed
@@ -1654,7 +1816,35 @@ impl AttunementVerification {
     }
 }
 
+/// Adopted entries are single, sorted, unique top-level names below `.rrflow`.
+pub fn validate_adopted_estate_entries(entries: &[String]) -> Result<()> {
+    if entries.len() > MAX_ADOPTED_ESTATE_ENTRIES {
+        return invalid("the existing .rrflow folder has too many entries to adopt");
+    }
+    for entry in entries {
+        validate_bounded_text(entry, "adopted .rrflow entry", 255)?;
+        if matches!(entry.as_str(), "." | ".." | ADOPTED_ESTATE_DIRECTORY)
+            || entry.contains(['/', '\\', ':'])
+        {
+            return invalid("adopted .rrflow entries must be plain top-level names");
+        }
+    }
+    if entries.windows(2).any(|pair| pair[0] >= pair[1]) {
+        return invalid("adopted .rrflow entries must be sorted and unique");
+    }
+    Ok(())
+}
+
 pub fn installation_plan_sha256(plan: &InstallationPlan) -> Result<String> {
+    let base = installation_plan_base_sha256(plan)?;
+    match &plan.adopted_estate_entries {
+        // Plans without adoption keep their established digest exactly.
+        None => Ok(base),
+        Some(entries) => digest_json(b"rrflow-installation-plan-v4-adoption", &(base, entries)),
+    }
+}
+
+fn installation_plan_base_sha256(plan: &InstallationPlan) -> Result<String> {
     digest_json(
         b"rrflow-installation-plan-v4",
         &(

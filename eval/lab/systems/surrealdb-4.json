@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "binding": {
+    "id": "surrealdb-4",
+    "label": "SurrealDB 4.0.0",
+    "kind": "surrealdb",
+    "location": "loopback",
+    "endpoint": "http://127.0.0.1:18000",
+    "artifact": "surrealdb/surrealdb@sha256:c35893410644e65fa90aa1bef446ac9cb0a0c2733b9d405ce3eb56754b85c330",
+    "storage_profile": "SurrealKV on disk in a container volume",
+    "availability": {
+      "state": "available"
+    },
+    "index": {
+      "index": "hnsw",
+      "m": 16,
+      "ef_construction": 100
+    },
+    "search_ladder": [
+      {
+        "id": "ef-16",
+        "ef": 16
+      },
+      {
+        "id": "ef-32",
+        "ef": 32
+      },
+      {
+        "id": "ef-64",
+        "ef": 64
+      },
+      {
+        "id": "ef-128",
+        "ef": 128
+      },
+      {
+        "id": "ef-256",
+        "ef": 256
+      }
+    ],
+    "credentials": {
+      "principal_env": "SURREAL_LAB_USER",
+      "secret_env": "SURREAL_LAB_SECRET"
+    },
+    "memory_probe": [
+      "eval/lab/probe.sh",
+      "memory",
+      "lab-surrealdb"
+    ],
+    "disk_probe": [
+      "eval/lab/probe.sh",
+      "disk",
+      "lab-surrealdb"
+    ]
+  },
+  "launch": {
+    "kind": "container",
+    "image": "surrealdb/surrealdb@sha256:c35893410644e65fa90aa1bef446ac9cb0a0c2733b9d405ce3eb56754b85c330",
+    "name": "lab-surrealdb",
+    "ports": [
+      "127.0.0.1:18000:8000"
+    ],
+    "volume": {
+      "container_path": "/data"
+    },
+    "env": {
+      "SURREAL_CAPS_ALLOW_ALL": "true"
+    },
+    "generated_secrets": {
+      "SURREAL_PASS": "SURREAL_LAB_SECRET"
+    },
+    "host_env": {
+      "SURREAL_LAB_USER": "lab"
+    },
+    "env_from_host": {
+      "SURREAL_USER": "SURREAL_LAB_USER"
+    },
+    "user": "root",
+    "arguments": [
+      "start",
+      "surrealkv:///data/lab"
+    ],
+    "ready": {
+      "url": "http://127.0.0.1:18000/version",
+      "seconds": 60
+    }
+  }
+}

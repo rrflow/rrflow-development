@@ -222,7 +222,8 @@ repeated kinds, with bounded descriptions and estimates. Descriptions are
 metadata bound to the plan; they do not configure Connect or activate another
 capability. Estimates are declarations, not measured work or authority to
 exceed the engine's configured budgets. The engine checks the
-version, bounds and recognized effects and requires a final Verify step. The
+version, bounds and recognized effects; Verify, when selected, must be the final
+step. The
 schema describes the proposal shape; engine validation also enforces semantic
 rules and is authoritative. The selected proposal is included in the versioned
 preview, its step descriptions and estimates are bound to the attunement and
@@ -233,9 +234,25 @@ proposal descriptions for later readback. Retain the approved preview if those
 descriptions are needed. Editing a project source after preview still requires
 a fresh plan or authorized replan.
 
+An explicitly proposed Parse step may include a versioned `parse_policy` with
+case-sensitive extension/language bindings and work limits. Its values remain
+in the selected plan and change its digest; an absent policy remains inactive.
+The engine checks policy placement and applicable Inventory and transaction
+ceilings when planning and applying installation. The policy is a declaration:
+Parse execution and enforcement of its native memory limit are not yet available.
+
+Explicitly selected plans may complete after their final selected Connect or
+Inventory checkpoint without an added Verify step. Completion records the
+selected effects; it does not assert independent verification or full project
+indexing. After a source edit, a completed plan consisting of these supported
+effects may produce a newly authorized successor while retaining its predecessor
+and receipts. Acceptance observes the source again and rejects a mismatch;
+the filesystem observation and engine commit are not an atomic snapshot, so a
+concurrent edit after observation is not excluded by this check.
+
 Without a proposal the bundled profile supplies its current eleven-step
-template; it is no longer the only allowed sequence. Only Connect currently
-executes; other steps fail explicitly as unavailable. This interface admits an
+template; it is no longer the only allowed sequence. Connect and bounded
+Inventory currently execute; other steps fail explicitly as unavailable. This interface admits an
 explicit proposal and does not yet automatically select a per-prompt schema,
 generate a handoff, invoke a model, or establish indexing completion.
 
@@ -594,9 +611,17 @@ does not silently retry with larger defaults. Configuration format 2 and locator
 format 1 are replaced pre-release shapes and are rejected, not migrated or
 silently defaulted. Product version remains 1.0.0.
 
-The implementation rejects any pre-existing `.rrflow` tree for a new install.
-It does not migrate, merge, or delete a user's pre-canonical
-`.rrflow/instance.toml` state; that collision remains a fail-closed diagnostic.
+A new install adopts a leftover `.rrflow` folder in place (owner decision,
+2026-10-31). The plan lists the folder's top-level entries in
+`adopted_estate_entries`; plans without a leftover folder keep their existing
+digest. Apply refuses the plan if those entries changed, makes the folder
+private (owner-only DACL on Windows, mode 0700 elsewhere) only when the current
+user owns it and it is a real folder, then moves each listed entry, including a
+pre-canonical `instance.toml`, into `.rrflow/previous/<plan id>/`. Nothing is
+deleted or merged, and moved entries keep their own permissions. An interrupted
+adoption changes the listed entries, so the stale plan is refused and a fresh
+plan adopts what remains. A project with a locator is an installed estate and
+is never adopted.
 The tracked development manifest has been deleted because no source path reads
 it. The clock substrate proves only relative rollback against a sealed anchor:
 it does not authenticate or correct UTC, detect every forward error or drift,

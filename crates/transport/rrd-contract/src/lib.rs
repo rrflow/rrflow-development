@@ -7,6 +7,7 @@
 
 mod attunement;
 mod capability_surface;
+mod cold_history;
 mod deployment;
 mod diagnostic;
 mod storage_cursor;
@@ -27,7 +28,7 @@ mod endpoint_policy;
 mod endpoint_proposal;
 mod endpoint_selection;
 mod task_assessment;
-pub use endpoint_policy::EndpointSelectionPolicy;
+pub use endpoint_policy::{EndpointSelectionPolicy, LfgAnalysisPolicy};
 pub use endpoint_proposal::*;
 pub use endpoint_selection::{
     EndpointAbstentionReason, EndpointEffortSupport, EndpointSelectionAllowance,
@@ -67,10 +68,11 @@ pub use attunement::{
     attunement_checkpoint_sha256, attunement_plan_sha256, attunement_replan_accept_sha256,
     attunement_replan_preview_sha256, attunement_replan_seed, attunement_verification_sha256,
     installation_initial_grants, installation_plan_sha256, installation_result_sha256,
-    AcceptAttunementReplan, AttunementCancelResult, AttunementControlResponse, AttunementFailure,
-    AttunementJob, AttunementJobPage, AttunementJobState, AttunementJobSummary, AttunementLease,
-    AttunementPhase, AttunementPhaseCheckpoint, AttunementPhasePlan, AttunementPlan,
-    AttunementReadResult, AttunementReceipt, AttunementReceiptReadResult, AttunementReplanPreview,
+    validate_adopted_estate_entries, AcceptAttunementReplan, AttunementCancelResult,
+    AttunementControlResponse, AttunementFailure, AttunementJob, AttunementJobPage,
+    AttunementJobState, AttunementJobSummary, AttunementLease, AttunementPhase,
+    AttunementPhaseCheckpoint, AttunementPhasePlan, AttunementPlan, AttunementReadResult,
+    AttunementReceipt, AttunementReceiptReadResult, AttunementReplanPreview,
     AttunementReplanReceiptReadResult, AttunementReplanReceiptView, AttunementReplanResult,
     AttunementRuntimeCoordinates, AttunementSourceVerification, AttunementStatus,
     AttunementVerification, AttunementVerificationCheck, AttunementVerificationStatus,
@@ -81,24 +83,29 @@ pub use attunement::{
     InstallationSpecialization, InstallationStorageGeneration, InstallationTargetKind,
     ListAttunementJobs, PauseAttunement, PreviewAttunementReplan, ReadAttunement,
     ReadAttunementReceipt, RecoverExpiredAttunement, ResumeAttunement, ResumeAttunementWithLease,
-    StartAttunement, StepAttunement, ATTUNEMENT_CONTRACT_VERSION, INSTALLATION_BOOTSTRAP_VERSION,
+    SourceParseBinding, SourceParsePolicy, StartAttunement, StepAttunement,
+    ADOPTED_ESTATE_DIRECTORY, ATTUNEMENT_CONTRACT_VERSION, INSTALLATION_BOOTSTRAP_VERSION,
     INSTALLATION_LEASE_PATH, INSTALLATION_LEASE_PRECONDITION, INSTALLATION_PLAN_CONTRACT_VERSION,
-    INSTALL_ATTUNEMENT_CONTRACT_VERSION, MAX_ATTUNEMENT_CANCEL_REASON_BYTES,
-    MAX_ATTUNEMENT_FAILURE_BYTES, MAX_ATTUNEMENT_JOB_PAGE, MAX_ATTUNEMENT_JOB_PAGE_BYTES,
-    MAX_ATTUNEMENT_PHASES, MAX_ATTUNEMENT_VERIFICATION_CHECKS, MAX_BOOTSTRAP_RECORD_BYTES,
-    MAX_BOOTSTRAP_TEXT_BYTES, MAX_INSTALLATION_ACTIONS,
+    INSTALL_ATTUNEMENT_CONTRACT_VERSION, MAX_ADOPTED_ESTATE_ENTRIES,
+    MAX_ATTUNEMENT_CANCEL_REASON_BYTES, MAX_ATTUNEMENT_FAILURE_BYTES, MAX_ATTUNEMENT_JOB_PAGE,
+    MAX_ATTUNEMENT_JOB_PAGE_BYTES, MAX_ATTUNEMENT_PHASES, MAX_ATTUNEMENT_VERIFICATION_CHECKS,
+    MAX_BOOTSTRAP_RECORD_BYTES, MAX_BOOTSTRAP_TEXT_BYTES, MAX_INSTALLATION_ACTIONS,
 };
 pub use capability_surface::{
     ProductCapability, ProductCapabilityCatalogue, ProductSurface, SurfaceBinding,
     SurfaceDisposition,
 };
+pub use cold_history::{
+    ColdHistoryFailure, ColdHistoryFailureCode, ColdHistoryGenerationSnapshot,
+    ColdHistoryReadResult, ReadColdHistory,
+};
 pub use deployment::{
-    estate_configuration_sha256, ClockPolicy, DeploymentForm, DeploymentProfile,
-    EndpointPresentation, EstateConfiguration, EstateConfigurationInput, InstalledEstateIdentity,
-    ReasoningLimits, RecallLimits, StorageLimits, StorageProfileKind,
-    DEPLOYMENT_PROFILE_CONTRACT_VERSION, ESTATE_CONFIGURATION_FORMAT_VERSION,
-    MAX_CLOCK_ROLLBACK_MS, MAX_REASONING_RUN_ELAPSED_MS, MAX_REASONING_STEPS,
-    MAX_REASONING_STEP_ELAPSED_MS,
+    estate_configuration_sha256, ClockPolicy, ColdHistoryCompression, ColdHistoryPolicy,
+    DeploymentForm, DeploymentProfile, EndpointPresentation, EstateConfiguration,
+    EstateConfigurationInput, InstalledEstateIdentity, ReasoningLimits, RecallLimits,
+    StorageLimits, StorageProfileKind, DEPLOYMENT_PROFILE_CONTRACT_VERSION,
+    ESTATE_CONFIGURATION_FORMAT_VERSION, MAX_CLOCK_ROLLBACK_MS, MAX_REASONING_RUN_ELAPSED_MS,
+    MAX_REASONING_STEPS, MAX_REASONING_STEP_ELAPSED_MS,
 };
 pub use diagnostic::{
     DiagnosticAuthority, DiagnosticCoverage, DiagnosticGraphDifference,
@@ -277,7 +284,7 @@ use std::fmt;
 pub const PROTOCOL: &str = "rrd";
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const OPENAPI_DOCUMENT_SHA256: &str =
-    "355e5482791fc6a9705b6c1bc9ba7303d1549b69b7dfbe8819c029bb7074c507";
+    "274b9c3536c11c42b8f675e863a9c821b564b0ee9eff800123fffc2df406cc7b";
 pub const MAX_ID_BYTES: usize = 128;
 pub const MAX_MESSAGE_BYTES: usize = 4_096;
 pub const MAX_CAPABILITIES: usize = 512;
@@ -3712,6 +3719,16 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             "ChangefeedPage",
         ),
         endpoint(
+            "cold-history-read",
+            HttpMethod::Post,
+            "/v1/storage/cold-history/read",
+            EndpointAuthentication::SessionBearer,
+            false,
+            SecurityAction::ChangefeedRead,
+            "ReadColdHistory",
+            "ColdHistoryReadResult",
+        ),
+        endpoint(
             "context-assemble",
             HttpMethod::Post,
             "/v1/context/assemble",
@@ -4830,6 +4847,7 @@ fn request_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "PreviewTransaction" => schema_json::<RequestEnvelope<PreviewTransaction>>(),
         "ReadAudit" => schema_json::<RequestEnvelope<ReadAudit>>(),
         "ReadChangefeed" => schema_json::<RequestEnvelope<ReadChangefeed>>(),
+        "ReadColdHistory" => schema_json::<RequestEnvelope<ReadColdHistory>>(),
         "ReadDiagnosticSnapshot" => schema_json::<RequestEnvelope<ReadDiagnosticSnapshot>>(),
         "InspectStorageCursor" => schema_json::<RequestEnvelope<InspectStorageCursor>>(),
         "ReadStorageDiagnostics" => schema_json::<RequestEnvelope<ReadStorageDiagnostics>>(),
@@ -4893,6 +4911,7 @@ fn response_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "AuditPage" => schema_json::<ResponseEnvelope<AuditPage>>(),
         "ChangefeedFollowResult" => schema_json::<ResponseEnvelope<ChangefeedFollowResult>>(),
         "ChangefeedPage" => schema_json::<ResponseEnvelope<ChangefeedPage>>(),
+        "ColdHistoryReadResult" => schema_json::<ResponseEnvelope<ColdHistoryReadResult>>(),
         "CommitReceipt" => schema_json::<ResponseEnvelope<CommitReceipt>>(),
         "ContextPacket" => schema_json::<ResponseEnvelope<ContextPacket>>(),
         "CloseSubscriptionResult" => schema_json::<ResponseEnvelope<CloseSubscriptionResult>>(),

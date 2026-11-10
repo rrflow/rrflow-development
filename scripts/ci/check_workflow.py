@@ -30,6 +30,8 @@ LANE_CONDITIONS = {
     "scripts-policy": "    if: ${{ needs.changes.outputs.scripts == 'true' }}\n",
     "engine-fast": "    if: ${{ needs.changes.outputs.engine == 'true' }}\n",
     "sdk-conformance": SDK_LANE_IF,
+    # Repository-wide invariants run on every candidate the full matrix does not cover.
+    "repository-invariants": "    if: ${{ needs.changes.outputs.full != 'true' }}\n",
 }
 FULL_LANE_JOBS = (
     "native-arm64", "topology-smoke", "estate-portability", "verify", "engine-suites",
@@ -51,6 +53,7 @@ GATE_EXPECTATIONS = {
     "installed-crash": ("FULL_LANE", "INSTALLED_CRASH_RESULT"),
     "storage-contract-preflight": ("FULL_LANE", "STORAGE_PREFLIGHT_RESULT"),
     "installed-reopen": ("FULL_LANE", "INSTALLED_REOPEN_RESULT"),
+    "repository-invariants": ("LIGHT_SELECTED", "INVARIANTS_RESULT"),
 }
 DEVELOPMENT_CONTAINER = ROOT / ".devcontainer"
 DIGEST_PINNED_IMAGE = re.compile(r"[^@\s]+@sha256:[0-9a-f]{64}")
@@ -268,19 +271,32 @@ def verify_native_capacity_diagnostics(job: str) -> None:
 def verify_native_capacity_preflight(workflow: str) -> None:
     """A manual characterization cannot stand in for candidate or merge CI."""
     events = re.search(r"(?ms)^on:\n(.*?)(?=^\S)", workflow)
-    require(events is not None and events.group(1) == "  workflow_dispatch:\n\n",
-            "native preflight must be manual only")
+    require(
+        events is not None
+        and re.findall(r"(?m)^  ([a-z_]+):", events.group(1)) == ["workflow_dispatch"],
+        "native preflight must be manual only",
+    )
+    for name, default in [("point", "all"), ("mode", "both"), ("repetitions", '"3"')]:
+        pattern = rf"(?ms)^      {name}:\n(?:(?!^      \w+:).)*?^        default: {re.escape(default)}$"
+        require(re.search(pattern, events.group(1)) is not None,
+                f"native preflight default drifted: {name}")
     jobs = job_blocks(workflow)
     require(set(jobs) == {"native-preflight"}, "native preflight must remain isolated")
     job = jobs["native-preflight"]
     for required in ["runs-on: macos-latest", 'test "$(git rev-parse HEAD)" = "$GITHUB_SHA"',
                      "python3 scripts/ci/test_native_capacity.py", "python3 scripts/ci/test_macos_native_failure_preflight.py",
-                     "python3 scripts/ci/macos_native_failure_preflight.py", "python3 scripts/ci/run_native_capacity.py",
+                     "python3 scripts/ci/macos_native_failure_preflight.py", "python3 scripts/ci/run_macos_capacity_preflight.py",
+                     "python3 scripts/ci/test_macos_capacity_preflight.py",
+                     "RRFLOW_PREFLIGHT_POINT: ${{ inputs.point }}",
+                     "RRFLOW_PREFLIGHT_MODE: ${{ inputs.mode }}",
+                     "RRFLOW_PREFLIGHT_REPETITIONS: ${{ inputs.repetitions }}",
+                     '--point "$RRFLOW_PREFLIGHT_POINT" --mode "$RRFLOW_PREFLIGHT_MODE"',
+                     '--repetitions "$RRFLOW_PREFLIGHT_REPETITIONS"',
                      "RRFLOW_CAPACITY_DIAGNOSTICS: ${{ runner.temp }}/rrflow-capacity-diagnostics",
                      "path: ${{ runner.temp }}/rrflow-capacity-diagnostics/*.json", "if: always()"]:
         require(required in job, f"native preflight missing: {required}")
-    require(job.count("--mode fresh --mode existing") == 3 and "continue-on-error" not in job,
-            "native preflight must run all repeated cases without ignoring failure")
+    require("continue-on-error" not in job,
+            "native preflight must not ignore failures")
     for name, artifact_path, missing in [
         ("Retain injected native failure receipt",
          "${{ runner.temp }}/rrflow-native-failure-probe/rrflow-capacity-diagnostics/*.json", "error"),
@@ -989,6 +1005,7 @@ def verify_storage_contract_preflight(jobs: dict[str, str]) -> None:
         "            fi",
         "          }",
         '          if [ "$FULL_LANE" = true ] || [ "$SDK_LANE" = true ]; then SDK_SELECTED=true; else SDK_SELECTED=false; fi',
+        '          if [ "$FULL_LANE" = true ]; then LIGHT_SELECTED=false; else LIGHT_SELECTED=true; fi',
     ] + [f'          expect "${lane}" "${variable}" {job}' for job, (lane, variable) in GATE_EXPECTATIONS.items()]
     require(
         run_lines == expected_lines,
@@ -1020,6 +1037,15 @@ def verify_lane_selection(jobs: dict[str, str], reusable: str) -> None:
         require(changes.count(required) == 1, f"lane selection is missing: {required}")
     require(not re.search(r"(?m)^    if:", changes) and "continue-on-error:" not in changes,
             "lane selection itself cannot be conditional or ignored")
+    for required in (
+        "      - name: Enforce pull-request limits\n",
+        "          python3 scripts/ci/test_pr_governance.py\n",
+        "          python3 scripts/ci/check_pr_governance.py\n",
+        "      pull-requests: read\n",
+    ):
+        require(changes.count(required) == 1, f"pull-request limits are missing from lane selection: {required.strip()}")
+    require(not re.search(r"(?m)^        if:.*\n(?:.*\n){0,3}.*check_pr_governance", changes),
+            "pull-request limits cannot be conditional")
     for name in ("full", "docs", "scripts", "engine", "sdk", "packages", "dependents"):
         require(f"      {name}: ${{{{ steps.lanes.outputs.{name} }}}}" in changes,
                 f"lane selection must publish the {name} output")
@@ -1044,6 +1070,9 @@ def verify_lane_selection(jobs: dict[str, str], reusable: str) -> None:
         "python3 scripts/ci/check_generated_surfaces.py",
     ):
         require(fast.count(required) == 1, f"engine fast lane is missing: {required}")
+    require(jobs["repository-invariants"].count(
+        "cargo test -p rrd-engine --locked --test workspace_architecture") == 1,
+        "repository invariants must run the workspace architecture tests on every light candidate")
     require(reusable.count("python3 scripts/ci/test_select_ci_lanes.py") == 2
             and jobs["verify"].count("python3 scripts/ci/test_ci_lanes_policy.py") == 1,
             "lane selection regressions must run in the changes job and the verify policy step")
@@ -1149,6 +1178,7 @@ def main() -> None:
         "docs-policy",
         "scripts-policy",
         "engine-fast",
+        "repository-invariants",
         "native-arm64",
         "storage-contract-preflight",
         "installed-reopen",
@@ -1288,6 +1318,7 @@ def main() -> None:
 
     heavy_jobs = [
         "engine-fast",
+        "repository-invariants",
         "verify",
         "engine-suites",
         "sdk-conformance",

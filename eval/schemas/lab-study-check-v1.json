@@ -1,0 +1,161 @@
+{
+  "$defs": {
+    "Digest": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "Id": {
+      "maxLength": 96,
+      "minLength": 1,
+      "pattern": "^[a-z0-9][a-z0-9_.-]*$",
+      "type": "string"
+    },
+    "RequirementOutcome": {
+      "additionalProperties": false,
+      "properties": {
+        "detail": {
+          "type": "string"
+        },
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "records": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/Id"
+          },
+          "type": "array"
+        },
+        "status": {
+          "$ref": "#/$defs/RequirementStatus"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "status",
+        "detail",
+        "sources",
+        "records"
+      ],
+      "type": "object"
+    },
+    "RequirementStatus": {
+      "oneOf": [
+        {
+          "enum": [
+            "met",
+            "not_met"
+          ],
+          "type": "string"
+        },
+        {
+          "const": "advised_not_met",
+          "description": "Not met, and this stage only advises it, so the study can go ahead and says so.",
+          "type": "string"
+        }
+      ]
+    },
+    "StudyStage": {
+      "description": "A pilot tests the test, so its report cannot answer the question. A confirmatory study can.",
+      "enum": [
+        "pilot",
+        "confirmatory"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "arms": {
+      "format": "uint64",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "can_reach_significance": {
+      "type": "boolean"
+    },
+    "catalog_sha256": {
+      "$ref": "#/$defs/Digest"
+    },
+    "discordant_pairs_needed": {
+      "description": "One-sided pairs exact McNemar needs at this study's alpha.",
+      "format": "uint64",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "models": {
+      "format": "uint64",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "outcomes": {
+      "items": {
+        "$ref": "#/$defs/RequirementOutcome"
+      },
+      "type": "array"
+    },
+    "ready": {
+      "type": "boolean"
+    },
+    "requirements_sha256": {
+      "$ref": "#/$defs/Digest"
+    },
+    "runs": {
+      "format": "uint64",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "schema_version": {
+      "format": "uint16",
+      "maximum": 65535,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "stage": {
+      "$ref": "#/$defs/StudyStage"
+    },
+    "study": {
+      "$ref": "#/$defs/Id"
+    },
+    "tasks": {
+      "format": "uint64",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "worst_case_usd": {
+      "description": "Every run at its limit. Absent until a limit is set.",
+      "format": "double",
+      "type": [
+        "number",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "schema_version",
+    "study",
+    "stage",
+    "catalog_sha256",
+    "requirements_sha256",
+    "tasks",
+    "arms",
+    "models",
+    "runs",
+    "discordant_pairs_needed",
+    "can_reach_significance",
+    "ready",
+    "outcomes"
+  ],
+  "title": "StudyCheck",
+  "type": "object"
+}

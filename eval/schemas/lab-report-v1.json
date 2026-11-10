@@ -1,0 +1,493 @@
+{
+  "$defs": {
+    "ArtifactReference": {
+      "additionalProperties": false,
+      "properties": {
+        "bytes": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "description": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "sha256": {
+          "$ref": "#/$defs/Digest"
+        }
+      },
+      "required": [
+        "path",
+        "sha256",
+        "bytes",
+        "description"
+      ],
+      "type": "object"
+    },
+    "Digest": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "DimensionDefinition": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "label": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label"
+      ],
+      "type": "object"
+    },
+    "Id": {
+      "maxLength": 96,
+      "minLength": 1,
+      "pattern": "^[a-z0-9][a-z0-9_.-]*$",
+      "type": "string"
+    },
+    "LabEvidenceClass": {
+      "description": "J-04 acceptance requires its own qualification and cannot be claimed through this\nreport. Imported evidence was measured by another harness, and this lab only restates it.",
+      "enum": [
+        "diagnostic",
+        "imported"
+      ],
+      "type": "string"
+    },
+    "MetricDefinition": {
+      "additionalProperties": false,
+      "properties": {
+        "better": {
+          "$ref": "#/$defs/MetricDirection"
+        },
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "label": {
+          "type": "string"
+        },
+        "unit": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "unit",
+        "better"
+      ],
+      "type": "object"
+    },
+    "MetricDirection": {
+      "enum": [
+        "higher",
+        "lower",
+        "neither"
+      ],
+      "type": "string"
+    },
+    "Observation": {
+      "additionalProperties": false,
+      "properties": {
+        "case": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "high": {
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "low": {
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "metric": {
+          "$ref": "#/$defs/Id"
+        },
+        "samples": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "system": {
+          "$ref": "#/$defs/Id"
+        },
+        "value": {
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "system",
+        "metric",
+        "value",
+        "samples"
+      ],
+      "type": "object"
+    },
+    "ReportSystem": {
+      "additionalProperties": false,
+      "properties": {
+        "configuration": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "observed_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "status": {
+          "$ref": "#/$defs/SystemStatus"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "kind",
+        "status"
+      ],
+      "type": "object"
+    },
+    "SystemStatus": {
+      "enum": [
+        "completed",
+        "partial",
+        "failed",
+        "unavailable",
+        "unimplemented",
+        "not_applicable",
+        "not_run"
+      ],
+      "type": "string"
+    },
+    "TestIdentity": {
+      "additionalProperties": false,
+      "properties": {
+        "family": {
+          "$ref": "#/$defs/Id"
+        },
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "revision": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "family",
+        "revision"
+      ],
+      "type": "object"
+    },
+    "Verdict": {
+      "additionalProperties": false,
+      "properties": {
+        "basis": {
+          "type": "string"
+        },
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "outcome": {
+          "$ref": "#/$defs/VerdictOutcome"
+        },
+        "question": {
+          "type": "string"
+        },
+        "system": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "question",
+        "outcome",
+        "basis"
+      ],
+      "type": "object"
+    },
+    "VerdictOutcome": {
+      "oneOf": [
+        {
+          "enum": [
+            "met",
+            "not_met",
+            "not_run"
+          ],
+          "type": "string"
+        },
+        {
+          "const": "inconclusive",
+          "description": "The comparison ran but its evidence does not support either conclusion.",
+          "type": "string"
+        }
+      ]
+    },
+    "ViewDefinition": {
+      "description": "What a client should draw. `fixed` selects observations by case dimension.",
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "description": "One line per system, joining the two metrics on identical cases.",
+          "properties": {
+            "fixed": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "default": {},
+              "type": "object"
+            },
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "kind": {
+              "const": "curve",
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            },
+            "x": {
+              "$ref": "#/$defs/Id"
+            },
+            "y": {
+              "$ref": "#/$defs/Id"
+            }
+          },
+          "required": [
+            "kind",
+            "id",
+            "title",
+            "x",
+            "y"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "fixed": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "default": {},
+              "type": "object"
+            },
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "kind": {
+              "const": "bars",
+              "type": "string"
+            },
+            "metric": {
+              "$ref": "#/$defs/Id"
+            },
+            "title": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "id",
+            "title",
+            "metric"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "fixed": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "default": {},
+              "type": "object"
+            },
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "kind": {
+              "const": "table",
+              "type": "string"
+            },
+            "metrics": {
+              "items": {
+                "$ref": "#/$defs/Id"
+              },
+              "type": "array"
+            },
+            "rows": {
+              "items": {
+                "$ref": "#/$defs/Id"
+              },
+              "type": "array"
+            },
+            "title": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "id",
+            "title",
+            "metrics",
+            "rows"
+          ],
+          "type": "object"
+        }
+      ]
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "artifacts": {
+      "items": {
+        "$ref": "#/$defs/ArtifactReference"
+      },
+      "type": "array"
+    },
+    "dimensions": {
+      "items": {
+        "$ref": "#/$defs/DimensionDefinition"
+      },
+      "type": "array"
+    },
+    "environment": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "type": "object"
+    },
+    "evidence_class": {
+      "$ref": "#/$defs/LabEvidenceClass"
+    },
+    "generated_at_unix_ms": {
+      "format": "uint64",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "generated_by": {
+      "type": "string"
+    },
+    "identities": {
+      "additionalProperties": {
+        "$ref": "#/$defs/Digest"
+      },
+      "type": "object"
+    },
+    "limits": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "metrics": {
+      "items": {
+        "$ref": "#/$defs/MetricDefinition"
+      },
+      "type": "array"
+    },
+    "observations": {
+      "items": {
+        "$ref": "#/$defs/Observation"
+      },
+      "type": "array"
+    },
+    "schema_version": {
+      "format": "uint16",
+      "maximum": 65535,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "systems": {
+      "items": {
+        "$ref": "#/$defs/ReportSystem"
+      },
+      "type": "array"
+    },
+    "test": {
+      "$ref": "#/$defs/TestIdentity"
+    },
+    "verdicts": {
+      "items": {
+        "$ref": "#/$defs/Verdict"
+      },
+      "type": "array"
+    },
+    "views": {
+      "items": {
+        "$ref": "#/$defs/ViewDefinition"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "test",
+    "evidence_class",
+    "generated_by",
+    "generated_at_unix_ms",
+    "environment",
+    "identities",
+    "systems",
+    "dimensions",
+    "metrics",
+    "observations",
+    "verdicts",
+    "views",
+    "limits",
+    "artifacts"
+  ],
+  "title": "LabReport",
+  "type": "object"
+}

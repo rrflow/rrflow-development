@@ -18,6 +18,13 @@ the phase enum and checkpoint progression remain closed and linear. The
 maps this verified gap, the existing preservation obligations and the required
 project-to-handoff oracle. Neither that design nor this entry implements
 dynamic selection or changes POAM-006's open status.
+At main `81d2166311476ef51703532573908024a61b725a`, the current replan
+implementation clones the predecessor's phase list while changing its source
+identity, and the public replan validator rejects a differently selected plan.
+Consequently it cannot reselect available capabilities after an ordinary edit;
+the [D-02 review journal](../../evidence/change-journals/gate-d/d-02-adaptive-attunement-20261107.md)
+records the source boundaries and the required successor, replay and
+authorization evidence. POAM-006 remains open.
 The original Connectome pin and its successor on main
 `c1cbff203ecee89013878609d11aed04e89d0e71` both contain eleven static phase
 declarations and a fixed duration estimate. A Git search at both revisions
@@ -120,6 +127,14 @@ owner/protected-DACL check. The precise rejected object was not identified; do
 not infer that changing the `.rrflow` directory alone is a repair. The
 [diagnostic journal](../../evidence/change-journals/gate-d/nested-repository-boundary-decision.md)
 records the binary and observed errors. No project state or ACL was changed.
+
+At main `e6f3632b32f1c9be33c1951886a9d9a2be648ddf`, a separate native
+Windows fixture with inherited `.rrflow` and `.rrflow/rrd` directories and
+existing files reproduces the same protected-DACL error at installation preview.
+This identifies a reproducible class of failure, not the exact object responsible
+in the real checkout. The [repair journal](../../evidence/change-journals/gate-d/existing-project-admission-windows.md)
+retains the failing oracle and limits. The installer repair and real-project
+acceptance remain open.
 
 D-01/D-03 and H-06 own remediation and the real-checkout acceptance in
 [Gate D](../../roadmap/rrflow-1.0/gate-d.md#nested-repository-setup). It includes
@@ -561,6 +576,9 @@ installed database lifecycle. The security boundary remains intact. The
 [standalone database journey journal](../../evidence/change-journals/gate-h/h-04-standalone-rrflowdb-journey.md)
 records the guide correction and test; Linux/macOS hosted results, candidate
 CI and merge qualification remain pending. This does not close D-01 or H-04.
+The D-04 developer journey independently reproduced the same Windows Cargo
+hard-link denial; its retained fixture uses a separate executable copy. That
+workaround does not establish a fixed direct source-build workflow.
 
 ## Endpoint and task contract integration
 
@@ -571,6 +589,26 @@ parsed values. Explicit sorted rendering in the existing test/refresher fixes
 that representation ambiguity without changing runtime hashing or weakening
 byte assertions. Both public feature flows remain at the existing engine
 boundary; combined candidate qualification and the wider lifecycle remain open.
+
+## Draft Parse memory admission
+
+The [D-04 parsing draft](../../evidence/change-journals/gate-d/d-04-source-parsing-in-progress.md)
+identifies a resource-admission gap before engine activation. Its pinned
+Tree-sitter 0.24.7 default allocator aborts the hosting process on allocation
+failure and its allocator hooks are process-wide. Input, output, node and time
+limits alone do not prove a per-project native-parser memory ceiling. The
+draft is not invoked by main's Parse phase. Keep that phase unavailable until
+an authorized, isolated or otherwise demonstrably bounded execution path and
+failure/cleanup behavior are tested on the supported native platforms; neither
+the policy field nor a passing syntax fixture is that proof.
+The draft Parse input also reuses a reader that reconstructs the complete
+Inventory proposal and bounds it by one transaction's admission size. It must
+not be treated as a scalable multi-group snapshot reader: implement and measure
+bounded validation/readback for larger snapshots before claiming that path
+works at the selected project scale. No 100,000-file Parse result is implied.
+Before this draft, the installed-lifecycle reference still said only Connect
+executed after bounded Inventory had landed in PR #224; the draft corrects that
+sentence while retaining the unimplemented Parse and indexing limitations.
 
 ## Linux ARM64 installed evidence gap
 

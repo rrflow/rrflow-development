@@ -1,0 +1,22 @@
+{
+  "image": "milvusdb/milvus@sha256:b9b79b4a284b41cd12d60abc418310f84621fa4c977d409b38f501519a7ccf8a",
+  "scope": "isolated disposable container, loopback, no mounted host data",
+  "create": {
+    "http": 200,
+    "code": 0
+  },
+  "insert": {
+    "http": 200,
+    "code": 0
+  },
+  "duplicate_create": {
+    "http": 200,
+    "code": 0
+  },
+  "sentinel": {
+    "http": 200,
+    "code": 0,
+    "present": true
+  },
+  "own_container_stopped": true
+}

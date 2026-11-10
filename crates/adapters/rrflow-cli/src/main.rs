@@ -30,6 +30,17 @@ fn install_tracing() {
 }
 
 fn main() -> std::process::ExitCode {
+    // The parser child must not initialize tracing or emit source-bearing
+    // diagnostics on its framed stdout. Its parent owns resource enforcement.
+    let mut args = std::env::args_os();
+    let _ = args.next();
+    if args.next().as_deref() == Some(std::ffi::OsStr::new("--rrflow-internal-parse-worker-v1")) {
+        return if args.next().is_none() && rrd_engine::run_internal_parse_worker().is_ok() {
+            std::process::ExitCode::SUCCESS
+        } else {
+            std::process::ExitCode::FAILURE
+        };
+    }
     install_tracing();
     let cli = Cli::parse();
     finish(installed::execute(&cli.command, cli.json))
