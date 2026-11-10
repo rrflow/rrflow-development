@@ -2209,3 +2209,81 @@ fn an_interrupted_publication_resumes_from_its_recorded_stage() {
         assert_eq!(readiness.runtime_cursor, plan.candidate.runtime_cursor);
     }
 }
+
+#[cfg(windows)]
+#[test]
+fn inherited_estate_preview_reports_the_rejected_directory() {
+    let root = tempfile::tempdir().unwrap();
+    std::fs::create_dir(root.path().join(".rrflow")).unwrap();
+    let before = inventory(root.path());
+    let error = RrdEngine::plan_installation(
+        root.path(),
+        InstallationTargetKind::ExistingProject,
+        &"1".repeat(64),
+        "default",
+        None,
+        &test_executable(),
+    )
+    .unwrap_err();
+    assert!(
+        error.to_string().contains("estate directory .rrflow:"),
+        "unexpected error: {error}"
+    );
+    assert_eq!(inventory(root.path()), before);
+}
+
+#[cfg(windows)]
+#[test]
+#[ignore = "POAM-006: the installer still rejects an existing .rrflow with inherited permissions; #236 adopts it by relocation, this oracle asks for in-place preservation of bytes and ACLs, and no repair for that exists yet"]
+fn existing_project_preserves_inherited_estate_and_opens_after_replay() {
+    use std::process::Command;
+
+    let root = tempfile::tempdir().unwrap();
+    let estate = root.path().join(".rrflow");
+    let old_storage = estate.join("rrd");
+    std::fs::create_dir_all(&old_storage).unwrap();
+    std::fs::write(root.path().join("source.txt"), b"existing project").unwrap();
+    std::fs::write(estate.join("user-notes.txt"), b"leave notes unchanged").unwrap();
+    std::fs::write(old_storage.join("legacy-state"), b"leave state unchanged").unwrap();
+    let before = inventory(root.path());
+    let acl = |path: &Path| {
+        let result = Command::new("icacls").arg(path).output().unwrap();
+        assert!(result.status.success());
+        result.stdout
+    };
+    let estate_acl = acl(&estate);
+    let storage_acl = acl(&old_storage);
+    assert!(estate_acl.windows(3).any(|part| part == b"(I)"));
+    assert!(storage_acl.windows(3).any(|part| part == b"(I)"));
+    let preview = plan(root.path());
+    assert_eq!(
+        inventory(root.path()),
+        before,
+        "preview must not modify existing data"
+    );
+    let executable = test_executable();
+    let apply = || {
+        RrdEngine::apply_installation_at(
+            root.path(),
+            InstallationTargetKind::ExistingProject,
+            &preview,
+            &preview.installation.plan_sha256,
+            1_800_000_000_000,
+            &executable,
+        )
+        .unwrap()
+    };
+    apply();
+    let engine = open_at(root.path(), &executable, 1_800_000_001_000).unwrap();
+    assert_eq!(
+        engine.installed_estate_identity(),
+        Some(&preview.installation.target)
+    );
+    drop(engine);
+    assert!(apply().idempotent_replay);
+    for (path, bytes) in before {
+        assert_eq!(std::fs::read(root.path().join(path)).unwrap(), bytes);
+    }
+    assert_eq!(acl(&estate), estate_acl);
+    assert_eq!(acl(&old_storage), storage_acl);
+}
