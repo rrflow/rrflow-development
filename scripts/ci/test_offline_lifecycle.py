@@ -387,6 +387,7 @@ class OfflineLifecyclePolicyTests(unittest.TestCase):
             "a_served_engram_is_found_proved_and_not_served_twice",
             "installed_source_read_choice_is_explicit_and_reopens",
             "repository_discovery_is_read_only_without_an_installed_engine",
+            "adaptive_installed::selected_inventory_completes_and_replans_across_primary_process_restarts",
         }
         runner.require_lifecycle_tests("\n".join(f"{case}: test" for case in sorted(cases)))
         for missing in sorted(cases):

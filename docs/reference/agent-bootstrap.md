@@ -187,15 +187,15 @@ kernel, state store, router authority, or orchestration runtime.
 
 ## Installation and attunement
 
-The frozen contract already defines fresh/existing project targets; the ordered
-installation actions `initialize_instance`, `configure_project_locator`, and
-`create_attunement_job`; and the following eleven attunement phases:
-
-```text
-connect -> inventory -> parse -> normalize -> entity-link
-        -> lexical-index -> embed -> vector-index
-        -> graph -> ground -> verify
-```
+The contract defines fresh/existing project targets and a bounded vocabulary of
+attunement effects. An explicitly selected plan can contain different known
+effects; it is not required to include every effect or a Verify step. Its
+completed status means its selected effects were checkpointed, not that the
+project has been indexed or independently verified. The bundled profiles still
+select the same eleven-entry template by default, and automatic selection from
+project signals and available capabilities is not implemented. Connect and
+bounded Inventory execute; other listed effects remain unavailable. Existing
+plans and their receipts retain their original identities.
 
 `initialize_instance` is also the only initial-security bootstrap. Its action
 digest binds the project/estate/instance identity, primary seat definition,
@@ -240,8 +240,7 @@ enter as authenticated engine events; they never mutate project knowledge
 directly. Before then, installation and explicit refresh invoke the same
 inventory operation directly.
 
-For a substantial existing project, 30–45 minutes is an installation-planning
-estimate, not a completion guarantee. Preview must derive its estimate from
+Preview must derive its estimate from
 the discovered source count, bytes, parser work, model/index work, configured
 resources, and reusable checkpoints. A new or unchanged estate may require
 less work; a larger or resource-constrained estate may require more. Apply

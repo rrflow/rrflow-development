@@ -61,6 +61,8 @@ mod policy;
 pub(super) mod recovery;
 
 use inventory::project_inventory_sha256_excluding;
+#[allow(unused_imports)] // Parse admission consumes this when its worker is wired.
+pub(in crate::engine) use inventory::read_selected_source;
 pub(super) use inventory::{
     prepare_project_inventory, project_entries, project_inventory_sha256,
     read_admitted_inventory_file, validate_selected_inventory_path, ProjectEntry,
@@ -97,6 +99,8 @@ pub struct DefaultAttunementPhase {
     pub configuration: String,
     pub estimated_items: u64,
     pub estimated_input_bytes: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parse_policy: Option<rrd_contract::SourceParsePolicy>,
 }
 
 /// One proposed step. Description is metadata and does not configure execution.
@@ -108,6 +112,8 @@ pub struct AttunementProposalStep {
     pub description: String,
     pub estimated_items: u64,
     pub estimated_input_bytes: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parse_policy: Option<rrd_contract::SourceParsePolicy>,
 }
 
 /// A bounded, explicitly proposed sequence of recognized attunement effects.
@@ -163,6 +169,14 @@ impl AttunementProposal {
                 "attunement proposal exceeds its bounds".into(),
             ));
         }
+        // Validate caller-owned policy sizes before normalized_steps clones them.
+        for step in &self.steps {
+            if let Some(policy) = &step.parse_policy {
+                policy
+                    .validate()
+                    .map_err(|error| ServiceError::Contract(error.to_string()))?;
+            }
+        }
         validate_attunement_steps(
             &self.normalized_steps(),
             self.estimated_min_duration_ms,
@@ -178,6 +192,7 @@ impl AttunementProposal {
                 configuration: step.description.clone(),
                 estimated_items: step.estimated_items,
                 estimated_input_bytes: step.estimated_input_bytes,
+                parse_policy: step.parse_policy.clone(),
             })
             .collect()
     }
@@ -191,9 +206,6 @@ fn validate_attunement_steps(
     if steps.is_empty()
         || steps.len() > MAX_ATTUNEMENT_PHASES
         || minimum > maximum
-        || steps
-            .last()
-            .is_none_or(|step| step.phase != AttunementPhase::Verify)
         || steps[..steps.len().saturating_sub(1)]
             .iter()
             .any(|step| step.phase == AttunementPhase::Verify)
@@ -206,6 +218,18 @@ fn validate_attunement_steps(
         return Err(ServiceError::Contract(
             "attunement proposal steps or bounds are invalid".into(),
         ));
+    }
+    for step in steps {
+        if let Some(policy) = &step.parse_policy {
+            if step.phase != AttunementPhase::Parse {
+                return Err(ServiceError::Contract(
+                    "source parse policy requires a Parse step".into(),
+                ));
+            }
+            policy
+                .validate()
+                .map_err(|error| ServiceError::Contract(error.to_string()))?;
+        }
     }
     Ok(())
 }
@@ -222,9 +246,30 @@ fn planned_attunement_steps(steps: &[DefaultAttunementPhase]) -> Result<Vec<Attu
                 configuration_sha256: json_sha256(step)?,
                 estimated_items: step.estimated_items,
                 estimated_input_bytes: step.estimated_input_bytes,
+                parse_policy: step.parse_policy.clone(),
             })
         })
         .collect()
+}
+
+fn validate_parse_policy_limits(
+    steps: &[DefaultAttunementPhase],
+    profile: &DefaultInstallProfile,
+    configuration: &rrd_contract::EstateConfiguration,
+) -> Result<()> {
+    let inventory = &profile.inventory_policy.limits;
+    for policy in steps.iter().filter_map(|step| step.parse_policy.as_ref()) {
+        if policy.max_files > inventory.entries
+            || policy.max_file_bytes > inventory.file_bytes
+            || policy.max_input_bytes > inventory.content_bytes
+            || policy.max_commit_bytes > configuration.storage.transaction_admission_bytes
+        {
+            return Err(ServiceError::ConfigurationLimit(
+                "source parse policy exceeds installed inventory or transaction limits".into(),
+            ));
+        }
+    }
+    Ok(())
 }
 
 /// Read only an explicitly selected bounded regular proposal during planning.
@@ -674,6 +719,7 @@ impl RrdEngine {
                 profile.estimated_max_duration_ms,
             ),
         };
+        validate_parse_policy_limits(&steps, &profile, &configuration)?;
         let phases = planned_attunement_steps(&steps)?;
         let mut attunement = AttunementPlan {
             contract_version: ATTUNEMENT_CONTRACT_VERSION,
@@ -1809,6 +1855,7 @@ fn validate_sealed_preview(
             profile.estimated_max_duration_ms,
         ),
     };
+    validate_parse_policy_limits(&steps, profile, &installation.configuration)?;
     let expected_phases = planned_attunement_steps(&steps)?;
     let absent = digest::sha256_hex(b"rrflow-install-managed-path-absent-v1");
     let expected_paths =

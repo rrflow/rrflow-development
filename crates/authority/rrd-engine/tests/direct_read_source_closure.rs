@@ -50,6 +50,12 @@ const ALLOWED_USES: &[AllowedUse] = &[
         operation: "bounded Inventory mutation, partial-publication and resume-uniqueness oracles",
     },
     AllowedUse {
+        path: "crates/authority/rrd-engine/src/engine/tests/attunement/adaptive_selection.rs",
+        kind: SensitiveReadUse::CausalLogPage,
+        count: 1,
+        operation: "interrupted-reopen inventory snapshot record oracle",
+    },
+    AllowedUse {
         path: "crates/operations/rrd-cluster/src/artifact_transfer.rs",
         kind: SensitiveReadUse::CausalLogPage,
         count: 1,
