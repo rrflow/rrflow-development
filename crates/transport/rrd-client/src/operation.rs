@@ -670,6 +670,17 @@ impl RrdClient {
         .await
     }
 
+    /// Read the durable cold-history head or a verified published generation.
+    pub async fn read_cold_history(
+        &self,
+        session: &Session,
+        request: rrd_contract::ReadColdHistory,
+        options: RequestOptions,
+    ) -> Result<rrd_contract::ColdHistoryReadResult> {
+        self.call_operation::<generated::ColdHistoryRead>(session, request, options)
+            .await
+    }
+
     pub async fn read_changefeed(
         &self,
         session: &Session,

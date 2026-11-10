@@ -124,6 +124,7 @@ REQUIRED_CASES = frozenset({
     "installed_source_read_choice_is_explicit_and_reopens",
     "repository_discovery_is_read_only_without_an_installed_engine",
     "adaptive_installed::selected_inventory_completes_and_replans_across_primary_process_restarts",
+    "configured_cold_history_publishes_and_reads_after_process_restart",
 })
 
 

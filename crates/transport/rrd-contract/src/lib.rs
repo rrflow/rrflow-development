@@ -7,6 +7,7 @@
 
 mod attunement;
 mod capability_surface;
+mod cold_history;
 mod deployment;
 mod diagnostic;
 mod storage_cursor;
@@ -26,8 +27,8 @@ pub use endpoint_worker::{
 mod endpoint_policy;
 mod endpoint_proposal;
 mod endpoint_selection;
-pub use endpoint_policy::{EndpointSelectionPolicy, LfgAnalysisPolicy};
 mod task_assessment;
+pub use endpoint_policy::EndpointSelectionPolicy;
 pub use endpoint_proposal::*;
 pub use endpoint_selection::{
     EndpointAbstentionReason, EndpointEffortSupport, EndpointSelectionAllowance,
@@ -92,13 +93,17 @@ pub use capability_surface::{
     ProductCapability, ProductCapabilityCatalogue, ProductSurface, SurfaceBinding,
     SurfaceDisposition,
 };
+pub use cold_history::{
+    ColdHistoryFailure, ColdHistoryFailureCode, ColdHistoryGenerationSnapshot,
+    ColdHistoryReadResult, ReadColdHistory,
+};
 pub use deployment::{
-    estate_configuration_sha256, ClockPolicy, DeploymentForm, DeploymentProfile,
-    EndpointPresentation, EstateConfiguration, EstateConfigurationInput, InstalledEstateIdentity,
-    ReasoningLimits, RecallLimits, StorageLimits, StorageProfileKind,
-    DEPLOYMENT_PROFILE_CONTRACT_VERSION, ESTATE_CONFIGURATION_FORMAT_VERSION,
-    MAX_CLOCK_ROLLBACK_MS, MAX_REASONING_RUN_ELAPSED_MS, MAX_REASONING_STEPS,
-    MAX_REASONING_STEP_ELAPSED_MS,
+    estate_configuration_sha256, ClockPolicy, ColdHistoryCompression, ColdHistoryPolicy,
+    DeploymentForm, DeploymentProfile, EndpointPresentation, EstateConfiguration,
+    EstateConfigurationInput, InstalledEstateIdentity, ReasoningLimits, RecallLimits,
+    StorageLimits, StorageProfileKind, DEPLOYMENT_PROFILE_CONTRACT_VERSION,
+    ESTATE_CONFIGURATION_FORMAT_VERSION, MAX_CLOCK_ROLLBACK_MS, MAX_REASONING_RUN_ELAPSED_MS,
+    MAX_REASONING_STEPS, MAX_REASONING_STEP_ELAPSED_MS,
 };
 pub use diagnostic::{
     DiagnosticAuthority, DiagnosticCoverage, DiagnosticGraphDifference,
@@ -277,7 +282,7 @@ use std::fmt;
 pub const PROTOCOL: &str = "rrd";
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const OPENAPI_DOCUMENT_SHA256: &str =
-    "45225c46967d7a8b974087452f27b2e1ca6142d05f8bcd068e4ea143bba01f2a";
+    "b3f27207c4d9ef6bb83149d5657557bd5c81d4b28507b0a30aa757f907e16404";
 pub const MAX_ID_BYTES: usize = 128;
 pub const MAX_MESSAGE_BYTES: usize = 4_096;
 pub const MAX_CAPABILITIES: usize = 512;
@@ -3712,6 +3717,16 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             "ChangefeedPage",
         ),
         endpoint(
+            "cold-history-read",
+            HttpMethod::Post,
+            "/v1/storage/cold-history/read",
+            EndpointAuthentication::SessionBearer,
+            false,
+            SecurityAction::ChangefeedRead,
+            "ReadColdHistory",
+            "ColdHistoryReadResult",
+        ),
+        endpoint(
             "context-assemble",
             HttpMethod::Post,
             "/v1/context/assemble",
@@ -4830,6 +4845,7 @@ fn request_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "PreviewTransaction" => schema_json::<RequestEnvelope<PreviewTransaction>>(),
         "ReadAudit" => schema_json::<RequestEnvelope<ReadAudit>>(),
         "ReadChangefeed" => schema_json::<RequestEnvelope<ReadChangefeed>>(),
+        "ReadColdHistory" => schema_json::<RequestEnvelope<ReadColdHistory>>(),
         "ReadDiagnosticSnapshot" => schema_json::<RequestEnvelope<ReadDiagnosticSnapshot>>(),
         "InspectStorageCursor" => schema_json::<RequestEnvelope<InspectStorageCursor>>(),
         "ReadStorageDiagnostics" => schema_json::<RequestEnvelope<ReadStorageDiagnostics>>(),
@@ -4893,6 +4909,7 @@ fn response_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "AuditPage" => schema_json::<ResponseEnvelope<AuditPage>>(),
         "ChangefeedFollowResult" => schema_json::<ResponseEnvelope<ChangefeedFollowResult>>(),
         "ChangefeedPage" => schema_json::<ResponseEnvelope<ChangefeedPage>>(),
+        "ColdHistoryReadResult" => schema_json::<ResponseEnvelope<ColdHistoryReadResult>>(),
         "CommitReceipt" => schema_json::<ResponseEnvelope<CommitReceipt>>(),
         "ContextPacket" => schema_json::<ResponseEnvelope<ContextPacket>>(),
         "CloseSubscriptionResult" => schema_json::<ResponseEnvelope<CloseSubscriptionResult>>(),

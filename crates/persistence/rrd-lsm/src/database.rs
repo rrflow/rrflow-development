@@ -684,6 +684,12 @@ impl Database {
         &self.root
     }
 
+    /// Check native space admission for one new engine-owned immutable file.
+    /// Free space can change immediately; callers must still handle I/O errors.
+    pub fn admit_immutable_file(&self, bytes: u64) -> Result<()> {
+        self.root.admit_disk(bytes, true)
+    }
+
     pub fn manifest(&self) -> &Manifest {
         &self.manifest
     }

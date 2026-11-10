@@ -99,6 +99,7 @@ mod attunement;
 mod backup;
 mod changefeed;
 mod clock;
+mod cold_history;
 mod context;
 mod control;
 mod core;

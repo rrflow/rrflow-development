@@ -465,6 +465,20 @@ impl RrflowKvStore {
         &self.path
     }
 
+    /// Attempt native space admission without queuing behind another owner.
+    pub fn try_admit_immutable_file(&self, bytes: u64) -> Result<bool> {
+        match self.database.try_write() {
+            Ok(database) => {
+                database.admit_immutable_file(bytes).map_err(Error::from)?;
+                Ok(true)
+            }
+            Err(std::sync::TryLockError::WouldBlock) => Ok(false),
+            Err(std::sync::TryLockError::Poisoned(_)) => {
+                Err(Error::Substrate("rrflowKV database lock poisoned".into()))
+            }
+        }
+    }
+
     pub fn open_evidence(&self) -> &RrflowKvOpenEvidence {
         &self.open_evidence
     }
