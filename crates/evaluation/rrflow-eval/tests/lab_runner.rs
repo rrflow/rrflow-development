@@ -22,11 +22,17 @@ fn runner_removes_only_the_container_it_created() {
                 &bin.join("docker"),
                 "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"$LAB_FAKE_LOG\"\nif [ \"$1\" = run ] && [ \"$2\" = -d ]; then\n  case \"$LAB_FAKE_CREATE\" in\n    success) printf '%064d\\n' 0; exit 0 ;;\n    invalid) echo lab-existing; exit 0 ;;\n    failure) echo lab-existing; echo 'name already in use' >&2; exit 125 ;;\n  esac\nfi\nexit 0\n",
             );
+            // The one-second probe is the free-port check and finds nothing listening;
+            // every readiness probe answers, whatever its URL.
             executable(
                 &bin.join("curl"),
-                "#!/bin/sh\nif [ ! -e \"$LAB_FAKE_CURL_STATE\" ]; then touch \"$LAB_FAKE_CURL_STATE\"; exit 7; fi\necho OK\n",
+                "#!/bin/sh\ncase \" $* \" in\n  *' --max-time 1 '*) exit 7 ;;\nesac\necho OK\n",
             );
-            executable(&bin.join("lab"), "#!/bin/sh\nexit 7\n");
+            // The real binary reads the definition; every measured step fails.
+            executable(
+                &bin.join("lab"),
+                "#!/bin/sh\ncase \"$1\" in\n  launch-info|launch-args) exec \"$LAB_REAL_BIN\" \"$@\" ;;\nesac\nexit 7\n",
+            );
             let path = format!("{}:{}", bin.display(), std::env::var("PATH").unwrap());
             let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../..");
             let output = Command::new("bash")
@@ -36,8 +42,8 @@ fn runner_removes_only_the_container_it_created() {
                 .env("PATH", path)
                 .env("TMPDIR", temp.path())
                 .env("RRFLOW_LAB_BIN", bin.join("lab"))
+                .env("LAB_REAL_BIN", env!("CARGO_BIN_EXE_rrflow-lab"))
                 .env("LAB_FAKE_LOG", &log)
-                .env("LAB_FAKE_CURL_STATE", temp.path().join("curl.state"))
                 .env("LAB_FAKE_CREATE", mode)
                 .output()
                 .unwrap();

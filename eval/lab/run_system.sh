@@ -74,19 +74,6 @@ require_port_free() {
   fi
 }
 
-start_container() {
-  local created
-  if created=$(docker run -d "$@"); then
-    if [[ ! $created =~ ^[0-9a-f]{64}$ ]]; then
-      echo "Docker did not return a valid container ID; refusing name-based cleanup" >&2
-      return 1
-    fi
-    container=$created
-  else
-    return $?
-  fi
-}
-
 start_rrflow() {
   : "${RRFLOW_BIN:?set RRFLOW_BIN to the rrflow binary}"
   mkdir -p "$work/project" "$work/bin"
@@ -167,8 +154,15 @@ start_container() {
     export "${pair%%=*}=${!outside}"
   done
   launch_words
-  container=${launch[container]}
-  docker run -d "${words[@]}" > /dev/null
+  # Ownership is the ID Docker returns, never the name in the definition: if the
+  # name is already in use the run fails here and cleanup removes nothing.
+  local created
+  created=$(docker run -d "${words[@]}") || return $?
+  if [[ ! $created =~ ^[0-9a-f]{64}$ ]]; then
+    echo "Docker did not return a valid container ID; refusing name-based cleanup" >&2
+    return 1
+  fi
+  container=$created
   wait_ready
 }
 
