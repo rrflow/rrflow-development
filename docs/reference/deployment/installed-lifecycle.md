@@ -435,7 +435,7 @@ The required `[storage]` configuration separates active-state, output, cache,
 and maintenance controls:
 `mutable_accounted_bytes` (128 MiB default), `mutable_versions` (1,048,576),
 `projected_output_bytes` (128 MiB), `source_page_bytes` (256 MiB),
-`page_cache_bytes` (4 MiB, zero disables
+`page_cache_bytes` (64 MiB, zero disables
 caching), `wal_flush_target_bytes` (64 MiB) and
 `memtable_flush_target_versions` (524,288). The first two are native active-state
 hard caps; the next three bound retained projected allocations, live owned
