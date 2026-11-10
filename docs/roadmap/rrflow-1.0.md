@@ -29,6 +29,32 @@ automatic project- or prompt-tailored selection has not been established.
 Replace that fixed default and its linear assumptions through the D-02/D-05
 owners while preserving existing committed effects and safe replan behavior.
 
+### One project, then resource-managed instances
+
+First prove one existing project end to end: open its installed daemon in
+Connectome, index authorized project sources, retrieve source-grounded context,
+use the configured LFG and SWAG contracts where available, and show the actual
+results and stage/resource evidence. A connection or advisory result alone does
+not prove the prompt cycle; the existing D/G/H gates own its acceptance.
+
+After that usable baseline, extend H-06/H-07 to manage multiple independent
+project instances under configurable host and per-instance budgets. The user
+may register more projects than can run at once. Admission, waiting, idle
+shutdown, restart, failures and resource pressure must be visible; capacity is
+bounded by configured policy and measured resources, not a promised unlimited
+number or a hardcoded product-wide count. Preserve each project's durable
+estate and identity; never silently stop a process owned by another operator or
+share context across projects. See the
+[instance-management acceptance](rrflow-1.0/gate-h.md#resource-managed-project-instances).
+
+An optional enterprise control plane is intended as separately maintained code
+for managed cloud and self-hosted operation, consuming the same authenticated
+engine contracts. It must not be required by the local project journey or
+become a second engine or transaction authority. The owner requested a six-year
+source-availability direction for that enterprise code. The precise licence,
+change licence, distribution and self-hosting grant are open decisions; no
+existing licence or service-source commitment is changed by this plan.
+
 ## Current alpha objective and remediation
 
 [Open the current alpha objective and remediation chapter](rrflow-1.0/current-alpha-objective-and-remediation.md)
