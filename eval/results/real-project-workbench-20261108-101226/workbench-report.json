@@ -1,0 +1,72 @@
+{
+    "generated_at":  "2026-11-08T10:12:26.1559198-05:00",
+    "project_root":  "D:\\localdev\\devlabs\\rrflow",
+    "real_project":  "D:\\.usr\\Temp\\rrflow-real-workbench-project",
+    "rrflow_executable":  "D:\\localdev\\devlabs\\rrflow\\target\\debug\\rrflow.exe",
+    "rrflow_runner":  "D:\\localdev\\devlabs\\rrflow\\eval\\results\\real-project-workbench-20261108-101226\\rrflow-runner.exe",
+    "run_root":  "D:\\localdev\\devlabs\\rrflow\\eval\\results\\real-project-workbench-20261108-101226",
+    "dry_run":  false,
+    "installation":  {
+                         "identity":  null,
+                         "installation_identity":  "aee37c4fc908294bacb425a6385b313338115e2b1a9cb6bcaf007dd6d4ab163c",
+                         "plan_sha256":  "81d53e525d0883f674836095c362857cbbf0ad15e46bcb0b9d02f1834681a620",
+                         "source_sha256":  "843bc6617f75ddbba11e7dadfeeb3d799ea0be6ca86b9b326fe4b4333fcb3c94",
+                         "applied_runtime_cursor":  2,
+                         "control_journal_sequence":  8,
+                         "idempotent_replay":  false
+                     },
+    "connectome_view":  {
+                            "ready_runtime_cursor":  2,
+                            "capability_count":  20,
+                            "instance_id":  "instance-c9de5a3ed6861f6f6bcdca4c",
+                            "endpoint_catalogue_sha256":  null,
+                            "openapi_sha256":  "76e1b5cb25e65e29d70b37abd61921222e333a5746b882b8c55434a94ccc4569",
+                            "artifacts":  {
+                                              "capabilities":  "D:\\localdev\\devlabs\\rrflow\\eval\\results\\real-project-workbench-20261108-101226\\connectome-capabilities.json",
+                                              "ready":  "D:\\localdev\\devlabs\\rrflow\\eval\\results\\real-project-workbench-20261108-101226\\connectome-ready.json"
+                                          }
+                        },
+    "workloads":  {
+                      "index_quality":  {
+                                            "verification_status":  "passed",
+                                            "attunement_source_current":  true,
+                                            "runtime_cursor":  2,
+                                            "checks_passed":  13,
+                                            "checks_total":  13,
+                                            "verification_plan_sha256":  "81d53e525d0883f674836095c362857cbbf0ad15e46bcb0b9d02f1834681a620"
+                                        },
+                      "retrieval_quality":  {
+                                                "ready_runtime_cursor":  2,
+                                                "claim_sequence":  0,
+                                                "endpoint_count":  79,
+                                                "operation_count":  20,
+                                                "openapi_sha256":  "76e1b5cb25e65e29d70b37abd61921222e333a5746b882b8c55434a94ccc4569"
+                                            }
+                  },
+    "comparison":  {
+                       "surrealdb":  {
+                                         "reference":  {
+                                                           "workload":  "vector_top3_expected_rows",
+                                                           "expected_rows":  2,
+                                                           "note":  "from prior external check"
+                                                       },
+                                         "rrflow":  {
+                                                        "observed_runtime_cursor":  2,
+                                                        "workload":  "authenticated_ready_and_verify"
+                                                    }
+                                     },
+                       "arangodb":  {
+                                        "reference":  {
+                                                          "workload":  "two_document_one_relationship_traversal_expected_rows",
+                                                          "expected_rows":  1,
+                                                          "note":  "from prior external check"
+                                                      },
+                                        "rrflow":  {
+                                                       "attunement_source_current":  true,
+                                                       "workload":  "attunement_source_verification"
+                                                   }
+                                    },
+                       "comparable":  false,
+                       "reason":  "External SurrealDB/ArangoDB workloads are reference checks only; this run proves RRFlow real-project install/ready/verify retrieval surfaces."
+                   }
+}

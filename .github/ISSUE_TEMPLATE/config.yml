@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/rrflow/rrflow-development/security/advisories/new
+    about: Report privately. Never open a public issue for a vulnerability.
+  - name: Try RRFlow from source
+    url: https://github.com/rrflow/rrflow-development/blob/main/docs/guides/getting-started.md
+    about: The first-run guide, including what to do when something goes wrong.

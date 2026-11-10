@@ -65,6 +65,16 @@ real-account acceptance under D-06/H-04/H-07. This gap remains sequenced.
 
 The Connectome source is now pinned through the optional `connectome/`
 submodule, but source registration does not close the client-conformance gap.
+
+At RRFlow main `1fd7f163de3448c694e09c916b328540303eab1c`, the pinned
+Connectome revision `c1cbff203ecee89013878609d11aed04e89d0e71` sets fixed
+limits of four desktop-owned engines and eight tracked instances in
+`src-tauri/src/rrd/estate/lifecycle.rs`. This does not implement the owner's
+later resource-managed multi-project target. H-06/H-07 must replace the fixed
+product-level limits with qualified configurable admission while retaining
+bounded resource use and safe ownership, shutdown and recovery. This finding
+does not change POAM-011's status or the immediate one-project priority.
+
 The repository previously rejected all gitlinks and attempted to read a
 gitlink directory as a file during inventory generation; the
 [source-integration journal](../../evidence/change-journals/gate-h/h-06-connectome-submodule-and-delivery-positioning.md)

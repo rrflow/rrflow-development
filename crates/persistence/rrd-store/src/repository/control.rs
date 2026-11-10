@@ -119,40 +119,10 @@ impl<'a> ControlRepository<'a> {
         index_bindings: Option<&IndexBindingProjection<'_>>,
     ) -> Result<(Option<u64>, ControlJournalEntry)> {
         let mut transaction = self.storage.begin_transaction()?;
-        let record_key = keyspaces::control_record_key(&transition.key);
-        let current = get(&*transaction, keyspaces::META, &record_key)?;
-        if current.as_deref() != transition.expected.as_deref() {
-            return Err(Error::ControlConflict(transition.key.clone()));
-        }
-        let current_sequence =
-            read_sequence(&*transaction, &keyspaces::control_journal_sequence_key())?;
-        let previous_digest = get(
-            &*transaction,
-            keyspaces::META,
-            &keyspaces::control_journal_last_digest_key(),
-        )?
-        .map(String::from_utf8)
-        .transpose()
-        .map_err(|error| Error::CorruptWatermark(error.to_string()))?;
-        let previous_entry = if current_sequence == 0 {
-            None
-        } else {
-            get(
-                &*transaction,
-                keyspaces::META,
-                &keyspaces::control_journal_key(current_sequence),
-            )?
-            .map(|bytes| serde_json::from_slice(&bytes))
-            .transpose()?
-        };
-        verify_control_tail(
-            current_sequence,
-            previous_digest.as_deref(),
-            previous_entry.as_ref(),
-        )?;
-        let sequence = current_sequence
-            .checked_add(1)
-            .ok_or(Error::SequenceOverflow)?;
+        // Catalogue and runtime-composed commits share validation and journal
+        // encoding, while preserving the catalogue's original staging order.
+        let transitions = std::slice::from_ref(transition);
+        let mut entries = build_control_batch(&*transaction, transitions)?;
         let catalog_revision = catalog_scope
             .map(|scope| {
                 read_sequence(&*transaction, &keyspaces::catalog_revision_key(scope))?
@@ -160,13 +130,7 @@ impl<'a> ControlRepository<'a> {
                     .ok_or(Error::SequenceOverflow)
             })
             .transpose()?;
-        let entry = ControlJournalEntry::committed(sequence, transition, previous_digest);
-        match &transition.replacement {
-            Some(value) => {
-                transaction.put(checked_key(keyspaces::META, &record_key)?, value.clone())?
-            }
-            None => transaction.delete(checked_key(keyspaces::META, &record_key)?)?,
-        }
+        apply_control_record(&mut *transaction, transition)?;
         if let Some(projection) = index_bindings {
             synchronize_index_commit_bindings(
                 &mut *transaction,
@@ -178,22 +142,11 @@ impl<'a> ControlRepository<'a> {
                 projection.definitions,
             )?;
         }
-        transaction.put(
-            checked_key(keyspaces::META, &keyspaces::control_journal_key(sequence))?,
-            serde_json::to_vec(&entry)?,
-        )?;
-        put_sequence(
+        apply_control_journal_entry(
             &mut *transaction,
-            &keyspaces::control_journal_sequence_key(),
-            sequence,
+            entries.first().expect("one validated control transition"),
         )?;
-        transaction.put(
-            checked_key(
-                keyspaces::META,
-                &keyspaces::control_journal_last_digest_key(),
-            )?,
-            entry.digest.as_bytes().to_vec(),
-        )?;
+        finish_control_journal(&mut *transaction, &entries)?;
         if let (Some(scope), Some(revision)) = (catalog_scope, catalog_revision) {
             put_sequence(
                 &mut *transaction,
@@ -202,6 +155,7 @@ impl<'a> ControlRepository<'a> {
             )?;
         }
         transaction.commit(Durability::Authoritative)?;
+        let entry = entries.pop().expect("one validated control transition");
         Ok((catalog_revision, entry))
     }
 
@@ -307,6 +261,20 @@ pub(crate) fn prepare_control_batch(
     transaction: &mut dyn StorageTransaction,
     transitions: &[ControlTransition],
 ) -> Result<Vec<ControlJournalEntry>> {
+    let entries = build_control_batch(transaction, transitions)?;
+    for (transition, entry) in transitions.iter().zip(&entries) {
+        apply_control_record(transaction, transition)?;
+        apply_control_journal_entry(transaction, entry)?;
+    }
+    finish_control_journal(transaction, &entries)?;
+    Ok(entries)
+}
+
+/// Validate and encode without changing the caller's physical transaction.
+fn build_control_batch(
+    transaction: &dyn StorageTransaction,
+    transitions: &[ControlTransition],
+) -> Result<Vec<ControlJournalEntry>> {
     validate_control_batch(transitions)?;
     for transition in transitions {
         let current = get(
@@ -352,22 +320,40 @@ pub(crate) fn prepare_control_batch(
         previous_digest = Some(entry.digest.clone());
         entries.push(entry);
     }
-    for (transition, entry) in transitions.iter().zip(&entries) {
-        let record_key = keyspaces::control_record_key(&transition.key);
-        match &transition.replacement {
-            Some(value) => {
-                transaction.put(checked_key(keyspaces::META, &record_key)?, value.clone())?
-            }
-            None => transaction.delete(checked_key(keyspaces::META, &record_key)?)?,
+    Ok(entries)
+}
+
+fn apply_control_record(
+    transaction: &mut dyn StorageTransaction,
+    transition: &ControlTransition,
+) -> Result<()> {
+    let record_key = keyspaces::control_record_key(&transition.key);
+    match &transition.replacement {
+        Some(value) => {
+            transaction.put(checked_key(keyspaces::META, &record_key)?, value.clone())?
         }
-        transaction.put(
-            checked_key(
-                keyspaces::META,
-                &keyspaces::control_journal_key(entry.sequence),
-            )?,
-            serde_json::to_vec(entry)?,
-        )?;
+        None => transaction.delete(checked_key(keyspaces::META, &record_key)?)?,
     }
+    Ok(())
+}
+
+fn apply_control_journal_entry(
+    transaction: &mut dyn StorageTransaction,
+    entry: &ControlJournalEntry,
+) -> Result<()> {
+    transaction.put(
+        checked_key(
+            keyspaces::META,
+            &keyspaces::control_journal_key(entry.sequence),
+        )?,
+        serde_json::to_vec(entry)?,
+    )
+}
+
+fn finish_control_journal(
+    transaction: &mut dyn StorageTransaction,
+    entries: &[ControlJournalEntry],
+) -> Result<()> {
     let last = entries.last().expect("validated non-empty control batch");
     put_sequence(
         transaction,
@@ -381,5 +367,5 @@ pub(crate) fn prepare_control_batch(
         )?,
         last.digest.as_bytes().to_vec(),
     )?;
-    Ok(entries)
+    Ok(())
 }
