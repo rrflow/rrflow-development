@@ -254,3 +254,176 @@ fn checkpoint_and_resulting_runtime_stamp_share_one_wal_frame_and_reopen() {
     assert_eq!(checkpoint, actual);
     assert_eq!(reopened.control().sequence().unwrap(), 1);
 }
+
+// Characterizes the transaction and inclusion primitives considered for
+// inventory selection. This does not prove that an event range is complete or
+// that the latest event is a valid inventory selection.
+#[test]
+fn selection_event_and_checkpoint_are_stamped_together_across_reopen() {
+    use rrd_core::{
+        RuntimeEvent, RuntimeEventSchema, RuntimeLogicalModel, RuntimeProperties,
+        RuntimeSchemaRegistry, RuntimeType, RuntimeValue,
+    };
+    use rrd_store::{Error, RuntimeReadBudget, RuntimeVersionedSource};
+
+    let parent = tempfile::tempdir().unwrap();
+    let root = parent.path().join("selection");
+    let scope = ScopeId::new("instance:selection-fixture").unwrap();
+    let event_kind = RuntimeType::new("selection-fixture").unwrap();
+    let event = |generation: &str| RuntimeMutation::Event {
+        event: RuntimeEvent {
+            kind: event_kind.clone(),
+            subject: None,
+            properties: RuntimeProperties::from([(
+                "generation".into(),
+                RuntimeValue::String(generation.into()),
+            )]),
+        },
+    };
+    let mut schema = RuntimeSchemaRegistry::empty(1, "selection fixture");
+    schema
+        .define_event_table(
+            event_kind.clone(),
+            RuntimeLogicalModel::Event,
+            RuntimeEventSchema {
+                allow_additional_properties: true,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    let store = RrflowKvStore::create_new(&root).unwrap();
+    let first = RuntimeCommit {
+        scope: scope.clone(),
+        at: 100,
+        actor: "test:selection".into(),
+        expected_cursor: 0,
+        mutations: vec![RuntimeMutation::Schema { registry: schema }, event("first")],
+    };
+    let (_, _, first_read) = store
+        .runtime()
+        .commit_with_control_builder(&first, |read, _| {
+            let mut transition = installed_transition(None);
+            transition.replacement = Some(serde_json::to_vec(read)?);
+            Ok::<_, Error>((vec![transition], read.clone()))
+        })
+        .unwrap();
+    let first_bytes = serde_json::to_vec(&first_read).unwrap();
+    let second = RuntimeCommit {
+        scope: scope.clone(),
+        at: 200,
+        actor: "test:selection".into(),
+        expected_cursor: first_read.commit_cursor,
+        mutations: vec![event("second")],
+    };
+    let rejected = store
+        .runtime()
+        .commit_with_control_builder(&second, |read, _| {
+            let mut transition = installed_transition(Some(b"stale".to_vec()));
+            transition.replacement = Some(serde_json::to_vec(read)?);
+            Ok::<_, Error>((vec![transition], ()))
+        });
+    assert!(matches!(rejected, Err(Error::ControlConflict(_))));
+    assert_eq!(store.runtime().read_stamp(&scope).unwrap(), first_read);
+    assert_eq!(
+        store.control().get("server/state/install/record").unwrap(),
+        Some(first_bytes.clone())
+    );
+
+    let (_, _, second_read) = store
+        .runtime()
+        .commit_with_control_builder(&second, |read, _| {
+            let mut transition = installed_transition(Some(first_bytes));
+            transition.replacement = Some(serde_json::to_vec(read)?);
+            Ok::<_, Error>((vec![transition], read.clone()))
+        })
+        .unwrap();
+    let later = RuntimeCommit {
+        scope: scope.clone(),
+        at: 300,
+        actor: "test:unrelated".into(),
+        expected_cursor: second_read.commit_cursor,
+        mutations: vec![RuntimeMutation::Claim {
+            claim: Claim::new(
+                Subject::new("unrelated-subject").unwrap(),
+                Predicate::new("unrelated-status").unwrap(),
+                "newer",
+                300,
+                300,
+                Producer {
+                    actor: "test:unrelated".into(),
+                    on_behalf_of: None,
+                    session: None,
+                },
+            ),
+        }],
+    };
+    store.runtime().commit(&later).unwrap();
+    let later_read = store.runtime().read_stamp(&scope).unwrap();
+    drop(store);
+
+    let reopened = RrflowKvStore::open_existing(&root).unwrap();
+    let saved: rrd_core::ReadStamp = serde_json::from_slice(
+        &reopened
+            .control()
+            .get("server/state/install/record")
+            .unwrap()
+            .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(saved, second_read);
+    assert_eq!(reopened.runtime().read_stamp(&scope).unwrap(), later_read);
+    let source = RuntimeVersionedSource::Events {
+        kind: Some(event_kind),
+    };
+    let values = |read: &rrd_core::ReadStamp| {
+        reopened
+            .runtime()
+            .read_versioned(
+                read,
+                std::slice::from_ref(&source),
+                RuntimeReadBudget::new(4096).unwrap(),
+            )
+            .unwrap()
+            .changes
+            .into_iter()
+            .filter_map(|change| match change.mutation {
+                RuntimeMutation::Event { event } => event.properties.get("generation").cloned(),
+                _ => None,
+            })
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(
+        values(&first_read),
+        vec![RuntimeValue::String("first".into())]
+    );
+    assert_eq!(
+        values(&second_read),
+        vec![
+            RuntimeValue::String("first".into()),
+            RuntimeValue::String("second".into())
+        ]
+    );
+    assert_eq!(values(&later_read), values(&second_read));
+    let unrelated = reopened
+        .runtime()
+        .read_versioned(
+            &later_read,
+            &[RuntimeVersionedSource::Claims {
+                predicate: Some(Predicate::new("unrelated-status").unwrap()),
+            }],
+            RuntimeReadBudget::new(4096).unwrap(),
+        )
+        .unwrap();
+    assert!(unrelated.changes.iter().any(|change| matches!(
+        &change.mutation,
+        RuntimeMutation::Claim { claim } if claim.subject.as_str() == "unrelated-subject"
+    )));
+    assert!(matches!(
+        reopened.runtime().read_versioned(
+            &second_read,
+            &[source],
+            RuntimeReadBudget::new(1).unwrap()
+        ),
+        Err(Error::RuntimeReadBudgetExceeded { .. })
+    ));
+}
