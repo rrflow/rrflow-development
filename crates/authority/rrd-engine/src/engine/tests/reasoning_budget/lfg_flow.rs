@@ -115,12 +115,15 @@ fn captured_diagnostics(scenario: Scenario) -> Vec<serde_json::Value> {
 #[test]
 fn lfg_diagnostics_are_bounded_and_report_invalidated_checkpoint() {
     let events = captured_diagnostics(Scenario::TaskClosed);
-    assert_eq!(events.len(), 2);
+    assert_eq!(events.len(), 2, "captured LFG diagnostics: {events:?}");
     let transport = events[0]["fields"].as_object().unwrap();
     let checkpoint = events[1]["fields"].as_object().unwrap();
     assert_eq!(transport["outcome"], "transport_completed");
     assert!(transport["elapsed_ms"].is_u64());
-    assert_eq!(checkpoint["outcome"], "checkpoint_committed");
+    assert_eq!(
+        checkpoint["outcome"], "checkpoint_committed",
+        "captured LFG diagnostics: {events:?}"
+    );
     assert_eq!(checkpoint["invalidated"], true);
     assert_eq!(
         transport["operation_sha256"],

@@ -393,9 +393,18 @@ impl RrdEngine {
                     elapsed_ms: observed.elapsed_ms,
                 };
                 packet.lfg = Some(advisory.clone());
-                packet
-                    .validate_for(&configuration)
-                    .map_err(|e| ServiceError::Contract(e.to_string()))?;
+                packet.validate_for(&configuration).map_err(|e| {
+                    // A completed transport that cannot be checkpointed is the
+                    // one silent exit on this path; name it for the diagnostics.
+                    tracing::debug!(
+                        target: "rrd_engine::lfg",
+                        operation_sha256 = %request_sha256,
+                        outcome = "advisory_rejected",
+                        error = %e,
+                        "LFG advisory rejected before checkpoint"
+                    );
+                    ServiceError::Contract(e.to_string())
+                })?;
                 let invalidation = self
                     .checkpoint_lfg_advisory(
                         &mut reservation,
