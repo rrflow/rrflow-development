@@ -99,14 +99,17 @@ container/runtime/driver/device identities, limits and produced artifacts.
 Record resource peaks, wall time, interruption and resume behavior. Exact
 bitwise determinism is claimed only if demonstrated; record repeated-run
 variation otherwise. Configurable limits and endpoints never imply unbounded
-or arbitrary command execution.
+or arbitrary command execution. An edit-based experiment also binds its editing
+model and settings, code-run and forward-pass budgets, sandbox limits, and the
+exact weight diff with its base and edited tensor digests.
 
 Supervised fine-tuning is an initial candidate method. Preference optimization
 requires reliable preferences; contextual-bandit experiments must record
 selection probabilities and their coverage assumptions. Observing only the
 chosen model's outcome cannot establish how unchosen models would have done.
 Unsupervised clustering can suggest recurring failure families; it cannot
-certify correctness or authorize a deployment.
+certify correctness or authorize a deployment. [Weight-space edits](weight-space-edits.md)
+are an experimental candidate method, held behind their own replication decision.
 
 Evaluate downstream task success, constraint violations, invalid decisions,
 abstention, calibration where defined, cost per accepted task and latency
@@ -213,4 +216,5 @@ RRFlow performance claims or copied implementations.
 | [BaRP](https://arxiv.org/abs/2510.07429) | Partial-feedback, preference-adjustable routing; compare against supervised baselines and account for selection bias. |
 | [MetaRouter](https://arxiv.org/abs/2606.06178) | Recent preference adaptation candidate; paper results do not establish production stability or RRFlow transfer. |
 | [LLMRouterBench](https://arxiv.org/abs/2601.07206) | Unified evaluations find sophisticated routers can fail to beat simple baselines; require reproducible comparisons and carefully selected models. |
+| [Sparks of Weight-Space Programming](https://rikiyat.github.io/blog/weight-space-programming/) | Gradient-free weight edits by a general-purpose LLM; an early report with one run per budget, reviewed on 2026-11-02. The [replication decision](weight-space-edits.md#frozen-decision-rule) gates any further use. |
 | [Phoenix](https://arize.com/docs/phoenix/) and [Raindrop Workshop](https://www.raindrop.ai/blog/introducing-workshop/) | Public tracing, replay and experiment behavior informs H-05/H-06 projections; reuse the existing task/flight and causal evidence boundaries, not a second event store. |
