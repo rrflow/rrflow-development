@@ -16,6 +16,42 @@ WORKFLOW_DIRECTORY = ROOT / ".github/workflows"
 CALLER = ROOT / ".github/workflows/ci.yml"
 REUSABLE = ROOT / ".github/workflows/ci-reusable.yml"
 NATIVE_PREFLIGHT = ROOT / ".github/workflows/c07-native-preflight.yml"
+NIGHTLY = ROOT / ".github/workflows/ci-nightly.yml"
+
+# Candidate CI is proportional to the change. The `changes` job selects lanes
+# from the changed paths; every partition declares the lane that runs it, and
+# `ci-gate` requires success for a selected lane and a skip for an unselected
+# one. A job without a lane condition would run unconditionally and a job
+# with any other condition could be skipped without the gate noticing.
+FULL_LANE_IF = "    if: ${{ needs.changes.outputs.full == 'true' }}\n"
+SDK_LANE_IF = "    if: ${{ needs.changes.outputs.full == 'true' || needs.changes.outputs.sdk == 'true' }}\n"
+LANE_CONDITIONS = {
+    "docs-policy": "    if: ${{ needs.changes.outputs.docs == 'true' }}\n",
+    "scripts-policy": "    if: ${{ needs.changes.outputs.scripts == 'true' }}\n",
+    "engine-fast": "    if: ${{ needs.changes.outputs.engine == 'true' }}\n",
+    "sdk-conformance": SDK_LANE_IF,
+}
+FULL_LANE_JOBS = (
+    "native-arm64", "topology-smoke", "estate-portability", "verify", "engine-suites",
+    "optional-features", "pgvector-feature", "storage-contract-preflight", "installed-reopen",
+    "installed-crash",
+)
+GATE_EXPECTATIONS = {
+    "docs-policy": ("DOCS_LANE", "DOCS_POLICY_RESULT"),
+    "scripts-policy": ("SCRIPTS_LANE", "SCRIPTS_POLICY_RESULT"),
+    "engine-fast": ("ENGINE_LANE", "ENGINE_FAST_RESULT"),
+    "native-arm64": ("FULL_LANE", "ARM64_RESULT"),
+    "topology-smoke": ("FULL_LANE", "TOPOLOGY_RESULT"),
+    "estate-portability": ("FULL_LANE", "PORTABILITY_RESULT"),
+    "verify": ("FULL_LANE", "VERIFY_RESULT"),
+    "engine-suites": ("FULL_LANE", "ENGINE_SUITES_RESULT"),
+    "sdk-conformance": ("SDK_SELECTED", "SDK_CONFORMANCE_RESULT"),
+    "optional-features": ("FULL_LANE", "OPTIONAL_FEATURES_RESULT"),
+    "pgvector-feature": ("FULL_LANE", "PGVECTOR_FEATURE_RESULT"),
+    "installed-crash": ("FULL_LANE", "INSTALLED_CRASH_RESULT"),
+    "storage-contract-preflight": ("FULL_LANE", "STORAGE_PREFLIGHT_RESULT"),
+    "installed-reopen": ("FULL_LANE", "INSTALLED_REOPEN_RESULT"),
+}
 DEVELOPMENT_CONTAINER = ROOT / ".devcontainer"
 DIGEST_PINNED_IMAGE = re.compile(r"[^@\s]+@sha256:[0-9a-f]{64}")
 
@@ -139,13 +175,14 @@ def verify_linux_arm64_ci(caller: str, reusable: str) -> None:
         "cargo test -p rrflow-cli --test installed_lifecycle --locked -- --nocapture",
     ]:
         require(arm.count(required) == 1, f"native ARM64 qualification missing: {required}")
-    require("continue-on-error:" not in arm and not re.search(r"(?m)^\s+if:", arm),
-            "native ARM64 qualification cannot be skipped or ignored")
+    require("continue-on-error:" not in arm
+            and re.findall(r"(?m)^\s+if: .*$\n", arm) == [FULL_LANE_IF],
+            "native ARM64 qualification runs on the full lane and cannot otherwise be skipped or ignored")
     gate = jobs.get("ci-gate", "")
     require("      - native-arm64\n" in gate
             and "ARM64_RESULT: ${{ needs.native-arm64.result }}" in gate
-            and 'test "$ARM64_RESULT" = success' in gate,
-            "candidate gate must require the native ARM64 result")
+            and 'expect "$FULL_LANE" "$ARM64_RESULT" native-arm64' in gate,
+            "candidate gate must require the native ARM64 result on the full lane")
     require(reusable.count("python3 scripts/ci/test_linux_arm64_policy.py") == 1,
             "native ARM64 policy regressions must run exactly once")
 
@@ -903,7 +940,7 @@ def verify_storage_contract_preflight(jobs: dict[str, str]) -> None:
     require(
         "runs-on: ${{ fromJSON(inputs.linux-standard-runner) }}" in preflight
         and "cache-on-failure: false" in preflight
-        and not re.search(r"(?m)^\s+if\s*:", preflight)
+        and re.findall(r"(?m)^\s+if\s*:.*$\n", preflight) == [FULL_LANE_IF]
         and "continue-on-error:" not in preflight,
         "storage preflight must run on the selected trusted lane without bypass",
     )
@@ -920,8 +957,8 @@ def verify_storage_contract_preflight(jobs: dict[str, str]) -> None:
     )
     require(preflight.count(command + "\n") == 1, "storage preflight must run the exact golden test")
     require(
-        re.search(r"(?m)^    needs: storage-contract-preflight\s*$", reopen) is not None
-        and not re.search(r"(?m)^    if:", reopen)
+        re.search(r"(?m)^    needs: \[changes, storage-contract-preflight\]\s*$", reopen) is not None
+        and re.findall(r"(?m)^    if:.*$\n", reopen) == [FULL_LANE_IF]
         and "continue-on-error:" not in reopen,
         "installed reopen must depend on successful storage preflight without bypass",
     )
@@ -939,20 +976,93 @@ def verify_storage_contract_preflight(jobs: dict[str, str]) -> None:
     )
     run_sections = steps.split("        run: |\n")
     require(len(run_sections) == 2 and result_variables, "ci-gate reduction body is missing")
-    run_lines = [line for line in run_sections[1].splitlines() if line.strip()]
+    run_lines = [line for line in run_sections[1].splitlines()
+                 if line.strip() and not line.strip().startswith("#")]
+    expected_lines = [
+        "          set -euo pipefail",
+        '          test "$CHANGES_RESULT" = success',
+        "          expect() {",
+        '            if [ "$1" = true ]; then',
+        '              test "$2" = success || { echo "$3: selected, expected success, got $2"; exit 1; }',
+        "            else",
+        '              test "$2" = skipped || { echo "$3: not selected, expected skipped, got $2"; exit 1; }',
+        "            fi",
+        "          }",
+        '          if [ "$FULL_LANE" = true ] || [ "$SDK_LANE" = true ]; then SDK_SELECTED=true; else SDK_SELECTED=false; fi',
+    ] + [f'          expect "${lane}" "${variable}" {job}' for job, (lane, variable) in GATE_EXPECTATIONS.items()]
     require(
-        run_lines == [f'          test "${variable}" = success' for variable in result_variables],
-        "ci-gate reduction must contain only exact success checks",
+        run_lines == expected_lines,
+        "ci-gate reduction must contain only the lane-aware success and skip checks",
     )
     require(
         "    if: ${{ always() }}\n" in gate
         and "continue-on-error:" not in gate
-        and "      - name: Require every CI partition\n        env:\n" in gate
+        and "      - name: Require every selected CI lane\n        env:\n" in gate
         and "      - storage-contract-preflight\n" in gate
         and "STORAGE_PREFLIGHT_RESULT: ${{ needs.storage-contract-preflight.result }}" in gate
-        and 'test "$STORAGE_PREFLIGHT_RESULT" = success' in gate,
-        "ci-gate must require the storage preflight result to be success",
+        and 'expect "$FULL_LANE" "$STORAGE_PREFLIGHT_RESULT" storage-contract-preflight' in gate,
+        "ci-gate must require the storage preflight result to be success on the full lane",
     )
+
+
+def verify_lane_selection(jobs: dict[str, str], reusable: str) -> None:
+    """Every partition runs on exactly its lane, and the selection is tested."""
+    require("changes" in jobs, "candidate CI must select lanes before any partition")
+    changes = jobs["changes"]
+    for required in (
+        "fetch-depth: 0",
+        "python3 scripts/ci/test_select_ci_lanes.py",
+        'python3 scripts/ci/select_ci_lanes.py --full --github-output "$GITHUB_OUTPUT"',
+        'python3 scripts/ci/select_ci_lanes.py --base "$BASE_SHA" --head "$HEAD_SHA" --github-output "$GITHUB_OUTPUT"',
+        'if [ "$SCOPE" = full ] || [ -z "$BASE_SHA" ]; then',
+        "BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}",
+    ):
+        require(changes.count(required) == 1, f"lane selection is missing: {required}")
+    require(not re.search(r"(?m)^    if:", changes) and "continue-on-error:" not in changes,
+            "lane selection itself cannot be conditional or ignored")
+    for name in ("full", "docs", "scripts", "engine", "sdk", "packages", "dependents"):
+        require(f"      {name}: ${{{{ steps.lanes.outputs.{name} }}}}" in changes,
+                f"lane selection must publish the {name} output")
+    for job in FULL_LANE_JOBS:
+        conditions = re.findall(r"(?m)^    if: .*$\n", jobs[job])
+        require(conditions == [FULL_LANE_IF], f"{job} must run on exactly the full lane")
+        require(re.search(r"(?m)^    needs: (\[changes(, [a-z0-9-]+)*\]|changes)\s*$", jobs[job]) is not None,
+                f"{job} must depend on the lane selection")
+    for job, condition in LANE_CONDITIONS.items():
+        conditions = re.findall(r"(?m)^    if: .*$\n", jobs[job])
+        require(conditions == [condition], f"{job} must run on exactly its lane")
+        require("    needs: [changes]\n" in jobs[job], f"{job} must depend on the lane selection")
+    fast = jobs["engine-fast"]
+    for required in (
+        "PACKAGES: ${{ needs.changes.outputs.packages }}",
+        "DEPENDENTS: ${{ needs.changes.outputs.dependents }}",
+        'test -n "$PACKAGES"',
+        "cargo test $PACKAGES --locked --no-fail-fast",
+        "cargo clippy $PACKAGES --all-targets --locked -- -D warnings",
+        "cargo check $DEPENDENTS --all-targets --locked",
+        "cargo fmt --all -- --check",
+        "python3 scripts/ci/check_generated_surfaces.py",
+    ):
+        require(fast.count(required) == 1, f"engine fast lane is missing: {required}")
+    require(reusable.count("python3 scripts/ci/test_select_ci_lanes.py") == 2
+            and jobs["verify"].count("python3 scripts/ci/test_ci_lanes_policy.py") == 1,
+            "lane selection regressions must run in the changes job and the verify policy step")
+    light_checkouts = checkout_steps(jobs["docs-policy"]) + checkout_steps(jobs["scripts-policy"])
+    require(all("fetch-depth: 0" in body for _, body in light_checkouts),
+            "documentation and script lanes need complete history for the inventory and knowledge checks")
+
+
+def verify_nightly_caller(workflow: str) -> None:
+    """The complete matrix still runs against main every day, as evidence about main."""
+    trigger = re.search(r"(?ms)^on:\n(.*?)(?=^\S)", workflow)
+    require(trigger is not None and re.fullmatch(
+        r"  schedule:\n    - cron: \"[0-9 */,-]+\"\n  workflow_dispatch:\n\n", trigger.group(1)) is not None,
+        "nightly caller must run on a schedule and on manual dispatch only")
+    require("      scope: full\n" in workflow, "nightly caller must request the full matrix")
+    require(workflow.count("uses: ./.github/workflows/ci-reusable.yml") == 1,
+            "nightly caller must invoke exactly the reusable workflow")
+    require("github.event.pull_request" not in workflow, "nightly caller never runs proposed code")
+    require("  cancel-in-progress: false\n" in workflow, "a nightly result must not cancel another")
 
 
 def main() -> None:
@@ -1009,24 +1119,36 @@ def main() -> None:
         and "permissions:\n  contents: read" in reusable,
         "caller and reusable workflow must default to read-only contents",
     )
-    require(
-        reusable.count("python3 scripts/ci/check_documentation.py") == 1,
-        "documentation authority and local-link policy must run exactly once",
-    )
-    require(
-        reusable.count("python3 scripts/ci/build_execution_inventory.py --check") == 1,
-        "the exhaustive execution inventory must be checked exactly once",
-    )
-    require(
-        reusable.count("python3 scripts/knowledge/render_capacity_profiles.py --check") == 1
-        and reusable.count("python3 scripts/knowledge/test_capacity_profiles.py") == 1
-        and reusable.count("python3 scripts/ci/test_collect_storage_acceptance.py") == 1
-        and reusable.count("python3 scripts/ci/test_sustained_launch.py") == 1
-        and reusable.count("python3 scripts/ci/test_analyze_sustained_conflicts.py") == 1,
-        "the owning J-04 capacity projection must be checked exactly once",
-    )
+    def once_in(command: str, owners: tuple[str, ...], label: str) -> None:
+        require(
+            all(jobs[owner].count(command) == 1 for owner in owners)
+            and reusable.count(command) == len(owners),
+            f"{label} must run exactly once in each of {', '.join(owners)}",
+        )
+
+    once_in("python3 scripts/ci/check_documentation.py", ("verify", "docs-policy"),
+            "documentation authority and local-link policy")
+    once_in("python3 scripts/ci/build_execution_inventory.py --check", ("verify", "docs-policy"),
+            "the exhaustive execution inventory check")
+    once_in("python3 scripts/knowledge/render_capacity_profiles.py --check", ("verify", "docs-policy"),
+            "the J-04 capacity projection rendering check")
+    for command in (
+        "python3 scripts/knowledge/test_capacity_profiles.py",
+        "python3 scripts/ci/test_collect_storage_acceptance.py",
+        "python3 scripts/ci/test_sustained_launch.py",
+        "python3 scripts/ci/test_analyze_sustained_conflicts.py",
+    ):
+        once_in(command, ("verify", "scripts-policy"), "the J-04 capacity projection regression")
+    verify_lane_selection(jobs, reusable)
+    nightly = workflows.get(NIGHTLY)
+    require(nightly is not None, "nightly full-matrix caller is absent")
+    verify_nightly_caller(nightly)
 
     expected_jobs = {
+        "changes",
+        "docs-policy",
+        "scripts-policy",
+        "engine-fast",
         "native-arm64",
         "storage-contract-preflight",
         "installed-reopen",
@@ -1155,11 +1277,17 @@ def main() -> None:
         gate,
     )
     require(
-        all(f'test "${variable}" = success' in gate for variable in result_variables),
-        "ci-gate must require success for every reduced result",
+        'test "$CHANGES_RESULT" = success' in gate
+        and all(
+            f'expect "${lane}" "${variable}" {job}' in gate
+            for job, (lane, variable) in GATE_EXPECTATIONS.items()
+        )
+        and set(result_variables) == {"CHANGES_RESULT", *(variable for _, variable in GATE_EXPECTATIONS.values())},
+        "ci-gate must require success for every selected lane and a skip for every unselected one",
     )
 
     heavy_jobs = [
+        "engine-fast",
         "verify",
         "engine-suites",
         "sdk-conformance",

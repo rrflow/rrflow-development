@@ -31,6 +31,16 @@ test. Per-request raw failure samples in the partial-run candidate retain only
 timing and a fixed category; that does not repair the existing case summary.
 See the [partial-run evidence](../../evidence/change-journals/gate-j/comparison-lab-truthful-partial-runs.md).
 
+At main `3a72a6b4`, the provider-summary verifier accepted a synthetic report
+claiming eight successes when all eight detailed rows reported failure and the
+provider/repository lists contained duplicates. The provider runner's arm is a
+label and its substring match is not an independent task oracle. The
+[research and repair record](../../research/rrflow-adaptive-planning-measurement-architecture-research.md)
+documents the failure, screening-only candidate and remaining treatment,
+quality, provenance and held-out-evaluation gaps. The historical provider
+summary lacks per-trial repository and raw-output evidence; it is not upgraded
+into a quality claim. J-04 remains open regardless of screening-test results.
+
 ## Impact
 
 Performance or competitive claims cannot be evaluated honestly.

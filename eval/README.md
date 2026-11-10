@@ -9,6 +9,43 @@ commands. The additional `storage` commands work offline. They validate
 measurement evidence and emit a bounded report; they do not run a workload,
 configure an engine, authenticate an observation, or call a provider.
 
+## Provider screening and its limits
+
+The provider runner's `baseline` and `runtime` values are labels. `run` does
+not attach RRFlow or establish different configurations, and the substring
+test against raw provider output is not an independent answer-quality oracle.
+Thus neither a matching substring nor a structurally valid report establishes
+that an RRFlow treatment ran or improved a task. The
+[adaptive-planning measurement research](../docs/research/rrflow-adaptive-planning-measurement-architecture-research.md)
+describes the separate installed-engine experiment, identity and quality proof.
+
+`summarize <directory>` displays checked, complete individual trial pairs. An optional
+new output path produces a version-1 `provider_screening_only` JSON summary;
+it must not already exist. Summary construction and `verify <file>` require
+eight to 256 records, at least two distinct provider labels and repository
+labels, and exactly one baseline/runtime pair per provider, repository and
+scenario. Counts and screening outcomes are recalculated from trial fields;
+contradictions, duplicate arms, missing pairs and unknown versions are refused.
+These bounds are the existing small screening interface plus a bounded input
+limit, not a statistically justified sample-size recommendation. Each file
+is limited to 8 MiB. The commands validate consistency, not provenance or
+authenticity. Output includes raw provider responses and errors and must be
+stored under an appropriate project data policy.
+
+Provider-reported input/output counters retain their native semantics; missing
+counts and unmeasured tool counts are null, not zero. Trial counters are shown
+separately and are not combined into a cross-provider total. The summary reports
+how many trials have both counters; that is not a comparable cost or total
+usage figure. `retries` counts this harness's retries, not hidden
+provider retries. The retained 2026-08-18 summary remains unchanged as history;
+it lacks the per-trial repository identities and raw outputs required by the
+current screening verifier and cannot be upgraded into new evidence.
+
+```text
+rrflow-eval summarize <trial-directory> <new-screening-summary.json>
+rrflow-eval verify <new-screening-summary.json>
+```
+
 ## Storage contract
 
 The Rust types in the evaluation crate own the version-1 storage manifest,
@@ -92,6 +129,93 @@ Result and manifest digests use domain-separated typed JSON, so whitespace is
 irrelevant and case/attempt ordering is preserved. Rejected raw input is not
 copied into reports. Retained artifacts must be independently available and
 authorized; a digest alone cannot prove an artifact exists or is correct.
+
+## Real-project index/retrieval workbench runner
+
+The repository script
+[`scripts/evaluation/run-real-project-workbench.ps1`](../scripts/evaluation/run-real-project-workbench.ps1)
+executes one local real-project loop for the current RRFlow implementation:
+
+- installs/opens a selected project as an RRFlow instance,
+- starts local service and captures the same discovery payload Connectome reads
+  (`ready`, `capabilities`, endpoint catalogue, OpenAPI digest),
+- creates an authenticated session, reads attunement job status, reads data
+  schema, extracts real prompt examples from chat data, executes plan workloads
+  against those prompts, and
+- emits one `workbench-report.json` artifact under `eval/results/`.
+
+Example invocation:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/evaluation/run-real-project-workbench.ps1 `
+  -ProjectRoot . `
+  -RealProjectPath . `
+  -RealTestPlanPath .\eval\plans\real-test-plan.json `
+  -ChatExamplesPath .\eval\inputs\chat-prompts.json `
+  -ComparatorResultsPath .\eval\results\comparator-baselines.json `
+  -DevMode
+```
+
+Optional dev-mode history target:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/evaluation/run-real-project-workbench.ps1 `
+  -ProjectRoot . `
+  -RealProjectPath . `
+  -RealTestPlanPath .\eval\plans\real-test-plan.json `
+  -ChatExamplesPath .\eval\inputs\chat-prompts.json `
+  -ComparatorResultsPath .\eval\results\comparator-baselines.json `
+  -DevMode `
+  -DevModeHistoryPath .\eval\results\workbench-dev-history.jsonl
+```
+
+The script now **refuses execution** unless all of these are supplied:
+
+- `-RealTestPlanPath` points to a plan that defines at least three real
+  workloads (`index_completeness`, `retrieval_accuracy`,
+  `comparable_latency`) plus SurrealDB/ArangoDB comparator baseline entries.
+- `-ChatExamplesPath` points to extracted real chat examples/prompts (JSON)
+  with at least `acceptance.min_prompt_examples` unique entries (default 3).
+- `-ComparatorResultsPath` points to measured comparator results for those
+  same workloads and the same prompt set.
+
+This guard prevents synthetic-smoke runs from being treated as benchmark
+evidence.
+
+The real test plan must define these workload IDs:
+
+- `index_completeness`
+- `retrieval_accuracy` (requires a `query`)
+- `comparable_latency` (requires a `query`; `iterations >= 3` recommended)
+
+and acceptance thresholds:
+
+- `acceptance.latency.max_ratio_vs_surrealdb_p95`
+- `acceptance.latency.max_ratio_vs_arangodb_p95`
+
+Comparator results must provide measured latency metrics for:
+
+- `workloads.comparable_latency.surrealdb.p95_ms`
+- `workloads.comparable_latency.arangodb.p95_ms`
+
+Comparator results must also include:
+
+- `prompt_set_sha256` matching the extracted prompt set hash from
+  `-ChatExamplesPath`.
+
+Each run emits explicit "what was tested" artifacts under the run folder:
+
+- `execution-manifest.json` — resolved plan/workload contract, thresholds, and
+  prompt-set identity.
+- `prompt-set.json` — exact prompt set used for workload execution.
+- `retrieval-query-results.json` — per-prompt retrieval results, query text,
+  row/truncation observations, and latency.
+- `workbench-report.json` — full measured outcome and pass/fail synthesis.
+
+When `-DevMode` is enabled, the script also appends a one-line run summary to
+the dev history JSONL file and writes `dev-mode-summary.json` for that run.
+The report includes baseline + delta trend fields for the latest prior run
+with the same plan and prompt-set hash.
 
 After an intentional contract change, the documented test generator updates
 schemas and synthetic fixtures from those Rust owners. In PowerShell:
