@@ -1,6 +1,6 @@
 # Evaluation inputs: retired identity and trailing whitespace removed
 
-**Status:** repository correction; no engine, evaluation or release claim
+**Status:** active repository correction; no engine, evaluation or release claim
 
 **Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/repository/eval-inputs-identity-20261110`
 
