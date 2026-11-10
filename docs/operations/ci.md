@@ -136,6 +136,17 @@ The first job, `changes`, diffs the candidate against its base and runs
 | `sdk` | `sdks/**`, `fixtures/**`, `crates/transport/**` | `sdk-conformance`; transport crate edits also run `engine-fast` |
 | `full` | `.github/**` except templates, `scripts/ci/**`, `.cargo/**`, `.devcontainer/**`, `.gitmodules`, `rust-toolchain.toml`, `Cargo.toml`, `Cargo.lock`, `VERSION`, `deploy/**`, the Connectome gitlink, `crates/kernel/**`, `crates/persistence/**`, `crates/adapters/rrflow-cli/**`, `rrd-maintenance`, and the engine's transaction, installation, estate layout, token key, maintenance, attunement supervisor, backup, control, configuration, estate-control, flight, function, knowledge, observation, reasoning-budget persistence, restore, session, subscription, task, query, and tail-repair effect modules; also engine test modules, `.gitignore`, `.gitattributes`, any path the classifier does not recognize, a manual dispatch, a `scope: full` call, or an event without a base revision | every partition below, exactly as before |
 
+Alongside whichever light lanes a change selects, `repository-invariants` runs
+the engine's repository-wide architecture tests
+(`cargo test -p rrd-engine --test workspace_architecture`) on every candidate
+the full matrix does not cover. Those tests scan every tracked file for the
+retired identity, trailing whitespace, untracked target sources and physical
+imports, so a documentation or data change can break them: #308 landed
+evaluation inputs through the docs and scripts lanes on 2026-11-09 and left
+main failing two of them for every engine-lane candidate. The job costs one
+cached `rrd-engine` test build; the full matrix already runs the same tests
+inside `engine-suites`, so it skips there.
+
 A `full` selection absorbs the light lanes, so their jobs skip and the full
 partitions carry their checks. The `engine` lane never links the whole
 workspace in one target graph; a root manifest or lock change takes the
@@ -244,7 +255,8 @@ check for branch protection:
 - ordinary-primary fresh/existing 100-cycle acknowledged kill/reopen histories
   on those same three native platforms; and
 - the three light lanes, `docs-policy`, `scripts-policy` and `engine-fast`,
-  described under proportional lanes; and
+  described under proportional lanes, and the `repository-invariants` job
+  that runs on every candidate the full matrix does not cover; and
 - one always-evaluated gate which fails unless every selected partition
   succeeded and every unselected partition was skipped.
 

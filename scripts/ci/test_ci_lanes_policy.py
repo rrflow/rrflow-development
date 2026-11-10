@@ -93,6 +93,18 @@ class LanePolicyTests(unittest.TestCase):
                 with self.assertRaisesRegex(PolicyError, "engine fast lane is missing"):
                     self.check(self.reusable.replace(command, "true", 1))
 
+    def test_repository_invariants_run_on_every_light_candidate(self):
+        jobs = job_blocks(self.reusable)
+        self.assertIn("    if: ${{ needs.changes.outputs.full != 'true' }}\n", jobs["repository-invariants"])
+        command = "cargo test -p rrd-engine --locked --test workspace_architecture"
+        self.assertIn(command, jobs["repository-invariants"])
+        with self.assertRaisesRegex(PolicyError, "repository invariants"):
+            self.check(self.reusable.replace(command, "true", 1))
+        with self.assertRaisesRegex(PolicyError, "exactly its lane"):
+            self.check(self.reusable.replace(
+                "    if: ${{ needs.changes.outputs.full != 'true' }}\n",
+                "    if: ${{ needs.changes.outputs.docs == 'true' }}\n", 1))
+
     def test_gate_expectations_cover_every_partition(self):
         jobs = job_blocks(self.reusable)
         self.assertEqual(set(GATE_EXPECTATIONS), set(jobs) - {"ci-gate", "changes"})
