@@ -19,6 +19,14 @@ affected system flow. The [roadmap](../../roadmap/rrflow-1.0.md) owns execution
 order. A row closes only when the referenced gate records its acceptance
 evidence; editing this table cannot declare a capability complete.
 
+Each detail record keeps one sorted ledger row for its lifetime. IDs may have
+gaps so concurrent packages can choose distinct unused identifiers; authors
+must still check open work before choosing one. Repository validation checks
+the first-parent Git history to reject deletion of a previously tracked record
+and requires a non-shallow checkout for that check. IDs are not an allocation
+service. The check cannot detect one finding being replaced by another under
+the same ID; competing claims still require a traceable manual reconciliation.
+
 ## Status vocabulary
 
 - `Open`: the deficiency is present and its prerequisite gate is available.
