@@ -41,10 +41,10 @@ Not absorbed, with the reason: #231 (its job-list operation already exists on ma
 
 **Regeneration.** SDK endpoint generators, `scripts/ci/check_generated_surfaces.py --write`, then the OpenAPI digest pinned into every record that cites it; `python3 scripts/knowledge/render_navigation.py`.
 
-**Acceptance.** ACCEPTANCE_PLACEHOLDER
+**Acceptance.** `cargo fmt --all -- --check` clean. `cargo test --locked -p rrd-engine --lib --test workspace_architecture --test direct_read_source_closure`: 447 passed, 13 ignored; 1 passed; 33 passed. `cargo test --locked -p rrd-contract`: all suites passed (public contract, attunement, adaptive plan, endpoint policy). `cargo test --locked -p rrd-query -p rrd-vector -p rrd-lsm` and `-p rrflow-eval`: passed (storage contract goldens, lab runner, lab definitions). `cargo test --locked -p rrflow-cli --test installed_lifecycle`: 11 passed, and its `--list` equals the offline harness `REQUIRED_CASES` exactly (11 of 11). `cargo clippy --locked --workspace --all-targets -- -D warnings` clean. `python scripts/ci/test_native_capacity.py`: 46 tests OK (5 skipped). `check_generated_surfaces.py`: 83 HTTP operations, OpenAPI `274b9c3536c1`, 7 signal projections verified. `render_navigation.py`, `check_documentation.py` (1108 statuses), `check_workflow.py` (16 substantive jobs), `test_ci_lanes_policy`, `test_select_ci_lanes`, `test_candidate_admission`, `test_linux_arm64_policy`, `test_offline_lifecycle`, `test_pr_governance`, `test_sdk_attunement_policy`, `test_macos_capacity_preflight`: OK. One full engine-library run showed `begin_timing_emits_after_admission_release_without_runtime_changes` failing once; three further full runs passed it, so it is recorded as a parallel-run flake, not fixed here.
 
 **Research decision:** none. No upstream code.
 
-**Checks not run:** CHECKS_NOT_RUN_PLACEHOLDER
+**Checks not run:** Linux and macOS native suites, the candidate CI matrix, the offline lifecycle harness end to end (its parsers and required-case set are checked), the real-server `rrd-client` vector index tests, Connectome, soak and capacity. The Windows engine cannot see `docs/` in the retired-identity scan; Linux CI is that oracle.
 
 **Roadmap/POA&M change:** POAM-058 added (renumbered from #304's POAM-053); no status changes.
