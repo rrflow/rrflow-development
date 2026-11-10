@@ -374,7 +374,7 @@ async fn a_client_builds_an_index_and_a_filtered_search_uses_it() {
         ChangeMutationSnapshot::Data {
             mutation: TransactionMutation::PutRecord { reference, .. },
         } if reference.kind.as_str() == "vector_artifact"
-            && reference.id.as_str() == "hnsw-documents-body.1"
+            && reference.id.as_str() == format!("{}.1", built.index.index_id)
     )));
 
     // A generation that filters on the payload index protects it, and an

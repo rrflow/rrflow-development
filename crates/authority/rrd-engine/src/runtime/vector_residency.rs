@@ -515,6 +515,7 @@ mod tests {
             kind: VectorArtifactKind::CompactDense,
             descriptor: artifact.descriptor(),
             object,
+            source: None,
         }
     }
 

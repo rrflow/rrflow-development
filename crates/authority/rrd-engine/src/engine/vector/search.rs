@@ -219,6 +219,20 @@ impl RrdEngine {
                 .values()
                 .filter(|binding| vector_artifact_relevant(&binding.descriptor, &search))
             {
+                if let Some((collection, vector)) = &collection_address {
+                    let source = rrd_core::VectorCollectionAddress {
+                        collection_id: collection.as_str().into(),
+                        vector_name: vector.as_str().into(),
+                    };
+                    if binding.descriptor.candidate_path(1).kind.is_approximate()
+                        && binding.source.as_ref() != Some(&source)
+                    {
+                        // A legacy unbound generation, or one belonging to a
+                        // different source, is not an authorized named path.
+                        runtime.suppress_projection(&binding.descriptor.stamp().id);
+                        continue;
+                    }
+                }
                 match residency.acquire(memory_tier, binding, &self.objects) {
                     Ok(acquisition) => {
                         if collection_address.as_ref().is_some_and(|(id, name)| {
@@ -349,7 +363,7 @@ impl RrdEngine {
             match residency.acquire(memory_tier, binding, &self.objects) {
                 Ok(acquisition) => acquisition.artifact,
                 Err(error) if error.is_pressure() => {
-                    return Err(ServiceError::VectorPressure(error.to_string()))
+                    return Err(ServiceError::VectorPressure(error.to_string()));
                 }
                 Err(error) => return Err(ServiceError::Vector(error.to_string())),
             }
@@ -535,6 +549,17 @@ fn generation_serves(
     artifact: &rrd_vector::VectorArtifact,
     (collection_id, vector_name): (&CanonicalId, &CanonicalId),
 ) -> bool {
+    // A generation bound to a named source serves that source and nothing else,
+    // however many nodes it holds: an empty bound graph must not answer for a
+    // populated collection. Only a legacy unbound generation is judged by its
+    // contents.
+    if let Some(source) = &binding.source {
+        return *source
+            == rrd_core::VectorCollectionAddress {
+                collection_id: collection_id.as_str().into(),
+                vector_name: vector_name.as_str().into(),
+            };
+    }
     match artifact {
         rrd_vector::VectorArtifact::Hnsw(index) => {
             index.serves_collection(&rrd_core::VectorCollectionAddress {

@@ -493,6 +493,13 @@ impl HnswIndex {
         &self.descriptor
     }
 
+    /// A bound graph may contain only versions from its declared source.
+    pub fn contains_only_source(&self, source: &rrd_core::VectorCollectionAddress) -> bool {
+        self.nodes
+            .iter()
+            .all(|node| &node.candidate.vector.collection == source)
+    }
+
     pub fn config(&self) -> &HnswConfig {
         &self.config
     }

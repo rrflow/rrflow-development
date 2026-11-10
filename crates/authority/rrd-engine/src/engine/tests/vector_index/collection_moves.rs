@@ -795,6 +795,20 @@ fn a_collection_every_identity_left_can_be_deleted() {
     assert!(deleted.is_ok(), "{deleted:?}");
 }
 
+#[test]
+fn empty_collection_with_bound_hnsw_cannot_be_deleted_after_reopen() {
+    let (root, engine, lease) = estate();
+    empty_documents(&engine, &lease, &[]);
+    hnsw(&engine, &lease, "empty-delete-guard");
+    drop(engine);
+    let reopened = RrdEngine::open(root.path(), instance(), TOKEN_KEY).unwrap();
+    let error = delete(&reopened, &lease, "documents", 60).unwrap_err();
+    assert!(
+        error.to_string().contains("still owns an active HNSW"),
+        "{error}"
+    );
+}
+
 /// POAM-047: a collection still holds an identity until its move out takes
 /// effect, one that moved back, and one that moves back only after the
 /// deletion time.
@@ -851,4 +865,156 @@ fn a_generation_after_its_newest_version_moves_out_still_publishes() {
         "scalar-second",
     );
     assert!(!retrieved(&engine, &lease, "documents", 60).contains("h"));
+}
+
+#[test]
+fn distinct_named_vector_sources_have_distinct_hnsw_indexes() {
+    let (_root, engine, lease) = estate();
+    let mut indexes = Vec::new();
+    for (ordinal, (collection, vector_name)) in [("a-b", "c"), ("a", "b-c")].into_iter().enumerate()
+    {
+        engine
+            .ensure_vector_collection(
+                &lease.session_id,
+                &lease.token,
+                &EnsureVectorCollection {
+                    scope: scope(),
+                    collection_id: CanonicalId::new(collection).unwrap(),
+                    vectors: vec![NamedVectorDefinition {
+                        name: CanonicalId::new(vector_name).unwrap(),
+                        field: CanonicalId::new("body-embedding").unwrap(),
+                        kind: VectorValueKind::Dense,
+                        dimensions: DIMENSIONS as u32,
+                        metric: VectorSearchMetric::Cosine,
+                        embedding_model: None,
+                        memory_tier: VectorMemoryTier::Cached,
+                    }],
+                },
+                &mutation_context(
+                    &id(&format!("source-collection-{ordinal}")),
+                    &format!("request-source-collection-{ordinal}"),
+                    &format!("operation-source-collection-{ordinal}"),
+                ),
+                350 + ordinal as u64,
+            )
+            .unwrap();
+        let result = engine
+            .ensure_vector_index(
+                &lease.session_id,
+                &lease.token,
+                &EnsureVectorIndex {
+                    scope: scope(),
+                    collection_id: CanonicalId::new(collection).unwrap(),
+                    vector_name: CanonicalId::new(vector_name).unwrap(),
+                    configuration: VectorIndexConfiguration::Hnsw {
+                        m: 4,
+                        ef_construction: 16,
+                        max_level: 4,
+                        seed: 17,
+                        filter_properties: Vec::new(),
+                    },
+                    build_policy: VectorIndexBuildPolicy::Cpu,
+                    max_storage_keys: 100_000,
+                },
+                &mutation_context(
+                    &id(&format!("source-index-{ordinal}")),
+                    &format!("request-source-index-{ordinal}"),
+                    &format!("operation-source-index-{ordinal}"),
+                ),
+                400 + ordinal as u64,
+            )
+            .unwrap();
+        indexes.push(result.index);
+    }
+    assert_ne!(indexes[0].index_id, indexes[1].index_id);
+}
+
+#[test]
+fn an_empty_foreign_hnsw_generation_cannot_answer_for_a_populated_source() {
+    let (_root, engine, lease) = estate();
+    commit_vectors(
+        &engine,
+        &lease,
+        350,
+        vec![
+            document_mutation("mirror-point", "mirror"),
+            put("mirror-point", "mirror", 9, 1),
+        ],
+    );
+    empty_documents(&engine, &lease, &[]);
+    hnsw(&engine, &lease, "empty-source");
+    let exact = search_near(&engine, &lease, "mirror", 1, 9, 1, VectorSearchMode::Exact);
+    assert!(hit_ids(&exact).contains("mirror-point"));
+    let result = engine.search_vectors(
+        &lease.session_id,
+        &lease.token,
+        &SearchVectors {
+            scope: scope(),
+            valid_at: 1,
+            collection_id: Some(CanonicalId::new("mirror").unwrap()),
+            vector_name: Some(CanonicalId::new("body").unwrap()),
+            field: None,
+            query: VectorSearchQuery::Dense { values: values(9) },
+            filter: None,
+            metric: None,
+            top_k: 1,
+            mode: VectorSearchMode::RequireApproximate {
+                exact_rerank: 8,
+                ef_search: 16,
+            },
+            max_storage_keys: 100_000,
+        },
+        801,
+        "request-foreign-empty-source",
+        "operation-foreign-empty-source",
+    );
+    match result {
+        Ok(served) => assert_eq!(hit_ids(&served), hit_ids(&exact)),
+        Err(ServiceError::Vector(reason)) => assert!(reason.contains("no vector access path")),
+        Err(error) => panic!("unexpected denial: {error:?}"),
+    }
+}
+
+#[test]
+fn an_empty_bound_hnsw_serves_later_source_updates_after_reopen() {
+    let (root, engine, lease) = estate();
+    empty_documents(&engine, &lease, &[]);
+    hnsw(&engine, &lease, "empty-bound");
+    let scope_id = rrd_core::ScopeId::new(scope()).unwrap();
+    let entries = crate::vector_artifact_catalog_entries(&engine.storage, &scope_id).unwrap();
+    let bound = entries.last().unwrap();
+    assert_eq!(bound.source().unwrap().collection_id, "documents");
+    assert_eq!(bound.source().unwrap().vector_name, "body");
+    let projection_id = bound.descriptor.stamp().id.clone();
+    commit_vectors(
+        &engine,
+        &lease,
+        600,
+        vec![
+            document_mutation("new-source-point", "after build"),
+            put("new-source-point", "documents", 9, 1),
+        ],
+    );
+    let mode = VectorSearchMode::RequireApproximate {
+        exact_rerank: 8,
+        ef_search: 16,
+    };
+    let before = search_near(&engine, &lease, "documents", 1, 9, 1, mode);
+    assert_eq!(before.access_path.as_str(), "hnsw");
+    assert_eq!(
+        hit_ids(&before),
+        BTreeSet::from(["new-source-point".to_owned()])
+    );
+    drop(engine);
+    let reopened = RrdEngine::open(root.path(), instance(), TOKEN_KEY).unwrap();
+    let entries = crate::vector_artifact_catalog_entries(&reopened.storage, &scope_id).unwrap();
+    let bound = entries
+        .iter()
+        .find(|entry| entry.descriptor.stamp().id == projection_id)
+        .unwrap();
+    assert_eq!(bound.source().unwrap().collection_id, "documents");
+    assert_eq!(bound.source().unwrap().vector_name, "body");
+    let after = search_near(&reopened, &lease, "documents", 1, 9, 1, mode);
+    assert_eq!(after.access_path.as_str(), "hnsw");
+    assert_eq!(hit_ids(&after), hit_ids(&before));
 }

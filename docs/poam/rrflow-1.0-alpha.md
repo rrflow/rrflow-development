@@ -66,3 +66,4 @@
 | POAM-050 | High | Open | [a task's attempts can be read only by an id the reader already holds](rrflow-1.0-alpha/poam-050.md) |
 | POAM-051 | High | Open | [no public read joins a committed change to the request that made it](rrflow-1.0-alpha/poam-051.md) |
 | POAM-052 | High | Open | [context ranking cannot be configured or experimented with](rrflow-1.0-alpha/poam-052.md) |
+| POAM-053 | High | Open | [named HNSW generations lack an authenticated source identity](rrflow-1.0-alpha/poam-053.md) |
