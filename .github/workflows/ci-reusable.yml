@@ -378,6 +378,7 @@ jobs:
           python3 scripts/ci/test_select_ci_lanes.py
           python3 scripts/ci/test_ci_lanes_policy.py
           python3 scripts/ci/test_pr_governance.py
+          python3 scripts/ci/test_merge_conflict_policy.py
           python3 scripts/ci/check_workflow.py
           python3 scripts/ci/test_inspect_candidate_runs.py
       - name: Test offline qualification input and artifact policy
