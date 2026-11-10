@@ -1,0 +1,468 @@
+{
+    "preview_format_version":  1,
+    "installation":  {
+                         "contract_version":  4,
+                         "installation_identity":  "aee37c4fc908294bacb425a6385b313338115e2b1a9cb6bcaf007dd6d4ab163c",
+                         "project_root_sha256":  "0377068e16f212d75c55bf4cd92582cd19daa57535670fab8f0a16870c52b020",
+                         "id":  "install-c9de5a3ed6861f6f6bcdca4c",
+                         "target":  {
+                                        "project_id":  "project-c9de5a3ed6861f6f6bcdca4c",
+                                        "estate_id":  "estate-c9de5a3ed6861f6f6bcdca4c",
+                                        "instance_id":  "instance-c9de5a3ed6861f6f6bcdca4c"
+                                    },
+                         "target_kind":  "existing_project",
+                         "deployment":  {
+                                            "contract_version":  1,
+                                            "deployment_form":  "single_node_server",
+                                            "storage_profile":  "rrflow_kv",
+                                            "endpoint_presentation":  "loopback_http_websocket"
+                                        },
+                         "product_version":  "1.0.0",
+                         "executable_sha256":  "163e13545c85edec171d1fc91664345cbbb9ee46c26692d4f2d03afd8d67cc36",
+                         "profile_id":  "default",
+                         "profile_sha256":  "62db62c50becbece09a33aafa4c3fd66124504a605cf599c60178123f83177c4",
+                         "project_precondition_sha256":  "843bc6617f75ddbba11e7dadfeeb3d799ea0be6ca86b9b326fe4b4333fcb3c94",
+                         "storage_root_id":  "install-c9de5a3ed6861f6f6bcdca4c",
+                         "configuration":  {
+                                               "format_version":  3,
+                                               "revision":  1,
+                                               "clock":  {
+                                                             "maximum_rollback_ms":  0
+                                                         },
+                                               "storage":  {
+                                                               "checkpoint_entries":  1024,
+                                                               "native_transactions":  64,
+                                                               "native_transaction_bytes":  67108864,
+                                                               "active_read_views":  1024,
+                                                               "pinned_read_bytes":  4294967296,
+                                                               "recovery_reserve_bytes":  16777216,
+                                                               "mutable_accounted_bytes":  134217728,
+                                                               "mutable_versions":  1048576,
+                                                               "projected_output_bytes":  134217728,
+                                                               "source_page_bytes":  268435456,
+                                                               "page_cache_bytes":  4194304,
+                                                               "wal_flush_target_bytes":  67108864,
+                                                               "memtable_flush_target_versions":  524288,
+                                                               "compaction_input_bytes":  1073741824,
+                                                               "compaction_input_logical_bytes":  268435456,
+                                                               "compaction_input_versions":  4194304,
+                                                               "compaction_output_segments":  256,
+                                                               "compaction_elapsed_ms":  30000,
+                                                               "compaction_l0_segments":  64,
+                                                               "retained_mutable_bytes":  536870912,
+                                                               "retained_mutable_versions":  4194304,
+                                                               "retained_mutable_generations":  64,
+                                                               "reclamation_inventory_entries":  262144,
+                                                               "reclamation_metadata_bytes":  67108864,
+                                                               "reclamation_delete_files":  1024,
+                                                               "reclamation_delete_bytes":  1073741824,
+                                                               "reclamation_elapsed_ms":  30000,
+                                                               "transaction_admission_requests":  64,
+                                                               "transaction_admission_bytes":  67108864,
+                                                               "transaction_admission_wait_ms":  30000,
+                                                               "recovery_metadata_bytes":  67108864,
+                                                               "recovery_files":  262144,
+                                                               "recovery_read_bytes":  1099511627776,
+                                                               "recovery_wal_bytes":  268435456,
+                                                               "recovery_wal_frames":  1048576,
+                                                               "recovery_elapsed_ms":  120000
+                                                           },
+                                               "reasoning":  {
+                                                                 "max_run_elapsed_ms":  900000,
+                                                                 "max_steps":  256,
+                                                                 "max_step_elapsed_ms":  60000
+                                                             },
+                                               "recall":  {
+                                                              "max_graph_depth":  4,
+                                                              "max_items":  128,
+                                                              "max_output_bytes":  524288,
+                                                              "max_storage_keys":  100000
+                                                          },
+                                               "query":  {
+                                                             "max_storage_keys":  100000,
+                                                             "max_rows":  10000,
+                                                             "max_output_bytes":  524288,
+                                                             "max_batch_rows":  256,
+                                                             "max_memory_bytes":  67108864,
+                                                             "max_spill_bytes":  268435456,
+                                                             "max_elapsed_ms":  30000
+                                                         },
+                                               "configuration_sha256":  "2d382dbde4b923db65fb5ebbf841d12b45ec0e278c7cab41635dbff782072d55"
+                                           },
+                         "bootstrap":  {
+                                           "format_version":  1,
+                                           "template_id":  "generic-project",
+                                           "template_revision":  1,
+                                           "template_text":  "# RRFlow project integration\n\nUse this project\u0027s configured RRFlow connection for authorized reasoning and\nrecall capabilities. Check the current capability requirements and availability\nbefore calling an operation. Authenticate through the configured credential\nreference; keep credential values out of instructions, source and diagnostics.\n\nFollow project-owned instructions and the user\u0027s explicit preferences. Keep\nunverified observations distinct from committed project knowledge. Bind durable\nchanges to their authorized inputs, budgets and verification evidence. Preserve\nproject isolation; share context with another project only through an explicitly\nauthorized integration.\n\nThe installed specialization selects the durable seat. A model or provider\nrepresents that seat only after its exact binding is authenticated and authorized.\nA declared candidate is not an active provider. Report actual results, failures\nand unverified requirements without inferring completion from logs or files.\n",
+                                           "template_sha256":  "2df8396b905776c27f3d5c0d9b178410a792671d1c2fd50eac7c1fe7c98bc6df",
+                                           "specialization":  {
+                                                                  "format_version":  1,
+                                                                  "id":  "generic",
+                                                                  "revision":  1,
+                                                                  "seat":  {
+                                                                               "id":  "local-reasoning-seat",
+                                                                               "display_name":  "Local reasoning workspace",
+                                                                               "purpose":  "Provider-neutral durable reasoning and recall for this project."
+                                                                           },
+                                                                  "instructions":  "Use the project instructions and the user\u0027s explicit preferences. Preserve uncertainty in provisional observations. Validate authorized changes and report actual evidence.",
+                                                                  "endpoint_profile":  null
+                                                              },
+                                           "specialization_sha256":  "a1d9d697fb6df0c6af8fe2b4f8487e6344b8baa9e2bdedf7bab7ec6ad4e49f2a",
+                                           "instructions_sha256":  "133b1e5317c3c9b8b497e1ddd9c34b1220134ca60c1ed2d302454b37dcd48898",
+                                           "project_policy":  "preserve_project_owned_state",
+                                           "initial_records":  [
+                                                                   "seat_schema",
+                                                                   "seat_record",
+                                                                   "security_authority",
+                                                                   "security_genesis_audit",
+                                                                   "security_audit_head",
+                                                                   "effective_configuration",
+                                                                   "installed_binding",
+                                                                   "installation_checkpoint",
+                                                                   "attunement_plan",
+                                                                   "pending_attunement_job"
+                                                               ],
+                                           "max_record_bytes":  1048576,
+                                           "storage_generation":  {
+                                                                      "application_format":  5931886492748099633,
+                                                                      "manifest_format":  3,
+                                                                      "wal_format":  1,
+                                                                      "batch_format":  2,
+                                                                      "max_initial_transaction_bytes":  4194304
+                                                                  },
+                                           "token_key_bytes":  32,
+                                           "credential_entropy_bytes":  32,
+                                           "private_directories":  [
+                                                                       ".rrflow",
+                                                                       ".rrflow/credentials",
+                                                                       ".rrflow/rrd",
+                                                                       ".rrflow/rrd/roots"
+                                                                   ],
+                                           "private_files":  [
+                                                                 ".rrflow-install-install-c9de5a3ed6861f6f6bcdca4c.json",
+                                                                 ".rrflow-install.lock",
+                                                                 ".rrflow/credentials/local-operator.json",
+                                                                 ".rrflow/rrd/roots/install-c9de5a3ed6861f6f6bcdca4c/RRD.TOKEN"
+                                                             ],
+                                           "process_invocations":  [
+
+                                                                   ],
+                                           "network_endpoints":  [
+
+                                                                 ],
+                                           "activated_provider_bindings":  [
+
+                                                                           ]
+                                       },
+                         "initial_seat":  {
+                                              "id":  "local-reasoning-seat",
+                                              "display_name":  "Local reasoning workspace",
+                                              "purpose":  "Provider-neutral durable reasoning and recall for this project."
+                                          },
+                         "initial_principal_id":  "local-operator",
+                         "initial_grants":  [
+                                                "service_inspect",
+                                                "unknown_request",
+                                                "session_create",
+                                                "session_renew",
+                                                "session_close",
+                                                "query_execute",
+                                                "query_live_poll",
+                                                "query_index_ensure",
+                                                "query_index_list",
+                                                "transaction_begin",
+                                                "transaction_preview",
+                                                "transaction_commit",
+                                                "transaction_abort",
+                                                "changefeed_read",
+                                                "changefeed_follow",
+                                                "web_socket_connect",
+                                                "subscription_open",
+                                                "subscription_connect",
+                                                "subscription_ack",
+                                                "subscription_close",
+                                                "vector_collection_ensure",
+                                                "vector_collection_list",
+                                                "vector_collection_delete",
+                                                "vector_payload_index_ensure",
+                                                "vector_payload_index_list",
+                                                "vector_payload_index_delete",
+                                                "vector_point_retrieve",
+                                                "vector_point_scroll",
+                                                "vector_search",
+                                                "embedding_model_list",
+                                                "embedding_generate",
+                                                "embedding_search",
+                                                "backup_create",
+                                                "backup_list",
+                                                "restore_create",
+                                                "estate_read",
+                                                "estate_admin",
+                                                "audit_read",
+                                                "audit_export",
+                                                "function_catalogue_read",
+                                                "function_catalogue_write",
+                                                "function_execute",
+                                                "diagnostics_read",
+                                                "flight_launch",
+                                                "flight_read",
+                                                "task_write",
+                                                "task_read",
+                                                "security_admin",
+                                                "memory_context_read",
+                                                "reasoning_read",
+                                                "reasoning_write",
+                                                "endpoint_propose",
+                                                "worker_execute",
+                                                "observation_prepare",
+                                                "observation_deliver",
+                                                "observation_read",
+                                                "knowledge_tree_read",
+                                                "knowledge_tree_write"
+                                            ],
+                         "credential_bytes":  32,
+                         "inactive_capabilities":  [
+                                                       "external-model-provider",
+                                                       "project-generator",
+                                                       "remote-mesh",
+                                                       "subprocess-datafusion"
+                                                   ],
+                         "managed_paths":  [
+                                               {
+                                                   "kind":  "estate_directory",
+                                                   "relative_path":  ".rrflow",
+                                                   "precondition_sha256":  "18d097fca9207597dd841f5d75d8c63784ad35b2e53f95de55e4fcf64953688f",
+                                                   "removal_rule":  "remove_if_owned_and_empty"
+                                               },
+                                               {
+                                                   "kind":  "storage_directory",
+                                                   "relative_path":  ".rrflow/rrd",
+                                                   "precondition_sha256":  "18d097fca9207597dd841f5d75d8c63784ad35b2e53f95de55e4fcf64953688f",
+                                                   "removal_rule":  "remove_if_owned_and_empty"
+                                               },
+                                               {
+                                                   "kind":  "storage_roots_directory",
+                                                   "relative_path":  ".rrflow/rrd/roots",
+                                                   "precondition_sha256":  "18d097fca9207597dd841f5d75d8c63784ad35b2e53f95de55e4fcf64953688f",
+                                                   "removal_rule":  "remove_if_owned_and_empty"
+                                               },
+                                               {
+                                                   "kind":  "credential_directory",
+                                                   "relative_path":  ".rrflow/credentials",
+                                                   "precondition_sha256":  "18d097fca9207597dd841f5d75d8c63784ad35b2e53f95de55e4fcf64953688f",
+                                                   "removal_rule":  "remove_if_owned_and_empty"
+                                               },
+                                               {
+                                                   "kind":  "storage_root",
+                                                   "relative_path":  ".rrflow/rrd/roots/install-c9de5a3ed6861f6f6bcdca4c",
+                                                   "precondition_sha256":  "18d097fca9207597dd841f5d75d8c63784ad35b2e53f95de55e4fcf64953688f",
+                                                   "removal_rule":  "remove_if_owned_tree_digest_matches"
+                                               },
+                                               {
+                                                   "kind":  "token_key",
+                                                   "relative_path":  ".rrflow/rrd/roots/install-c9de5a3ed6861f6f6bcdca4c/RRD.TOKEN",
+                                                   "precondition_sha256":  "18d097fca9207597dd841f5d75d8c63784ad35b2e53f95de55e4fcf64953688f",
+                                                   "removal_rule":  "remove_if_owned_digest_matches"
+                                               },
+                                               {
+                                                   "kind":  "operator_credential",
+                                                   "relative_path":  ".rrflow/credentials/local-operator.json",
+                                                   "precondition_sha256":  "18d097fca9207597dd841f5d75d8c63784ad35b2e53f95de55e4fcf64953688f",
+                                                   "removal_rule":  "remove_if_owned_digest_matches"
+                                               },
+                                               {
+                                                   "kind":  "project_locator",
+                                                   "relative_path":  ".rrflow/config.toml",
+                                                   "precondition_sha256":  "18d097fca9207597dd841f5d75d8c63784ad35b2e53f95de55e4fcf64953688f",
+                                                   "removal_rule":  "remove_if_owned_digest_matches"
+                                               },
+                                               {
+                                                   "kind":  "installation_lease",
+                                                   "relative_path":  ".rrflow-install.lock",
+                                                   "precondition_sha256":  "7ac5dd273f82b16d9ea5e7156e065f15fe0945faf5f6cf1b07e7ff9072489677",
+                                                   "removal_rule":  "retain_for_exclusion"
+                                               },
+                                               {
+                                                   "kind":  "installation_intent",
+                                                   "relative_path":  ".rrflow-install-install-c9de5a3ed6861f6f6bcdca4c.json",
+                                                   "precondition_sha256":  "18d097fca9207597dd841f5d75d8c63784ad35b2e53f95de55e4fcf64953688f",
+                                                   "removal_rule":  "remove_if_owned_digest_matches"
+                                               },
+                                               {
+                                                   "kind":  "locator_pending",
+                                                   "relative_path":  ".rrflow/.config.install-c9de5a3ed6861f6f6bcdca4c.pending",
+                                                   "precondition_sha256":  "18d097fca9207597dd841f5d75d8c63784ad35b2e53f95de55e4fcf64953688f",
+                                                   "removal_rule":  "remove_if_owned_digest_matches"
+                                               },
+                                               {
+                                                   "kind":  "project_bootstrap",
+                                                   "relative_path":  ".rrflow/bootstrap.md",
+                                                   "precondition_sha256":  "18d097fca9207597dd841f5d75d8c63784ad35b2e53f95de55e4fcf64953688f",
+                                                   "removal_rule":  "remove_if_owned_digest_matches"
+                                               },
+                                               {
+                                                   "kind":  "bootstrap_pending",
+                                                   "relative_path":  ".rrflow/.bootstrap.install-c9de5a3ed6861f6f6bcdca4c.pending",
+                                                   "precondition_sha256":  "18d097fca9207597dd841f5d75d8c63784ad35b2e53f95de55e4fcf64953688f",
+                                                   "removal_rule":  "remove_if_owned_digest_matches"
+                                               }
+                                           ],
+                         "attunement_plan_id":  "attune-c9de5a3ed6861f6f6bcdca4c",
+                         "attunement_plan_sha256":  "e2041dbb0dcb1c5d6ff2cda27d45be54e684dc4dc595a821da504d2b39427802",
+                         "actions":  [
+                                         {
+                                             "kind":  "validate_project",
+                                             "disposition":  "unchanged",
+                                             "input_sha256":  "b42b33ae8238c52ae68db0da58562d2f12cde2ee70252fe867ef97683f5fd78f",
+                                             "estimated_write_bytes":  0
+                                         },
+                                         {
+                                             "kind":  "acquire_installation_lease",
+                                             "disposition":  "create",
+                                             "input_sha256":  "5b3d99293477f58367d0d4eba5e0cedc6dc863356c55a7cfcd02baa34457dcd8",
+                                             "estimated_write_bytes":  0
+                                         },
+                                         {
+                                             "kind":  "prepare_credentials",
+                                             "disposition":  "create",
+                                             "input_sha256":  "20d4c14006e3625a2991fce7825017a564604279d492a76d382b37d44206c1ae",
+                                             "estimated_write_bytes":  4160
+                                         },
+                                         {
+                                             "kind":  "create_estate_directories",
+                                             "disposition":  "create",
+                                             "input_sha256":  "66ec5aecbb9c2d4d1a77cdd93241e17250f403b72a37c9f30722d063d9fa53be",
+                                             "estimated_write_bytes":  0
+                                         },
+                                         {
+                                             "kind":  "materialize_bootstrap",
+                                             "disposition":  "create",
+                                             "input_sha256":  "070d955181496f4d42f48fad1e32d7d8513fc2bcdd9507aeb1f0cebb338befcb",
+                                             "estimated_write_bytes":  65536
+                                         },
+                                         {
+                                             "kind":  "create_storage_root",
+                                             "disposition":  "create",
+                                             "input_sha256":  "27471c3fa87c50975bfc97b4c68f7bce3bb992301a84c0585dfacd9c358b9b16",
+                                             "estimated_write_bytes":  4096
+                                         },
+                                         {
+                                             "kind":  "deliver_credentials",
+                                             "disposition":  "create",
+                                             "input_sha256":  "638a239e294ffcf5556750b4bc839cc01c9ae91a742711e3732bfc8e9c4579fa",
+                                             "estimated_write_bytes":  576
+                                         },
+                                         {
+                                             "kind":  "initialize_instance",
+                                             "disposition":  "create",
+                                             "input_sha256":  "1d5bee31ab18b107027002ed608418b4da74ddc0dfacd1cd02e014dc3bd67937",
+                                             "estimated_write_bytes":  16384
+                                         },
+                                         {
+                                             "kind":  "create_attunement_job",
+                                             "disposition":  "create",
+                                             "input_sha256":  "3585e4094dfbeee5383e1b248ad24d9c800ed54449100168f57ec300d544fe73",
+                                             "estimated_write_bytes":  4096
+                                         },
+                                         {
+                                             "kind":  "publish_project_locator",
+                                             "disposition":  "create",
+                                             "input_sha256":  "11f5b836fdd370a68bd84fd0e6fba4522422dd2219b144a9cfc3fd63285411f3",
+                                             "estimated_write_bytes":  1024
+                                         }
+                                     ],
+                         "plan_sha256":  "81d53e525d0883f674836095c362857cbbf0ad15e46bcb0b9d02f1834681a620"
+                     },
+    "attunement":  {
+                       "contract_version":  2,
+                       "id":  "attune-c9de5a3ed6861f6f6bcdca4c",
+                       "target":  {
+                                      "project_id":  "project-c9de5a3ed6861f6f6bcdca4c",
+                                      "estate_id":  "estate-c9de5a3ed6861f6f6bcdca4c",
+                                      "instance_id":  "instance-c9de5a3ed6861f6f6bcdca4c"
+                                  },
+                       "source_sha256":  "843bc6617f75ddbba11e7dadfeeb3d799ea0be6ca86b9b326fe4b4333fcb3c94",
+                       "phases":  [
+                                      {
+                                          "phase":  "connect",
+                                          "sequence":  1,
+                                          "configuration_sha256":  "f90e119e6ae1c6df0c45efdc0b3b068444e2f161938b50d803b259fe7bb5b4eb",
+                                          "estimated_items":  1,
+                                          "estimated_input_bytes":  0
+                                      },
+                                      {
+                                          "phase":  "inventory",
+                                          "sequence":  2,
+                                          "configuration_sha256":  "c0a0821ac9fe69f24c1956a393730a90655cdc54339550a03cff0d6fcf08368a",
+                                          "estimated_items":  1,
+                                          "estimated_input_bytes":  0
+                                      },
+                                      {
+                                          "phase":  "parse",
+                                          "sequence":  3,
+                                          "configuration_sha256":  "f9e9582428125666332400d66156332968ad2d9d379eadb94c9b3f72acf5fcb4",
+                                          "estimated_items":  0,
+                                          "estimated_input_bytes":  0
+                                      },
+                                      {
+                                          "phase":  "normalize",
+                                          "sequence":  4,
+                                          "configuration_sha256":  "24c631f178947c2f4568613b3439eaafbbc102e32cc3e156d1a39aa3918c2f25",
+                                          "estimated_items":  0,
+                                          "estimated_input_bytes":  0
+                                      },
+                                      {
+                                          "phase":  "entity_link",
+                                          "sequence":  5,
+                                          "configuration_sha256":  "7b570fa5f18b6e35776243e770e298cbb9593ad83d7fa06fb07f09671b6f9ec1",
+                                          "estimated_items":  0,
+                                          "estimated_input_bytes":  0
+                                      },
+                                      {
+                                          "phase":  "lexical_index",
+                                          "sequence":  6,
+                                          "configuration_sha256":  "57851a5e52f30abd54f13c97906e7f6cab67d853ed0e1569dd617668d6493bb6",
+                                          "estimated_items":  0,
+                                          "estimated_input_bytes":  0
+                                      },
+                                      {
+                                          "phase":  "embed",
+                                          "sequence":  7,
+                                          "configuration_sha256":  "a06b0ebe138c9e0431e366d87718b998e4b7f5cab34b30f11977ace9f12a9dc5",
+                                          "estimated_items":  0,
+                                          "estimated_input_bytes":  0
+                                      },
+                                      {
+                                          "phase":  "vector_index",
+                                          "sequence":  8,
+                                          "configuration_sha256":  "f265d79651931b30c7dd17b1f1cdbaacb462d0ab8ddbc9fd3908870d25224ed7",
+                                          "estimated_items":  0,
+                                          "estimated_input_bytes":  0
+                                      },
+                                      {
+                                          "phase":  "graph",
+                                          "sequence":  9,
+                                          "configuration_sha256":  "6f26a0fb788f733ef93a4d103a8234a695194d4ad0c1dea3e774a1057dfb8829",
+                                          "estimated_items":  0,
+                                          "estimated_input_bytes":  0
+                                      },
+                                      {
+                                          "phase":  "ground",
+                                          "sequence":  10,
+                                          "configuration_sha256":  "abe5b49628f96b10ffdc861e11a856fbf0ab18dc9af439b0e5627782a1713e0f",
+                                          "estimated_items":  0,
+                                          "estimated_input_bytes":  0
+                                      },
+                                      {
+                                          "phase":  "verify",
+                                          "sequence":  11,
+                                          "configuration_sha256":  "a7eec41097ddf69d0dfa81f338b1bc3295681287485539c066cff112650f6616",
+                                          "estimated_items":  1,
+                                          "estimated_input_bytes":  0
+                                      }
+                                  ],
+                       "estimated_min_duration_ms":  0,
+                       "estimated_max_duration_ms":  0,
+                       "plan_sha256":  "e2041dbb0dcb1c5d6ff2cda27d45be54e684dc4dc595a821da504d2b39427802"
+                   }
+}

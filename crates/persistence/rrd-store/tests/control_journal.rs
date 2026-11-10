@@ -111,6 +111,56 @@ fn every_engine_materializes_and_journals_the_same_cas_transitions() {
 }
 
 #[test]
+fn single_and_one_item_batch_preserve_identical_journal_and_state_after_reopen() {
+    let root = tempfile::tempdir().unwrap();
+    let single_path = root.path().join("single");
+    let batch_path = root.path().join("batch");
+    let single = RrflowKvStore::open(&single_path).unwrap();
+    let batch = RrflowKvStore::open(&batch_path).unwrap();
+    for change in [
+        transition(None, Some(b"first"), 10),
+        transition(Some(b"first"), Some(b"second"), 11),
+        transition(Some(b"second"), None, 12),
+    ] {
+        let one = single.control().commit(&change).unwrap();
+        let many = batch.control().commit_batch(&[change]).unwrap();
+        assert_eq!(many, vec![one]);
+    }
+    let conflict = transition(Some(b"stale"), Some(b"unwanted"), 13);
+    assert!(matches!(
+        single.control().commit(&conflict),
+        Err(Error::ControlConflict(_))
+    ));
+    assert!(matches!(
+        batch.control().commit_batch(&[conflict]),
+        Err(Error::ControlConflict(_))
+    ));
+    drop(single);
+    drop(batch);
+    let single = RrflowKvStore::open(&single_path).unwrap();
+    let batch = RrflowKvStore::open(&batch_path).unwrap();
+    assert_eq!(single.control().sequence().unwrap(), 3);
+    assert_eq!(
+        single.control().journal_since(0, 8).unwrap(),
+        batch.control().journal_since(0, 8).unwrap()
+    );
+    assert_eq!(
+        single
+            .control()
+            .get("server/state/session/session-1")
+            .unwrap(),
+        None
+    );
+    assert_eq!(
+        batch
+            .control()
+            .get("server/state/session/session-1")
+            .unwrap(),
+        None
+    );
+}
+
+#[test]
 fn materialized_state_and_hash_chain_survive_restart() {
     let root = tempfile::tempdir().unwrap();
     let engine = RrflowKvStore::open(root.path()).unwrap();

@@ -1413,6 +1413,101 @@ mod tests {
     use super::*;
     use rrd_core::{RuntimeCommit, RuntimeSchemaRegistry, ScopeId};
 
+    #[test]
+    fn selection_event_range_authenticates_inclusion_but_not_omission() {
+        use crate::{Durability, RrflowKvStore, StorageEngine};
+        use rrd_core::{RuntimeEvent, RuntimeEventSchema, RuntimeProperties, RuntimeValue};
+
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path().join("selection-omission");
+        let store = RrflowKvStore::create_new(&root).unwrap();
+        let scope = ScopeId::new("instance:selection-omission").unwrap();
+        let kind = RuntimeType::new("selection-omission").unwrap();
+        let mut schema = RuntimeSchemaRegistry::empty(1, "selection omission fixture");
+        schema
+            .define_event_table(
+                kind.clone(),
+                RuntimeLogicalModel::Event,
+                RuntimeEventSchema {
+                    allow_additional_properties: true,
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+        let event = |label: &str| RuntimeMutation::Event {
+            event: RuntimeEvent {
+                kind: kind.clone(),
+                subject: None,
+                properties: RuntimeProperties::from([(
+                    "generation".into(),
+                    RuntimeValue::String(label.into()),
+                )]),
+            },
+        };
+        let first = store
+            .runtime()
+            .commit(&RuntimeCommit {
+                scope: scope.clone(),
+                at: 100,
+                actor: "test:omission".into(),
+                expected_cursor: 0,
+                mutations: vec![RuntimeMutation::Schema { registry: schema }, event("first")],
+            })
+            .unwrap();
+        let second = store
+            .runtime()
+            .commit(&RuntimeCommit {
+                scope: scope.clone(),
+                at: 200,
+                actor: "test:omission".into(),
+                expected_cursor: first.last_cursor,
+                mutations: vec![event("second")],
+            })
+            .unwrap();
+        let stamp = store.runtime().read_stamp(&scope).unwrap();
+        let source = RuntimeVersionedSource::Events {
+            kind: Some(kind.clone()),
+        };
+        let read = |store: &RrflowKvStore| {
+            store.runtime().read_versioned(
+                &stamp,
+                std::slice::from_ref(&source),
+                RuntimeReadBudget::new(4096).unwrap(),
+            )
+        };
+        let before = read(&store).unwrap();
+        assert_eq!(before.changes.len(), 2);
+        assert_eq!(before.changes.last().unwrap().cursor, second.last_cursor);
+
+        // Inject index loss only. The committed log, accumulator, read stamp,
+        // first event, and control metadata are deliberately left intact.
+        let reference = RuntimeRef::event(kind.clone(), second.last_cursor);
+        let key = keyspaces::runtime_version_key(
+            keyspaces::RUNTIME_EVENT_VERSIONS,
+            &scope,
+            &reference,
+            200,
+            second.last_cursor,
+        );
+        let mut transaction = store.begin_transaction().unwrap();
+        assert!(transaction.get(&key).unwrap().is_some());
+        transaction.delete(key).unwrap();
+        transaction.commit(Durability::Authoritative).unwrap();
+
+        // This is characterization of a known gap, not desired behavior:
+        // the inclusion-authenticated first event is returned without proving
+        // that the newer matching event was omitted from the index.
+        let after = read(&store).unwrap();
+        assert_eq!(after.changes.len(), 1);
+        assert_eq!(after.changes[0].cursor, first.last_cursor);
+        after.evidence.validate().unwrap();
+        assert_eq!(store.runtime().read_stamp(&scope).unwrap(), stamp);
+        drop(store);
+        let reopened = RrflowKvStore::open_existing(&root).unwrap();
+        let after_reopen = read(&reopened).unwrap();
+        assert_eq!(after_reopen.changes, after.changes);
+    }
+
     fn schema_change() -> (ReadStamp, RuntimeChange) {
         let scope = ScopeId::new("project:version-entry-validation").unwrap();
         let mut registry = RuntimeSchemaRegistry::empty(1, "version entry validation");

@@ -278,7 +278,7 @@
       "clock": {
         "maximum_rollback_ms": 0
       },
-      "configuration_sha256": "2d382dbde4b923db65fb5ebbf841d12b45ec0e278c7cab41635dbff782072d55",
+      "configuration_sha256": "d2013902bcc7c9efe4840170d35a35aae22e5fcffd0f1f23eca6e9c0e7fcfbf2",
       "format_version": 3,
       "query": {
         "max_batch_rows": 256,
@@ -315,7 +315,7 @@
         "mutable_versions": 1048576,
         "native_transaction_bytes": 67108864,
         "native_transactions": 64,
-        "page_cache_bytes": 4194304,
+        "page_cache_bytes": 67108864,
         "pinned_read_bytes": 4294967296,
         "projected_output_bytes": 134217728,
         "reclamation_delete_bytes": 1073741824,
@@ -447,7 +447,7 @@
         "removal_rule": "remove_if_owned_digest_matches"
       }
     ],
-    "plan_sha256": "d7f3ab79b38676b491f57b12bb24e64ec785020ad8a8a87e3af2a23d4fdb24b8",
+    "plan_sha256": "17aee5f936df3222e5d13f236d28f4c6a1be891507c16235c61bda368d0a57b9",
     "product_version": "1.0.0",
     "profile_id": "default",
     "profile_sha256": "0000000000000000000000000000000000000000000000000000000000000029",
@@ -513,8 +513,8 @@
     "installed_record_sha256": "000000000000000000000000000000000000000000000000000000000000001f",
     "locator_sha256": "0000000000000000000000000000000000000000000000000000000000000021",
     "plan_id": "install-01",
-    "plan_sha256": "d7f3ab79b38676b491f57b12bb24e64ec785020ad8a8a87e3af2a23d4fdb24b8",
-    "result_sha256": "ebf9dc0d02366364f69e19c7c14961e027c735b904f97bd5b264278444cf050c",
+    "plan_sha256": "17aee5f936df3222e5d13f236d28f4c6a1be891507c16235c61bda368d0a57b9",
+    "result_sha256": "32fde8ec01b8cc3adbb26f680e38265c206683c0a0bedbe28b141a2ca0fcadef",
     "runtime_cursor": 1,
     "runtime_manifest_sha256": "000000000000000000000000000000000000000000000000000000000000001e"
   },

@@ -64,7 +64,7 @@ requirements.
 | `cached` | Retains owned decoded artifacts in a process-local, byte-accounted LRU. A pinned entry can move to cached without another decode. | Evicts least-recently-used entries until the artifact fits. An artifact larger than the entire cache is served transiently. |
 | `cold` | Retains no decoded entry. Supported immutable local binary codecs open through verified read-only mmap; unsupported codecs or backends use a verified transient owned decode. | Resident bytes return to zero after acquisition. RRFlow does not claim control of the operating-system page cache. |
 
-The default limits are 256 MiB pinned and 64 MiB cached. Embedded callers can
+The default limits are 1 GiB pinned and 64 MiB cached. Embedded callers can
 provide validated limits through `RrdEngine::open_with_vector_residency` or
 `RrdEngine::rrflow_mx_with_vector_residency`. Declared immutable-object length
 is the conservative accounting unit.
@@ -104,6 +104,13 @@ entry is recovery state.
 resident bytes, hits, misses, evictions, stale reclaims, tier transitions,
 cold mmap and owned loads, and oversized-cache bypasses. These counters are
 diagnostic evidence, not a durable correctness authority.
+
+When a vector search serves one or more artifacts from cold sources
+(`cold_mapped`, `cold_owned`, or cache-bypass cold loads), the engine records
+an RRFlowCLD trigger observation. The public search response includes
+`resources.cold_source_hits` and `resources.rrflowcld_triggered`, and storage
+diagnostics include `rrflow_kv.rrflow_cld` counters. These observations are
+process-local lifecycle signals; they do not change canonical vector authority.
 
 Current executable evidence is:
 
