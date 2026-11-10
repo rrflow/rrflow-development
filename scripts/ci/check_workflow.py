@@ -30,6 +30,8 @@ LANE_CONDITIONS = {
     "scripts-policy": "    if: ${{ needs.changes.outputs.scripts == 'true' }}\n",
     "engine-fast": "    if: ${{ needs.changes.outputs.engine == 'true' }}\n",
     "sdk-conformance": SDK_LANE_IF,
+    # Repository-wide invariants run on every candidate the full matrix does not cover.
+    "repository-invariants": "    if: ${{ needs.changes.outputs.full != 'true' }}\n",
 }
 FULL_LANE_JOBS = (
     "native-arm64", "topology-smoke", "estate-portability", "verify", "engine-suites",
@@ -51,6 +53,7 @@ GATE_EXPECTATIONS = {
     "installed-crash": ("FULL_LANE", "INSTALLED_CRASH_RESULT"),
     "storage-contract-preflight": ("FULL_LANE", "STORAGE_PREFLIGHT_RESULT"),
     "installed-reopen": ("FULL_LANE", "INSTALLED_REOPEN_RESULT"),
+    "repository-invariants": ("LIGHT_SELECTED", "INVARIANTS_RESULT"),
 }
 DEVELOPMENT_CONTAINER = ROOT / ".devcontainer"
 DIGEST_PINNED_IMAGE = re.compile(r"[^@\s]+@sha256:[0-9a-f]{64}")
@@ -989,6 +992,7 @@ def verify_storage_contract_preflight(jobs: dict[str, str]) -> None:
         "            fi",
         "          }",
         '          if [ "$FULL_LANE" = true ] || [ "$SDK_LANE" = true ]; then SDK_SELECTED=true; else SDK_SELECTED=false; fi',
+        '          if [ "$FULL_LANE" = true ]; then LIGHT_SELECTED=false; else LIGHT_SELECTED=true; fi',
     ] + [f'          expect "${lane}" "${variable}" {job}' for job, (lane, variable) in GATE_EXPECTATIONS.items()]
     require(
         run_lines == expected_lines,
@@ -1044,6 +1048,9 @@ def verify_lane_selection(jobs: dict[str, str], reusable: str) -> None:
         "python3 scripts/ci/check_generated_surfaces.py",
     ):
         require(fast.count(required) == 1, f"engine fast lane is missing: {required}")
+    require(jobs["repository-invariants"].count(
+        "cargo test -p rrd-engine --locked --test workspace_architecture") == 1,
+        "repository invariants must run the workspace architecture tests on every light candidate")
     require(reusable.count("python3 scripts/ci/test_select_ci_lanes.py") == 2
             and jobs["verify"].count("python3 scripts/ci/test_ci_lanes_policy.py") == 1,
             "lane selection regressions must run in the changes job and the verify policy step")
@@ -1149,6 +1156,7 @@ def main() -> None:
         "docs-policy",
         "scripts-policy",
         "engine-fast",
+        "repository-invariants",
         "native-arm64",
         "storage-contract-preflight",
         "installed-reopen",
@@ -1288,6 +1296,7 @@ def main() -> None:
 
     heavy_jobs = [
         "engine-fast",
+        "repository-invariants",
         "verify",
         "engine-suites",
         "sdk-conformance",
