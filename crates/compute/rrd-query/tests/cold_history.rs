@@ -47,7 +47,7 @@ fn stamped_native_history_encodes_compressed_rows_and_survives_reopen() {
         RuntimeType::new("document").unwrap(),
         RuntimeTableSchema::schemaless(RuntimeLogicalModel::Relational),
     );
-    let reference = RuntimeRef::new("document", "note:one").unwrap();
+    let reference = RuntimeRef::new("document", "note-one").unwrap();
     let record = |value: &str| RuntimeMutation::Record {
         record: RuntimeRecord {
             reference: reference.clone(),

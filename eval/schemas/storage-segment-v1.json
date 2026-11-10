@@ -475,6 +475,107 @@
       ],
       "type": "object"
     },
+    "ColdHistoryCompression": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "uncompressed",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "zstd",
+              "type": "string"
+            },
+            "level": {
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "kind",
+            "level"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ColdHistoryPolicy": {
+      "additionalProperties": false,
+      "description": "One admitted cold-history maintenance quantum. This is installed policy;\nits presence does not assert that an archive generation is available.",
+      "properties": {
+        "compression": {
+          "$ref": "#/$defs/ColdHistoryCompression"
+        },
+        "dictionary": {
+          "type": "boolean"
+        },
+        "interval_ms": {
+          "description": "Target period between server offers; missed or busy offers are skipped.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "max_changes": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "max_elapsed_ms": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "max_input_bytes": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "max_memory_bytes": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "max_output_bytes": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "row_group_rows": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "statistics": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "interval_ms",
+        "max_changes",
+        "max_input_bytes",
+        "max_output_bytes",
+        "max_memory_bytes",
+        "max_elapsed_ms",
+        "row_group_rows",
+        "compression",
+        "dictionary",
+        "statistics"
+      ],
+      "type": "object"
+    },
     "ColdStartEvidence": {
       "additionalProperties": false,
       "description": "Owned-file cache eviction verified before process restart. The measured\ninterval includes startup and first read; subsequent reads may be warm.",
@@ -2397,6 +2498,17 @@
           "format": "uint64",
           "minimum": 0,
           "type": "integer"
+        },
+        "cold_history": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ColdHistoryPolicy"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Explicitly configured background cold-history work; absent means disabled."
         },
         "compaction_elapsed_ms": {
           "format": "uint64",
