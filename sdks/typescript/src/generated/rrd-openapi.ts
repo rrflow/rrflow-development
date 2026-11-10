@@ -1,4 +1,4 @@
-// OpenAPI SHA-256: 274b9c3536c11c42b8f675e863a9c821b564b0ee9eff800123fffc2df406cc7b
+// OpenAPI SHA-256: fef69c50fd394dcfdccf5a23cfc16167c0ef673bf6770e4fb92eb29fb9c43324
 export interface paths {
     "/v1/attunement/cancel": {
         parameters: {
@@ -21950,6 +21950,21 @@ export interface operations {
                                         };
                                         /** Format: uint64 */
                                         physical_sequence: number;
+                                        /** @description Process-local RRFlowCLD trigger observations for cold-served vectors. */
+                                        rrflow_cld?: {
+                                            /** Format: uint64 */
+                                            cache_bypass_hits: number;
+                                            /** Format: uint64 */
+                                            cold_mapped_hits: number;
+                                            /** Format: uint64 */
+                                            cold_owned_hits: number;
+                                            /** Format: uint64 */
+                                            cold_source_hits: number;
+                                            /** Format: uint64 */
+                                            last_trigger_at_unix_ms?: number | null;
+                                            /** Format: uint64 */
+                                            trigger_count: number;
+                                        } | null;
                                         /** @description Segment file I/O by access path, cumulative since the store opened. */
                                         segment_io: {
                                             /** Format: uint64 */
@@ -24648,6 +24663,21 @@ export interface operations {
                                         };
                                         /** Format: uint64 */
                                         physical_sequence: number;
+                                        /** @description Process-local RRFlowCLD trigger observations for cold-served vectors. */
+                                        rrflow_cld?: {
+                                            /** Format: uint64 */
+                                            cache_bypass_hits: number;
+                                            /** Format: uint64 */
+                                            cold_mapped_hits: number;
+                                            /** Format: uint64 */
+                                            cold_owned_hits: number;
+                                            /** Format: uint64 */
+                                            cold_source_hits: number;
+                                            /** Format: uint64 */
+                                            last_trigger_at_unix_ms?: number | null;
+                                            /** Format: uint64 */
+                                            trigger_count: number;
+                                        } | null;
                                         /** @description Segment file I/O by access path, cumulative since the store opened. */
                                         segment_io: {
                                             /** Format: uint64 */
@@ -25255,6 +25285,21 @@ export interface operations {
                                     };
                                     /** Format: uint64 */
                                     physical_sequence: number;
+                                    /** @description Process-local RRFlowCLD trigger observations for cold-served vectors. */
+                                    rrflow_cld?: {
+                                        /** Format: uint64 */
+                                        cache_bypass_hits: number;
+                                        /** Format: uint64 */
+                                        cold_mapped_hits: number;
+                                        /** Format: uint64 */
+                                        cold_owned_hits: number;
+                                        /** Format: uint64 */
+                                        cold_source_hits: number;
+                                        /** Format: uint64 */
+                                        last_trigger_at_unix_ms?: number | null;
+                                        /** Format: uint64 */
+                                        trigger_count: number;
+                                    } | null;
                                     /** @description Segment file I/O by access path, cumulative since the store opened. */
                                     segment_io: {
                                         /** Format: uint64 */
@@ -25510,6 +25555,21 @@ export interface operations {
                                     };
                                     /** Format: uint64 */
                                     physical_sequence: number;
+                                    /** @description Process-local RRFlowCLD trigger observations for cold-served vectors. */
+                                    rrflow_cld?: {
+                                        /** Format: uint64 */
+                                        cache_bypass_hits: number;
+                                        /** Format: uint64 */
+                                        cold_mapped_hits: number;
+                                        /** Format: uint64 */
+                                        cold_owned_hits: number;
+                                        /** Format: uint64 */
+                                        cold_source_hits: number;
+                                        /** Format: uint64 */
+                                        last_trigger_at_unix_ms?: number | null;
+                                        /** Format: uint64 */
+                                        trigger_count: number;
+                                    } | null;
                                     /** @description Segment file I/O by access path, cumulative since the store opened. */
                                     segment_io: {
                                         /** Format: uint64 */
@@ -53364,6 +53424,11 @@ export interface operations {
                                 resources: {
                                     /** Format: uint64 */
                                     canonical_candidates: number;
+                                    /**
+                                     * Format: uint64
+                                     * @default 0
+                                     */
+                                    cold_source_hits: number;
                                     /** Format: uint64 */
                                     ef_search: number;
                                     /** Format: uint64 */
@@ -53374,6 +53439,8 @@ export interface operations {
                                     overlay_candidates: number;
                                     /** Format: uint64 */
                                     result_hits: number;
+                                    /** @default false */
+                                    rrflowcld_triggered: boolean;
                                     /** Format: uint64 */
                                     selected_candidates: number;
                                     /** Format: uint64 */
@@ -53531,6 +53598,11 @@ export interface operations {
                                 resources: {
                                     /** Format: uint64 */
                                     canonical_candidates: number;
+                                    /**
+                                     * Format: uint64
+                                     * @default 0
+                                     */
+                                    cold_source_hits: number;
                                     /** Format: uint64 */
                                     ef_search: number;
                                     /** Format: uint64 */
@@ -53541,6 +53613,8 @@ export interface operations {
                                     overlay_candidates: number;
                                     /** Format: uint64 */
                                     result_hits: number;
+                                    /** @default false */
+                                    rrflowcld_triggered: boolean;
                                     /** Format: uint64 */
                                     selected_candidates: number;
                                     /** Format: uint64 */

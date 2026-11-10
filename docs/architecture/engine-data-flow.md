@@ -1191,6 +1191,11 @@ reduction percentage is policy input, never a hardcoded deletion target.
 
 ## Project-tree inventory and incremental attunement
 
+The [source-bound plan and explicit replan proposal](source-bound-plan-design.md)
+explains the prospective handoff, changed-input response, worker fencing and
+filesystem publication limits. It does not establish implemented behavior or
+change the requirements below.
+
 A deterministic project-tree snapshot is the input boundary for an indexing
 run or a completeness claim that covers the project. Other durable effects bind
 their complete relevant source boundary, which can be narrower. Reproducible
