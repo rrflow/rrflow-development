@@ -1001,15 +1001,18 @@ prevent retention. The record does not classify the cause, retry the case, or
 turn a failed native test into acceptance; see the
 [C-07 diagnostic journal](../evidence/change-journals/gate-c/c-07-native-create-diagnostics.md).
 
-The separate manual `c07-native-preflight.yml` workflow runs the same three
-fresh/existing APFS pairs and controlled failure diagnostics on one macOS
+The separate manual `c07-native-preflight.yml` workflow defaults to the same
+three fresh/existing APFS pairs and controlled failure diagnostics on one macOS
 runner. First it deliberately supplies an invalid filesystem to the native
 image-create command and verifies that the runner retains the resulting error;
 that injected receipt is uploaded separately from any real capacity failure.
 The injected failure is a diagnostic test, never a capacity pass. Once that
 workflow exists on default `main`, dispatch an exact branch
 with `gh workflow run c07-native-preflight.yml --ref <branch>` and verify the
-run's recorded head and tree. This is a focused diagnostic, not candidate CI,
-the required merge group, the full capacity matrix, or a soak. A passing run
+run's recorded head and tree. To investigate one failure without the other
+cases, for example, add `-f point=wal_before_write -f mode=fresh -f repetitions=1`.
+The wrapper validates these selections against the native runner's point list
+and preserves its failure and cleanup behavior. This is a focused diagnostic,
+not candidate CI, the required merge group, the full capacity matrix, or a soak. A passing run
 does not erase a prior failure or prove its cause. Normal PR and merge-group
 events continue to run the unchanged complete pipeline.

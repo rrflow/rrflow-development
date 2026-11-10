@@ -518,7 +518,10 @@ class NativeCapacityCases(unittest.TestCase):
         check_workflow.verify_native_capacity_preflight(workflow)
         for altered in [
             workflow.replace("  workflow_dispatch:\n", "  pull_request:\n", 1),
-            workflow.replace("--mode fresh --mode existing\n", "", 1),
+            workflow.replace("default: \"3\"", "default: \"1\"", 1),
+            workflow.replace("python3 scripts/ci/run_macos_capacity_preflight.py", "python3 omitted.py", 1),
+            workflow.replace("python3 scripts/ci/test_macos_capacity_preflight.py", "python3 omitted.py", 1),
+            workflow.replace('--point "$RRFLOW_PREFLIGHT_POINT"', '--point "all"', 1),
             workflow.replace("    runs-on: macos-latest", "    runs-on: ubuntu-latest", 1),
             workflow.replace("      - name: Bind exact revision", "      - continue-on-error: true\n      - name: Bind exact revision", 1),
             workflow.replace("          submodules: recursive", "          submodules: recursive\n          ref: main", 1),
