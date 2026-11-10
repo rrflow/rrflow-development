@@ -58,6 +58,38 @@ adds real account/transfer proof to G/I learning proof. Login alone closes no
 learning/synchronization requirement. Keep the all-local project proof independent
 of cloud availability and retain no-sharing defaults during parallel projects.
 
+## Resource-managed project instances
+
+This is a later H-06/H-07 target after the one-project developer journey is
+usable. The operator can register multiple project estates and set host-wide and
+per-instance resource budgets; registered projects do not all have to remain
+running. Start or attach to the exact authenticated instance, observe admitted
+and queued work, and optionally stop an idle instance only under the operator's
+configured policy. Resume reopens its durable estate and rechecks its identity.
+Report effective limits, consumption, pending/denied admission, shutdown reason,
+recovery and unavailable measurements. Do not promise an unbounded number of
+simultaneous engines or turn a fixed client count into a product entitlement.
+
+The Connectome revision pinned by RRFlow main at the starting baseline
+(`c1cbff203ecee89013878609d11aed04e89d0e71`) uses `MAX_OWNED = 4` and
+`MAX_TRACKED = 8` in `src-tauri/src/rrd/estate/lifecycle.rs`. These are current
+implementation limits, not evidence of resource-aware admission. Replace the
+limits only through the separate Connectome ownership boundary and its public
+RRD lifecycle contracts, after characterizing existing shutdown and session
+behavior; preserve protections against unbounded memory and process creation.
+
+Acceptance requires a current packaged client and installed engines: register
+more projects than the concurrent budget allows; exercise fair or documented
+queueing, stop/resume and restart with durable readback; verify identity and
+credentials remain isolated; deny or defer work under CPU/memory/process
+pressure; and show truthful progress and resource measurements. Test a process
+started elsewhere, a crash during shutdown, a live operation at an idle deadline,
+and an unavailable measurement. Never kill an externally owned process, discard
+an acknowledged write, or silently grant cross-project reads. Record the exact
+host, budget, process ownership, revisions and observed outcomes. Cloud and
+self-hosted control-plane profiles need separate isolation, identity, quota and
+recovery evidence; a local connection does not qualify them.
+
 ## H-07 DevPulse, managed cloud and homelab packages
 
 The [existing integration contract](../../reference/client/devpulse-cloud.md)

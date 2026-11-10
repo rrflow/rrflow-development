@@ -249,6 +249,10 @@ fn install(action: &InstallAction, json: bool) -> Result<Execution, BoxError> {
         InstallAction::AttunementSchema => {
             Ok(serde_json::to_string_pretty(&rrd_engine::attunement_proposal_schema()?)?.into())
         }
+        InstallAction::Discover { project, profile } => {
+            let discovery = RrdEngine::discover_nested_repositories(project, profile)?;
+            Ok(serde_json::to_string_pretty(&discovery)?.into())
+        }
         InstallAction::Plan {
             project,
             mode,

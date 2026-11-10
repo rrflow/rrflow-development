@@ -76,6 +76,43 @@ fn inspect_at(
     RrdEngine::inspect_installed_with_clock(project, executable, &FixedClock::at(at_unix_ms))
 }
 
+/// The lab measured search against this page cache. Everything that states a
+/// default has to agree, and changing it should come with a new measurement.
+#[test]
+fn every_default_page_cache_is_the_one_search_was_measured_with() {
+    const MEASURED: u64 = 64 * 1024 * 1024;
+    let bundled = crate::load_estate_configuration(None).unwrap();
+    assert_eq!(
+        bundled.storage.page_cache_bytes, MEASURED,
+        "the bundled configuration"
+    );
+    assert_eq!(
+        rrd_contract::StorageLimits::default().page_cache_bytes,
+        MEASURED,
+        "the contract's default"
+    );
+    assert_eq!(
+        rrd_store::DatabaseOptions::default().page_cache_bytes as u64,
+        MEASURED,
+        "the storage engine's default"
+    );
+    let installed = crate::engine::core::installed_storage_options(&bundled.storage).unwrap();
+    assert_eq!(
+        installed.page_cache_bytes as u64, MEASURED,
+        "what a default install opens with"
+    );
+}
+
+#[test]
+fn a_configuration_still_chooses_its_own_page_cache() {
+    let mut storage = crate::load_estate_configuration(None).unwrap().storage;
+    for chosen in [0, 1024 * 1024, 1024 * 1024 * 1024] {
+        storage.page_cache_bytes = chosen;
+        let installed = crate::engine::core::installed_storage_options(&storage).unwrap();
+        assert_eq!(installed.page_cache_bytes as u64, chosen);
+    }
+}
+
 #[test]
 fn installed_engine_retains_only_its_admitted_project_root_across_reopen() {
     use std::io::Read;
@@ -991,7 +1028,7 @@ native_transaction_bytes = 67108864
 checkpoint_entries = 1024
 active_read_views = 1024
 pinned_read_bytes = 4294967296
-page_cache_bytes = 4194304
+page_cache_bytes = 67108864
 wal_flush_target_bytes = 67108864
 memtable_flush_target_versions = 524288
 compaction_input_bytes = 1073741824
