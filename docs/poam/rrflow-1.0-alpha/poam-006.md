@@ -18,6 +18,13 @@ the phase enum and checkpoint progression remain closed and linear. The
 maps this verified gap, the existing preservation obligations and the required
 project-to-handoff oracle. Neither that design nor this entry implements
 dynamic selection or changes POAM-006's open status.
+At main `81d2166311476ef51703532573908024a61b725a`, the current replan
+implementation clones the predecessor's phase list while changing its source
+identity, and the public replan validator rejects a differently selected plan.
+Consequently it cannot reselect available capabilities after an ordinary edit;
+the [D-02 review journal](../../evidence/change-journals/gate-d/d-02-adaptive-attunement-20261107.md)
+records the source boundaries and the required successor, replay and
+authorization evidence. POAM-006 remains open.
 The original Connectome pin and its successor on main
 `c1cbff203ecee89013878609d11aed04e89d0e71` both contain eleven static phase
 declarations and a fixed duration estimate. A Git search at both revisions
