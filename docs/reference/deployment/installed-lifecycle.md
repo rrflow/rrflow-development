@@ -55,6 +55,7 @@ The target command vocabulary is:
 ```text
 rrflow version
 rrflow install identity
+rrflow install discover --project <root> [--profile <id>]
 rrflow install attunement-schema
 rrflow install plan   --project <root> --identity <256-bit-hex> --mode fresh|existing --profile <id> [--configuration <toml>] [--attunement-proposal <json>] [--allow-project-source-read]
 rrflow install apply  --project <root> --plan <file> --expect <sha256>
@@ -154,6 +155,21 @@ are `ABSENT`.
 Attunement's own seven-state job machine remains nested beneath the installed
 estate and does not redefine these states. Events and traces observe committed
 state; they never manufacture a transition.
+
+## Read-only nested repository discovery
+
+`rrflow install discover --project <root>` reports present tracked Git submodule
+directories as provisional candidates before an installation exists. It uses
+the bundled inventory profile, existing bounded root-anchored Git inputs and
+source observations. The JSON identifies the profile and Git inputs, states
+whether an index was verified, recommends separate projects, and labels its
+coverage `present_tracked_gitlink_directories_only`. It never follows a child
+Gitfile, creates an engram, or chooses or authorizes an installation. Missing
+or untracked nested repositories are outside this result, and source changes
+can make it stale. `selection_available: false` explicitly marks the user's
+separate/shared setup choice as not implemented. The real-checkout and test
+evidence is [recorded here](../../evidence/change-journals/gate-d/nested-gitlink-discovery.md);
+full installation remains owned by Gate D.
 
 ## Install plan
 
@@ -435,7 +451,7 @@ The required `[storage]` configuration separates active-state, output, cache,
 and maintenance controls:
 `mutable_accounted_bytes` (128 MiB default), `mutable_versions` (1,048,576),
 `projected_output_bytes` (128 MiB), `source_page_bytes` (256 MiB),
-`page_cache_bytes` (4 MiB, zero disables
+`page_cache_bytes` (64 MiB, zero disables
 caching), `wal_flush_target_bytes` (64 MiB) and
 `memtable_flush_target_versions` (524,288). The first two are native active-state
 hard caps; the next three bound retained projected allocations, live owned

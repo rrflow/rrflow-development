@@ -48,6 +48,38 @@ define the flow. Existing API contracts stay unchanged; an operation that cannot
 express a required action is a specific blocker to resolve, not an implied
 new endpoint. POAM-006 remains open.
 
+## Interrupted Inventory refresh can mix snapshot generations
+
+On public main `3a72a6b4adc43c842f67a59f4fc91d725eac7580`, a Windows
+real-engine regression published a complete 2,048-file Inventory, edited the
+sources, accepted a successor plan, and interrupted a later multi-batch
+refresh. The completed control head remained unchanged. Its graph still
+reached the old root identity, but a `KNOWN HEAD` query for that identity
+returned the partially refreshed root digest, including after reopen. The same
+query pinned to the completed checkpoint cursor returned the original digest.
+[Draft PR #252](https://github.com/rrflow/rrflow-development/pull/252) and its
+[evidence record](../../evidence/change-journals/gate-d/d-03-interrupted-refresh-visibility.md)
+retain the failing oracle. D-03 owns the repair; D-04 must not treat an
+unqualified head query as a complete source snapshot. This does not establish
+that a checkpoint-pinned read is broken or close any roadmap item.
+
+The same real-engine interrupted-refresh fixture, reconciled with public main
+`d21a1556657fb17e783a4396368250459e03a2e8`, now also demonstrates that the
+public all-model `read_data_snapshot` returns the partially refreshed root
+before and after reopen while the completed head remains unchanged. An
+unrelated newer claim remained visible through rrflowQL. The [cross-consumer
+record](../../evidence/change-journals/gate-d/d-03-snapshot-consumer-20261107.md)
+retains the failing test and precise limits. A query-only filter would not fix
+this second read path; a global rollback would lose the newer unrelated claim.
+
+The [selection-index fault characterization](../../evidence/change-journals/gate-d/d-03-interrupted-refresh-visibility.md#selection-index-omission-fault-injection-2026-11-03)
+deliberately removed a newer selection-like event's semantic index entry while
+leaving its log and accumulator intact. The current stamped reader returned an
+older included event without detecting the omission, including after reopen.
+This injected fault is not an observed consequence of normal interruption.
+It shows that selection must not rely on returned-event inclusion proofs alone
+to establish a bounded, complete and fresh generation choice.
+
 D-01's bounded installed foundation is now [accepted](../../roadmap/rrflow-1.0/gate-d-evidence.md#d-01-accepted-installed-foundation-2026-10-21).
 The native proof covers Linux, macOS and Windows source/outbound isolation,
 owner/permission/path/mount denial, exclusive install recovery and both actual
