@@ -33,6 +33,12 @@
 
 Not absorbed, with the reason: #231 (its job-list operation already exists on main), #234 (empty), Connectome #42 (superseded by Connectome #45, merged and repinned by #312), and the lab drafts #253/#260/#262/#267/#268/#272/#274/#277 (contained commit-for-commit or by record in #306).
 
+**Collisions found by the merged build, and how each was settled.**
+
+- Taking the candidate's whole `crates/transport/rrd-contract/src/lib.rs` for #249 and #269 (to carry their OpenAPI digest) dropped the exports #236 (`ADOPTED_ESTATE_DIRECTORY`, `MAX_ADOPTED_ESTATE_ENTRIES`, `validate_adopted_estate_entries`), #241 (`SourceParseBinding`, `SourceParsePolicy`) and #249 (`LfgAnalysisPolicy`) had added. The merged engine did not compile until they were restored. A line-level audit against every candidate's base on main then found no other hand-written added line absent from the branch; the only differences are the POAM-058 renumbering, verified verbatim, and the Connectome gitlink.
+- #305's `attunement_adaptive_plan` test built `AttunementPhasePlan` without the `parse_policy` field #241 added; the test now sets it to `None`.
+- #236 and #247 disagree by design: #247 characterized the pre-#236 installer rejecting an existing inherited-permission `.rrflow` folder before preview and asked that the error name the directory, and its brief said not to adopt #236's relocation. #236 is the owner-reported shape fix and adopts that folder. On the merged tree #247's Windows characterization `inherited_estate_preview_reports_the_rejected_directory` therefore fails because preview now succeeds. It is re-targeted as `inherited_estate_preview_adopts_the_folder_without_effects`: the same shape previews as an adoption with no entries and still has no file effects. #247's in-place preservation oracle stays as the ignored POAM-006 test; #247's directory-naming diagnostic stays in `estate_directory_error` for the non-adoptable paths.
+
 **Regeneration.** SDK endpoint generators, `scripts/ci/check_generated_surfaces.py --write`, then the OpenAPI digest pinned into every record that cites it; `python3 scripts/knowledge/render_navigation.py`.
 
 **Acceptance.** ACCEPTANCE_PLACEHOLDER

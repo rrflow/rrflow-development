@@ -2210,13 +2210,19 @@ fn an_interrupted_publication_resumes_from_its_recorded_stage() {
     }
 }
 
+/// #247 characterized the pre-#236 installer: an existing `.rrflow` folder
+/// with ordinary inherited permissions was rejected before preview, and the
+/// storage error had to name the directory. #236 adopts that folder instead,
+/// so the same shape now previews as an adoption with no entries and still
+/// has no file effects. The in-place preservation oracle #247 asked for stays
+/// below under POAM-006.
 #[cfg(windows)]
 #[test]
-fn inherited_estate_preview_reports_the_rejected_directory() {
+fn inherited_estate_preview_adopts_the_folder_without_effects() {
     let root = tempfile::tempdir().unwrap();
     std::fs::create_dir(root.path().join(".rrflow")).unwrap();
     let before = inventory(root.path());
-    let error = RrdEngine::plan_installation(
+    let preview = RrdEngine::plan_installation(
         root.path(),
         InstallationTargetKind::ExistingProject,
         &"1".repeat(64),
@@ -2224,10 +2230,11 @@ fn inherited_estate_preview_reports_the_rejected_directory() {
         None,
         &test_executable(),
     )
-    .unwrap_err();
-    assert!(
-        error.to_string().contains("estate directory .rrflow:"),
-        "unexpected error: {error}"
+    .unwrap();
+    assert_eq!(
+        preview.installation.adopted_estate_entries.as_deref(),
+        Some(&[][..]),
+        "an empty inherited .rrflow is adopted with no entries"
     );
     assert_eq!(inventory(root.path()), before);
 }

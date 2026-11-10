@@ -20,6 +20,7 @@ fn plan(selected: &[AttunementPhase]) -> AttunementPlan {
             configuration_sha256: "a".repeat(64),
             estimated_items: 0,
             estimated_input_bytes: 0,
+            parse_policy: None,
         })
         .collect();
     let mut plan = AttunementPlan {
