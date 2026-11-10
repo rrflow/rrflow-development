@@ -10,6 +10,12 @@ it cannot close a roadmap gate independently.
 
 ## Observed deficiency
 
+The [installed-job discovery candidate](../../evidence/change-journals/gate-d/d-02-installed-job-discovery.md)
+adds a bounded authenticated public read over the installed initial job and
+committed successors. It is a prerequisite for client recovery without derived
+IDs, not completion of job journals, memory receipts, current-source verification
+or Connectome workflow acceptance. The parent gap remains open.
+
 The [discovery package on accepted main](../../evidence/change-journals/gate-d/d-02-job-discovery-on-main.md)
 adapts the existing bounded installed-job list independently of unmerged worker
 and task-budget ancestors. It remains a candidate for public initial/successor
