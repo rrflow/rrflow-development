@@ -1,0 +1,4 @@
+RRFlow listening at http://127.0.0.1:9477
+instance: instance-c9de5a3ed6861f6f6bcdca4c
+UI discovery: http://127.0.0.1:9477/v1/schema/openapi
+project map: D:\.usr\Temp\rrflow-real-workbench-project\.rrflow/project-map.md (2314 files)
