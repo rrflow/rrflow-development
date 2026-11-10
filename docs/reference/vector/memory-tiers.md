@@ -105,6 +105,13 @@ resident bytes, hits, misses, evictions, stale reclaims, tier transitions,
 cold mmap and owned loads, and oversized-cache bypasses. These counters are
 diagnostic evidence, not a durable correctness authority.
 
+When a vector search serves one or more artifacts from cold sources
+(`cold_mapped`, `cold_owned`, or cache-bypass cold loads), the engine records
+an RRFlowCLD trigger observation. The public search response includes
+`resources.cold_source_hits` and `resources.rrflowcld_triggered`, and storage
+diagnostics include `rrflow_kv.rrflow_cld` counters. These observations are
+process-local lifecycle signals; they do not change canonical vector authority.
+
 Current executable evidence is:
 
 - `runtime::vector_residency::tests` for hard pinned admission, cached LRU,
