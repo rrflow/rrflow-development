@@ -1488,6 +1488,7 @@ fn public_attunement_control_commands_require_the_plan_contract_version() {
             generation: 1,
             plan: attunement_plan(),
             proposal_sha256: digest.clone(),
+            evidence: None,
         };
         let outcomes = [
             rrd_contract::StartAttunement {

@@ -70,6 +70,10 @@ fn grammar(language: &str) -> Option<(Language, &'static str)> {
     }
 }
 
+/// Languages with a linked grammar, in canonical order. The engine binds
+/// these ids to inventory evidence; a language absent here is never parsed.
+pub const SUPPORTED_LANGUAGES: [&str; 3] = ["go", "python", "rust"];
+
 /// Identity of the linked grammar, or None when no such parser is installed.
 pub fn parser_revision(language: &str) -> Option<&'static str> {
     grammar(language).map(|(_, revision)| revision)

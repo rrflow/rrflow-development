@@ -14,6 +14,7 @@ use std::sync::{Arc, Barrier};
 // returned, never a fixed later offset that assumes how long the call took.
 pub(super) const BASE: u64 = 1_800_000_000_000;
 mod adaptive_selection;
+mod derivation;
 mod discovery;
 mod inventory_delta;
 pub(super) use inventory_delta::first_inventory_for_worker_with_setup_at;
@@ -1406,8 +1407,16 @@ fn attunement_follows_a_bound_repeated_step_plan_after_reopen() {
     let mut second = plan.phases[0].clone();
     second.sequence = 2;
     second.configuration_sha256 = digest::sha256_hex(b"second-connect-configuration");
-    let mut verify = plan.phases.last().unwrap().clone();
-    verify.sequence = 3;
+    // The default plan no longer ends in Verify; this test-only plan adds one
+    // explicitly so the unavailable final step still exercises fail-closed.
+    let verify = rrd_contract::AttunementPhasePlan {
+        phase: Phase::Verify,
+        sequence: 3,
+        configuration_sha256: digest::sha256_hex(b"verify-configuration"),
+        estimated_items: 1,
+        estimated_input_bytes: 0,
+        parse_policy: None,
+    };
     plan.phases = vec![plan.phases[0].clone(), second, verify];
     plan.plan_sha256 = rrd_contract::attunement_plan_sha256(&plan).unwrap();
     plan.validate().unwrap();
@@ -1913,7 +1922,10 @@ fn competing_replan_acceptances_publish_one_successor() {
 
 #[test]
 fn replan_refuses_an_unreconciled_failure() {
-    let (installed, engine, session) = Installed::new(InstallationTargetKind::ExistingProject);
+    let (installed, engine, session) = Installed::with_proposal(
+        InstallationTargetKind::ExistingProject,
+        Some(&proposal_with_unavailable_parse()),
+    );
     let started = call(
         &engine,
         &session,
@@ -2565,7 +2577,10 @@ fn replan_receipt_is_not_visible_to_another_authorized_principal() {
 
 #[test]
 fn attunement_receipt_readback_preserves_original_result_after_reopen() {
-    let (installed, engine, session) = Installed::new(InstallationTargetKind::ExistingProject);
+    let (installed, engine, session) = Installed::with_proposal(
+        InstallationTargetKind::ExistingProject,
+        Some(&proposal_with_unavailable_parse()),
+    );
     assert!(engine
         .read_attunement_receipt(
             &session.session_id,
@@ -2873,9 +2888,32 @@ fn attunement_receipt_readback_rejects_corrupt_identity() {
     ));
 }
 
+/// An explicit operator proposal that selects a capability without an
+/// installed executor. The default plan no longer contains one, so the tests
+/// that characterize fail-closed behaviour at an unavailable step opt in.
+fn proposal_with_unavailable_parse() -> crate::AttunementProposal {
+    crate::AttunementProposal {
+        format_version: crate::ATTUNEMENT_PROPOSAL_FORMAT_VERSION,
+        steps: [Phase::Connect, Phase::Inventory, Phase::Parse]
+            .into_iter()
+            .map(|phase| crate::AttunementProposalStep {
+                phase,
+                description: format!("{phase:?}"),
+                estimated_items: 0,
+                estimated_input_bytes: 0,
+                parse_policy: None,
+            })
+            .collect(),
+        estimated_min_duration_ms: 0,
+        estimated_max_duration_ms: 30_000,
+    }
+}
+
 #[test]
 fn attunement_detail_reports_failure_and_does_not_claim_source_verification() {
-    let (installed, engine, session) = Installed::new(InstallationTargetKind::ExistingProject);
+    let proposal = proposal_with_unavailable_parse();
+    let (installed, engine, session) =
+        Installed::with_proposal(InstallationTargetKind::ExistingProject, Some(&proposal));
     let request = rrd_contract::ReadAttunement {
         contract_version: rrd_contract::ATTUNEMENT_CONTRACT_VERSION,
         job_id: installed.job.clone(),
@@ -2955,7 +2993,8 @@ fn attunement_installed_connect_failure_and_exact_receipts_survive_reopen() {
         InstallationTargetKind::FreshProject,
         InstallationTargetKind::ExistingProject,
     ] {
-        let (installed, engine, session) = Installed::new(mode);
+        let proposal = proposal_with_unavailable_parse();
+        let (installed, engine, session) = Installed::with_proposal(mode, Some(&proposal));
         let pending = installed.read(&engine, &session, BASE + 500);
         assert_eq!(pending.job.state, State::Pending);
         let start = call(

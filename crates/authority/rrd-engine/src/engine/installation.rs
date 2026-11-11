@@ -86,6 +86,10 @@ pub struct DefaultInstallProfile {
     pub credential_bytes: u16,
     pub initial_grant_policy: CanonicalId,
     pub inactive_capabilities: Vec<CanonicalId>,
+    /// Capabilities this profile offers. The engine intersects them with its
+    /// installed executors when it derives a plan from evidence; the initial
+    /// `attunement_phases` must be among them.
+    pub available_capabilities: Vec<AttunementPhase>,
     pub attunement_phases: Vec<DefaultAttunementPhase>,
     pub estimated_min_duration_ms: u64,
     pub estimated_max_duration_ms: u64,
@@ -252,13 +256,26 @@ fn planned_attunement_steps(steps: &[DefaultAttunementPhase]) -> Result<Vec<Attu
         .collect()
 }
 
-fn validate_parse_policy_limits(
+pub(super) fn validate_parse_policy_limits(
     steps: &[DefaultAttunementPhase],
     profile: &DefaultInstallProfile,
     configuration: &rrd_contract::EstateConfiguration,
 ) -> Result<()> {
+    validate_parse_policies(
+        steps.iter().filter_map(|step| step.parse_policy.as_ref()),
+        profile,
+        configuration,
+    )
+}
+
+/// The same bound for a derived plan, whose steps are contract phase plans.
+pub(super) fn validate_parse_policies<'a>(
+    policies: impl Iterator<Item = &'a rrd_contract::SourceParsePolicy>,
+    profile: &DefaultInstallProfile,
+    configuration: &rrd_contract::EstateConfiguration,
+) -> Result<()> {
     let inventory = &profile.inventory_policy.limits;
-    for policy in steps.iter().filter_map(|step| step.parse_policy.as_ref()) {
+    for policy in policies {
         if policy.max_files > inventory.entries
             || policy.max_file_bytes > inventory.file_bytes
             || policy.max_input_bytes > inventory.content_bytes
@@ -336,11 +353,42 @@ impl DefaultInstallProfile {
                 "default installation profile capabilities are non-canonical".into(),
             ));
         }
+        if self.available_capabilities.is_empty()
+            || self
+                .available_capabilities
+                .windows(2)
+                .any(|pair| pair[0] >= pair[1])
+            || !self
+                .available_capabilities
+                .contains(&AttunementPhase::Connect)
+            || !self
+                .available_capabilities
+                .contains(&AttunementPhase::Inventory)
+        {
+            return Err(ServiceError::Contract(
+                "default installation profile capabilities must be canonical and include connect and inventory".into(),
+            ));
+        }
         validate_attunement_steps(
             &self.attunement_phases,
             self.estimated_min_duration_ms,
             self.estimated_max_duration_ms,
-        )
+        )?;
+        self.require_available(&self.attunement_phases)
+    }
+
+    /// Every planned step must be a capability this profile offers.
+    pub(super) fn require_available(&self, steps: &[DefaultAttunementPhase]) -> Result<()> {
+        if steps
+            .iter()
+            .any(|step| !self.available_capabilities.contains(&step.phase))
+        {
+            return Err(ServiceError::Contract(
+                "attunement step selects a capability the installation profile does not offer"
+                    .into(),
+            ));
+        }
+        Ok(())
     }
 }
 
@@ -719,6 +767,7 @@ impl RrdEngine {
                 profile.estimated_max_duration_ms,
             ),
         };
+        profile.require_available(&steps)?;
         validate_parse_policy_limits(&steps, &profile, &configuration)?;
         let phases = planned_attunement_steps(&steps)?;
         let mut attunement = AttunementPlan {
@@ -1855,6 +1904,7 @@ fn validate_sealed_preview(
             profile.estimated_max_duration_ms,
         ),
     };
+    profile.require_available(&steps)?;
     validate_parse_policy_limits(&steps, profile, &installation.configuration)?;
     let expected_phases = planned_attunement_steps(&steps)?;
     let absent = digest::sha256_hex(b"rrflow-install-managed-path-absent-v1");

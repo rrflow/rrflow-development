@@ -191,10 +191,12 @@ The contract defines fresh/existing project targets and a bounded vocabulary of
 attunement effects. An explicitly selected plan can contain different known
 effects; it is not required to include every effect or a Verify step. Its
 completed status means its selected effects were checkpointed, not that the
-project has been indexed or independently verified. The bundled profiles still
-select the same eleven-entry template by default, and automatic selection from
-project signals and available capabilities is not implemented. Connect and
-bounded Inventory execute; other listed effects remain unavailable. Existing
+project has been indexed or independently verified. The bundled profiles plan
+Connect and bounded Inventory by default and declare the capabilities they
+offer; after Inventory the engine derives the successor plan from committed
+inventory evidence and the executors it has, through the replan contract.
+Connect and bounded Inventory execute; a capability without an executor is not
+selected, and an explicitly proposed one fails explicitly as unavailable. Existing
 plans and their receipts retain their original identities.
 
 `initialize_instance` is also the only initial-security bootstrap. Its action

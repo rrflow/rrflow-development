@@ -78,4 +78,6 @@
 - [POAM-066 — rrflowQL has no GROUP BY, ORDER BY or SUM and MATCH takes one word](poam-066.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-066`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-066) — active parent-owned POA&M detail
 - [POAM-067 — a budget truncation does not name its budget](poam-067.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-067`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-067) — active parent-owned POA&M detail
 - [POAM-068 — `rrflow install status` is documented but absent](poam-068.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-068`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-068) — active parent-owned POA&M detail
+- [POAM-069 — a first install is bounded by a fixed 30-second inventory limit](poam-069.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-069`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-069) — active parent-owned POA&M detail
+- [POAM-070 — a Git worktree or linked checkout cannot be installed](poam-070.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-070`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-070) — active parent-owned POA&M detail
 <!-- rrflow:generated-index:end -->

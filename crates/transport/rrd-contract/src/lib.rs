@@ -65,31 +65,35 @@ mod task;
 mod websocket;
 
 pub use attunement::{
+    attunement_capability, attunement_capability_configuration_sha256,
     attunement_checkpoint_sha256, attunement_plan_sha256, attunement_replan_accept_sha256,
     attunement_replan_preview_sha256, attunement_replan_seed, attunement_verification_sha256,
+    default_source_parse_policy, derive_attunement_phases, derive_attunement_plan,
     installation_initial_grants, installation_plan_sha256, installation_result_sha256,
     validate_adopted_estate_entries, AcceptAttunementReplan, AttunementCancelResult,
-    AttunementControlResponse, AttunementFailure, AttunementJob, AttunementJobPage,
-    AttunementJobState, AttunementJobSummary, AttunementLease, AttunementPhase,
-    AttunementPhaseCheckpoint, AttunementPhasePlan, AttunementPlan, AttunementReadResult,
-    AttunementReceipt, AttunementReceiptReadResult, AttunementReplanPreview,
-    AttunementReplanReceiptReadResult, AttunementReplanReceiptView, AttunementReplanResult,
-    AttunementRuntimeCoordinates, AttunementSourceVerification, AttunementStatus,
-    AttunementVerification, AttunementVerificationCheck, AttunementVerificationStatus,
-    CancelAttunement, InstallationActionDisposition, InstallationActionKind,
-    InstallationActionResult, InstallationBootstrap, InstallationBootstrapPolicy,
-    InstallationManagedPath, InstallationManagedPathKind, InstallationPlan, InstallationPlanAction,
-    InstallationRecordKind, InstallationRemovalRule, InstallationResult,
-    InstallationSpecialization, InstallationStorageGeneration, InstallationTargetKind,
-    ListAttunementJobs, PauseAttunement, PreviewAttunementReplan, ReadAttunement,
-    ReadAttunementReceipt, RecoverExpiredAttunement, ResumeAttunement, ResumeAttunementWithLease,
-    SourceParseBinding, SourceParsePolicy, StartAttunement, StepAttunement,
-    ADOPTED_ESTATE_DIRECTORY, ATTUNEMENT_CONTRACT_VERSION, INSTALLATION_BOOTSTRAP_VERSION,
-    INSTALLATION_LEASE_PATH, INSTALLATION_LEASE_PRECONDITION, INSTALLATION_PLAN_CONTRACT_VERSION,
+    AttunementCapability, AttunementControlResponse, AttunementEvidence, AttunementFailure,
+    AttunementJob, AttunementJobPage, AttunementJobState, AttunementJobSummary, AttunementLease,
+    AttunementPhase, AttunementPhaseCheckpoint, AttunementPhasePlan, AttunementPlan,
+    AttunementPrecondition, AttunementReadResult, AttunementReceipt, AttunementReceiptReadResult,
+    AttunementReplanPreview, AttunementReplanReceiptReadResult, AttunementReplanReceiptView,
+    AttunementReplanResult, AttunementRuntimeCoordinates, AttunementSourceVerification,
+    AttunementStatus, AttunementVerification, AttunementVerificationCheck,
+    AttunementVerificationStatus, CancelAttunement, InstallationActionDisposition,
+    InstallationActionKind, InstallationActionResult, InstallationBootstrap,
+    InstallationBootstrapPolicy, InstallationManagedPath, InstallationManagedPathKind,
+    InstallationPlan, InstallationPlanAction, InstallationRecordKind, InstallationRemovalRule,
+    InstallationResult, InstallationSpecialization, InstallationStorageGeneration,
+    InstallationTargetKind, ListAttunementJobs, PauseAttunement, PreviewAttunementReplan,
+    ReadAttunement, ReadAttunementReceipt, RecoverExpiredAttunement, ResumeAttunement,
+    ResumeAttunementWithLease, SourceParseBinding, SourceParsePolicy, StartAttunement,
+    StepAttunement, ADOPTED_ESTATE_DIRECTORY, ATTUNEMENT_CAPABILITIES, ATTUNEMENT_CONTRACT_VERSION,
+    ATTUNEMENT_EVIDENCE_FORMAT_VERSION, INSTALLATION_BOOTSTRAP_VERSION, INSTALLATION_LEASE_PATH,
+    INSTALLATION_LEASE_PRECONDITION, INSTALLATION_PLAN_CONTRACT_VERSION,
     INSTALL_ATTUNEMENT_CONTRACT_VERSION, MAX_ADOPTED_ESTATE_ENTRIES,
-    MAX_ATTUNEMENT_CANCEL_REASON_BYTES, MAX_ATTUNEMENT_FAILURE_BYTES, MAX_ATTUNEMENT_JOB_PAGE,
-    MAX_ATTUNEMENT_JOB_PAGE_BYTES, MAX_ATTUNEMENT_PHASES, MAX_ATTUNEMENT_VERIFICATION_CHECKS,
-    MAX_BOOTSTRAP_RECORD_BYTES, MAX_BOOTSTRAP_TEXT_BYTES, MAX_INSTALLATION_ACTIONS,
+    MAX_ATTUNEMENT_CANCEL_REASON_BYTES, MAX_ATTUNEMENT_EVIDENCE_LANGUAGES,
+    MAX_ATTUNEMENT_FAILURE_BYTES, MAX_ATTUNEMENT_JOB_PAGE, MAX_ATTUNEMENT_JOB_PAGE_BYTES,
+    MAX_ATTUNEMENT_PHASES, MAX_ATTUNEMENT_VERIFICATION_CHECKS, MAX_BOOTSTRAP_RECORD_BYTES,
+    MAX_BOOTSTRAP_TEXT_BYTES, MAX_INSTALLATION_ACTIONS,
 };
 pub use capability_surface::{
     ProductCapability, ProductCapabilityCatalogue, ProductSurface, SurfaceBinding,
@@ -284,7 +288,7 @@ use std::fmt;
 pub const PROTOCOL: &str = "rrd";
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const OPENAPI_DOCUMENT_SHA256: &str =
-    "fef69c50fd394dcfdccf5a23cfc16167c0ef673bf6770e4fb92eb29fb9c43324";
+    "dd820054e2efa41ec2142d6bcac10cfdf38e729324a7c42ab129c44014b45387";
 pub const MAX_ID_BYTES: usize = 128;
 pub const MAX_MESSAGE_BYTES: usize = 4_096;
 pub const MAX_CAPABILITIES: usize = 512;

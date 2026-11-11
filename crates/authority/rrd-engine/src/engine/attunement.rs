@@ -5,14 +5,15 @@
 
 use super::installation::{
     attunement_job_key, attunement_plan_key, canonical_prefixed, engram_configuration_key,
-    project_inventory_sha256, DefaultInstallProfile, InstalledengramRecord, INSTALLED_RECORD_KEY,
+    project_inventory_sha256, validate_parse_policies, DefaultInstallProfile,
+    InstalledengramRecord, INSTALLED_RECORD_KEY,
 };
 use super::*;
 use rrd_contract::{
     attunement_checkpoint_sha256, attunement_plan_sha256, attunement_replan_accept_sha256,
-    attunement_replan_preview_sha256, attunement_replan_seed, AttunementFailure, AttunementJob,
-    AttunementJobState, AttunementLease, AttunementPhase, AttunementPhaseCheckpoint,
-    AttunementPlan, AttunementReadResult, AttunementRuntimeCoordinates,
+    attunement_replan_preview_sha256, attunement_replan_seed, derive_attunement_plan,
+    AttunementFailure, AttunementJob, AttunementJobState, AttunementLease, AttunementPhase,
+    AttunementPhaseCheckpoint, AttunementPlan, AttunementReadResult, AttunementRuntimeCoordinates,
     AttunementSourceVerification, AttunementStatus, CancelAttunement, ReadAttunement,
     ResumeAttunement, ATTUNEMENT_CONTRACT_VERSION,
 };
@@ -22,6 +23,7 @@ pub use rrd_contract::{
 use std::time::Instant;
 
 mod discovery;
+mod evidence;
 mod inventory;
 #[cfg(target_os = "linux")]
 mod linux_supervisor;
@@ -329,11 +331,36 @@ impl RrdEngine {
         let seed =
             attunement_replan_seed(&job.id, job.revision, &old.plan_sha256, generation, &source)
                 .map_err(contract)?;
-        let mut plan = old.clone();
-        plan.id = canonical_prefixed("attune", &seed)?;
-        plan.source_sha256 = source;
-        plan.plan_sha256 = attunement_plan_sha256(&plan).map_err(contract)?;
-        plan.validate().map_err(contract)?;
+        let id = canonical_prefixed("attune", &seed)?;
+        // After a committed Inventory the successor is derived from evidence:
+        // the ordered capabilities whose preconditions the committed records
+        // satisfy and that this engine can execute. Before that, the successor
+        // only rebinds the predecessor's plan to fresh source.
+        let evidence = evidence::attunement_evidence(self, job, old)?;
+        let plan = match &evidence {
+            Some(evidence) => {
+                let plan = derive_attunement_plan(old, evidence, id, source).map_err(contract)?;
+                let installed = self.attunement_installed_record()?;
+                let (profile, _) =
+                    DefaultInstallProfile::load(installed.installation.profile_id.as_str())?;
+                validate_parse_policies(
+                    plan.phases
+                        .iter()
+                        .filter_map(|step| step.parse_policy.as_ref()),
+                    &profile,
+                    &self.estate_configuration,
+                )?;
+                plan
+            }
+            None => {
+                let mut plan = old.clone();
+                plan.id = id;
+                plan.source_sha256 = source;
+                plan.plan_sha256 = attunement_plan_sha256(&plan).map_err(contract)?;
+                plan.validate().map_err(contract)?;
+                plan
+            }
+        };
         let proposal_sha256 =
             attunement_replan_preview_sha256(&job.id, job.revision, generation, &plan)
                 .map_err(contract)?;
@@ -343,6 +370,7 @@ impl RrdEngine {
             generation,
             plan,
             proposal_sha256,
+            evidence,
         })
     }
 

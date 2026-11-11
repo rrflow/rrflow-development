@@ -137,6 +137,7 @@ mod query_transaction;
 mod reasoning_budget;
 pub use reasoning_budget::{ReasoningBudgetStop, TaskEmbeddingAttempt, TaskReasoningBudget};
 mod restore_publication;
+mod source_language;
 mod storage_cursor;
 mod tail_repair;
 pub use tail_repair::{InstalledTailRepairPlan, InstalledTailRepairReceipt};

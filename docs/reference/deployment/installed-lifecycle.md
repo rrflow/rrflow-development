@@ -250,10 +250,20 @@ and receipts. Acceptance observes the source again and rejects a mismatch;
 the filesystem observation and engine commit are not an atomic snapshot, so a
 concurrent edit after observation is not excluded by this check.
 
-Without a proposal the bundled profile supplies its current eleven-step
-template; it is no longer the only allowed sequence. Connect and bounded
-Inventory currently execute; other steps fail explicitly as unavailable. This interface admits an
-explicit proposal and does not yet automatically select a per-prompt schema,
+Without a proposal the bundled profile plans only Connect and bounded
+Inventory, the two effects that observe the project without changing it. The
+profile also declares the capabilities it offers (`available_capabilities`).
+After the Inventory checkpoint commits, `attunement-replan-preview` derives the
+successor plan from evidence read from the committed inventory records: the
+ordered capabilities whose preconditions the evidence satisfies and that the
+installed engine can execute. The preview carries that evidence (`evidence`),
+and the derived plan equals `derive_attunement_plan` over it, which any client
+can recompute; its step digests bind the evidence digest. A capability without
+an installed executor is never selected, so a derived plan never reaches
+`phase-unavailable`; today the executable set is Connect and Inventory, and each
+later executor widens it. An explicit proposal still selects the initial plan by hand
+within the profile's offered capabilities; a replan after a committed Inventory
+derives from evidence and replaces that selection. This interface does not yet
 generate a handoff, invoke a model, or establish indexing completion.
 
 Installation-plan contract version 4 seals the explicit identity input and

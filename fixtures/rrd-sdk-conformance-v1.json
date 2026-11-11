@@ -19,8 +19,8 @@
     "versions"
   ],
   "identity": {
-    "instance": "instance-f2eea4f6d99d650af1df423d",
-    "estate": "estate-f2eea4f6d99d650af1df423d",
+    "instance": "instance-4f6cecf6689d44cd04034a41",
+    "estate": "estate-4f6cecf6689d44cd04034a41",
     "principal": "sdk-conformance",
     "api_key": "sdk-conformance-key"
   },
@@ -134,7 +134,7 @@
     }
   },
   "query": {
-    "scope": "instance:instance-f2eea4f6d99d650af1df423d",
+    "scope": "instance:instance-4f6cecf6689d44cd04034a41",
     "query": "FROM record:document AT VALID 100 KNOWN HEAD WHERE id = \"sdk-conformance\" PROJECT id, title EXPLAIN CONTRACT",
     "parameters": {},
     "budget": {
@@ -149,7 +149,7 @@
   },
   "vector": {
     "ensure": {
-      "scope": "instance:instance-f2eea4f6d99d650af1df423d",
+      "scope": "instance:instance-4f6cecf6689d44cd04034a41",
       "collection_id": "documents",
       "vectors": [
         {
@@ -171,7 +171,7 @@
       ]
     },
     "search": {
-      "scope": "instance:instance-f2eea4f6d99d650af1df423d",
+      "scope": "instance:instance-4f6cecf6689d44cd04034a41",
       "valid_at": 100,
       "collection_id": "documents",
       "vector_name": "title",
@@ -190,7 +190,7 @@
     },
     "quantization": {
       "build": {
-        "scope": "instance:instance-f2eea4f6d99d650af1df423d",
+        "scope": "instance:instance-4f6cecf6689d44cd04034a41",
         "collection_id": "documents",
         "vector_name": "title",
         "method": {
@@ -201,12 +201,12 @@
         "max_storage_keys": 1000
       },
       "activate": {
-        "scope": "instance:instance-f2eea4f6d99d650af1df423d",
+        "scope": "instance:instance-4f6cecf6689d44cd04034a41",
         "artifact_id": "quant-turboquant-documents-title",
         "generation": 1
       },
       "search": {
-        "scope": "instance:instance-f2eea4f6d99d650af1df423d",
+        "scope": "instance:instance-4f6cecf6689d44cd04034a41",
         "valid_at": 100,
         "collection_id": "documents",
         "vector_name": "title",
@@ -230,7 +230,7 @@
       "delete_payload_index": {
         "collection_id": "documents",
         "field": "spare",
-        "scope": "instance:instance-f2eea4f6d99d650af1df423d"
+        "scope": "instance:instance-4f6cecf6689d44cd04034a41"
       },
       "ensure": {
         "build_policy": {
@@ -248,14 +248,14 @@
           "seed": 7
         },
         "max_storage_keys": 1000,
-        "scope": "instance:instance-f2eea4f6d99d650af1df423d",
+        "scope": "instance:instance-4f6cecf6689d44cd04034a41",
         "vector_name": "body"
       },
       "payload_index": {
         "collection_id": "documents",
         "field": "bucket",
         "kind": "unsigned",
-        "scope": "instance:instance-f2eea4f6d99d650af1df423d"
+        "scope": "instance:instance-4f6cecf6689d44cd04034a41"
       },
       "search": {
         "collection_id": "documents",
@@ -285,7 +285,7 @@
             0.0
           ]
         },
-        "scope": "instance:instance-f2eea4f6d99d650af1df423d",
+        "scope": "instance:instance-4f6cecf6689d44cd04034a41",
         "top_k": 1,
         "valid_at": 100,
         "vector_name": "body"
@@ -294,13 +294,13 @@
         "collection_id": "documents",
         "field": "spare",
         "kind": "unsigned",
-        "scope": "instance:instance-f2eea4f6d99d650af1df423d"
+        "scope": "instance:instance-4f6cecf6689d44cd04034a41"
       }
     }
   },
   "changefeed": {
     "read": {
-      "scope": "instance:instance-f2eea4f6d99d650af1df423d",
+      "scope": "instance:instance-4f6cecf6689d44cd04034a41",
       "after_cursor": 0,
       "limit": 128
     },

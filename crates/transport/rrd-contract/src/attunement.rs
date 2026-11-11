@@ -13,11 +13,18 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 
 mod bootstrap;
+mod derivation;
 mod discovery;
 pub use bootstrap::{
     InstallationBootstrap, InstallationBootstrapPolicy, InstallationRecordKind,
     InstallationSpecialization, InstallationStorageGeneration, INSTALLATION_BOOTSTRAP_VERSION,
     MAX_BOOTSTRAP_RECORD_BYTES, MAX_BOOTSTRAP_TEXT_BYTES,
+};
+pub use derivation::{
+    attunement_capability, attunement_capability_configuration_sha256, default_source_parse_policy,
+    derive_attunement_phases, derive_attunement_plan, AttunementCapability, AttunementEvidence,
+    AttunementPrecondition, ATTUNEMENT_CAPABILITIES, ATTUNEMENT_EVIDENCE_FORMAT_VERSION,
+    MAX_ATTUNEMENT_EVIDENCE_LANGUAGES,
 };
 pub use discovery::{
     AttunementJobPage, AttunementJobSummary, ListAttunementJobs, MAX_ATTUNEMENT_JOB_PAGE,
@@ -1360,6 +1367,12 @@ pub struct AttunementReplanPreview {
     pub generation: u64,
     pub plan: AttunementPlan,
     pub proposal_sha256: String,
+    /// Present when the engine derived the successor plan from committed
+    /// inventory evidence; the plan then equals `derive_attunement_plan`
+    /// over this evidence, which any client can recompute. Absent when the
+    /// successor only rebinds the predecessor's plan to fresh source.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub evidence: Option<AttunementEvidence>,
 }
 
 /// Hashes are shared with the engine so clients validate exactly the same
@@ -1432,10 +1445,19 @@ impl AttunementReplanPreview {
             self.generation,
             &self.plan.source_sha256,
         )?;
-        let mut expected = old_plan.clone();
-        expected.id = CanonicalId::new(format!("attune-{}", &seed[..24]))?;
-        expected.source_sha256 = self.plan.source_sha256.clone();
-        expected.plan_sha256 = self.plan.plan_sha256.clone();
+        let id = CanonicalId::new(format!("attune-{}", &seed[..24]))?;
+        let expected = match &self.evidence {
+            Some(evidence) => {
+                derive_attunement_plan(old_plan, evidence, id, self.plan.source_sha256.clone())?
+            }
+            None => {
+                let mut expected = old_plan.clone();
+                expected.id = id;
+                expected.source_sha256 = self.plan.source_sha256.clone();
+                expected.plan_sha256 = self.plan.plan_sha256.clone();
+                expected
+            }
+        };
         if self.plan != expected
             || self.proposal_sha256
                 != attunement_replan_preview_sha256(job_id, revision, self.generation, &self.plan)?

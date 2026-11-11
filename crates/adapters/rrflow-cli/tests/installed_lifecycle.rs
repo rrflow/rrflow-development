@@ -590,6 +590,7 @@ fn installed_binary_replans_and_reads_receipt_after_forced_restart(expect_parse:
                     .await
                     .unwrap();
                 let successor_plan = preview.plan.clone();
+                let preview_evidence = preview.evidence.clone();
                 let result = client
                     .accept_attunement_replan(
                         &session,
@@ -608,6 +609,25 @@ fn installed_binary_replans_and_reads_receipt_after_forced_restart(expect_parse:
                     )
                     .await
                     .unwrap();
+                // P1 of the D-02 plan: after the committed Inventory the
+                // successor is derived from evidence, not copied from the
+                // operator's proposal. The fixture holds `sample.rs`, so the
+                // evidence detects Rust with a bound grammar, and the plan
+                // selects only the capabilities this engine can execute.
+                let evidence = preview_evidence
+                    .as_ref()
+                    .expect("a replan after a committed Inventory carries evidence");
+                assert_eq!(
+                    evidence
+                        .languages
+                        .iter()
+                        .find(|(language, _)| language.as_str() == "rust")
+                        .map(|(_, files)| *files),
+                    Some(1)
+                );
+                assert!(evidence.bound_grammars.iter().any(|language| language.as_str() == "rust"));
+                let derived: Vec<rrd_contract::AttunementPhase> =
+                    successor_plan.phases.iter().map(|step| step.phase).collect();
                 let next = inventory_through_client(
                     &client,
                     &session,
@@ -624,33 +644,35 @@ fn installed_binary_replans_and_reads_receipt_after_forced_restart(expect_parse:
                     next.checkpoints[1].coordinates.runtime_cursor
                         > inventoried.checkpoints[1].coordinates.runtime_cursor
                 );
-                assert_eq!(
-                    next.current_phase,
-                    Some(rrd_contract::AttunementPhase::Parse)
-                );
-                let parsed = client
-                    .step_attunement(
-                        &session,
-                        rrd_contract::StepAttunement {
-                            contract_version: rrd_contract::ATTUNEMENT_CONTRACT_VERSION,
-                            job_id: next.id.clone(),
-                            expected_revision: next.revision,
-                            lease_generation: next.lease.as_ref().unwrap().generation,
-                        },
-                        &successor_plan,
-                        RequestOptions::mutation("binary-parse", "binary-parse", "binary-parse")
-                            .unwrap(),
-                    )
-                    .await
-                    .unwrap()
-                    .status
-                    .job;
                 if expect_parse {
-                    // The D-04 red acceptance oracle, recorded in POAM-006: an
-                    // explicitly selected Parse step after an accepted
-                    // Inventory replan must checkpoint. The offline harness
+                    // The D-04 acceptance oracle, recorded in POAM-006: once
+                    // the Parse executor is installed the evidence makes it
+                    // available, the derived plan selects it for the Rust
+                    // source, and the step checkpoints. The offline harness
                     // requires every listed case to run and pass, so this
-                    // branch is reached only when the Parse executor lands.
+                    // branch is reached only when that executor lands.
+                    assert!(derived.contains(&rrd_contract::AttunementPhase::Parse));
+                    assert_eq!(
+                        next.current_phase,
+                        Some(rrd_contract::AttunementPhase::Parse)
+                    );
+                    let parsed = client
+                        .step_attunement(
+                            &session,
+                            rrd_contract::StepAttunement {
+                                contract_version: rrd_contract::ATTUNEMENT_CONTRACT_VERSION,
+                                job_id: next.id.clone(),
+                                expected_revision: next.revision,
+                                lease_generation: next.lease.as_ref().unwrap().generation,
+                            },
+                            &successor_plan,
+                            RequestOptions::mutation("binary-parse", "binary-parse", "binary-parse")
+                                .unwrap(),
+                        )
+                        .await
+                        .unwrap()
+                        .status
+                        .job;
                     assert_eq!(
                         parsed.checkpoints.last().map(|checkpoint| checkpoint.phase),
                         Some(rrd_contract::AttunementPhase::Parse),
@@ -658,18 +680,20 @@ fn installed_binary_replans_and_reads_receipt_after_forced_restart(expect_parse:
                         parsed.failure
                     );
                 } else {
-                    // The installed Parse executor is not wired (POAM-006): the
-                    // step must fail closed at Parse, keep the Inventory
-                    // checkpoint and stay retryable. This records what the
-                    // engine does today.
+                    // Today the executable set is Connect and Inventory, so
+                    // the derived plan omits Parse, the successor succeeds
+                    // after its Inventory checkpoint, and no job reaches
+                    // `phase-unavailable`.
                     assert_eq!(
-                        parsed.checkpoints.last().map(|checkpoint| checkpoint.phase),
-                        Some(rrd_contract::AttunementPhase::Inventory)
+                        derived,
+                        vec![
+                            rrd_contract::AttunementPhase::Connect,
+                            rrd_contract::AttunementPhase::Inventory
+                        ]
                     );
-                    let failure = parsed.failure.as_ref().expect("Parse fails closed today");
-                    assert_eq!(failure.phase, rrd_contract::AttunementPhase::Parse);
-                    assert_eq!(failure.code.as_str(), "phase-unavailable");
-                    assert!(failure.retryable);
+                    assert_eq!(next.state, rrd_contract::AttunementJobState::Succeeded);
+                    assert!(next.failure.is_none());
+                    assert_eq!(next.checkpoints.len(), 2);
                 }
             }
         });

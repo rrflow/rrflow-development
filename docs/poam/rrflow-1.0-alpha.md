@@ -82,3 +82,5 @@
 | POAM-066 | High | Open | [rrflowQL has no GROUP BY, ORDER BY or SUM and MATCH takes one word](rrflow-1.0-alpha/poam-066.md) |
 | POAM-067 | High | Open | [a budget truncation does not name its budget](rrflow-1.0-alpha/poam-067.md) |
 | POAM-068 | High | Open | [`rrflow install status` is documented but absent](rrflow-1.0-alpha/poam-068.md) |
+| POAM-069 | High | Open | [a first install is bounded by a fixed 30-second inventory limit](rrflow-1.0-alpha/poam-069.md) |
+| POAM-070 | High | Open | [a Git worktree or linked checkout cannot be installed](rrflow-1.0-alpha/poam-070.md) |
