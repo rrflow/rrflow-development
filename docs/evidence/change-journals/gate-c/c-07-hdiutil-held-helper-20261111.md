@@ -36,9 +36,11 @@ To recover when it still happens, a busy create whose output a holder still keep
 
 **macOS preflight, run 43030750207 on `4eaec4d2` (the retry alone).** Passed: 24 real APFS cases, every point in both modes three times. No real case hit a busy create, so the macOS run did not exercise the retry path. The retry lines in that job's log came from the unit-test step, where simulated cases printed them; the tests now capture their own output so a real job's log holds only real retries.
 
+**macOS preflight, run 43032802682 on `70e4170f` (both parts).** Passed: the same 24 real APFS cases. Every `capacity_settle` wait was 0 ms, because the device node was already gone when the detach returned, and no create was busy. Neither preflight reproduced the failure, so neither part has been seen to act on a real busy create.
+
 **Not established.**
 
 - Nothing has run on macOS yet. Whether the real helper exits within 20 seconds of the detach is the open question. Candidate CI and the C-07 macOS preflight with repetitions are the evidence, and their results belong in the pull request.
-- Why the image service is busy 4 seconds after a verified detach is not known. This change makes the harness survive it and log each occurrence; it does not remove it.
+- Why the image service is busy 4 seconds after a verified detach is not known. Both preflights saw the device node gone at once, which weakens the teardown explanation. The retry is what handles the observed failure; the wait only rules teardown in or out when the next occurrence is logged.
 
 **Research decision:** none. **Trace decision:** a `capacity_create_retry` line on every retry, so the frequency and release time can be counted from CI logs. **Roadmap/POA&M change:** POAM-074's evidence is corrected and a remediation section is added; it stays open until repeated macOS runs pass.
