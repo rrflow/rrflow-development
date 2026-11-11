@@ -45,9 +45,14 @@
   - The faked `os.stat` also answered pathlib's `exists()` and `is_dir()` during cleanup. It now applies only while a volume is attached.
   - The fake detach left the case's owner marker in the mount directory. A real detach takes it away, and the fake now does too.
 
+- `gh workflow run c07-native-preflight.yml --ref agent/macos-capacity-template-20261111 -f point=all -f mode=both -f repetitions=3`, run 43105134014 on `macos-latest` at `c2cc5baa`: the job succeeded.
+  - All 24 APFS cases passed, each followed by a detached cleanup, in one fixture, so every case attached a copy of one template.
+  - No `Resource busy` appears in the log.
+  - The suite reported `native_capacity_suite` status `passed`.
+
 ## Not established
 
-- No macOS run of this change yet. The unit tests run with mocked `hdiutil` on Windows.
+- One macOS run is not closure. The busy failure was intermittent, and POAM-074 needs repeated passes, including in candidate CI.
 - This removes the per-case create. It does not prove the busy failure cannot hit the one remaining create. Closure still needs repeated macOS runs, per POAM-074.
 - The extra cost per case is copying a 256 MB read/write image; it has not been measured on a runner.
 
