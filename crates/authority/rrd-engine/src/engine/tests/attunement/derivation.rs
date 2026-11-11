@@ -100,13 +100,19 @@ fn default_plan_completes_after_inventory_and_derives_the_successor_from_evidenc
         vec!["python", "rust"]
     );
     assert!(!evidence.embedding_binding);
+    let executable = vec![
+        Phase::Connect,
+        Phase::Inventory,
+        #[cfg(any(windows, target_os = "linux"))]
+        Phase::Parse,
+    ];
     assert_eq!(
         evidence.available.iter().copied().collect::<Vec<_>>(),
-        vec![Phase::Connect, Phase::Inventory],
+        executable,
         "only installed executors are available"
     );
     let derived: Vec<Phase> = preview.plan.phases.iter().map(|step| step.phase).collect();
-    assert_eq!(derived, vec![Phase::Connect, Phase::Inventory]);
+    assert_eq!(derived, executable, "the source has a bound grammar");
     // Any client can recompute the plan from the evidence the preview carries.
     let recomputed = derive_attunement_plan(
         &installed.preview.attunement,
@@ -156,7 +162,7 @@ fn default_plan_completes_after_inventory_and_derives_the_successor_from_evidenc
         vec![installed.job.as_str(), accepted.successor.job.id.as_str()]
     );
 
-    // The successor runs to completion on the same two executors and the
+    // The successor runs to completion on the executors it selected and the
     // receipts survive a reopen.
     let successor = accepted.successor.job.clone();
     let s_started = call(
@@ -180,7 +186,7 @@ fn default_plan_completes_after_inventory_and_derives_the_successor_from_evidenc
         s_started.status.job.updated_at_unix_ms + 1,
     )
     .unwrap();
-    let s_done = call(
+    let mut s_done = call(
         &engine,
         &session,
         &step(&s_connected.status.job),
@@ -188,6 +194,16 @@ fn default_plan_completes_after_inventory_and_derives_the_successor_from_evidenc
         s_connected.status.job.updated_at_unix_ms + 1,
     )
     .unwrap();
+    if s_done.status.job.state == State::Running {
+        s_done = call(
+            &engine,
+            &session,
+            &step(&s_done.status.job),
+            "d-successor-parse",
+            s_done.status.job.updated_at_unix_ms + 1,
+        )
+        .unwrap();
+    }
     assert_eq!(s_done.status.job.state, State::Succeeded);
     drop(engine);
     let late = s_done.status.job.updated_at_unix_ms + 1_000;
