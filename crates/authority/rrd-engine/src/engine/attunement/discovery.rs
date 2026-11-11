@@ -116,16 +116,18 @@ impl RrdEngine {
         preview
             .validate_for(&job.id, preview.predecessor_revision, plan)
             .map_err(contract)?;
-        if generation.checked_add(1) != Some(preview.generation)
-            || preview
+        // A fenced predecessor advanced one revision into CancelRequested; a
+        // succeeded predecessor keeps its revision and state (its effects
+        // were read-only) and only gains the successor link.
+        let lineage = match job.state {
+            AttunementJobState::CancelRequested | AttunementJobState::Cancelled => preview
                 .predecessor_revision
                 .checked_add(1)
-                .is_none_or(|revision| job.revision < revision)
-            || !matches!(
-                job.state,
-                AttunementJobState::CancelRequested | AttunementJobState::Cancelled
-            )
-        {
+                .is_some_and(|revision| job.revision >= revision),
+            AttunementJobState::Succeeded => job.revision == preview.predecessor_revision,
+            _ => false,
+        };
+        if generation.checked_add(1) != Some(preview.generation) || !lineage {
             return Err(ServiceError::Storage(
                 "attunement successor generation or predecessor state is inconsistent".into(),
             ));

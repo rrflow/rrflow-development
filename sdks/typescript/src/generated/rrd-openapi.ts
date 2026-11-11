@@ -1,4 +1,4 @@
-// OpenAPI SHA-256: fef69c50fd394dcfdccf5a23cfc16167c0ef673bf6770e4fb92eb29fb9c43324
+// OpenAPI SHA-256: dd820054e2efa41ec2142d6bcac10cfdf38e729324a7c42ab129c44014b45387
 export interface paths {
     "/v1/attunement/cancel": {
         parameters: {
@@ -5826,6 +5826,38 @@ export interface operations {
                         contract_version: 2;
                         /** @description Preview is a bounded source observation, not an atomic snapshot. */
                         preview: {
+                            /**
+                             * @description Present when the engine derived the successor plan from committed
+                             *     inventory evidence; the plan then equals `derive_attunement_plan`
+                             *     over this evidence, which any client can recompute. Absent when the
+                             *     successor only rebinds the predecessor's plan to fresh source.
+                             */
+                            evidence?: {
+                                /**
+                                 * @description Capabilities the installed engine can execute. The engine owns this
+                                 *     set; the derivation never selects outside it.
+                                 */
+                                available: ("connect" | "inventory" | "parse" | "normalize" | "entity_link" | "lexical_index" | "embed" | "vector_index" | "graph" | "ground" | "verify")[];
+                                /** @description Detected languages for which a parser grammar is bound. */
+                                bound_grammars: string[];
+                                /** Format: uint64 */
+                                content_bytes: number;
+                                /** @description An applied endpoint binding of the embedding-and-reranking class exists. */
+                                embedding_binding: boolean;
+                                /** Format: uint64 */
+                                entries: number;
+                                evidence_sha256: string;
+                                /** Format: uint64 */
+                                files: number;
+                                /** Format: uint16 */
+                                format_version: number;
+                                /** @description The committed inventory head this evidence was read from. */
+                                inventory_sha256: string;
+                                /** @description Files per detected language, keyed by canonical language id. */
+                                languages: {
+                                    [key: string]: number;
+                                };
+                            } | null;
                             /** Format: uint64 */
                             generation: number;
                             /** @description A bounded, content-addressed plan over one project source snapshot. */
@@ -6688,6 +6720,38 @@ export interface operations {
                         outcome: {
                             /** @description Preview is a bounded source observation, not an atomic snapshot. */
                             payload: {
+                                /**
+                                 * @description Present when the engine derived the successor plan from committed
+                                 *     inventory evidence; the plan then equals `derive_attunement_plan`
+                                 *     over this evidence, which any client can recompute. Absent when the
+                                 *     successor only rebinds the predecessor's plan to fresh source.
+                                 */
+                                evidence?: {
+                                    /**
+                                     * @description Capabilities the installed engine can execute. The engine owns this
+                                     *     set; the derivation never selects outside it.
+                                     */
+                                    available: ("connect" | "inventory" | "parse" | "normalize" | "entity_link" | "lexical_index" | "embed" | "vector_index" | "graph" | "ground" | "verify")[];
+                                    /** @description Detected languages for which a parser grammar is bound. */
+                                    bound_grammars: string[];
+                                    /** Format: uint64 */
+                                    content_bytes: number;
+                                    /** @description An applied endpoint binding of the embedding-and-reranking class exists. */
+                                    embedding_binding: boolean;
+                                    /** Format: uint64 */
+                                    entries: number;
+                                    evidence_sha256: string;
+                                    /** Format: uint64 */
+                                    files: number;
+                                    /** Format: uint16 */
+                                    format_version: number;
+                                    /** @description The committed inventory head this evidence was read from. */
+                                    inventory_sha256: string;
+                                    /** @description Files per detected language, keyed by canonical language id. */
+                                    languages: {
+                                        [key: string]: number;
+                                    };
+                                } | null;
                                 /** Format: uint64 */
                                 generation: number;
                                 /** @description A bounded, content-addressed plan over one project source snapshot. */
@@ -6816,6 +6880,38 @@ export interface operations {
                         outcome: {
                             /** @description Preview is a bounded source observation, not an atomic snapshot. */
                             payload: {
+                                /**
+                                 * @description Present when the engine derived the successor plan from committed
+                                 *     inventory evidence; the plan then equals `derive_attunement_plan`
+                                 *     over this evidence, which any client can recompute. Absent when the
+                                 *     successor only rebinds the predecessor's plan to fresh source.
+                                 */
+                                evidence?: {
+                                    /**
+                                     * @description Capabilities the installed engine can execute. The engine owns this
+                                     *     set; the derivation never selects outside it.
+                                     */
+                                    available: ("connect" | "inventory" | "parse" | "normalize" | "entity_link" | "lexical_index" | "embed" | "vector_index" | "graph" | "ground" | "verify")[];
+                                    /** @description Detected languages for which a parser grammar is bound. */
+                                    bound_grammars: string[];
+                                    /** Format: uint64 */
+                                    content_bytes: number;
+                                    /** @description An applied endpoint binding of the embedding-and-reranking class exists. */
+                                    embedding_binding: boolean;
+                                    /** Format: uint64 */
+                                    entries: number;
+                                    evidence_sha256: string;
+                                    /** Format: uint64 */
+                                    files: number;
+                                    /** Format: uint16 */
+                                    format_version: number;
+                                    /** @description The committed inventory head this evidence was read from. */
+                                    inventory_sha256: string;
+                                    /** @description Files per detected language, keyed by canonical language id. */
+                                    languages: {
+                                        [key: string]: number;
+                                    };
+                                } | null;
                                 /** Format: uint64 */
                                 generation: number;
                                 /** @description A bounded, content-addressed plan over one project source snapshot. */
@@ -7087,6 +7183,38 @@ export interface operations {
                                     };
                                     /** @description Preview is a bounded source observation, not an atomic snapshot. */
                                     preview: {
+                                        /**
+                                         * @description Present when the engine derived the successor plan from committed
+                                         *     inventory evidence; the plan then equals `derive_attunement_plan`
+                                         *     over this evidence, which any client can recompute. Absent when the
+                                         *     successor only rebinds the predecessor's plan to fresh source.
+                                         */
+                                        evidence?: {
+                                            /**
+                                             * @description Capabilities the installed engine can execute. The engine owns this
+                                             *     set; the derivation never selects outside it.
+                                             */
+                                            available: ("connect" | "inventory" | "parse" | "normalize" | "entity_link" | "lexical_index" | "embed" | "vector_index" | "graph" | "ground" | "verify")[];
+                                            /** @description Detected languages for which a parser grammar is bound. */
+                                            bound_grammars: string[];
+                                            /** Format: uint64 */
+                                            content_bytes: number;
+                                            /** @description An applied endpoint binding of the embedding-and-reranking class exists. */
+                                            embedding_binding: boolean;
+                                            /** Format: uint64 */
+                                            entries: number;
+                                            evidence_sha256: string;
+                                            /** Format: uint64 */
+                                            files: number;
+                                            /** Format: uint16 */
+                                            format_version: number;
+                                            /** @description The committed inventory head this evidence was read from. */
+                                            inventory_sha256: string;
+                                            /** @description Files per detected language, keyed by canonical language id. */
+                                            languages: {
+                                                [key: string]: number;
+                                            };
+                                        } | null;
                                         /** Format: uint64 */
                                         generation: number;
                                         /** @description A bounded, content-addressed plan over one project source snapshot. */
@@ -7614,6 +7742,38 @@ export interface operations {
                                     };
                                     /** @description Preview is a bounded source observation, not an atomic snapshot. */
                                     preview: {
+                                        /**
+                                         * @description Present when the engine derived the successor plan from committed
+                                         *     inventory evidence; the plan then equals `derive_attunement_plan`
+                                         *     over this evidence, which any client can recompute. Absent when the
+                                         *     successor only rebinds the predecessor's plan to fresh source.
+                                         */
+                                        evidence?: {
+                                            /**
+                                             * @description Capabilities the installed engine can execute. The engine owns this
+                                             *     set; the derivation never selects outside it.
+                                             */
+                                            available: ("connect" | "inventory" | "parse" | "normalize" | "entity_link" | "lexical_index" | "embed" | "vector_index" | "graph" | "ground" | "verify")[];
+                                            /** @description Detected languages for which a parser grammar is bound. */
+                                            bound_grammars: string[];
+                                            /** Format: uint64 */
+                                            content_bytes: number;
+                                            /** @description An applied endpoint binding of the embedding-and-reranking class exists. */
+                                            embedding_binding: boolean;
+                                            /** Format: uint64 */
+                                            entries: number;
+                                            evidence_sha256: string;
+                                            /** Format: uint64 */
+                                            files: number;
+                                            /** Format: uint16 */
+                                            format_version: number;
+                                            /** @description The committed inventory head this evidence was read from. */
+                                            inventory_sha256: string;
+                                            /** @description Files per detected language, keyed by canonical language id. */
+                                            languages: {
+                                                [key: string]: number;
+                                            };
+                                        } | null;
                                         /** Format: uint64 */
                                         generation: number;
                                         /** @description A bounded, content-addressed plan over one project source snapshot. */

@@ -364,37 +364,7 @@ impl Census {
 }
 
 fn language(relative: &str) -> Option<&'static str> {
-    let extension = relative.rsplit_once('.')?.1.to_ascii_lowercase();
-    Some(match extension.as_str() {
-        "rs" => "Rust",
-        "ts" | "tsx" | "mts" | "cts" => "TypeScript",
-        "js" | "jsx" | "mjs" | "cjs" => "JavaScript",
-        "py" | "pyi" => "Python",
-        "go" => "Go",
-        "java" => "Java",
-        "kt" | "kts" => "Kotlin",
-        "swift" => "Swift",
-        "c" | "h" => "C",
-        "cc" | "cpp" | "cxx" | "hpp" | "hh" => "C++",
-        "cs" => "C#",
-        "rb" => "Ruby",
-        "php" => "PHP",
-        "dart" => "Dart",
-        "lua" => "Lua",
-        "md" | "mdx" => "Markdown",
-        "json" => "JSON",
-        "toml" => "TOML",
-        "yaml" | "yml" => "YAML",
-        "html" | "htm" => "HTML",
-        "css" | "scss" | "sass" | "less" => "CSS",
-        "vue" => "Vue",
-        "svelte" => "Svelte",
-        "sh" | "bash" | "zsh" => "Shell",
-        "ps1" | "psm1" => "PowerShell",
-        "sql" => "SQL",
-        "ipynb" => "Jupyter",
-        _ => return None,
-    })
+    super::source_language::source_language(relative).map(|language| language.display)
 }
 
 fn count(value: u64) -> String {

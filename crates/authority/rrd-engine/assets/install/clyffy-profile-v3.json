@@ -17,6 +17,19 @@
     "remote-mesh",
     "subprocess-datafusion"
   ],
+  "available_capabilities": [
+    "connect",
+    "inventory",
+    "parse",
+    "normalize",
+    "entity_link",
+    "lexical_index",
+    "embed",
+    "vector_index",
+    "graph",
+    "ground",
+    "verify"
+  ],
   "attunement_phases": [
     {
       "phase": "connect",
@@ -27,60 +40,6 @@
     {
       "phase": "inventory",
       "configuration": "bounded-content-inventory",
-      "estimated_items": 1,
-      "estimated_input_bytes": 0
-    },
-    {
-      "phase": "parse",
-      "configuration": "language-adapters-inactive-until-discovered",
-      "estimated_items": 0,
-      "estimated_input_bytes": 0
-    },
-    {
-      "phase": "normalize",
-      "configuration": "canonical-source-records",
-      "estimated_items": 0,
-      "estimated_input_bytes": 0
-    },
-    {
-      "phase": "entity_link",
-      "configuration": "project-local-identities",
-      "estimated_items": 0,
-      "estimated_input_bytes": 0
-    },
-    {
-      "phase": "lexical_index",
-      "configuration": "native-lexical-candidate",
-      "estimated_items": 0,
-      "estimated_input_bytes": 0
-    },
-    {
-      "phase": "embed",
-      "configuration": "provider-unconfigured",
-      "estimated_items": 0,
-      "estimated_input_bytes": 0
-    },
-    {
-      "phase": "vector_index",
-      "configuration": "inactive-until-embedding-authorized",
-      "estimated_items": 0,
-      "estimated_input_bytes": 0
-    },
-    {
-      "phase": "graph",
-      "configuration": "runtime-graph-relations",
-      "estimated_items": 0,
-      "estimated_input_bytes": 0
-    },
-    {
-      "phase": "ground",
-      "configuration": "source-and-read-stamp-required",
-      "estimated_items": 0,
-      "estimated_input_bytes": 0
-    },
-    {
-      "phase": "verify",
-      "configuration": "reopen-and-evidence-checks",
       "estimated_items": 1,
       "estimated_input_bytes": 0
     }
