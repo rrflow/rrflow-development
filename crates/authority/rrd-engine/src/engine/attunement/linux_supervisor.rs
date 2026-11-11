@@ -1,28 +1,58 @@
-//! Linux direct-child containment foundation, not a Parse executor or sandbox.
-//! Executable identity, explicit source pipes, full cancellation and durable
-//! publication remain required before this component can be used by the engine.
+//! Linux direct-child containment for the Parse worker: `/proc/self/exe` runs
+//! the exact image this engine started from, the environment is cleared, the
+//! address space is capped and the child dies with its supervising thread. It
+//! is not a filesystem sandbox.
 
+use super::WORKER_FLAG;
 use std::ffi::OsStr;
 use std::io;
 use std::os::unix::process::{CommandExt, ExitStatusExt};
 use std::path::Path;
-use std::process::{Child, Command, Stdio};
+use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 use std::sync::mpsc;
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
 /// Owns one direct child. RLIMIT_AS is virtual address space, not RSS or a
 /// process-tree memory limit; parent-death signal is not a filesystem sandbox.
-#[allow(dead_code)] // Parse activation remains blocked on complete admission.
+#[allow(dead_code)] // The Parse executor launches the worker.
 pub(super) struct ManagedChild {
-    child: Child,
+    child: Option<Child>,
     keep_alive: Option<mpsc::Sender<()>>,
     _keeper: JoinHandle<()>,
+}
+
+#[allow(dead_code)] // The Parse executor launches the worker.
+/// Starts the private parser worker from the running image.
+pub(in crate::engine::attunement) fn spawn_worker(
+    limit: u64,
+) -> io::Result<(ManagedChild, ChildStdin, ChildStdout)> {
+    let mut child = ManagedChild::launch(
+        Path::new("/proc/self/exe"),
+        &[OsStr::new(WORKER_FLAG)],
+        limit,
+        Stdio::piped(),
+        Stdio::piped(),
+    )?;
+    let running = child.child.as_mut().expect("child is present until drop");
+    let input = running.stdin.take().expect("stdin was piped");
+    let output = running.stdout.take().expect("stdout was piped");
+    Ok((child, input, output))
 }
 
 #[allow(dead_code)]
 impl ManagedChild {
     pub(super) fn spawn(executable: &Path, args: &[&OsStr], limit: u64) -> io::Result<Self> {
+        Self::launch(executable, args, limit, Stdio::null(), Stdio::null())
+    }
+
+    fn launch(
+        executable: &Path,
+        args: &[&OsStr],
+        limit: u64,
+        stdin: Stdio,
+        stdout: Stdio,
+    ) -> io::Result<Self> {
         if limit == 0 || !executable.is_absolute() {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
@@ -41,8 +71,8 @@ impl ManagedChild {
         command
             .args(args)
             .env_clear()
-            .stdin(Stdio::null())
-            .stdout(Stdio::null())
+            .stdin(stdin)
+            .stdout(stdout)
             .stderr(Stdio::null());
         // SAFETY: this closure runs after fork and before exec. It uses only
         // native system calls and constructs OS error codes without allocation.
@@ -89,7 +119,7 @@ impl ManagedChild {
             io::Error::new(io::ErrorKind::BrokenPipe, "supervisor exited during launch")
         })??;
         Ok(Self {
-            child,
+            child: Some(child),
             keep_alive: Some(keep_alive),
             _keeper: keeper,
         })
@@ -97,8 +127,9 @@ impl ManagedChild {
 
     pub(super) fn wait(&mut self, timeout: Duration) -> io::Result<Option<u32>> {
         let started = Instant::now();
+        let child = self.child.as_mut().expect("child is present until drop");
         loop {
-            if let Some(status) = self.child.try_wait()? {
+            if let Some(status) = child.try_wait()? {
                 return Ok(Some(match status.code() {
                     Some(code) => code as u32,
                     None => 128 + status.signal().unwrap_or(0) as u32,
@@ -114,16 +145,26 @@ impl ManagedChild {
     }
 
     pub(super) fn terminate(&mut self) -> io::Result<()> {
-        self.child.kill()
+        self.child
+            .as_mut()
+            .expect("child is present until drop")
+            .kill()
     }
 }
 
 impl Drop for ManagedChild {
     fn drop(&mut self) {
         let _ = self.terminate();
-        // A noninterruptible kernel wait can exceed this bound. Until a complete
-        // reaper owns that case, this foundation must not activate Parse.
-        let _ = self.wait(Duration::from_secs(5));
+        let exited = matches!(self.wait(Duration::from_secs(5)), Ok(Some(_)));
+        // A noninterruptible kernel wait can outlast the bound. The child is
+        // already killed; this thread reaps it whenever the kernel lets it go.
+        if let (false, Some(mut child)) = (exited, self.child.take()) {
+            let _ = std::thread::Builder::new()
+                .name("rrflow-parser-reaper".into())
+                .spawn(move || {
+                    let _ = child.wait();
+                });
+        }
         // Disconnecting releases the keeper only after the termination attempt.
         self.keep_alive.take();
     }

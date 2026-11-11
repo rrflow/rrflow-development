@@ -35,6 +35,15 @@ pub(in crate::engine) use inventory::load_parse_inventory;
 pub(crate) use inventory::LegacySourceFileProjectionGuard;
 pub(super) use inventory::{load_accepted_source, source_head_key};
 
+#[cfg(any(windows, target_os = "linux"))]
+const WORKER_FLAG: &str = "--rrflow-internal-parse-worker-v1";
+
+/// Records the engine's own executable before any parser worker can start.
+pub(super) fn capture_primary_executable() {
+    #[cfg(windows)]
+    windows_supervisor::capture_primary_executable();
+}
+
 const MAX_CONTROL_BYTES: usize = 64 * 1024;
 const MAX_JOB_TRANSITIONS: u64 = 1024;
 const MAX_LEASE_MS: u64 = 60_000;
