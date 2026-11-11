@@ -216,6 +216,26 @@ def is_retryable_darwin_create_failure(error):
     return "resource busy" in native_output
 
 
+def wait_for_device_release(device, timeout=30.0, exists=os.path.exists):
+    """Return once macOS has removed a detached image's whole-disk node.
+
+    A create issued right after a verified detach failed with "Resource busy"
+    and left a helper holding this rig's output, so it could not be retried
+    (run 43017327376). The likeliest cause is teardown still in progress after
+    `hdiutil info` stops listing the image; the device node's removal is the
+    observable end of that teardown, so the next case waits for it.
+    """
+    match = re.fullmatch(r"/dev/(disk[0-9]+)(s[0-9]+)*", device or "")
+    require(match is not None, "invalid owned device identity")
+    whole = "/dev/" + match.group(1)
+    started = time.monotonic()
+    while exists(whole):
+        require(time.monotonic() - started < timeout,
+                f"owned image device {whole} remains {timeout:.0f} s after detach")
+        time.sleep(0.1)
+    return int((time.monotonic() - started) * 1000)
+
+
 def associated_loops(image):
     # util-linux can return a successful empty stdout when no matching loop
     # remains after autoclear. Only that successful empty result means none.
@@ -251,6 +271,7 @@ def volume(fixture: Path, size: int):
     root.mkdir()
     device = None
     attached = False
+    darwin_device = None
     try:
         if sys.platform == "linux":
             require(os.geteuid() == 0, "private namespace controller must own mount privilege")
@@ -300,6 +321,7 @@ def volume(fixture: Path, size: int):
             require(info.get("FilesystemType", "").lower() == "apfs"
                     and info.get("DeviceNode") == rows[0]["dev-entry"], "APFS device identity differs")
             identity = {"image": str(image), "device": info["DeviceNode"], "volume_uuid": info["VolumeUUID"]}
+            darwin_device = info["DeviceNode"]
         else:
             identity = windows_volume("Attach", fixture, size)
             root = Path(identity["root"]).resolve(strict=True)
@@ -350,6 +372,9 @@ def volume(fixture: Path, size: int):
         elif sys.platform == "darwin":
             if image.exists():
                 detach_owned_image(image)
+            if darwin_device is not None:
+                waited = wait_for_device_release(darwin_device)
+                print(json.dumps({"capacity_settle": {"device": darwin_device, "waited_ms": waited}}), flush=True)
         else:
             windows_volume("Detach", fixture, size)
         if attached:
