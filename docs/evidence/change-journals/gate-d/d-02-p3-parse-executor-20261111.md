@@ -41,3 +41,10 @@
 - **Oracle.** Four in-module tests over real `source_facts` output: a first parse writes facts sliced from the source; an edit retires every fact of the old content; a refusal retires old facts and records its reason; facts that do not match the verified bytes are refused. They were written with the function, not observed red first.
 - **Commands.** `cargo test --locked -p rrd-engine --lib parse::records`: 7 passed. `cargo clippy --locked -p rrd-engine --all-targets -- -D warnings`: clean. `cargo fmt --check`: clean.
 - **Not run.** Linux and macOS locally; candidate CI is the oracle there. Nothing calls `file_mutations` until the executor lands.
+
+## Worker driver
+
+- **Change.** `parse::worker::Worker` sends each verified source to one supervised worker and waits for its answer within a deadline. Two threads drive the pipes, so a worker that stalls, exits or breaks the protocol ends that file as `Lost` and is stopped instead of blocking the Step. `start` launches the engine's own executable under the Windows or Linux supervisor and refuses on other platforms.
+- **Oracle.** Three in-module tests over in-process pipes with the real `run_worker` at the far end: a batch of two files parses on one worker; a stalled worker is lost at the deadline, stopped once and unusable after; a worker that exits or writes a malformed frame is lost. Written with the module, not observed red first.
+- **Commands.** `cargo test --locked -p rrd-engine --lib parse::`: 6 passed. `cargo clippy --locked -p rrd-engine --all-targets -- -D warnings`: clean. `cargo fmt --check`: clean.
+- **Not run.** Linux and macOS locally; candidate CI is the oracle there. A real supervised start is exercised by the executor's installed oracles.
