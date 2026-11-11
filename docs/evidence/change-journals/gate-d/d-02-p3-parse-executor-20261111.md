@@ -62,3 +62,10 @@
 - **Oracle.** Two in-module tests of the selection rule: a final answer for the same content is not parsed again and an edit is; a lost file waits for the next job instead of looping. The end-to-end tests arrive with the dispatch in the next PR; locally they pass on the combined change.
 - **Commands.** `cargo test --locked -p rrd-engine --lib parse::`: 14 passed. `cargo clippy --locked -p rrd-engine --all-targets -- -D warnings`: clean. `cargo fmt --check`: clean.
 - **Not run.** Linux and macOS locally; candidate CI is the oracle there. Nothing calls `execute` until the Step dispatches to it.
+
+## Running the Parse step
+
+- **Change.** A Step whose selected phase is Parse, and whose plan step carries a parse policy, now runs `parse::execute`. A Parse step without a policy still fails as `phase-unavailable`, retryable, because it has nothing to parse with. Derived plans still never select Parse; enabling it is the last PR of the series.
+- **Oracle.** Two end-to-end tests on an installed project with two Rust files, using an in-process worker. The first commits the facts with the Parse checkpoint and reads definitions and references back through rrflowQL before and after a restart. The second sets a one-file limit, so the first Step renews the lease without a checkpoint and the second checkpoints. They were written with the executor; the second first failed on the contract rule that a running self-transition must renew its lease, which the commit path now does.
+- **Commands.** `cargo test --locked -p rrd-engine --lib`: 473 passed, 13 ignored. `cargo clippy --locked -p rrd-engine --all-targets -- -D warnings`: clean. `cargo fmt --check`: clean.
+- **Not run.** Linux and macOS locally; candidate CI is the oracle there. A real supervised worker is exercised by the installed oracles when Parse is enabled.
