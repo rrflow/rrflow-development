@@ -27,3 +27,10 @@
 - **Oracle.** `tests/facts.rs` adds five cases: top-level items become spans and comments do not; a small file is one chunk covering its code; chunks stay inside the bound and lose no code; one oversized token splits on character boundaries; delimiters the grammar hides stay in the chunks.
 - **Commands.** `cargo test --locked -p rrd-attunement`: 60 passed, 0 failed. `cargo clippy --locked -p rrd-attunement --all-targets -- -D warnings`: clean. `cargo fmt --check`: clean.
 - **Not run.** Linux and macOS; candidate CI is the oracle there. Nothing publishes spans or chunks until the executor lands.
+
+## Worker protocol v2
+
+- **Change.** The worker returns `SourceFacts` (symbols, spans and chunks) instead of the flat node list, and its request carries `chunk_bytes`. One worker now serves a whole batch, reading framed requests until the parent closes the pipes at a frame boundary, because starting the primary binary per file costs more than parsing most files. The parent validates every response against its request; a chunk longer than `chunk_bytes` is refused. The flat node proposal is removed in the next slice.
+- **Oracle.** `tests/worker.rs` covers the new response and several requests on one pipe; `rrflow-cli --test parser_worker` drives the real primary binary; the Windows supervisor tests use the new frames.
+- **Commands.** `cargo test --locked -p rrd-attunement`: 61 passed. `cargo test --locked -p rrflow-cli --test parser_worker`: 2 passed. `cargo test --locked -p rrd-engine --lib windows_supervisor`: 8 passed, 5 ignored. `cargo clippy --locked -p rrd-attunement -p rrflow-cli -p rrd-engine --all-targets -- -D warnings`: clean. `cargo fmt --check`: clean.
+- **Not run.** Linux and macOS locally; candidate CI is the oracle there.

@@ -70,7 +70,7 @@ fn native_job_transports_framed_parser_request_without_unrelated_handle_inherita
         .unwrap();
     let source = b"pub fn supervised_symbol() {}\n";
     let request = WorkerRequest {
-        format_version: 1,
+        format_version: 2,
         source_id: "fixture/source.rs".into(),
         content_sha256: rrd_core::digest::sha256_hex(source),
         language: "rust".into(),
@@ -82,6 +82,7 @@ fn native_job_transports_framed_parser_request_without_unrelated_handle_inherita
             output_bytes: 65536,
             elapsed_micros: 5_000_000,
         },
+        chunk_bytes: 4096,
     };
     write_request(&mut input, &request, source).unwrap();
     drop(input);
@@ -101,11 +102,12 @@ fn native_job_transports_framed_parser_request_without_unrelated_handle_inherita
         prefix.push(byte[0]);
         assert!(prefix.len() <= 1024, "unexpected child test preamble");
     }
-    let WorkerResponse::Parsed { proposal } = read_response(&mut output, &request).unwrap() else {
+    let WorkerResponse::Parsed { facts: proposal } = read_response(&mut output, &request).unwrap()
+    else {
         panic!("supervised child did not return parsed evidence");
     };
-    assert!(proposal.nodes.iter().any(|node| {
-        &source[node.start_byte as usize..node.end_byte as usize] == b"supervised_symbol"
+    assert!(proposal.symbols.iter().any(|node| {
+        &source[node.name_start as usize..node.name_end as usize] == b"supervised_symbol"
     }));
     // SAFETY: event is still the live parent handle. A listed child handle is
     // not this event, so the child must not have been able to signal it.
@@ -185,7 +187,7 @@ fn native_job_runs_primary_binary_parser_worker() {
     assert_ne!(assigned, 0);
     let source = b"pub fn actual_binary_symbol() {}\n";
     let request = WorkerRequest {
-        format_version: 1,
+        format_version: 2,
         source_id: "fixture/source.rs".into(),
         content_sha256: rrd_core::digest::sha256_hex(source),
         language: "rust".into(),
@@ -197,6 +199,7 @@ fn native_job_runs_primary_binary_parser_worker() {
             output_bytes: 65536,
             elapsed_micros: 5_000_000,
         },
+        chunk_bytes: 4096,
     };
     write_request(&mut input, &request, source).unwrap();
     drop(input);
@@ -207,11 +210,12 @@ fn native_job_runs_primary_binary_parser_worker() {
         panic!("primary parser worker exceeded its test deadline");
     }
     assert_eq!(status, Some(0));
-    let WorkerResponse::Parsed { proposal } = read_response(&mut output, &request).unwrap() else {
+    let WorkerResponse::Parsed { facts: proposal } = read_response(&mut output, &request).unwrap()
+    else {
         panic!("primary parser worker did not return parsed evidence");
     };
-    assert!(proposal.nodes.iter().any(|node| {
-        &source[node.start_byte as usize..node.end_byte as usize] == b"actual_binary_symbol"
+    assert!(proposal.symbols.iter().any(|node| {
+        &source[node.name_start as usize..node.name_end as usize] == b"actual_binary_symbol"
     }));
 }
 
