@@ -292,6 +292,15 @@ fn split_text(
     }
 }
 
+enum Piece<'tree> {
+    Node(Node<'tree>),
+    Text(usize, usize),
+}
+
+fn has_code(bytes: &[u8]) -> bool {
+    bytes.iter().any(|byte| !byte.is_ascii_whitespace())
+}
+
 fn chunks<C: Fn() -> bool>(
     root: Node<'_>,
     source: &[u8],
@@ -301,9 +310,16 @@ fn chunks<C: Fn() -> bool>(
 ) -> Result<Vec<SourceChunk>, ParseError> {
     let limit = usize::try_from(chunk_bytes).unwrap_or(usize::MAX);
     let mut units: Vec<(usize, usize)> = Vec::new();
-    let mut stack = vec![root];
-    while let Some(node) = stack.pop() {
+    let mut stack = vec![Piece::Node(root)];
+    while let Some(piece) = stack.pop() {
         budget.check()?;
+        let node = match piece {
+            Piece::Text(start, end) => {
+                split_text(source, start, end, limit, &mut units);
+                continue;
+            }
+            Piece::Node(node) => node,
+        };
         let (start, end) = (node.start_byte(), node.end_byte());
         if end - start <= limit {
             if end > start {
@@ -312,9 +328,23 @@ fn chunks<C: Fn() -> bool>(
         } else if node.child_count() == 0 {
             split_text(source, start, end, limit, &mut units);
         } else {
+            // A grammar can hide tokens, such as the delimiters of a Rust raw
+            // string, that no child then covers; code between children is
+            // kept as text so the chunks lose nothing but whitespace.
             let mut cursor = node.walk();
-            let children: Vec<_> = node.children(&mut cursor).collect();
-            stack.extend(children.into_iter().rev());
+            let mut pieces = Vec::new();
+            let mut at = start;
+            for child in node.children(&mut cursor) {
+                if has_code(&source[at..child.start_byte().max(at)]) {
+                    pieces.push(Piece::Text(at, child.start_byte()));
+                }
+                at = at.max(child.end_byte());
+                pieces.push(Piece::Node(child));
+            }
+            if has_code(&source[at..end.max(at)]) {
+                pieces.push(Piece::Text(at, end));
+            }
+            stack.extend(pieces.into_iter().rev());
         }
     }
     let mut merged: Vec<(usize, usize)> = Vec::new();

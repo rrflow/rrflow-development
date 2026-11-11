@@ -165,6 +165,27 @@ fn one_oversized_token_is_split_on_character_boundaries() {
 }
 
 #[test]
+fn delimiters_the_grammar_hides_stay_in_the_chunks() {
+    // tree-sitter-rust scans raw-string delimiters externally, so no child
+    // node covers `r#"` or `"#`; an oversized literal must keep them anyway.
+    let body = "line of text
+".repeat(20);
+    let source = format!("fn main() {{
+    let text = r#\"{body}\"#;
+}}
+");
+    let bound = 64;
+    let facts = facts("rust", &source, bound);
+    let mut covered = String::new();
+    for chunk in &facts.chunks {
+        assert!(chunk.end_byte - chunk.start_byte <= bound);
+        covered.push_str(text(&source, chunk.start_byte, chunk.end_byte));
+    }
+    let squeezed = |value: &str| value.split_whitespace().collect::<String>();
+    assert_eq!(squeezed(&covered), squeezed(&source));
+}
+
+#[test]
 fn syntax_errors_are_counted_not_hidden() {
     let source = "fn broken( {\n";
     assert!(facts("rust", source, 4096).error_nodes > 0);

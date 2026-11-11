@@ -201,9 +201,17 @@ fn a_large_project_parses_across_steps_that_each_commit() {
     );
     let mut generation = 0;
     for step in parse_steps.iter().filter(|job| job.state == State::Running) {
-        let lease = step.lease.as_ref().unwrap().generation;
-        assert!(lease > generation, "each Step renews the worker's lease");
-        generation = lease;
+        let lease = step.lease.as_ref().unwrap();
+        assert!(
+            lease.generation > generation,
+            "each Step renews the worker's lease"
+        );
+        assert_eq!(
+            lease.expires_at_unix_ms - lease.acquired_at_unix_ms,
+            30_000,
+            "a renewal restarts the claimed duration and never extends it"
+        );
+        generation = lease.generation;
     }
     let done = history.last().unwrap();
     assert_eq!(done.state, State::Succeeded);

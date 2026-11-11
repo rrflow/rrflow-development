@@ -496,7 +496,7 @@ impl<'a> ParseCommit<'a> {
     pub(super) fn commit(
         self,
         work: &Work<'_>,
-        mut permit: TransactionPermit<'_>,
+        permit: &mut TransactionPermit<'_>,
         states: BTreeMap<String, FileState>,
         finished: bool,
         check: &dyn Fn() -> Result<()>,
@@ -577,8 +577,11 @@ impl<'a> ParseCommit<'a> {
                         .lease
                         .as_mut()
                         .ok_or_else(|| contract("Parse step has no lease"))?;
+                    // A renewal restarts the duration the worker claimed, so an
+                    // abandoned job still expires one lease after its last Step.
                     let held = lease.expires_at_unix_ms - lease.acquired_at_unix_ms;
                     lease.generation = next.revision;
+                    lease.acquired_at_unix_ms = done;
                     lease.expires_at_unix_ms = done.saturating_add(held);
                     "attunement.parse_progressed"
                 };

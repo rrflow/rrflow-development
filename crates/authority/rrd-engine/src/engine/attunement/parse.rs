@@ -23,9 +23,14 @@ const CHUNK_BYTES: u64 = 1_500;
 /// Share of the commit bound one Step spends on source; facts about the source
 /// and the text of its chunks roughly triple what is read.
 const INPUT_SHARE: u64 = 3;
-/// A physical write batch is capped at 16 MiB and carries more than the logical
-/// JSON a commit is measured by, so a Step targets half of the policy's bound.
-const COMMIT_SHARE: u64 = 2;
+/// A physical write batch is capped at 16 MiB and carries about twice the
+/// logical JSON a commit is measured by, so a Step targets a quarter of the
+/// policy's bound.
+const COMMIT_SHARE: u64 = 4;
+/// Physical write conflicts with background work retried before reporting one.
+const MAX_PHYSICAL_RETRIES: u32 = 3;
+/// Smallest batch a refused commit is rebuilt at before the refusal stands.
+const MIN_COMMIT_BYTES: u64 = 64 * 1024;
 
 pub(super) struct FileRequest<'a> {
     pub source_id: &'a str,
@@ -39,6 +44,7 @@ pub(super) enum FileOutcome {
     /// The parser refused this file with a fixed reason; retrying cannot help.
     Rejected(String),
     /// The worker died or timed out while holding this file.
+    #[cfg_attr(test, allow(dead_code))]
     Lost(String),
 }
 
@@ -186,7 +192,7 @@ pub(super) fn execute(
     }
     let scope = ScopeId::new(format!("instance:{}", engine.instance)).map_err(contract)?;
     let read = engine.storage.runtime().read_stamp(&scope)?;
-    let mut states = records::load_states(engine, &read, &mut remaining_keys)?;
+    let states = records::load_states(engine, &read, &mut remaining_keys)?;
 
     let wanted: std::collections::BTreeSet<&str> =
         all.iter().map(|file| file.entry.path.as_str()).collect();
@@ -219,30 +225,14 @@ pub(super) fn execute(
         elapsed_micros: policy.max_elapsed_ms.saturating_mul(1_000),
     };
 
-    let mut parse = ParseCommit::new(engine, &scope, &read, commit_limit)?;
-    for state in &stale {
-        parse.retire_file(state, elapsed_time(work.now, work.started)?)?;
-        states.remove(&state.path);
-    }
-
     // Too-large files are decided without being read.
     let mut selected_files: Vec<&Candidate<'_>> = Vec::new();
+    let mut too_large: Vec<&Candidate<'_>> = Vec::new();
     let mut input_bytes = 0u64;
     let mut remaining_input = policy.max_input_bytes;
     for file in &pending {
         if file.bytes > policy.max_file_bytes {
-            let at = elapsed_time(work.now, work.started)?;
-            let state = parse.reject(
-                file.entry,
-                file.content_sha256,
-                &file.language,
-                (Status::Rejected, "file_too_large"),
-                CHUNK_BYTES,
-                work.before.id.as_str(),
-                states.get(&file.entry.path),
-                at,
-            )?;
-            states.insert(state.path.clone(), state);
+            too_large.push(*file);
             continue;
         }
         if !selected_files.is_empty() && input_bytes.saturating_add(file.bytes) > input_limit {
@@ -252,72 +242,111 @@ pub(super) fn execute(
         selected_files.push(*file);
     }
 
-    if !selected_files.is_empty() {
-        let mut sources = Vec::with_capacity(selected_files.len());
-        for file in &selected_files {
-            let mut bytes = Vec::with_capacity(usize::try_from(file.bytes).unwrap_or(0));
-            super::super::installation::read_selected_source(
-                root,
-                &proposal,
-                file.entry,
-                policy.max_file_bytes,
-                &mut remaining_input,
-                &mut bytes,
-                &check,
-            )?;
-            sources.push(bytes);
+    let mut sources = Vec::with_capacity(selected_files.len());
+    for file in &selected_files {
+        let mut bytes = Vec::with_capacity(usize::try_from(file.bytes).unwrap_or(0));
+        super::super::installation::read_selected_source(
+            root,
+            &proposal,
+            file.entry,
+            policy.max_file_bytes,
+            &mut remaining_input,
+            &mut bytes,
+            &check,
+        )?;
+        sources.push(bytes);
+    }
+    let requests: Vec<FileRequest<'_>> = selected_files
+        .iter()
+        .zip(&sources)
+        .map(|(file, source)| FileRequest {
+            source_id: &file.entry.path,
+            content_sha256: file.content_sha256,
+            language: &file.language,
+            source,
+        })
+        .collect();
+    let outcomes = if requests.is_empty() {
+        Vec::new()
+    } else {
+        run_batch(&requests, &limits, policy.max_memory_bytes, &check)?
+    };
+
+    // The commit bound is logical JSON; the store's physical batch is larger and
+    // only it can say by how much. A refused batch is rebuilt at half the size,
+    // leaving the rest pending for the next Step.
+    let job = work.before.id.as_str();
+    let mut permit = permit;
+    let mut limit = commit_limit;
+    let mut conflicts = 0;
+    loop {
+        let mut states = states.clone();
+        let mut parse = ParseCommit::new(engine, &scope, &read, limit)?;
+        for state in &stale {
+            parse.retire_file(state, elapsed_time(work.now, work.started)?)?;
+            states.remove(&state.path);
         }
-        let requests: Vec<FileRequest<'_>> = selected_files
-            .iter()
-            .zip(&sources)
-            .map(|(file, source)| FileRequest {
-                source_id: &file.entry.path,
-                content_sha256: file.content_sha256,
-                language: &file.language,
-                source,
-            })
-            .collect();
-        let outcomes = run_batch(&requests, &limits, policy.max_memory_bytes, &check)?;
-        for ((file, source), outcome) in selected_files.iter().zip(&sources).zip(outcomes) {
+        for file in &too_large {
             let at = elapsed_time(work.now, work.started)?;
             let previous = states.get(&file.entry.path);
-            let job = work.before.id.as_str();
-            let admission = match outcome {
-                FileOutcome::Parsed(facts) => {
-                    parse.publish(file.entry, source, &facts, CHUNK_BYTES, job, previous, at)?
-                }
-                FileOutcome::Rejected(code) => records::Admission::Admitted(parse.reject(
-                    file.entry,
-                    file.content_sha256,
-                    &file.language,
-                    (Status::Rejected, &code),
-                    CHUNK_BYTES,
-                    job,
-                    previous,
-                    at,
-                )?),
-                FileOutcome::Lost(code) => records::Admission::Admitted(parse.reject(
-                    file.entry,
-                    file.content_sha256,
-                    &file.language,
-                    (Status::Lost, &code),
-                    CHUNK_BYTES,
-                    job,
-                    previous,
-                    at,
-                )?),
-            };
-            let Some(state) = admission.admitted() else {
-                break;
-            };
+            let state = parse.reject(
+                file.entry,
+                file.content_sha256,
+                &file.language,
+                (Status::Rejected, "file_too_large"),
+                CHUNK_BYTES,
+                job,
+                previous,
+                at,
+            )?;
             states.insert(state.path.clone(), state);
         }
+        for ((file, source), outcome) in selected_files.iter().zip(&sources).zip(&outcomes) {
+            let at = elapsed_time(work.now, work.started)?;
+            let previous = states.get(&file.entry.path);
+            let (status, code) = match outcome {
+                FileOutcome::Parsed(facts) => {
+                    let admitted = parse
+                        .publish(file.entry, source, facts, CHUNK_BYTES, job, previous, at)?
+                        .admitted();
+                    let Some(state) = admitted else { break };
+                    states.insert(state.path.clone(), state);
+                    continue;
+                }
+                FileOutcome::Rejected(code) => (Status::Rejected, code.as_str()),
+                FileOutcome::Lost(code) => (Status::Lost, code.as_str()),
+            };
+            let state = parse.reject(
+                file.entry,
+                file.content_sha256,
+                &file.language,
+                (status, code),
+                CHUNK_BYTES,
+                job,
+                previous,
+                at,
+            )?;
+            states.insert(state.path.clone(), state);
+        }
+        let finished = all.iter().all(|file| {
+            states
+                .get(&file.entry.path)
+                .is_some_and(|state| is_current(state, file, &work.before.id))
+        });
+        match parse.commit(&work, &mut permit, states, finished, &check) {
+            Err(ServiceError::StorageAdmission(_)) if limit > MIN_COMMIT_BYTES => limit /= 2,
+            // A background writer can collide with this transaction without
+            // advancing the cursor. Nothing was written, so the same commit is
+            // tried again; a moved cursor means another commit won.
+            Err(ServiceError::StorageConflict(message))
+                if conflicts < MAX_PHYSICAL_RETRIES
+                    && engine.storage.runtime().read_stamp(&scope)?.commit_cursor
+                        == read.commit_cursor =>
+            {
+                conflicts += 1;
+                tracing::debug!(%message, conflicts, "retrying a Parse commit after a physical conflict");
+            }
+            result => return result,
+        }
     }
-
-    let finished = all.iter().all(|file| {
-        states
-            .get(&file.entry.path)
-            .is_some_and(|state| is_current(state, file, &work.before.id))
-    });
-    parse.commit(&work, permit, states, finished, &check)
 }
