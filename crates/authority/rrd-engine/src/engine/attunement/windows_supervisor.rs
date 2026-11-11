@@ -199,7 +199,7 @@ pub(in crate::engine) fn capture_primary_executable() {
     }
 }
 
-#[allow(dead_code)] // The Parse executor launches the worker.
+#[cfg_attr(test, allow(dead_code))]
 /// Starts the private parser worker from the exact file this engine runs from.
 /// The file stays open without write or delete sharing through the launch, so
 /// the path cannot be replaced between the check and the process start.

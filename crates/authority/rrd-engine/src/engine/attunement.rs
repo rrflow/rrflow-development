@@ -37,6 +37,7 @@ pub(crate) use inventory::LegacySourceFileProjectionGuard;
 pub(super) use inventory::{load_accepted_source, source_head_key};
 
 #[cfg(any(windows, target_os = "linux"))]
+#[cfg_attr(test, allow(dead_code))]
 const WORKER_FLAG: &str = "--rrflow-internal-parse-worker-v1";
 
 /// Records the engine's own executable before any parser worker can start.
@@ -824,6 +825,34 @@ impl RrdEngine {
             lease_generation, ..
         } = command
         {
+            // A Parse step selected without a policy has nothing to run under
+            // and falls through to the unavailable-phase failure.
+            let selected_parse = plan
+                .phases
+                .get(before.checkpoints.len())
+                .is_some_and(|step| step.parse_policy.is_some());
+            if !cancelling && before.current_phase == Some(AttunementPhase::Parse) && selected_parse
+            {
+                require_worker(&before, &worker(session)?, *lease_generation, admitted_at)?;
+                return parse::execute(
+                    self,
+                    inventory::Work {
+                        session,
+                        token,
+                        context,
+                        now,
+                        started,
+                        principal,
+                        operation_sha256,
+                        before_bytes,
+                        before,
+                        plan,
+                        receipt_key,
+                        lease_generation: *lease_generation,
+                    },
+                    _gate,
+                );
+            }
             if !cancelling && before.current_phase == Some(AttunementPhase::Inventory) {
                 require_worker(&before, &worker(session)?, *lease_generation, admitted_at)?;
                 return inventory::execute(

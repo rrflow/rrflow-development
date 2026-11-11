@@ -3,9 +3,6 @@
 //! with the job transition, so a restart resumes where the last commit left off
 //! and an edit re-parses only the edited file.
 
-// The Step dispatch that calls the executor lands with its tests next.
-#![allow(dead_code)]
-
 use super::inventory::{load_parse_inventory, Work};
 use super::*;
 use crate::engine::transaction_admission::TransactionPermit;

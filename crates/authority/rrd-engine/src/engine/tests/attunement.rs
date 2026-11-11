@@ -17,6 +17,7 @@ mod adaptive_selection;
 mod derivation;
 mod discovery;
 mod inventory_delta;
+mod parse_executor;
 pub(super) use inventory_delta::first_inventory_for_worker_with_setup_at;
 mod observation_delivery;
 mod startup_binding;

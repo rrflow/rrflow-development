@@ -15,14 +15,13 @@ use std::time::{Duration, Instant};
 
 /// Owns one direct child. RLIMIT_AS is virtual address space, not RSS or a
 /// process-tree memory limit; parent-death signal is not a filesystem sandbox.
-#[allow(dead_code)] // The Parse executor launches the worker.
 pub(super) struct ManagedChild {
     child: Option<Child>,
     keep_alive: Option<mpsc::Sender<()>>,
     _keeper: JoinHandle<()>,
 }
 
-#[allow(dead_code)] // The Parse executor launches the worker.
+#[cfg_attr(test, allow(dead_code))]
 /// Starts the private parser worker from the running image.
 pub(in crate::engine::attunement) fn spawn_worker(
     limit: u64,
