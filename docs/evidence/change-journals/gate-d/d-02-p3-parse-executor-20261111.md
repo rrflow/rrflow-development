@@ -55,3 +55,10 @@
 - **Oracle.** Two more records tests: a removed file retires every fact and its state; states are found by their record and the summary changes with a file's answer. `publish` is exercised end to end by the executor's tests in the next PR.
 - **Commands.** `cargo test --locked -p rrd-engine --lib parse::`: 12 passed. `cargo clippy --locked -p rrd-engine --all-targets -- -D warnings`: clean. `cargo fmt --check`: clean.
 - **Not run.** Linux and macOS locally; candidate CI is the oracle there. Nothing calls `publish` until the executor lands.
+
+## The Parse step's batch
+
+- **Change.** `parse::step::execute` loads the committed Inventory and each file's `source-parse` state, then selects the files the policy binds to a grammar whose facts are missing or stale. It reads each through the anchored source reader, parses it on one supervised worker, and commits the batch with the job's transition. Each Step stops at the policy's file, input-byte and commit-byte bounds. A file larger than the file bound, or whose facts cannot fit any commit, is refused. Files that left the project or the bindings have their facts retired. A file the worker was lost on in this job is not retried until the next job, so one file that kills the worker cannot keep the job from finishing. At most three workers start in one Step. The AST chunk bound is fixed at 1,500 bytes until the policy carries it.
+- **Oracle.** Two in-module tests of the selection rule: a final answer for the same content is not parsed again and an edit is; a lost file waits for the next job instead of looping. The end-to-end tests arrive with the dispatch in the next PR; locally they pass on the combined change.
+- **Commands.** `cargo test --locked -p rrd-engine --lib parse::`: 14 passed. `cargo clippy --locked -p rrd-engine --all-targets -- -D warnings`: clean. `cargo fmt --check`: clean.
+- **Not run.** Linux and macOS locally; candidate CI is the oracle there. Nothing calls `execute` until the Step dispatches to it.
