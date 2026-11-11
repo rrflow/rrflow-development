@@ -114,7 +114,7 @@ C-07 remains its own storage exit and is not claimed by any package above.
 
 | Package | Real run on this repository | Evidence row |
 | --- | --- | --- |
-| P1 | derived plan read through the public operations; no `phase-unavailable` | to be recorded |
+| P1 | derived plan read through the public operations; no `phase-unavailable` | [recorded](../evidence/change-journals/gate-d/d-02-evidence-derived-attunement-20261111.md): evidence matched an independent count; derived plan is `[connect, inventory]` until P3 |
 | P2 | organisation proposal and regenerated project map | to be recorded |
 | P3 | all Rust, Python and Go files parsed; one edit reparses one file | to be recorded |
 | P4 | cross-file reference query by traversal | to be recorded |
