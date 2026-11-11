@@ -131,6 +131,9 @@ fn attunement_proposals_have_no_runtime_or_store_dependency() {
             "tree-sitter-rust",
             "tree-sitter-python",
             "tree-sitter-go",
+            // The trait tree-sitter's query matches implement; it does not
+            // re-export it.
+            "streaming-iterator",
         ]),
         "attunement uses pure buffer parsing, kernel hashes and serialized observations",
     );
