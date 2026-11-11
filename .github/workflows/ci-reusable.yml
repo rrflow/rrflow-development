@@ -368,6 +368,7 @@ jobs:
         run: python3 scripts/test_controller_trial_package.py
       - name: Enforce repository CI policy
         run: |
+          python3 scripts/ci/test_merge_alarm.py
           python3 scripts/ci/test_candidate_admission.py
           python3 scripts/ci/test_linux_arm64_policy.py
           python3 scripts/ci/test_native_sample_policy.py
