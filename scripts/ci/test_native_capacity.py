@@ -27,6 +27,9 @@ class NativeCapacityCases(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory(prefix="rrflow-capacity-")
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name).resolve(strict=True)
+        # The runner's retry and settle lines are CI evidence. Simulated cases
+        # must not print them into a real job's log, where they would be counted.
+        self.enterContext(redirect_stdout(io.StringIO()))
         self.events = []
         self.generation = 0
         self.config = {"size_mib": 256, "modes": ["fresh", "existing"],

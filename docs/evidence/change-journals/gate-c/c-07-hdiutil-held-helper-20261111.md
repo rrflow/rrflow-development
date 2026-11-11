@@ -34,6 +34,8 @@ To recover when it still happens, a busy create whose output a holder still keep
 
 **Acceptance.** On Windows, `python -m pytest -q test_native_capacity.py test_offline_lifecycle.py` in `scripts/ci`: 64 passed, 12 skipped. The skipped tests need POSIX process groups.
 
+**macOS preflight, run 43030750207 on `4eaec4d2` (the retry alone).** Passed: 24 real APFS cases, every point in both modes three times. No real case hit a busy create, so the macOS run did not exercise the retry path. The retry lines in that job's log came from the unit-test step, where simulated cases printed them; the tests now capture their own output so a real job's log holds only real retries.
+
 **Not established.**
 
 - Nothing has run on macOS yet. Whether the real helper exits within 20 seconds of the detach is the open question. Candidate CI and the C-07 macOS preflight with repetitions are the evidence, and their results belong in the pull request.
