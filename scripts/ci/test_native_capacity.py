@@ -413,8 +413,8 @@ class NativeCapacityCases(unittest.TestCase):
 
     def test_macos_volume_detaches_and_removes_a_leftover_image_before_retrying(self):
         result = subprocess.CompletedProcess([], 1, "native detail", "Resource busy")
-        # The runner names the image by host, even with the platform patched.
-        image = self.root / ("capacity.vhd" if os.name == "nt" else "capacity.dmg")
+        # hdiutil create now makes the suite's template, and each case copies it.
+        image = self.root / runner.DARWIN_TEMPLATE
         observed = []
 
         def native(*args, **kwargs):
@@ -468,6 +468,63 @@ class NativeCapacityCases(unittest.TestCase):
         self.assertTrue(image.is_symlink())
         self.assertTrue(elsewhere.exists())
 
+    def test_macos_cases_create_one_template_and_copy_it_for_each_case(self):
+        creates = []
+        attached = []
+
+        def native(*args, **kwargs):
+            if args[:2] == ("hdiutil", "create"):
+                creates.append(args[-1])
+                Path(args[-1]).write_bytes(b"pristine template")
+                return subprocess.CompletedProcess([], 0, "", "")
+            if args[:2] == ("hdiutil", "attach"):
+                attached.append(Path(args[-1]).read_bytes())
+                payload = {"system-entities": [{"mount-point": str(self.root / "volume"), "dev-entry": "/dev/disk7s1"}]}
+                return subprocess.CompletedProcess([], 0, plistlib.dumps(payload).decode(), "")
+            if args[:2] == ("diskutil", "info"):
+                payload = {"FilesystemType": "apfs", "DeviceNode": "/dev/disk7s1", "VolumeUUID": "ABC"}
+                return subprocess.CompletedProcess([], 0, plistlib.dumps(payload).decode(), "")
+            return subprocess.CompletedProcess([], 0, "", "")
+        usage = namedtuple("usage", "total used free")
+        stat_result = namedtuple("stat_result", "st_dev")
+        real_stat = runner.os.stat
+
+        def fake_stat(path, *args, **kwargs):
+            # Only the device identity check is faked; symlink checks read the real file.
+            if kwargs.get("follow_symlinks", True) is False:
+                return real_stat(path, *args, **kwargs)
+            candidate = Path(path)
+            if candidate == self.root:
+                return stat_result(1)
+            if candidate == (self.root / "volume"):
+                return stat_result(2)
+            return real_stat(path, *args, **kwargs)
+
+        def disk_usage(path):
+            if Path(path) == self.root:
+                return usage(1024 * 1024 * 1024, 0, 1024 * 1024 * 1024)
+            return usage(256 * 1024 * 1024, 0, 128 * 1024 * 1024)
+        def detach(path):
+            # A real detach takes the mounted filesystem, and the case's marker with it.
+            (self.root / "volume" / "RRFLOW-CAPACITY-OWNER").unlink(missing_ok=True)
+        template = self.root / runner.DARWIN_TEMPLATE
+        with patch.object(runner.sys, "platform", "darwin"), \
+                patch.object(runner, "native_command", side_effect=native), \
+                patch.object(runner, "detach_owned_image", side_effect=detach), \
+                patch.object(runner, "filesystem_profile", return_value={"type": "apfs"}), \
+                patch.object(runner.os.path, "ismount", return_value=False), \
+                patch.object(runner.shutil, "disk_usage", side_effect=disk_usage):
+            for _ in range(2):
+                # The device identity is faked only while the case's volume is attached.
+                with patch.object(runner.os, "stat", side_effect=fake_stat):
+                    with runner.volume(self.root, 256):
+                        pass
+                runner.cleanup_detached_volume(self.root)
+                self.assertTrue(template.is_file(), "the template outlives each case")
+        self.assertEqual(creates, [str(template)], "one hdiutil create for the whole suite")
+        self.assertEqual(attached, [b"pristine template", b"pristine template"],
+                         "each case attaches a fresh copy, never the template itself")
+
     def test_macos_volume_retries_busy_create_until_success(self):
         result = subprocess.CompletedProcess([], 1, "native detail", "Resource busy")
         calls = []
@@ -476,6 +533,8 @@ class NativeCapacityCases(unittest.TestCase):
             calls.append((args, kwargs))
             if args[:2] == ("hdiutil", "create") and len([call for call in calls if call[0][:2] == ("hdiutil", "create")]) < 3:
                 raise runner.NativeCommandFailure(args[0], args[1], result)
+            if args[:2] == ("hdiutil", "create"):
+                Path(args[-1]).write_bytes(b"pristine template")
             if args[:2] == ("hdiutil", "attach"):
                 payload = {"system-entities": [{"mount-point": str(self.root / "volume"), "dev-entry": "/dev/disk7s1"}]}
                 return subprocess.CompletedProcess([], 0, plistlib.dumps(payload).decode(), "")
@@ -503,6 +562,7 @@ class NativeCapacityCases(unittest.TestCase):
 
         with patch.object(runner.sys, "platform", "darwin"), \
                 patch.object(runner, "native_command", side_effect=native), \
+                patch.object(runner, "detach_owned_image"), \
                 patch.object(runner, "filesystem_profile", return_value={"type": "apfs"}), \
                 patch.object(runner.os.path, "ismount", return_value=False), \
                 patch.object(runner.os, "stat", side_effect=fake_stat), \
