@@ -28,4 +28,6 @@
 
 **Checks not run:** Linux compilation and tests locally (no Linux toolchain on this machine); candidate CI is the oracle for `linux_supervisor.rs`. macOS has no supervisor by design.
 
+**Surfaced by candidate CI.** The first run failed to compile the Linux supervisor's tests on three lanes (engine-authority, installed lifecycle, optional `rrd-engine`): they read the child's process id from the field that became an `Option` so `Drop` can hand the child to the reaper. `ManagedChild::id` now owns that read and the tests call it; their assertions are unchanged.
+
 **Roadmap/POA&M change:** none.

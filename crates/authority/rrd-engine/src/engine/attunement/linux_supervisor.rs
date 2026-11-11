@@ -144,6 +144,13 @@ impl ManagedChild {
         }
     }
 
+    pub(super) fn id(&self) -> u32 {
+        self.child
+            .as_ref()
+            .expect("child is present until drop")
+            .id()
+    }
+
     pub(super) fn terminate(&mut self) -> io::Result<()> {
         self.child
             .as_mut()
