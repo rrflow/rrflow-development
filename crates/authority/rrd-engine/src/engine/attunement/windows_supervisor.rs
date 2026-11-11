@@ -1,22 +1,28 @@
-//! Native containment foundation. This module is not a Parse executor: it has
-//! no admitted executable identity, deadline or publication.
-//! The explicit list restricts this child; the temporary inheritable duplicates
-//! could still leak to another concurrently launched child that inherits every
-//! handle. Do not connect this to engine work until that host-wide interaction
-//! and the other admission boundaries are resolved.
+//! Native containment for the Parse worker: a job object caps memory and kills
+//! on close, the launched file is pinned and matched to the running engine, and
+//! the child sees only its two pipes. The inheritable duplicates exist only
+//! while `child_launch_lock` is held, which every process launch in the engine
+//! takes, so no sibling launch can inherit them. A host embedding the engine
+//! that launches children without that lock is outside this guarantee.
 
+use super::WORKER_FLAG;
 use std::ffi::{c_void, OsStr};
 use std::io;
 use std::mem::{size_of, zeroed};
 use std::os::windows::ffi::OsStrExt;
+use std::os::windows::fs::OpenOptionsExt;
 use std::os::windows::io::{AsRawHandle, FromRawHandle};
 use std::path::Path;
 use std::ptr::{null, null_mut};
+use std::sync::OnceLock;
 use std::time::Duration;
 use windows_sys::Win32::Foundation::{
     CloseHandle, DuplicateHandle, DUPLICATE_SAME_ACCESS, HANDLE, WAIT_OBJECT_0, WAIT_TIMEOUT,
 };
 use windows_sys::Win32::Security::SECURITY_ATTRIBUTES;
+use windows_sys::Win32::Storage::FileSystem::{
+    GetFileInformationByHandle, BY_HANDLE_FILE_INFORMATION, FILE_SHARE_READ,
+};
 use windows_sys::Win32::System::JobObjects::{
     CreateJobObjectW, JobObjectExtendedLimitInformation, SetInformationJobObject,
     TerminateJobObject, JOBOBJECT_EXTENDED_LIMIT_INFORMATION, JOB_OBJECT_LIMIT_JOB_MEMORY,
@@ -26,9 +32,10 @@ use windows_sys::Win32::System::Pipes::CreatePipe;
 use windows_sys::Win32::System::Threading::{
     CreateProcessW, DeleteProcThreadAttributeList, GetCurrentProcess, GetExitCodeProcess,
     InitializeProcThreadAttributeList, ResumeThread, UpdateProcThreadAttribute,
-    WaitForSingleObject, CREATE_NO_WINDOW, CREATE_SUSPENDED, EXTENDED_STARTUPINFO_PRESENT,
-    LPPROC_THREAD_ATTRIBUTE_LIST, PROCESS_INFORMATION, PROC_THREAD_ATTRIBUTE_HANDLE_LIST,
-    PROC_THREAD_ATTRIBUTE_JOB_LIST, STARTF_USESTDHANDLES, STARTUPINFOEXW,
+    WaitForSingleObject, CREATE_NO_WINDOW, CREATE_SUSPENDED, CREATE_UNICODE_ENVIRONMENT,
+    EXTENDED_STARTUPINFO_PRESENT, LPPROC_THREAD_ATTRIBUTE_LIST, PROCESS_INFORMATION,
+    PROC_THREAD_ATTRIBUTE_HANDLE_LIST, PROC_THREAD_ATTRIBUTE_JOB_LIST, STARTF_USESTDHANDLES,
+    STARTUPINFOEXW,
 };
 
 struct Handle(HANDLE);
@@ -159,10 +166,65 @@ pub(super) struct ManagedChild {
     process: Handle,
 }
 
+#[cfg_attr(test, allow(dead_code))]
+#[derive(Clone, Copy)]
+enum Environment {
+    Inherited,
+    Empty,
+}
+
+const EMPTY_ENVIRONMENT: [u16; 2] = [0, 0];
+
+static PRIMARY_EXECUTABLE: OnceLock<(u32, u64)> = OnceLock::new();
+
+fn file_identity(file: &std::fs::File) -> io::Result<(u32, u64)> {
+    // SAFETY: zeroed POD; the handle is live for the duration of the call.
+    let mut info: BY_HANDLE_FILE_INFORMATION = unsafe { zeroed() };
+    if unsafe { GetFileInformationByHandle(file.as_raw_handle(), &mut info) } == 0 {
+        return Err(io::Error::last_os_error());
+    }
+    Ok((
+        info.dwVolumeSerialNumber,
+        (u64::from(info.nFileIndexHigh) << 32) | u64::from(info.nFileIndexLow),
+    ))
+}
+
+/// Records which file this engine was started from, before any Parse can run.
+pub(in crate::engine) fn capture_primary_executable() {
+    if let Ok(identity) = std::env::current_exe()
+        .and_then(std::fs::File::open)
+        .and_then(|file| file_identity(&file))
+    {
+        let _ = PRIMARY_EXECUTABLE.set(identity);
+    }
+}
+
+#[allow(dead_code)] // The Parse executor launches the worker.
+/// Starts the private parser worker from the exact file this engine runs from.
+/// The file stays open without write or delete sharing through the launch, so
+/// the path cannot be replaced between the check and the process start.
+pub(in crate::engine::attunement) fn spawn_worker(
+    limit: u64,
+) -> io::Result<(ManagedChild, std::fs::File, std::fs::File)> {
+    let path = std::env::current_exe()?;
+    let pinned = std::fs::File::options()
+        .read(true)
+        .share_mode(FILE_SHARE_READ)
+        .open(&path)?;
+    if PRIMARY_EXECUTABLE.get().copied() != Some(file_identity(&pinned)?) {
+        return Err(io::Error::other(
+            "the engine executable no longer matches the file it started from",
+        ));
+    }
+    let spawned = ManagedChild::piped(&path, &[OsStr::new(WORKER_FLAG)], limit, Environment::Empty);
+    drop(pinned);
+    spawned
+}
+
 #[allow(dead_code)]
 impl ManagedChild {
     pub(super) fn spawn(executable: &Path, args: &[&OsStr], limit: u64) -> io::Result<Self> {
-        Self::spawn_inner(executable, args, limit, None)
+        Self::spawn_inner(executable, args, limit, None, Environment::Inherited)
     }
 
     pub(super) fn spawn_piped(
@@ -170,8 +232,18 @@ impl ManagedChild {
         args: &[&OsStr],
         limit: u64,
     ) -> io::Result<(Self, std::fs::File, std::fs::File)> {
+        Self::piped(executable, args, limit, Environment::Inherited)
+    }
+
+    fn piped(
+        executable: &Path,
+        args: &[&OsStr],
+        limit: u64,
+        environment: Environment,
+    ) -> io::Result<(Self, std::fs::File, std::fs::File)> {
+        let _launch = rrd_core::child_launch_lock();
         let pipes = Pipes::new()?;
-        let child = Self::spawn_inner(executable, args, limit, Some(&pipes))?;
+        let child = Self::spawn_inner(executable, args, limit, Some(&pipes), environment)?;
         let Pipes {
             parent_input,
             parent_output,
@@ -185,6 +257,7 @@ impl ManagedChild {
         args: &[&OsStr],
         limit: u64,
         pipes: Option<&Pipes>,
+        environment: Environment,
     ) -> io::Result<Self> {
         let memory = usize::try_from(limit)
             .ok()
@@ -297,8 +370,14 @@ impl ManagedChild {
                 null(),
                 null(),
                 i32::from(pipes.is_some()),
-                CREATE_SUSPENDED | CREATE_NO_WINDOW | EXTENDED_STARTUPINFO_PRESENT,
-                null(),
+                CREATE_SUSPENDED
+                    | CREATE_NO_WINDOW
+                    | CREATE_UNICODE_ENVIRONMENT
+                    | EXTENDED_STARTUPINFO_PRESENT,
+                match environment {
+                    Environment::Inherited => null(),
+                    Environment::Empty => EMPTY_ENVIRONMENT.as_ptr().cast(),
+                },
                 null(),
                 &startup.StartupInfo,
                 &mut info,
