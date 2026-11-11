@@ -34,3 +34,10 @@
 - **Oracle.** `tests/worker.rs` covers the new response and several requests on one pipe; `rrflow-cli --test parser_worker` drives the real primary binary; the Windows supervisor tests use the new frames.
 - **Commands.** `cargo test --locked -p rrd-attunement`: 61 passed. `cargo test --locked -p rrflow-cli --test parser_worker`: 2 passed. `cargo test --locked -p rrd-engine --lib windows_supervisor`: 8 passed, 5 ignored. `cargo clippy --locked -p rrd-attunement -p rrflow-cli -p rrd-engine --all-targets -- -D warnings`: clean. `cargo fmt --check`: clean.
 - **Not run.** Linux and macOS locally; candidate CI is the oracle there.
+
+## Fact publication
+
+- **Change.** `parse::records::file_mutations` turns one Step's outcome for a file into records. It retires every fact the previous state named that the new one does not, writes symbols, spans and chunks, and writes the file's `source-parse` state. Names and chunk text are sliced from the bytes the engine read and verified, so a worker's facts never supply content. A fact whose range lies outside those bytes or splits a UTF-8 character, or whose digest, language or parser revision differs from the state, is refused. A refusal or a lost worker retires the file's old facts and records why.
+- **Oracle.** Four in-module tests over real `source_facts` output: a first parse writes facts sliced from the source; an edit retires every fact of the old content; a refusal retires old facts and records its reason; facts that do not match the verified bytes are refused. They were written with the function, not observed red first.
+- **Commands.** `cargo test --locked -p rrd-engine --lib parse::records`: 7 passed. `cargo clippy --locked -p rrd-engine --all-targets -- -D warnings`: clean. `cargo fmt --check`: clean.
+- **Not run.** Linux and macOS locally; candidate CI is the oracle there. Nothing calls `file_mutations` until the executor lands.
