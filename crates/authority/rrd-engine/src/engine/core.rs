@@ -254,6 +254,7 @@ impl RrdEngine {
         create_objects: bool,
         limits: crate::VectorResidencyLimits,
     ) -> Result<Self> {
+        super::attunement::capture_primary_executable();
         let root = storage.anchored_path().clone();
         let objects = if create_objects {
             rrd_store::LocalObjectStore::open_anchored(&root.join("immutable"))?
