@@ -81,6 +81,7 @@ pub fn parser_revision(language: &str) -> Option<&'static str> {
 
 pub(crate) struct Parsed {
     pub tree: Tree,
+    pub language: Language,
     pub revision: &'static str,
     pub started: Instant,
     pub deadline: Duration,
@@ -172,6 +173,7 @@ pub(crate) fn parse_tree(
     let tree = tree.ok_or(ParseError::LimitExceeded)?;
     Ok(Parsed {
         tree,
+        language: grammar,
         revision,
         started,
         deadline,
@@ -192,6 +194,7 @@ pub fn parse_source(
         revision,
         started,
         deadline,
+        ..
     } = parse_tree(
         source_id,
         expected_sha256,
