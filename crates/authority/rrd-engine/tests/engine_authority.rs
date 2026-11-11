@@ -61,6 +61,7 @@ fn diagnostic_request(scope: &str) -> ReadDiagnosticSnapshot {
         graph_valid_at_unix_ms: 1_500,
         graph_known_at_cursor: None,
         graph_compare_cursor: 0,
+        graph_max_records: None,
         runtime_max_scanned_changes: 1_024,
         changes_after_cursor: 0,
         change_limit: 64,
