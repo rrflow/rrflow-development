@@ -22,7 +22,10 @@ RRFlow, LFG and SWAG work "truly as one tuned engine", with Connectome as a true
 | Requirement | Exists | Missing |
 |---|---|---|
 | A true multi-model engine with Postgres capability | Atomic multi-model commits, schema and uniqueness enforcement, time travel, crash recovery on a live run | Per-row transaction conflicts, relationship delete rules, SQL, the wire protocol ([H-08](../reference/protocol/postgresql.md)) |
-| LSM hot, rrflowCLD cold | Parquet writer, default-on on a branch awaiting landing ([tiered persistence](../reference/storage/tiered-persistence.md)) | Compaction into CLD, LSM reclaim, merged reads, backups, an AI-specific format |
+| LSM hot, rrflowCLD cold | Parquet writer, default-on on a branch awaiting landing ([tiered persistence](../reference/storage/tiered-persistence.md)) | Compaction into CLD, LSM reclaim, merged reads, backups |
+| LSM optimized "to truly compete with fjall" | The custom rrflowKV LSM | A measured comparison against Fjall, and the optimization it calls for |
+| CLD "truly tailored for AI", breaking from Parquet to go "truly custom like the rest of the multimodal engine" | The stock Parquet writer as a starting point | The custom format and its design research |
+| A working prototype competitive with SurrealDB and Qdrant, now | The dogfood harness for SurrealDB and ArangoDB; earlier Qdrant search work | A current head-to-head on the same project and queries |
 | Plans driven by evidence, not fixed steps | Capability catalogue and successor plans in #326 | [D-02](d02-evidence-driven-attunement-engineering-plan.md) packages P2 onward; project understanding starts at P3 |
 
 ### Connectome structure
@@ -35,7 +38,9 @@ RRFlow, LFG and SWAG work "truly as one tuned engine", with Connectome as a true
 
 | Requirement | Exists | Missing |
 |---|---|---|
-| Live neuro visuals the user traces, tailored to research on what works as a second mind | Sigma and xyflow graphs of stored records | A live model of reasoning, and the research itself |
+| A living visualizer that is the second brain running, drilled down, zoomed and expanded to a full viewport inside Connectome, on bleeding-edge research | A Sigma graph of stored records with zoom and expand-to-window; a live change stream in the client that no view subscribes to | A graph that updates live, drill-down through levels of detail, a model of reasoning, and the research |
+| The second brain persists while project instances are stopped and started | One project maps to one estate and one instance; nothing sits above them | A long-lived brain service and its contract with project instances |
+| Two projects need not share RBAC, with stronger leakage measures once this is proven | Per-estate sessions and authorization | RBAC across a shared brain, then researched leakage controls |
 | Requests, chat and "even my rage" interpreted as constructional data | LFG's prompt hook journal; 743 of the owner's real prompts in `eval/inputs/staging` | Interpretation that feeds plans |
 | Thresholds "where honesty trumps moving forward blindly" | A hook passes a frustration reading to the session | Measured thresholds and a required realignment step |
 | A lexicon that grows, from layman words to specific analyses | Nothing | The lexicon, its analyses and its growth |
@@ -110,7 +115,7 @@ Each step ends with a run someone can repeat.
 
 1. **Land what is ready.** #326, the merge alarm (#327 and Connectome #47), rrflowCLD and its Connectome card. Exit: main carries them and a live failure raises the alarm.
 2. **Make the engine real.** rrflowCLD reclaim and merged reads, per-row transactions, relationship rules, SQL, then Postgres. Exit: an independent client exercises each on a real project.
-3. **Finish Connectome's structure,** alongside step 2. Exit: the architecture gate covers all of `src`.
+3. **Fix Connectome,** alongside step 2. Finish its structure, then start the living visualizer on the existing graph and change stream. Exit: the architecture gate covers all of `src`, and a change committed to the engine appears on the graph without a reload. Re-authoring the inherited views waits, by the owner's decision of 2026-11-11, and the ten modules nothing imports are kept. When that work resumes, each view must be at least as capable as the SurrealDB-era client it replaces.
 4. **Instrument before comparing.** Hops, tokens and one timeline across RRFlow, LFG and SWAG. Exit: one prompt can be traced end to end.
 5. **Finish evidence-driven reasoning,** D-02 P2 to P5. Exit: the real-run ledger in that plan.
 6. **Compare.** Efforts, storage settings and the named competitors, on real projects. Exit: published numbers, including losses.
@@ -122,6 +127,5 @@ Each step ends with a run someone can repeat.
 ## Open for the owner
 
 - What are "jevdecisions" and "chef flash"? Earlier prompts place jevdecisions as an alternative to SWAG. Neither could be identified, and the comparison needs them.
-- What makes CLD AI-optimized?
 - Does Connectome parking lot 008 stand as the A2UI design?
 - Atlassian: Jira, Confluence or both?
