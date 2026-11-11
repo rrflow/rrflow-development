@@ -20,3 +20,10 @@
 - **Oracle.** Characterization only: `tests/parse.rs` (7) and `tests/worker.rs` (6) pass unchanged.
 - **Commands.** `cargo test --locked -p rrd-attunement`: 49 passed, 0 failed. `cargo clippy --locked -p rrd-attunement --all-targets -- -D warnings`: clean.
 - **Not run.** Linux and macOS; candidate CI is the oracle there.
+
+## Spans and chunks
+
+- **Change.** `rrd_attunement::facts::source_facts` also returns top-level spans and AST chunks. Each top-level item, not a comment, is a `SourceSpan`. Chunks follow the cAST rule: syntax nodes merge up to the configured `chunk_bytes`, and a node larger than the bound splits into its children. Text no node divides further splits on line, then character, edges. Every fact is a byte range, so the engine slices text from bytes it read and verified itself and a worker can never supply source content.
+- **Oracle.** `tests/facts.rs` adds five cases: top-level items become spans and comments do not; a small file is one chunk covering its code; chunks stay inside the bound and lose no code; one oversized token splits on character boundaries; delimiters the grammar hides stay in the chunks.
+- **Commands.** `cargo test --locked -p rrd-attunement`: 60 passed, 0 failed. `cargo clippy --locked -p rrd-attunement --all-targets -- -D warnings`: clean. `cargo fmt --check`: clean.
+- **Not run.** Linux and macOS; candidate CI is the oracle there. Nothing publishes spans or chunks until the executor lands.
