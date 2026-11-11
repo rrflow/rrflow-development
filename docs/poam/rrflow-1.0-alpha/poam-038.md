@@ -26,6 +26,9 @@ is remediation. This limitation remains open under D-02/D-03 and this POA&M.
 
 Verified at development `main` `04fae276`:
 
+**Correction, 2026-11-11, at main `ab32ec16`.** The first bullet below no longer holds: `control_attunement` re-observes `project_inventory_sha256(root, profile)` on `Start`, `Resume` and every non-cancel `Step` and returns `AttunementSourceChanged` on a mismatch (`attunement_source_observation`, `crates/authority/rrd-engine/src/engine/attunement.rs:244-256`, used at `:813-820`). The Connect checkpoint still takes `plan.source_sha256` as its `input_sha256` by the checkpoint-chain rule, and installation verification still reports as described, so the record stays open for those parts.
+
+
 - [`control_attunement`](../../../crates/authority/rrd-engine/src/engine/attunement.rs)
   admits `Start` when the command's `plan_sha256` equals the pending plan's. It
   does not recompute the project inventory the plan was derived from.

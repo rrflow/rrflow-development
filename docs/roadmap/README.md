@@ -22,6 +22,10 @@ The canonical roadmap is accompanied by a subordinate link-only
 [change journals](../evidence/change-journals/). The roadmap owns requirements
 and completion; the active change record owns exact in-progress paths; generated
 views and journals provide discovery and evidence without changing status.
+The active [D-02 evidence-driven attunement and context-aligned organisation plan](d02-evidence-driven-attunement-engineering-plan.md)
+orders the packages that replace the profile-declared attunement sequence with
+engine-composed, evidence-derived plans, add domain proposals and scoped reads,
+and accept each package by a real run on this repository; it changes no status.
 The active [E-04 TurboQuant persistent serving plan](e04-turboquant-persistent-serving-engineering-plan.md)
 orders the packages that make OBJ-13's persistent-search part executable and
 give clients a public TurboQuant path; it changes no gate status.

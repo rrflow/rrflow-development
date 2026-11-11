@@ -40,3 +40,7 @@ the project in plain language.
 
 - The map is not yet indexed as a recall record or shown in Connectome.
 - Language detection is by file extension only.
+
+## Correction, 2026-11-11
+
+At main `ab32ec16` `RrdEngine::refresh_project_map` has no caller: the `install apply` and `serve` hook this record describes is absent from `crates/adapters/rrflow-cli/src/installed.rs`, and the test `the_project_map_describes_the_project_and_keeps_the_owners_notes` is not in the tree. The map is therefore not produced by the shipped product on this revision. Re-wiring it as a projection of the committed inventory records is package P2 of the [D-02 evidence-driven attunement plan](../../../roadmap/d02-evidence-driven-attunement-engineering-plan.md).
