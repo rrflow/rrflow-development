@@ -7,7 +7,7 @@
 use rrd_core::digest::sha256_hex;
 use serde::{Deserialize, Serialize};
 use std::time::{Duration, Instant};
-use tree_sitter::{Language, Parser};
+use tree_sitter::{Language, Parser, Tree};
 
 pub const PARSE_PROPOSAL_VERSION: u16 = 1;
 
@@ -79,16 +79,24 @@ pub fn parser_revision(language: &str) -> Option<&'static str> {
     grammar(language).map(|(_, revision)| revision)
 }
 
-/// The selected language is explicit; this function never guesses from a path.
-/// Grammars are linked build inputs and are not fetched during execution.
-pub fn parse_source(
+pub(crate) struct Parsed {
+    pub tree: Tree,
+    pub revision: &'static str,
+    pub started: Instant,
+    pub deadline: Duration,
+}
+
+/// Validates the request and parses `source` within `limits`. The selected
+/// language is explicit; this function never guesses from a path. Grammars are
+/// linked build inputs and are not fetched during execution.
+pub(crate) fn parse_tree(
     source_id: &str,
     expected_sha256: &str,
     language: &str,
     source: &[u8],
     limits: &ParseLimits,
-    cancelled: impl Fn() -> bool,
-) -> Result<ParseProposal, ParseError> {
+    cancelled: &impl Fn() -> bool,
+) -> Result<Parsed, ParseError> {
     let started = Instant::now();
     if source_id.is_empty() || source_id.len() > 256 {
         return Err(ParseError::InvalidSourceIdentity);
@@ -133,7 +141,7 @@ pub fn parse_source(
                 // Tree-sitter invokes this closure from a C callback. Do not
                 // allow an operator-supplied cancellation check to unwind
                 // across the FFI boundary.
-                match std::panic::catch_unwind(std::panic::AssertUnwindSafe(&cancelled)) {
+                match std::panic::catch_unwind(std::panic::AssertUnwindSafe(cancelled)) {
                     Ok(true) => {
                         stopped = Some(ParseError::Cancelled);
                         &source[0..0]
@@ -162,6 +170,36 @@ pub fn parse_source(
         return Err(ParseError::LimitExceeded);
     }
     let tree = tree.ok_or(ParseError::LimitExceeded)?;
+    Ok(Parsed {
+        tree,
+        revision,
+        started,
+        deadline,
+    })
+}
+
+/// Every named, error and missing node of `source`, within `limits`.
+pub fn parse_source(
+    source_id: &str,
+    expected_sha256: &str,
+    language: &str,
+    source: &[u8],
+    limits: &ParseLimits,
+    cancelled: impl Fn() -> bool,
+) -> Result<ParseProposal, ParseError> {
+    let Parsed {
+        tree,
+        revision,
+        started,
+        deadline,
+    } = parse_tree(
+        source_id,
+        expected_sha256,
+        language,
+        source,
+        limits,
+        &cancelled,
+    )?;
     let mut cursor = tree.walk();
     let mut depth = 1u64;
     let mut visited = 0u64;
