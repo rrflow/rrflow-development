@@ -115,6 +115,44 @@ fn record(
     })
 }
 
+fn retire(kind: &str, id: String, at: u64) -> Result<RuntimeMutation> {
+    Ok(RuntimeMutation::Retire {
+        retirement: RuntimeRetirement {
+            model: RuntimeLogicalModel::GraphNode,
+            reference: RuntimeRef::new(kind, id).map_err(contract)?,
+            effective_at: at,
+        },
+    })
+}
+
+fn state_record(state: &FileState, at: u64) -> Result<RuntimeMutation> {
+    record(
+        STATE,
+        state_id(&state.path),
+        at,
+        serde_json::to_value(state).map_err(contract)?,
+    )
+}
+
+/// Reads a `source-parse` record back into the state it was written from.
+fn state_from(record: &RuntimeRecord) -> Result<FileState> {
+    let plain = record
+        .properties
+        .iter()
+        .map(|(key, value)| {
+            Ok((
+                key.clone(),
+                match value {
+                    RuntimeValue::String(text) => serde_json::json!(text),
+                    RuntimeValue::Unsigned(number) => serde_json::json!(number),
+                    _ => return Err(invalid()),
+                },
+            ))
+        })
+        .collect::<Result<serde_json::Map<_, _>>>()?;
+    serde_json::from_value(serde_json::Value::Object(plain)).map_err(contract)
+}
+
 fn register(registry: &mut RuntimeSchemaRegistry) -> Result<bool> {
     use RuntimeValueType::{String as Text, Unsigned};
     let path = ("path", Text);
@@ -236,22 +274,7 @@ pub(super) fn load_states(
     let mut states = BTreeMap::new();
     for (_, record) in latest.into_values() {
         let Some(record) = record else { continue };
-        let plain = record
-            .properties
-            .iter()
-            .map(|(key, value)| {
-                Ok((
-                    key.clone(),
-                    match value {
-                        RuntimeValue::String(text) => serde_json::json!(text),
-                        RuntimeValue::Unsigned(number) => serde_json::json!(number),
-                        _ => return Err(invalid()),
-                    },
-                ))
-            })
-            .collect::<Result<serde_json::Map<_, _>>>()?;
-        let state: FileState =
-            serde_json::from_value(serde_json::Value::Object(plain)).map_err(contract)?;
+        let state = state_from(&record)?;
         states.insert(state.path.clone(), state);
     }
     Ok(states)
@@ -645,21 +668,62 @@ impl<'a> ParseCommit<'a> {
     }
 }
 
-fn retire(kind: &str, id: String, at: u64) -> Result<RuntimeMutation> {
-    Ok(RuntimeMutation::Retire {
-        retirement: RuntimeRetirement {
-            model: RuntimeLogicalModel::GraphNode,
-            reference: RuntimeRef::new(kind, id).map_err(contract)?,
-            effective_at: at,
-        },
-    })
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-fn state_record(state: &FileState, at: u64) -> Result<RuntimeMutation> {
-    record(
-        STATE,
-        state_id(&state.path),
-        at,
-        serde_json::to_value(state).map_err(contract)?,
-    )
+    #[test]
+    fn the_parsed_source_tables_are_registered_once() {
+        let mut registry = RuntimeSchemaRegistry::empty(1, "parsed source");
+        assert!(register(&mut registry).unwrap());
+        assert!(
+            !register(&mut registry).unwrap(),
+            "a second registration changes nothing"
+        );
+        for kind in [STATE, SYMBOL, SPAN, CHUNK] {
+            assert!(registry
+                .records
+                .contains_key(&RuntimeType::new(kind).unwrap()));
+        }
+    }
+
+    #[test]
+    fn a_fact_identity_changes_with_path_content_parser_chunk_size_and_index() {
+        let base = fact_id("a.rs", "c1", "r1", 1_500, 0);
+        assert_eq!(base, fact_id("a.rs", "c1", "r1", 1_500, 0));
+        for other in [
+            fact_id("b.rs", "c1", "r1", 1_500, 0),
+            fact_id("a.rs", "c2", "r1", 1_500, 0),
+            fact_id("a.rs", "c1", "r2", 1_500, 0),
+            fact_id("a.rs", "c1", "r1", 1_000, 0),
+            fact_id("a.rs", "c1", "r1", 1_500, 1),
+        ] {
+            assert_ne!(base, other);
+        }
+    }
+
+    #[test]
+    fn a_file_state_reads_back_from_its_record() {
+        let state = FileState {
+            path: "src/lib.rs".into(),
+            content_sha256: "a".repeat(64),
+            language: "rust".into(),
+            parser_revision: "tree-sitter-rust".into(),
+            chunk_bytes: 1_500,
+            job_id: "job".into(),
+            status: Status::Rejected,
+            reason: "file_too_large".into(),
+            facts_sha256: "0".repeat(64),
+            symbols: 3,
+            spans: 2,
+            chunks: 1,
+            nodes: 40,
+            error_nodes: 0,
+        };
+        let RuntimeMutation::Record { record } = state_record(&state, 7).unwrap() else {
+            panic!("a state is written as a record");
+        };
+        assert_eq!(record.reference.kind.as_str(), STATE);
+        assert_eq!(state_from(&record).unwrap(), state);
+    }
 }
