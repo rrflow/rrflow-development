@@ -115,7 +115,7 @@ Each step ends with a run someone can repeat.
 
 1. **Land what is ready.** #326, the merge alarm (#327 and Connectome #47), rrflowCLD and its Connectome card. Exit: main carries them and a live failure raises the alarm.
 2. **Make the engine real.** rrflowCLD reclaim and merged reads, per-row transactions, relationship rules, SQL, then Postgres. Exit: an independent client exercises each on a real project.
-3. **Fix Connectome,** alongside step 2. Finish its structure, then start the living visualizer on the existing graph and change stream. Exit: the architecture gate covers all of `src`, and a change committed to the engine appears on the graph without a reload. Re-authoring the inherited views waits, by the owner's decision of 2026-11-11, and the ten modules nothing imports are kept.
+3. **Fix Connectome,** alongside step 2. Finish its structure, then start the living visualizer on the existing graph and change stream. Exit: the architecture gate covers all of `src`, and a change committed to the engine appears on the graph without a reload. Re-authoring the inherited views waits, by the owner's decision of 2026-11-11, and the ten modules nothing imports are kept. When that work resumes, each view must be at least as capable as the SurrealDB-era client it replaces.
 4. **Instrument before comparing.** Hops, tokens and one timeline across RRFlow, LFG and SWAG. Exit: one prompt can be traced end to end.
 5. **Finish evidence-driven reasoning,** D-02 P2 to P5. Exit: the real-run ledger in that plan.
 6. **Compare.** Efforts, storage settings and the named competitors, on real projects. Exit: published numbers, including losses.
