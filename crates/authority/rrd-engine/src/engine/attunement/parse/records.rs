@@ -425,6 +425,71 @@ pub(super) fn file_mutations(
     Ok(mutations)
 }
 
+/// The parsed-source tables registered in the instance's schema, when they are
+/// not there yet.
+pub(super) fn schema_mutation(
+    engine: &RrdEngine,
+    scope: &ScopeId,
+    read: &ReadStamp,
+) -> Result<Option<RuntimeMutation>> {
+    let current = engine.storage.runtime().schema(scope)?;
+    if current.as_ref().map(|schema| schema.revision) != read.schema_revision {
+        return Err(ServiceError::StorageConflict("Parse schema changed".into()));
+    }
+    let mut registry = current
+        .clone()
+        .unwrap_or_else(|| RuntimeSchemaRegistry::empty(1, "parsed source tables"));
+    if !register(&mut registry)? {
+        return Ok(None);
+    }
+    if let Some(old) = current {
+        registry.revision = old.revision.checked_add(1).ok_or_else(invalid)?;
+        registry.migration = "parsed source tables".into();
+    }
+    Ok(Some(RuntimeMutation::Schema { registry }))
+}
+
+/// Retires a file that left the project or its parse bindings: its facts and
+/// its state.
+pub(super) fn retire_file(state: &FileState, at: u64) -> Result<Vec<RuntimeMutation>> {
+    let mut mutations = Vec::new();
+    for (kind, ids) in fact_ids(state) {
+        for id in ids {
+            mutations.push(retire(kind, id, at)?);
+        }
+    }
+    mutations.push(retire(STATE, state_id(&state.path), at)?);
+    Ok(mutations)
+}
+
+/// The state a mutation writes, when it writes one.
+pub(super) fn state_of(mutation: &RuntimeMutation) -> Result<Option<FileState>> {
+    match mutation {
+        RuntimeMutation::Record { record } if record.reference.kind.as_str() == STATE => {
+            Ok(Some(state_from(record)?))
+        }
+        _ => Ok(None),
+    }
+}
+
+/// One digest of every file's current answer, recorded by the Parse checkpoint.
+pub(super) fn summary_sha256(states: &BTreeMap<String, FileState>) -> Result<String> {
+    let rows: Vec<_> = states
+        .values()
+        .map(|state| {
+            (
+                &state.path,
+                &state.content_sha256,
+                &state.status,
+                &state.facts_sha256,
+            )
+        })
+        .collect();
+    Ok(digest::sha256_hex(
+        &serde_json::to_vec(&rows).map_err(contract)?,
+    ))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -581,6 +646,34 @@ mod tests {
         assert!(
             file_mutations(None, state, Outcome::Parsed(&outside), SOURCE.as_bytes(), 9).is_err()
         );
+    }
+
+    #[test]
+    fn a_removed_file_retires_its_facts_and_state() {
+        let (state, facts) = parsed(SOURCE);
+        let first =
+            file_mutations(None, state, Outcome::Parsed(&facts), SOURCE.as_bytes(), 9).unwrap();
+        let written = state_from(written(&first, STATE)[0]).unwrap();
+        let removed = retire_file(&written, 10).unwrap();
+        let facts = (written.symbols + written.spans + written.chunks) as usize;
+        assert_eq!(removed.len(), facts + 1, "every fact and the state");
+        assert_eq!(retired(&removed), removed.len());
+    }
+
+    #[test]
+    fn states_are_found_and_summarized_by_their_answer() {
+        let (state, facts) = parsed(SOURCE);
+        let mutations =
+            file_mutations(None, state, Outcome::Parsed(&facts), SOURCE.as_bytes(), 9).unwrap();
+        let found: Vec<_> = mutations
+            .iter()
+            .filter_map(|mutation| state_of(mutation).unwrap())
+            .collect();
+        assert_eq!(found.len(), 1, "only the state record yields a state");
+        let mut states = BTreeMap::from([(found[0].path.clone(), found[0].clone())]);
+        let parsed_summary = summary_sha256(&states).unwrap();
+        states.get_mut("src/lib.rs").unwrap().status = Status::Lost;
+        assert_ne!(parsed_summary, summary_sha256(&states).unwrap());
     }
 
     #[test]

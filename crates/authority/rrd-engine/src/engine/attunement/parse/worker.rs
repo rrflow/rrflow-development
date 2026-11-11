@@ -116,7 +116,9 @@ impl Drop for Worker {
     }
 }
 
+// Engine tests drive an in-process worker instead.
 #[cfg(any(windows, target_os = "linux"))]
+#[cfg_attr(test, allow(dead_code))]
 mod native {
     #[cfg(target_os = "linux")]
     use super::super::super::linux_supervisor as supervisor;
@@ -141,16 +143,33 @@ mod native {
 }
 
 #[cfg(any(windows, target_os = "linux"))]
-#[allow(unused_imports)] // The executor starts workers in a later pull request.
+#[allow(unused_imports)] // The executor starts workers in the next pull request.
 pub(in crate::engine::attunement) use native::start;
 
 /// No native supervisor contains the worker on this platform, so Parse cannot run.
 #[cfg(not(any(windows, target_os = "linux")))]
+#[cfg_attr(test, allow(dead_code))]
 pub(in crate::engine::attunement) fn start(_memory_limit: u64) -> io::Result<Worker> {
     Err(io::Error::new(
         io::ErrorKind::Unsupported,
         "no native parse supervisor on this platform",
     ))
+}
+
+/// A worker on the calling process, for engine tests that cannot start the
+/// primary executable.
+#[cfg(test)]
+pub(super) fn in_process(_memory_limit: u64) -> io::Result<Worker> {
+    struct Unsupervised;
+    impl Stop for Unsupervised {
+        fn stop(&mut self) {}
+    }
+    let (mut request_reader, request_writer) = io::pipe()?;
+    let (response_reader, mut response_writer) = io::pipe()?;
+    std::thread::spawn(move || {
+        let _ = rrd_attunement::worker::run_worker(&mut request_reader, &mut response_writer);
+    });
+    Worker::over(Box::new(Unsupervised), request_writer, response_reader)
 }
 
 #[cfg(test)]
