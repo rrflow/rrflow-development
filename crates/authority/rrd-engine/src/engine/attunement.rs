@@ -826,7 +826,14 @@ impl RrdEngine {
             lease_generation, ..
         } = command
         {
-            if !cancelling && before.current_phase == Some(AttunementPhase::Parse) {
+            // A Parse step selected without a policy has nothing to run under
+            // and falls through to the unavailable-phase failure.
+            let selected_parse = plan
+                .phases
+                .get(before.checkpoints.len())
+                .is_some_and(|step| step.parse_policy.is_some());
+            if !cancelling && before.current_phase == Some(AttunementPhase::Parse) && selected_parse
+            {
                 require_worker(&before, &worker(session)?, *lease_generation, admitted_at)?;
                 return parse::execute(
                     self,
