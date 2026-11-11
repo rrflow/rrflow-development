@@ -8,3 +8,6 @@ use super::*;
 // The executor that writes and reads these records lands in a later pull request.
 #[allow(dead_code)]
 mod records;
+// The executor drives the worker in a later pull request.
+#[allow(dead_code)]
+mod worker;
