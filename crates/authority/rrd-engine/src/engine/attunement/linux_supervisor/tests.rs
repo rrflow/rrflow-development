@@ -51,7 +51,7 @@ fn native_linux_supervisor_kills_child_when_supervisor_process_dies() {
         512 * 1024 * 1024,
     )
     .unwrap();
-    let parent_pid = supervisor.child.id();
+    let parent_pid = supervisor.id();
     let marker = marker_for(parent_pid);
     let started = Instant::now();
     let child_pid = loop {
@@ -118,7 +118,7 @@ fn child_supervises_a_child() {
         .create_new(true)
         .open(marker_for(std::process::id()))
         .unwrap();
-    writeln!(marker, "{}", worker.child.id()).unwrap();
+    writeln!(marker, "{}", worker.id()).unwrap();
     marker.flush().unwrap();
     std::thread::sleep(Duration::from_secs(30));
     drop(worker);
@@ -145,7 +145,7 @@ fn native_linux_supervisor_drop_terminates_owned_child() {
     )
     .unwrap();
     // SAFETY: pidfd_open creates a descriptor for this live owned child.
-    let fd = unsafe { libc::syscall(libc::SYS_pidfd_open, child.child.id(), 0) } as i32;
+    let fd = unsafe { libc::syscall(libc::SYS_pidfd_open, child.id(), 0) } as i32;
     assert!(
         fd >= 0,
         "pidfd_open failed: {}",
