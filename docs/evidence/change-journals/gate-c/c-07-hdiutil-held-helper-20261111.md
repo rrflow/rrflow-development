@@ -1,4 +1,4 @@
-# C-07: a busy macOS image create retries once its helper lets go
+# C-07: wait for macOS image teardown, and retry a busy create once its helper lets go
 
 **Status:** active remediation evidence; POAM-074 remains open
 
@@ -12,12 +12,14 @@
 
 Run 43017327376 attempt 1 is the evidence. Case 21 failed 4 seconds after the previous detach. Its receipt has `stderr_open: true` and `stdout_open: false`, the native text is `hdiutil: create failed - Resource busy` after `Finishing`, and the runner killed an orphaned `diskimages-helper` when the job ended.
 
-**Target behavior.** A busy create whose output a holder still keeps open is released first: the leftover image is detached with the existing owned-image check. The create is retried only after the held output is seen to close, within `HELPER_EXIT_SECONDS` (20). A holder that outlives that bound gets no retry. The original failure is raised and its receipt records `holder_outlived_release: true`. Timed-out creates are still never retried. Each retry prints `capacity_create_retry` with the attempt, whether a leftover image existed, whether output was held, and how long it took to close.
+**Target behavior.** Two parts. To prevent the busy create, the rig waits after each detach for the image's whole-disk device node to disappear. It logs the wait as `capacity_settle` and fails naming the device if the node remains after 30 seconds. This part is commit `bcac6931`, written in a parallel P3 session and carried here so one package and one pull request own POAM-074.
+
+To recover when it still happens, a busy create whose output a holder still keeps open is released first: the leftover image is detached with the existing owned-image check. The create is retried only after the held output is seen to close, within `HELPER_EXIT_SECONDS` (20). A holder that outlives that bound gets no retry. The original failure is raised and its receipt records `holder_outlived_release: true`. Timed-out creates are still never retried. Each retry prints `capacity_create_retry` with the attempt, whether a leftover image existed, whether output was held, and how long it took to close.
 
 **Changed paths.**
 
 - `scripts/ci/run_offline_lifecycle.py`: `CommandOutputNotClosed` keeps its capture threads and gains `wait_closed`. Without the threads, `wait_closed` always answers no.
-- `scripts/ci/run_native_capacity.py`: `is_busy_darwin_create` and `held_output` replace `is_retryable_darwin_create_failure`. The create retry loop changes, and the receipt gains `holder_outlived_release`.
+- `scripts/ci/run_native_capacity.py`: `wait_for_device_release` after each macOS detach. `is_busy_darwin_create` and `held_output` replace `is_retryable_darwin_create_failure`. The create retry loop changes, and the receipt gains `holder_outlived_release`.
 - The tests in `scripts/ci/test_offline_lifecycle.py` and `scripts/ci/test_native_capacity.py`.
 - [POAM-074](../../../poam/rrflow-1.0-alpha/poam-074.md), whose wrong file attribution is corrected.
 - This record.
@@ -27,7 +29,8 @@ Run 43017327376 attempt 1 is the evidence. Case 21 failed 4 seconds after the pr
 - `test_held_output_is_reported_closed_only_after_its_holder_exits` runs a real child that exits while a descendant holds stderr. The short wait must answer no while the holder lives and yes once it is ended.
 - `test_macos_volume_retries_a_busy_create_after_its_helper_lets_go` checks the order: create, detach the half-made image, then a create that starts from no image after the holder let go. It also checks that one retry line is printed.
 - `test_macos_volume_keeps_a_busy_create_whose_helper_never_lets_go` checks that there is no retry and no sleep, that the receipt has `holder_outlived_release`, and that the image is kept.
-- Against main's code these three fail. That failure is a missing interface (`readers`, `wait_closed`), which is weaker evidence than a failing assertion. `test_macos_volume_does_not_retry_an_unfinished_busy_create` is unchanged and still passes, because a record without capture threads proves nothing.
+- Four `DeviceRelease` tests: an absent node returns at once, a lingering node is waited for, a node that never goes fails naming it, and an unowned identity is refused.
+- Against main's code the three held-output tests fail. That failure is a missing interface (`readers`, `wait_closed`), which is weaker evidence than a failing assertion. `test_macos_volume_does_not_retry_an_unfinished_busy_create` is unchanged and still passes, because a record without capture threads proves nothing.
 
 **Acceptance.** On Windows, `python -m pytest -q test_native_capacity.py test_offline_lifecycle.py` in `scripts/ci`: 64 passed, 12 skipped. The skipped tests need POSIX process groups.
 

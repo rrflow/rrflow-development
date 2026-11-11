@@ -839,6 +839,48 @@ class MountedFixtureCleanup(unittest.TestCase):
             self.assertTrue((fixture / "fixture.sparseimage").exists())
 
 
+class DeviceRelease(unittest.TestCase):
+    def setUp(self):
+        self.clock = 0.0
+        self.sleeps = []
+
+    def wait(self, present_for, timeout=30.0, device="/dev/disk7s1"):
+        seen = []
+
+        def exists(path):
+            seen.append(path)
+            return len(seen) <= present_for
+
+        def sleep(seconds):
+            self.sleeps.append(seconds)
+            self.clock += seconds
+        with patch.object(runner.time, "monotonic", side_effect=lambda: self.clock), \
+                patch.object(runner.time, "sleep", side_effect=sleep):
+            waited = runner.wait_for_device_release(device, timeout, exists)
+        return waited, seen
+
+    def test_returns_at_once_when_the_node_is_gone(self):
+        waited, seen = self.wait(0)
+        self.assertEqual(waited, 0)
+        self.assertEqual(seen, ["/dev/disk7"])
+        self.assertEqual(self.sleeps, [])
+
+    def test_waits_for_the_whole_disk_node_to_go(self):
+        waited, seen = self.wait(3)
+        self.assertEqual(set(seen), {"/dev/disk7"})
+        self.assertEqual(len(self.sleeps), 3)
+        self.assertEqual(waited, 300)
+
+    def test_a_node_that_never_goes_fails_naming_it(self):
+        with self.assertRaisesRegex(RuntimeError, "/dev/disk7 remains 1 s after detach"):
+            self.wait(10**6, timeout=1.0)
+
+    def test_an_unowned_identity_is_refused(self):
+        for device in ("", "/dev/sda1", "/dev/disk7/../disk1", None):
+            with self.subTest(device=device), self.assertRaisesRegex(RuntimeError, "invalid owned device"):
+                runner.wait_for_device_release(device, 1.0, lambda _: False)
+
+
 class OwnedImageDetachment(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix="rrflow-detach-")
