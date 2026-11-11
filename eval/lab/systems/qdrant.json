@@ -54,10 +54,13 @@
     "image": "qdrant/qdrant@sha256:9bfc89f9914fc14876a88c05270685921a55b8877b254a98bcc1cc2f0a424cd2",
     "name": "lab-qdrant",
     "ports": [
-      "127.0.0.1:16333:6333"
+      "127.0.0.1:16333:16333"
     ],
     "volume": {
       "container_path": "/qdrant/storage"
+    },
+    "env": {
+      "QDRANT__SERVICE__HTTP_PORT": "16333"
     },
     "ready": {
       "url": "http://127.0.0.1:16333/",

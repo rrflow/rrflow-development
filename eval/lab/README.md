@@ -51,6 +51,39 @@ test, since a RAM-backed `/tmp` would flatter whatever stores its data there.
 Keep the run directory: it holds every latency and recall sample, and the report
 binds those files by digest.
 
+### In a pod
+
+Set `RRFLOW_LAB_POD` to the name of the container `run_system.sh` runs inside, and each system
+container joins that container's network, the way containers share one in a Kubernetes pod.
+Every endpoint is then the pod's own loopback, so RRFlow's client still connects only to
+`127.0.0.1`, and nothing is published on the host. Each system's data goes to a named volume the
+run creates and removes. Its container name begins with the pod's, so two runs on one host do not
+collide, and probes measure the container and volume this run created.
+
+A pod maps no ports, so a system must listen on the port its endpoint names. Qdrant and SurrealDB
+are set to. A system that listens elsewhere, such as Milvus's health port, is refused in a pod and
+says why. Without `RRFLOW_LAB_POD` nothing changes.
+
+[`pod.sh`](pod.sh) does all of it on any host whose Docker daemon the shell can reach, Docker
+Desktop on Windows included, with nothing else installed:
+
+```bash
+eval/lab/pod.sh vector-small runs/vector-small qdrant surrealdb-4 rrflow-hnsw rrflow-turboquant
+```
+
+It builds the `lab` target of [`.devcontainer/Containerfile`](../../.devcontainer/Containerfile), the
+development container's pinned toolchain plus the Docker CLI, and starts it as the pod. Inside,
+[`pod_run.sh`](pod_run.sh) builds `rrflow-lab` and `rrflow` in release mode from this checkout,
+which is mounted read-only, runs each system alone, and combines the report into the run
+directory. Before each system it records what else the Docker host is running, as
+`SYSTEM.neighbors.csv`, because a shared host is a condition to state, not to hide. The runner
+gets the host's Docker socket, which is control of that daemon. That image's toolchain is amd64
+only, so on an ARM host use `run_system.sh` directly for now.
+
+RRFlow's arms run as processes inside the runner, so they share its cgroup and report resident
+memory, while every other system is its own container with cgroup memory. Server limits are not
+yet declared for either.
+
 The lab prints transient JSON progress events on stderr for prepared
 collections, started and completed ingest batches, index build, and search
 cases. Completed batch counts mean the adapter call returned successfully;

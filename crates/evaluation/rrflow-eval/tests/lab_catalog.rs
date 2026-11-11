@@ -1,7 +1,7 @@
 //! A system or a test is a file. These tests hold the files to what the lab always ran, so moving
 //! to them changes nothing, and to what must never get into a file.
 use rrflow_eval::lab::catalog::{
-    launch_arguments, launch_info, resolve_test, vectordbbench_arguments, SystemDefinition,
+    launch_arguments, launch_info, resolve_test, vectordbbench_arguments, Pod, SystemDefinition,
     TestDefinition,
 };
 use rrflow_eval::lab::driver::binding_sha256;
@@ -50,7 +50,7 @@ fn no_env(_: &str) -> Option<String> {
 }
 
 fn arguments(definition: &SystemDefinition) -> Vec<String> {
-    launch_arguments(definition, "/run/data", "/lab", Some("5-9"), &no_env).unwrap()
+    launch_arguments(definition, "/run/data", "/lab", Some("5-9"), None, &no_env).unwrap()
 }
 
 fn words(text: &[&str]) -> Vec<String> {
@@ -93,8 +93,10 @@ fn each_system_starts_with_the_arguments_the_script_always_used() {
             "lab-qdrant",
             "--cpuset-cpus",
             "5-9",
+            "-e",
+            "QDRANT__SERVICE__HTTP_PORT=16333",
             "-p",
-            "127.0.0.1:16333:6333",
+            "127.0.0.1:16333:16333",
             "-v",
             "/run/data:/qdrant/storage",
             QDRANT,
@@ -135,13 +137,15 @@ fn each_system_starts_with_the_arguments_the_script_always_used() {
             "--cpuset-cpus",
             "5-9",
             "-e",
+            "SURREAL_BIND=0.0.0.0:18000",
+            "-e",
             "SURREAL_CAPS_ALLOW_ALL=true",
             "-e",
             "SURREAL_PASS",
             "-e",
             "SURREAL_USER",
             "-p",
-            "127.0.0.1:18000:8000",
+            "127.0.0.1:18000:18000",
             "--user",
             "root",
             "-v",
@@ -159,11 +163,61 @@ fn each_system_starts_with_the_arguments_the_script_always_used() {
     let python =
         |name: &str| (name == "RRFLOW_LAB_LANCE_PYTHON").then(|| "/venv/python".to_string());
     assert_eq!(
-        launch_arguments(&system("lance-hnsw-sq"), "/run/data", "/lab", None, &python).unwrap(),
+        launch_arguments(
+            &system("lance-hnsw-sq"),
+            "/run/data",
+            "/lab",
+            None,
+            None,
+            &python
+        )
+        .unwrap(),
         words(&["/venv/python", "/lab/lance_system.py", "18090", "/run/data"])
     );
     assert_eq!(arguments(&system("rrflow-exact")), Vec::<String>::new());
     assert_eq!(arguments(&system("rrflow-routed")), Vec::<String>::new());
+}
+
+#[test]
+fn a_pod_member_publishes_nothing_and_keeps_its_data_in_the_run_volume() {
+    let pod = Some(Pod {
+        container: "lab-pod-7",
+        volume: "lab-pod-7-qdrant-a1",
+    });
+    assert_eq!(
+        launch_arguments(&system("qdrant"), "/run/data", "/lab", None, pod, &no_env).unwrap(),
+        words(&[
+            "--name",
+            "lab-pod-7-lab-qdrant",
+            "-e",
+            "QDRANT__SERVICE__HTTP_PORT=16333",
+            "--network",
+            "container:lab-pod-7",
+            "--mount",
+            "type=volume,src=lab-pod-7-qdrant-a1,dst=/qdrant/storage",
+            QDRANT,
+        ]),
+        "no host port, no host folder, and a name no other run uses"
+    );
+    let refused =
+        launch_arguments(&system("milvus"), "/run/data", "/lab", None, pod, &no_env).unwrap_err();
+    assert!(
+        refused.contains("listens on 9091 but is reached on 19091"),
+        "a pod maps no ports, so a remapped port is refused with its reason: {refused}"
+    );
+    assert_eq!(
+        launch_arguments(
+            &system("custom-reference"),
+            "/run/data",
+            "/lab",
+            None,
+            pod,
+            &no_env
+        )
+        .unwrap(),
+        words(&["python3", "/lab/reference_custom_system.py", "18089"]),
+        "a process already runs inside the pod"
+    );
 }
 
 #[test]
@@ -197,8 +251,15 @@ fn the_script_is_told_how_to_start_and_wait_without_any_secret() {
 
 #[test]
 fn a_shim_that_needs_a_variable_says_so() {
-    let refused =
-        launch_arguments(&system("lance-hnsw-sq"), "/run/data", "/lab", None, &no_env).unwrap_err();
+    let refused = launch_arguments(
+        &system("lance-hnsw-sq"),
+        "/run/data",
+        "/lab",
+        None,
+        None,
+        &no_env,
+    )
+    .unwrap_err();
     assert!(refused.contains("RRFLOW_LAB_LANCE_PYTHON"), "{refused}");
 }
 
@@ -353,7 +414,7 @@ fn a_new_system_takes_one_file_and_no_code() {
     .unwrap();
     new_system.validate().unwrap();
     assert_eq!(
-        launch_arguments(&new_system, "/run/data", "/lab", None, &no_env).unwrap(),
+        launch_arguments(&new_system, "/run/data", "/lab", None, None, &no_env).unwrap(),
         words(&["python3", "/lab/brand_new.py", "18095", "/run/data"])
     );
     systems.insert(new_system.binding.id.clone(), new_system);

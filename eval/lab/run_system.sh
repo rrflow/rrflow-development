@@ -8,7 +8,10 @@
 # RRFLOW_LAB_VDBBENCH to the vectordbbench command to drive qdrant, milvus or lance-hnsw-sq
 # with that harness instead, as a cross-check on this one. Set RRFLOW_LAB_DEFINITIONS to a folder
 # from `rrflow-lab plan --out` to read systems from it, as run_all.sh does, and each run then
-# records which pack it came from. No value here is a secret:
+# records which pack it came from. Set RRFLOW_LAB_POD to a container this script runs inside:
+# each system container then joins its network, so every endpoint is this container's own
+# loopback and nothing is published on the host, and its data goes to a named volume the run
+# creates and removes. No value here is a secret:
 # SurrealDB's password is generated per run and exists only in this process's environment.
 set -euo pipefail
 system=$1
@@ -17,6 +20,7 @@ here=$(cd "$(dirname "$0")" && pwd)
 repository=$(cd "$here/../.." && pwd)
 manifest=${RRFLOW_LAB_MANIFEST:-$here/vector-small.json}
 cpuset=${RRFLOW_LAB_CPUSET:-}
+pod=${RRFLOW_LAB_POD:-}
 : "${RRFLOW_LAB_BIN:?set RRFLOW_LAB_BIN to the rrflow-lab binary}"
 
 # Keep TMPDIR on the disk under test: a RAM-backed /tmp would flatter whatever runs there.
@@ -27,6 +31,7 @@ mkdir -p "$work/data"
 # Some images run as a non-root user, and this directory is private to the run.
 chmod 0777 "$work/data"
 container=
+volume=
 background=
 sampler=
 cleanup() {
@@ -37,12 +42,19 @@ cleanup() {
     docker logs --tail 2000 "$container" > "$run_directory/$system.server.log" 2>&1 || true
     docker rm -f -v "$container" > /dev/null 2>&1 || true
   fi
+  if [ -n "$volume" ]; then
+    docker volume rm "$volume" > /dev/null 2>&1 || true
+  fi
   if [ -n "$background" ]; then
     kill "$background" 2> /dev/null || true
     wait "$background" 2> /dev/null || true
   fi
-  # Container users can own these files, so a container removes them.
-  docker run --rm -v "$work:/work" --entrypoint sh "$RRFLOW_LAB_HELPER_IMAGE"     -c 'rm -rf /work/data' > /dev/null 2>&1 || true
+  # Container users can own these files, so a container removes them. In a pod no container
+  # wrote here, and this folder is not one the Docker host can see.
+  if [ -z "$pod" ]; then
+    docker run --rm -v "$work:/work" --entrypoint sh "$RRFLOW_LAB_HELPER_IMAGE" \
+      -c 'rm -rf /work/data' > /dev/null 2>&1 || true
+  fi
   rm -rf "$work"
 }
 trap cleanup EXIT
@@ -135,7 +147,7 @@ wait_ready() {
 # Words, separated by NUL, so no value here is ever read as shell.
 launch_words() {
   "$RRFLOW_LAB_BIN" launch-args --system "$definition" --data "$work/data" --lab "$here" \
-    ${cpuset:+--cpuset "$cpuset"} > "$work/launch.args"
+    ${cpuset:+--cpuset "$cpuset"} "$@" > "$work/launch.args"
   mapfile -d '' -t words < "$work/launch.args"
 }
 
@@ -153,7 +165,13 @@ start_container() {
     outside=${pair#*=}
     export "${pair%%=*}=${!outside}"
   done
-  launch_words
+  if [ -n "$pod" ]; then
+    volume=$(docker volume create "$pod-$system-${work##*-}")
+    export RRFLOW_LAB_VOLUME=$volume
+    launch_words --pod "$pod" --volume "$volume"
+  else
+    launch_words
+  fi
   # Ownership is the ID Docker returns, never the name in the definition: if the
   # name is already in use the run fails here and cleanup removes nothing.
   local created
@@ -163,6 +181,8 @@ start_container() {
     return 1
   fi
   container=$created
+  # Probes measure this container, never another run's with the same name.
+  export RRFLOW_LAB_CONTAINER=$container
   wait_ready
 }
 

@@ -29,6 +29,9 @@ and accept each package by a real run on this repository; it changes no status.
 The active [E-04 TurboQuant persistent serving plan](e04-turboquant-persistent-serving-engineering-plan.md)
 orders the packages that make OBJ-13's persistent-search part executable and
 give clients a public TurboQuant path; it changes no gate status.
+The active [one-engine joins plan](one-engine-joins-engineering-plan.md)
+orders the packages that join rrflowDB, rrflowQL, rrflowKV/LSM and rrflowCLD into one
+engine the owner can measure and tune; it changes no status.
 The completed C-06j work is recorded by the
 [scan-resistant cache integration plan](c06j-rrflowkv-scan-resistant-cache-engineering-plan.md).
 It specifies a configurable exact-byte production cache and a real persisted
@@ -64,6 +67,7 @@ direction against the code and orders the work that follows the engine.
 | Supporting record | Durable warp | Checkout record | Authority |
 |---|---|---|---|
 | RRFlow 1.0 execution navigation | [`rrflow://rrflow-instance/data/execution-map/rrflow-1.0`](rrflow://rrflow-instance/data/execution-map/rrflow-1.0) | [`rrflow-1.0-execution-map.md`](rrflow-1.0-execution-map.md) | stable links to canonical requirements, active scope, generated inventory, procedure, and evidence; roadmap checkboxes remain canonical |
+| One-engine joins plan | [`rrflow://rrflow-instance/data/work-package/one-engine-joins`](rrflow://rrflow-instance/data/work-package/one-engine-joins) | [`one-engine-joins-engineering-plan.md`](one-engine-joins-engineering-plan.md) | active package order and acceptance for joining rrflowQL, the indexes, vector search, context assembly and the hot and cold tiers into one engine; P5, P6, E-03, E-04 and F-06 remain open |
 | E-04 TurboQuant persistent serving plan | [`rrflow://rrflow-instance/data/work-package/e-04-turboquant-persistent-serving`](rrflow://rrflow-instance/data/work-package/e-04-turboquant-persistent-serving) | [`e04-turboquant-persistent-serving-engineering-plan.md`](e04-turboquant-persistent-serving-engineering-plan.md) | active package order and proof for OBJ-13 persistent search and the public TurboQuant path; E-04 and OBJ-13 remain open |
 | C-06j rrflowKV scan-resistant cache plan | [`rrflow://rrflow-instance/data/work-package/c-06j-rrflowkv-scan-resistant-cache`](rrflow://rrflow-instance/data/work-package/c-06j-rrflowkv-scan-resistant-cache) | [`c06j-rrflowkv-scan-resistant-cache-engineering-plan.md`](c06j-rrflowkv-scan-resistant-cache-engineering-plan.md) | completed exact-byte scope-aware cache integration and real mixed-family proof; canonical C-06 accepted |
 | C-06i rrflowKV adaptive page-compression plan | [`rrflow://rrflow-instance/data/work-package/c-06i-rrflowkv-adaptive-page-compression`](rrflow://rrflow-instance/data/work-package/c-06i-rrflowkv-adaptive-page-compression) | [`c06i-rrflowkv-adaptive-page-compression-engineering-plan.md`](c06i-rrflowkv-adaptive-page-compression-engineering-plan.md) | completed segment-v6 adaptive-LZ4 production slice and fixed-machine integration evidence contributing to accepted C-06 |

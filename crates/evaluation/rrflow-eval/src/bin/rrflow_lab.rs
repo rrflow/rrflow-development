@@ -1,7 +1,7 @@
 //! Run and combine comparison-lab tests. See eval/lab/README.md.
 use rrflow_eval::lab::adapter::connect;
 use rrflow_eval::lab::catalog::{
-    launch_arguments, launch_info, resolve_test, vectordbbench_arguments, SystemDefinition,
+    launch_arguments, launch_info, resolve_test, vectordbbench_arguments, Pod, SystemDefinition,
     TestDefinition,
 };
 use rrflow_eval::lab::custom::CustomProtocol;
@@ -59,7 +59,7 @@ const USAGE: &str = "usage:
   rrflow-lab validate --manifest FILE
   rrflow-lab resolve-all --tests DIR --systems DIR --out DIR
   rrflow-lab launch-info --system FILE
-  rrflow-lab launch-args --system FILE --data DIR --lab DIR [--cpuset CORES]
+  rrflow-lab launch-args --system FILE --data DIR --lab DIR [--cpuset CORES] [--pod CONTAINER --volume NAME]
   rrflow-lab vdbbench-args --system FILE --data DIR --ef N
   rrflow-lab inputs --manifest FILE
   rrflow-lab run --manifest FILE --system ID --out DIR [--note KEY=VALUE]...
@@ -1936,13 +1936,21 @@ fn dispatch(arguments: &[String]) -> Result<ExitCode> {
             }
             Ok(ExitCode::SUCCESS)
         }
-        "launch-args" => print_words(&launch_arguments(
-            &load_system(parsed.required("system")?)?,
-            parsed.required("data")?,
-            parsed.required("lab")?,
-            parsed.values.get("cpuset").map(String::as_str),
-            &|name| std::env::var(name).ok(),
-        )?),
+        "launch-args" => {
+            let pod = match (parsed.values.get("pod"), parsed.values.get("volume")) {
+                (Some(container), Some(volume)) => Some(Pod { container, volume }),
+                (None, None) => None,
+                _ => return Err("--pod and --volume go together".into()),
+            };
+            print_words(&launch_arguments(
+                &load_system(parsed.required("system")?)?,
+                parsed.required("data")?,
+                parsed.required("lab")?,
+                parsed.values.get("cpuset").map(String::as_str),
+                pod,
+                &|name| std::env::var(name).ok(),
+            )?)
+        }
         "vdbbench-args" => print_words(&vectordbbench_arguments(
             &load_system(parsed.required("system")?)?,
             parsed.required("data")?,
