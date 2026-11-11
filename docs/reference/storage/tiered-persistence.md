@@ -13,11 +13,20 @@ around that boundary.
 This record distinguishes implemented local storage mechanics from the
 unfinished DevForge placement and hibernation system.
 
-## Derived Parquet history
+## rrflowCLD: the Parquet cold tier
 
-An installation may opt into bounded background publication of scoped runtime
-change pages. The policy belongs in the installation configuration; omission
-leaves it disabled. For example, under the existing `[storage]` configuration:
+rrflowKV's LSM is the hot tier and rrflowCLD is the cold tier. The bundled
+configuration enables rrflowCLD's bounded background publication of scoped
+runtime change pages; an installation with its own configuration omits the
+policy to disable it. Today publication is still a derived copy that never
+reclaims LSM space. The repository owner decided on 2026-11-11 that rrflowCLD
+becomes the canonical copy once compaction moves data into it; F-06 owns that
+work, including reclamation, the merged read and backups.
+
+A policy must be able to encode one full input page. Validation refuses a
+working-memory budget below that page's admission estimate, because such a
+budget would stop the tier permanently at the first large change. For example,
+under the existing `[storage]` configuration:
 
 ```toml
 [storage.cold_history]

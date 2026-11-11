@@ -372,7 +372,7 @@ mod cold_schedule_tests {
             max_changes: 8,
             max_input_bytes: 1024,
             max_output_bytes: 1024,
-            max_memory_bytes: 4096,
+            max_memory_bytes: 1_048_576,
             max_elapsed_ms: 1000,
             row_group_rows: 4,
             compression: rrd_contract::ColdHistoryCompression::Uncompressed,

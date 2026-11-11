@@ -194,3 +194,35 @@ fn checkpoint_quota_is_finite_restart_configuration_and_digest_bound() {
     tampered.storage.checkpoint_entries = 7;
     assert!(tampered.validate().is_err());
 }
+
+fn cld_policy(input: u64, output: u64, memory: u64) -> rrd_contract::ColdHistoryPolicy {
+    rrd_contract::ColdHistoryPolicy {
+        interval_ms: 1_000,
+        max_changes: 512,
+        max_input_bytes: input,
+        max_output_bytes: output,
+        max_memory_bytes: memory,
+        max_elapsed_ms: 30_000,
+        row_group_rows: 64,
+        compression: rrd_contract::ColdHistoryCompression::Zstd { level: 3 },
+        dictionary: true,
+        statistics: true,
+    }
+}
+
+/// A policy must be able to encode the largest page it admits. On a real
+/// install a 1.19 MB change under 8 MiB bounds and a 64 MiB budget was
+/// refused by the encoder forever, stalling rrflowCLD with no way forward.
+#[test]
+fn rrflow_cld_policy_that_cannot_encode_its_own_input_is_refused() {
+    const MIB: u64 = 1024 * 1024;
+    assert!(
+        cld_policy(8 * MIB, 8 * MIB, 64 * MIB).validate().is_err(),
+        "the budget cannot hold the working set of one full input page"
+    );
+    let required = cld_policy(8 * MIB, 8 * MIB, 4 * 1024 * MIB).minimum_working_memory_bytes();
+    assert!(cld_policy(8 * MIB, 8 * MIB, required).validate().is_ok());
+    assert!(cld_policy(8 * MIB, 8 * MIB, required - 1)
+        .validate()
+        .is_err());
+}
