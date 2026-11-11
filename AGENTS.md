@@ -112,6 +112,8 @@ carries the change brief: owning outcome and roadmap item, current and target
 behavior, exact scope, failure oracle, acceptance commands, research and
 trace/resource/debug decisions, and stop conditions. The pull request merges
 only after the candidate CI pipeline in `docs/operations/ci.md` passes.
+An open `merge-blocked` issue means a pull request could not land; resolve it
+before starting new work.
 Derive mechanical baseline and navigation facts with repository tooling; authors
 own intent, risk, evidence, and stop decisions rather than a duplicate prose
 inventory. This repository-owned pull-request and candidate-CI gate cannot be

@@ -1,0 +1,37 @@
+name: merge-alarm
+
+# docs/operations/ci.md owns this behavior.
+
+on:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
+  pull_request:
+    types: [dequeued, closed]
+
+permissions:
+  contents: read
+
+jobs:
+  alarm:
+    name: merge-alarm
+    # A fork's token cannot write, so its pull request events have nothing to do.
+    if: ${{ github.event_name == 'workflow_run' || github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    steps:
+      # The default branch's script runs, never one proposed by the pull request.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+          submodules: recursive
+      - name: Sound or clear the alarm
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: python3 scripts/ci/merge_alarm.py

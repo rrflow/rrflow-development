@@ -979,6 +979,18 @@ The standard and heavy jobs must report `rrflow-standard` and `rrflow-heavy`
 runner identities. Windows, macOS, the final gate, and all fork pull requests
 must remain GitHub-hosted.
 
+## Merge alarms
+
+`.github/workflows/merge-alarm.yml` runs `scripts/ci/merge_alarm.py` when `ci`
+completes and when a pull request leaves the merge queue or closes. A failed
+candidate, a removal from the queue, or a red `main` opens one issue labelled
+`merge-blocked`, comments on the pull request and mentions its author. A later
+failure adds to the same issue, which closes when the pull request merges or
+closes. A red-`main` issue closes when `main` next passes.
+
+Cancelled runs, drafts and failures on a superseded commit stay quiet. An open
+`merge-blocked` issue comes before new work, for a person or an AI session.
+
 ## Repository enforcement
 
 Public visibility exposes this control on the current hosting tier. `main`
