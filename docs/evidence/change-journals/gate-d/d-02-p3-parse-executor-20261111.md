@@ -48,3 +48,10 @@
 - **Oracle.** Three in-module tests over in-process pipes with the real `run_worker` at the far end: a batch of two files parses on one worker; a stalled worker is lost at the deadline, stopped once and unusable after; a worker that exits or writes a malformed frame is lost. Written with the module, not observed red first.
 - **Commands.** `cargo test --locked -p rrd-engine --lib parse::`: 6 passed. `cargo clippy --locked -p rrd-engine --all-targets -- -D warnings`: clean. `cargo fmt --check`: clean.
 - **Not run.** Linux and macOS locally; candidate CI is the oracle there. A real supervised start is exercised by the executor's installed oracles.
+
+## Commit path
+
+- **Change.** `parse::publish::publish` commits one Parse Step: the batch's records and the job's transition in one transaction, or the transition alone when the batch changed no record, because a runtime commit must change something. An unfinished batch renews the worker's lease for the span it was granted, as the job contract requires of a running self-transition; a finished batch appends the Parse checkpoint, whose output digest summarizes every file's answer. `records` gains `schema_mutation`, `retire_file`, `state_of` and `summary_sha256`; `worker` gains an in-process worker so engine tests can parse without starting the primary executable.
+- **Oracle.** Two more records tests: a removed file retires every fact and its state; states are found by their record and the summary changes with a file's answer. `publish` is exercised end to end by the executor's tests in the next PR.
+- **Commands.** `cargo test --locked -p rrd-engine --lib parse::`: 12 passed. `cargo clippy --locked -p rrd-engine --all-targets -- -D warnings`: clean. `cargo fmt --check`: clean.
+- **Not run.** Linux and macOS locally; candidate CI is the oracle there. Nothing calls `publish` until the executor lands.
