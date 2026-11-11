@@ -269,9 +269,319 @@ pub(super) fn load_states(
     Ok(states)
 }
 
+/// What one Step learned about one file.
+pub(super) enum Outcome<'a> {
+    Parsed(&'a rrd_attunement::facts::SourceFacts),
+    /// The parser refused this content, with the worker's code.
+    Rejected(String),
+    /// The worker died or ran out of time on this file.
+    Lost(String),
+}
+
+/// `source[start..end]` as text, refusing a range the bytes do not hold.
+fn slice(source: &[u8], start: u64, end: u64) -> Result<&str> {
+    let (start, end) = (
+        usize::try_from(start).map_err(|_| invalid())?,
+        usize::try_from(end).map_err(|_| invalid())?,
+    );
+    if start > end {
+        return Err(invalid());
+    }
+    let bytes = source.get(start..end).ok_or_else(invalid)?;
+    std::str::from_utf8(bytes).map_err(|_| invalid())
+}
+
+fn fact_ids(state: &FileState) -> [(&'static str, BTreeSet<String>); 3] {
+    let ids = |count: u64| {
+        (0..count)
+            .map(|index| {
+                fact_id(
+                    &state.path,
+                    &state.content_sha256,
+                    &state.parser_revision,
+                    state.chunk_bytes,
+                    index,
+                )
+            })
+            .collect()
+    };
+    [
+        (SYMBOL, ids(state.symbols)),
+        (SPAN, ids(state.spans)),
+        (CHUNK, ids(state.chunks)),
+    ]
+}
+
+/// The mutations that make `next` the file's current state: retire every fact
+/// the previous state named that the new one does not, write the new facts with
+/// names and text sliced from `source`, the bytes the engine read and verified
+/// itself, and write the state. A worker's facts never supply content.
+pub(super) fn file_mutations(
+    previous: Option<&FileState>,
+    mut next: FileState,
+    outcome: Outcome<'_>,
+    source: &[u8],
+    at: u64,
+) -> Result<Vec<RuntimeMutation>> {
+    let mut written = Vec::new();
+    match outcome {
+        Outcome::Parsed(facts) => {
+            if facts.content_sha256 != next.content_sha256
+                || facts.language != next.language
+                || facts.parser_revision != next.parser_revision
+                || digest::sha256_hex(source) != next.content_sha256
+            {
+                return Err(invalid());
+            }
+            let common = |path: &str| {
+                serde_json::json!({
+                    "path": path,
+                    "content_sha256": next.content_sha256,
+                    "language": next.language,
+                })
+            };
+            let id = |index: usize| {
+                fact_id(
+                    &next.path,
+                    &next.content_sha256,
+                    &next.parser_revision,
+                    next.chunk_bytes,
+                    index as u64,
+                )
+            };
+            for (index, symbol) in facts.symbols.iter().enumerate() {
+                let mut properties = common(&next.path);
+                properties["name"] = slice(source, symbol.name_start, symbol.name_end)?.into();
+                properties["symbol_kind"] = symbol.kind.as_str().into();
+                properties["role"] = match symbol.role {
+                    rrd_attunement::facts::SymbolRole::Definition => "definition",
+                    rrd_attunement::facts::SymbolRole::Reference => "reference",
+                }
+                .into();
+                slice(source, symbol.start_byte, symbol.end_byte)?;
+                properties["start_byte"] = symbol.start_byte.into();
+                properties["end_byte"] = symbol.end_byte.into();
+                properties["start_line"] = symbol.start_line.into();
+                properties["count"] = symbol.count.into();
+                written.push(record(SYMBOL, id(index), at, properties)?);
+            }
+            for (index, span) in facts.spans.iter().enumerate() {
+                slice(source, span.start_byte, span.end_byte)?;
+                let mut properties = common(&next.path);
+                properties["span_kind"] = span.kind.as_str().into();
+                properties["start_byte"] = span.start_byte.into();
+                properties["end_byte"] = span.end_byte.into();
+                properties["start_line"] = span.start_line.into();
+                properties["end_line"] = span.end_line.into();
+                written.push(record(SPAN, id(index), at, properties)?);
+            }
+            for (index, chunk) in facts.chunks.iter().enumerate() {
+                if chunk.end_byte.saturating_sub(chunk.start_byte) > next.chunk_bytes {
+                    return Err(invalid());
+                }
+                let mut properties = common(&next.path);
+                properties["text"] = slice(source, chunk.start_byte, chunk.end_byte)?.into();
+                properties["start_byte"] = chunk.start_byte.into();
+                properties["end_byte"] = chunk.end_byte.into();
+                properties["start_line"] = chunk.start_line.into();
+                properties["end_line"] = chunk.end_line.into();
+                written.push(record(CHUNK, id(index), at, properties)?);
+            }
+            next.status = Status::Parsed;
+            next.reason = String::new();
+            next.facts_sha256 = digest::sha256_hex(&serde_json::to_vec(facts).map_err(contract)?);
+            next.symbols = facts.symbols.len() as u64;
+            next.spans = facts.spans.len() as u64;
+            next.chunks = facts.chunks.len() as u64;
+            next.nodes = facts.nodes;
+            next.error_nodes = facts.error_nodes;
+        }
+        Outcome::Rejected(reason) => {
+            next.status = Status::Rejected;
+            next.reason = reason;
+            next.facts_sha256 = "0".repeat(64);
+            (next.symbols, next.spans, next.chunks) = (0, 0, 0);
+            (next.nodes, next.error_nodes) = (0, 0);
+        }
+        Outcome::Lost(reason) => {
+            next.status = Status::Lost;
+            next.reason = reason;
+            next.facts_sha256 = "0".repeat(64);
+            (next.symbols, next.spans, next.chunks) = (0, 0, 0);
+            (next.nodes, next.error_nodes) = (0, 0);
+        }
+    }
+    let mut mutations = Vec::new();
+    if let Some(previous) = previous {
+        let kept = fact_ids(&next);
+        for ((kind, before), (_, after)) in fact_ids(previous).into_iter().zip(kept) {
+            for id in before.difference(&after) {
+                mutations.push(retire(kind, id.clone(), at)?);
+            }
+        }
+    }
+    mutations.extend(written);
+    mutations.push(state_record(&next, at)?);
+    Ok(mutations)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    const SOURCE: &str = "fn alpha() {}\n\nfn beta() {\n    alpha();\n}\n";
+
+    fn parsed(source: &str) -> (FileState, rrd_attunement::facts::SourceFacts) {
+        let digest = digest::sha256_hex(source.as_bytes());
+        let limits = rrd_attunement::parse::ParseLimits {
+            input_bytes: 1 << 20,
+            nodes: 1 << 20,
+            depth: 256,
+            output_bytes: 1 << 20,
+            elapsed_micros: 5_000_000,
+        };
+        let facts = rrd_attunement::facts::source_facts(
+            "src/lib.rs",
+            &digest,
+            "rust",
+            source.as_bytes(),
+            &limits,
+            1_500,
+            || false,
+        )
+        .unwrap();
+        let state = FileState {
+            path: "src/lib.rs".into(),
+            content_sha256: digest,
+            language: "rust".into(),
+            parser_revision: facts.parser_revision.clone(),
+            chunk_bytes: 1_500,
+            job_id: "job".into(),
+            status: Status::Lost,
+            reason: String::new(),
+            facts_sha256: String::new(),
+            symbols: 0,
+            spans: 0,
+            chunks: 0,
+            nodes: 0,
+            error_nodes: 0,
+        };
+        (state, facts)
+    }
+
+    fn written<'a>(mutations: &'a [RuntimeMutation], kind: &str) -> Vec<&'a RuntimeRecord> {
+        mutations
+            .iter()
+            .filter_map(|mutation| match mutation {
+                RuntimeMutation::Record { record } if record.reference.kind.as_str() == kind => {
+                    Some(record)
+                }
+                _ => None,
+            })
+            .collect()
+    }
+
+    fn retired(mutations: &[RuntimeMutation]) -> usize {
+        mutations
+            .iter()
+            .filter(|mutation| matches!(mutation, RuntimeMutation::Retire { .. }))
+            .count()
+    }
+
+    fn text(record: &RuntimeRecord, key: &str) -> String {
+        match record.properties.get(key) {
+            Some(RuntimeValue::String(value)) => value.clone(),
+            other => panic!("{key} is {other:?}"),
+        }
+    }
+
+    #[test]
+    fn a_first_parse_writes_facts_sliced_from_the_verified_source() {
+        let (state, facts) = parsed(SOURCE);
+        let mutations =
+            file_mutations(None, state, Outcome::Parsed(&facts), SOURCE.as_bytes(), 9).unwrap();
+        let names: BTreeSet<_> = written(&mutations, SYMBOL)
+            .into_iter()
+            .map(|record| (text(record, "name"), text(record, "role")))
+            .collect();
+        assert!(names.contains(&("alpha".into(), "definition".into())));
+        assert!(names.contains(&("beta".into(), "definition".into())));
+        assert!(names.contains(&("alpha".into(), "reference".into())));
+        let chunks = written(&mutations, CHUNK);
+        assert_eq!(text(chunks[0], "text").trim_end(), SOURCE.trim_end());
+        let states = written(&mutations, STATE);
+        let state = state_from(states[0]).unwrap();
+        assert_eq!(state.status, Status::Parsed);
+        assert_eq!(state.symbols as usize, facts.symbols.len());
+        assert_eq!(state.chunks as usize, chunks.len());
+        assert_eq!(retired(&mutations), 0);
+    }
+
+    #[test]
+    fn an_edit_retires_the_facts_of_the_old_content() {
+        let (old, old_facts) = parsed(SOURCE);
+        let first =
+            file_mutations(None, old, Outcome::Parsed(&old_facts), SOURCE.as_bytes(), 9).unwrap();
+        let previous = state_from(written(&first, STATE)[0]).unwrap();
+        let edited = "fn gamma() {}\n";
+        let (next, facts) = parsed(edited);
+        let mutations = file_mutations(
+            Some(&previous),
+            next,
+            Outcome::Parsed(&facts),
+            edited.as_bytes(),
+            10,
+        )
+        .unwrap();
+        let before = (previous.symbols + previous.spans + previous.chunks) as usize;
+        assert_eq!(retired(&mutations), before, "every old fact is retired");
+        assert_eq!(text(written(&mutations, SYMBOL)[0], "name"), "gamma");
+    }
+
+    #[test]
+    fn a_refusal_retires_old_facts_and_records_why() {
+        let (old, facts) = parsed(SOURCE);
+        let first =
+            file_mutations(None, old, Outcome::Parsed(&facts), SOURCE.as_bytes(), 9).unwrap();
+        let previous = state_from(written(&first, STATE)[0]).unwrap();
+        let mutations = file_mutations(
+            Some(&previous),
+            previous.clone(),
+            Outcome::Rejected("limit_exceeded".into()),
+            SOURCE.as_bytes(),
+            10,
+        )
+        .unwrap();
+        let state = state_from(written(&mutations, STATE)[0]).unwrap();
+        assert_eq!(
+            (state.status, state.reason.as_str()),
+            (Status::Rejected, "limit_exceeded")
+        );
+        assert_eq!((state.symbols, state.spans, state.chunks), (0, 0, 0));
+        assert_eq!(
+            retired(&mutations),
+            (previous.symbols + previous.spans + previous.chunks) as usize
+        );
+    }
+
+    #[test]
+    fn facts_that_do_not_match_the_verified_bytes_are_refused() {
+        let (state, facts) = parsed(SOURCE);
+        let other = SOURCE.replace("alpha", "omega");
+        assert!(file_mutations(
+            None,
+            state.clone(),
+            Outcome::Parsed(&facts),
+            other.as_bytes(),
+            9
+        )
+        .is_err());
+        let mut outside = facts.clone();
+        outside.symbols[0].name_end = SOURCE.len() as u64 + 1;
+        assert!(
+            file_mutations(None, state, Outcome::Parsed(&outside), SOURCE.as_bytes(), 9).is_err()
+        );
+    }
 
     #[test]
     fn the_parsed_source_tables_are_registered_once() {
