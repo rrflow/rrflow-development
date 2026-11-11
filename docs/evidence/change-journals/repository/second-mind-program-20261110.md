@@ -16,6 +16,8 @@
 
 **Method.** Each "exists" entry came from a search of the engine at the starting revision and of Connectome `main` after #46, or from the branch audit of 53 Connectome branches by ancestry, patch identity and added lines. The dogfood figures come from the first pass at `ae01ce32`, recorded outside this repository.
 
+**Update, 2026-11-11.** The owner added a persistent second brain, RBAC between projects, a custom CLD replacing Parquet, LSM optimization against Fjall, and a prototype competitive with SurrealDB and Qdrant. Re-authoring the inherited views waits.
+
 **Acceptance.** `python scripts/knowledge/render_navigation.py` and `python scripts/ci/check_documentation.py` passed on Windows.
 
 **Not established.** A search that found nothing does not prove absence. Nothing was built by this package. No second-mind research has been carried out. "jevdecisions" and "chef flash" are unidentified.
