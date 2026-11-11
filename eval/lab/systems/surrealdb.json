@@ -58,12 +58,13 @@
     "image": "surrealdb/surrealdb@sha256:3db515b88e79737aa828c05fbf1515748004ba57495ff89a013851cc3f1ad4b9",
     "name": "lab-surrealdb",
     "ports": [
-      "127.0.0.1:18000:8000"
+      "127.0.0.1:18000:18000"
     ],
     "volume": {
       "container_path": "/data"
     },
     "env": {
+      "SURREAL_BIND": "0.0.0.0:18000",
       "SURREAL_CAPS_ALLOW_ALL": "true"
     },
     "generated_secrets": {
