@@ -88,3 +88,8 @@
 | POAM-072 | High | Open | [retiring a referenced row leaves its relation live](rrflow-1.0-alpha/poam-072.md) |
 | POAM-073 | High | Open | [a refused commit leaves its transaction open](rrflow-1.0-alpha/poam-073.md) |
 | POAM-074 | High | Open | [the macOS capacity rig fails when a new disk image is busy](rrflow-1.0-alpha/poam-074.md) |
+| POAM-075 | High | Open | [commit-time BM25 changes are written but never applied](rrflow-1.0-alpha/poam-075.md) |
+| POAM-076 | High | Open | [the MCP context tool advertises limits the engine refuses](rrflow-1.0-alpha/poam-076.md) |
+| POAM-077 | High | Open | [the engine's configuration cannot be tuned after install, and most parts have no settings](rrflow-1.0-alpha/poam-077.md) |
+| POAM-078 | High | Open | [the estate-to-engram rename is half applied](rrflow-1.0-alpha/poam-078.md) |
+| POAM-079 | High | Open | [most engine tests run on built-in defaults, not the installed configuration](rrflow-1.0-alpha/poam-079.md) |

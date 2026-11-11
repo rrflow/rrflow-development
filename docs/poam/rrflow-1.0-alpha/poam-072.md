@@ -11,9 +11,11 @@ priority or closure status.
 
 On 2026-11-11, the same live probe retired a row that a relation still referenced. The commit was accepted and the relation remained live with a retired endpoint. A relation to a missing row is refused when it is created, so the guarantee holds only at creation.
 
+A code read at `de435238` shows why, and that the gap is wider. Retiring a record-like reference writes a version, deletes the record head and returns (`crates/persistence/rrd-store/src/access/semantic_commit.rs:650-668`). The same commit leaves the record's relations, vectors and geo values untouched. Context assembly's breadth-first walk (`crates/authority/rrd-engine/src/engine/context.rs:678`) can still reach the dangling edges.
+
 ## Impact
 
-The graph can hold relations whose endpoints no longer exist, and there are no restrict or cascade rules for a schema to choose.
+The graph can hold relations whose endpoints no longer exist, and vectors and geo values can outlive their record. There are no restrict or cascade rules for a schema to choose.
 
 ## Owning gates
 
