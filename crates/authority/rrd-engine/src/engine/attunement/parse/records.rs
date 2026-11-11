@@ -1,7 +1,9 @@
 //! Runtime records for parsed source. `source-parse` is the per-file state that
 //! makes Parse resumable; its fact counts name the records a later edit retires.
 
+use super::super::inventory::Work;
 use super::*;
+use crate::engine::transaction_admission::TransactionPermit;
 use rrd_attunement::facts::{SourceFacts, SymbolRole};
 use rrd_attunement::inventory::Entry;
 use rrd_attunement::parse::parser_revision;
@@ -527,6 +529,146 @@ impl<'a> ParseCommit<'a> {
             );
         }
         Ok(self.admit(group, size)?.then_some(state))
+    }
+
+    /// Commits the facts with the job transition: a lease renewal while files
+    /// remain, or the Parse checkpoint once every file is decided.
+    pub(super) fn commit(
+        self,
+        work: &Work<'_>,
+        permit: &mut TransactionPermit<'_>,
+        states: BTreeMap<String, FileState>,
+        finished: bool,
+        check: &dyn Fn() -> Result<()>,
+    ) -> Result<AttunementControlResult> {
+        let engine = self.engine;
+        let at = elapsed_time(work.now, work.started)?;
+        let commit = RuntimeCommit {
+            scope: self.scope,
+            at,
+            actor: format!("session:{}", work.session.as_str()),
+            expected_cursor: self.read.commit_cursor,
+            mutations: self.mutations,
+        };
+        let admission = engine
+            .estate_configuration
+            .storage
+            .transaction_admission_bytes;
+        permit.charge(&commit, admission)?;
+        let output_sha256 = operation_digest(&(
+            "attunement-parse-v1",
+            &work.plan.plan_sha256,
+            states.values().collect::<Vec<_>>(),
+        ))?;
+        check()?;
+        let (_, _, accepted) = engine.storage.runtime().commit_with_control_builder(
+            &commit,
+            |read, outcome| -> Result<_> {
+                check()?;
+                if outcome.last_cursor != read.commit_cursor {
+                    return Err(ServiceError::Storage("Parse cursor mismatch".into()));
+                }
+                let done = elapsed_time(work.now, work.started)?;
+                let before = &work.before;
+                if done <= before.updated_at_unix_ms {
+                    return Err(contract("attunement transition time must advance"));
+                }
+                let mut next = before.clone();
+                next.revision = next
+                    .revision
+                    .checked_add(1)
+                    .ok_or_else(|| contract("attunement revision overflow"))?;
+                next.updated_at_unix_ms = done;
+                let action = if finished {
+                    let selected = work
+                        .plan
+                        .phases
+                        .get(next.checkpoints.len())
+                        .ok_or_else(|| contract("missing selected Parse step"))?;
+                    let mut checkpoint = AttunementPhaseCheckpoint {
+                        contract_version: ATTUNEMENT_CONTRACT_VERSION,
+                        job_id: next.id.clone(),
+                        plan_sha256: work.plan.plan_sha256.clone(),
+                        phase: AttunementPhase::Parse,
+                        sequence: selected.sequence,
+                        configuration_sha256: selected.configuration_sha256.clone(),
+                        input_sha256: next
+                            .checkpoints
+                            .last()
+                            .map(|last| last.output_sha256.clone())
+                            .ok_or_else(|| contract("Parse has no Inventory checkpoint"))?,
+                        output_sha256: output_sha256.clone(),
+                        coordinates: AttunementRuntimeCoordinates {
+                            runtime_manifest_sha256: read.manifest_id.clone(),
+                            runtime_cursor: read.commit_cursor,
+                            schema_revision: read.schema_revision,
+                            catalogue_revision: read.catalog_revision,
+                        },
+                        committed_at_unix_ms: done,
+                        checkpoint_sha256: "0".repeat(64),
+                    };
+                    checkpoint.checkpoint_sha256 =
+                        attunement_checkpoint_sha256(&checkpoint).map_err(contract)?;
+                    next.checkpoints.push(checkpoint);
+                    advance_after_checkpoint(&mut next, &work.plan);
+                    "attunement.parse_checkpointed"
+                } else {
+                    let lease = next
+                        .lease
+                        .as_mut()
+                        .ok_or_else(|| contract("Parse step has no lease"))?;
+                    // A renewal restarts the duration the worker claimed, so an
+                    // abandoned job still expires one lease after its last Step.
+                    let held = lease.expires_at_unix_ms - lease.acquired_at_unix_ms;
+                    lease.generation = next.revision;
+                    lease.acquired_at_unix_ms = done;
+                    lease.expires_at_unix_ms = done.saturating_add(held);
+                    "attunement.parse_progressed"
+                };
+                before
+                    .validate_transition(&next, &work.plan)
+                    .map_err(contract)?;
+                let accepted = status(next, &work.plan, done)?;
+                let receipt = Receipt {
+                    format_version: 1,
+                    principal_id: work.principal.clone(),
+                    operation_sha256: work.operation_sha256.clone(),
+                    status: accepted.clone(),
+                };
+                let transition =
+                    |key: String, expected, value: Vec<u8>, action: &str| ControlTransition {
+                        key,
+                        expected,
+                        replacement: Some(value),
+                        at: done,
+                        actor: format!("session:{}", work.session.as_str()),
+                        action: action.into(),
+                        request_id: work.context.request_id.as_str().into(),
+                        operation_id: work.context.operation_id.as_str().into(),
+                    };
+                let transitions = vec![
+                    transition(
+                        attunement_job_key(&engine.instance, &before.id),
+                        Some(work.before_bytes.clone()),
+                        encode(&accepted.job)?,
+                        action,
+                    ),
+                    transition(
+                        work.receipt_key.clone(),
+                        None,
+                        encode(&receipt)?,
+                        "attunement.receipted",
+                    ),
+                ];
+                permit.charge(&(&commit, &transitions), admission)?;
+                check()?;
+                Ok((transitions, accepted))
+            },
+        )?;
+        Ok(AttunementControlResult {
+            status: accepted,
+            idempotent_replay: false,
+        })
     }
 }
 
