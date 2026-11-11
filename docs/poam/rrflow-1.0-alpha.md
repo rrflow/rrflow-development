@@ -72,3 +72,13 @@
 | POAM-056 | High | Open | [HNSW search reads the vector-version source before traversal](rrflow-1.0-alpha/poam-056.md) |
 | POAM-057 | High | Open | [comparison lab cannot establish exclusive scratch ownership](rrflow-1.0-alpha/poam-057.md) |
 | POAM-058 | High | Open | [named HNSW generations lack an authenticated source identity](rrflow-1.0-alpha/poam-058.md) |
+| POAM-059 | High | Open | [the product path cannot take in a project](rrflow-1.0-alpha/poam-059.md) |
+| POAM-060 | High | Open | [no index can be built over more than about a thousand small records](rrflow-1.0-alpha/poam-060.md) |
+| POAM-061 | High | Open | [default query limits refuse a scan of this repository](rrflow-1.0-alpha/poam-061.md) |
+| POAM-062 | High | Open | [a property named `kind` is silently unreadable](rrflow-1.0-alpha/poam-062.md) |
+| POAM-063 | High | Open | [no SDK computes a commit's `operation_sha256`](rrflow-1.0-alpha/poam-063.md) |
+| POAM-064 | High | Open | [one record's properties are capped at 64 KiB with no engine chunking](rrflow-1.0-alpha/poam-064.md) |
+| POAM-065 | High | Open | [a physical write batch is capped at 16 MiB and reported only by failure](rrflow-1.0-alpha/poam-065.md) |
+| POAM-066 | High | Open | [rrflowQL has no GROUP BY, ORDER BY or SUM and MATCH takes one word](rrflow-1.0-alpha/poam-066.md) |
+| POAM-067 | High | Open | [a budget truncation does not name its budget](rrflow-1.0-alpha/poam-067.md) |
+| POAM-068 | High | Open | [`rrflow install status` is documented but absent](rrflow-1.0-alpha/poam-068.md) |
