@@ -2,6 +2,9 @@
 //! makes Parse resumable; its fact counts name the records a later edit retires.
 
 use super::*;
+use rrd_attunement::facts::{SourceFacts, SymbolRole};
+use rrd_attunement::inventory::Entry;
+use rrd_attunement::parse::parser_revision;
 use rrd_core::RuntimeRetirement;
 use rrd_store::{RuntimeReadBudget, RuntimeVersionedSource};
 use std::collections::{BTreeMap, BTreeSet};
@@ -40,6 +43,16 @@ pub(super) struct FileState {
     pub chunks: u64,
     pub nodes: u64,
     pub error_nodes: u64,
+}
+
+/// What one Step's commit is for and how much it may carry.
+pub(super) struct Batch<'j> {
+    pub job_id: &'j str,
+    pub chunk_bytes: u64,
+    /// Bound this attempt assembles to; halved after a physical refusal.
+    pub limit: u64,
+    /// Bound one file's facts must fit to be committed at all.
+    pub ceiling: u64,
 }
 
 fn digest16(value: &str) -> String {
@@ -267,6 +280,254 @@ pub(super) fn load_states(
         states.insert(state.path.clone(), state);
     }
     Ok(states)
+}
+
+/// One Step's mutations, bounded in JSON bytes.
+pub(super) struct ParseCommit<'a> {
+    engine: &'a RrdEngine,
+    scope: ScopeId,
+    read: ReadStamp,
+    mutations: Vec<RuntimeMutation>,
+    bytes: u64,
+    limit: u64,
+    ceiling: u64,
+    job_id: String,
+    chunk_bytes: u64,
+}
+
+impl<'a> ParseCommit<'a> {
+    pub(super) fn new(
+        engine: &'a RrdEngine,
+        scope: &ScopeId,
+        read: &ReadStamp,
+        batch: &Batch<'_>,
+    ) -> Result<Self> {
+        let current = engine.storage.runtime().schema(scope)?;
+        if current.as_ref().map(|schema| schema.revision) != read.schema_revision {
+            return Err(ServiceError::StorageConflict("Parse schema changed".into()));
+        }
+        let mut registry = current
+            .clone()
+            .unwrap_or_else(|| RuntimeSchemaRegistry::empty(1, "install parsed source tables"));
+        let mut mutations = Vec::new();
+        if register(&mut registry)? {
+            if let Some(old) = current {
+                registry.revision = old.revision.checked_add(1).ok_or_else(invalid)?;
+                registry.migration = "install parsed source tables".into();
+            }
+            mutations.push(RuntimeMutation::Schema { registry });
+        }
+        Ok(Self {
+            engine,
+            scope: scope.clone(),
+            read: read.clone(),
+            mutations,
+            bytes: 0,
+            limit: batch.limit,
+            ceiling: batch.ceiling,
+            job_id: batch.job_id.to_owned(),
+            chunk_bytes: batch.chunk_bytes,
+        })
+    }
+
+    fn size(group: &[RuntimeMutation]) -> Result<u64> {
+        Ok(serde_json::to_vec(group).map_err(contract)?.len() as u64)
+    }
+
+    /// Adds one file's mutations, or reports that this commit has no room and
+    /// the file stays pending. One file always fits an empty commit: its facts
+    /// are bounded by the ceiling.
+    fn admit(&mut self, group: Vec<RuntimeMutation>, size: u64) -> Result<bool> {
+        if self.bytes > 0 && self.bytes.saturating_add(size) > self.limit {
+            return Ok(false);
+        }
+        self.bytes = self.bytes.saturating_add(size);
+        self.mutations.extend(group);
+        Ok(true)
+    }
+
+    fn retirements(state: &FileState, at: u64) -> Result<Vec<RuntimeMutation>> {
+        let mut group = Vec::new();
+        if state.status != Status::Parsed {
+            return Ok(group);
+        }
+        for (kind, count) in [
+            (SYMBOL, state.symbols),
+            (SPAN, state.spans),
+            (CHUNK, state.chunks),
+        ] {
+            for index in 0..count {
+                let id = fact_id(
+                    &state.path,
+                    &state.content_sha256,
+                    &state.parser_revision,
+                    state.chunk_bytes,
+                    index,
+                );
+                group.push(retire(kind, id, at)?);
+            }
+        }
+        Ok(group)
+    }
+
+    /// Retires a file that is no longer parsed; false when there is no room.
+    pub(super) fn retire_file(&mut self, state: &FileState, at: u64) -> Result<bool> {
+        let mut group = Self::retirements(state, at)?;
+        group.push(retire(STATE, state_id(&state.path), at)?);
+        let size = Self::size(&group)?;
+        self.admit(group, size)
+    }
+
+    /// Records a file decided without facts; `None` when there is no room.
+    pub(super) fn reject(
+        &mut self,
+        entry: &Entry,
+        content_sha256: &str,
+        language: &str,
+        (status, reason): (Status, &str),
+        previous: Option<&FileState>,
+        at: u64,
+    ) -> Result<Option<FileState>> {
+        let state = FileState {
+            path: entry.path.clone(),
+            content_sha256: content_sha256.to_owned(),
+            language: language.to_owned(),
+            parser_revision: parser_revision(language).unwrap_or_default().to_owned(),
+            chunk_bytes: self.chunk_bytes,
+            job_id: self.job_id.clone(),
+            status,
+            reason: reason.to_owned(),
+            facts_sha256: "0".repeat(64),
+            symbols: 0,
+            spans: 0,
+            chunks: 0,
+            nodes: 0,
+            error_nodes: 0,
+        };
+        let mut group =
+            previous.map_or_else(|| Ok(Vec::new()), |old| Self::retirements(old, at))?;
+        group.push(state_record(&state, at)?);
+        let size = Self::size(&group)?;
+        Ok(self.admit(group, size)?.then_some(state))
+    }
+
+    /// Records a file's facts; `None` when there is no room. Facts that could
+    /// never fit one commit are recorded as a rejection instead.
+    pub(super) fn publish(
+        &mut self,
+        entry: &Entry,
+        source: &[u8],
+        facts: &SourceFacts,
+        previous: Option<&FileState>,
+        at: u64,
+    ) -> Result<Option<FileState>> {
+        let chunk_bytes = self.chunk_bytes;
+        let text = std::str::from_utf8(source).map_err(|_| invalid())?;
+        let slice = |start: u64, end: u64| {
+            text.get(start as usize..end as usize)
+                .ok_or_else(|| ServiceError::Storage("parser range is not a text boundary".into()))
+        };
+        let id = |index: u64| {
+            fact_id(
+                &entry.path,
+                &facts.content_sha256,
+                &facts.parser_revision,
+                chunk_bytes,
+                index,
+            )
+        };
+        let mut group =
+            previous.map_or_else(|| Ok(Vec::new()), |old| Self::retirements(old, at))?;
+        let common = serde_json::json!({
+            "path": entry.path,
+            "content_sha256": facts.content_sha256,
+            "language": facts.language,
+        });
+        let with = |extra: serde_json::Value| {
+            let mut value = common.clone();
+            value
+                .as_object_mut()
+                .expect("object")
+                .extend(extra.as_object().expect("object").clone());
+            value
+        };
+        for (index, symbol) in facts.symbols.iter().enumerate() {
+            group.push(record(
+                SYMBOL,
+                id(index as u64),
+                at,
+                with(serde_json::json!({
+                    "name": slice(symbol.name_start, symbol.name_end)?,
+                    "symbol_kind": symbol.kind,
+                    "role": match symbol.role {
+                        SymbolRole::Definition => "definition",
+                        SymbolRole::Reference => "reference",
+                    },
+                    "start_byte": symbol.start_byte,
+                    "end_byte": symbol.end_byte,
+                    "start_line": symbol.start_line,
+                    "count": symbol.count,
+                })),
+            )?);
+        }
+        for (index, span) in facts.spans.iter().enumerate() {
+            group.push(record(
+                SPAN,
+                id(index as u64),
+                at,
+                with(serde_json::json!({
+                    "span_kind": span.kind,
+                    "start_byte": span.start_byte,
+                    "end_byte": span.end_byte,
+                    "start_line": span.start_line,
+                    "end_line": span.end_line,
+                })),
+            )?);
+        }
+        for (index, chunk) in facts.chunks.iter().enumerate() {
+            group.push(record(
+                CHUNK,
+                id(index as u64),
+                at,
+                with(serde_json::json!({
+                    "text": slice(chunk.start_byte, chunk.end_byte)?,
+                    "start_byte": chunk.start_byte,
+                    "end_byte": chunk.end_byte,
+                    "start_line": chunk.start_line,
+                    "end_line": chunk.end_line,
+                })),
+            )?);
+        }
+        let state = FileState {
+            path: entry.path.clone(),
+            content_sha256: facts.content_sha256.clone(),
+            language: facts.language.clone(),
+            parser_revision: facts.parser_revision.clone(),
+            chunk_bytes,
+            job_id: self.job_id.clone(),
+            status: Status::Parsed,
+            reason: String::new(),
+            facts_sha256: digest::sha256_hex(&serde_json::to_vec(facts).map_err(contract)?),
+            symbols: facts.symbols.len() as u64,
+            spans: facts.spans.len() as u64,
+            chunks: facts.chunks.len() as u64,
+            nodes: facts.nodes,
+            error_nodes: facts.error_nodes,
+        };
+        group.push(state_record(&state, at)?);
+        let size = Self::size(&group)?;
+        if size > self.ceiling {
+            return self.reject(
+                entry,
+                &facts.content_sha256,
+                &facts.language,
+                (Status::Rejected, "facts_too_large"),
+                previous,
+                at,
+            );
+        }
+        Ok(self.admit(group, size)?.then_some(state))
+    }
 }
 
 #[cfg(test)]
