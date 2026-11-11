@@ -552,9 +552,11 @@ fn a_system_turned_off_stays_visible_and_cannot_start() {
     let written = planned_files(&definitions, &settings, &plan, "vector-small").unwrap();
     let system: SystemDefinition = serde_json::from_str(&written["systems/qdrant.json"]).unwrap();
     assert!(launch_info(&system).contains(&("kind".to_owned(), "none".to_owned())));
-    assert!(launch_arguments(&system, "/data", "/lab", None, &|_| None)
-        .unwrap()
-        .is_empty());
+    assert!(
+        launch_arguments(&system, "/data", "/lab", None, None, &|_| None)
+            .unwrap()
+            .is_empty()
+    );
     assert!(!written["run-list.txt"].lines().any(|line| line == "qdrant"));
     assert!(written["run-list.txt"].lines().any(|line| line == "milvus"));
 }

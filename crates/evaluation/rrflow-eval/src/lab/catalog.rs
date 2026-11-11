@@ -336,6 +336,22 @@ fn substitute(
     Ok(out)
 }
 
+/// A run's pod: one container's network namespace, which every system container joins, so
+/// each serves on the lab's own loopback and nothing is published on this machine. Its data
+/// lives in a named Docker volume, because a folder inside the lab's container is not one the
+/// Docker host can mount.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Pod<'a> {
+    pub container: &'a str,
+    pub volume: &'a str,
+}
+
+/// A `127.0.0.1:HOST:CONTAINER` mapping's two ports.
+fn mapped_ports(mapping: &str) -> Option<(&str, &str)> {
+    let mut parts = mapping.split(':').skip(1);
+    Some((parts.next()?, parts.next()?))
+}
+
 /// What `run_system.sh` needs to know, as plain `key=value` lines with no secret in them.
 pub fn launch_info(definition: &SystemDefinition) -> Vec<(String, String)> {
     let mut info = Vec::new();
@@ -401,12 +417,14 @@ pub fn launch_info(definition: &SystemDefinition) -> Vec<(String, String)> {
 }
 
 /// The arguments after `docker run -d`, or a process's whole command. Separate words, so nothing
-/// here passes through a shell. A secret goes by name only and never appears in them.
+/// here passes through a shell. A secret goes by name only and never appears in them. In a pod a
+/// container publishes nothing, so it must listen on the port its endpoint names.
 pub fn launch_arguments(
     definition: &SystemDefinition,
     data_directory: &str,
     lab_directory: &str,
     cpuset: Option<&str>,
+    pod: Option<Pod<'_>>,
     env: &dyn Fn(&str) -> Option<String>,
 ) -> Result<Vec<String>> {
     definition.validate()?;
@@ -423,7 +441,13 @@ pub fn launch_arguments(
             arguments,
             ..
         } => {
-            let mut words = vec!["--name".to_string(), name.clone()];
+            let id = definition.binding.id.as_str();
+            // Two runs on one host each get their own containers.
+            let name = match pod {
+                Some(pod) => format!("{}-{name}", pod.container),
+                None => name.clone(),
+            };
+            let mut words = vec!["--name".to_string(), name];
             if let Some(cpuset) = cpuset {
                 words.extend(["--cpuset-cpus".to_string(), cpuset.to_string()]);
             }
@@ -433,17 +457,47 @@ pub fn launch_arguments(
             for inside in generated_secrets.keys().chain(env_from_host.keys()) {
                 words.extend(["-e".to_string(), inside.clone()]);
             }
-            for mapping in ports {
-                words.extend(["-p".to_string(), mapping.clone()]);
+            match pod {
+                Some(pod) => {
+                    for mapping in ports {
+                        let (outside, inside) = mapped_ports(mapping)
+                            .ok_or_else(|| format!("{id} has an invalid port mapping"))?;
+                        require(
+                            outside == inside,
+                            &format!(
+                                "{id} listens on {inside} but is reached on {outside}; \
+                                 a pod maps no ports, so it must listen on {outside}"
+                            ),
+                        )?;
+                    }
+                    words.extend([
+                        "--network".to_string(),
+                        format!("container:{}", pod.container),
+                    ]);
+                }
+                None => {
+                    for mapping in ports {
+                        words.extend(["-p".to_string(), mapping.clone()]);
+                    }
+                }
             }
             if let Some(user) = user {
                 words.extend(["--user".to_string(), user.clone()]);
             }
             if let Some(volume) = volume {
-                words.extend([
-                    "-v".to_string(),
-                    format!("{data_directory}:{}", volume.container_path),
-                ]);
+                words.extend(match pod {
+                    Some(pod) => [
+                        "--mount".to_string(),
+                        format!(
+                            "type=volume,src={},dst={}",
+                            pod.volume, volume.container_path
+                        ),
+                    ],
+                    None => [
+                        "-v".to_string(),
+                        format!("{data_directory}:{}", volume.container_path),
+                    ],
+                });
             }
             words.push(image.clone());
             words.extend(arguments.iter().cloned());
