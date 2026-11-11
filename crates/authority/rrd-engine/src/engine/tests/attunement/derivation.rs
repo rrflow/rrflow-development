@@ -102,11 +102,15 @@ fn default_plan_completes_after_inventory_and_derives_the_successor_from_evidenc
     assert!(!evidence.embedding_binding);
     assert_eq!(
         evidence.available.iter().copied().collect::<Vec<_>>(),
-        vec![Phase::Connect, Phase::Inventory],
+        vec![Phase::Connect, Phase::Inventory, Phase::Parse],
         "only installed executors are available"
     );
     let derived: Vec<Phase> = preview.plan.phases.iter().map(|step| step.phase).collect();
-    assert_eq!(derived, vec![Phase::Connect, Phase::Inventory]);
+    assert_eq!(
+        derived,
+        vec![Phase::Connect, Phase::Inventory, Phase::Parse],
+        "bound grammars make Parse available"
+    );
     // Any client can recompute the plan from the evidence the preview carries.
     let recomputed = derive_attunement_plan(
         &installed.preview.attunement,
@@ -156,8 +160,8 @@ fn default_plan_completes_after_inventory_and_derives_the_successor_from_evidenc
         vec![installed.job.as_str(), accepted.successor.job.id.as_str()]
     );
 
-    // The successor runs to completion on the same two executors and the
-    // receipts survive a reopen.
+    // The successor runs to completion through Parse and the receipts survive
+    // a reopen.
     let successor = accepted.successor.job.clone();
     let s_started = call(
         &engine,
@@ -188,7 +192,25 @@ fn default_plan_completes_after_inventory_and_derives_the_successor_from_evidenc
         s_connected.status.job.updated_at_unix_ms + 1,
     )
     .unwrap();
+    assert_eq!(s_done.status.job.current_phase, Some(Phase::Parse));
+    let s_done = call(
+        &engine,
+        &session,
+        &step(&s_done.status.job),
+        "d-successor-parse",
+        s_done.status.job.updated_at_unix_ms + 1,
+    )
+    .unwrap();
     assert_eq!(s_done.status.job.state, State::Succeeded);
+    assert_eq!(
+        s_done
+            .status
+            .job
+            .checkpoints
+            .last()
+            .map(|checkpoint| checkpoint.phase),
+        Some(Phase::Parse)
+    );
     drop(engine);
     let late = s_done.status.job.updated_at_unix_ms + 1_000;
     let engine = installed.reopen(late);
