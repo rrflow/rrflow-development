@@ -408,7 +408,7 @@ impl RrdEngine {
             // old work under different limits or compression settings.
             state.pending = None;
             state.failure = None;
-            self.storage.control().commit(&transition(
+            self.commit_cold_control(transition(
                 &key,
                 previous,
                 &state,
@@ -442,7 +442,7 @@ impl RrdEngine {
                     // the previous head and plan again from the new stamp.
                     state.pending = None;
                     state.failure = None;
-                    self.storage.control().commit(&transition(
+                    self.commit_cold_control(transition(
                         &key,
                         previous,
                         &state,
@@ -508,7 +508,7 @@ impl RrdEngine {
             state.pending = None;
             state.failure = None;
             check_deadline(deadline)?;
-            self.storage.control().commit_batch(&[
+            self.commit_cold_control_batch(&[
                 transition_bytes(
                     &receipt_key,
                     None,
@@ -583,7 +583,7 @@ impl RrdEngine {
         state.pending = Some(pending);
         state.failure = None;
         check_deadline(deadline)?;
-        self.storage.control().commit(&transition(
+        self.commit_cold_control(transition(
             &key,
             previous,
             &state,
@@ -591,6 +591,27 @@ impl RrdEngine {
             "cold_history.prepared",
         )?)?;
         Ok(true)
+    }
+
+    /// Publication runs beside foreground requests and appends to the same
+    /// control journal, so it waits at the engine's transaction gate like
+    /// every other writer. Two writers that skip it meet as a physical write
+    /// conflict, which clients see as a runtime conflict at an unchanged
+    /// cursor. The gate is held for the commit alone, never for encoding.
+    fn commit_cold_control(
+        &self,
+        transition: rrd_store::ControlTransition,
+    ) -> Result<rrd_store::ControlJournalEntry> {
+        let _gate = self.admit_transaction(&transition, COLD_REQUEST_ID, COLD_OPERATION_ID)?;
+        Ok(self.storage.control().commit(&transition)?)
+    }
+
+    fn commit_cold_control_batch(
+        &self,
+        transitions: &[rrd_store::ControlTransition],
+    ) -> Result<Vec<rrd_store::ControlJournalEntry>> {
+        let _gate = self.admit_transaction(transitions, COLD_REQUEST_ID, COLD_OPERATION_ID)?;
+        Ok(self.storage.control().commit_batch(transitions)?)
     }
 
     fn record_cold_history_failure(&self, error: &ServiceError, now: u64) -> Result<()> {
@@ -630,7 +651,7 @@ impl RrdEngine {
             code,
             since_unix_ms: now,
         });
-        self.storage.control().commit(&transition(
+        self.commit_cold_control(transition(
             &key,
             previous,
             &state,
@@ -640,6 +661,10 @@ impl RrdEngine {
         Ok(())
     }
 }
+
+/// Background publication is no client invocation; these name its gate reservation.
+const COLD_REQUEST_ID: &str = "cold-history-maintenance";
+const COLD_OPERATION_ID: &str = "cold-history-publication";
 
 fn native(value: u64) -> Result<usize> {
     usize::try_from(value).map_err(|_| {
@@ -1277,6 +1302,37 @@ mod tests {
         file.sync_all().unwrap();
         assert!(read(&request).is_err());
         assert_eq!(state(&engine).through_cursor, 2);
+    }
+
+    #[test]
+    fn publication_waits_for_a_foreground_transaction() {
+        // A foreground commit and publication both append to the control
+        // journal. Without the gate, they meet as a physical write conflict
+        // that clients see as a retryable runtime conflict at an unchanged cursor.
+        let root = tempfile::tempdir().unwrap();
+        let path = root.path().join("estate");
+        let mut engine = open(&path);
+        seed(&engine);
+        engine.estate_configuration.storage.cold_history = Some(policy());
+        let before = engine.storage.control().sequence().unwrap();
+        let foreground = engine
+            .admit_transaction(&"foreground", "request-foreground", "operation-foreground")
+            .unwrap();
+        std::thread::scope(|scope| {
+            let publication = scope.spawn(|| engine.maintain_cold_history());
+            std::thread::sleep(std::time::Duration::from_millis(300));
+            assert_eq!(
+                engine.storage.control().sequence().unwrap(),
+                before,
+                "publication committed while a foreground transaction held the gate"
+            );
+            drop(foreground);
+            publication.join().unwrap().unwrap();
+        });
+        assert!(
+            engine.storage.control().sequence().unwrap() > before,
+            "publication proceeds once the gate is free"
+        );
     }
 
     #[test]
