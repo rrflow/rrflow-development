@@ -80,4 +80,8 @@
 - [POAM-068 — `rrflow install status` is documented but absent](poam-068.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-068`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-068) — active parent-owned POA&M detail
 - [POAM-069 — a first install is bounded by a fixed 30-second inventory limit](poam-069.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-069`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-069) — active parent-owned POA&M detail
 - [POAM-070 — a Git worktree or linked checkout cannot be installed](poam-070.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-070`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-070) — active parent-owned POA&M detail
+- [POAM-071 — two transactions on unrelated rows cannot both commit](poam-071.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-071`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-071) — active parent-owned POA&M detail
+- [POAM-072 — retiring a referenced row leaves its relation live](poam-072.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-072`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-072) — active parent-owned POA&M detail
+- [POAM-073 — a refused commit leaves its transaction open](poam-073.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-073`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-073) — active parent-owned POA&M detail
+- [POAM-074 — the macOS capacity rig fails when a new disk image is busy](poam-074.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-074`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-074) — active parent-owned POA&M detail
 <!-- rrflow:generated-index:end -->
