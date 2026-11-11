@@ -89,6 +89,7 @@ listed were the latest stable ones on 2026-10-24.
   result, and rejects Moka, TinyLFU, family quota, caller bypass, and value
   separation for the accepted format. It is not architecture or completion
   authority.
+- [Second-brain visualizer evidence review](second-brain-visualizer-architecture-research.md): rendering, drill-down, live change, second-mind cognition, reasoning traces and memory isolation.
 
 The pinned SurrealDB reference explicitly rejects its namespace → database →
 table/record hierarchy as RRFlow authority. `estate` is an RRFlow-owned term;
