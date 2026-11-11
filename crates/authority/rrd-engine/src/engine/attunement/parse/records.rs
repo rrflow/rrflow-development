@@ -1,8 +1,12 @@
 //! Runtime records for parsed source. `source-parse` is the per-file state that
 //! makes Parse resumable; its fact counts name the records a later edit retires.
 
+use super::super::inventory::Work;
 use super::*;
+use crate::engine::transaction_admission::TransactionPermit;
 use rrd_attunement::facts::{SourceFacts, SymbolRole};
+use rrd_attunement::inventory::Entry;
+use rrd_attunement::parse::parser_revision;
 use rrd_core::RuntimeRetirement;
 use rrd_store::{RuntimeReadBudget, RuntimeVersionedSource};
 use std::collections::{BTreeMap, BTreeSet};
