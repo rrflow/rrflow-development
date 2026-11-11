@@ -84,3 +84,7 @@
 | POAM-068 | High | Open | [`rrflow install status` is documented but absent](rrflow-1.0-alpha/poam-068.md) |
 | POAM-069 | High | Open | [a first install is bounded by a fixed 30-second inventory limit](rrflow-1.0-alpha/poam-069.md) |
 | POAM-070 | High | Open | [a Git worktree or linked checkout cannot be installed](rrflow-1.0-alpha/poam-070.md) |
+| POAM-071 | High | Open | [two transactions on unrelated rows cannot both commit](rrflow-1.0-alpha/poam-071.md) |
+| POAM-072 | High | Open | [retiring a referenced row leaves its relation live](rrflow-1.0-alpha/poam-072.md) |
+| POAM-073 | High | Open | [a refused commit leaves its transaction open](rrflow-1.0-alpha/poam-073.md) |
+| POAM-074 | High | Open | [the macOS capacity rig fails when a new disk image is busy](rrflow-1.0-alpha/poam-074.md) |
