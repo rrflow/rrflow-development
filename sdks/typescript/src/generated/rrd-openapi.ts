@@ -1,4 +1,4 @@
-// OpenAPI SHA-256: dd820054e2efa41ec2142d6bcac10cfdf38e729324a7c42ab129c44014b45387
+// OpenAPI SHA-256: 4bd01d8ba6fe748921d4ec21da277c83b7f9e1d61015274b8828023c6e86607d
 export interface paths {
     "/v1/attunement/cancel": {
         parameters: {
@@ -19587,6 +19587,13 @@ export interface operations {
                         graph_compare_cursor: number;
                         /** Format: uint64 */
                         graph_known_at_cursor?: number | null;
+                        /**
+                         * Format: uint64
+                         * @description Most graph records to return, the most linked first; `None` returns
+                         *     every record. The difference then keeps only entries about returned
+                         *     records, and both say how much they left out.
+                         */
+                        graph_max_records?: number | null;
                         /** Format: uint64 */
                         graph_valid_at_unix_ms: number;
                         /** Format: uint64 */
@@ -20953,6 +20960,11 @@ export interface operations {
                                         /** Format: uint64 */
                                         valid_to_unix_ms?: number | null;
                                     }[];
+                                    /**
+                                     * Format: uint64
+                                     * @description Records and relations at this cursor before `graph_max_records`.
+                                     */
+                                    records_total: number;
                                     relations: {
                                         /**
                                          * @description Lossless runtime identity used by diagnostics. Runtime IDs intentionally
@@ -21028,6 +21040,8 @@ export interface operations {
                                         /** Format: uint64 */
                                         valid_to_unix_ms?: number | null;
                                     }[];
+                                    /** Format: uint64 */
+                                    relations_total: number;
                                     scope: string;
                                     /** Format: uint64 */
                                     valid_at_unix_ms: number;
@@ -21435,6 +21449,11 @@ export interface operations {
                                     }[];
                                     /** Format: uint64 */
                                     from_cursor: number;
+                                    /**
+                                     * Format: uint64
+                                     * @description Entries left out because they concern records the bound did not return.
+                                     */
+                                    omitted_entries: number;
                                     removed_records: {
                                         properties: {
                                             [key: string]: {
@@ -23666,6 +23685,11 @@ export interface operations {
                                         /** Format: uint64 */
                                         valid_to_unix_ms?: number | null;
                                     }[];
+                                    /**
+                                     * Format: uint64
+                                     * @description Records and relations at this cursor before `graph_max_records`.
+                                     */
+                                    records_total: number;
                                     relations: {
                                         /**
                                          * @description Lossless runtime identity used by diagnostics. Runtime IDs intentionally
@@ -23741,6 +23765,8 @@ export interface operations {
                                         /** Format: uint64 */
                                         valid_to_unix_ms?: number | null;
                                     }[];
+                                    /** Format: uint64 */
+                                    relations_total: number;
                                     scope: string;
                                     /** Format: uint64 */
                                     valid_at_unix_ms: number;
@@ -24148,6 +24174,11 @@ export interface operations {
                                     }[];
                                     /** Format: uint64 */
                                     from_cursor: number;
+                                    /**
+                                     * Format: uint64
+                                     * @description Entries left out because they concern records the bound did not return.
+                                     */
+                                    omitted_entries: number;
                                     removed_records: {
                                         properties: {
                                             [key: string]: {

@@ -1147,11 +1147,29 @@ fn audit_export_rejects_content_record_and_chain_substitution() {
 
 #[test]
 fn diagnostic_read_contract_is_bounded_strict_and_separately_authorized() {
+    let bounded = |max| rrd_contract::ReadDiagnosticSnapshot {
+        scope: "instance:alpha".into(),
+        graph_valid_at_unix_ms: 1_000,
+        graph_known_at_cursor: None,
+        graph_compare_cursor: 0,
+        graph_max_records: Some(max),
+        runtime_max_scanned_changes: 1_024,
+        changes_after_cursor: 0,
+        change_limit: 1,
+        audit_after_sequence: 0,
+        audit_limit: 1,
+    };
+    bounded(100).validate().unwrap();
+    assert!(bounded(0).validate().is_err());
+    assert!(bounded(rrd_contract::MAX_DIAGNOSTIC_GRAPH_RECORDS + 1)
+        .validate()
+        .is_err());
     rrd_contract::ReadDiagnosticSnapshot {
         scope: "instance:alpha".into(),
         graph_valid_at_unix_ms: 1_000,
         graph_known_at_cursor: Some(30),
         graph_compare_cursor: 10,
+        graph_max_records: None,
         runtime_max_scanned_changes: 1_024,
         changes_after_cursor: 10,
         change_limit: 128,
@@ -1165,6 +1183,7 @@ fn diagnostic_read_contract_is_bounded_strict_and_separately_authorized() {
         graph_valid_at_unix_ms: 1_000,
         graph_known_at_cursor: Some(30),
         graph_compare_cursor: 10,
+        graph_max_records: None,
         runtime_max_scanned_changes: 1_024,
         changes_after_cursor: 0,
         change_limit: 0,

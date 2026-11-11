@@ -11,6 +11,8 @@ use sha2::{Digest, Sha256};
 pub const DIAGNOSTIC_SNAPSHOT_FORMAT_VERSION: u16 = 1;
 pub const MAX_DIAGNOSTIC_AUDIT_RECORDS: u16 = 1_024;
 pub const MAX_DIAGNOSTIC_RUNTIME_SCANNED_CHANGES: u64 = 1_000_000;
+/// Most graph records one bounded diagnostic read may return.
+pub const MAX_DIAGNOSTIC_GRAPH_RECORDS: u64 = 100_000;
 
 /// Physical process-local counters only; no graph/history assembly or claim
 /// that independently sampled counters form an authoritative read stamp.
@@ -42,6 +44,11 @@ pub struct ReadDiagnosticSnapshot {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub graph_known_at_cursor: Option<u64>,
     pub graph_compare_cursor: u64,
+    /// Most graph records to return, the most linked first; `None` returns
+    /// every record. The difference then keeps only entries about returned
+    /// records, and both say how much they left out.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub graph_max_records: Option<u64>,
     pub runtime_max_scanned_changes: u64,
     pub changes_after_cursor: u64,
     pub change_limit: u64,
@@ -74,6 +81,14 @@ impl ReadDiagnosticSnapshot {
             .is_some_and(|cursor| self.graph_compare_cursor > cursor)
         {
             return invalid("diagnostic graph_compare_cursor exceeds graph_known_at_cursor");
+        }
+        if self
+            .graph_max_records
+            .is_some_and(|max| max == 0 || max > MAX_DIAGNOSTIC_GRAPH_RECORDS)
+        {
+            return invalid(format!(
+                "diagnostic graph_max_records must be in 1..={MAX_DIAGNOSTIC_GRAPH_RECORDS}"
+            ));
         }
         if self.audit_limit == 0 || self.audit_limit > MAX_DIAGNOSTIC_AUDIT_RECORDS {
             return invalid(format!(
@@ -207,6 +222,9 @@ pub struct DiagnosticGraphSnapshot {
     pub known_at_cursor: u64,
     pub records: Vec<DiagnosticGraphRecordSnapshot>,
     pub relations: Vec<DiagnosticGraphRelationSnapshot>,
+    /// Records and relations at this cursor before `graph_max_records`.
+    pub records_total: u64,
+    pub relations_total: u64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -235,6 +253,8 @@ pub struct DiagnosticGraphDifference {
     pub added_relations: Vec<DiagnosticGraphRelationSnapshot>,
     pub removed_relations: Vec<DiagnosticGraphRelationSnapshot>,
     pub changed_relations: Vec<DiagnosticGraphRelationChange>,
+    /// Entries left out because they concern records the bound did not return.
+    pub omitted_entries: u64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]

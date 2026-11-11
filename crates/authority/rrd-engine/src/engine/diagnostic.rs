@@ -151,6 +151,7 @@ impl RrdEngine {
                 request.graph_valid_at_unix_ms,
                 request.graph_known_at_cursor,
                 request.graph_compare_cursor,
+                request.graph_max_records,
             ) {
                 Ok(graph) => graph,
                 Err(error) if error.retryable() => continue,
@@ -261,6 +262,7 @@ fn diagnostic_graph(
     valid_at: u64,
     requested_known_at: Option<u64>,
     compare_cursor: u64,
+    max_records: Option<u64>,
 ) -> Result<(DiagnosticGraphSnapshot, DiagnosticGraphDifference)> {
     let known_at_cursor = requested_known_at.unwrap_or(read.commit_cursor);
     if known_at_cursor > read.commit_cursor {
@@ -279,10 +281,37 @@ fn diagnostic_graph(
     let after =
         RuntimeGraphSnapshot::from_changes(changes, read.scope.clone(), valid_at, known_at_cursor);
     let difference = before.diff(&after);
+    let keep = bounded_records(&after, max_records);
     Ok((
-        public_graph_snapshot(public_scope, &after)?,
-        public_graph_difference(valid_at, &difference)?,
+        public_graph_snapshot(public_scope, &after, keep.as_ref())?,
+        public_graph_difference(valid_at, &difference, keep.as_ref())?,
     ))
+}
+
+/// The records a bounded read returns: at most `max`, the most linked first,
+/// ties broken by reference so the same graph always yields the same set.
+/// `None` when nothing is left out.
+fn bounded_records(
+    snapshot: &RuntimeGraphSnapshot,
+    max: Option<u64>,
+) -> Option<std::collections::BTreeSet<RuntimeRef>> {
+    let max = usize::try_from(max?).unwrap_or(usize::MAX);
+    if snapshot.records.len() <= max {
+        return None;
+    }
+    let mut degree = std::collections::BTreeMap::<&RuntimeRef, u64>::new();
+    for relation in &snapshot.relations {
+        *degree.entry(&relation.from).or_default() += 1;
+        *degree.entry(&relation.to).or_default() += 1;
+    }
+    let links = |reference: &RuntimeRef| degree.get(reference).copied().unwrap_or(0);
+    let mut ranked: Vec<&RuntimeRef> = snapshot
+        .records
+        .iter()
+        .map(|record| &record.reference)
+        .collect();
+    ranked.sort_by(|a, b| links(b).cmp(&links(a)).then_with(|| a.cmp(b)));
+    Some(ranked.into_iter().take(max).cloned().collect())
 }
 
 fn diagnostic_runtime_changes(
@@ -379,7 +408,9 @@ fn public_vector_artifact(
 fn public_graph_snapshot(
     public_scope: &str,
     snapshot: &RuntimeGraphSnapshot,
+    keep: Option<&std::collections::BTreeSet<RuntimeRef>>,
 ) -> Result<DiagnosticGraphSnapshot> {
+    let kept = |reference: &RuntimeRef| keep.is_none_or(|keep| keep.contains(reference));
     Ok(DiagnosticGraphSnapshot {
         scope: public_scope.into(),
         valid_at_unix_ms: snapshot.valid_at,
@@ -387,37 +418,54 @@ fn public_graph_snapshot(
         records: snapshot
             .records
             .iter()
+            .filter(|record| kept(&record.reference))
             .map(public_graph_record)
             .collect::<Result<_>>()?,
         relations: snapshot
             .relations
             .iter()
+            .filter(|relation| kept(&relation.from) && kept(&relation.to))
             .map(public_graph_relation)
             .collect::<Result<_>>()?,
+        records_total: snapshot.records.len() as u64,
+        relations_total: snapshot.relations.len() as u64,
     })
 }
 
 fn public_graph_difference(
     valid_at: u64,
     difference: &rrd_core::RuntimeGraphDiff,
+    keep: Option<&std::collections::BTreeSet<RuntimeRef>>,
 ) -> Result<DiagnosticGraphDifference> {
-    Ok(DiagnosticGraphDifference {
+    let kept = |reference: &RuntimeRef| keep.is_none_or(|keep| keep.contains(reference));
+    let record = |record: &&RuntimeRecord| kept(&record.reference);
+    let relation = |relation: &&RuntimeRelation| kept(&relation.from) && kept(&relation.to);
+    let total = difference.added_records.len()
+        + difference.removed_records.len()
+        + difference.changed_records.len()
+        + difference.added_relations.len()
+        + difference.removed_relations.len()
+        + difference.changed_relations.len();
+    let mut public = DiagnosticGraphDifference {
         valid_at_unix_ms: valid_at,
         from_cursor: difference.from_cursor,
         to_cursor: difference.to_cursor,
         added_records: difference
             .added_records
             .iter()
+            .filter(record)
             .map(public_graph_record)
             .collect::<Result<_>>()?,
         removed_records: difference
             .removed_records
             .iter()
+            .filter(record)
             .map(public_graph_record)
             .collect::<Result<_>>()?,
         changed_records: difference
             .changed_records
             .iter()
+            .filter(|change| kept(&change.after.reference))
             .map(|change| {
                 Ok(DiagnosticGraphRecordChange {
                     before: public_graph_record(&change.before)?,
@@ -428,16 +476,19 @@ fn public_graph_difference(
         added_relations: difference
             .added_relations
             .iter()
+            .filter(relation)
             .map(public_graph_relation)
             .collect::<Result<_>>()?,
         removed_relations: difference
             .removed_relations
             .iter()
+            .filter(relation)
             .map(public_graph_relation)
             .collect::<Result<_>>()?,
         changed_relations: difference
             .changed_relations
             .iter()
+            .filter(|change| kept(&change.after.from) && kept(&change.after.to))
             .map(|change| {
                 Ok(DiagnosticGraphRelationChange {
                     before: public_graph_relation(&change.before)?,
@@ -445,7 +496,16 @@ fn public_graph_difference(
                 })
             })
             .collect::<Result<_>>()?,
-    })
+        omitted_entries: 0,
+    };
+    let returned = public.added_records.len()
+        + public.removed_records.len()
+        + public.changed_records.len()
+        + public.added_relations.len()
+        + public.removed_relations.len()
+        + public.changed_relations.len();
+    public.omitted_entries = (total - returned) as u64;
+    Ok(public)
 }
 
 fn public_graph_record(record: &RuntimeRecord) -> Result<DiagnosticGraphRecordSnapshot> {
@@ -1172,5 +1232,85 @@ mod storage_tests {
         let bounded = bounded_reason(Some(&long)).unwrap();
         assert!(bounded.len() <= MAX_MESSAGE_BYTES);
         assert!(bounded.chars().all(|character| character == 'é'));
+    }
+}
+
+#[cfg(test)]
+mod bounded_graph_tests {
+    use super::*;
+
+    fn reference(id: &str) -> RuntimeRef {
+        RuntimeRef::new("document", id).unwrap()
+    }
+
+    fn graph(records: &[&str], relations: &[(&str, &str)]) -> RuntimeGraphSnapshot {
+        RuntimeGraphSnapshot {
+            scope: rrd_core::ScopeId::new("instance:test").unwrap(),
+            valid_at: 1,
+            known_at_cursor: 4,
+            records: records
+                .iter()
+                .map(|id| RuntimeRecord {
+                    reference: reference(id),
+                    valid_from: 1,
+                    valid_to: None,
+                    properties: Default::default(),
+                })
+                .collect(),
+            relations: relations
+                .iter()
+                .map(|(from, to)| RuntimeRelation {
+                    reference: RuntimeRef::new("links", format!("{from}-{to}")).unwrap(),
+                    from: reference(from),
+                    to: reference(to),
+                    valid_from: 1,
+                    valid_to: None,
+                    properties: Default::default(),
+                })
+                .collect(),
+        }
+    }
+
+    fn ids(snapshot: &DiagnosticGraphSnapshot) -> Vec<String> {
+        snapshot
+            .records
+            .iter()
+            .map(|record| record.reference.id.clone())
+            .collect()
+    }
+
+    #[test]
+    fn a_bounded_read_returns_the_most_linked_records_and_counts_the_rest() {
+        let after = graph(&["a", "b", "c", "d"], &[("a", "b"), ("a", "c")]);
+        let keep = bounded_records(&after, Some(2));
+        let public = public_graph_snapshot("instance:test", &after, keep.as_ref()).unwrap();
+        assert_eq!(
+            ids(&public),
+            ["a", "b"],
+            "a has two links; b wins the tie by reference"
+        );
+        assert_eq!(
+            public.relations.len(),
+            1,
+            "only the relation between returned records"
+        );
+        assert_eq!((public.records_total, public.relations_total), (4, 2));
+
+        let empty = graph(&[], &[]);
+        let difference = public_graph_difference(1, &empty.diff(&after), keep.as_ref()).unwrap();
+        assert_eq!(difference.added_records.len(), 2);
+        assert_eq!(difference.added_relations.len(), 1);
+        assert_eq!(difference.omitted_entries, 3);
+    }
+
+    #[test]
+    fn an_unbounded_or_roomy_read_leaves_nothing_out() {
+        let after = graph(&["a", "b"], &[("a", "b")]);
+        assert!(bounded_records(&after, None).is_none());
+        assert!(bounded_records(&after, Some(2)).is_none());
+        let public = public_graph_snapshot("instance:test", &after, None).unwrap();
+        assert_eq!((public.records.len(), public.records_total), (2, 2));
+        let difference = public_graph_difference(1, &graph(&[], &[]).diff(&after), None).unwrap();
+        assert_eq!(difference.omitted_entries, 0);
     }
 }
