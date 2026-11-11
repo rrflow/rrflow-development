@@ -27,6 +27,11 @@ from run_offline_lifecycle import (CommandDeadlineExceeded, CommandOutputNotClos
 CASE = "capacity::installed_native_capacity_recovers_acknowledged_history"
 POINTS = ("wal_before_write", "segment_before_create", "manifest_before_create", "current_before_create")
 SCRIPT = Path(__file__).resolve()
+# hdiutil create starts a diskimages-helper that leaves the command's process
+# group and inherits its output. After a busy create that helper can outlive
+# hdiutil while it serves the half-made image. This bounds how long a retry
+# waits for it to let go after the owned image is released.
+HELPER_EXIT_SECONDS = 20
 
 
 class NotRun(RuntimeError):
@@ -105,6 +110,7 @@ def retain_native_failure(config, fixture, mode, point, case_index, error):
                        "stdout_head": source.stdout_head, "stdout_tail": source.stdout_tail,
                        "stderr_head": source.stderr_head, "stderr_tail": source.stderr_tail,
                        "stdout_open": source.stdout_open, "stderr_open": source.stderr_open,
+                       "holder_outlived_release": getattr(source, "holder_outlived_release", False),
                        "cleanup_state": "unknown"}
             encoded = json.dumps(receipt, ensure_ascii=False).encode("utf-8", errors="replace")
             require(len(encoded) <= 256 * 1024, "capacity diagnostic exceeds output bound")
@@ -202,18 +208,23 @@ def native_command(*arguments, **kwargs):
     return result
 
 
-def is_retryable_darwin_create_failure(error):
-    # Only a command that finished and closed its streams can be retried. A
-    # timed-out or still-open create may leave an escaped process holding the
-    # image; retrying over it could report success while that process lives,
-    # and its diagnostic would never be retained.
+def is_busy_darwin_create(error):
+    # A timed-out create is never retried: its work may still be running.
     if not (isinstance(error, NativeCommandFailure)
             and sys.platform == "darwin"
             and (error.tool, error.verb) == ("hdiutil", "create")
-            and not (error.timed_out or error.stdout_open or error.stderr_open)):
+            and not error.timed_out):
         return False
     native_output = (error.stderr_tail + "\n" + error.stdout_tail).lower()
     return "resource busy" in native_output
+
+
+def held_output(error):
+    """The open-output record behind a create whose output a process still holds."""
+    if not (error.stdout_open or error.stderr_open):
+        return None
+    cause = error.__cause__
+    return cause if isinstance(cause, CommandOutputNotClosed) else None
 
 
 def associated_loops(image):
@@ -278,18 +289,33 @@ def volume(fixture: Path, size: int):
                         "-volname", "RRFlowCapacity", str(image), timeout=120)
                     break
                 except NativeCommandFailure as error:
-                    if not is_retryable_darwin_create_failure(error) or attempt == 4:
+                    if not is_busy_darwin_create(error) or attempt == 4:
                         raise
                     # A busy create can leave a partial image behind, possibly
                     # still attached; the next attempt must start from no image,
                     # and only an ordinary file inside the fixture is ever removed.
-                    if image.exists():
+                    leftover = image.exists()
+                    if leftover:
                         require(image.is_file() and not image.is_symlink()
                                 and image.resolve().parent == fixture.resolve(),
                                 "owned APFS image escaped fixture")
                         detach_owned_image(image)
-                        if image.exists():
-                            image.unlink()
+                    # Never create over a live holder. Output that stays open
+                    # is retried only after the holder is seen to let go.
+                    released_ms = None
+                    if error.stdout_open or error.stderr_open:
+                        held = held_output(error)
+                        began = time.monotonic()
+                        if held is None or not held.wait_closed(HELPER_EXIT_SECONDS):
+                            error.holder_outlived_release = True
+                            raise
+                        released_ms = round((time.monotonic() - began) * 1000)
+                    if image.exists():
+                        image.unlink()
+                    print(json.dumps({"capacity_create_retry": {
+                        "attempt": attempt + 1, "leftover_image": leftover,
+                        "held_output": released_ms is not None, "released_ms": released_ms}}),
+                        flush=True)
                     time.sleep(2 ** attempt)
             attach = plistlib.loads(native_command("hdiutil", "attach", "-nobrowse", "-mountpoint", str(root),
                                         "-plist", str(image), timeout=60).stdout.encode())

@@ -9,7 +9,15 @@ priority or closure status.
 
 ## Observed deficiency
 
-On 2026-11-11, candidate run 42954943269 failed `installed domain crash (macos-latest)` on a pull request that changes no engine code: `hdiutil: create failed - Resource busy`. Six capacity cases had already passed in that job and the previous image reported as detached. `scripts/ci/run_filesystem_containment.py` retries `hdiutil detach` but calls `hdiutil create` once. This is one observed occurrence.
+On 2026-11-11, candidate run 42954943269 failed `installed domain crash (macos-latest)` on a pull request that changes no engine code: `hdiutil: create failed - Resource busy`. Six capacity cases had already passed in that job and the previous image reported as detached.
+
+The first version of this record blamed `scripts/ci/run_filesystem_containment.py`. That was wrong. The create is in `scripts/ci/run_native_capacity.py`, which since 2026-11-08 retries a busy create up to five times and removes a leftover image between attempts.
+
+A second occurrence, run 43017327376 attempt 1 on PR #335, shows why that retry never ran. Case 21 failed 4 seconds after case 20's image detached, so the backoff of 1, 2, 4 and 8 seconds was never used. Its retained receipt has `stderr_open: true`, and the runner killed an orphaned `diskimages-helper` when the job ended. hdiutil starts that helper outside the command's owned process group, and the helper inherits hdiutil's stderr. After the busy create it kept that pipe open. The retry guard refused any create whose output was still open, because a live holder might still be using the image. So the one failure the retry was written for was the one it refused.
+
+## Remediation
+
+The open-output record now keeps its capture threads, so a caller can observe the moment the last holder closes the pipe. A busy create with held output detaches the leftover image, then retries only after the held output closes, waiting at most 20 seconds per attempt. If the holder never lets go, the original failure is raised, no retry runs, and the receipt records `holder_outlived_release`. Every retry prints one `capacity_create_retry` line. A timed-out create is still never retried. See the [change journal](../../evidence/change-journals/gate-c/c-07-hdiutil-held-helper-20261111.md).
 
 ## Impact
 
