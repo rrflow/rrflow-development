@@ -15,7 +15,7 @@ use std::collections::BTreeMap;
 mod host;
 mod records;
 
-use records::{FileState, ParseCommit, Status};
+use records::{Batch, FileState, ParseCommit, Status};
 
 /// Target size of one chunk's text. Small enough to embed and to rank
 /// precisely, large enough to hold a typical function with its context.
@@ -281,58 +281,73 @@ pub(super) fn execute(
     let mut conflicts = 0;
     loop {
         let mut states = states.clone();
-        let mut parse = ParseCommit::new(engine, &scope, &read, limit)?;
-        for state in &stale {
-            parse.retire_file(state, elapsed_time(work.now, work.started)?)?;
-            states.remove(&state.path);
-        }
-        for file in &too_large {
-            let at = elapsed_time(work.now, work.started)?;
-            let previous = states.get(&file.entry.path);
-            let state = parse.reject(
-                file.entry,
-                file.content_sha256,
-                &file.language,
-                (Status::Rejected, "file_too_large"),
-                CHUNK_BYTES,
-                job,
-                previous,
-                at,
-            )?;
-            states.insert(state.path.clone(), state);
-        }
-        for ((file, source), outcome) in selected_files.iter().zip(&sources).zip(&outcomes) {
-            let at = elapsed_time(work.now, work.started)?;
-            let previous = states.get(&file.entry.path);
-            let (status, code) = match outcome {
-                FileOutcome::Parsed(facts) => {
-                    let admitted = parse
-                        .publish(file.entry, source, facts, CHUNK_BYTES, job, previous, at)?
-                        .admitted();
-                    let Some(state) = admitted else { break };
-                    states.insert(state.path.clone(), state);
-                    continue;
+        let batch = Batch {
+            job_id: job,
+            chunk_bytes: CHUNK_BYTES,
+            limit,
+            ceiling: commit_limit,
+        };
+        let mut parse = ParseCommit::new(engine, &scope, &read, &batch)?;
+        // Assembly stops at the first file without room; it and every file
+        // after it stay pending, so the Step cannot claim them decided.
+        'assemble: {
+            for state in &stale {
+                if !parse.retire_file(state, elapsed_time(work.now, work.started)?)? {
+                    break 'assemble;
                 }
-                FileOutcome::Rejected(code) => (Status::Rejected, code.as_str()),
-                FileOutcome::Lost(code) => (Status::Lost, code.as_str()),
-            };
-            let state = parse.reject(
-                file.entry,
-                file.content_sha256,
-                &file.language,
-                (status, code),
-                CHUNK_BYTES,
-                job,
-                previous,
-                at,
-            )?;
-            states.insert(state.path.clone(), state);
+                states.remove(&state.path);
+            }
+            for file in &too_large {
+                let at = elapsed_time(work.now, work.started)?;
+                let previous = states.get(&file.entry.path);
+                let Some(state) = parse.reject(
+                    file.entry,
+                    file.content_sha256,
+                    &file.language,
+                    (Status::Rejected, "file_too_large"),
+                    previous,
+                    at,
+                )?
+                else {
+                    break 'assemble;
+                };
+                states.insert(state.path.clone(), state);
+            }
+            for ((file, source), outcome) in selected_files.iter().zip(&sources).zip(&outcomes) {
+                let at = elapsed_time(work.now, work.started)?;
+                let previous = states.get(&file.entry.path);
+                let (status, code) = match outcome {
+                    FileOutcome::Parsed(facts) => {
+                        let Some(state) = parse.publish(file.entry, source, facts, previous, at)?
+                        else {
+                            break 'assemble;
+                        };
+                        states.insert(state.path.clone(), state);
+                        continue;
+                    }
+                    FileOutcome::Rejected(code) => (Status::Rejected, code.as_str()),
+                    FileOutcome::Lost(code) => (Status::Lost, code.as_str()),
+                };
+                let Some(state) = parse.reject(
+                    file.entry,
+                    file.content_sha256,
+                    &file.language,
+                    (status, code),
+                    previous,
+                    at,
+                )?
+                else {
+                    break 'assemble;
+                };
+                states.insert(state.path.clone(), state);
+            }
         }
-        let finished = all.iter().all(|file| {
-            states
-                .get(&file.entry.path)
-                .is_some_and(|state| is_current(state, file, &work.before.id))
-        });
+        let finished = states.keys().all(|path| wanted.contains(path.as_str()))
+            && all.iter().all(|file| {
+                states
+                    .get(&file.entry.path)
+                    .is_some_and(|state| is_current(state, file, &work.before.id))
+            });
         match parse.commit(&work, &mut permit, states, finished, &check) {
             Err(ServiceError::StorageAdmission(_)) if limit > MIN_COMMIT_BYTES => limit /= 2,
             // A background writer can collide with this transaction without

@@ -169,11 +169,14 @@ fn delimiters_the_grammar_hides_stay_in_the_chunks() {
     // tree-sitter-rust scans raw-string delimiters externally, so no child
     // node covers `r#"` or `"#`; an oversized literal must keep them anyway.
     let body = "line of text
-".repeat(20);
-    let source = format!("fn main() {{
+"
+    .repeat(20);
+    let source = format!(
+        "fn main() {{
     let text = r#\"{body}\"#;
 }}
-");
+"
+    );
     let bound = 64;
     let facts = facts("rust", &source, bound);
     let mut covered = String::new();

@@ -43,19 +43,14 @@ pub(super) struct FileState {
     pub error_nodes: u64,
 }
 
-/// A record whose commit did not have room is left pending for the next Step.
-pub(super) enum Admission {
-    Admitted(FileState),
-    Full,
-}
-
-impl Admission {
-    pub(super) fn admitted(self) -> Option<FileState> {
-        match self {
-            Self::Admitted(state) => Some(state),
-            Self::Full => None,
-        }
-    }
+/// What one Step's commit is for and how much it may carry.
+pub(super) struct Batch<'j> {
+    pub job_id: &'j str,
+    pub chunk_bytes: u64,
+    /// Bound this attempt assembles to; halved after a physical refusal.
+    pub limit: u64,
+    /// Bound one file's facts must fit to be committed at all.
+    pub ceiling: u64,
 }
 
 fn digest16(value: &str) -> String {
@@ -270,6 +265,9 @@ pub(super) struct ParseCommit<'a> {
     mutations: Vec<RuntimeMutation>,
     bytes: u64,
     limit: u64,
+    ceiling: u64,
+    job_id: String,
+    chunk_bytes: u64,
 }
 
 impl<'a> ParseCommit<'a> {
@@ -277,7 +275,7 @@ impl<'a> ParseCommit<'a> {
         engine: &'a RrdEngine,
         scope: &ScopeId,
         read: &ReadStamp,
-        limit: u64,
+        batch: &Batch<'_>,
     ) -> Result<Self> {
         let current = engine.storage.runtime().schema(scope)?;
         if current.as_ref().map(|schema| schema.revision) != read.schema_revision {
@@ -300,13 +298,21 @@ impl<'a> ParseCommit<'a> {
             read: read.clone(),
             mutations,
             bytes: 0,
-            limit,
+            limit: batch.limit,
+            ceiling: batch.ceiling,
+            job_id: batch.job_id.to_owned(),
+            chunk_bytes: batch.chunk_bytes,
         })
     }
 
-    fn admit(&mut self, group: Vec<RuntimeMutation>) -> Result<bool> {
-        let size = serde_json::to_vec(&group).map_err(contract)?.len() as u64;
-        // One file always fits alone; its size is bounded by the policy.
+    fn size(group: &[RuntimeMutation]) -> Result<u64> {
+        Ok(serde_json::to_vec(group).map_err(contract)?.len() as u64)
+    }
+
+    /// Adds one file's mutations, or reports that this commit has no room and
+    /// the file stays pending. One file always fits an empty commit: its facts
+    /// are bounded by the ceiling.
+    fn admit(&mut self, group: Vec<RuntimeMutation>, size: u64) -> Result<bool> {
         if self.bytes > 0 && self.bytes.saturating_add(size) > self.limit {
             return Ok(false);
         }
@@ -339,32 +345,31 @@ impl<'a> ParseCommit<'a> {
         Ok(group)
     }
 
-    pub(super) fn retire_file(&mut self, state: &FileState, at: u64) -> Result<()> {
+    /// Retires a file that is no longer parsed; false when there is no room.
+    pub(super) fn retire_file(&mut self, state: &FileState, at: u64) -> Result<bool> {
         let mut group = Self::retirements(state, at)?;
         group.push(retire(STATE, state_id(&state.path), at)?);
-        self.admit(group)?;
-        Ok(())
+        let size = Self::size(&group)?;
+        self.admit(group, size)
     }
 
-    #[allow(clippy::too_many_arguments)]
+    /// Records a file decided without facts; `None` when there is no room.
     pub(super) fn reject(
         &mut self,
         entry: &Entry,
         content_sha256: &str,
         language: &str,
         (status, reason): (Status, &str),
-        chunk_bytes: u64,
-        job_id: &str,
         previous: Option<&FileState>,
         at: u64,
-    ) -> Result<FileState> {
+    ) -> Result<Option<FileState>> {
         let state = FileState {
             path: entry.path.clone(),
             content_sha256: content_sha256.to_owned(),
             language: language.to_owned(),
             parser_revision: parser_revision(language).unwrap_or_default().to_owned(),
-            chunk_bytes,
-            job_id: job_id.to_owned(),
+            chunk_bytes: self.chunk_bytes,
+            job_id: self.job_id.clone(),
             status,
             reason: reason.to_owned(),
             facts_sha256: "0".repeat(64),
@@ -377,20 +382,21 @@ impl<'a> ParseCommit<'a> {
         let mut group =
             previous.map_or_else(|| Ok(Vec::new()), |old| Self::retirements(old, at))?;
         group.push(state_record(&state, at)?);
-        self.admit(group)?;
-        Ok(state)
+        let size = Self::size(&group)?;
+        Ok(self.admit(group, size)?.then_some(state))
     }
 
+    /// Records a file's facts; `None` when there is no room. Facts that could
+    /// never fit one commit are recorded as a rejection instead.
     pub(super) fn publish(
         &mut self,
         entry: &Entry,
         source: &[u8],
         facts: &SourceFacts,
-        chunk_bytes: u64,
-        job_id: &str,
         previous: Option<&FileState>,
         at: u64,
-    ) -> Result<Admission> {
+    ) -> Result<Option<FileState>> {
+        let chunk_bytes = self.chunk_bytes;
         let text = std::str::from_utf8(source).map_err(|_| invalid())?;
         let slice = |start: u64, end: u64| {
             text.get(start as usize..end as usize)
@@ -473,7 +479,7 @@ impl<'a> ParseCommit<'a> {
             language: facts.language.clone(),
             parser_revision: facts.parser_revision.clone(),
             chunk_bytes,
-            job_id: job_id.to_owned(),
+            job_id: self.job_id.clone(),
             status: Status::Parsed,
             reason: String::new(),
             facts_sha256: digest::sha256_hex(&serde_json::to_vec(facts).map_err(contract)?),
@@ -484,11 +490,18 @@ impl<'a> ParseCommit<'a> {
             error_nodes: facts.error_nodes,
         };
         group.push(state_record(&state, at)?);
-        Ok(if self.admit(group)? {
-            Admission::Admitted(state)
-        } else {
-            Admission::Full
-        })
+        let size = Self::size(&group)?;
+        if size > self.ceiling {
+            return self.reject(
+                entry,
+                &facts.content_sha256,
+                &facts.language,
+                (Status::Rejected, "facts_too_large"),
+                previous,
+                at,
+            );
+        }
+        Ok(self.admit(group, size)?.then_some(state))
     }
 
     /// Commits the facts with the job transition: a lease renewal while files

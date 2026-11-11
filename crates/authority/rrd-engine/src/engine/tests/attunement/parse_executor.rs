@@ -2,7 +2,10 @@
 //! changed. The in-process parser stands in for the supervised worker here.
 
 use super::*;
-use rrd_contract::{ExecuteQuery, QueryBudget, QueryValue, SourceParseBinding, SourceParsePolicy};
+use rrd_contract::{
+    ChangeMutationSnapshot, ExecuteQuery, QueryBudget, QueryValue, ReadChangefeed,
+    SourceParseBinding, SourceParsePolicy, TransactionMutation,
+};
 
 fn policy(max_commit_bytes: u64) -> SourceParsePolicy {
     SourceParsePolicy {
@@ -53,7 +56,7 @@ fn rows(
             &session.token,
             &ExecuteQuery {
                 scope: format!("instance:{}", engine.instance_id()),
-                query: format!("{query}"),
+                query: query.to_owned(),
                 parameters: Default::default(),
                 budget: QueryBudget::default(),
             },
@@ -275,7 +278,6 @@ fn an_edit_reparses_only_the_edited_file_and_a_deletion_retires_its_facts() {
         std::fs::write(root.join("removed.rs"), "fn removed() {}\n").unwrap();
     });
     let done = run_job(&engine, &session, job, "first").pop().unwrap();
-    let at = done.updated_at_unix_ms + 10;
     let scope = ScopeId::new(format!("instance:{}", engine.instance_id())).unwrap();
     let before = engine.storage.runtime().read_stamp(&scope).unwrap();
 
@@ -285,46 +287,7 @@ fn an_edit_reparses_only_the_edited_file_and_a_deletion_retires_its_facts() {
     )
     .unwrap();
     std::fs::remove_file(installed.root.path().join("removed.rs")).unwrap();
-    let preview = engine
-        .preview_attunement_replan(
-            &session.session_id,
-            &session.token,
-            &installed.job,
-            done.revision,
-            at,
-            "parse-replan-preview",
-            "parse-replan-preview",
-        )
-        .unwrap();
-    let accepted = engine
-        .accept_attunement_replan(
-            &session.session_id,
-            &session.token,
-            &preview,
-            &preview.proposal_sha256,
-            &context("parse-replan-accept"),
-            at + 1,
-        )
-        .unwrap();
-    let successor = accepted.successor.job;
-    let successor = call(
-        &engine,
-        &session,
-        &AttunementCommand::Start {
-            job_id: successor.id.clone(),
-            plan_sha256: successor.plan_sha256.clone(),
-            expected_revision: successor.revision,
-            lease_ms: 30_000,
-        },
-        "parse-successor-start",
-        successor.updated_at_unix_ms + 1,
-    )
-    .unwrap()
-    .status
-    .job;
-    let done = run_job(&engine, &session, successor, "second")
-        .pop()
-        .unwrap();
+    let done = replan_and_run(&engine, &session, &done, "second");
     assert_eq!(done.state, State::Succeeded, "{:?}", done.failure);
     let at = done.updated_at_unix_ms + 10;
 
@@ -346,23 +309,171 @@ fn an_edit_reparses_only_the_edited_file_and_a_deletion_retires_its_facts() {
     );
 
     // The unchanged file's state was not rewritten by the second job.
-    let after = engine.storage.runtime().read_stamp(&scope).unwrap();
     let changes = engine
-        .storage
-        .runtime()
-        .read_changes(&after, before.commit_cursor, 4_096)
+        .read_changefeed(
+            &session.session_id,
+            &session.token,
+            &ReadChangefeed {
+                scope: scope.as_str().to_owned(),
+                after_cursor: before.commit_cursor,
+                limit: rrd_contract::MAX_CHANGEFEED_PAGE,
+            },
+            at,
+            "request-parse-changes",
+            "operation-parse-changes",
+        )
         .unwrap();
+    assert!(!changes.has_more);
     let rewritten: Vec<_> = changes
         .changes
         .iter()
         .filter_map(|change| match &change.mutation {
-            RuntimeMutation::Record { record }
-                if record.reference.kind.as_str() == "source-parse" =>
-            {
-                record.properties.get("path").cloned()
-            }
+            ChangeMutationSnapshot::Data {
+                mutation:
+                    TransactionMutation::PutRecord {
+                        reference,
+                        properties,
+                        ..
+                    },
+            } if reference.kind.as_str() == "source-parse" => properties.get("path").cloned(),
             _ => None,
         })
         .collect();
-    assert_eq!(rewritten, [RuntimeValue::String("edited.rs".into())]);
+    assert_eq!(rewritten, [QueryValue::String("edited.rs".into())]);
+}
+
+fn replan_and_run(
+    engine: &RrdEngine,
+    session: &SessionLease,
+    done: &AttunementJob,
+    label: &str,
+) -> AttunementJob {
+    let at = done.updated_at_unix_ms + 10;
+    let preview = engine
+        .preview_attunement_replan(
+            &session.session_id,
+            &session.token,
+            &done.id,
+            done.revision,
+            at,
+            &format!("{label}-preview"),
+            &format!("{label}-preview"),
+        )
+        .unwrap();
+    let accepted = engine
+        .accept_attunement_replan(
+            &session.session_id,
+            &session.token,
+            &preview,
+            &preview.proposal_sha256,
+            &context(&format!("{label}-accept")),
+            at + 1,
+        )
+        .unwrap();
+    let successor = accepted.successor.job;
+    let successor = call(
+        engine,
+        session,
+        &AttunementCommand::Start {
+            job_id: successor.id.clone(),
+            plan_sha256: successor.plan_sha256.clone(),
+            expected_revision: successor.revision,
+            lease_ms: 30_000,
+        },
+        &format!("{label}-start"),
+        successor.updated_at_unix_ms + 1,
+    )
+    .unwrap()
+    .status
+    .job;
+    run_job(engine, session, successor, label).pop().unwrap()
+}
+
+#[test]
+fn a_deletion_larger_than_one_commit_retires_across_steps() {
+    let (installed, engine, session, job) = started(32_768, |root| {
+        std::fs::write(
+            root.join("kept.rs"),
+            "fn kept() {}
+",
+        )
+        .unwrap();
+        for index in 0..12 {
+            let body = format!(
+                "fn function_{index}() {{}}
+"
+            )
+            .repeat(5);
+            std::fs::write(root.join(format!("file_{index:02}.rs")), body).unwrap();
+        }
+    });
+    let done = run_job(&engine, &session, job, "delete-first")
+        .pop()
+        .unwrap();
+    assert_eq!(done.state, State::Succeeded, "{:?}", done.failure);
+    for index in 0..12 {
+        std::fs::remove_file(installed.root.path().join(format!("file_{index:02}.rs"))).unwrap();
+    }
+    let done = replan_and_run(&engine, &session, &done, "delete-second");
+    assert_eq!(done.state, State::Succeeded, "{:?}", done.failure);
+    let at = done.updated_at_unix_ms + 10;
+    let names: Vec<_> = rows(
+        &engine,
+        &session,
+        &format!("FROM record:source-symbol AT VALID {at} KNOWN HEAD PROJECT name"),
+        at,
+    )
+    .iter()
+    .map(|row| text(row, "name"))
+    .collect();
+    assert_eq!(
+        names,
+        ["kept"],
+        "Parse finished before every stale fact was retired"
+    );
+}
+
+#[test]
+fn a_file_whose_facts_exceed_one_commit_is_rejected_not_retried() {
+    let (_installed, engine, session, job) = started(16_384, |root| {
+        std::fs::write(
+            root.join("small.rs"),
+            "fn small() {}
+",
+        )
+        .unwrap();
+        let body: String = (0..40)
+            .map(|index| {
+                format!(
+                    "fn function_{index}() {{}}
+"
+                )
+            })
+            .collect();
+        std::fs::write(root.join("big.rs"), body).unwrap();
+    });
+    let done = run_job(&engine, &session, job, "too-big").pop().unwrap();
+    assert_eq!(done.state, State::Succeeded, "{:?}", done.failure);
+    let at = done.updated_at_unix_ms + 10;
+    let mut states: Vec<_> = rows(
+        &engine,
+        &session,
+        &format!("FROM record:source-parse AT VALID {at} KNOWN HEAD PROJECT path, status, reason"),
+        at,
+    )
+    .iter()
+    .map(|row| (text(row, "path"), text(row, "status"), text(row, "reason")))
+    .collect();
+    states.sort();
+    assert_eq!(
+        states,
+        [
+            (
+                "big.rs".to_owned(),
+                "rejected".to_owned(),
+                "facts_too_large".to_owned()
+            ),
+            ("small.rs".to_owned(), "parsed".to_owned(), String::new()),
+        ]
+    );
 }
