@@ -60,11 +60,24 @@ The Qdrant row ran while an RRFlow TurboQuant run overlapped it. It shows the po
 
 Both rows support one reading. A filtered RRFlow search now succeeds at recall 1.0, where filtered TurboQuant was refused in November. The cheapest RRFlow request, the version read, costs 8.15 ms at eight clients against Qdrant's 0.41 ms, so a fixed per-request cost dominates. That is the first optimization lead.
 
+RRFlow's other two arms then ran alone on `f04dbb97`, native in WSL. The host sampler saw the GPU in use by other work throughout, at peaks of 29% and 53%, and the P3 package's engine tests were compiling on the same machine. Both arms are `partial`, for the reasons shown:
+
+| RRFlow arm | p50, 1 client | Searches/s, 1 / 8 clients | Filtered | November, GB10 |
+|---|---|---|---|---|
+| TurboQuant, rerank-40 (recall 0.991) | 69.6 ms | 14.0 / 78.4 | refused: `no vector access path satisfies the request contract` | 67.3 ms; filtered refused |
+| Exact scan (recall 1.0) | 1,136 ms | 0.9 / 2.3, truncated at the 300 s case limit | succeeds | 1,411 ms |
+
+TurboQuant has not moved since November. HNSW is now RRFlow's fastest arm, about ten times faster. Every arm's cheapest request costs 6.8 to 8.6 ms at eight clients.
+
 **Surfaced failures and corrections:**
-- Running RRFlow's arms in WSL while Qdrant ran in the pod made the two overlap. The TurboQuant run was stopped and both are being repeated in sequence.
+
+- A throwaway orchestrator meant to rerun Qdrant and SurrealDB in the pod passed a POSIX path to the Windows `rrflow-lab.exe`. The launch arguments came back empty and `docker run` refused, so neither ran. It was not lab code. The runner in the next package replaces it.
+- Running RRFlow's arms in WSL while Qdrant ran in the pod made the two overlap. The TurboQuant run was stopped and rerun alone. A clean Qdrant repeat moves to the runner.
 - `pkill -f` matched its own command line and ended that WSL session; nothing else was affected.
 
-**Checks not run:** the whole `rrflow-eval` suite, held until the measurement sequence finished so a compile would not load the host. Linux and macOS CI. A pod run of `run_system.sh` itself, which needs the runner container of the next package. Milvus and Lance in a pod.
+**Acceptance after the measurements:** `cargo test --locked -p rrflow-eval` passed in full.
+
+**Checks not run:** Linux and macOS CI. A pod run of `run_system.sh` itself, which needs the runner container of the next package. Milvus and Lance in a pod.
 
 **Remaining known errors and owners:**
 - Milvus's health port is remapped, so Milvus cannot join a pod yet.
