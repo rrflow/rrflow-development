@@ -68,16 +68,21 @@ Each package is one PR of at most 400 lines, opened with its brief and a linked 
 
 J1 comes first because nothing else can be tuned without it. J3 and J4 come before J5, because a vector operator needs maintained paths. J8 depends on the owner's CLD format decision.
 
-## 5. Decisions the owner must make
+## 5. Owner decisions, 2026-11-11
 
-1. **Read-audit durability.** Every read now writes and fsyncs two audit records, even with security off. The choices:
-   - keep both syncs on every read;
-   - record reads in a batched, group-committed audit log;
-   - record reads durably only when security is enforced.
+1. **Read-audit durability is configurable and measured.** It is never fixed. The estate's sealed configuration chooses among:
+   - a durable sync per read;
+   - group-committed read audit;
+   - durable read audit only when security is enforced.
 
-   The answer sets J2.
-2. **The rrflowCLD format for J8.** Either define the custom format before the canonical move, or move under the current Parquet generation first and replace the format afterwards. Either way the format is behind one reader.
-3. **The default request.** The proposal is that a plain request lets the engine choose with recall 0.95 or exact, whichever its policy supports. Any other default is the owner's choice.
+   J1 must measure each mode's per-request cost, and J2 makes the setting and its measurement visible so it can be optimized. Security-on guarantees are tested in every mode that claims them.
+2. **rrflowCLD format: the senior-engineering path for growth, scale and AI reasoning.** J8 first defines a versioned generation-format interface: one reader, a manifest that names each generation's format, and the stamp and authentication contract. CLD becomes canonical under that interface with the current Parquet generation, so the canonical move, reclaim and merged read are proven independently of the encoding. The custom AI-tailored format then arrives as a new generation format behind the same reader. It is designed from measured access patterns, such as which history and knowledge paths reasoning actually reads cold. Old generations stay readable until they are rewritten. The format is never chosen ahead of the measurements.
+3. **The default request is tunable, never hardcoded, and tracked.** A plain request lets the engine choose its path against a configured quality default, initially recall 0.95 or exact where policy requires it. Every request records the default it used, its outcome and its cost, so the baseline is found by measurement and does not rest on assumed values. The plan's assumptions reach the user interface:
+   - Each plan's assumptions, such as the default, the chosen path, rejected alternatives and an estimate against the actual, are engine-reported data.
+   - Connectome renders them through triggered A2UI components.
+   - An advanced-view toggle makes every AI action transparent, with visual components generated from that machine data.
+
+   That UI work belongs to the Connectome packages that consume J1 and J5's reports.
 
 ## 5b. Evidence to keep
 
