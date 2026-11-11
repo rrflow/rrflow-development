@@ -845,6 +845,36 @@ impl RrdEngine {
                     _gate,
                 );
             }
+            // A Parse step without a parse policy has nothing to parse with; it
+            // still fails as unavailable below.
+            let parse_selected = plan
+                .phases
+                .get(before.checkpoints.len())
+                .is_some_and(|step| {
+                    step.phase == AttunementPhase::Parse && step.parse_policy.is_some()
+                });
+            if !cancelling && before.current_phase == Some(AttunementPhase::Parse) && parse_selected
+            {
+                require_worker(&before, &worker(session)?, *lease_generation, admitted_at)?;
+                return parse::execute(
+                    self,
+                    inventory::Work {
+                        session,
+                        token,
+                        context,
+                        now,
+                        started,
+                        principal,
+                        operation_sha256,
+                        before_bytes,
+                        before,
+                        plan,
+                        receipt_key,
+                        lease_generation: *lease_generation,
+                    },
+                    _gate,
+                );
+            }
         }
         // Other controls still observe the installed precondition. This cannot
         // authorize a project-owned file mutation.

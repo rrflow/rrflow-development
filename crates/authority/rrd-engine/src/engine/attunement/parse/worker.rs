@@ -32,7 +32,9 @@ pub(super) struct Worker {
 }
 
 impl Worker {
-    /// Drives a worker through its request and response pipes.
+    /// Drives a worker through its request and response pipes. Without a native
+    /// supervisor only engine tests drive one.
+    #[cfg_attr(not(any(windows, target_os = "linux")), allow(dead_code))]
     pub(super) fn over(
         child: Box<dyn Stop>,
         mut input: impl Write + Send + 'static,
@@ -143,7 +145,7 @@ mod native {
 }
 
 #[cfg(any(windows, target_os = "linux"))]
-#[allow(unused_imports)] // The Step uses this once it dispatches, in the next pull request.
+#[cfg_attr(test, allow(unused_imports))]
 pub(in crate::engine::attunement) use native::start;
 
 /// No native supervisor contains the worker on this platform, so Parse cannot run.
