@@ -54,6 +54,9 @@ and C-06g
 supporting history. None can change canonical dependency order or completion
 status.
 
+The [second-mind program](second-mind-program.md) records the owner's 2026-11-10
+direction against the code and orders the work that follows the engine.
+
 | Release | Durable warp | Checkout record | State |
 |---|---|---|---|
 | RRFlow 1.0 | [`rrflow://rrflow-instance/data/roadmap/rrflow-1.0`](rrflow://rrflow-instance/data/roadmap/rrflow-1.0) | [`rrflow-1.0.md`](rrflow-1.0.md) | [canonical completion checklist](rrflow-1.0.md#checklist-item-warps) and [active dependency spine](rrflow-1.0/executable-dependency-spine.md); maturity remains owned by the root README |
