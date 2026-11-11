@@ -26,8 +26,8 @@ host_path() {
 }
 
 # Read here, because a worktree's .git points outside the mount: a report names what was built.
-revision=$(git -C "$repository" rev-parse HEAD)
-changed=$(git -C "$repository" status --porcelain | wc -l | tr -d ' ')
+revision=$(git -C "$(host_path "$repository")" rev-parse HEAD)
+changed=$(git -C "$(host_path "$repository")" status --porcelain | wc -l | tr -d ' ')
 
 image=localhost/rrflow-lab-runner
 docker build --quiet --file "$(host_path "$repository/.devcontainer/Containerfile")" \
