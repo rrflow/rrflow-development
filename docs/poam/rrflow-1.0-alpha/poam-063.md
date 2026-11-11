@@ -15,9 +15,15 @@ repository at `D:/localdev/devlabs/dogfood-corpus`; RRFlow 9 of 13 by default
 and 10 of 13 at maximum limits against 11 and 12). Verified still present on
 main `ab32ec16` on 2026-11-11. A client must call `transaction-preview` for every batch to learn the digest it must then commit; previews took 28 s of a 36.5 s load of this repository.
 
+## Impact
+
+Three quarters of load time is spent asking the server for a digest the client could compute, and every SDK user pays it.
+
 ## Owning gates
 
 H-09 SDKs; D-02 plan P6.
+
+Roadmap owner: [Gate H](../../roadmap/rrflow-1.0/gate-h.md), [Gate D](../../roadmap/rrflow-1.0/gate-d.md).
 
 ## Closure evidence
 

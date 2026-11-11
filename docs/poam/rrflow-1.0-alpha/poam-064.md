@@ -15,9 +15,15 @@ repository at `D:/localdev/devlabs/dogfood-corpus`; RRFlow 9 of 13 by default
 and 10 of 13 at maximum limits against 11 and 12). Verified still present on
 main `ab32ec16` on 2026-11-11. 63 files, 22% of this repository's text, had to be split into chunk records by the client. The engine owns no text-chunking policy.
 
+## Impact
+
+Large sources split by the client lose their provenance as one record and make chunking a client policy instead of an engine one.
+
 ## Owning gates
 
 C-02 record limits; D-02 plan P3 (AST chunks) and P6.
+
+Roadmap owner: [Gate C](../../roadmap/rrflow-1.0/gate-c.md), [Gate D](../../roadmap/rrflow-1.0/gate-d.md).
 
 ## Closure evidence
 

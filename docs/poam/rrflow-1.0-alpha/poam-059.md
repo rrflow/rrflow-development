@@ -15,9 +15,15 @@ repository at `D:/localdev/devlabs/dogfood-corpus`; RRFlow 9 of 13 by default
 and 10 of 13 at maximum limits against 11 and 12). Verified still present on
 main `ab32ec16` on 2026-11-11. An existing-project install on this repository at `ae01ce32` planned one inventory item and nothing to parse, index or link for 2,451 files; only Connect and Inventory execute. Every answer in the comparison needed a hand-written loader over the public transaction operations.
 
+## Impact
+
+Every comparison answer needed a client-side loader, so the product cannot be measured or used on a real project through its own path; this is the root of POAM-060 to POAM-068 being reachable at all.
+
 ## Owning gates
 
 OBJ-07; D-02 to D-05 and the D-02 evidence-driven attunement plan (P1 to P5).
+
+Roadmap owner: [Gate D](../../roadmap/rrflow-1.0/gate-d.md).
 
 ## Closure evidence
 

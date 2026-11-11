@@ -15,9 +15,15 @@ repository at `D:/localdev/devlabs/dogfood-corpus`; RRFlow 9 of 13 by default
 and 10 of 13 at maximum limits against 11 and 12). Verified still present on
 main `ab32ec16` on 2026-11-11. About 900 KB of mutations reached the 16 MiB physical batch limit, so loader batches had to drop to 800 mutations by trial.
 
+## Impact
+
+Batch sizing by trial and error is not a product contract; a loader cannot plan its commits from the capabilities document.
+
 ## Owning gates
 
 C-02 transaction admission; D-02 plan P6.
+
+Roadmap owner: [Gate C](../../roadmap/rrflow-1.0/gate-c.md), [Gate D](../../roadmap/rrflow-1.0/gate-d.md).
 
 ## Closure evidence
 

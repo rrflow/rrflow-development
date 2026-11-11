@@ -15,9 +15,15 @@ repository at `D:/localdev/devlabs/dogfood-corpus`; RRFlow 9 of 13 by default
 and 10 of 13 at maximum limits against 11 and 12). Verified still present on
 main `ab32ec16` on 2026-11-11. The default `QueryBudget` (100,000 storage keys, 10,000 rows) refuses a scan of 15,300 items, so two of the thirteen dogfood questions cannot run on a default install and their index cannot be built either.
 
+## Impact
+
+Two of thirteen questions cannot run on a default install, and a user sees a refusal rather than an answer or a named truncation.
+
 ## Owning gates
 
 C-02 query budgets; D-02 plan P6.
+
+Roadmap owner: [Gate C](../../roadmap/rrflow-1.0/gate-c.md), [Gate D](../../roadmap/rrflow-1.0/gate-d.md).
 
 ## Closure evidence
 

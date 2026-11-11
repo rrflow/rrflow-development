@@ -15,9 +15,15 @@ repository at `D:/localdev/devlabs/dogfood-corpus`; RRFlow 9 of 13 by default
 and 10 of 13 at maximum limits against 11 and 12). Verified still present on
 main `ab32ec16` on 2026-11-11. The installed lifecycle reference documents `rrflow install status`; the command does not exist in the CLI.
 
+## Impact
+
+Documentation promises an operation the product does not have.
+
 ## Owning gates
 
 D-01 installed lifecycle; D-02 plan P6.
+
+Roadmap owner: [Gate D](../../roadmap/rrflow-1.0/gate-d.md).
 
 ## Closure evidence
 

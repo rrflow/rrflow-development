@@ -15,9 +15,15 @@ repository at `D:/localdev/devlabs/dogfood-corpus`; RRFlow 9 of 13 by default
 and 10 of 13 at maximum limits against 11 and 12). Verified still present on
 main `ab32ec16` on 2026-11-11. A result truncated "by its budget" leaves the client unable to tell which of the seven `QueryBudget` limits applied.
 
+## Impact
+
+A client cannot raise the right limit or report what was cut; truncation evidence is not actionable.
+
 ## Owning gates
 
 C-02 query evidence; D-02 plan P6.
+
+Roadmap owner: [Gate C](../../roadmap/rrflow-1.0/gate-c.md), [Gate D](../../roadmap/rrflow-1.0/gate-d.md).
 
 ## Closure evidence
 

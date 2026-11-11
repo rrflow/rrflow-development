@@ -15,9 +15,15 @@ repository at `D:/localdev/devlabs/dogfood-corpus`; RRFlow 9 of 13 by default
 and 10 of 13 at maximum limits against 11 and 12). Verified still present on
 main `ab32ec16` on 2026-11-11. `ensure_query_index` builds an index by running an all-fields query bound by the per-query output budget, whose protocol ceiling is `MAX_QUERY_OUTPUT_BYTES` (768 KiB). About 791 file rows fill 512 KiB, so every path lookup and text search over this repository is a full scan (2,376 ms for 20 path lookups against 46 ms and 30 ms in the comparison systems).
 
+## Impact
+
+Every lookup and text search over a real repository is a full scan, 50 to 250 times slower than the comparison systems.
+
 ## Owning gates
 
 E-02 native index reader; D-02 plan P6.
+
+Roadmap owner: [Gate E](../../roadmap/rrflow-1.0/gate-e.md), [Gate D](../../roadmap/rrflow-1.0/gate-d.md).
 
 ## Closure evidence
 

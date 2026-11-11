@@ -15,9 +15,15 @@ repository at `D:/localdev/devlabs/dogfood-corpus`; RRFlow 9 of 13 by default
 and 10 of 13 at maximum limits against 11 and 12). Verified still present on
 main `ab32ec16` on 2026-11-11. Grouping, sorting and sums finished in the client; a MATCH of several words means any of them, so the three-word text question took 3,845 ms with a client-side filter.
 
+## Impact
+
+Aggregation and multi-word text questions finish in the client, so timings and correctness for them are not the engine's.
+
 ## Owning gates
 
 F-03 mixed analytical operators and E-03 lexical access; D-02 plan P5 for MATCH, F-03 for aggregates.
+
+Roadmap owner: [Gate F](../../roadmap/rrflow-1.0/gate-f.md), [Gate E](../../roadmap/rrflow-1.0/gate-e.md), [Gate D](../../roadmap/rrflow-1.0/gate-d.md).
 
 ## Closure evidence
 

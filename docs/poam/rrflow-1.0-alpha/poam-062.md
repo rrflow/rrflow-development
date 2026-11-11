@@ -15,9 +15,15 @@ repository at `D:/localdev/devlabs/dogfood-corpus`; RRFlow 9 of 13 by default
 and 10 of 13 at maximum limits against 11 and 12). Verified still present on
 main `ab32ec16` on 2026-11-11. The schema accepts a user property named `kind`, but a query reads the record's built-in kind instead of the property. Reserved names must be refused at schema time.
 
+## Impact
+
+A schema that accepts a name the reader ignores returns wrong answers silently; the harness found it only through the independent oracle.
+
 ## Owning gates
 
 C-05 schema catalogue; D-02 plan P6.
+
+Roadmap owner: [Gate C](../../roadmap/rrflow-1.0/gate-c.md), [Gate D](../../roadmap/rrflow-1.0/gate-d.md).
 
 ## Closure evidence
 
