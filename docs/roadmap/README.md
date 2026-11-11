@@ -23,6 +23,7 @@ The canonical roadmap is accompanied by a subordinate link-only
 and completion; the active change record owns exact in-progress paths; generated
 views and journals provide discovery and evidence without changing status.
 The active [D-02 evidence-driven attunement and context-aligned organisation plan](d02-evidence-driven-attunement-engineering-plan.md)
+- [Second-mind program](second-mind-program.md): the owner's 2026-11-10 direction, checked against the code, with the order of work.
 orders the packages that replace the profile-declared attunement sequence with
 engine-composed, evidence-derived plans, add domain proposals and scoped reads,
 and accept each package by a real run on this repository; it changes no status.
