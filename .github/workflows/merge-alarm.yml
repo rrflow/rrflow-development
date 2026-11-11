@@ -1,8 +1,5 @@
 name: merge-alarm
 
-# Opens one `merge-blocked` issue, comments on the pull request and mentions its
-# author when a candidate fails, the merge queue removes a pull request, or main
-# goes red. The issue closes when the pull request merges or closes.
 # docs/operations/ci.md owns this behavior.
 
 on:

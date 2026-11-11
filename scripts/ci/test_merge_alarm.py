@@ -81,42 +81,33 @@ class MergeAlarmTests(unittest.TestCase):
         self.assertEqual(len(github.wrote("issue", "comment", "3")), 1)
         self.assertEqual(github.wrote("pr", "comment"), [])
 
-    def test_cancelled_and_successful_candidates_stay_quiet(self):
-        for conclusion in ("cancelled", "success", "skipped"):
-            with self.subTest(conclusion=conclusion):
-                github = FakeGitHub()
-                dispatch("workflow_run", run_event(conclusion=conclusion), github)
+    def test_runs_that_need_no_alarm_stay_quiet(self):
+        cases = [
+            ("cancelled", {}, run_event(conclusion="cancelled")),
+            ("success", {}, run_event(conclusion="success")),
+            ("skipped", {}, run_event(conclusion="skipped")),
+            ("superseded", {"headRefOid": "newer"}, run_event(event="pull_request", pull_requests=[{"number": 7}])),
+            ("draft", {"isDraft": True}, run_event()),
+            ("unattributable branch", {}, run_event(head_branch="something-else")),
+            ("push to another branch", {}, run_event(event="push", head_branch="agent/x")),
+        ]
+        for name, pull, event in cases:
+            with self.subTest(name):
+                github = FakeGitHub(pull=pull)
+                dispatch("workflow_run", event, github)
                 self.assertEqual(github.writes, [])
-
-    def test_a_failure_on_a_superseded_commit_stays_quiet(self):
-        github = FakeGitHub(pull={"headRefOid": "newer"})
-        dispatch("workflow_run", run_event(event="pull_request", pull_requests=[{"number": 7}]), github)
-        self.assertEqual(github.writes, [])
-
-    def test_a_draft_stays_quiet(self):
-        github = FakeGitHub(pull={"isDraft": True})
-        dispatch("workflow_run", run_event(), github)
-        self.assertEqual(github.writes, [])
 
     def test_a_pull_request_failure_without_a_link_is_found_by_branch(self):
         github = FakeGitHub()
         dispatch("workflow_run", run_event(event="pull_request", head_branch="agent/x"), github)
         self.assertEqual(len(github.wrote("issue", "create")), 1)
 
-    def test_an_unattributable_queue_branch_stays_quiet(self):
-        github = FakeGitHub()
-        dispatch("workflow_run", run_event(head_branch="something-else"), github)
-        self.assertEqual(github.writes, [])
-
-    def test_a_merge_leaving_the_queue_is_not_an_alarm(self):
-        github = FakeGitHub(pull={"state": "MERGED"})
-        dispatch("pull_request", dequeued("MERGE"), github)
-        self.assertEqual(github.writes, [])
-
-    def test_a_pull_request_back_in_the_queue_is_not_an_alarm(self):
-        github = FakeGitHub(pull={"isInMergeQueue": True})
-        dispatch("pull_request", dequeued(), github)
-        self.assertEqual(github.writes, [])
+    def test_a_merge_or_requeue_leaving_the_queue_is_not_an_alarm(self):
+        for pull in ({"state": "MERGED"}, {"isInMergeQueue": True}):
+            with self.subTest(pull=pull):
+                github = FakeGitHub(pull=pull)
+                dispatch("pull_request", dequeued("MERGE"), github)
+                self.assertEqual(github.writes, [])
 
     def test_a_removal_that_settles_open_sounds_after_waiting(self):
         github = FakeGitHub()
@@ -143,11 +134,6 @@ class MergeAlarmTests(unittest.TestCase):
         green = FakeGitHub(issues=[{"number": 9, "title": "Main is red: ci"}])
         dispatch("workflow_run", run_event(event="push", head_branch="main", conclusion="success"), green)
         self.assertEqual(len(green.wrote("issue", "close", "9")), 1)
-
-    def test_a_push_to_another_branch_stays_quiet(self):
-        github = FakeGitHub()
-        dispatch("workflow_run", run_event(event="push", head_branch="agent/x"), github)
-        self.assertEqual(github.writes, [])
 
     def test_a_bot_author_is_not_mentioned(self):
         github = FakeGitHub(pull={"author": {"login": "app/x", "is_bot": True}})

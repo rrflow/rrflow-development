@@ -1,11 +1,5 @@
 #!/usr/bin/env python3
-"""Make a pull request that cannot merge impossible to miss.
-
-Runs from .github/workflows/merge-alarm.yml. A failed candidate run, a removal
-from the merge queue, or a red main opens one `merge-blocked` issue, comments
-on the pull request and mentions its author. The issue stays open until the
-pull request merges or closes, so a later human or AI session finds it.
-"""
+"""Make a pull request that cannot merge impossible to miss; docs/operations/ci.md owns this."""
 
 from __future__ import annotations
 
