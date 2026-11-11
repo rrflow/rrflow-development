@@ -22,7 +22,7 @@
 
 **Acceptance.** On Windows: `python scripts/ci/test_merge_alarm.py` ran 9 tests and passed. `python scripts/ci/check_workflow.py` reported policy OK for 8 workflows.
 
-**First live run.** On Connectome #47 the removal event crashed at `gh pr view`, and the script discarded gh's error. `isInMergeQueue` is the only field it read that concerns the queue, and it was removed on that suspicion. gh's error is now reported.
+**First live run.** On Connectome #47 the removal event crashed: `gh pr view` has no `isInMergeQueue` field, and the script discarded the error. The tests use a fake `gh`, so they could not catch it. The field is gone, gh's error is reported, and the corrected calls ran against the real repository.
 
 **Not established.** GitHub only runs `workflow_run` from the default branch, so the workflow cannot run before it lands. The `reason` values GitHub sends with a removal have not been observed; the code reports the value it receives and does not branch on it.
 
