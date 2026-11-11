@@ -5,9 +5,8 @@
 //! selected source, and discard its output on any failed source recheck.
 //! Neither a successful frame nor a parsed proposal authorizes publication.
 
-use crate::parse::{
-    parse_source, parser_revision, ParseError, ParseLimits, ParseProposal, PARSE_PROPOSAL_VERSION,
-};
+use crate::facts::{source_facts, SourceFacts, SOURCE_FACTS_VERSION};
+use crate::parse::{parser_revision, ParseError, ParseLimits};
 use serde::{Deserialize, Serialize};
 use std::io::{self, Read, Write};
 
@@ -16,7 +15,7 @@ const MAX_HEADER_BYTES: u32 = 16 * 1024;
 /// JSON response envelope and fixed rejection codes add only bounded metadata
 /// around the parser's separately accounted output.
 const RESPONSE_OVERHEAD_BYTES: u64 = 1024;
-pub const WORKER_PROTOCOL_VERSION: u16 = 1;
+pub const WORKER_PROTOCOL_VERSION: u16 = 2;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -27,12 +26,13 @@ pub struct WorkerRequest {
     pub language: String,
     pub source_bytes: u64,
     pub limits: ParseLimits,
+    pub chunk_bytes: u64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "status", rename_all = "snake_case", deny_unknown_fields)]
 pub enum WorkerResponse {
-    Parsed { proposal: ParseProposal },
+    Parsed { facts: SourceFacts },
     Rejected { code: String },
 }
 
@@ -43,6 +43,10 @@ fn invalid(message: &'static str) -> io::Error {
 fn frame<R: Read>(reader: &mut R, limit: u64) -> io::Result<Vec<u8>> {
     let mut prefix = [0; 4];
     reader.read_exact(&mut prefix)?;
+    frame_body(reader, prefix, limit)
+}
+
+fn frame_body<R: Read>(reader: &mut R, prefix: [u8; 4], limit: u64) -> io::Result<Vec<u8>> {
     let length = u64::from(u32::from_be_bytes(prefix));
     if length == 0 || length > limit {
         return Err(invalid("invalid worker frame length"));
@@ -77,6 +81,7 @@ fn validate_request(request: &WorkerRequest) -> io::Result<()> {
         || request.limits.depth == 0
         || request.limits.output_bytes == 0
         || request.limits.elapsed_micros == 0
+        || request.chunk_bytes == 0
         || request.source_bytes > request.limits.input_bytes
         || request.source_bytes > u64::from(u32::MAX)
     {
@@ -134,25 +139,36 @@ pub fn read_response<R: Read>(
 pub fn validate_response(request: &WorkerRequest, response: &WorkerResponse) -> io::Result<()> {
     validate_request(request)?;
     match response {
-        WorkerResponse::Parsed { proposal } => {
-            if proposal.format_version != PARSE_PROPOSAL_VERSION
-                || proposal.source_id != request.source_id
-                || proposal.content_sha256 != request.content_sha256
-                || proposal.language != request.language
-                || parser_revision(&request.language) != Some(proposal.parser_revision.as_str())
-                || proposal.nodes.len() as u64 > request.limits.nodes
-                || proposal.nodes.iter().any(|node| {
-                    node.kind.is_empty()
-                        || node.start_byte > node.end_byte
-                        || node.end_byte > request.source_bytes
+        WorkerResponse::Parsed { facts } => {
+            let inside = |start: u64, end: u64| start <= end && end <= request.source_bytes;
+            if facts.format_version != SOURCE_FACTS_VERSION
+                || facts.source_id != request.source_id
+                || facts.content_sha256 != request.content_sha256
+                || facts.language != request.language
+                || parser_revision(&request.language) != Some(facts.parser_revision.as_str())
+                || facts.nodes > request.limits.nodes
+                || facts.symbols.iter().any(|symbol| {
+                    symbol.kind.is_empty()
+                        || symbol.count == 0
+                        || symbol.name_start >= symbol.name_end
+                        || !inside(symbol.name_start, symbol.name_end)
+                        || !inside(symbol.start_byte, symbol.end_byte)
+                })
+                || facts
+                    .spans
+                    .iter()
+                    .any(|span| span.kind.is_empty() || !inside(span.start_byte, span.end_byte))
+                || facts.chunks.iter().any(|chunk| {
+                    chunk.start_byte >= chunk.end_byte
+                        || !inside(chunk.start_byte, chunk.end_byte)
+                        || chunk.end_byte - chunk.start_byte > request.chunk_bytes
                 })
             {
                 return Err(invalid("parser response does not match request"));
             }
-            let bytes =
-                serde_json::to_vec(proposal).map_err(|_| invalid("invalid parser proposal"))?;
+            let bytes = serde_json::to_vec(facts).map_err(|_| invalid("invalid parser facts"))?;
             if bytes.len() as u64 > request.limits.output_bytes {
-                return Err(invalid("parser proposal exceeds output limit"));
+                return Err(invalid("parser facts exceed output limit"));
             }
             Ok(())
         }
@@ -175,42 +191,54 @@ pub fn validate_response(request: &WorkerRequest, response: &WorkerResponse) -> 
     }
 }
 
-/// Handle one framed request on supplied pipes. The child opens no source path
-/// and writes no durable state. Invalid or truncated framing returns an error
-/// without a response; parse refusals return only a fixed code.
+/// Handle framed requests on supplied pipes until the parent closes them at a
+/// frame boundary. The child opens no source path and writes no durable state.
+/// Invalid or truncated framing returns an error without a response; parse
+/// refusals return only a fixed code. One worker serves a whole batch because
+/// starting the primary binary per file costs more than parsing most files.
 pub fn run_worker<R: Read, W: Write>(reader: &mut R, writer: &mut W) -> io::Result<()> {
-    let header = frame(reader, u64::from(MAX_HEADER_BYTES))?;
-    let request: WorkerRequest =
-        serde_json::from_slice(&header).map_err(|_| invalid("invalid worker header"))?;
-    validate_request(&request)?;
-    let size = usize::try_from(request.source_bytes).map_err(|_| invalid("source too large"))?;
-    let mut source = vec![0; size];
-    reader.read_exact(&mut source)?;
-    let response = match parse_source(
-        &request.source_id,
-        &request.content_sha256,
-        &request.language,
-        &source,
-        &request.limits,
-        || false,
-    ) {
-        Ok(proposal) => WorkerResponse::Parsed { proposal },
-        Err(error) => WorkerResponse::Rejected {
-            code: error_code(error).into(),
-        },
-    };
-    let bytes =
-        serde_json::to_vec(&response).map_err(|_| invalid("cannot encode worker response"))?;
-    let limit = request
-        .limits
-        .output_bytes
-        .checked_add(RESPONSE_OVERHEAD_BYTES)
-        .ok_or_else(|| invalid("worker response limit overflow"))?;
-    if bytes.len() as u64 > limit {
-        return Err(invalid("worker response exceeds limit"));
+    loop {
+        let mut prefix = [0; 4];
+        match reader.read_exact(&mut prefix) {
+            Ok(()) => {}
+            Err(error) if error.kind() == io::ErrorKind::UnexpectedEof => return Ok(()),
+            Err(error) => return Err(error),
+        }
+        let header = frame_body(reader, prefix, u64::from(MAX_HEADER_BYTES))?;
+        let request: WorkerRequest =
+            serde_json::from_slice(&header).map_err(|_| invalid("invalid worker header"))?;
+        validate_request(&request)?;
+        let size =
+            usize::try_from(request.source_bytes).map_err(|_| invalid("source too large"))?;
+        let mut source = vec![0; size];
+        reader.read_exact(&mut source)?;
+        let response = match source_facts(
+            &request.source_id,
+            &request.content_sha256,
+            &request.language,
+            &source,
+            &request.limits,
+            request.chunk_bytes,
+            || false,
+        ) {
+            Ok(facts) => WorkerResponse::Parsed { facts },
+            Err(error) => WorkerResponse::Rejected {
+                code: error_code(error).into(),
+            },
+        };
+        let bytes =
+            serde_json::to_vec(&response).map_err(|_| invalid("cannot encode worker response"))?;
+        let limit = request
+            .limits
+            .output_bytes
+            .checked_add(RESPONSE_OVERHEAD_BYTES)
+            .ok_or_else(|| invalid("worker response limit overflow"))?;
+        if bytes.len() as u64 > limit {
+            return Err(invalid("worker response exceeds limit"));
+        }
+        write_frame(writer, &bytes)?;
+        writer.flush()?;
     }
-    write_frame(writer, &bytes)?;
-    writer.flush()
 }
 
 fn error_code(error: ParseError) -> &'static str {

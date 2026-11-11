@@ -7,7 +7,7 @@ use std::io::Cursor;
 
 fn request(source: &[u8]) -> WorkerRequest {
     WorkerRequest {
-        format_version: 1,
+        format_version: 2,
         source_id: "project/source.rs".into(),
         content_sha256: sha256_hex(source),
         language: "rust".into(),
@@ -19,6 +19,7 @@ fn request(source: &[u8]) -> WorkerRequest {
             output_bytes: 65536,
             elapsed_micros: 5_000_000,
         },
+        chunk_bytes: 4096,
     }
 }
 
@@ -31,13 +32,13 @@ fn worker_binds_the_response_to_the_supplied_source() {
     let mut output = Vec::new();
     run_worker(&mut Cursor::new(input), &mut output).unwrap();
     let response = read_response(&mut Cursor::new(output), &request).unwrap();
-    let WorkerResponse::Parsed { proposal } = response else {
-        panic!("worker did not return a syntax proposal");
+    let WorkerResponse::Parsed { facts: proposal } = response else {
+        panic!("worker did not return source facts");
     };
     assert_eq!(proposal.source_id, request.source_id);
     assert_eq!(proposal.content_sha256, request.content_sha256);
-    assert!(proposal.nodes.iter().any(|node| {
-        &source[node.start_byte as usize..node.end_byte as usize] == b"unique_symbol"
+    assert!(proposal.symbols.iter().any(|node| {
+        &source[node.name_start as usize..node.name_end as usize] == b"unique_symbol"
     }));
 }
 
@@ -116,31 +117,31 @@ fn response_admission_rejects_forged_identity_revision_spans_and_limits() {
     validate_response(&request, &response).unwrap();
 
     let mut forged = response.clone();
-    let WorkerResponse::Parsed { proposal } = &mut forged else {
+    let WorkerResponse::Parsed { facts: proposal } = &mut forged else {
         panic!("expected proposal")
     };
     proposal.source_id = "different/source.rs".into();
     assert!(validate_response(&request, &forged).is_err());
 
     let mut forged = response.clone();
-    let WorkerResponse::Parsed { proposal } = &mut forged else {
+    let WorkerResponse::Parsed { facts: proposal } = &mut forged else {
         panic!("expected proposal")
     };
     proposal.content_sha256 = "0".repeat(64);
     assert!(validate_response(&request, &forged).is_err());
 
     let mut forged = response.clone();
-    let WorkerResponse::Parsed { proposal } = &mut forged else {
+    let WorkerResponse::Parsed { facts: proposal } = &mut forged else {
         panic!("expected proposal")
     };
     proposal.parser_revision = "wrong-parser".into();
     assert!(validate_response(&request, &forged).is_err());
 
     let mut forged = response.clone();
-    let WorkerResponse::Parsed { proposal } = &mut forged else {
+    let WorkerResponse::Parsed { facts: proposal } = &mut forged else {
         panic!("expected proposal")
     };
-    proposal.nodes[0].end_byte = source.len() as u64 + 1;
+    proposal.symbols[0].name_end = source.len() as u64 + 1;
     assert!(validate_response(&request, &forged).is_err());
 
     let mut limited = request.clone();
@@ -173,4 +174,24 @@ fn invalid_request_cannot_authorize_even_a_matching_forged_response() {
     request.limits.depth = 64;
     request.content_sha256 = "not-a-digest".into();
     assert!(write_request(&mut Vec::new(), &request, source).is_err());
+}
+
+#[test]
+fn one_worker_serves_a_batch_and_exits_cleanly_at_a_frame_boundary() {
+    let sources: [&[u8]; 2] = [b"fn first() {}", b"fn second() {}"];
+    let requests: Vec<_> = sources.iter().map(|source| request(source)).collect();
+    let mut input = Vec::new();
+    for (request, source) in requests.iter().zip(sources) {
+        write_request(&mut input, request, source).unwrap();
+    }
+    let mut output = Vec::new();
+    run_worker(&mut Cursor::new(input), &mut output).unwrap();
+    let mut responses = Cursor::new(output);
+    for request in &requests {
+        assert!(matches!(
+            read_response(&mut responses, request).unwrap(),
+            WorkerResponse::Parsed { .. }
+        ));
+    }
+    assert!(read_response(&mut responses, &requests[0]).is_err());
 }
