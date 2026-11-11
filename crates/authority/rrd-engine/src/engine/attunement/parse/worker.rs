@@ -32,7 +32,9 @@ pub(super) struct Worker {
 }
 
 impl Worker {
-    /// Drives a worker through its request and response pipes.
+    /// Drives a worker through its request and response pipes. Without a native
+    /// supervisor only engine tests drive one.
+    #[cfg_attr(not(any(windows, target_os = "linux")), allow(dead_code))]
     pub(super) fn over(
         child: Box<dyn Stop>,
         mut input: impl Write + Send + 'static,
