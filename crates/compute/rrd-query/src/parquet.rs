@@ -16,6 +16,23 @@ use parquet::{
 
 use crate::{rows_to_record_batch, Error, QueryFieldTypes, QueryRow, Result};
 
+/// Conservative admission estimate for one page, not an allocator-level
+/// guarantee. Configuration validation must use this same formula, so that a
+/// policy cannot admit a page its own budget would refuse.
+pub fn parquet_working_set_reservation(
+    input_bytes: usize,
+    cells: usize,
+    max_output_bytes: usize,
+    columns: usize,
+) -> Option<usize> {
+    input_bytes
+        .checked_mul(32)?
+        .checked_add(cells.checked_mul(64)?)?
+        .checked_add(max_output_bytes.checked_mul(4)?)?
+        .checked_add(columns.checked_mul(4096)?)?
+        .checked_add(65536)
+}
+
 /// The caller owns the public profile and supplies finite resource limits.
 #[derive(Debug, Clone, Copy)]
 pub struct ParquetExportLimits {
@@ -163,14 +180,9 @@ pub fn export_parquet_encoded(
     let input_bytes = input.bytes.len();
     drop(input);
     let columns = fields.len() + 1;
-    // Conservative admission estimate, not an allocator-level guarantee.
-    let reservation = input_bytes
-        .checked_mul(32)
-        .and_then(|n| n.checked_add(cells.checked_mul(64)?))
-        .and_then(|n| n.checked_add(limits.max_output_bytes.checked_mul(4)?))
-        .and_then(|n| n.checked_add(columns.checked_mul(4096)?))
-        .and_then(|n| n.checked_add(65536))
-        .ok_or_else(|| Error::Budget("Parquet memory reservation overflow".into()))?;
+    let reservation =
+        parquet_working_set_reservation(input_bytes, cells, limits.max_output_bytes, columns)
+            .ok_or_else(|| Error::Budget("Parquet memory reservation overflow".into()))?;
     if reservation > limits.max_memory_bytes {
         return Err(Error::Budget(
             "Parquet working-set reservation exceeds budget".into(),

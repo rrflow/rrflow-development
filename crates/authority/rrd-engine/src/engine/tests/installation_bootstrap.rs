@@ -429,3 +429,18 @@ fn linked_bootstrap_bytes_are_platform_stable_and_unknown_profiles_have_no_effec
         assert!(paths(project.path()).is_empty());
     }
 }
+
+/// The bundled installation turns rrflowCLD on with an input bound at least
+/// as large as the largest native transaction it allows.
+#[test]
+fn bundled_configuration_enables_rrflow_cld() {
+    let text = include_str!("../../../assets/install/default-estate-configuration-v3.toml");
+    let input: rrd_contract::EstateConfigurationInput = toml::from_str(text).unwrap();
+    let policy = input
+        .storage
+        .cold_history
+        .as_ref()
+        .expect("rrflowCLD is on in the bundled configuration");
+    policy.validate().unwrap();
+    assert!(policy.max_input_bytes >= input.storage.native_transaction_bytes);
+}

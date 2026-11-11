@@ -60,3 +60,18 @@ max_batch_rows = 256
 max_memory_bytes = 67108864
 max_spill_bytes = 268435456
 max_elapsed_ms = 30000
+
+# rrflowCLD, the cold tier. The input bound matches the largest native
+# transaction. It is measured after a change is embedded as an escaped string,
+# so a change close to that size can still exceed it and stop the tier there.
+[storage.cold_history]
+interval_ms = 1000
+max_changes = 512
+max_input_bytes = 67108864
+max_output_bytes = 67108864
+max_memory_bytes = 2684354560
+max_elapsed_ms = 30000
+row_group_rows = 64
+compression = { kind = "zstd", level = 3 }
+dictionary = true
+statistics = true

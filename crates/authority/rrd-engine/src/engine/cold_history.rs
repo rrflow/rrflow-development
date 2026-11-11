@@ -933,6 +933,31 @@ mod tests {
         }
     }
 
+    #[test]
+    fn policy_minimum_equals_the_encoder_reservation_for_a_full_page() {
+        let policy = ColdHistoryPolicy {
+            interval_ms: 1_000,
+            max_changes: 512,
+            max_input_bytes: 8 * 1024 * 1024,
+            max_output_bytes: 8 * 1024 * 1024,
+            max_memory_bytes: 4_294_967_296,
+            max_elapsed_ms: 30_000,
+            row_group_rows: 64,
+            compression: ColdHistoryCompression::Zstd { level: 3 },
+            dictionary: true,
+            statistics: true,
+        };
+        const COLUMNS: usize = 15;
+        let reservation = rrd_query::parquet_working_set_reservation(
+            policy.max_input_bytes as usize,
+            policy.max_changes as usize * COLUMNS,
+            policy.max_output_bytes as usize,
+            COLUMNS,
+        )
+        .unwrap();
+        assert_eq!(policy.minimum_working_memory_bytes(), reservation as u64);
+    }
+
     fn open(path: &Path) -> RrdEngine {
         RrdEngine::open(path, CanonicalId::new("cold").unwrap(), [7; 32]).unwrap()
     }

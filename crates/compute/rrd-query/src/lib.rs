@@ -54,8 +54,8 @@ pub use index::{
 };
 pub use live::{poll_live_query, LiveQueryBudget, LiveQueryDelta, LiveRowChange};
 pub use parquet::{
-    export_parquet, export_parquet_encoded, ParquetCompression, ParquetEncoding, ParquetExport,
-    ParquetExportLimits,
+    export_parquet, export_parquet_encoded, parquet_working_set_reservation, ParquetCompression,
+    ParquetEncoding, ParquetExport, ParquetExportLimits,
 };
 pub use pipeline::{StampedQueryExecution, StampedQueryPipeline};
 pub use plan::{
