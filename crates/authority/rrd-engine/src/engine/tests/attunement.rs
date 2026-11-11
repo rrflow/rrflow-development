@@ -19,6 +19,7 @@ mod discovery;
 mod inventory_delta;
 pub(super) use inventory_delta::first_inventory_for_worker_with_setup_at;
 mod observation_delivery;
+mod parse_step;
 mod startup_binding;
 
 pub(super) struct Installed {
