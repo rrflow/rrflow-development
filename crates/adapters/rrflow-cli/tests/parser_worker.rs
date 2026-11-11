@@ -7,13 +7,14 @@ use std::process::{Command, Stdio};
 
 fn input(source: &[u8], digest: &str) -> Vec<u8> {
     let header = serde_json::to_vec(&json!({
-        "format_version": 1,
+        "format_version": 2,
         "source_id": "project/source.rs",
         "content_sha256": digest,
         "language": "rust",
         "source_bytes": source.len(),
         "limits": {"input_bytes": 4096, "nodes": 512, "depth": 64,
-                   "output_bytes": 65536, "elapsed_micros": 5_000_000}
+                   "output_bytes": 65536, "elapsed_micros": 5_000_000},
+        "chunk_bytes": 4096
     }))
     .unwrap();
     let mut bytes = (header.len() as u32).to_be_bytes().to_vec();
@@ -48,14 +49,14 @@ fn primary_executable_parses_only_the_supplied_source() {
     assert!(output.stderr.is_empty());
     let response = response(&output.stdout);
     assert_eq!(response["status"], "parsed");
-    assert_eq!(response["proposal"]["content_sha256"], sha256_hex(source));
-    assert!(response["proposal"]["nodes"]
+    assert_eq!(response["facts"]["content_sha256"], sha256_hex(source));
+    assert!(response["facts"]["symbols"]
         .as_array()
         .unwrap()
         .iter()
         .any(|node| {
-            let start = node["start_byte"].as_u64().unwrap() as usize;
-            let end = node["end_byte"].as_u64().unwrap() as usize;
+            let start = node["name_start"].as_u64().unwrap() as usize;
+            let end = node["name_end"].as_u64().unwrap() as usize;
             source.get(start..end) == Some(b"actual_process_symbol")
         }));
 }
