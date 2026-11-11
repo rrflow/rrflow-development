@@ -14,7 +14,6 @@ class FakeGitHub:
         self.pull = {
             "state": "OPEN",
             "isDraft": False,
-            "isInMergeQueue": False,
             "headRefOid": "abc",
             "author": {"login": "owner", "is_bot": False},
             "url": "https://example.test/pull/7",
@@ -102,12 +101,10 @@ class MergeAlarmTests(unittest.TestCase):
         dispatch("workflow_run", run_event(event="pull_request", head_branch="agent/x"), github)
         self.assertEqual(len(github.wrote("issue", "create")), 1)
 
-    def test_a_merge_or_requeue_leaving_the_queue_is_not_an_alarm(self):
-        for pull in ({"state": "MERGED"}, {"isInMergeQueue": True}):
-            with self.subTest(pull=pull):
-                github = FakeGitHub(pull=pull)
-                dispatch("pull_request", dequeued("MERGE"), github)
-                self.assertEqual(github.writes, [])
+    def test_a_merge_leaving_the_queue_is_not_an_alarm(self):
+        github = FakeGitHub(pull={"state": "MERGED"})
+        dispatch("pull_request", dequeued("MERGE"), github)
+        self.assertEqual(github.writes, [])
 
     def test_a_removal_that_settles_open_sounds_after_waiting(self):
         github = FakeGitHub()

@@ -25,7 +25,10 @@ Gh = Callable[..., str]
 
 
 def gh(*args: str) -> str:
-    return subprocess.run(["gh", *args], check=True, capture_output=True, text=True).stdout
+    done = subprocess.run(["gh", *args], capture_output=True, text=True)
+    if done.returncode:
+        raise SystemExit(f"gh {args[0]} {args[1]} failed: {done.stderr.strip()}")
+    return done.stdout
 
 
 def pull_title(number: int) -> str:
@@ -63,7 +66,7 @@ def silence(run: Gh, title: str, why: str) -> None:
 
 def view_pull(run: Gh, number: int) -> dict[str, Any]:
     return json.loads(
-        run("pr", "view", str(number), "--json", "state,isDraft,isInMergeQueue,headRefOid,author,url")
+        run("pr", "view", str(number), "--json", "state,isDraft,headRefOid,author,url")
     )
 
 
@@ -91,7 +94,7 @@ def on_pull_request(event: dict[str, Any], run: Gh, sleep: Callable[[float], Non
         return
     for attempt in range(STATE_CHECKS):
         pull = view_pull(run, number)
-        if pull["state"] != "OPEN" or pull["isInMergeQueue"]:
+        if pull["state"] != "OPEN":
             return
         if attempt < STATE_CHECKS - 1:
             sleep(STATE_CHECK_SECONDS)

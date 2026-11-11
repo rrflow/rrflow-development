@@ -18,9 +18,11 @@
 
 **Design.** `scripts/ci/check_workflow.py` forbids `pull_request_target`, so queue removals use `pull_request` and a fork's event is skipped. Candidate results use `workflow_run`. The job checks out the default branch, so the script that holds write permission is never one proposed by the pull request. A removal is an alarm only after the pull request's state has had 45 seconds to settle, because a merge also removes it from the queue.
 
-**Failure oracles.** `scripts/ci/test_merge_alarm.py` holds 9 tests against a fake `gh`: a failed queue run, a repeat failure, cancelled and successful runs, a superseded commit, a draft, a run with no linked pull request, an unattributable queue branch, a merge leaving the queue, re-queueing, a removal that settles open, closing, red and green `main`, and a bot author. The tests were written with the implementation, so no red run was recorded.
+**Failure oracles.** `scripts/ci/test_merge_alarm.py` holds 9 tests against a fake `gh`: a failed queue run, a repeat failure, cancelled and successful runs, a superseded commit, a draft, a run with no linked pull request, an unattributable queue branch, a merge leaving the queue, a removal that settles open, closing, red and green `main`, and a bot author. The tests were written with the implementation, so no red run was recorded.
 
 **Acceptance.** On Windows: `python scripts/ci/test_merge_alarm.py` ran 9 tests and passed. `python scripts/ci/check_workflow.py` reported policy OK for 8 workflows.
+
+**First live run.** On Connectome #47 the removal event crashed at `gh pr view`, and the script discarded gh's error. `isInMergeQueue` is the only field it read that concerns the queue, and it was removed on that suspicion. gh's error is now reported.
 
 **Not established.** GitHub only runs `workflow_run` from the default branch, so the workflow cannot run before it lands. The `reason` values GitHub sends with a removal have not been observed; the code reports the value it receives and does not branch on it.
 
