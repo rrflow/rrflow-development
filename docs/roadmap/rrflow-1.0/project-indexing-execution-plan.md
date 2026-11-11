@@ -1,6 +1,7 @@
 # Installed project indexing: implementation and evidence plan
 
 **Status:** active supporting implementation proposal; no runtime or gate accepted
+**Refreshed:** the [D-02 evidence-driven attunement plan](../d02-evidence-driven-attunement-engineering-plan.md) of 2026-11-11 rebinds these packages to main `ab32ec16` after the drafts it reviewed were absorbed; where the two differ on order, the newer plan's acceptance ledger governs
 **Coordinate:** `rrflow://rrflow-instance/data/design/installed-project-indexing-plan`
 **Owner:** [Gate D project workflow](gate-d.md#project-workflow-build-packages); [alpha objective](../../objectives/rrflow-1.0-alpha.md#observable-engine-objective); [POAM-006](../../poam/rrflow-1.0-alpha/poam-006.md)
 **Reviewed:** public main `3a72a6b4adc43c842f67a59f4fc91d725eac7580`; parser draft [#241](https://github.com/rrflow/rrflow-development/pull/241) `ba11fdb35d5a080ab3e66361b89f942064d75d39`; interrupted-refresh regression [#252](https://github.com/rrflow/rrflow-development/pull/252) `28afd7a047100c7eb8cf36d5d27f268551384bc1`; inherited-directory draft [#247](https://github.com/rrflow/rrflow-development/pull/247) remains separate and incomplete.
