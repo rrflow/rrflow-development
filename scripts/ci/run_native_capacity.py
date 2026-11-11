@@ -240,6 +240,38 @@ def windows_volume(action, fixture, size):
         raise RuntimeError(f"owned NTFS {action} receipt malformed at column {error.colno}") from error
 
 
+DARWIN_TEMPLATE = "capacity-template.dmg"
+
+
+def darwin_template(fixture: Path, size: int) -> Path:
+    """The suite's pristine APFS image: created once, never attached by the lab, removed at the end."""
+    template = fixture / DARWIN_TEMPLATE
+    if template.exists():
+        require(template.is_file() and not template.is_symlink()
+                and template.resolve().parent == fixture.resolve(), "owned APFS template escaped fixture")
+        return template
+    for attempt in range(5):
+        try:
+            native_command("hdiutil", "create", "-verbose", "-size", f"{size}m", "-fs", "APFS", "-type", "UDIF",
+                "-volname", "RRFlowCapacity", str(template), timeout=120)
+            break
+        except NativeCommandFailure as error:
+            if not is_retryable_darwin_create_failure(error) or attempt == 4:
+                raise
+            # A busy create can leave a partial image behind, possibly
+            # still attached; the next attempt must start from no image,
+            # and only an ordinary file inside the fixture is ever removed.
+            if template.exists():
+                require(template.is_file() and not template.is_symlink()
+                        and template.resolve().parent == fixture.resolve(),
+                        "owned APFS image escaped fixture")
+                detach_owned_image(template)
+                if template.exists():
+                    template.unlink()
+            time.sleep(2 ** attempt)
+    return template
+
+
 @contextmanager
 def volume(fixture: Path, size: int):
     require(fixture.name.startswith("rrflow-capacity-") and fixture == fixture.resolve(strict=True),
@@ -272,25 +304,12 @@ def volume(fixture: Path, size: int):
             require(0 < inode_count <= 8192, "owned ext4 inode count exceeds bounded filler")
             identity = {"device": device, "image": str(image), "mount": info[0], "inodes": inode_count}
         elif sys.platform == "darwin":
-            for attempt in range(5):
-                try:
-                    native_command("hdiutil", "create", "-verbose", "-size", f"{size}m", "-fs", "APFS", "-type", "UDIF",
-                        "-volname", "RRFlowCapacity", str(image), timeout=120)
-                    break
-                except NativeCommandFailure as error:
-                    if not is_retryable_darwin_create_failure(error) or attempt == 4:
-                        raise
-                    # A busy create can leave a partial image behind, possibly
-                    # still attached; the next attempt must start from no image,
-                    # and only an ordinary file inside the fixture is ever removed.
-                    if image.exists():
-                        require(image.is_file() and not image.is_symlink()
-                                and image.resolve().parent == fixture.resolve(),
-                                "owned APFS image escaped fixture")
-                        detach_owned_image(image)
-                        if image.exists():
-                            image.unlink()
-                    time.sleep(2 ** attempt)
+            # hdiutil create attaches, formats and detaches a new image itself, and on
+            # macOS runners that internal cycle intermittently fails "Resource busy" with
+            # its helper still holding the output (POAM-074). It therefore runs once per
+            # suite, for a pristine template the lab never attaches, and each case starts
+            # from a fresh copy: a new, never-written filesystem without a per-case create.
+            shutil.copyfile(darwin_template(fixture, size), image)
             attach = plistlib.loads(native_command("hdiutil", "attach", "-nobrowse", "-mountpoint", str(root),
                                         "-plist", str(image), timeout=60).stdout.encode())
             attached = True
@@ -466,6 +485,11 @@ def main():
         # an empty, detached mount directory are removed after success.
         if complete:
             cleanup_detached_volume(fixture)
+            template = fixture / DARWIN_TEMPLATE
+            if template.exists():
+                require(template.is_file() and not template.is_symlink()
+                        and template.resolve().parent == fixture, "owned APFS template escaped fixture")
+                template.unlink()
             runner = fixture / "runner.json"
             require(runner.is_file() and not runner.is_symlink() and runner.resolve().parent == fixture,
                     "runner configuration escaped fixture")
