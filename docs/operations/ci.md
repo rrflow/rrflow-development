@@ -656,6 +656,7 @@ hook, and it declares no editor lifecycle command.
 |---|---|---|
 | `rust` | snapshot-pinned Ubuntu 24.04 build dependencies, rustup 1.29.1, Rust from `rust-toolchain.toml`, uv, and the `actions/python-versions` CPython build that `setup-python` installs as `python3` | engine work, policy scripts, focused tests; the VS Code default |
 | `full` | `rust` plus Node, pnpm, Go, Temurin, Maven, and the .NET SDK | TypeScript/SDK work and `scripts/ci/run_sdk_conformance.py` |
+| `lab` | `rust` plus the Docker CLI, copied from Docker's digest-pinned image | the comparison lab's runner, started by `eval/lab/pod.sh`; diagnostic evidence only |
 
 Every base image is digest pinned, every apt package resolves from one fixed
 Ubuntu snapshot, and every downloaded toolchain is verified with

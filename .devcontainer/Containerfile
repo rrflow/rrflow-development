@@ -3,6 +3,7 @@
 # Targets:
 #   rust  Rust engine work, repository policy scripts, and Python tooling.
 #   full  rust plus every SDK toolchain used by scripts/ci/run_sdk_conformance.py.
+#   lab   rust plus the Docker CLI: the comparison lab's runner (eval/lab/pod.sh).
 #
 # Every pin below must equal rust-toolchain.toml or
 # .github/workflows/ci-reusable.yml; scripts/ci/check_workflow.py enforces it.
@@ -167,3 +168,11 @@ RUN curl -fsSLo /tmp/dotnet.tar.gz \
  && rm /tmp/dotnet.tar.gz
 
 USER dev
+
+# The comparison lab's runner. eval/lab/pod.sh starts it as the pod with the host's Docker
+# socket, and it starts each compared system as a sibling container in that pod. The CLI is
+# copied from Docker's own image, pinned by digest like every base here.
+FROM rust AS lab
+
+COPY --from=docker.io/library/docker:29.9.3-cli@sha256:2357639ad1ea7d0194134bf3292622fd4e562483966ed674e5d7c945b5f3b28d \
+     /usr/local/bin/docker /usr/local/bin/docker
