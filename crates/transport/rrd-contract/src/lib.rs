@@ -125,7 +125,7 @@ pub use diagnostic::{
     DiagnosticVectorArtifactCatalogueSnapshot, DiagnosticVectorArtifactKind,
     DiagnosticVectorArtifactSnapshot, DiagnosticWriteAheadLogSnapshot, ReadDiagnosticSnapshot,
     ReadStorageDiagnostics, DIAGNOSTIC_SNAPSHOT_FORMAT_VERSION, MAX_DIAGNOSTIC_AUDIT_RECORDS,
-    MAX_DIAGNOSTIC_RUNTIME_SCANNED_CHANGES,
+    MAX_DIAGNOSTIC_GRAPH_RECORDS, MAX_DIAGNOSTIC_RUNTIME_SCANNED_CHANGES,
 };
 pub use endpoint_binding::{
     endpoint_profile_sha256, BindingKind, BindingLimits, CredentialReference, DeclaredFootprint,
@@ -288,7 +288,7 @@ use std::fmt;
 pub const PROTOCOL: &str = "rrd";
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const OPENAPI_DOCUMENT_SHA256: &str =
-    "dd820054e2efa41ec2142d6bcac10cfdf38e729324a7c42ab129c44014b45387";
+    "4bd01d8ba6fe748921d4ec21da277c83b7f9e1d61015274b8828023c6e86607d";
 pub const MAX_ID_BYTES: usize = 128;
 pub const MAX_MESSAGE_BYTES: usize = 4_096;
 pub const MAX_CAPABILITIES: usize = 512;
