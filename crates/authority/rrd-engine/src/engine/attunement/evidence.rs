@@ -11,8 +11,14 @@ use std::collections::{BTreeMap, BTreeSet};
 
 /// The capabilities this engine can execute. This is the one owner of "what
 /// can run"; a profile may offer more, a derived plan never selects more.
-pub(in crate::engine) const EXECUTABLE_PHASES: [AttunementPhase; 2] =
-    [AttunementPhase::Connect, AttunementPhase::Inventory];
+pub(in crate::engine) const EXECUTABLE_PHASES: &[AttunementPhase] = &[
+    AttunementPhase::Connect,
+    AttunementPhase::Inventory,
+    // Parse needs a supervised worker; a platform without one reports the
+    // capability as unavailable rather than running the parser unbounded.
+    #[cfg(any(windows, target_os = "linux"))]
+    AttunementPhase::Parse,
+];
 
 /// Evidence from the job's committed Inventory, or `None` when the job has no
 /// Inventory checkpoint yet (a successor then only rebinds the plan).

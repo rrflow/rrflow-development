@@ -12,9 +12,9 @@ use std::sync::mpsc::{self, RecvTimeoutError};
 use std::time::{Duration, Instant};
 
 #[cfg(target_os = "linux")]
-use crate::engine::attunement::linux_supervisor::spawn_worker;
+use super::super::linux_supervisor::spawn_worker;
 #[cfg(windows)]
-use crate::engine::attunement::windows_supervisor::spawn_worker;
+use super::super::windows_supervisor::spawn_worker;
 
 type Result<T> = std::result::Result<T, ServiceError>;
 

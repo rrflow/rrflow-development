@@ -8,9 +8,10 @@ use super::*;
 use crate::engine::transaction_admission::TransactionPermit;
 use rrd_attunement::inventory::{Entry, EntryKind, Proposal};
 use rrd_attunement::parse::{parser_revision, ParseLimits, SUPPORTED_LANGUAGES};
+use rrd_contract::SourceParsePolicy;
 use std::collections::BTreeMap;
 
-#[cfg(any(windows, target_os = "linux"))]
+#[cfg(all(not(test), any(windows, target_os = "linux")))]
 mod host;
 mod records;
 
@@ -134,10 +135,11 @@ fn candidates<'a>(proposal: &'a Proposal, policy: &SourceParsePolicy) -> Vec<Can
         .collect()
 }
 
-fn is_current(state: &FileState, candidate: &Candidate<'_>) -> bool {
-    state.content_sha256 == candidate.content_sha256
-        && state.parser_revision
-            == parser_revision(&candidate.language).unwrap_or_default()
+/// A lost worker is retried by a later job, never within the one it failed in.
+fn is_current(state: &FileState, candidate: &Candidate<'_>, job: &CanonicalId) -> bool {
+    (state.status != Status::Lost || state.job_id == job.as_str())
+        && state.content_sha256 == candidate.content_sha256
+        && state.parser_revision == parser_revision(&candidate.language).unwrap_or_default()
         && state.chunk_bytes == CHUNK_BYTES
 }
 
@@ -198,19 +200,16 @@ pub(super) fn execute(
         .filter(|file| {
             states
                 .get(&file.entry.path)
-                .is_none_or(|state| !is_current(state, file))
+                .is_none_or(|state| !is_current(state, file, &work.before.id))
         })
         .collect();
 
-    let commit_limit = policy
-        .max_commit_bytes
-        .min(
-            engine
-                .estate_configuration
-                .storage
-                .transaction_admission_bytes,
-        )
-        / COMMIT_SHARE;
+    let commit_limit = policy.max_commit_bytes.min(
+        engine
+            .estate_configuration
+            .storage
+            .transaction_admission_bytes,
+    ) / COMMIT_SHARE;
     let input_limit = commit_limit / INPUT_SHARE;
     let limits = ParseLimits {
         input_bytes: policy.max_file_bytes,
@@ -233,7 +232,16 @@ pub(super) fn execute(
     for file in &pending {
         if file.bytes > policy.max_file_bytes {
             let at = elapsed_time(work.now, work.started)?;
-            let state = parse.reject(file.entry, file.content_sha256, &file.language, "file_too_large", CHUNK_BYTES, states.get(&file.entry.path), at)?;
+            let state = parse.reject(
+                file.entry,
+                file.content_sha256,
+                &file.language,
+                (Status::Rejected, "file_too_large"),
+                CHUNK_BYTES,
+                work.before.id.as_str(),
+                states.get(&file.entry.path),
+                at,
+            )?;
             states.insert(state.path.clone(), state);
             continue;
         }
@@ -273,12 +281,33 @@ pub(super) fn execute(
         for ((file, source), outcome) in selected_files.iter().zip(&sources).zip(outcomes) {
             let at = elapsed_time(work.now, work.started)?;
             let previous = states.get(&file.entry.path);
-            let state = match outcome {
-                FileOutcome::Parsed(facts) => parse.publish(file.entry, source, &facts, CHUNK_BYTES, previous, at)?,
-                FileOutcome::Rejected(code) => parse.reject(file.entry, file.content_sha256, &file.language, &code, CHUNK_BYTES, previous, at)?,
-                FileOutcome::Lost(code) => parse.reject(file.entry, file.content_sha256, &file.language, &code, CHUNK_BYTES, previous, at)?,
+            let job = work.before.id.as_str();
+            let admission = match outcome {
+                FileOutcome::Parsed(facts) => {
+                    parse.publish(file.entry, source, &facts, CHUNK_BYTES, job, previous, at)?
+                }
+                FileOutcome::Rejected(code) => records::Admission::Admitted(parse.reject(
+                    file.entry,
+                    file.content_sha256,
+                    &file.language,
+                    (Status::Rejected, &code),
+                    CHUNK_BYTES,
+                    job,
+                    previous,
+                    at,
+                )?),
+                FileOutcome::Lost(code) => records::Admission::Admitted(parse.reject(
+                    file.entry,
+                    file.content_sha256,
+                    &file.language,
+                    (Status::Lost, &code),
+                    CHUNK_BYTES,
+                    job,
+                    previous,
+                    at,
+                )?),
             };
-            let Some(state) = state.admitted() else {
+            let Some(state) = admission.admitted() else {
                 break;
             };
             states.insert(state.path.clone(), state);
@@ -288,13 +317,7 @@ pub(super) fn execute(
     let finished = all.iter().all(|file| {
         states
             .get(&file.entry.path)
-            .is_some_and(|state| is_current(state, file))
+            .is_some_and(|state| is_current(state, file, &work.before.id))
     });
     parse.commit(&work, permit, states, finished, &check)
-}
-
-impl Status {
-    pub(super) fn parsed(&self) -> bool {
-        matches!(self, Status::Parsed)
-    }
 }

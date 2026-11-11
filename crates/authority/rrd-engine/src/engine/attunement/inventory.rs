@@ -8,7 +8,6 @@ mod reuse;
 
 /// Resolve only the committed Inventory immediately preceding a Parse step.
 /// The caller must authorize the session and fence the loaded job and lease.
-#[allow(dead_code)] // Consumed by the installed Parse executor after worker admission.
 pub(in crate::engine) fn load_parse_inventory(
     engine: &RrdEngine,
     job: &AttunementJob,

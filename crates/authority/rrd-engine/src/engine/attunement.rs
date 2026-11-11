@@ -27,6 +27,7 @@ mod evidence;
 mod inventory;
 #[cfg(target_os = "linux")]
 mod linux_supervisor;
+mod parse;
 #[cfg(windows)]
 mod windows_supervisor;
 #[allow(unused_imports)] // The installed Parse executor will consume this binding.
@@ -34,6 +35,16 @@ pub(in crate::engine) use inventory::load_parse_inventory;
 #[cfg(test)]
 pub(crate) use inventory::LegacySourceFileProjectionGuard;
 pub(super) use inventory::{load_accepted_source, source_head_key};
+
+#[cfg(any(windows, target_os = "linux"))]
+#[cfg_attr(test, allow(dead_code))]
+const WORKER_FLAG: &str = "--rrflow-internal-parse-worker-v1";
+
+/// Records the engine's own executable before any parser worker can start.
+pub(super) fn capture_primary_executable() {
+    #[cfg(windows)]
+    windows_supervisor::capture_primary_executable();
+}
 
 const MAX_CONTROL_BYTES: usize = 64 * 1024;
 const MAX_JOB_TRANSITIONS: u64 = 1024;
@@ -290,13 +301,14 @@ impl RrdEngine {
         job: &AttunementJob,
         old: &AttunementPlan,
     ) -> Result<AttunementReplanPreview> {
-        // Connect and Inventory record read-only source observations. A successor
-        // retains their history and binds fresh source. Other completed effects
-        // require explicit reconciliation before a successor can start.
+        // Connect and Inventory record read-only source observations, and Parse
+        // publishes facts keyed by source content that a successor reconciles
+        // file by file. A successor retains their history and binds fresh
+        // source. Other completed effects require explicit reconciliation.
         if job.checkpoints.iter().any(|checkpoint| {
             !matches!(
                 checkpoint.phase,
-                AttunementPhase::Connect | AttunementPhase::Inventory
+                AttunementPhase::Connect | AttunementPhase::Inventory | AttunementPhase::Parse
             )
         }) || !matches!(
             job.state,
@@ -814,6 +826,27 @@ impl RrdEngine {
             lease_generation, ..
         } = command
         {
+            if !cancelling && before.current_phase == Some(AttunementPhase::Parse) {
+                require_worker(&before, &worker(session)?, *lease_generation, admitted_at)?;
+                return parse::execute(
+                    self,
+                    inventory::Work {
+                        session,
+                        token,
+                        context,
+                        now,
+                        started,
+                        principal,
+                        operation_sha256,
+                        before_bytes,
+                        before,
+                        plan,
+                        receipt_key,
+                        lease_generation: *lease_generation,
+                    },
+                    _gate,
+                );
+            }
             if !cancelling && before.current_phase == Some(AttunementPhase::Inventory) {
                 require_worker(&before, &worker(session)?, *lease_generation, admitted_at)?;
                 return inventory::execute(

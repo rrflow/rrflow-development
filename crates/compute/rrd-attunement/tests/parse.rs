@@ -16,7 +16,10 @@ fn limits() -> ParseLimits {
 fn rust_symbol_ranges_are_exact_bytes_and_bound_to_source() {
     let source = "// π\nfn answer() -> u32 { 42 }\n".as_bytes();
     let digest = sha256_hex(source);
-    let result = source_facts("source-a", &digest, "rust", source, &limits(), 4096, || false).unwrap();
+    let result = source_facts("source-a", &digest, "rust", source, &limits(), 4096, || {
+        false
+    })
+    .unwrap();
     assert_eq!(result.format_version, 1);
     assert_eq!(result.source_id, "source-a");
     assert_eq!(result.content_sha256, digest);
@@ -192,17 +195,37 @@ fn changed_bytes_and_exhausted_limits_never_produce_a_proposal() {
 fn output_limit_counts_the_complete_serialized_proposal() {
     let source = b"fn answer() {}";
     let digest = sha256_hex(source);
-    let expected = source_facts("source-e", &digest, "rust", source, &limits(), 4096, || false).unwrap();
+    let expected = source_facts("source-e", &digest, "rust", source, &limits(), 4096, || {
+        false
+    })
+    .unwrap();
     let exact = serde_json::to_vec(&expected).unwrap().len() as u64;
     let mut constrained = limits();
     constrained.output_bytes = exact;
     assert_eq!(
-        source_facts("source-e", &digest, "rust", source, &constrained, 4096, || false).unwrap(),
+        source_facts(
+            "source-e",
+            &digest,
+            "rust",
+            source,
+            &constrained,
+            4096,
+            || false
+        )
+        .unwrap(),
         expected
     );
     constrained.output_bytes = exact - 1;
     assert!(matches!(
-        source_facts("source-e", &digest, "rust", source, &constrained, 4096, || false),
+        source_facts(
+            "source-e",
+            &digest,
+            "rust",
+            source,
+            &constrained,
+            4096,
+            || false
+        ),
         Err(ParseError::LimitExceeded)
     ));
 }

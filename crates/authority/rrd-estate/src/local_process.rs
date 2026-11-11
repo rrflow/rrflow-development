@@ -462,8 +462,10 @@ impl LocalProcessDriver {
             .stdout(Stdio::from(stdout))
             .stderr(Stdio::from(stderr));
         configure_platform_environment(&mut command, request)?;
-        let mut child = command
-            .spawn()
+        let launch = rrd_core::child_launch_lock();
+        let spawned = command.spawn();
+        drop(launch);
+        let mut child = spawned
             .map_err(|error| retryable(request, format!("cannot spawn instance: {error}")))?;
         let pid = child.id();
 
@@ -814,7 +816,10 @@ fn run_preparation(
         .stdout(Stdio::from(stdout))
         .stderr(Stdio::from(stderr));
     configure_platform_environment(&mut command, request)?;
-    let mut child = command.spawn().map_err(|error| {
+    let launch = rrd_core::child_launch_lock();
+    let spawned = command.spawn();
+    drop(launch);
+    let mut child = spawned.map_err(|error| {
         retryable(
             request,
             format!("cannot run deployment preparation: {error}"),

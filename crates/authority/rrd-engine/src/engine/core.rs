@@ -239,6 +239,7 @@ impl RrdEngine {
         token_key: [u8; 32],
         limits: crate::VectorResidencyLimits,
     ) -> Result<Self> {
+        super::attunement::capture_primary_executable();
         let root =
             AnchoredPath::from_path(root).map_err(|e| ServiceError::Storage(e.to_string()))?;
         let operation_parent = root.parent();

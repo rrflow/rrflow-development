@@ -96,3 +96,14 @@ pub use trace::{
     TraceId, TraceLink, TraceOperation, TraceOutcome, TracePhase, RUNTIME_TRACE_CONTRACT_VERSION,
     RUNTIME_TRACE_EVENT_TYPE,
 };
+
+static CHILD_LAUNCH: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+/// Held across every child-process launch in the engine. Windows pipes given to
+/// a child are briefly inheritable, and a sibling launch inheriting all handles
+/// in that window would receive them.
+pub fn child_launch_lock() -> std::sync::MutexGuard<'static, ()> {
+    CHILD_LAUNCH
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+}

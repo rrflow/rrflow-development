@@ -3,6 +3,7 @@
 
 use super::*;
 use rrd_attunement::facts::{SourceFacts, SymbolRole};
+use rrd_core::RuntimeRetirement;
 use rrd_store::{RuntimeReadBudget, RuntimeVersionedSource};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -15,7 +16,10 @@ const CHUNK: &str = "source-chunk";
 #[serde(rename_all = "snake_case")]
 pub(super) enum Status {
     Parsed,
+    /// The parser refused this content; only a change to the file can help.
     Rejected,
+    /// The worker died or timed out on this file; a later job tries again.
+    Lost,
 }
 
 /// What is known about one file. Serialized as a `source-parse` record.
@@ -26,6 +30,8 @@ pub(super) struct FileState {
     pub language: String,
     pub parser_revision: String,
     pub chunk_bytes: u64,
+    /// The job that produced this state.
+    pub job_id: String,
     pub status: Status,
     /// Why the parser refused or lost this file, when it did.
     pub reason: String,
@@ -56,11 +62,18 @@ fn digest16(value: &str) -> String {
     digest::sha256_hex(value.as_bytes())[..16].to_owned()
 }
 
-fn fact_id(path: &str, content_sha256: &str, revision: &str, chunk_bytes: u64, index: u64) -> String {
+fn fact_id(
+    path: &str,
+    content_sha256: &str,
+    revision: &str,
+    chunk_bytes: u64,
+    index: u64,
+) -> String {
     format!(
         "{}-{}-{}",
-        digest::sha256_hex(format!("{path}\0{content_sha256}\0{revision}\0{chunk_bytes}").as_bytes())
-            [..32]
+        digest::sha256_hex(
+            format!("{path}\0{content_sha256}\0{revision}\0{chunk_bytes}").as_bytes()
+        )[..32]
             .to_owned(),
         digest16(path),
         index
@@ -85,7 +98,12 @@ fn invalid() -> ServiceError {
     ServiceError::Storage("invalid parsed source record".into())
 }
 
-fn record(kind: &str, id: String, at: u64, properties: serde_json::Value) -> Result<RuntimeMutation> {
+fn record(
+    kind: &str,
+    id: String,
+    at: u64,
+    properties: serde_json::Value,
+) -> Result<RuntimeMutation> {
     let serde_json::Value::Object(map) = properties else {
         return Err(invalid());
     };
@@ -118,6 +136,7 @@ fn register(registry: &mut RuntimeSchemaRegistry) -> Result<bool> {
                 ("language", Text),
                 ("parser_revision", Text),
                 ("chunk_bytes", Unsigned),
+                ("job_id", Text),
                 ("status", Text),
                 ("reason", Text),
                 ("facts_sha256", Text),
@@ -222,30 +241,25 @@ pub(super) fn load_states(
     let mut states = BTreeMap::new();
     for (_, record) in latest.into_values() {
         let Some(record) = record else { continue };
-        let value = serde_json::to_value(&record.properties).map_err(contract)?;
-        let plain = plain_properties(value)?;
-        let state: FileState = serde_json::from_value(plain).map_err(contract)?;
+        let plain = record
+            .properties
+            .iter()
+            .map(|(key, value)| {
+                Ok((
+                    key.clone(),
+                    match value {
+                        RuntimeValue::String(text) => serde_json::json!(text),
+                        RuntimeValue::Unsigned(number) => serde_json::json!(number),
+                        _ => return Err(invalid()),
+                    },
+                ))
+            })
+            .collect::<Result<serde_json::Map<_, _>>>()?;
+        let state: FileState =
+            serde_json::from_value(serde_json::Value::Object(plain)).map_err(contract)?;
         states.insert(state.path.clone(), state);
     }
     Ok(states)
-}
-
-/// Runtime values serialize tagged; `FileState` reads the bare values.
-fn plain_properties(value: serde_json::Value) -> Result<serde_json::Value> {
-    let serde_json::Value::Object(map) = value else {
-        return Err(invalid());
-    };
-    Ok(serde_json::Value::Object(
-        map.into_iter()
-            .map(|(key, value)| {
-                let serde_json::Value::Object(tagged) = value else {
-                    return Err(invalid());
-                };
-                let inner = tagged.into_iter().next().ok_or_else(invalid)?.1;
-                Ok((key, inner))
-            })
-            .collect::<Result<_>>()?,
-    ))
 }
 
 /// One Step's mutations, bounded in JSON bytes.
@@ -267,9 +281,7 @@ impl<'a> ParseCommit<'a> {
     ) -> Result<Self> {
         let current = engine.storage.runtime().schema(scope)?;
         if current.as_ref().map(|schema| schema.revision) != read.schema_revision {
-            return Err(ServiceError::StorageConflict(
-                "Parse schema changed".into(),
-            ));
+            return Err(ServiceError::StorageConflict("Parse schema changed".into()));
         }
         let mut registry = current
             .clone()
@@ -295,7 +307,7 @@ impl<'a> ParseCommit<'a> {
     fn admit(&mut self, group: Vec<RuntimeMutation>) -> Result<bool> {
         let size = serde_json::to_vec(&group).map_err(contract)?.len() as u64;
         // One file always fits alone; its size is bounded by the policy.
-        if !self.mutations.is_empty() && self.bytes.saturating_add(size) > self.limit {
+        if self.bytes > 0 && self.bytes.saturating_add(size) > self.limit {
             return Ok(false);
         }
         self.bytes = self.bytes.saturating_add(size);
@@ -340,8 +352,9 @@ impl<'a> ParseCommit<'a> {
         entry: &Entry,
         content_sha256: &str,
         language: &str,
-        reason: &str,
+        (status, reason): (Status, &str),
         chunk_bytes: u64,
+        job_id: &str,
         previous: Option<&FileState>,
         at: u64,
     ) -> Result<FileState> {
@@ -351,7 +364,8 @@ impl<'a> ParseCommit<'a> {
             language: language.to_owned(),
             parser_revision: parser_revision(language).unwrap_or_default().to_owned(),
             chunk_bytes,
-            status: Status::Rejected,
+            job_id: job_id.to_owned(),
+            status,
             reason: reason.to_owned(),
             facts_sha256: "0".repeat(64),
             symbols: 0,
@@ -360,7 +374,8 @@ impl<'a> ParseCommit<'a> {
             nodes: 0,
             error_nodes: 0,
         };
-        let mut group = previous.map_or_else(|| Ok(Vec::new()), |old| Self::retirements(old, at))?;
+        let mut group =
+            previous.map_or_else(|| Ok(Vec::new()), |old| Self::retirements(old, at))?;
         group.push(state_record(&state, at)?);
         self.admit(group)?;
         Ok(state)
@@ -372,6 +387,7 @@ impl<'a> ParseCommit<'a> {
         source: &[u8],
         facts: &SourceFacts,
         chunk_bytes: u64,
+        job_id: &str,
         previous: Option<&FileState>,
         at: u64,
     ) -> Result<Admission> {
@@ -457,6 +473,7 @@ impl<'a> ParseCommit<'a> {
             language: facts.language.clone(),
             parser_revision: facts.parser_revision.clone(),
             chunk_bytes,
+            job_id: job_id.to_owned(),
             status: Status::Parsed,
             reason: String::new(),
             facts_sha256: digest::sha256_hex(&serde_json::to_vec(facts).map_err(contract)?),
@@ -575,16 +592,17 @@ impl<'a> ParseCommit<'a> {
                     operation_sha256: work.operation_sha256.clone(),
                     status: accepted.clone(),
                 };
-                let transition = |key: String, expected, value: Vec<u8>, action: &str| ControlTransition {
-                    key,
-                    expected,
-                    replacement: Some(value),
-                    at: done,
-                    actor: format!("session:{}", work.session.as_str()),
-                    action: action.into(),
-                    request_id: work.context.request_id.as_str().into(),
-                    operation_id: work.context.operation_id.as_str().into(),
-                };
+                let transition =
+                    |key: String, expected, value: Vec<u8>, action: &str| ControlTransition {
+                        key,
+                        expected,
+                        replacement: Some(value),
+                        at: done,
+                        actor: format!("session:{}", work.session.as_str()),
+                        action: action.into(),
+                        request_id: work.context.request_id.as_str().into(),
+                        operation_id: work.context.operation_id.as_str().into(),
+                    };
                 let transitions = vec![
                     transition(
                         attunement_job_key(&engine.instance, &before.id),

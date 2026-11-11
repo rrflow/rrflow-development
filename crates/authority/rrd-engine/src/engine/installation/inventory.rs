@@ -766,7 +766,6 @@ fn storage_error(error: impl std::fmt::Display) -> ServiceError {
 /// Reserved input remains charged after an attempted read, including failures.
 /// The sink must be disposable: on any error its partial bytes are unverified and
 /// the caller must discard them and terminate any worker receiving them.
-#[allow(dead_code)] // Used by the Parse executor once isolated execution is admitted.
 pub(in crate::engine) fn read_selected_source(
     root: &AnchoredPath,
     proposal: &rrd_attunement::inventory::Proposal,
