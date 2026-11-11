@@ -5,10 +5,12 @@
 
 use super::*;
 
-// The executor that calls these lands in the next pull request.
+// The Step dispatches to the executor in the next pull request.
 #[allow(dead_code)]
 mod publish;
 #[allow(dead_code)]
 mod records;
+#[allow(dead_code)]
+mod step;
 #[allow(dead_code)]
 mod worker;

@@ -143,7 +143,7 @@ mod native {
 }
 
 #[cfg(any(windows, target_os = "linux"))]
-#[allow(unused_imports)] // The executor starts workers in the next pull request.
+#[allow(unused_imports)] // The Step uses this once it dispatches, in the next pull request.
 pub(in crate::engine::attunement) use native::start;
 
 /// No native supervisor contains the worker on this platform, so Parse cannot run.
