@@ -2,15 +2,15 @@
 //! with a known answer. The design is frozen before any run, runs are paired across arms,
 //! and the plan the agent wrote is graded mechanically, because a tool that returned the right
 //! thing proves nothing if the agent did not use it. Results use the lab's ordinary report.
-use super::manifest::Availability;
 use super::provider::{AgentProvider, AgentReply, AgentRequest};
-use super::report::{
+use super::{canonical_json, require, sha256_hex, Result};
+use crate::storage::{Digest, Id};
+use rrflow_lab_core::report::{
     ArtifactReference, DimensionDefinition, LabEvidenceClass, LabReport, MetricDefinition,
     MetricDirection, Observation, ReportSystem, SystemStatus, TestIdentity, Verdict,
     VerdictOutcome, ViewDefinition, REPORT_SCHEMA_VERSION,
 };
-use super::{canonical_json, require, sha256_hex, Result};
-use crate::storage::{Digest, Id};
+use rrflow_lab_core::Availability;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};

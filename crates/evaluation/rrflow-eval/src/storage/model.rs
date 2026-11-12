@@ -9,65 +9,8 @@ pub const MAX_CASES: usize = 256;
 pub const MAX_ATTEMPTS: usize = 10_000;
 pub const MAX_DOCUMENT_BYTES: u64 = 8 * 1024 * 1024;
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema)]
-#[serde(try_from = "String", into = "String")]
-#[schemars(!try_from, !into)]
-pub struct Id(
-    #[schemars(length(min = 1, max = 96), regex(pattern = "^[a-z0-9][a-z0-9_.-]*$"))] String,
-);
-
-impl TryFrom<String> for Id {
-    type Error = String;
-    fn try_from(value: String) -> Result<Self> {
-        require(
-            !value.is_empty()
-                && value.len() <= 96
-                && value.bytes().enumerate().all(|(i, b)| {
-                    b.is_ascii_lowercase() || b.is_ascii_digit() || i > 0 && b"_.-".contains(&b)
-                }),
-            "invalid bounded identifier",
-        )?;
-        Ok(Self(value))
-    }
-}
-impl From<Id> for String {
-    fn from(value: Id) -> Self {
-        value.0
-    }
-}
-impl Id {
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
-#[serde(try_from = "String", into = "String")]
-#[schemars(!try_from, !into)]
-pub struct Digest(#[schemars(regex(pattern = "^[0-9a-f]{64}$"))] String);
-impl TryFrom<String> for Digest {
-    type Error = String;
-    fn try_from(value: String) -> Result<Self> {
-        require(
-            value.len() == 64
-                && value
-                    .bytes()
-                    .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b)),
-            "digest must be lowercase SHA-256",
-        )?;
-        Ok(Self(value))
-    }
-}
-impl From<Digest> for String {
-    fn from(value: Digest) -> Self {
-        value.0
-    }
-}
-impl Digest {
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-}
+/// The evaluation vocabulary's bounded identifier and digest, shared with every harness.
+pub use rrflow_lab_core::{Digest, Id};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(try_from = "u64", into = "u64")]
