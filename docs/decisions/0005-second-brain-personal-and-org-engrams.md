@@ -75,16 +75,26 @@ Accepted on 2026-11-11 by the owner, who chose option A with an added org engram
   - H-10 project links.
   - The preference and policy records and their resolver.
   - The explain view and its receipt.
-  - Personal and org engram installation, with account tiers in Connectome (H-06) and the hosted services.
+  - The personal engram as an installation profile of RRFlow itself, so installing RRFlow also provides the user's second brain. Org engram installation and account tiers follow in Connectome (H-06).
+  - The standardized preference schemas and templates that the AI addresses.
 - **Who consumes the resolver:** the effort presets of [Gate G](../roadmap/rrflow-1.0/gate-g.md#aggregate-reasoning-budget-acceptance) and D-06's governed configuration.
 - **The installed identity still carries no organization.** An org is an engram, not a field. The comment at `deployment.rs:21-22` therefore stays true.
 - **A preference cannot grant anything.** It cannot add network access, sharing, model installation or unlimited work. This keeps the [effort-inheritance rule](../reference/inference/lfg-swag.md#inheriting-effort-from-the-calling-ai).
 
-## Open questions for the owner
+## Owner answers, 2026-11-11
 
-- Do teams inside an org get their own preference level, or are they only role groups?
-- Where do personal and org engrams run? Possible places are the user's machine, the hosted development environment and rroflow.ai.
-- Should a user be able to set a personal override for one project, above that project's shared value?
+- **Where the personal engram runs.** In the owner's words: "The personal engram runs with RRFLOW, it is just a tailored instance of rrflow for global preferences to weave into the different projects activate".
+  - It is an ordinary RRFlow instance, installed and run with RRFlow itself and tailored for global preferences.
+  - Every project the user activates reads it through its link.
+  - It needs no separate service.
+- **Team levels and per-project overrides.** In the owner's words: "they will be standardized schemas and templates to be addressed by the AI".
+  - Neither one adds another fixed level to the resolver.
+  - Each is a standardized, versioned preference schema with templates, which the AI fills in and applies through the same resolver, explanation and policy ceilings.
+  - The schemas and templates are generated from one owner, consistent with `AGENTS.md`.
+
+## Open question
+
+- Where an org engram runs for a team or enterprise account. The owner's answer covers the personal engram only.
 
 ## Rejected alternatives
 
