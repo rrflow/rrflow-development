@@ -1069,6 +1069,74 @@ mod tests {
         assert_eq!(execution.hits[0].score, 1.0);
     }
 
+    /// Probe for the planner's cost model. A 4-bit code is one eighth of a
+    /// full-precision vector, so scanning codes and exactly reranking 32
+    /// candidates plus a 4-vector overlay is far less work than scoring all
+    /// 2,048 vectors. A request that allows approximation should therefore
+    /// be served by TurboQuant. Today the planner prices TurboQuant at its
+    /// candidate count, the same as an exact scan, then adds the overlay, so
+    /// exact wins on cost alone.
+    #[test]
+    fn allow_approximate_prefers_turboquant_when_scanning_codes_is_cheaper() {
+        const DIMENSIONS: usize = 64;
+        const CANONICAL: u64 = 2_048;
+        const OVERLAY: u64 = 4;
+        let scope = ScopeId::new("instance:turbo-cost").unwrap();
+        let values = (1..=CANONICAL)
+            .map(|cursor| {
+                let vector = (0..DIMENSIONS)
+                    .map(|dimension| {
+                        ((cursor as usize * 31 + dimension * 7) % 97) as f32 / 48.0 - 1.0
+                    })
+                    .collect();
+                candidate(&scope, cursor, &format!("d{cursor}"), vector)
+            })
+            .collect::<Vec<_>>();
+        let generation_cursor = CANONICAL - OVERLAY;
+        let mut runtime = VectorRuntime::new(values.clone()).unwrap();
+        let artifact = TurboQuantSegment::build(
+            TurboQuantSegmentConfig {
+                id: ProjectionId::new("vector-turbo-cost").unwrap(),
+                scope: scope.clone(),
+                field: "body".into(),
+                dimensions: DIMENSIONS,
+                metric: ScoreMetric::Dot,
+                bits: TurboQuantBits::Bits4,
+                seed: 77,
+                embedding_model: None,
+                filter_properties: BTreeSet::new(),
+                estimator: crate::TurboQuantEstimator::Mse,
+            },
+            1,
+            generation_cursor,
+            values
+                .into_iter()
+                .filter(|candidate| candidate.source_cursor <= generation_cursor),
+        )
+        .unwrap();
+        runtime
+            .restore_quantization_lifecycle_active(artifact)
+            .unwrap();
+        let mut search = request(
+            scope.clone(),
+            SearchMode::AllowApproximate { exact_rerank: 32 },
+        );
+        search.read = ReadStamp::new(scope, None, 0, CANONICAL, Some("11".repeat(32))).unwrap();
+        search.query = VectorQuery::Dense {
+            values: vec![0.25; DIMENSIONS],
+        };
+        search.top_k = 10;
+        let execution = runtime.search(&search, 32).unwrap();
+        assert_eq!(
+            execution.plan.selected.kind,
+            AccessPathKind::TurboQuant,
+            "selected {:?} at cost {}; rejected paths: {:?}",
+            execution.plan.selected.kind,
+            execution.plan.selected.estimated_cost,
+            execution.plan.rejected,
+        );
+    }
+
     #[test]
     fn generic_publication_rejects_turboquant() {
         let scope = ScopeId::new("instance:turbo-generic-denial").unwrap();
