@@ -122,7 +122,7 @@ J1's per-layer timing comes before any tuning, because nothing can be tuned that
 
 ## 6. Owner decisions
 
-1. **The Lab runs as its own RRFlow process, outside the engine** (recommended), driving the engine through public operations. The alternative is Lab operations inside the engine. This refines the 2026-11-03 direction that the engine does the work and Connectome is the UI: RRFlow still does the work, in a process the default distribution can leave out.
+1. **Decided 2026-11-12: the Lab runs as its own RRFlow process, outside the engine,** driving the engine through public operations, so the default distribution can leave it out. Asked to choose between this and Lab operations inside the engine, the owner chose "Yes, its own process", and confirmed the crates stay in `crates/evaluation/lab/`. This refines the 2026-11-03 direction that the engine does the work and Connectome is the UI: RRFlow still does the work, in a process of its own.
 2. **The reader and judge model for answer quality, and its spending limit.** This is open since 2026-11-03. Until it is chosen, T6 tunes retrieval metrics and latency only, and says so.
 
 ## 7. Not in this plan
