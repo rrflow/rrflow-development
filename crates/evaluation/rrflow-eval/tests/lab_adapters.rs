@@ -12,7 +12,7 @@ use rrflow_eval::lab::milvus::MilvusAdapter;
 use rrflow_eval::lab::qdrant::QdrantAdapter;
 use rrflow_eval::lab::surrealdb::SurrealAdapter;
 use rrflow_eval::storage::Id;
-use rrflow_lab_core::Availability;
+use rrflow_evaluation_core::Availability;
 use serde_json::{json, Value};
 use std::io::{Read, Write};
 use std::net::TcpListener;

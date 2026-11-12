@@ -2,8 +2,8 @@
 //! only by environment variable, so a manifest can be published with its results.
 use super::{require, Result};
 use crate::storage::{Digest, Id};
-use rrflow_lab_core::report::TestIdentity;
-use rrflow_lab_core::Availability;
+use rrflow_evaluation_core::report::TestIdentity;
+use rrflow_evaluation_core::Availability;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};

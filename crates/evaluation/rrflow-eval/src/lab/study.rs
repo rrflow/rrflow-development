@@ -9,7 +9,7 @@ use super::tasks::{
 };
 use super::{canonical_json, require, sha256_hex, Result};
 use crate::storage::{Digest, Id};
-use rrflow_lab_core::Availability;
+use rrflow_evaluation_core::Availability;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};

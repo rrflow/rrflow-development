@@ -10,7 +10,7 @@ pub const MAX_ATTEMPTS: usize = 10_000;
 pub const MAX_DOCUMENT_BYTES: u64 = 8 * 1024 * 1024;
 
 /// The evaluation vocabulary's bounded identifier and digest, shared with every harness.
-pub use rrflow_lab_core::{Digest, Id};
+pub use rrflow_evaluation_core::{Digest, Id};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(try_from = "u64", into = "u64")]

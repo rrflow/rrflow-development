@@ -14,8 +14,8 @@ use rrflow_eval::lab::settings::{
     LabSettings, PlannedTest, SystemState, SystemTuning, TURNED_OFF_REASON,
 };
 use rrflow_eval::storage::Id;
-use rrflow_lab_core::Availability;
-use rrflow_lab_core::Result;
+use rrflow_evaluation_core::Availability;
+use rrflow_evaluation_core::Result;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 

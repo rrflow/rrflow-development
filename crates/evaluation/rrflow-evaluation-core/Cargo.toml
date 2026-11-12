@@ -1,10 +1,10 @@
 [package]
-name = "rrflow-lab-core"
+name = "rrflow-evaluation-core"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 publish.workspace = true
-description = "shared vocabulary and report format for RRFlow's comparison and reasoning harnesses"
+description = "shared vocabulary and report format for everything that measures RRFlow: the lab and release qualification"
 
 [dependencies]
 schemars = "1.2"

@@ -14,7 +14,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 rrd-contract = { path = "../../transport/rrd-contract" }
 rrd-client = { path = "../../transport/rrd-client" }
-rrflow-lab-core = { path = "../lab/rrflow-lab-core" }
+rrflow-evaluation-core = { path = "../rrflow-evaluation-core" }
 schemars = "1.2"
 sha2 = "0.11"
 tokio = { version = "1", features = ["rt-multi-thread"] }

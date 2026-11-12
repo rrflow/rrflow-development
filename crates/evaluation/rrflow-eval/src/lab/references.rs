@@ -3,7 +3,7 @@
 //! exact words it was read from. Nothing is ranked unless every condition matches.
 use super::{require, Result};
 use crate::storage::Id;
-use rrflow_lab_core::report::{LabReport, SystemStatus};
+use rrflow_evaluation_core::report::{LabReport, SystemStatus};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;

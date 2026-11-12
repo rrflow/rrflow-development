@@ -75,8 +75,8 @@ fn workspace_packages_use_the_canonical_grouped_layout() {
         ),
         ("rrflow-eval", "crates/evaluation/rrflow-eval/Cargo.toml"),
         (
-            "rrflow-lab-core",
-            "crates/evaluation/lab/rrflow-lab-core/Cargo.toml",
+            "rrflow-evaluation-core",
+            "crates/evaluation/rrflow-evaluation-core/Cargo.toml",
         ),
     ]
     .into_iter()

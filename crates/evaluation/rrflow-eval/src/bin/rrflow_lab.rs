@@ -39,9 +39,9 @@ use rrflow_eval::lab::tasks::{
     TaskRun,
 };
 use rrflow_eval::storage::{schema, Digest, Id};
-use rrflow_lab_core::report::{ArtifactReference, LabReport, SystemStatus};
-use rrflow_lab_core::Availability;
-use rrflow_lab_core::{canonical_json, sha256_hex, Result};
+use rrflow_evaluation_core::report::{ArtifactReference, LabReport, SystemStatus};
+use rrflow_evaluation_core::Availability;
+use rrflow_evaluation_core::{canonical_json, sha256_hex, Result};
 use serde::de::DeserializeOwned;
 use std::collections::{BTreeMap, BTreeSet};
 use std::io::Write;

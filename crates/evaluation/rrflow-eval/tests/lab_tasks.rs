@@ -11,9 +11,9 @@ use rrflow_eval::lab::tasks::{
     TaskRun, TaskRunOutcome,
 };
 use rrflow_eval::storage::Id;
-use rrflow_lab_core::report::{SystemStatus, TestIdentity, VerdictOutcome};
-use rrflow_lab_core::Availability;
-use rrflow_lab_core::Result;
+use rrflow_evaluation_core::report::{SystemStatus, TestIdentity, VerdictOutcome};
+use rrflow_evaluation_core::Availability;
+use rrflow_evaluation_core::Result;
 use std::cell::RefCell;
 use std::path::{Path, PathBuf};
 

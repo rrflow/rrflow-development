@@ -6,13 +6,13 @@ use super::manifest::{CorpusSource, CorpusSpec, QualitySpec, WorkloadSpec};
 use super::manifest::{SearchSetting, SystemBinding, SystemKind, VectorComparisonManifest};
 use super::{canonical_json, require, sha256_hex, Result};
 use crate::storage::{Digest, Id};
-use rrflow_lab_core::report::TestIdentity;
-use rrflow_lab_core::report::{
+use rrflow_evaluation_core::report::TestIdentity;
+use rrflow_evaluation_core::report::{
     ArtifactReference, DimensionDefinition, LabEvidenceClass, LabReport, MetricDefinition,
     MetricDirection, Observation, ReportSystem, SystemStatus, Verdict, VerdictOutcome,
     ViewDefinition, REPORT_SCHEMA_VERSION,
 };
-use rrflow_lab_core::Availability;
+use rrflow_evaluation_core::Availability;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;

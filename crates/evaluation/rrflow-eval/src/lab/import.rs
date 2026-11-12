@@ -4,7 +4,7 @@
 use super::driver::now_unix_ms;
 use super::{require, sha256_hex, Result};
 use crate::storage::{Digest, Id};
-use rrflow_lab_core::report::{
+use rrflow_evaluation_core::report::{
     ArtifactReference, DimensionDefinition, LabEvidenceClass, LabReport, MetricDefinition,
     MetricDirection, Observation, ReportSystem, SystemStatus, TestIdentity, Verdict,
     VerdictOutcome, ViewDefinition, REPORT_SCHEMA_VERSION,

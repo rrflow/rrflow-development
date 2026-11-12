@@ -10,7 +10,7 @@ use rrflow_eval::lab::references::{
     ReferenceSource, SeekResult, TestConditions, ANSWERS_NOT_MEASURED,
 };
 use rrflow_eval::storage::Id;
-use rrflow_lab_core::report::{
+use rrflow_evaluation_core::report::{
     DimensionDefinition, LabEvidenceClass, LabReport, MetricDefinition, MetricDirection,
     Observation, ReportSystem, SystemStatus, TestIdentity,
 };
