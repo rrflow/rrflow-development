@@ -1,4 +1,4 @@
-//! Run and combine comparison-lab tests. See eval/lab/README.md.
+//! Run and combine comparison-lab tests. See eval/workbench/lab/README.md.
 use rrflow_eval::lab::adapter::connect;
 use rrflow_eval::lab::catalog::{
     launch_arguments, launch_info, resolve_test, vectordbbench_arguments, Pod, SystemDefinition,
@@ -885,10 +885,10 @@ fn find_lab(arguments: &Arguments) -> Result<PathBuf> {
     }
     let here = std::env::current_dir().map_err(|error| error.to_string())?;
     here.ancestors()
-        .map(|folder| folder.join("eval").join("lab"))
+        .map(|folder| folder.join("eval").join("workbench").join("lab"))
         .find(|lab| lab.join("sources.json").is_file())
         .ok_or_else(|| {
-            "no eval/lab was found from this folder. Run this inside a checkout, or name the \
+            "no eval/workbench/lab was found from this folder. Run this inside a checkout, or name the \
              folder with --lab DIR"
                 .to_owned()
         })
@@ -1281,7 +1281,7 @@ fn show_plan(arguments: &Arguments) -> Result<ExitCode> {
     }
     println!();
     println!("Nothing has started. To run a test on a Linux host with Docker:");
-    println!("  eval/lab/run_all.sh TEST_ID RUN_FOLDER");
+    println!("  eval/workbench/lab/run_all.sh TEST_ID RUN_FOLDER");
     Ok(ExitCode::SUCCESS)
 }
 

@@ -12,7 +12,7 @@ pub const MAX_CHUNK_BYTES: usize = 2_048;
 pub const MAX_FILE_BYTES: usize = 1024 * 1024;
 const VALID_FROM: u64 = 100;
 /// Lock files hold no reasoning, and a test's own answers must never be searchable.
-const LEFT_OUT: [&str; 3] = [".lock", "eval/lab/tasks/", "eval/results/"];
+const LEFT_OUT: [&str; 3] = [".lock", "eval/workbench/lab/tasks/", "eval/results/"];
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TextChunk {

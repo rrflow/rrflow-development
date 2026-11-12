@@ -49,12 +49,12 @@
       "instance_env": "RRFLOW_LAB_INSTANCE"
     },
     "memory_probe": [
-      "eval/lab/probe.sh",
+      "eval/workbench/lab/probe.sh",
       "memory",
       "rrflow"
     ],
     "disk_probe": [
-      "eval/lab/probe.sh",
+      "eval/workbench/lab/probe.sh",
       "disk",
       "rrflow"
     ],

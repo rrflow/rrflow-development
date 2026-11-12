@@ -10,7 +10,7 @@ independently.
 
 ## Observed deficiency
 
-Found by the [comparison lab](../../../eval/lab/README.md) on `clyffy-01`, on an
+Found by the [comparison lab](../../../eval/workbench/lab/README.md) on `clyffy-01`, on an
 engine built from `3a72a6b4adc43c842f67a59f4fc91d725eac7580`. An installed engine
 on default settings accepted all 200,000 points of 384 dimensions, then refused
 every vector search and every TurboQuant build:

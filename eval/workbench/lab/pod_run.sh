@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Inside the lab runner, which is the pod: build rrflow-lab and rrflow from this checkout, run each
 # named system alone in this container's pod, and combine their runs into one report.
-# Usage: pod_run.sh TEST_ID RUN_DIRECTORY SYSTEM...   (eval/lab/pod.sh starts it)
+# Usage: pod_run.sh TEST_ID RUN_DIRECTORY SYSTEM...   (eval/workbench/lab/pod.sh starts it)
 #
 # Every system container joins this container's network, so all endpoints are this container's
 # own loopback. No value here is a secret.
@@ -10,8 +10,8 @@ test_id=$1
 run_directory=$(mkdir -p "$2" && cd "$2" && pwd)
 shift 2
 here=$(cd "$(dirname "$0")" && pwd)
-repository=$(cd "$here/../.." && pwd)
-: "${RRFLOW_LAB_POD:?pod_run.sh runs inside the runner that eval/lab/pod.sh starts}"
+repository=$(cd "$here/../../.." && pwd)
+: "${RRFLOW_LAB_POD:?pod_run.sh runs inside the runner that eval/workbench/lab/pod.sh starts}"
 : "${CARGO_TARGET_DIR:?the runner image sets CARGO_TARGET_DIR}"
 [ "$#" -gt 0 ] || { echo "name at least one system" >&2; exit 2; }
 

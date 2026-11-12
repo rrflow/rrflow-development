@@ -1,22 +1,20 @@
 {
   "schema_version": 1,
   "test": {
-    "id": "vector-coco-i2i",
-    "title": "Vector search, 113,287 real image embeddings",
+    "id": "vector-medium",
+    "title": "Vector search, medium corpus",
     "family": "vector-search",
     "revision": 1
   },
   "corpus": {
     "source": {
-      "generator": "imported",
-      "origin": "COCO image embeddings as published for ANN-Benchmarks, file coco-i2i-512-angular.hdf5, SHA-256 fcaf3573d0decd37fa241883843037b503736dde14e99e1f0d9472a765d94e19",
-      "license": "COCO's terms: annotations CC BY 4.0, images under Flickr's terms. Local benchmarking only, and nothing is stored in this repository",
-      "points_sha256": "5c091dd98f765a4959013135baa6bcb6955bd71be6d11b142e548217122e976d",
-      "queries_sha256": "85ead4917ac796bf480e68b56775d000c985f0e1857915f546bbfc920b36036d",
-      "category_seed": 20261103
+      "generator": "gaussian_mixture",
+      "seed": 20261103,
+      "clusters": 32,
+      "spread_milli": 500
     },
-    "points": 113287,
-    "dimensions": 512,
+    "points": 200000,
+    "dimensions": 384,
     "metric": "cosine",
     "categories": 10
   },
@@ -63,12 +61,12 @@
         "instance_env": "RRFLOW_LAB_INSTANCE"
       },
       "memory_probe": [
-        "eval/lab/probe.sh",
+        "eval/workbench/lab/probe.sh",
         "memory",
         "rrflow"
       ],
       "disk_probe": [
-        "eval/lab/probe.sh",
+        "eval/workbench/lab/probe.sh",
         "disk",
         "rrflow"
       ]
@@ -112,12 +110,12 @@
         "instance_env": "RRFLOW_LAB_INSTANCE"
       },
       "memory_probe": [
-        "eval/lab/probe.sh",
+        "eval/workbench/lab/probe.sh",
         "memory",
         "rrflow"
       ],
       "disk_probe": [
-        "eval/lab/probe.sh",
+        "eval/workbench/lab/probe.sh",
         "disk",
         "rrflow"
       ]
@@ -171,12 +169,12 @@
         "instance_env": "RRFLOW_LAB_INSTANCE"
       },
       "memory_probe": [
-        "eval/lab/probe.sh",
+        "eval/workbench/lab/probe.sh",
         "memory",
         "rrflow"
       ],
       "disk_probe": [
-        "eval/lab/probe.sh",
+        "eval/workbench/lab/probe.sh",
         "disk",
         "rrflow"
       ],
@@ -230,12 +228,12 @@
         "instance_env": "RRFLOW_LAB_INSTANCE"
       },
       "memory_probe": [
-        "eval/lab/probe.sh",
+        "eval/workbench/lab/probe.sh",
         "memory",
         "rrflow"
       ],
       "disk_probe": [
-        "eval/lab/probe.sh",
+        "eval/workbench/lab/probe.sh",
         "disk",
         "rrflow"
       ],
@@ -283,12 +281,12 @@
         "instance_env": "RRFLOW_LAB_INSTANCE"
       },
       "memory_probe": [
-        "eval/lab/probe.sh",
+        "eval/workbench/lab/probe.sh",
         "memory",
         "rrflow"
       ],
       "disk_probe": [
-        "eval/lab/probe.sh",
+        "eval/workbench/lab/probe.sh",
         "disk",
         "rrflow"
       ],
@@ -337,12 +335,12 @@
       ],
       "credentials": {},
       "memory_probe": [
-        "eval/lab/probe.sh",
+        "eval/workbench/lab/probe.sh",
         "memory",
         "lab-qdrant"
       ],
       "disk_probe": [
-        "eval/lab/probe.sh",
+        "eval/workbench/lab/probe.sh",
         "disk",
         "lab-qdrant"
       ]
@@ -390,12 +388,12 @@
         "secret_env": "SURREAL_LAB_SECRET"
       },
       "memory_probe": [
-        "eval/lab/probe.sh",
+        "eval/workbench/lab/probe.sh",
         "memory",
         "lab-surrealdb"
       ],
       "disk_probe": [
-        "eval/lab/probe.sh",
+        "eval/workbench/lab/probe.sh",
         "disk",
         "lab-surrealdb"
       ]
@@ -443,12 +441,12 @@
         "secret_env": "SURREAL_LAB_SECRET"
       },
       "memory_probe": [
-        "eval/lab/probe.sh",
+        "eval/workbench/lab/probe.sh",
         "memory",
         "lab-surrealdb"
       ],
       "disk_probe": [
-        "eval/lab/probe.sh",
+        "eval/workbench/lab/probe.sh",
         "disk",
         "lab-surrealdb"
       ]
@@ -493,12 +491,12 @@
       ],
       "credentials": {},
       "memory_probe": [
-        "eval/lab/probe.sh",
+        "eval/workbench/lab/probe.sh",
         "memory",
         "lab-milvus"
       ],
       "disk_probe": [
-        "eval/lab/probe.sh",
+        "eval/workbench/lab/probe.sh",
         "disk",
         "lab-milvus"
       ]
@@ -509,7 +507,7 @@
       "kind": "custom",
       "location": "loopback",
       "endpoint": "http://127.0.0.1:18090",
-      "artifact": "lancedb 0.41.0 and pylance 14.0.2, locked in eval/lab/lance-requirements.txt, behind eval/lab/lance_system.py",
+      "artifact": "lancedb 0.41.0 and pylance 14.0.2, locked in eval/workbench/lab/lance-requirements.txt, behind eval/workbench/lab/lance_system.py",
       "storage_profile": "Lance files on local disk",
       "availability": {
         "state": "available"
@@ -548,12 +546,12 @@
       ],
       "credentials": {},
       "memory_probe": [
-        "eval/lab/probe.sh",
+        "eval/workbench/lab/probe.sh",
         "memory",
         "shim"
       ],
       "disk_probe": [
-        "eval/lab/probe.sh",
+        "eval/workbench/lab/probe.sh",
         "disk",
         "shim"
       ],
@@ -567,14 +565,14 @@
       "kind": "custom",
       "location": "loopback",
       "endpoint": "http://127.0.0.1:18090",
-      "artifact": "lancedb 0.41.0 and pylance 14.0.2, locked in eval/lab/lance-requirements.txt, behind eval/lab/lance_system.py",
+      "artifact": "lancedb 0.41.0 and pylance 14.0.2, locked in eval/workbench/lab/lance-requirements.txt, behind eval/workbench/lab/lance_system.py",
       "storage_profile": "Lance files on local disk",
       "availability": {
         "state": "available"
       },
       "index": {
         "index": "ivf_rq",
-        "partitions": 336
+        "partitions": 447
       },
       "search_ladder": [
         {
@@ -610,12 +608,12 @@
       ],
       "credentials": {},
       "memory_probe": [
-        "eval/lab/probe.sh",
+        "eval/workbench/lab/probe.sh",
         "memory",
         "shim"
       ],
       "disk_probe": [
-        "eval/lab/probe.sh",
+        "eval/workbench/lab/probe.sh",
         "disk",
         "shim"
       ],
@@ -629,7 +627,7 @@
       "kind": "custom",
       "location": "loopback",
       "endpoint": "http://127.0.0.1:18089",
-      "artifact": "eval/lab/reference_custom_system.py",
+      "artifact": "eval/workbench/lab/reference_custom_system.py",
       "storage_profile": "memory only",
       "availability": {
         "state": "not_applicable",

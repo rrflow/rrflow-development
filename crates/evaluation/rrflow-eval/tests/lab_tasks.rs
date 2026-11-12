@@ -691,7 +691,7 @@ fn only_a_trackable_text_file_is_imported_and_never_a_tests_answers() {
     assert!(!importable("src/a.rs", b""), "empty");
     assert!(!importable("Cargo.lock", b"text"), "a lock file");
     assert!(
-        !importable("eval/lab/tasks/plan.json", b"text"),
+        !importable("eval/workbench/lab/tasks/plan.json", b"text"),
         "a test's own answers"
     );
     assert!(

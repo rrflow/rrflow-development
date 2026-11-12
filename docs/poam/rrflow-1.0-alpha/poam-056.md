@@ -22,7 +22,7 @@ In a single release-build Linux ARM64 diagnostic of 20,000 generated 384-dimensi
 vectors with `ef=32`, the installed RRFlow engine reported the HNSW path, served
 all 100 queries in each of the unfiltered and filtered cases, and reported median
 client latencies of 1,765.8 ms and 1,743.8 ms respectively. The oracle reported
-mean recall of 0.982 and 1.0. The [retained report and samples](../../../eval/lab/evidence/arm-20k-20261106/report.json)
+mean recall of 0.982 and 1.0. The [retained report and samples](../../../eval/workbench/lab/evidence/arm-20k-20261106/report.json)
 and [journal](../../evidence/change-journals/gate-j/comparison-lab-public-vector-paths.md)
 state the source, identities, conditions, and limits. The host was shared and
 other work ran during the measurement. No profile attributes the latency to a

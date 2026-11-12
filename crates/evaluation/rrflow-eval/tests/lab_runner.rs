@@ -36,7 +36,7 @@ fn runner_removes_only_the_container_it_created() {
             let path = format!("{}:{}", bin.display(), std::env::var("PATH").unwrap());
             let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../..");
             let output = Command::new("bash")
-                .arg(root.join("eval/lab/run_system.sh"))
+                .arg(root.join("eval/workbench/lab/run_system.sh"))
                 .arg(system)
                 .arg(temp.path().join("results"))
                 .env("PATH", path)

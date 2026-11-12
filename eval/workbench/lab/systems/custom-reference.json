@@ -6,7 +6,7 @@
     "kind": "custom",
     "location": "loopback",
     "endpoint": "http://127.0.0.1:18089",
-    "artifact": "eval/lab/reference_custom_system.py",
+    "artifact": "eval/workbench/lab/reference_custom_system.py",
     "storage_profile": "memory only",
     "availability": {
       "state": "not_applicable",

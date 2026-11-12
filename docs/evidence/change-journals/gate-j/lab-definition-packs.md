@@ -28,5 +28,5 @@ pull request, CI run, and merge evidence: recorded on pull request #272.
 ## Links
 
 - [Pull request #272](https://github.com/rrflow/rrflow-development/pull/272)
-- [Comparison lab](../../../../eval/lab/README.md#definition-packs)
+- [Comparison lab](../../../../eval/workbench/lab/README.md#definition-packs)
 - [Gate J](../../../roadmap/rrflow-1.0/gate-j.md)

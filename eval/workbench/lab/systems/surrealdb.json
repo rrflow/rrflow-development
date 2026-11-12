@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
   "binding": {
-    "id": "surrealdb-4",
-    "label": "SurrealDB 4.0.0",
+    "id": "surrealdb",
+    "label": "SurrealDB 3.3.5",
     "kind": "surrealdb",
     "location": "loopback",
     "endpoint": "http://127.0.0.1:18000",
-    "artifact": "surrealdb/surrealdb@sha256:c35893410644e65fa90aa1bef446ac9cb0a0c2733b9d405ce3eb56754b85c330",
+    "artifact": "surrealdb/surrealdb@sha256:3db515b88e79737aa828c05fbf1515748004ba57495ff89a013851cc3f1ad4b9",
     "storage_profile": "SurrealKV on disk in a container volume",
     "availability": {
       "state": "available"
@@ -43,19 +43,19 @@
       "secret_env": "SURREAL_LAB_SECRET"
     },
     "memory_probe": [
-      "eval/lab/probe.sh",
+      "eval/workbench/lab/probe.sh",
       "memory",
       "lab-surrealdb"
     ],
     "disk_probe": [
-      "eval/lab/probe.sh",
+      "eval/workbench/lab/probe.sh",
       "disk",
       "lab-surrealdb"
     ]
   },
   "launch": {
     "kind": "container",
-    "image": "surrealdb/surrealdb@sha256:c35893410644e65fa90aa1bef446ac9cb0a0c2733b9d405ce3eb56754b85c330",
+    "image": "surrealdb/surrealdb@sha256:3db515b88e79737aa828c05fbf1515748004ba57495ff89a013851cc3f1ad4b9",
     "name": "lab-surrealdb",
     "ports": [
       "127.0.0.1:18000:18000"

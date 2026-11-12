@@ -18,7 +18,7 @@ const SURREAL: &str =
     "surrealdb/surrealdb@sha256:3db515b88e79737aa828c05fbf1515748004ba57495ff89a013851cc3f1ad4b9";
 
 fn lab() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../eval/lab")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../eval/workbench/lab")
 }
 
 fn read(path: PathBuf) -> String {
@@ -381,7 +381,7 @@ fn a_test_can_only_change_what_it_owns_and_name_what_exists() {
     test.systems[0].system = Id::try_from("nobody".to_string()).unwrap();
     let refused = resolve_test(&test, &systems).unwrap_err();
     assert!(
-        refused.contains("eval/lab/systems/nobody.json"),
+        refused.contains("eval/workbench/lab/systems/nobody.json"),
         "{refused}"
     );
 

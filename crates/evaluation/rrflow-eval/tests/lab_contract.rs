@@ -655,7 +655,7 @@ fn an_ivf_binding_needs_a_custom_system_and_probes_within_its_partitions() {
 
 #[test]
 fn the_checked_in_source_list_is_valid_and_names_every_compared_system() {
-    let directory = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../eval/lab");
+    let directory = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../eval/workbench/lab");
     let list: SourceList =
         serde_json::from_slice(&std::fs::read(directory.join("sources.json")).unwrap()).unwrap();
     list.validate().unwrap();
@@ -895,7 +895,8 @@ fn reports_have_no_winner_field_to_claim_superiority_with() {
 
 #[test]
 fn generated_schemas_match_the_checked_in_projections() {
-    let directory = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../eval/schemas");
+    let directory =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../eval/workbench/lab/schemas");
     for (name, generated) in [
         ("lab-manifest-v1.json", schema::<VectorComparisonManifest>()),
         ("lab-run-v1.json", schema::<SystemRun>()),
@@ -940,7 +941,7 @@ fn the_checked_in_manifests_are_valid_and_keep_every_comparator() {
         "vector-coco-i2i.json",
     ] {
         let path = Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../../eval/lab")
+            .join("../../../eval/workbench/lab")
             .join(name);
         let manifest: VectorComparisonManifest =
             serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();

@@ -10,7 +10,7 @@ independently.
 
 ## Observed deficiency
 
-Found by the [comparison lab](../../../eval/lab/README.md) on `clyffy-01`, at
+Found by the [comparison lab](../../../eval/workbench/lab/README.md) on `clyffy-01`, at
 100,000 points of 384 dimensions, on an engine built from
 `2f84fdf0fbf7d254678d1cf65c1cbd92a1c1accd` with its read limits raised.
 

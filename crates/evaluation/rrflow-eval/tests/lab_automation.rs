@@ -457,7 +457,7 @@ fn a_signing_key_others_can_read_is_refused() {
 // What this machine chooses, against the lab's real definitions.
 
 fn real_lab() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../eval/lab")
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../eval/workbench/lab")
 }
 
 fn id(text: &str) -> Id {
@@ -956,11 +956,11 @@ impl Machine {
     }
 }
 
-/// A checkout's `eval/lab`, with only what a pack carries.
+/// A checkout's `eval/workbench/lab`, with only what a pack carries.
 fn checkout(root: &Path) -> PathBuf {
     let repository = root.join("repository");
     for (relative, text) in lab_files(&real_lab()).unwrap() {
-        let target = repository.join("eval/lab").join(relative);
+        let target = repository.join("eval/workbench/lab").join(relative);
         std::fs::create_dir_all(target.parent().unwrap()).unwrap();
         std::fs::write(target, text).unwrap();
     }
@@ -998,7 +998,7 @@ fn publish_finds_the_lab_from_anywhere_in_a_checkout_and_says_what_happened() {
     assert!(again.contains("Nothing changed"), "{again}");
     assert!(!again.contains("signing key"), "{again}");
 
-    let small = repository.join("eval/lab/tests/vector-small.json");
+    let small = repository.join("eval/workbench/lab/tests/vector-small.json");
     let text = std::fs::read_to_string(&small).unwrap();
     std::fs::write(
         &small,
@@ -1038,7 +1038,7 @@ fn an_update_says_only_what_would_really_start_and_in_words() {
     assert!(!again.contains("days more"), "{again}");
 
     // A launch that changes shows every detail, since any of them may be the difference.
-    let path = repository.join("eval/lab/systems/qdrant.json");
+    let path = repository.join("eval/workbench/lab/systems/qdrant.json");
     let text = std::fs::read_to_string(&path).unwrap();
     std::fs::write(
         &path,

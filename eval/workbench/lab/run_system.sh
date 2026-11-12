@@ -17,7 +17,7 @@ set -euo pipefail
 system=$1
 run_directory=$(mkdir -p "$2" && cd "$2" && pwd)
 here=$(cd "$(dirname "$0")" && pwd)
-repository=$(cd "$here/../.." && pwd)
+repository=$(cd "$here/../../.." && pwd)
 manifest=${RRFLOW_LAB_MANIFEST:-$here/vector-small.json}
 cpuset=${RRFLOW_LAB_CPUSET:-}
 pod=${RRFLOW_LAB_POD:-}

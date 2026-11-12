@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "binding": {
-    "id": "rrflow-turboquant",
-    "label": "RRFlow, TurboQuant with exact rerank",
+    "id": "rrflow-exact",
+    "label": "RRFlow, exact scan",
     "kind": "rrflow",
     "location": "loopback",
     "endpoint": "http://127.0.0.1:19477",
@@ -12,25 +12,11 @@
       "state": "available"
     },
     "index": {
-      "index": "turbo_quant",
-      "bits": "bits4",
-      "seed": 7
+      "index": "exact"
     },
     "search_ladder": [
       {
-        "id": "rerank-40",
-        "ef": 40,
-        "exact_rerank": 40
-      },
-      {
-        "id": "rerank-100",
-        "ef": 100,
-        "exact_rerank": 100
-      },
-      {
-        "id": "rerank-400",
-        "ef": 400,
-        "exact_rerank": 400
+        "id": "exact"
       }
     ],
     "credentials": {
@@ -39,12 +25,12 @@
       "instance_env": "RRFLOW_LAB_INSTANCE"
     },
     "memory_probe": [
-      "eval/lab/probe.sh",
+      "eval/workbench/lab/probe.sh",
       "memory",
       "rrflow"
     ],
     "disk_probe": [
-      "eval/lab/probe.sh",
+      "eval/workbench/lab/probe.sh",
       "disk",
       "rrflow"
     ]

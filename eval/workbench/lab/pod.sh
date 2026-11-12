@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Run lab systems on any host whose Docker daemon this shell can reach, Docker Desktop included.
-# Usage: eval/lab/pod.sh TEST_ID RUN_DIRECTORY SYSTEM...
+# Usage: eval/workbench/lab/pod.sh TEST_ID RUN_DIRECTORY SYSTEM...
 #
 # It builds the `lab` target of .devcontainer/Containerfile, the same pinned toolchain as
-# the development container, and starts it as the pod. Inside, eval/lab/pod_run.sh builds
+# the development container, and starts it as the pod. Inside, eval/workbench/lab/pod_run.sh builds
 # rrflow-lab and rrflow from this checkout, which is mounted read-only, and runs each system
 # alone as a sibling container that joins the pod's network. Nothing is published on the host.
 # The run directory receives every run file and the report. Cargo's cache and target stay in
@@ -17,7 +17,7 @@ test_id=$1
 run_directory=$(mkdir -p "$2" && cd "$2" && pwd)
 shift 2
 here=$(cd "$(dirname "$0")" && pwd)
-repository=$(cd "$here/../.." && pwd)
+repository=$(cd "$here/../../.." && pwd)
 [ "$#" -gt 0 ] || { echo "name at least one system" >&2; exit 2; }
 
 # Docker on Windows reads a mount source as a Windows path.
@@ -54,4 +54,4 @@ docker run --rm --name "$pod" --user root \
   -v rrflow-lab-cargo-git:/cache/cargo-git \
   -v rrflow-lab-target:/cache/target \
   -v "$work:/work" \
-  "$image" eval/lab/pod_run.sh "$test_id" /runs "$@"
+  "$image" eval/workbench/lab/pod_run.sh "$test_id" /runs "$@"

@@ -29,5 +29,5 @@ pull request, CI run, and merge evidence: recorded on pull request #279.
 
 - [Pull request #279](https://github.com/rrflow/rrflow-development/pull/279)
 - [Connected graphs](../gate-e/e-04-connected-hnsw-graphs.md)
-- [Comparison lab](../../../../eval/lab/README.md)
+- [Comparison lab](../../../../eval/workbench/lab/README.md)
 - [Gate J](../../../roadmap/rrflow-1.0/gate-j.md)

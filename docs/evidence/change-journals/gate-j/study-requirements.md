@@ -38,8 +38,8 @@ Tests for both were committed failing at `4609f3c5`, and fixed at `b90021d9`.
 
 | Piece | Owner |
 |---|---|
-| What a person or a screen edits | `lab-study-config-v1`, for example [`rrflow-planning-pilot.json`](../../../../eval/lab/studies/rrflow-planning-pilot.json) |
-| What any study must do, and why | [`study-requirements.json`](../../../../eval/lab/study-requirements.json), 12 requirements, each graded per stage |
+| What a person or a screen edits | `lab-study-config-v1`, for example [`rrflow-planning-pilot.json`](../../../../eval/workbench/lab/studies/rrflow-planning-pilot.json) |
+| What any study must do, and why | [`study-requirements.json`](../../../../eval/workbench/lab/study-requirements.json), 12 requirements, each graded per stage |
 | Checks | A closed list in `lab/study.rs`. A requirement cannot name a check outside it, or cite a source outside `sources.json` |
 | What a run owes | `CaptureField`, 9 fields frozen into the plan. A finished run lacking one stays visible and does not count |
 | Proof | `rrflow-lab tasks-audit`, which reads the runs and trusts nothing about how they were made |

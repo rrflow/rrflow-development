@@ -272,7 +272,7 @@
         },
         {
           "additionalProperties": false,
-          "description": "A local process. `{lab}` is `eval/lab`, `{data}` the run's data folder, and `{env:NAME}`\na variable that must be set.",
+          "description": "A local process. `{lab}` is `eval/workbench/lab`, `{data}` the run's data folder, and `{env:NAME}`\na variable that must be set.",
           "properties": {
             "command": {
               "items": {

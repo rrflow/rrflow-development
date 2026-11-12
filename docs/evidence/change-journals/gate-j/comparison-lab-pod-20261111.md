@@ -4,7 +4,7 @@
 
 **Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/gate-j/comparison-lab-pod-20261111`
 
-**Owner:** J-04 in [Gate J](../../../roadmap/rrflow-1.0/gate-j.md); the [comparison lab](../../../../eval/lab/README.md); follows [the comparison lab journal](comparison-lab.md)
+**Owner:** J-04 in [Gate J](../../../roadmap/rrflow-1.0/gate-j.md); the [comparison lab](../../../../eval/workbench/lab/README.md); follows [the comparison lab journal](comparison-lab.md)
 
 **Starting revision:** `development/main` at `f04dbb97`.
 

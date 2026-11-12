@@ -27,7 +27,10 @@ fn id(text: &str) -> Id {
 }
 
 fn lab_file(name: &str) -> String {
-    let path = format!("{}/../../../eval/lab/{name}", env!("CARGO_MANIFEST_DIR"));
+    let path = format!(
+        "{}/../../../eval/workbench/lab/{name}",
+        env!("CARGO_MANIFEST_DIR")
+    );
     std::fs::read_to_string(&path).unwrap_or_else(|error| panic!("{path}: {error}"))
 }
 

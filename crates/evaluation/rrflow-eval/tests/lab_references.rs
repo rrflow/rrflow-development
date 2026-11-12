@@ -451,7 +451,7 @@ fn with_no_test_everything_is_listed_for_context() {
 // The lab's real references.
 
 fn real_lab() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../eval/lab")
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../eval/workbench/lab")
 }
 
 fn real_references() -> Vec<ReferenceFile> {
@@ -612,7 +612,7 @@ fn snapshot(root: &Path) -> BTreeMap<PathBuf, Vec<u8>> {
 fn published_home(root: &Path) -> PathBuf {
     let repository = root.join("repository");
     for (relative, text) in lab_files(&real_lab()).unwrap() {
-        let target = repository.join("eval/lab").join(relative);
+        let target = repository.join("eval/workbench/lab").join(relative);
         std::fs::create_dir_all(target.parent().unwrap()).unwrap();
         std::fs::write(target, text).unwrap();
     }

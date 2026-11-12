@@ -247,7 +247,7 @@ def build_report(rows, manifest_bytes, manifest, generated_at):
         "schema_version": 1,
         "test": {"id": "rrflow-package-retrieval", "title": "Do retrieved files match what real changes needed?", "family": "agent-tasks", "revision": 1},
         "evidence_class": "diagnostic",
-        "generated_by": "eval/lab/retrieval_signal.py",
+        "generated_by": "eval/workbench/lab/retrieval_signal.py",
         "generated_at_unix_ms": generated_at,
         "environment": {},
         "identities": {"manifest": hashlib.sha256(manifest_bytes).hexdigest()},

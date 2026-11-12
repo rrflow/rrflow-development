@@ -6,7 +6,7 @@
     "kind": "custom",
     "location": "loopback",
     "endpoint": "http://127.0.0.1:18090",
-    "artifact": "lancedb 0.41.0 and pylance 14.0.2, locked in eval/lab/lance-requirements.txt, behind eval/lab/lance_system.py",
+    "artifact": "lancedb 0.41.0 and pylance 14.0.2, locked in eval/workbench/lab/lance-requirements.txt, behind eval/workbench/lab/lance_system.py",
     "storage_profile": "Lance files on local disk",
     "availability": {
       "state": "available"
@@ -44,12 +44,12 @@
       }
     ],
     "memory_probe": [
-      "eval/lab/probe.sh",
+      "eval/workbench/lab/probe.sh",
       "memory",
       "shim"
     ],
     "disk_probe": [
-      "eval/lab/probe.sh",
+      "eval/workbench/lab/probe.sh",
       "disk",
       "shim"
     ],

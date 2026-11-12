@@ -28,6 +28,6 @@ pull request, CI run, and merge evidence: recorded on pull request #277.
 ## Links
 
 - [Pull request #277](https://github.com/rrflow/rrflow-development/pull/277)
-- [Published results](../../../../eval/lab/README.md#published-results)
+- [Published results](../../../../eval/workbench/lab/README.md#published-results)
 - [Automatic definitions](lab-definitions-automatic.md)
 - [Gate J](../../../roadmap/rrflow-1.0/gate-j.md)

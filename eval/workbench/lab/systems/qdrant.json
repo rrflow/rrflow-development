@@ -39,12 +39,12 @@
       }
     ],
     "memory_probe": [
-      "eval/lab/probe.sh",
+      "eval/workbench/lab/probe.sh",
       "memory",
       "lab-qdrant"
     ],
     "disk_probe": [
-      "eval/lab/probe.sh",
+      "eval/workbench/lab/probe.sh",
       "disk",
       "lab-qdrant"
     ]

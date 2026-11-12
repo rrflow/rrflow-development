@@ -8,7 +8,7 @@ The lab shows RRFlow beside other systems on one frozen workload, so that
 optimization work starts from a measured gap instead of a guess. It runs one
 typed test package against RRFlow, Qdrant, SurrealDB, Milvus, Lance, or any custom
 system. It belongs to the evaluation boundary of
-[J-04](../../docs/roadmap/rrflow-1.0/gate-j.md#qualification-packages-and-optimization-decisions).
+[J-04](../../../docs/roadmap/rrflow-1.0/gate-j.md#qualification-packages-and-optimization-decisions).
 
 A lab result is not J-04 acceptance, and it supports no parity or superiority
 claim. Gate J owns those requirements. The report has no winner field: it holds
@@ -39,9 +39,9 @@ export RRFLOW_LAB_BIN=$PWD/target/release/rrflow-lab RRFLOW_BIN=$PWD/target/rele
 export RRFLOW_LAB_CPUSET=5-9,15-19 RRFLOW_LAB_CLIENT_CPUSET=0-4,10-14 TMPDIR=$HOME/lab-tmp
 mkdir -p "$TMPDIR"
 for system in qdrant milvus surrealdb custom-reference rrflow-exact rrflow-hnsw rrflow-turboquant; do
-  eval/lab/run_system.sh "$system" runs/vector-small
+  eval/workbench/lab/run_system.sh "$system" runs/vector-small
 done
-"$RRFLOW_LAB_BIN" combine --manifest eval/lab/vector-small.json --in runs/vector-small \
+"$RRFLOW_LAB_BIN" combine --manifest eval/workbench/lab/vector-small.json --in runs/vector-small \
   --out runs/vector-small/report.json
 ```
 
@@ -68,10 +68,10 @@ says why. Without `RRFLOW_LAB_POD` nothing changes.
 Desktop on Windows included, with nothing else installed:
 
 ```bash
-eval/lab/pod.sh vector-small runs/vector-small qdrant surrealdb-4 rrflow-hnsw rrflow-turboquant
+eval/workbench/lab/pod.sh vector-small runs/vector-small qdrant surrealdb-4 rrflow-hnsw rrflow-turboquant
 ```
 
-It builds the `lab` target of [`.devcontainer/Containerfile`](../../.devcontainer/Containerfile), the
+It builds the `lab` target of [`.devcontainer/Containerfile`](../../../.devcontainer/Containerfile), the
 development container's pinned toolchain plus the Docker CLI, and starts it as the pod. Inside,
 [`pod_run.sh`](pod_run.sh) builds `rrflow-lab` and `rrflow` in release mode from this checkout,
 which is mounted read-only, runs each system alone, and combines the report into the run
@@ -127,8 +127,8 @@ repository. Install from the locked requirements, convert a dataset from
 the lab at the directory:
 
 ```bash
-python3 -m venv ~/lab-import && ~/lab-import/bin/pip install --require-hashes -r eval/lab/import-requirements.txt
-~/lab-import/bin/python eval/lab/import_corpus.py coco-i2i-512-angular.hdf5 ~/lab-corpora
+python3 -m venv ~/lab-import && ~/lab-import/bin/pip install --require-hashes -r eval/workbench/lab/import-requirements.txt
+~/lab-import/bin/python eval/workbench/lab/import_corpus.py coco-i2i-512-angular.hdf5 ~/lab-corpora
 export RRFLOW_LAB_CORPUS_DIR=~/lab-corpora
 ```
 
@@ -143,9 +143,9 @@ cores and disk as a lab run. Install it from its locked requirements, run it, th
 result file in this lab's report:
 
 ```bash
-python3 -m venv ~/lab-vdbbench && ~/lab-vdbbench/bin/pip install --require-hashes -r eval/lab/vdbbench-requirements.txt
+python3 -m venv ~/lab-vdbbench && ~/lab-vdbbench/bin/pip install --require-hashes -r eval/workbench/lab/vdbbench-requirements.txt
 RRFLOW_LAB_VDBBENCH=~/lab-vdbbench/bin/vectordbbench RRFLOW_LAB_VDBBENCH_CASE=Performance1536D50K \
-  eval/lab/run_system.sh qdrant runs/vdbbench
+  eval/workbench/lab/run_system.sh qdrant runs/vdbbench
 rrflow-lab import --from vectordbbench --result runs/vdbbench/qdrant.ef-128.vdbbench.json \
   --harness-version 2.0.0 --recall-target 0.95 --out imported.json
 ```
@@ -165,7 +165,7 @@ source is in use, planned, only watched, or left out and why.
 
 ## Add a system
 
-Any system can join through the [custom protocol](../schemas/lab-custom-protocol-v1.json),
+Any system can join through the [custom protocol](schemas/lab-custom-protocol-v1.json),
 usually behind a thin shim. It is a small HTTP API:
 
 | Route | Purpose |
@@ -181,8 +181,8 @@ usually behind a thin shim. It is a small HTTP API:
 [`reference_custom_system.py`](reference_custom_system.py) is a complete
 implementation in about 90 lines of standard-library Python. To add a system:
 write the shim, add `systems/<id>.json` with its binding and how it starts, and list it in a test
-under `tests/`. Then run `rrflow-lab resolve-all --tests eval/lab/tests --systems eval/lab/systems
---out eval/lab`. Its results appear beside the others without any new client code or script change. Report evidence if you can, because an index
+under `tests/`. Then run `rrflow-lab resolve-all --tests eval/workbench/lab/tests --systems eval/workbench/lab/systems
+--out eval/workbench/lab`. Its results appear beside the others without any new client code or script change. Report evidence if you can, because an index
 that goes unused looks like a good result. A system with its own built-in
 adapter, like Qdrant, implements `SystemAdapter` in `crates/evaluation/rrflow-eval/src/lab/`
 and its responses are captured into `tests/lab_adapters.rs`.
@@ -206,14 +206,14 @@ Lance is embedded, so run it from a Python holding the locked requirements, and 
 Python in `RRFLOW_LAB_LANCE_PYTHON`:
 
 ```bash
-python3 -m venv ~/lab-lance && ~/lab-lance/bin/pip install --require-hashes -r eval/lab/lance-requirements.txt
+python3 -m venv ~/lab-lance && ~/lab-lance/bin/pip install --require-hashes -r eval/workbench/lab/lance-requirements.txt
 export RRFLOW_LAB_LANCE_PYTHON=~/lab-lance/bin/python
 ```
 
 ## Add a test
 
 The lab's report is independent of any workload. A test declares its own
-dimensions, metrics, verdicts and views in [`lab-report-v1.json`](../schemas/lab-report-v1.json),
+dimensions, metrics, verdicts and views in [`lab-report-v1.json`](schemas/lab-report-v1.json),
 so a client renders it from that data, and a new test needs no new components.
 Today's test packages are the vector comparisons in `vector-small.json` (20,000 points),
 `vector-100k.json` (100,000 points) and `vector-medium.json` (200,000 points), plus
@@ -236,11 +236,11 @@ what is installed.
 
 | To | Run |
 |---|---|
-| Sign what changed in `eval/lab` and install it here | `rrflow-lab definitions publish` |
+| Sign what changed in `eval/workbench/lab` and install it here | `rrflow-lab definitions publish` |
 | Get the newest pack on another machine | `rrflow-lab definitions update --from FOLDER` |
 | See what is installed and what needs attention | `rrflow-lab definitions status` |
 | See what would run, and why anything would not | `rrflow-lab plan` |
-| Run one test and get its report | `eval/lab/run_all.sh TEST_ID RUN_FOLDER` |
+| Run one test and get its report | `eval/workbench/lab/run_all.sh TEST_ID RUN_FOLDER` |
 
 `publish` makes the signing key the first time, picks the next number, writes a full
 pack and a patch to an outbox, and says what changed. With nothing changed it publishes
@@ -282,7 +282,7 @@ A report's runs record the pack's number and manifest digest, and whether it had
 - **Signed.** A pack's manifest is read only after its Ed25519 signature checks
   against a trusted key, and it names every file by size and SHA-256.
 - **Trust does not come from a folder.** A build pins its publisher's public keys in
-  [`lab-trusted-keys.json`](../../crates/evaluation/rrflow-eval/assets/lab-trusted-keys.json).
+  [`lab-trusted-keys.json`](../../../crates/evaluation/rrflow-eval/assets/lab-trusted-keys.json).
   Another publisher is trusted only by `rrflow-lab definitions trust --file FILE`.
 - **It only moves forward.** A lower sequence is refused, and so is the same
   sequence with different content. `definitions revert` steps back locally, states
@@ -368,9 +368,9 @@ source that comes from. Check a study against it, then write its frozen plan, wh
 the binding requirements are met:
 
 ```bash
-FILES="--catalog eval/lab/tasks/rrflow-package-planning.json --requirements eval/lab/study-requirements.json --sources eval/lab/sources.json"
-rrflow-lab study-check --config eval/lab/studies/rrflow-planning-pilot.json $FILES
-rrflow-lab study-plan --config eval/lab/studies/rrflow-planning-pilot.json $FILES --out plan.json
+FILES="--catalog eval/workbench/lab/tasks/rrflow-package-planning.json --requirements eval/workbench/lab/study-requirements.json --sources eval/workbench/lab/sources.json"
+rrflow-lab study-check --config eval/workbench/lab/studies/rrflow-planning-pilot.json $FILES
+rrflow-lab study-plan --config eval/workbench/lab/studies/rrflow-planning-pilot.json $FILES --out plan.json
 ```
 
 A pilot may run although it cannot answer the question, and its report says so. A confirmatory study
@@ -399,13 +399,13 @@ and it measures lexical and graph retrieval and nothing more.
 
 [`retrieval_signal.py`](retrieval_signal.py) measures that retrieval with no model: it sends each
 task to the real `rrflow-mcp` process and scores the files returned, beside plain BM25 over the same
-chunks. The [package journal](../../docs/evidence/change-journals/gate-j/reasoning-tests.md) has its
+chunks. The [package journal](../../../docs/evidence/change-journals/gate-j/reasoning-tests.md) has its
 first results and what they do not show.
 
 ## Reading a result
 
 The first measured results and their limits are in the
-[package journal](../../docs/evidence/change-journals/gate-j/comparison-lab.md).
+[package journal](../../../docs/evidence/change-journals/gate-j/comparison-lab.md).
 Every report carries its own limits, and these apply to all of them today:
 
 - A system is `partial` when some requested cases fail or are truncated. The CLI

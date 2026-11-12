@@ -59,7 +59,7 @@
         "package": "lancedb"
       },
       "status": "in_use",
-      "purpose": "Compared in every vector test through eval/lab/lance_system.py, locked by hash."
+      "purpose": "Compared in every vector test through eval/workbench/lab/lance_system.py, locked by hash."
     },
     {
       "id": "lance",
@@ -104,7 +104,7 @@
         "repository": "erikbern/ann-benchmarks"
       },
       "status": "in_use",
-      "purpose": "Its published datasets come in through eval/lab/import_corpus.py. Its harness is not run, and its README now says it is no longer actively maintained and points to VIBE."
+      "purpose": "Its published datasets come in through eval/workbench/lab/import_corpus.py. Its harness is not run, and its README now says it is no longer actively maintained and points to VIBE."
     },
     {
       "id": "coco-i2i-512",

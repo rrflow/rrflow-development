@@ -62,7 +62,7 @@ pub enum LaunchSpec {
         arguments: Vec<String>,
         ready: ReadyCheck,
     },
-    /// A local process. `{lab}` is `eval/lab`, `{data}` the run's data folder, and `{env:NAME}`
+    /// A local process. `{lab}` is `eval/workbench/lab`, `{data}` the run's data folder, and `{env:NAME}`
     /// a variable that must be set.
     Process {
         command: Vec<String>,
@@ -283,7 +283,7 @@ pub fn resolve_test(
         require(seen.insert(name), &format!("{name} is listed twice"))?;
         let definition = systems
             .get(&entry.system)
-            .ok_or_else(|| format!("no eval/lab/systems/{name}.json exists"))?;
+            .ok_or_else(|| format!("no eval/workbench/lab/systems/{name}.json exists"))?;
         definition.validate()?;
         require(
             definition.binding.id == entry.system,

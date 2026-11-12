@@ -20,7 +20,7 @@ the closure evidence is met and reviewed.
 
 ## Observed deficiency
 
-Found while building the [comparison lab](../../../eval/lab/README.md), and
+Found while building the [comparison lab](../../../eval/workbench/lab/README.md), and
 confirmed in source at `3a72a6b4adc43c842f67a59f4fc91d725eac7580`.
 
 `rrd-contract` defines `EnsureVectorIndex` and `EnsureVectorPayloadIndex`, and
