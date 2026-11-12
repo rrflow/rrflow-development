@@ -114,6 +114,107 @@ fn workspace_packages_use_the_canonical_grouped_layout() {
     );
 }
 
+/// RRFlow Lab's crates by dependency tier. A lab crate may depend only on
+/// crates in a lower tier; the `rrflow-lab` tool alone composes every domain.
+const LAB_TIERS: [&[&str]; 3] = [
+    &["rrflow-lab-systems", "rrflow-lab-datasets"],
+    &[
+        "rrflow-lab-benchmarks",
+        "rrflow-lab-experiments",
+        "rrflow-lab-evals",
+        "rrflow-lab-probes",
+        "rrflow-lab-tuning",
+        "rrflow-lab-definitions",
+    ],
+    &["rrflow-lab"],
+];
+
+/// Where an evaluation crate sits: the shared layer, RRFlow Lab, or release
+/// qualification. Product crates are outside it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum EvaluationArea {
+    Shared,
+    Lab,
+    Qualification,
+}
+
+fn evaluation_area(manifest: &Path) -> Option<EvaluationArea> {
+    let parts = manifest
+        .components()
+        .map(|part| part.as_os_str().to_string_lossy().into_owned())
+        .collect::<Vec<_>>();
+    match parts
+        .iter()
+        .map(String::as_str)
+        .collect::<Vec<_>>()
+        .as_slice()
+    {
+        ["crates", "evaluation", "lab", ..] => Some(EvaluationArea::Lab),
+        ["crates", "evaluation", "qualification", ..] => Some(EvaluationArea::Qualification),
+        ["crates", "evaluation", ..] => Some(EvaluationArea::Shared),
+        _ => None,
+    }
+}
+
+/// The evaluation layer measures RRFlow from outside: a product crate may use
+/// it only in its own tests. RRFlow Lab and release qualification share
+/// `rrflow-evaluation-core` and never depend on each other, a lab crate depends
+/// only on lower tiers, and a crate's name follows where it sits.
+#[test]
+fn evaluation_layer_is_measured_from_outside_and_keeps_its_parts_apart() {
+    let metadata = workspace_metadata();
+    let area = |name: &str| evaluation_area(&metadata.packages[name].manifest);
+    let lab_tier = |name: &str| LAB_TIERS.iter().position(|tier| tier.contains(&name));
+    for name in metadata.packages.keys() {
+        match area(name) {
+            Some(EvaluationArea::Lab) => assert!(
+                lab_tier(name).is_some(),
+                "lab crate {name} must be named rrflow-lab or rrflow-lab-<domain> and placed in LAB_TIERS"
+            ),
+            Some(EvaluationArea::Qualification) => assert!(
+                name.starts_with("rrflow-qualification-"),
+                "qualification crate {name} must be named rrflow-qualification-<gate>"
+            ),
+            Some(EvaluationArea::Shared) | None => {}
+        }
+    }
+    for dependency in &metadata.dependency_inputs {
+        if !metadata.packages.contains_key(&dependency.name) {
+            continue;
+        }
+        let (owner, used) = (dependency.owner.as_str(), dependency.name.as_str());
+        let (from, to) = (area(owner), area(used));
+        if to.is_some() && from.is_none() {
+            assert_eq!(
+                dependency.kind, "dev",
+                "{owner} may use evaluation crate {used} only in its tests"
+            );
+        }
+        assert!(
+            !matches!(
+                (from, to),
+                (
+                    Some(EvaluationArea::Lab),
+                    Some(EvaluationArea::Qualification)
+                ) | (
+                    Some(EvaluationArea::Qualification),
+                    Some(EvaluationArea::Lab)
+                )
+            ),
+            "{owner} and {used} cross between RRFlow Lab and release qualification"
+        );
+        if owner == "rrflow-evaluation-core" {
+            assert!(to.is_none(), "rrflow-evaluation-core depends on {used}");
+        }
+        if let (Some(EvaluationArea::Lab), Some(EvaluationArea::Lab)) = (from, to) {
+            assert!(
+                lab_tier(used) < lab_tier(owner),
+                "lab crate {owner} depends on {used}, which is not in a lower tier"
+            );
+        }
+    }
+}
+
 #[test]
 fn attunement_proposals_have_no_runtime_or_store_dependency() {
     let metadata = workspace_metadata();
