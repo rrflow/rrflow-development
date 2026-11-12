@@ -2,18 +2,17 @@
 //! the runs into one report. A failing system stays visible and cannot vanish.
 use super::adapter::{CollectionSpec, PointBatch, SearchRequest, SystemAdapter};
 use super::corpus::{exact_answers, generate, GroundTruth, VectorSet};
-use super::manifest::{
-    Availability, SearchSetting, SystemBinding, SystemKind, VectorComparisonManifest,
-};
 use super::manifest::{CorpusSource, CorpusSpec, QualitySpec, WorkloadSpec};
-use super::report::TestIdentity;
-use super::report::{
+use super::manifest::{SearchSetting, SystemBinding, SystemKind, VectorComparisonManifest};
+use super::{canonical_json, require, sha256_hex, Result};
+use crate::storage::{Digest, Id};
+use rrflow_lab_core::report::TestIdentity;
+use rrflow_lab_core::report::{
     ArtifactReference, DimensionDefinition, LabEvidenceClass, LabReport, MetricDefinition,
     MetricDirection, Observation, ReportSystem, SystemStatus, Verdict, VerdictOutcome,
     ViewDefinition, REPORT_SCHEMA_VERSION,
 };
-use super::{canonical_json, require, sha256_hex, Result};
-use crate::storage::{Digest, Id};
+use rrflow_lab_core::Availability;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;

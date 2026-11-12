@@ -1,8 +1,9 @@
 //! The frozen, typed definition of one vector comparison. It names credentials
 //! only by environment variable, so a manifest can be published with its results.
-use super::report::TestIdentity;
 use super::{require, Result};
 use crate::storage::{Digest, Id};
+use rrflow_lab_core::report::TestIdentity;
+use rrflow_lab_core::Availability;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
@@ -117,16 +118,6 @@ pub struct SearchSetting {
     /// How many partitions an IVF index probes.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub nprobes: Option<u32>,
-}
-
-/// A declared gap is reported as such. It can never read as a passing result.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
-#[serde(tag = "state", rename_all = "snake_case", deny_unknown_fields)]
-pub enum Availability {
-    Available,
-    Unavailable { reason: String },
-    Unimplemented { reason: String },
-    NotApplicable { reason: String },
 }
 
 /// Environment variable names only. The values never enter a file.

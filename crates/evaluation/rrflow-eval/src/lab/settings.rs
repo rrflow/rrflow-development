@@ -10,10 +10,11 @@ use super::catalog::{LaunchSpec, SystemDefinition, TestDefinition};
 use super::corpus::CORPUS_DIRECTORY_ENV;
 use super::definitions::content::{stem, systems_of};
 use super::manifest::{
-    Availability, CorpusSource, IndexSpec, SearchSetting, SystemBinding, VectorComparisonManifest,
+    CorpusSource, IndexSpec, SearchSetting, SystemBinding, VectorComparisonManifest,
 };
 use super::{canonical_json, sha256_hex, Result};
 use crate::storage::Id;
+use rrflow_lab_core::Availability;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};

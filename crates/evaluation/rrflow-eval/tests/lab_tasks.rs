@@ -1,19 +1,19 @@
 //! A task comparison must grade independently, refuse to spend without a decision, and never
 //! claim an arm helped without paired evidence. No test here can start a model.
 use rrflow_eval::lab::knowledge::{chunk_text, importable, MAX_CHUNK_BYTES, MAX_FILE_BYTES};
-use rrflow_eval::lab::manifest::Availability;
 use rrflow_eval::lab::provider::{
     claude_arguments, parse_claude_output, AgentProvider, AgentReply, AgentRequest,
 };
-use rrflow_eval::lab::report::{SystemStatus, TestIdentity, VerdictOutcome};
 use rrflow_eval::lab::tasks::{
     combine_task_runs, exact_mcnemar, normalize_path, parse_plan, run_order, run_task, score_plan,
     task_prompt, wilson_interval, AgentPlan, AgentTask, CaptureField, Preregistration, RunInputs,
     RunKey, SpendLimits, StudyStage, TaskArm, TaskComparisonManifest, TaskModel, TaskProviderKind,
     TaskRun, TaskRunOutcome,
 };
-use rrflow_eval::lab::Result;
 use rrflow_eval::storage::Id;
+use rrflow_lab_core::report::{SystemStatus, TestIdentity, VerdictOutcome};
+use rrflow_lab_core::Availability;
+use rrflow_lab_core::Result;
 use std::cell::RefCell;
 use std::path::{Path, PathBuf};
 

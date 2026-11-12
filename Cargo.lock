@@ -5297,6 +5297,7 @@ dependencies = [
  "getrandom 0.4.3",
  "rrd-client",
  "rrd-contract",
+ "rrflow-lab-core",
  "schemars",
  "serde",
  "serde_json",
@@ -5304,6 +5305,16 @@ dependencies = [
  "tempfile",
  "tokio",
  "ureq",
+]
+
+[[package]]
+name = "rrflow-lab-core"
+version = "1.0.0"
+dependencies = [
+ "schemars",
+ "serde",
+ "serde_json",
+ "sha2",
 ]
 
 [[package]]

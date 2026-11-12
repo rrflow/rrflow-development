@@ -1,7 +1,7 @@
 //! Another harness's results must stay labelled as imported, keep what the source said
 //! about itself, and never carry its connection settings into a report.
 use rrflow_eval::lab::import::import_vectordbbench;
-use rrflow_eval::lab::report::{LabEvidenceClass, LabReport, SystemStatus, VerdictOutcome};
+use rrflow_lab_core::report::{LabEvidenceClass, LabReport, SystemStatus, VerdictOutcome};
 use serde_json::{json, Value};
 
 const FIXTURE: &str = include_str!("fixtures/vdbbench-qdrant-result.json");

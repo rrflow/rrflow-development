@@ -8,18 +8,19 @@ use rrflow_eval::lab::driver::{
     combine, prepare_inputs, run_system, run_system_with_progress, Inputs, LabProgress, SystemRun,
 };
 use rrflow_eval::lab::manifest::{
-    Availability, CorpusSource, CorpusSpec, CredentialReferences, IndexSpec, LabMetric,
-    QualitySpec, SearchSetting, SystemBinding, SystemKind, SystemLocation,
-    VectorComparisonManifest, WorkloadSpec,
+    CorpusSource, CorpusSpec, CredentialReferences, IndexSpec, LabMetric, QualitySpec,
+    SearchSetting, SystemBinding, SystemKind, SystemLocation, VectorComparisonManifest,
+    WorkloadSpec,
 };
 use rrflow_eval::lab::references::{Comparison, ReferenceFile};
-use rrflow_eval::lab::report::{LabReport, SystemStatus, TestIdentity, VerdictOutcome};
 use rrflow_eval::lab::settings::{LabPlan, LabSettings};
 use rrflow_eval::lab::sources::SourceList;
 use rrflow_eval::lab::study::{CaptureAudit, StudyCheck, StudyConfig, StudyRequirements};
 use rrflow_eval::lab::tasks::{TaskComparisonManifest, TaskRun};
-use rrflow_eval::lab::{canonical_json, sha256_hex, Result};
 use rrflow_eval::storage::{schema, Id};
+use rrflow_lab_core::report::{LabReport, SystemStatus, TestIdentity, VerdictOutcome};
+use rrflow_lab_core::Availability;
+use rrflow_lab_core::{canonical_json, sha256_hex, Result};
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
 use std::path::Path;
