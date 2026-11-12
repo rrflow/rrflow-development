@@ -89,4 +89,5 @@
 - [POAM-077 — the engine's configuration cannot be tuned after install, and most parts have no settings](poam-077.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-077`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-077) — active parent-owned POA&M detail
 - [POAM-078 — the estate-to-engram rename is half applied](poam-078.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-078`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-078) — active parent-owned POA&M detail
 - [POAM-079 — most engine tests run on built-in defaults, not the installed configuration](poam-079.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-079`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-079) — active parent-owned POA&M detail
+- [POAM-080 — vector scans pay fixed per-candidate work and the planner prices codecs like exact scans](poam-080.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-080`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-080) — active parent-owned POA&M detail
 <!-- rrflow:generated-index:end -->
