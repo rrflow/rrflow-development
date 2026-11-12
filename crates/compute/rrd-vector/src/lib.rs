@@ -8,6 +8,7 @@ mod catalog;
 mod collection;
 mod compact;
 mod contract;
+mod cost;
 mod exact;
 mod filter;
 mod hnsw;
@@ -50,6 +51,7 @@ pub use contract::{
     EmbeddingModelBinding, MultiVectorComparator, ScoreMetric, SearchHit, SearchMode,
     SearchRequest, VectorCandidate, VectorQuery, VectorVisibilityRequest,
 };
+pub use cost::{CostPoint, VectorCostModel};
 pub use exact::{
     candidates_from_changes, latest_versions, materialize_visible, score_query,
     search_changes_exact, search_exact, search_exact_ref,
