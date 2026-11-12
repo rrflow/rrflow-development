@@ -26,6 +26,8 @@ import subprocess
 import sys
 from pathlib import Path, PurePosixPath
 
+from workspace_packages import member_directories, package_of
+
 ROOT = Path(__file__).resolve().parents[2]
 LANES = ("full", "docs", "scripts", "engine", "sdk")
 
@@ -108,18 +110,10 @@ def matches(path: str, patterns: tuple[str, ...]) -> bool:
 
 
 def crate_of(path: str, root: Path = ROOT) -> str | None:
-    """The workspace package whose directory holds `path`, read from its manifest."""
-    parts = PurePosixPath(path).parts
-    if len(parts) < 4 or parts[0] != "crates":
+    """The workspace package that owns `path`, from the workspace member list at any depth."""
+    if not path.startswith("crates/"):
         return None
-    manifest = root.joinpath(*parts[:3], "Cargo.toml")
-    if not manifest.is_file():
-        return None
-    for line in manifest.read_text(encoding="utf-8").splitlines():
-        stripped = line.strip()
-        if stripped.startswith("name") and "=" in stripped:
-            return stripped.split("=", 1)[1].strip().strip('"')
-    return None
+    return package_of(path, member_directories(root))
 
 
 def workspace_graph(metadata: dict) -> dict[str, set[str]]:

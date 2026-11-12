@@ -11,6 +11,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from workspace_packages import member_directories, package_of
+
 ROOT = Path(__file__).resolve().parents[2]
 OUTPUT = ROOT / "target" / "rrflow-1.0-file-plan.jsonl"
 ROADMAP = ROOT / "docs" / "roadmap" / "rrflow-1.0.md"
@@ -1780,8 +1782,7 @@ def file_kind(path: str) -> str:
 
 
 def package_name(path: str) -> str | None:
-    parts = Path(path).parts
-    return parts[2] if len(parts) > 2 and parts[0] == "crates" else None
+    return package_of(path, member_directories(ROOT)) if path.startswith("crates/") else None
 
 
 def planned_gates(path: str) -> tuple[str, ...]:
