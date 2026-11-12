@@ -9,11 +9,11 @@ use rrflow_eval::lab::references::{
     compare, AnswerResult, Comparison, HardwareClass, Provenance, ReferenceFile, ReferenceOrigin,
     ReferenceSource, SeekResult, TestConditions, ANSWERS_NOT_MEASURED,
 };
-use rrflow_eval::lab::report::{
+use rrflow_eval::storage::Id;
+use rrflow_evaluation_core::report::{
     DimensionDefinition, LabEvidenceClass, LabReport, MetricDefinition, MetricDirection,
     Observation, ReportSystem, SystemStatus, TestIdentity,
 };
-use rrflow_eval::storage::Id;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 

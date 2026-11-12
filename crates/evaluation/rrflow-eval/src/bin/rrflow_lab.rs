@@ -18,13 +18,12 @@ use rrflow_eval::lab::driver::{
 };
 use rrflow_eval::lab::import::{import_vectordbbench, MAX_IMPORT_BYTES};
 use rrflow_eval::lab::knowledge::{read_repository_text, CHUNK_TABLE};
-use rrflow_eval::lab::manifest::{Availability, VectorComparisonManifest};
+use rrflow_eval::lab::manifest::VectorComparisonManifest;
 use rrflow_eval::lab::provider::ClaudeCode;
 use rrflow_eval::lab::references::{
     compare, ComparedSeek, Comparison, HardwareClass, ListedAnswer, MeasuredSpeed, ReferenceFile,
     TestConditions,
 };
-use rrflow_eval::lab::report::{ArtifactReference, LabReport, SystemStatus};
 use rrflow_eval::lab::rrflow::RrflowAdapter;
 use rrflow_eval::lab::settings::{
     approve_all, build_plan, launch_digest, needs_approval, planned_files, runs_somewhere,
@@ -39,8 +38,10 @@ use rrflow_eval::lab::tasks::{
     charged_usd, combine_task_runs, run_order, run_task, RunInputs, RunKey, TaskComparisonManifest,
     TaskRun,
 };
-use rrflow_eval::lab::{canonical_json, sha256_hex, Result};
 use rrflow_eval::storage::{schema, Digest, Id};
+use rrflow_evaluation_core::report::{ArtifactReference, LabReport, SystemStatus};
+use rrflow_evaluation_core::Availability;
+use rrflow_evaluation_core::{canonical_json, sha256_hex, Result};
 use serde::de::DeserializeOwned;
 use std::collections::{BTreeMap, BTreeSet};
 use std::io::Write;

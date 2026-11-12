@@ -1,9 +1,9 @@
 //! What others have published, beside what this lab measured. A published number is a claim
 //! someone else made, so each row carries who measured it, what kind of source that is, and the
 //! exact words it was read from. Nothing is ranked unless every condition matches.
-use super::report::{LabReport, SystemStatus};
 use super::{require, Result};
 use crate::storage::Id;
+use rrflow_evaluation_core::report::{LabReport, SystemStatus};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;

@@ -6,7 +6,7 @@ use rrflow_eval::lab::definitions::pack::{
     build_pack, generate_key, read_pack, InstallKind, PackContent, PackRequest, PackStore,
     SignedPack, TrustedKey, TrustedKeys, MAX_PACK_BYTES,
 };
-use rrflow_eval::lab::Result;
+use rrflow_evaluation_core::Result;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 

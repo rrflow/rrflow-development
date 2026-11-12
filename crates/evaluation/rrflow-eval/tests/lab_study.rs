@@ -1,8 +1,6 @@
 //! A study has to be fit to answer its question before it can spend anything, and its runs have
 //! to prove their data arrived. No test here can start a model.
-use rrflow_eval::lab::manifest::Availability;
 use rrflow_eval::lab::provider::{parse_claude_output, AgentProvider, AgentReply, AgentRequest};
-use rrflow_eval::lab::report::{SystemStatus, TestIdentity, VerdictOutcome};
 use rrflow_eval::lab::sources::SourceList;
 use rrflow_eval::lab::study::{
     audit_runs, check_study, discordant_pairs_needed, plan_study, resolve_study, AnalysisChoices,
@@ -13,8 +11,10 @@ use rrflow_eval::lab::tasks::{
     RunKey, SpendLimits, StudyStage, TaskArm, TaskComparisonManifest, TaskModel, TaskProviderKind,
     TaskRun, TaskRunOutcome,
 };
-use rrflow_eval::lab::Result;
 use rrflow_eval::storage::Id;
+use rrflow_evaluation_core::report::{SystemStatus, TestIdentity, VerdictOutcome};
+use rrflow_evaluation_core::Availability;
+use rrflow_evaluation_core::Result;
 use std::collections::BTreeMap;
 use std::path::Path;
 

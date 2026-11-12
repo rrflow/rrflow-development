@@ -171,6 +171,7 @@ PACKAGE_GATES: dict[str, tuple[str, ...]] = {
     "rrd-maintenance": ("A-07", "D-02", "D-10", "I-07", "J-02"),
     "rrd-operator-knowledge": ("A-07", "D-06", "H-01", "J-02"),
     "rrflow-eval": ("A-07", "G-06", "J-02", "J-04"),
+    "rrflow-evaluation-core": ("A-07", "J-04"),
 }
 
 FILE_OVERRIDES: dict[str, tuple[str, ...]] = {

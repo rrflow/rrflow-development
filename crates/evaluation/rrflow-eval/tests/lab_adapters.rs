@@ -5,13 +5,14 @@
 use rrflow_eval::lab::adapter::{CollectionSpec, PointBatch, SearchRequest, SystemAdapter};
 use rrflow_eval::lab::custom::CustomAdapter;
 use rrflow_eval::lab::manifest::{
-    Availability, CredentialReferences, IndexSpec, LabMetric, SearchSetting, SystemBinding,
-    SystemKind, SystemLocation, WorkloadSpec,
+    CredentialReferences, IndexSpec, LabMetric, SearchSetting, SystemBinding, SystemKind,
+    SystemLocation, WorkloadSpec,
 };
 use rrflow_eval::lab::milvus::MilvusAdapter;
 use rrflow_eval::lab::qdrant::QdrantAdapter;
 use rrflow_eval::lab::surrealdb::SurrealAdapter;
 use rrflow_eval::storage::Id;
+use rrflow_evaluation_core::Availability;
 use serde_json::{json, Value};
 use std::io::{Read, Write};
 use std::net::TcpListener;

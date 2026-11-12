@@ -1,8 +1,7 @@
 //! The test-agnostic report. Any test can write it, and a client renders it from
 //! the metrics, dimensions and views it declares, so a new test needs no new
 //! components. It has no winner field: verdicts answer declared questions.
-use super::{require, Result};
-use crate::storage::{Digest, Id};
+use crate::{require, Digest, Id, Result};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
