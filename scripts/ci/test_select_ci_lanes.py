@@ -8,13 +8,14 @@ from pathlib import Path
 from select_ci_lanes import LANES, select, with_dependents, workspace_graph
 
 METADATA = {
-    "workspace_members": ["core", "lsm", "engine", "cli", "eval"],
+    "workspace_members": ["core", "lsm", "engine", "cli", "eval", "lab"],
     "packages": [
         {"id": "core", "name": "rrd-core", "dependencies": []},
         {"id": "lsm", "name": "rrd-lsm", "dependencies": [{"name": "rrd-core"}]},
         {"id": "engine", "name": "rrd-engine", "dependencies": [{"name": "rrd-core"}, {"name": "rrd-lsm"}]},
         {"id": "cli", "name": "rrflow-cli", "dependencies": [{"name": "rrd-engine"}, {"name": "serde"}]},
         {"id": "eval", "name": "rrflow-eval", "dependencies": [{"name": "rrd-core"}]},
+        {"id": "lab", "name": "rrflow-lab-core", "dependencies": []},
     ],
 }
 
@@ -24,11 +25,19 @@ class LaneSelectionTests(unittest.TestCase):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name)
-        for group, crate in [("kernel", "rrd-core"), ("persistence", "rrd-lsm"), ("authority", "rrd-engine"),
-                             ("adapters", "rrflow-cli"), ("evaluation", "rrflow-eval")]:
+        members = [("kernel", "rrd-core"), ("persistence", "rrd-lsm"), ("authority", "rrd-engine"),
+                   ("adapters", "rrflow-cli"), ("evaluation", "rrflow-eval"), ("transport", "rrd-contract"),
+                   ("evaluation/lab", "rrflow-lab-core")]
+        for group, crate in members:
             manifest = self.root / "crates" / group / crate / "Cargo.toml"
             manifest.parent.mkdir(parents=True)
             manifest.write_text(f'[package]\nname = "{crate}"\nversion = "1.0.0"\n', encoding="utf-8")
+        # A fuzz package nested inside a member is not itself a member.
+        fuzz = self.root / "crates" / "evaluation" / "rrflow-eval" / "fuzz" / "Cargo.toml"
+        fuzz.parent.mkdir(parents=True)
+        fuzz.write_text('[package]\nname = "rrflow-eval-fuzz"\nversion = "0.0.0"\n', encoding="utf-8")
+        listed = ", ".join(f'"crates/{group}/{crate}"' for group, crate in members)
+        (self.root / "Cargo.toml").write_text(f"[workspace]\nmembers = [{listed}]\n", encoding="utf-8")
 
     def lanes(self, *paths, **options):
         result = select(list(paths), metadata=METADATA, root=self.root, **options)
@@ -71,9 +80,6 @@ class LaneSelectionTests(unittest.TestCase):
         self.assertEqual(packages, "")
 
     def test_transport_crate_edit_runs_conformance_too(self):
-        manifest = self.root / "crates" / "transport" / "rrd-contract" / "Cargo.toml"
-        manifest.parent.mkdir(parents=True)
-        manifest.write_text('[package]\nname = "rrd-contract"\n', encoding="utf-8")
         selected, packages = self.lanes("crates/transport/rrd-contract/src/lib.rs")
         self.assertEqual(selected, {"sdk", "engine"})
         self.assertEqual(packages, "-p rrd-contract")
@@ -118,6 +124,17 @@ class LaneSelectionTests(unittest.TestCase):
         self.assertEqual(selected, {"full"})
         result = select(["tools/new-thing.toml"], metadata=METADATA, root=self.root)
         self.assertEqual(result["unknown"], ["tools/new-thing.toml"])
+
+    def test_a_nested_member_is_its_own_package_not_an_unknown_path(self):
+        selected, packages = self.lanes("crates/evaluation/lab/rrflow-lab-core/src/lib.rs")
+        self.assertEqual(selected, {"engine"})
+        self.assertEqual(packages, "-p rrflow-lab-core")
+
+    def test_a_nested_non_member_belongs_to_the_member_around_it(self):
+        selected, packages = self.lanes("crates/evaluation/rrflow-eval/fuzz/fuzz_targets/manifest.rs")
+        self.assertEqual(selected, {"engine"})
+        self.assertEqual(packages, "-p rrflow-eval")
+        self.assertNotIn("fuzz", packages)
 
     def test_unknown_crate_directory_fails_closed(self):
         selected, _ = self.lanes("crates/compute/not-a-crate/src/lib.rs")
