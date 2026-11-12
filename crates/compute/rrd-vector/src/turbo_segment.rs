@@ -15,7 +15,7 @@ use rrd_core::{
 };
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
-use std::collections::{BTreeMap, BTreeSet, BinaryHeap};
+use std::collections::{BTreeSet, BinaryHeap};
 use std::fs::File;
 use std::path::Path;
 use std::sync::{Arc, OnceLock};
@@ -59,6 +59,21 @@ impl CandidateHits {
             limit,
             hits: BinaryHeap::new(),
         }
+    }
+
+    /// Whether a hit with these keys would enter the heap, decided before its
+    /// references are cloned. It orders exactly as `compare_best_first`.
+    fn admits(&self, score: f64, reference: &RuntimeRef, source_cursor: u64) -> bool {
+        self.hits.len() < self.limit
+            || self.hits.peek().is_some_and(|worst| {
+                worst
+                    .0
+                    .score
+                    .total_cmp(&score)
+                    .then_with(|| reference.cmp(&worst.0.reference))
+                    .then_with(|| worst.0.source_cursor.cmp(&source_cursor))
+                    == Ordering::Less
+            })
     }
 
     fn consider(&mut self, hit: SearchHit) {
@@ -541,7 +556,15 @@ impl TurboQuantSegment {
         {
             return invalid("TurboQuant inner-product code width differs from its configuration");
         }
-        let mut versions = BTreeSet::new();
+        // Versions strictly ascend by reference, then source cursor. This
+        // makes each version unique, and lets a search resolve every
+        // identity's latest version in one linear pass.
+        if header.candidates.windows(2).any(|pair| {
+            (&pair[0].reference, pair[0].source_cursor)
+                >= (&pair[1].reference, pair[1].source_cursor)
+        }) {
+            return invalid("TurboQuant candidate versions are not in reference and cursor order");
+        }
         for candidate in &header.candidates {
             let estimator_norms = if inner_product {
                 candidate.centroid_norm >= 0.0
@@ -557,7 +580,6 @@ impl TurboQuantSegment {
                 || candidate.original_norm < 0.0
                 || !candidate.centroid_norm.is_finite()
                 || !estimator_norms
-                || !versions.insert((candidate.reference.clone(), candidate.source_cursor))
             {
                 return invalid("TurboQuant candidate metadata is invalid");
             }
@@ -663,18 +685,25 @@ impl TurboQuantSegment {
         {
             return invalid("TurboQuant artifact does not satisfy the search contract");
         }
-        let mut latest = BTreeMap::<&RuntimeRef, usize>::new();
-        for (index, candidate) in self.candidates.iter().enumerate() {
-            if candidate.source_cursor > request.read.commit_cursor
-                || candidate.valid_from > request.valid_at
-            {
-                continue;
+        // `decode` guarantees candidates strictly ascend by reference, then
+        // source cursor. Each identity's versions are therefore one run, and
+        // the last visible version in a run is that identity's latest.
+        let visible = |candidate: &StoredCandidate| {
+            candidate.source_cursor <= request.read.commit_cursor
+                && candidate.valid_from <= request.valid_at
+        };
+        let mut latest = Vec::new();
+        let mut start = 0;
+        while start < self.candidates.len() {
+            let reference = &self.candidates[start].reference;
+            let end = self.candidates[start..]
+                .iter()
+                .position(|candidate| &candidate.reference != reference)
+                .map_or(self.candidates.len(), |offset| start + offset);
+            if let Some(index) = (start..end).rfind(|&index| visible(&self.candidates[index])) {
+                latest.push(index);
             }
-            if latest.get(&candidate.reference).is_none_or(|current| {
-                self.candidates[*current].source_cursor < candidate.source_cursor
-            }) {
-                latest.insert(&candidate.reference, index);
-            }
+            start = end;
         }
         let payload = &self.as_bytes()[self.payload_offset..self.payload_offset + self.payload_len];
         let query = match self.descriptor.estimator {
@@ -693,7 +722,7 @@ impl TurboQuantSegment {
             )?,
         };
         let mut hits = CandidateHits::new(candidate_limit);
-        for index in latest.into_values() {
+        for index in latest {
             let candidate = &self.candidates[index];
             if candidate
                 .valid_to
@@ -721,12 +750,14 @@ impl TurboQuantSegment {
                     kernel,
                 )?,
             };
-            hits.consider(SearchHit {
-                reference: candidate.reference.clone(),
-                subject: candidate.subject.clone(),
-                source_cursor: candidate.source_cursor,
-                score,
-            });
+            if hits.admits(score, &candidate.reference, candidate.source_cursor) {
+                hits.consider(SearchHit {
+                    reference: candidate.reference.clone(),
+                    subject: candidate.subject.clone(),
+                    source_cursor: candidate.source_cursor,
+                    score,
+                });
+            }
         }
         Ok(hits.finish())
     }
@@ -934,6 +965,166 @@ mod tests {
                 assert!(selected.hits.len() <= limit);
             }
             assert_eq!(selected.finish(), expected[..limit.min(expected.len())]);
+        }
+    }
+
+    /// The linear latest-version pass serves exactly the versions the exact
+    /// oracle does: newer versions not yet committed or not yet valid fall
+    /// back to the newest visible one, and a retired latest hides its identity.
+    #[test]
+    fn turbo_version_resolution_matches_the_exact_oracle() {
+        let scope = ScopeId::new("instance:turbo-versions").unwrap();
+        let mut versions = Vec::new();
+        let mut cursor = 0;
+        for identity in 0..24_u64 {
+            for revision in 0..=(identity % 4) {
+                cursor += 1;
+                let mut version = candidate(
+                    &scope,
+                    cursor,
+                    &format!("p{identity:02}"),
+                    if (identity + revision) % 2 == 0 {
+                        "a"
+                    } else {
+                        "b"
+                    },
+                );
+                version.vector.valid_from = 1 + (identity * 7 + revision * 3) % 9;
+                if (identity + revision) % 5 == 0 {
+                    version.vector.valid_to = Some(version.vector.valid_from + 4);
+                }
+                versions.push(version);
+            }
+        }
+        let segment =
+            TurboQuantSegment::build(config(&scope), 1, cursor, versions.clone()).unwrap();
+        let (mut served_total, mut fell_back, mut hidden) = (0, 0, 0);
+        for commit_cursor in [cursor / 3, cursor / 2, cursor] {
+            for valid_at in [1, 4, 6, 9, 20] {
+                for filtered in [false, true] {
+                    let request = SearchRequest {
+                        scope: scope.clone(),
+                        read: ReadStamp::new(
+                            scope.clone(),
+                            None,
+                            0,
+                            commit_cursor,
+                            Some("11".repeat(32)),
+                        )
+                        .unwrap(),
+                        valid_at,
+                        field: "body".into(),
+                        query: VectorQuery::Dense {
+                            values: deterministic_vector(64, 7),
+                        },
+                        metric: ScoreMetric::Cosine,
+                        embedding_model: None,
+                        top_k: 1,
+                        mode: SearchMode::RequireApproximate { exact_rerank: 1 },
+                        filter: filtered.then(|| FilterExpression::Condition {
+                            condition: FilterCondition {
+                                property: "tenant".into(),
+                                operator: FilterOperator::Equals {
+                                    value: RuntimeValue::String("a".into()),
+                                },
+                            },
+                        }),
+                    };
+                    let served = segment
+                        .search_candidates_at_with_kernel(
+                            &request,
+                            versions.len(),
+                            0,
+                            QuantizedKernel::Scalar,
+                        )
+                        .unwrap()
+                        .into_iter()
+                        .map(|hit| (hit.reference, hit.source_cursor))
+                        .collect::<BTreeSet<_>>();
+                    let expected = crate::exact::visible_versions(&request, &versions)
+                        .unwrap()
+                        .into_iter()
+                        .map(|(reference, source_cursor)| (reference.clone(), source_cursor))
+                        .collect::<BTreeSet<_>>();
+                    assert_eq!(
+                        served, expected,
+                        "commit {commit_cursor}, valid at {valid_at}, filtered {filtered}"
+                    );
+                    let newest_committed = |reference: &RuntimeRef| {
+                        versions
+                            .iter()
+                            .filter(|version| {
+                                &version.vector.reference == reference
+                                    && version.source_cursor <= commit_cursor
+                            })
+                            .map(|version| version.source_cursor)
+                            .max()
+                    };
+                    fell_back += served
+                        .iter()
+                        .filter(|(reference, cursor)| newest_committed(reference) != Some(*cursor))
+                        .count();
+                    hidden += (0..24_u64)
+                        .map(|identity| RuntimeRef::new("embedding", format!("p{identity:02}")))
+                        .map(Result::unwrap)
+                        .filter(|reference| {
+                            newest_committed(reference).is_some()
+                                && served.iter().all(|(served, _)| served != reference)
+                        })
+                        .count();
+                    served_total += served.len();
+                }
+            }
+        }
+        // The cases above must exercise every rule, not pass vacuously.
+        assert!(served_total > 0 && fell_back > 0 && hidden > 0);
+    }
+
+    /// A header whose versions are out of order, or repeat one, is refused
+    /// even when its digest is valid, because search relies on that order.
+    #[test]
+    fn decode_refuses_versions_out_of_reference_and_cursor_order() {
+        let scope = ScopeId::new("instance:turbo-order").unwrap();
+        let segment = TurboQuantSegment::build(
+            config(&scope),
+            1,
+            2,
+            vec![
+                candidate(&scope, 1, "a", "a"),
+                candidate(&scope, 2, "b", "a"),
+            ],
+        )
+        .unwrap();
+        let bytes = segment.as_bytes();
+        let header_len = u32::from_le_bytes(bytes[10..14].try_into().unwrap()) as usize;
+        let header: SegmentHeader =
+            serde_json::from_slice(&bytes[HEADER_PREFIX_BYTES..HEADER_PREFIX_BYTES + header_len])
+                .unwrap();
+        let width = header.packed_bytes_per_vector;
+        let payload = segment.payload().to_vec();
+        let forge = |candidates: Vec<StoredCandidate>, payload: Vec<u8>| {
+            let header = SegmentHeader {
+                candidates,
+                ..header.clone()
+            };
+            let header_bytes = encode_json(&header).unwrap();
+            let digest = artifact_digest(&header_bytes, &payload);
+            encode_artifact(&header_bytes, &payload, &digest).unwrap()
+        };
+        let swapped = forge(
+            vec![header.candidates[1].clone(), header.candidates[0].clone()],
+            [&payload[width..], &payload[..width]].concat(),
+        );
+        let repeated = forge(
+            vec![header.candidates[0].clone(), header.candidates[0].clone()],
+            [&payload[..width], &payload[..width]].concat(),
+        );
+        for forged in [swapped, repeated] {
+            let error = TurboQuantSegment::from_bytes(&forged).unwrap_err();
+            assert!(
+                error.to_string().contains("reference and cursor order"),
+                "{error}"
+            );
         }
     }
 
