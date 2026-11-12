@@ -35,6 +35,9 @@ Two research agents read primary sources on 2026-11-11 on layered settings, acco
 
 - Nothing in the ADR is implemented.
 - H-10 project links, the resolver, and personal and org engram installation are all still to be built.
-- The open questions in the ADR are for the owner.
+- The owner answered two of the three open questions on 2026-11-11:
+  - The personal engram is a tailored RRFlow instance that runs with RRFlow.
+  - Team levels and per-project overrides are standardized schemas and templates that the AI addresses.
+- Where an org engram runs is still open.
 
 **Roadmap/POA&M change:** none. Once pull request #357 has merged, a POA&M row for the missing resolver will follow.
