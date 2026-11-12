@@ -69,6 +69,18 @@ planner and exact-f32 reranking path. Their format and lifecycle semantics are
 owned by their dedicated records; their existence does not qualify E-04 or
 establish Qdrant equivalence.
 
+The planner prices every path in exact-score units: an exact scan of `n`
+candidates costs `n`. A quantized or TurboQuant generation of `n` codes costs
+`ceil(n × c / 1000)` plus its `exact_rerank` and any overlay, where `c` is the
+codec's measured per-candidate cost in thousandths of an exact score at the
+generation's dimensions (`rrd_vector::VectorCostModel`). The defaults come from
+the [calibration record](../../evidence/e04-vector-cost-calibration-after-turboquant-scan-20000-windows.json),
+and `VectorRuntime::set_cost_model` replaces them with costs measured on other
+hardware. A request that only allows approximation therefore takes a codec
+when it is cheaper, and keeps the exact scan on a corpus too small for the
+rerank to pay. HNSW keeps its sampled estimate, whose navigation multiplier is
+not yet measured ([POAM-080](../../poam/rrflow-1.0-alpha/poam-080.md)).
+
 ## Current persistent path
 
 `RrdEngine::search_vectors_at` captures one authenticated `ReadStamp`, selects

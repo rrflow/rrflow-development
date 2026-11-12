@@ -58,6 +58,18 @@ pub enum SearchMode {
     RequireApproximate { exact_rerank: usize },
 }
 
+impl SearchMode {
+    /// Candidates an approximate path reranks exactly; none in exact mode.
+    pub const fn exact_rerank(self) -> usize {
+        match self {
+            Self::Exact => 0,
+            Self::AllowApproximate { exact_rerank } | Self::RequireApproximate { exact_rerank } => {
+                exact_rerank
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum VectorQuery {

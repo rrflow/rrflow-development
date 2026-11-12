@@ -30,6 +30,7 @@ Roadmap owner: [Gate E](../../roadmap/rrflow-1.0/gate-e.md).
 ## Remediation in progress
 
 - The TurboQuant scan resolves each identity's latest version in one linear pass over versions that `decode` now requires in reference and cursor order, and clones only hits the heap admits. Measured in [the after record](../../evidence/e04-vector-cost-calibration-after-turboquant-scan-20000-windows.json), 4-bit costs fall from 812 to 267, 1,144 to 591 and 1,642 to 1,072 ns per candidate at 128, 384 and 768 dimensions.
+- The planner prices TurboQuant and quantized generations from measured per-candidate costs (`rrd_vector::VectorCostModel`), so a request that allows approximation takes TurboQuant at 2,048 vectors of 64 dimensions (cost 507 against 2,048) and keeps the exact scan at 40 (45 against 40). HNSW's navigation multiplier is still unmeasured, and the engine does not yet take the model from installed configuration (POAM-077).
 
 ## Closure evidence
 

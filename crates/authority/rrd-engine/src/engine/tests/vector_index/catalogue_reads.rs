@@ -242,11 +242,27 @@ fn retained_quantization_state_survives_activation_retirement_and_reopen() {
         )
         .unwrap();
     let active = engine.storage.runtime().read_stamp(&scope).unwrap();
+    // On this small fixture, scanning every code and reranking costs more
+    // than exact scoring, so a request that only allows approximation is
+    // served exactly. Requiring approximation shows which stamps can serve
+    // the generation.
     let request = search_request(VectorSearchMode::AllowApproximate {
         exact_rerank: 2,
         ef_search: 2,
     });
-    let before = engine.search_vectors_at(&request, active.clone()).unwrap();
+    let required = search_request(VectorSearchMode::RequireApproximate {
+        exact_rerank: 2,
+        ef_search: 2,
+    });
+    assert_eq!(
+        engine
+            .search_vectors_at(&request, active.clone())
+            .unwrap()
+            .access_path
+            .as_str(),
+        "exact_scan"
+    );
+    let before = engine.search_vectors_at(&required, active.clone()).unwrap();
     assert_eq!(before.access_path.as_str(), "scalar_quantized");
     engine
         .retire_vector_quantization_artifact(
@@ -276,16 +292,19 @@ fn retained_quantization_state_survives_activation_retirement_and_reopen() {
             "exact_scan"
         );
     }
+    for read in [ready.clone(), retired.clone()] {
+        assert!(engine.search_vectors_at(&required, read).is_err());
+    }
     assert_eq!(
         engine
-            .search_vectors_at(&request, active.clone())
+            .search_vectors_at(&required, active.clone())
             .unwrap()
             .plan_sha256,
         before.plan_sha256
     );
     drop(engine);
     let reopened = RrdEngine::open(root.path(), instance(), TOKEN_KEY).unwrap();
-    let recovered = reopened.search_vectors_at(&request, active).unwrap();
+    let recovered = reopened.search_vectors_at(&required, active).unwrap();
     assert_eq!(recovered.plan_sha256, before.plan_sha256);
     assert_eq!(recovered.hits, before.hits);
     for read in [ready, retired] {

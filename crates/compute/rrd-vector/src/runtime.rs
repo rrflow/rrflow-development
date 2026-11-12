@@ -1,10 +1,11 @@
 use crate::contract::invalid;
+use crate::cost::codec_scan_cost;
 use crate::exact::visible_versions;
 use crate::{
     search_exact_ref, AccessPathKind, CompactDenseSegment, HnswIndex, HnswKernel,
     ImmutableVectorSegment, QuantizationMethod, QuantizedKernel, QuantizedSegment, SearchHit,
-    SearchPlan, SearchRequest, TurboQuantSegment, VectorCandidate, VectorCatalog, VectorPlanner,
-    VectorProjectionDescriptor,
+    SearchPlan, SearchRequest, TurboQuantSegment, VectorCandidate, VectorCatalog, VectorCostModel,
+    VectorPlanner, VectorProjectionDescriptor,
 };
 use rrd_core::{
     digest, Error, ProjectionId, ProjectionStamp, ProjectionState, Result,
@@ -266,6 +267,7 @@ pub struct VectorRuntime {
     canonical: Vec<VectorCandidate>,
     catalog: VectorCatalog,
     artifacts: BTreeMap<(ProjectionId, u64), Arc<VectorArtifact>>,
+    cost_model: VectorCostModel,
 }
 
 impl VectorRuntime {
@@ -278,7 +280,20 @@ impl VectorRuntime {
             canonical,
             catalog: VectorCatalog::default(),
             artifacts: BTreeMap::new(),
+            cost_model: VectorCostModel::default(),
         })
+    }
+
+    pub fn cost_model(&self) -> &VectorCostModel {
+        &self.cost_model
+    }
+
+    /// Replaces the per-candidate costs the planner prices codecs with, for
+    /// costs measured on this hardware.
+    pub fn set_cost_model(&mut self, cost_model: VectorCostModel) -> Result<()> {
+        cost_model.validate()?;
+        self.cost_model = cost_model;
+        Ok(())
     }
 
     pub fn catalog(&self) -> &VectorCatalog {
@@ -447,12 +462,20 @@ impl VectorRuntime {
                         | VectorArtifact::TurboQuant(_) => None,
                     })
                     .unwrap_or(descriptor.nodes.max(1) as u64),
-                VectorProjectionDescriptor::TurboQuant { descriptor } => {
-                    descriptor.candidate_versions.max(1) as u64
-                }
-                VectorProjectionDescriptor::Quantized { descriptor } => {
-                    descriptor.candidate_versions.max(1) as u64
-                }
+                // A codec scans every code, then reranks exactly; the overlay is
+                // added below. Exact mode never reaches an approximate path.
+                VectorProjectionDescriptor::TurboQuant { descriptor } => codec_scan_cost(
+                    self.cost_model.turboquant(descriptor.estimator),
+                    descriptor.dimensions,
+                    descriptor.candidate_versions,
+                    request.mode.exact_rerank(),
+                ),
+                VectorProjectionDescriptor::Quantized { descriptor } => codec_scan_cost(
+                    self.cost_model.quantized(descriptor.method),
+                    descriptor.dimensions,
+                    descriptor.candidate_versions,
+                    request.mode.exact_rerank(),
+                ),
             };
             let mut path = descriptor.candidate_path(estimated_cost);
             // A generation behind the request serves with an exact overlay of
@@ -1067,6 +1090,83 @@ mod tests {
         assert_eq!(execution.plan.selected.kind, AccessPathKind::TurboQuant);
         assert_eq!(execution.hits[0].reference.id.as_str(), "a");
         assert_eq!(execution.hits[0].score, 1.0);
+    }
+
+    /// The path a request that allows approximation selects over `canonical`
+    /// 64-dimensional vectors, with a 4-bit TurboQuant generation that is
+    /// `overlay` writes behind, and that path's estimated cost.
+    fn allow_approximate_selection(
+        canonical: u64,
+        overlay: u64,
+        exact_rerank: usize,
+    ) -> (AccessPathKind, u64) {
+        const DIMENSIONS: usize = 64;
+        let scope = ScopeId::new("instance:turbo-cost").unwrap();
+        let values = (1..=canonical)
+            .map(|cursor| {
+                let vector = (0..DIMENSIONS)
+                    .map(|dimension| {
+                        ((cursor as usize * 31 + dimension * 7) % 97) as f32 / 48.0 - 1.0
+                    })
+                    .collect();
+                candidate(&scope, cursor, &format!("d{cursor}"), vector)
+            })
+            .collect::<Vec<_>>();
+        let generation_cursor = canonical - overlay;
+        let mut runtime = VectorRuntime::new(values.clone()).unwrap();
+        let artifact = TurboQuantSegment::build(
+            TurboQuantSegmentConfig {
+                id: ProjectionId::new("vector-turbo-cost").unwrap(),
+                scope: scope.clone(),
+                field: "body".into(),
+                dimensions: DIMENSIONS,
+                metric: ScoreMetric::Dot,
+                bits: TurboQuantBits::Bits4,
+                seed: 77,
+                embedding_model: None,
+                filter_properties: BTreeSet::new(),
+                estimator: crate::TurboQuantEstimator::Mse,
+            },
+            1,
+            generation_cursor,
+            values
+                .into_iter()
+                .filter(|candidate| candidate.source_cursor <= generation_cursor),
+        )
+        .unwrap();
+        runtime
+            .restore_quantization_lifecycle_active(artifact)
+            .unwrap();
+        let mut search = request(scope.clone(), SearchMode::AllowApproximate { exact_rerank });
+        search.read = ReadStamp::new(scope, None, 0, canonical, Some("11".repeat(32))).unwrap();
+        search.query = VectorQuery::Dense {
+            values: vec![0.25; DIMENSIONS],
+        };
+        search.top_k = 10;
+        let plan = runtime.search(&search, 32).unwrap().plan;
+        (plan.selected.kind, plan.selected.estimated_cost)
+    }
+
+    /// Scanning 2,044 codes at the measured 0.23 of an exact score, reranking
+    /// 32 and scoring a 4-vector overlay is far less work than 2,048 exact
+    /// scores, so the planner serves the request from TurboQuant. Priced at
+    /// its candidate count, as before, it tied exact and lost on path id.
+    #[test]
+    fn allow_approximate_prefers_turboquant_when_scanning_codes_is_cheaper() {
+        assert_eq!(
+            allow_approximate_selection(2_048, 4, 32),
+            (AccessPathKind::TurboQuant, 471 + 32 + 4)
+        );
+    }
+
+    /// With 40 vectors, reranking 32 exactly already costs most of an exact
+    /// scan, so the planner keeps the exact path.
+    #[test]
+    fn allow_approximate_keeps_exact_when_reranking_costs_as_much() {
+        assert_eq!(
+            allow_approximate_selection(40, 4, 32),
+            (AccessPathKind::ExactScan, 40)
+        );
     }
 
     #[test]
