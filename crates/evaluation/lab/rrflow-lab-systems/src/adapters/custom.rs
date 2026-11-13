@@ -3,7 +3,8 @@
 use crate::adapter::{
     wait_until, CollectionSpec, ConnectionLimits, Http, PointBatch, SearchRequest, SystemAdapter,
 };
-use crate::binding::{IndexSpec, LabMetric, SearchSetting, SystemBinding};
+use crate::binding::{IndexSpec, SearchSetting, SystemBinding};
+use rrflow_evaluation_core::LabMetric;
 use rrflow_evaluation_core::Result;
 use schemars::JsonSchema;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};

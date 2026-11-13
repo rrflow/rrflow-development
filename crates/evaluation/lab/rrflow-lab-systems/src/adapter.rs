@@ -1,6 +1,7 @@
 //! The one boundary every compared system implements. Each adapter speaks only
 //! the system's public API, so no comparator code enters this repository.
-use crate::binding::{IndexSpec, LabMetric, SearchSetting, SystemBinding};
+use crate::binding::{IndexSpec, SearchSetting, SystemBinding};
+use rrflow_evaluation_core::LabMetric;
 use rrflow_evaluation_core::Result;
 use serde_json::Value;
 use std::time::{Duration, Instant};

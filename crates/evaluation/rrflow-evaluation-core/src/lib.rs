@@ -98,6 +98,14 @@ impl Digest {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum LabMetric {
+    Cosine,
+    Dot,
+    Euclidean,
+}
+
 /// A declared gap is reported as such. It can never read as a passing result.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "state", rename_all = "snake_case", deny_unknown_fields)]

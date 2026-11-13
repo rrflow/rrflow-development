@@ -10,14 +10,6 @@ pub const MAX_LADDER_SETTINGS: usize = 64;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub enum LabMetric {
-    Cosine,
-    Dot,
-    Euclidean,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
-#[serde(rename_all = "snake_case")]
 pub enum SystemKind {
     Rrflow,
     Qdrant,

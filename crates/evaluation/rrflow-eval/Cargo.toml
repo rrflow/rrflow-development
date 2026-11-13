@@ -15,6 +15,7 @@ serde_json = { workspace = true }
 rrd-contract = { path = "../../transport/rrd-contract" }
 rrd-client = { path = "../../transport/rrd-client" }
 rrflow-evaluation-core = { path = "../rrflow-evaluation-core" }
+rrflow-lab-datasets = { path = "../lab/rrflow-lab-datasets" }
 rrflow-lab-systems = { path = "../lab/rrflow-lab-systems" }
 schemars = "1.2"
 sha2 = "0.11"

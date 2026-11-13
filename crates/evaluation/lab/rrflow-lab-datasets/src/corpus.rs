@@ -3,16 +3,50 @@
 //! Generation uses only addition, multiplication and square root, which IEEE 754
 //! fixes exactly. Trigonometric or logarithmic steps could differ between
 //! platforms and change the digest.
-use super::manifest::{CorpusSource, CorpusSpec};
-use super::{sha256_hex, Result};
-use crate::storage::Digest;
-use rrflow_lab_systems::binding::LabMetric;
+use rrflow_evaluation_core::LabMetric;
+use rrflow_evaluation_core::{sha256_hex, Digest, Result};
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::path::Path;
 
 /// Where the files named by an imported corpus's digests are kept.
 pub const CORPUS_DIRECTORY_ENV: &str = "RRFLOW_LAB_CORPUS_DIR";
 const QUERY_STREAM: u64 = 0x0071_7565_7269_6573;
+
+/// Generated from fixed arithmetic so its digest matches on every platform.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "generator", rename_all = "snake_case", deny_unknown_fields)]
+pub enum CorpusSource {
+    GaussianMixture {
+        seed: u64,
+        clusters: u32,
+        /// Standard deviation around a cluster center, in thousandths.
+        spread_milli: u32,
+    },
+    /// Real vectors prepared by `import_corpus.py`, kept outside the repository and named
+    /// by digest. Each file holds little-endian 32-bit floats.
+    Imported {
+        /// Where the data came from, for a reader of the report.
+        origin: String,
+        license: String,
+        points_sha256: Digest,
+        queries_sha256: Digest,
+        /// The data has no filter field, so categories are assigned from this seed.
+        category_seed: u64,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct CorpusSpec {
+    pub source: CorpusSource,
+    pub points: u64,
+    pub dimensions: u32,
+    pub metric: LabMetric,
+    /// Filtered search selects one of these, so selectivity is about 1/categories.
+    pub categories: u32,
+}
 
 struct SplitMix64(u64);
 

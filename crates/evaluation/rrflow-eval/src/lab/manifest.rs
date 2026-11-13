@@ -1,10 +1,10 @@
 //! The frozen, typed definition of one vector comparison: its corpus, workload,
 //! quality target and the systems it runs against.
 use super::{require, Result};
-use crate::storage::Digest;
 use rrflow_evaluation_core::report::TestIdentity;
+use rrflow_lab_datasets::corpus::{CorpusSource, CorpusSpec};
 use rrflow_lab_systems::adapter::ConnectionLimits;
-use rrflow_lab_systems::binding::{LabMetric, SystemBinding};
+use rrflow_lab_systems::binding::SystemBinding;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
@@ -16,40 +16,6 @@ pub const MAX_LAB_DIMENSIONS: u32 = 65_536;
 pub const MAX_LAB_QUERIES: u32 = 100_000;
 pub const MAX_LAB_SYSTEMS: usize = 64;
 pub const MAX_LAB_CONCURRENCY: u32 = 1_024;
-
-/// Generated from fixed arithmetic so its digest matches on every platform.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
-#[serde(tag = "generator", rename_all = "snake_case", deny_unknown_fields)]
-pub enum CorpusSource {
-    GaussianMixture {
-        seed: u64,
-        clusters: u32,
-        /// Standard deviation around a cluster center, in thousandths.
-        spread_milli: u32,
-    },
-    /// Real vectors prepared by `import_corpus.py`, kept outside the repository and named
-    /// by digest. Each file holds little-endian 32-bit floats.
-    Imported {
-        /// Where the data came from, for a reader of the report.
-        origin: String,
-        license: String,
-        points_sha256: Digest,
-        queries_sha256: Digest,
-        /// The data has no filter field, so categories are assigned from this seed.
-        category_seed: u64,
-    },
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
-#[serde(deny_unknown_fields)]
-pub struct CorpusSpec {
-    pub source: CorpusSource,
-    pub points: u64,
-    pub dimensions: u32,
-    pub metric: LabMetric,
-    /// Filtered search selects one of these, so selectivity is about 1/categories.
-    pub categories: u32,
-}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]

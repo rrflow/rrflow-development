@@ -1,13 +1,10 @@
 //! The lab must grade independently, keep failures visible, and refuse results that
 //! cannot honestly sit side by side.
 use rrflow_eval::lab::catalog::{SystemDefinition, TestDefinition};
-use rrflow_eval::lab::corpus::{exact_answers, generate, read_imported, GroundTruth, VectorSet};
 use rrflow_eval::lab::driver::{
     combine, prepare_inputs, run_system, run_system_with_progress, Inputs, LabProgress, SystemRun,
 };
-use rrflow_eval::lab::manifest::{
-    CorpusSource, CorpusSpec, QualitySpec, VectorComparisonManifest, WorkloadSpec,
-};
+use rrflow_eval::lab::manifest::{QualitySpec, VectorComparisonManifest, WorkloadSpec};
 use rrflow_eval::lab::references::{Comparison, ReferenceFile};
 use rrflow_eval::lab::settings::{LabPlan, LabSettings};
 use rrflow_eval::lab::sources::SourceList;
@@ -16,12 +13,14 @@ use rrflow_eval::lab::tasks::{TaskComparisonManifest, TaskRun};
 use rrflow_eval::storage::{schema, Id};
 use rrflow_evaluation_core::report::{LabReport, SystemStatus, TestIdentity, VerdictOutcome};
 use rrflow_evaluation_core::Availability;
+use rrflow_evaluation_core::LabMetric;
 use rrflow_evaluation_core::{canonical_json, sha256_hex, Result};
+use rrflow_lab_datasets::corpus::{exact_answers, generate, read_imported, GroundTruth, VectorSet};
+use rrflow_lab_datasets::corpus::{CorpusSource, CorpusSpec};
 use rrflow_lab_systems::adapter::{CollectionSpec, PointBatch, SearchRequest, SystemAdapter};
 use rrflow_lab_systems::adapters::custom::CustomProtocol;
 use rrflow_lab_systems::binding::{
-    CredentialReferences, IndexSpec, LabMetric, SearchSetting, SystemBinding, SystemKind,
-    SystemLocation,
+    CredentialReferences, IndexSpec, SearchSetting, SystemBinding, SystemKind, SystemLocation,
 };
 use serde_json::{json, Value};
 use std::collections::BTreeMap;

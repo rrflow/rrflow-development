@@ -1,6 +1,5 @@
 //! A task comparison must grade independently, refuse to spend without a decision, and never
 //! claim an arm helped without paired evidence. No test here can start a model.
-use rrflow_eval::lab::knowledge::{chunk_text, importable, MAX_CHUNK_BYTES, MAX_FILE_BYTES};
 use rrflow_eval::lab::provider::{
     claude_arguments, parse_claude_output, AgentProvider, AgentReply, AgentRequest,
 };
@@ -14,6 +13,7 @@ use rrflow_eval::storage::Id;
 use rrflow_evaluation_core::report::{SystemStatus, TestIdentity, VerdictOutcome};
 use rrflow_evaluation_core::Availability;
 use rrflow_evaluation_core::Result;
+use rrflow_lab_datasets::knowledge::{chunk_text, importable, MAX_CHUNK_BYTES, MAX_FILE_BYTES};
 use std::cell::RefCell;
 use std::path::{Path, PathBuf};
 

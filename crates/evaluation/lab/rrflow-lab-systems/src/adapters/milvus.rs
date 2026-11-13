@@ -3,7 +3,8 @@ use crate::adapter::{
     describe, wait_until, CollectionSpec, ConnectionLimits, Http, PointBatch, SearchRequest,
     SystemAdapter,
 };
-use crate::binding::{IndexSpec, LabMetric, SystemBinding};
+use crate::binding::{IndexSpec, SystemBinding};
+use rrflow_evaluation_core::LabMetric;
 use rrflow_evaluation_core::Result;
 use serde_json::{json, Value};
 use std::sync::OnceLock;

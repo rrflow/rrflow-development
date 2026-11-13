@@ -5298,6 +5298,7 @@ dependencies = [
  "rrd-client",
  "rrd-contract",
  "rrflow-evaluation-core",
+ "rrflow-lab-datasets",
  "rrflow-lab-systems",
  "schemars",
  "serde",
@@ -5316,6 +5317,16 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
+]
+
+[[package]]
+name = "rrflow-lab-datasets"
+version = "1.0.0"
+dependencies = [
+ "rrflow-evaluation-core",
+ "schemars",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

@@ -2,11 +2,12 @@
 //! not code. A manifest is generated from them, so a report's digests stay what they were. How a
 //! system starts is data too: `run_system.sh` asks for its arguments and has no case per system.
 use super::manifest::VectorComparisonManifest;
-use super::manifest::{CorpusSpec, QualitySpec, WorkloadSpec};
+use super::manifest::{QualitySpec, WorkloadSpec};
 use super::{require, Result};
 use crate::storage::Id;
 use rrflow_evaluation_core::report::TestIdentity;
 use rrflow_evaluation_core::Availability;
+use rrflow_lab_datasets::corpus::CorpusSpec;
 use rrflow_lab_systems::binding::{IndexSpec, SearchSetting, SystemBinding};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};

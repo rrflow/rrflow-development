@@ -3,7 +3,8 @@ use crate::adapter::{
     describe, required_credentials, split_by_size, wait_until, CollectionSpec, ConnectionLimits,
     Http, PointBatch, SearchRequest, SystemAdapter,
 };
-use crate::binding::{IndexSpec, LabMetric, SystemBinding};
+use crate::binding::{IndexSpec, SystemBinding};
+use rrflow_evaluation_core::LabMetric;
 use rrflow_evaluation_core::Result;
 use serde_json::Value;
 use std::fmt::Write as _;

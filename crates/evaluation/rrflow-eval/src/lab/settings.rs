@@ -7,12 +7,13 @@
 //! cannot be read as the baseline. A launch a person has not approved cannot start, because the
 //! files a run reads say there is nothing to start.
 use super::catalog::{LaunchSpec, SystemDefinition, TestDefinition};
-use super::corpus::CORPUS_DIRECTORY_ENV;
 use super::definitions::content::{stem, systems_of};
-use super::manifest::{CorpusSource, VectorComparisonManifest};
+use super::manifest::VectorComparisonManifest;
 use super::{canonical_json, sha256_hex, Result};
 use crate::storage::Id;
 use rrflow_evaluation_core::Availability;
+use rrflow_lab_datasets::corpus::CorpusSource;
+use rrflow_lab_datasets::corpus::CORPUS_DIRECTORY_ENV;
 use rrflow_lab_systems::binding::{IndexSpec, SearchSetting, SystemBinding};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};

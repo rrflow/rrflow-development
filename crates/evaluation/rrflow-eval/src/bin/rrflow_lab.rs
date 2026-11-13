@@ -15,7 +15,6 @@ use rrflow_eval::lab::driver::{
     combine, empty_run, now_unix_ms, prepare_inputs, run_system_with_progress, SystemRun,
 };
 use rrflow_eval::lab::import::{import_vectordbbench, MAX_IMPORT_BYTES};
-use rrflow_eval::lab::knowledge::{read_repository_text, CHUNK_TABLE};
 use rrflow_eval::lab::manifest::VectorComparisonManifest;
 use rrflow_eval::lab::provider::ClaudeCode;
 use rrflow_eval::lab::references::{
@@ -39,6 +38,7 @@ use rrflow_eval::storage::{schema, Digest, Id};
 use rrflow_evaluation_core::report::{ArtifactReference, LabReport, SystemStatus};
 use rrflow_evaluation_core::Availability;
 use rrflow_evaluation_core::{canonical_json, sha256_hex, Result};
+use rrflow_lab_datasets::knowledge::{read_repository_text, CHUNK_TABLE};
 use rrflow_lab_systems::adapters::custom::CustomProtocol;
 use rrflow_lab_systems::adapters::rrflow::RrflowAdapter;
 use rrflow_lab_systems::registry::connect;

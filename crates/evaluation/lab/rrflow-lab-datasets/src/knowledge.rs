@@ -2,7 +2,7 @@
 //! search. RRFlow cannot do this itself yet, because attunement stops before reading content.
 //! So results over this text measure lexical and graph retrieval, and not attunement,
 //! parsing or embeddings. Every report using it says so.
-use super::{sha256_hex, Result};
+use rrflow_evaluation_core::{sha256_hex, Result};
 use serde_json::{json, Value};
 use std::path::Path;
 use std::process::Command;

@@ -4,13 +4,14 @@ use crate::adapter::{
     required_credentials, required_instance, split_by_size, CollectionSpec, ConnectionLimits,
     PointBatch, SearchRequest, SystemAdapter,
 };
-use crate::binding::{IndexSpec, LabMetric, SystemBinding};
+use crate::binding::{IndexSpec, SystemBinding};
 use rrd_client::{ClientConfig, RequestOptions, RrdClient, Session};
 use rrd_contract::{
     transaction_operation_sha256, BeginTransaction, CanonicalId, CommitTransaction, CreateSession,
     EnsureVectorIndexResult, ReadDataSchema, SessionLimits, TransactionMutation,
     MAX_TRANSACTION_CLAIMS, MAX_VECTOR_STORAGE_KEYS,
 };
+use rrflow_evaluation_core::LabMetric;
 use rrflow_evaluation_core::Result;
 use serde::de::DeserializeOwned;
 use serde_json::{json, Value};

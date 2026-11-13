@@ -5,11 +5,9 @@
 //! and they are not J-04 acceptance, parity or superiority claims. The harness
 //! grades every system with its own exact oracle, so no system grades itself.
 pub mod catalog;
-pub mod corpus;
 pub mod definitions;
 pub mod driver;
 pub mod import;
-pub mod knowledge;
 pub mod manifest;
 pub mod provider;
 pub mod references;

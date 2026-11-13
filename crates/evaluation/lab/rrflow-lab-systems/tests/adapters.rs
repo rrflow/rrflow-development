@@ -2,6 +2,7 @@
 //! real systems: Qdrant 1.20.0, SurrealDB 3.3.5 and Milvus 3.0.5. These prove the
 //! wire format stays right and failures are noticed. Measured results come from
 //! real runs, recorded in the package journal.
+use rrflow_evaluation_core::LabMetric;
 use rrflow_evaluation_core::{Availability, Id};
 use rrflow_lab_systems::adapter::{
     CollectionSpec, ConnectionLimits, PointBatch, SearchRequest, SystemAdapter,
@@ -11,8 +12,7 @@ use rrflow_lab_systems::adapters::milvus::MilvusAdapter;
 use rrflow_lab_systems::adapters::qdrant::QdrantAdapter;
 use rrflow_lab_systems::adapters::surrealdb::SurrealAdapter;
 use rrflow_lab_systems::binding::{
-    CredentialReferences, IndexSpec, LabMetric, SearchSetting, SystemBinding, SystemKind,
-    SystemLocation,
+    CredentialReferences, IndexSpec, SearchSetting, SystemBinding, SystemKind, SystemLocation,
 };
 use serde_json::{json, Value};
 use std::io::{Read, Write};
