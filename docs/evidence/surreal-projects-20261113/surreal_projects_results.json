@@ -1,0 +1,39 @@
+{
+ "quiet": {
+  "n": 300,
+  "server_p50_ms": 0.95,
+  "server_p95_ms": 1.69,
+  "server_max_ms": 3.349,
+  "client_p50_ms": 42.57
+ },
+ "noise_same_server_other_namespace": {
+  "n": 300,
+  "server_p50_ms": 1.118,
+  "server_p95_ms": 6.808,
+  "server_max_ms": 59.66,
+  "client_p50_ms": 49.9,
+  "noise_rows_written": 38550,
+  "noise_rows_per_s": 2029.7
+ },
+ "quiet_again": {
+  "n": 300,
+  "server_p50_ms": 1.066,
+  "server_p95_ms": 2.971,
+  "server_max_ms": 19.196,
+  "client_p50_ms": 45.95
+ },
+ "noise_separate_server": {
+  "n": 300,
+  "server_p50_ms": 1.148,
+  "server_p95_ms": 2.854,
+  "server_max_ms": 18.224,
+  "client_p50_ms": 46.67,
+  "noise_rows_written": 33000,
+  "noise_rows_per_s": 1924.0
+ },
+ "isolation": {
+  "agent_b_reads_projb": "OK",
+  "agent_b_reads_lab": "HTTP_ERR",
+  "lab_detail": "There was a problem with authentication"
+ }
+}

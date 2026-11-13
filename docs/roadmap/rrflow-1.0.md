@@ -20,8 +20,10 @@ are not a fixed number of runtime reasoning steps.
 | Knowledge paths and AI integrations | D-06, G, H-04/H-06, I-04 | Explicitly admitted local folders and supported services provide provenance and freshness; LFG/SWAG and provider adapters are configured and authorized. UI and SDKs expose the same engine state; no integration is silently activated. |
 | Tune and compete on measured results | C-07, H-05, J-04 | Retain current-revision correctness, latency, throughput, resource and failure data on named hardware. Compare like-for-like with pinned Fjall and relevant database/retrieval/agent baselines; do not treat old wins, labels or export as current proof. |
 
-The immediate developer-build proof remains the joined real-project cycle in
-the dependency spine. Parquet, SQL compatibility, native qualification and
+The [RRFlow kernel contract](kernel-contract.md) orders the engineering work
+that delivers these outcomes, starting with a working skeleton test that every
+later package keeps passing. The immediate developer-build proof remains the
+joined real-project cycle in the dependency spine. Parquet, SQL compatibility, native qualification and
 full comparative evidence stay open until their own named cases pass; their
 research and safe implementation can progress without inventing runtime phases.
 The current bundled attunement defaults still list the same eleven phases;
