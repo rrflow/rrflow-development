@@ -47,7 +47,7 @@ existing selection; no background tasks or global state are introduced.
 
 Created source evidence: `crates/persistence/rrd-lsm/tests/point_read_selection.rs`.
 Changed runtime: `crates/persistence/rrd-lsm/src/database.rs` and
-`crates/persistence/rrd-lsm/src/segment/mod.rs`. Changed records: this journal,
+`crates/persistence/rrd-lsm/src/segment.rs`. Changed records: this journal,
 the C-07/POAM-035 evidence links, generated Gate C journal navigation and
 execution inventory. No physical fixture, schema, lockfile or version changes.
 
