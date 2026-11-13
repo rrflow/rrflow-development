@@ -166,7 +166,7 @@ run in the `changes` job and the verify policy step.
 ## Pull request limits
 
 After lane selection, the `changes` job runs `scripts/ci/check_pr_governance.py`
-and fails a pull request that breaks a work-in-progress limit. The limits
+and fails a pull request that breaks a work-in-progress limit; size alone only warns. The limits
 exist because on 2026-11-09 the repository held 27 open pull requests, 20 of
 them drafts, most 130 to 420 commits behind `main`, with two merged into
 `main` carrying no file changes; prose in `AGENTS.md` had not prevented any
