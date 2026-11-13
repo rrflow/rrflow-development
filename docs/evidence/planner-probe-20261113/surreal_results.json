@@ -1,0 +1,1350 @@
+[
+ {
+  "label": "symbol lookup control_attunement",
+  "surrealql": "SELECT name, path, line FROM symbol WHERE name = 'control_attunement'",
+  "explain_status": "OK",
+  "explain": {
+   "attributes": {
+    "projections": "name, path, line"
+   },
+   "children": [
+    {
+     "attributes": {
+      "access": "= 'control_attunement'",
+      "direction": "Forward",
+      "index": "symbol_name"
+     },
+     "context": "Db",
+     "metrics": {
+      "elapsed_ns": 302698,
+      "output_batches": 1,
+      "output_rows": 1,
+      "records_fetched": 0
+     },
+     "operator": "IndexScan"
+    }
+   ],
+   "context": "Db",
+   "metrics": {
+    "elapsed_ns": 6070,
+    "output_batches": 1,
+    "output_rows": 1,
+    "records_fetched": 0
+   },
+   "operator": "SelectProject",
+   "total_rows": 1
+  },
+  "status": "OK",
+  "server_time": "443.813탎",
+  "wall_ms": 24.3,
+  "rows": 1,
+  "first": [
+   {
+    "line": 742,
+    "name": "control_attunement",
+    "path": "crates/authority/rrd-engine/src/engine/attunement.rs"
+   }
+  ]
+ },
+ {
+  "label": "symbol lookup, no index field (kind+line)",
+  "surrealql": "SELECT name FROM symbol WHERE kind = 'trait' AND line < 50",
+  "explain_status": "OK",
+  "explain": {
+   "attributes": {
+    "projections": "name"
+   },
+   "children": [
+    {
+     "attributes": {
+      "direction": "Forward",
+      "pre_decode_filter": "yes",
+      "predicate": "kind = 'trait' AND line < 50",
+      "table": "symbol"
+     },
+     "context": "Db",
+     "metrics": {
+      "elapsed_ns": 5480281,
+      "output_batches": 11,
+      "output_rows": 13,
+      "records_fetched": 0
+     },
+     "operator": "TableScan"
+    }
+   ],
+   "context": "Db",
+   "metrics": {
+    "elapsed_ns": 33934,
+    "output_batches": 11,
+    "output_rows": 13,
+    "records_fetched": 0
+   },
+   "operator": "SelectProject",
+   "total_rows": 13
+  },
+  "status": "OK",
+  "server_time": "2.579404ms",
+  "wall_ms": 37.5,
+  "rows": 13,
+  "first": [
+   {
+    "name": "AccessRead"
+   },
+   {
+    "name": "GeneratedOperation"
+   },
+   {
+    "name": "OperationMetadata"
+   }
+  ]
+ },
+ {
+  "label": "BM25: where is the LSM compaction policy",
+  "surrealql": "SELECT path, start, search::score(1) AS score FROM chunk WHERE text @1@ 'where is the LSM compaction policy' ORDER BY score DESC LIMIT 5",
+  "explain_status": "OK",
+  "explain": {
+   "attributes": {
+    "projections": "path, start, score"
+   },
+   "children": [
+    {
+     "attributes": {
+      "limit": "5"
+     },
+     "children": [
+      {
+       "attributes": {
+        "limit": "5",
+        "sort_keys": "score DESC"
+       },
+       "children": [
+        {
+         "attributes": {
+          "fields": "score = search::score(...)"
+         },
+         "children": [
+          {
+           "attributes": {
+            "index": "chunk_text",
+            "query": "where is the LSM compaction policy"
+           },
+           "context": "Db",
+           "metrics": {
+            "elapsed_ns": 1014798,
+            "output_batches": 0,
+            "output_rows": 0,
+            "records_fetched": 0
+           },
+           "operator": "FullTextScan"
+          }
+         ],
+         "context": "Db",
+         "expressions": [
+          {
+           "role": "score",
+           "sql": "search::score(...)"
+          }
+         ],
+         "metrics": {
+          "elapsed_ns": 2511,
+          "output_batches": 0,
+          "output_rows": 0,
+          "records_fetched": 0
+         },
+         "operator": "Compute"
+        }
+       ],
+       "context": "Db",
+       "metrics": {
+        "elapsed_ns": 6042,
+        "output_batches": 0,
+        "output_rows": 0,
+        "records_fetched": 0
+       },
+       "operator": "SortTopKByKey"
+      }
+     ],
+     "context": "Db",
+     "expressions": [
+      {
+       "role": "limit",
+       "sql": "5"
+      }
+     ],
+     "metrics": {
+      "elapsed_ns": 12119,
+      "output_batches": 0,
+      "output_rows": 0,
+      "records_fetched": 0
+     },
+     "operator": "Limit"
+    }
+   ],
+   "context": "Db",
+   "metrics": {
+    "elapsed_ns": 929,
+    "output_batches": 0,
+    "output_rows": 0,
+    "records_fetched": 0
+   },
+   "operator": "SelectProject",
+   "total_rows": 0
+  },
+  "status": "OK",
+  "server_time": "868.474탎",
+  "wall_ms": 40.4,
+  "rows": 0,
+  "first": []
+ },
+ {
+  "label": "BM25: how does the vector planner choose TurboQuant or the exact scan",
+  "surrealql": "SELECT path, start, search::score(1) AS score FROM chunk WHERE text @1@ 'how does the vector planner choose TurboQuant or the exact scan' ORDER BY score DESC LIMIT 5",
+  "explain_status": "OK",
+  "explain": {
+   "attributes": {
+    "projections": "path, start, score"
+   },
+   "children": [
+    {
+     "attributes": {
+      "limit": "5"
+     },
+     "children": [
+      {
+       "attributes": {
+        "limit": "5",
+        "sort_keys": "score DESC"
+       },
+       "children": [
+        {
+         "attributes": {
+          "fields": "score = search::score(...)"
+         },
+         "children": [
+          {
+           "attributes": {
+            "index": "chunk_text",
+            "query": "how does the vector planner choose TurboQuant or the exact scan"
+           },
+           "context": "Db",
+           "metrics": {
+            "elapsed_ns": 1174855,
+            "output_batches": 0,
+            "output_rows": 0,
+            "records_fetched": 0
+           },
+           "operator": "FullTextScan"
+          }
+         ],
+         "context": "Db",
+         "expressions": [
+          {
+           "role": "score",
+           "sql": "search::score(...)"
+          }
+         ],
+         "metrics": {
+          "elapsed_ns": 2136,
+          "output_batches": 0,
+          "output_rows": 0,
+          "records_fetched": 0
+         },
+         "operator": "Compute"
+        }
+       ],
+       "context": "Db",
+       "metrics": {
+        "elapsed_ns": 4453,
+        "output_batches": 0,
+        "output_rows": 0,
+        "records_fetched": 0
+       },
+       "operator": "SortTopKByKey"
+      }
+     ],
+     "context": "Db",
+     "expressions": [
+      {
+       "role": "limit",
+       "sql": "5"
+      }
+     ],
+     "metrics": {
+      "elapsed_ns": 10469,
+      "output_batches": 0,
+      "output_rows": 0,
+      "records_fetched": 0
+     },
+     "operator": "Limit"
+    }
+   ],
+   "context": "Db",
+   "metrics": {
+    "elapsed_ns": 1068,
+    "output_batches": 0,
+    "output_rows": 0,
+    "records_fetched": 0
+   },
+   "operator": "SelectProject",
+   "total_rows": 0
+  },
+  "status": "OK",
+  "server_time": "766.401탎",
+  "wall_ms": 45.3,
+  "rows": 0,
+  "first": []
+ },
+ {
+  "label": "BM25 + crate filter (hybrid filter)",
+  "surrealql": "SELECT path, start, search::score(1) AS score FROM chunk WHERE text @1@ 'compaction policy' AND crate = 'rrd-lsm' ORDER BY score DESC LIMIT 5",
+  "explain_status": "OK",
+  "explain": {
+   "attributes": {
+    "projections": "path, start, score"
+   },
+   "children": [
+    {
+     "attributes": {
+      "limit": "5"
+     },
+     "children": [
+      {
+       "attributes": {
+        "limit": "5",
+        "sort_keys": "score DESC"
+       },
+       "children": [
+        {
+         "attributes": {
+          "fields": "score = search::score(...)"
+         },
+         "children": [
+          {
+           "attributes": {
+            "predicate": "text @1@ 'compaction policy' AND crate = 'rrd-lsm'"
+           },
+           "children": [
+            {
+             "attributes": {
+              "table": "chunk"
+             },
+             "children": [
+              {
+               "children": [
+                {
+                 "attributes": {
+                  "index": "chunk_text",
+                  "query": "compaction policy"
+                 },
+                 "context": "Db",
+                 "metrics": {
+                  "elapsed_ns": 0,
+                  "output_batches": 0,
+                  "output_rows": 25,
+                  "records_fetched": 0
+                 },
+                 "operator": "BitmapFullTextScan"
+                },
+                {
+                 "attributes": {
+                  "access": "['rrd-lsm']",
+                  "index": "chunk_crate_path"
+                 },
+                 "context": "Db",
+                 "metrics": {
+                  "elapsed_ns": 0,
+                  "output_batches": 0,
+                  "output_rows": 671,
+                  "records_fetched": 0
+                 },
+                 "operator": "BitmapIndexScan"
+                }
+               ],
+               "context": "Db",
+               "metrics": {
+                "elapsed_ns": 0,
+                "output_batches": 0,
+                "output_rows": 15,
+                "records_fetched": 0
+               },
+               "operator": "BitmapAnd"
+              }
+             ],
+             "context": "Db",
+             "metrics": {
+              "elapsed_ns": 1431615,
+              "output_batches": 1,
+              "output_rows": 15,
+              "records_fetched": 0
+             },
+             "operator": "BitmapResolve"
+            }
+           ],
+           "context": "Db",
+           "expressions": [
+            {
+             "role": "predicate",
+             "sql": "text @1@ 'compaction policy' AND crate = 'rrd-lsm'"
+            }
+           ],
+           "metrics": {
+            "elapsed_ns": 346601,
+            "output_batches": 1,
+            "output_rows": 15,
+            "records_fetched": 0
+           },
+           "operator": "Filter"
+          }
+         ],
+         "context": "Db",
+         "expressions": [
+          {
+           "role": "score",
+           "sql": "search::score(...)"
+          }
+         ],
+         "metrics": {
+          "elapsed_ns": 1482299,
+          "output_batches": 1,
+          "output_rows": 15,
+          "records_fetched": 0
+         },
+         "operator": "Compute"
+        }
+       ],
+       "context": "Db",
+       "metrics": {
+        "elapsed_ns": 12587,
+        "output_batches": 1,
+        "output_rows": 5,
+        "records_fetched": 0
+       },
+       "operator": "SortTopKByKey"
+      }
+     ],
+     "context": "Db",
+     "expressions": [
+      {
+       "role": "limit",
+       "sql": "5"
+      }
+     ],
+     "metrics": {
+      "elapsed_ns": 18959,
+      "output_batches": 1,
+      "output_rows": 5,
+      "records_fetched": 0
+     },
+     "operator": "Limit"
+    }
+   ],
+   "context": "Db",
+   "metrics": {
+    "elapsed_ns": 5500,
+    "output_batches": 1,
+    "output_rows": 5,
+    "records_fetched": 0
+   },
+   "operator": "SelectProject",
+   "total_rows": 5
+  },
+  "status": "OK",
+  "server_time": "1.419211ms",
+  "wall_ms": 39.1,
+  "rows": 5,
+  "first": [
+   {
+    "path": "crates/persistence/rrd-lsm/src/database.rs",
+    "score": 8.543854713439941,
+    "start": 2641
+   },
+   {
+    "path": "crates/persistence/rrd-lsm/tests/hybrid_segment.rs",
+    "score": 7.91737174987793,
+    "start": 541
+   },
+   {
+    "path": "crates/persistence/rrd-lsm/tests/maintenance.rs",
+    "score": 7.864962100982666,
+    "start": 541
+   }
+  ]
+ },
+ {
+  "label": "graph 1 hop: who references control_attunement",
+  "surrealql": "SELECT <-references<-symbol.{name, path} AS callers FROM symbol WHERE name = 'control_attunement'",
+  "explain_status": "OK",
+  "explain": {
+   "attributes": {
+    "projections": "callers"
+   },
+   "children": [
+    {
+     "attributes": {
+      "fields": "callers = <-references<-symbol.{ name, path }"
+     },
+     "children": [
+      {
+       "attributes": {
+        "access": "= 'control_attunement'",
+        "direction": "Forward",
+        "index": "symbol_name"
+       },
+       "context": "Db",
+       "metrics": {
+        "elapsed_ns": 82834,
+        "output_batches": 1,
+        "output_rows": 1,
+        "records_fetched": 0
+       },
+       "operator": "IndexScan"
+      }
+     ],
+     "context": "Db",
+     "expressions": [
+      {
+       "embedded_operators": [
+        {
+         "plan": {
+          "attributes": {
+           "direction": "<-",
+           "output": "TargetVertex",
+           "tables": "references"
+          },
+          "children": [
+           {
+            "context": "Rt",
+            "metrics": {
+             "elapsed_ns": 414,
+             "output_batches": 1,
+             "output_rows": 1,
+             "records_fetched": 0
+            },
+            "operator": "CurrentValueSource"
+           }
+          ],
+          "context": "Db",
+          "metrics": {
+           "delta_hits": 8,
+           "edges_scanned": 8,
+           "elapsed_ns": 156320,
+           "output_batches": 1,
+           "output_rows": 8,
+           "records_fetched": 0
+          },
+          "operator": "GraphEdgeScan"
+         },
+         "role": "lookup"
+        }
+       ],
+       "role": "callers",
+       "sql": "<-references<-symbol.{ name, path }"
+      }
+     ],
+     "metrics": {
+      "elapsed_ns": 270566,
+      "output_batches": 1,
+      "output_rows": 1,
+      "records_fetched": 0
+     },
+     "operator": "Compute"
+    }
+   ],
+   "context": "Db",
+   "metrics": {
+    "elapsed_ns": 3057,
+    "output_batches": 1,
+    "output_rows": 1,
+    "records_fetched": 0
+   },
+   "operator": "SelectProject",
+   "total_rows": 1
+  },
+  "status": "OK",
+  "server_time": "707.662탎",
+  "wall_ms": 38.8,
+  "rows": 1,
+  "first": [
+   {
+    "callers": [
+     {
+      "name": "pause_attunement",
+      "path": "crates/transport/rrd-server/src/http/handlers/attunement.rs"
+     },
+     {
+      "name": "resume_attunement",
+      "path": "crates/transport/rrd-server/src/http/handlers/attunement.rs"
+     },
+     {
+      "name": "call",
+      "path": "crates/authority/rrd-engine/src/engine/tests/attunement.rs"
+     },
+     {
+      "name": "cancel_attunement",
+      "path": "crates/transport/rrd-server/src/http/handlers/attunement.rs"
+     },
+     {
+      "name": "recover_expired_attunement",
+      "path": "crates/transport/rrd-server/src/http/handlers/attunement.rs"
+     },
+     {
+      "name": "attunement_rejects_invalid_identity_auth_budget_and_changed_idempotency",
+      "path": "crates/authority/rrd-engine/src/engine/tests/attunement.rs"
+     },
+     {
+      "name": "step_attunement",
+      "path": "crates/transport/rrd-server/src/http/handlers/attunement.rs"
+     },
+     {
+      "name": "start_attunement",
+      "path": "crates/transport/rrd-server/src/http/handlers/attunement.rs"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "label": "graph 2 hops inbound",
+  "surrealql": "SELECT array::distinct(<-references<-symbol<-references<-symbol.path) AS p FROM symbol WHERE name = 'control_attunement'",
+  "explain_status": "OK",
+  "explain": {
+   "attributes": {
+    "projections": "p"
+   },
+   "children": [
+    {
+     "attributes": {
+      "fields": "p = array::distinct(...)"
+     },
+     "children": [
+      {
+       "attributes": {
+        "access": "= 'control_attunement'",
+        "direction": "Forward",
+        "index": "symbol_name"
+       },
+       "context": "Db",
+       "metrics": {
+        "elapsed_ns": 62793,
+        "output_batches": 1,
+        "output_rows": 1,
+        "records_fetched": 0
+       },
+       "operator": "IndexScan"
+      }
+     ],
+     "context": "Db",
+     "expressions": [
+      {
+       "role": "p",
+       "sql": "array::distinct(...)"
+      }
+     ],
+     "metrics": {
+      "elapsed_ns": 961509,
+      "output_batches": 1,
+      "output_rows": 1,
+      "records_fetched": 0
+     },
+     "operator": "Compute"
+    }
+   ],
+   "context": "Db",
+   "metrics": {
+    "elapsed_ns": 2387,
+    "output_batches": 1,
+    "output_rows": 1,
+    "records_fetched": 0
+   },
+   "operator": "SelectProject",
+   "total_rows": 1
+  },
+  "status": "OK",
+  "server_time": "686.356탎",
+  "wall_ms": 25.1,
+  "rows": 1,
+  "first": [
+   {
+    "p": [
+     "crates/transport/rrd-client/tests/rrflowdb_local.rs",
+     "crates/transport/rrd-server/src/http/router.rs",
+     "crates/adapters/rrflow-cli/tests/installed_lifecycle.rs"
+    ]
+   }
+  ]
+ },
+ {
+  "label": "vector kNN top 5",
+  "surrealql": "LET $q = (SELECT VALUE vec FROM chunk WHERE string::ends_with(path, 'rrd-lsm/src/database.rs') LIMIT 1)[0]; SELECT path, vector::distance::knn() AS d FROM chunk WHERE vec <|5,40|> $q ORDER BY d",
+  "explain_status": "OK",
+  "explain": {
+   "attributes": {
+    "projections": "path, d"
+   },
+   "children": [
+    {
+     "attributes": {
+      "sort_keys": "d ASC"
+     },
+     "children": [
+      {
+       "attributes": {
+        "fields": "d = vector::distance::knn(...)"
+       },
+       "children": [
+        {
+         "attributes": {
+          "dimension": "64",
+          "ef": "40",
+          "index": "chunk_vec",
+          "k": "5"
+         },
+         "context": "Db",
+         "metrics": {
+          "elapsed_ns": 4502370,
+          "output_batches": 1,
+          "output_rows": 5,
+          "records_fetched": 0
+         },
+         "operator": "KnnScan"
+        }
+       ],
+       "context": "Db",
+       "expressions": [
+        {
+         "role": "d",
+         "sql": "vector::distance::knn(...)"
+        }
+       ],
+       "metrics": {
+        "elapsed_ns": 4526644,
+        "output_batches": 1,
+        "output_rows": 5,
+        "records_fetched": 0
+       },
+       "operator": "Compute"
+      }
+     ],
+     "context": "Db",
+     "metrics": {
+      "elapsed_ns": 4621502,
+      "output_batches": 1,
+      "output_rows": 5,
+      "records_fetched": 0
+     },
+     "operator": "SortByKey"
+    }
+   ],
+   "context": "Db",
+   "metrics": {
+    "elapsed_ns": 4634149,
+    "output_batches": 1,
+    "output_rows": 5,
+    "records_fetched": 0
+   },
+   "operator": "SelectProject",
+   "total_rows": 5
+  },
+  "status": "OK",
+  "server_time": "2.467083ms",
+  "wall_ms": 32.4,
+  "rows": 5,
+  "first": [
+   {
+    "d": null,
+    "path": "scripts/inference/capture_observations.py"
+   },
+   {
+    "d": null,
+    "path": "crates/persistence/rrd-lsm/src/segment/source_memory_tests.rs"
+   },
+   {
+    "d": null,
+    "path": "crates/evaluation/lab/rrflow-lab/tests/contract.rs"
+   }
+  ]
+ },
+ {
+  "label": "vector kNN + filter crate",
+  "surrealql": "LET $q = (SELECT VALUE vec FROM chunk WHERE string::ends_with(path, 'rrd-lsm/src/database.rs') LIMIT 1)[0]; SELECT path, vector::distance::knn() AS d FROM chunk WHERE crate = 'rrd-lsm' AND vec <|5,40|> $q ORDER BY d",
+  "explain_status": "OK",
+  "explain": {
+   "attributes": {
+    "projections": "path, d"
+   },
+   "children": [
+    {
+     "attributes": {
+      "sort_keys": "d ASC"
+     },
+     "children": [
+      {
+       "attributes": {
+        "fields": "d = vector::distance::knn(...)"
+       },
+       "children": [
+        {
+         "attributes": {
+          "predicate": "crate = 'rrd-lsm'"
+         },
+         "children": [
+          {
+           "attributes": {
+            "dimension": "64",
+            "ef": "40",
+            "index": "chunk_vec",
+            "k": "5",
+            "predicate": "crate = 'rrd-lsm'"
+           },
+           "context": "Db",
+           "metrics": {
+            "elapsed_ns": 13954170,
+            "output_batches": 1,
+            "output_rows": 5,
+            "records_fetched": 226
+           },
+           "operator": "KnnScan"
+          }
+         ],
+         "context": "Db",
+         "expressions": [
+          {
+           "role": "predicate",
+           "sql": "crate = 'rrd-lsm'"
+          }
+         ],
+         "metrics": {
+          "elapsed_ns": 13960039,
+          "output_batches": 1,
+          "output_rows": 5,
+          "records_fetched": 0
+         },
+         "operator": "Filter"
+        }
+       ],
+       "context": "Db",
+       "expressions": [
+        {
+         "role": "d",
+         "sql": "vector::distance::knn(...)"
+        }
+       ],
+       "metrics": {
+        "elapsed_ns": 13975416,
+        "output_batches": 1,
+        "output_rows": 5,
+        "records_fetched": 0
+       },
+       "operator": "Compute"
+      }
+     ],
+     "context": "Db",
+     "metrics": {
+      "elapsed_ns": 13991422,
+      "output_batches": 1,
+      "output_rows": 5,
+      "records_fetched": 0
+     },
+     "operator": "SortByKey"
+    }
+   ],
+   "context": "Db",
+   "metrics": {
+    "elapsed_ns": 14003923,
+    "output_batches": 1,
+    "output_rows": 5,
+    "records_fetched": 0
+   },
+   "operator": "SelectProject",
+   "total_rows": 5
+  },
+  "status": "OK",
+  "server_time": "3.365279ms",
+  "wall_ms": 50.9,
+  "rows": 5,
+  "first": [
+   {
+    "d": null,
+    "path": "crates/persistence/rrd-lsm/src/segment/source_memory_tests.rs"
+   },
+   {
+    "d": 0.0,
+    "path": "crates/persistence/rrd-lsm/src/database.rs"
+   },
+   {
+    "d": 0.1916495713158486,
+    "path": "crates/persistence/rrd-lsm/src/database.rs"
+   }
+  ]
+ },
+ {
+  "label": "range selectivity bytes > 500000",
+  "surrealql": "SELECT path FROM file WHERE bytes > 500000",
+  "explain_status": "OK",
+  "explain": {
+   "attributes": {
+    "projections": "path"
+   },
+   "children": [
+    {
+     "attributes": {
+      "access": ">500000",
+      "direction": "Forward",
+      "index": "file_bytes"
+     },
+     "context": "Db",
+     "metrics": {
+      "elapsed_ns": 75037,
+      "output_batches": 0,
+      "output_rows": 0,
+      "records_fetched": 0
+     },
+     "operator": "IndexScan"
+    }
+   ],
+   "context": "Db",
+   "metrics": {
+    "elapsed_ns": 1211,
+    "output_batches": 0,
+    "output_rows": 0,
+    "records_fetched": 0
+   },
+   "operator": "SelectProject",
+   "total_rows": 0
+  },
+  "status": "OK",
+  "server_time": "452.307탎",
+  "wall_ms": 24.3,
+  "rows": 0,
+  "first": []
+ },
+ {
+  "label": "range selectivity bytes > 100000",
+  "surrealql": "SELECT path FROM file WHERE bytes > 100000",
+  "explain_status": "OK",
+  "explain": {
+   "attributes": {
+    "projections": "path"
+   },
+   "children": [
+    {
+     "attributes": {
+      "access": ">100000",
+      "direction": "Forward",
+      "index": "file_bytes"
+     },
+     "context": "Db",
+     "metrics": {
+      "elapsed_ns": 356234,
+      "output_batches": 1,
+      "output_rows": 11,
+      "records_fetched": 0
+     },
+     "operator": "IndexScan"
+    }
+   ],
+   "context": "Db",
+   "metrics": {
+    "elapsed_ns": 5998,
+    "output_batches": 1,
+    "output_rows": 11,
+    "records_fetched": 0
+   },
+   "operator": "SelectProject",
+   "total_rows": 11
+  },
+  "status": "OK",
+  "server_time": "487.239탎",
+  "wall_ms": 44.3,
+  "rows": 11,
+  "first": [
+   {
+    "path": "crates/persistence/rrd-lsm/src/segment/mod.rs"
+   },
+   {
+    "path": "crates/kernel/rrd-core/src/runtime.rs"
+   },
+   {
+    "path": "crates/evaluation/qualification/rrflow-qualification-storage/src/sustained.rs"
+   }
+  ]
+ },
+ {
+  "label": "range selectivity bytes > 20000",
+  "surrealql": "SELECT path FROM file WHERE bytes > 20000",
+  "explain_status": "OK",
+  "explain": {
+   "attributes": {
+    "projections": "path"
+   },
+   "children": [
+    {
+     "attributes": {
+      "access": ">20000",
+      "direction": "Forward",
+      "index": "file_bytes"
+     },
+     "context": "Db",
+     "metrics": {
+      "elapsed_ns": 717120,
+      "output_batches": 1,
+      "output_rows": 225,
+      "records_fetched": 0
+     },
+     "operator": "IndexScan"
+    }
+   ],
+   "context": "Db",
+   "metrics": {
+    "elapsed_ns": 31831,
+    "output_batches": 1,
+    "output_rows": 225,
+    "records_fetched": 0
+   },
+   "operator": "SelectProject",
+   "total_rows": 225
+  },
+  "status": "OK",
+  "server_time": "1.051476ms",
+  "wall_ms": 45.6,
+  "rows": 225,
+  "first": [
+   {
+    "path": "crates/evaluation/lab/rrflow-lab-benchmarks/src/catalog.rs"
+   },
+   {
+    "path": "crates/persistence/rrd-lsm/tests/transaction_conformance.rs"
+   },
+   {
+    "path": "crates/authority/rrd-engine/src/engine/tests/endpoint_configuration.rs"
+   }
+  ]
+ },
+ {
+  "label": "range selectivity bytes > 5000",
+  "surrealql": "SELECT path FROM file WHERE bytes > 5000",
+  "explain_status": "OK",
+  "explain": {
+   "attributes": {
+    "projections": "path"
+   },
+   "children": [
+    {
+     "attributes": {
+      "access": ">5000",
+      "direction": "Forward",
+      "index": "file_bytes"
+     },
+     "context": "Db",
+     "metrics": {
+      "elapsed_ns": 1734277,
+      "output_batches": 1,
+      "output_rows": 679,
+      "records_fetched": 0
+     },
+     "operator": "IndexScan"
+    }
+   ],
+   "context": "Db",
+   "metrics": {
+    "elapsed_ns": 90938,
+    "output_batches": 1,
+    "output_rows": 679,
+    "records_fetched": 0
+   },
+   "operator": "SelectProject",
+   "total_rows": 679
+  },
+  "status": "OK",
+  "server_time": "1.798427ms",
+  "wall_ms": 46.4,
+  "rows": 679,
+  "first": [
+   {
+    "path": "crates/transport/rrd-contract/src/read.rs"
+   },
+   {
+    "path": "crates/persistence/rrd-store/src/repository/projection.rs"
+   },
+   {
+    "path": "crates/transport/rrd-client/examples/task_model_call.rs"
+   }
+  ]
+ },
+ {
+  "label": "range selectivity bytes > 1000",
+  "surrealql": "SELECT path FROM file WHERE bytes > 1000",
+  "explain_status": "OK",
+  "explain": {
+   "attributes": {
+    "projections": "path"
+   },
+   "children": [
+    {
+     "attributes": {
+      "access": ">1000",
+      "direction": "Forward",
+      "index": "file_bytes"
+     },
+     "context": "Db",
+     "metrics": {
+      "elapsed_ns": 1719523,
+      "output_batches": 1,
+      "output_rows": 868,
+      "records_fetched": 0
+     },
+     "operator": "IndexScan"
+    }
+   ],
+   "context": "Db",
+   "metrics": {
+    "elapsed_ns": 98086,
+    "output_batches": 1,
+    "output_rows": 868,
+    "records_fetched": 0
+   },
+   "operator": "SelectProject",
+   "total_rows": 868
+  },
+  "status": "OK",
+  "server_time": "2.308156ms",
+  "wall_ms": 47.4,
+  "rows": 868,
+  "first": [
+   {
+    "path": "eval/lab/rrflow_settings.py"
+   },
+   {
+    "path": "crates/transport/rrd-contract/tests/json_float_round_trip.rs"
+   },
+   {
+    "path": "sdks/python/tests/test_signal_catalogue.py"
+   }
+  ]
+ },
+ {
+  "label": "range selectivity bytes > 0",
+  "surrealql": "SELECT path FROM file WHERE bytes > 0",
+  "explain_status": "OK",
+  "explain": {
+   "attributes": {
+    "projections": "path"
+   },
+   "children": [
+    {
+     "attributes": {
+      "access": ">0",
+      "direction": "Forward",
+      "index": "file_bytes"
+     },
+     "context": "Db",
+     "metrics": {
+      "elapsed_ns": 1783939,
+      "output_batches": 1,
+      "output_rows": 909,
+      "records_fetched": 0
+     },
+     "operator": "IndexScan"
+    }
+   ],
+   "context": "Db",
+   "metrics": {
+    "elapsed_ns": 182270,
+    "output_batches": 1,
+    "output_rows": 909,
+    "records_fetched": 0
+   },
+   "operator": "SelectProject",
+   "total_rows": 909
+  },
+  "status": "OK",
+  "server_time": "2.263567ms",
+  "wall_ms": 25.0,
+  "rows": 909,
+  "first": [
+   {
+    "path": "eval/fixtures/rust-service/src/lib.rs"
+   },
+   {
+    "path": "crates/authority/rrd-engine/src/engine/model/mod.rs"
+   },
+   {
+    "path": "crates/evaluation/lab/rrflow-lab-systems/src/adapters/mod.rs"
+   }
+  ]
+ },
+ {
+  "label": "limit 1 after equality on crate",
+  "surrealql": "SELECT path, bytes FROM file WHERE crate = 'rrd-engine' ORDER BY bytes DESC LIMIT 1",
+  "explain_status": "OK",
+  "explain": {
+   "attributes": {
+    "projections": "path, bytes"
+   },
+   "children": [
+    {
+     "attributes": {
+      "limit": "1"
+     },
+     "children": [
+      {
+       "attributes": {
+        "limit": "1",
+        "sort_keys": "bytes DESC"
+       },
+       "children": [
+        {
+         "attributes": {
+          "access": "= 'rrd-engine'",
+          "direction": "Forward",
+          "index": "file_crate"
+         },
+         "context": "Db",
+         "metrics": {
+          "elapsed_ns": 642729,
+          "output_batches": 1,
+          "output_rows": 186,
+          "records_fetched": 0
+         },
+         "operator": "IndexScan"
+        }
+       ],
+       "context": "Db",
+       "metrics": {
+        "elapsed_ns": 19839,
+        "output_batches": 1,
+        "output_rows": 1,
+        "records_fetched": 0
+       },
+       "operator": "SortTopKByKey"
+      }
+     ],
+     "context": "Db",
+     "expressions": [
+      {
+       "role": "limit",
+       "sql": "1"
+      }
+     ],
+     "metrics": {
+      "elapsed_ns": 26367,
+      "output_batches": 1,
+      "output_rows": 1,
+      "records_fetched": 0
+     },
+     "operator": "Limit"
+    }
+   ],
+   "context": "Db",
+   "metrics": {
+    "elapsed_ns": 3129,
+    "output_batches": 1,
+    "output_rows": 1,
+    "records_fetched": 0
+   },
+   "operator": "SelectProject",
+   "total_rows": 1
+  },
+  "status": "OK",
+  "server_time": "1.264847ms",
+  "wall_ms": 22.2,
+  "rows": 1,
+  "first": [
+   {
+    "bytes": 121225,
+    "path": "crates/authority/rrd-engine/src/engine/tests/attunement.rs"
+   }
+  ]
+ },
+ {
+  "label": "limit 50 after equality on crate",
+  "surrealql": "SELECT path, bytes FROM file WHERE crate = 'rrd-engine' ORDER BY bytes DESC LIMIT 50",
+  "explain_status": "OK",
+  "explain": {
+   "attributes": {
+    "projections": "path, bytes"
+   },
+   "children": [
+    {
+     "attributes": {
+      "limit": "50"
+     },
+     "children": [
+      {
+       "attributes": {
+        "limit": "50",
+        "sort_keys": "bytes DESC"
+       },
+       "children": [
+        {
+         "attributes": {
+          "access": "= 'rrd-engine'",
+          "direction": "Forward",
+          "index": "file_crate"
+         },
+         "context": "Db",
+         "metrics": {
+          "elapsed_ns": 465021,
+          "output_batches": 1,
+          "output_rows": 186,
+          "records_fetched": 0
+         },
+         "operator": "IndexScan"
+        }
+       ],
+       "context": "Db",
+       "metrics": {
+        "elapsed_ns": 29059,
+        "output_batches": 1,
+        "output_rows": 50,
+        "records_fetched": 0
+       },
+       "operator": "SortTopKByKey"
+      }
+     ],
+     "context": "Db",
+     "expressions": [
+      {
+       "role": "limit",
+       "sql": "50"
+      }
+     ],
+     "metrics": {
+      "elapsed_ns": 35165,
+      "output_batches": 1,
+      "output_rows": 50,
+      "records_fetched": 0
+     },
+     "operator": "Limit"
+    }
+   ],
+   "context": "Db",
+   "metrics": {
+    "elapsed_ns": 11391,
+    "output_batches": 1,
+    "output_rows": 50,
+    "records_fetched": 0
+   },
+   "operator": "SelectProject",
+   "total_rows": 50
+  },
+  "status": "OK",
+  "server_time": "950.682탎",
+  "wall_ms": 45.5,
+  "rows": 50,
+  "first": [
+   {
+    "bytes": 121225,
+    "path": "crates/authority/rrd-engine/src/engine/tests/attunement.rs"
+   },
+   {
+    "bytes": 112081,
+    "path": "crates/authority/rrd-engine/src/engine/tests/vector_index.rs"
+   },
+   {
+    "bytes": 98239,
+    "path": "crates/authority/rrd-engine/src/engine/installation.rs"
+   }
+  ]
+ }
+]
