@@ -1,18 +1,17 @@
 //! RRFlow through the public typed client, the same path any application takes.
 //! It never opens storage directly, so the lab measures what a caller gets.
-use super::adapter::{
-    required_credentials, required_instance, split_by_size, CollectionSpec, PointBatch,
-    SearchRequest, SystemAdapter,
+use crate::adapter::{
+    required_credentials, required_instance, split_by_size, CollectionSpec, ConnectionLimits,
+    PointBatch, SearchRequest, SystemAdapter,
 };
-use super::knowledge::{TextChunk, CHUNK_TABLE};
-use super::manifest::{IndexSpec, LabMetric, SystemBinding, WorkloadSpec};
-use super::Result;
+use crate::binding::{IndexSpec, LabMetric, SystemBinding};
 use rrd_client::{ClientConfig, RequestOptions, RrdClient, Session};
 use rrd_contract::{
     transaction_operation_sha256, BeginTransaction, CanonicalId, CommitTransaction, CreateSession,
     EnsureVectorIndexResult, ReadDataSchema, SessionLimits, TransactionMutation,
     MAX_TRANSACTION_CLAIMS, MAX_VECTOR_STORAGE_KEYS,
 };
+use rrflow_evaluation_core::Result;
 use serde::de::DeserializeOwned;
 use serde_json::{json, Value};
 use std::collections::BTreeSet;
@@ -195,7 +194,7 @@ pub(crate) fn hnsw_index_request(
 }
 
 impl RrflowAdapter {
-    pub fn connect(binding: &SystemBinding, workload: &WorkloadSpec) -> Result<Self> {
+    pub fn connect(binding: &SystemBinding, limits: &ConnectionLimits) -> Result<Self> {
         let (principal, secret) = required_credentials(binding)?;
         let instance = required_instance(binding)?;
         let address = binding
@@ -210,7 +209,7 @@ impl RrflowAdapter {
             .map_err(|error| error.to_string())?;
         let instance_id = id(&instance)?;
         let config = ClientConfig {
-            request_timeout: Duration::from_millis(workload.request_timeout_ms),
+            request_timeout: limits.request_timeout,
             ..ClientConfig::default()
         };
         let client = runtime
@@ -218,7 +217,7 @@ impl RrflowAdapter {
             .map_err(|error| error.to_string())?;
         // A graph is built inside one request, so it gets the time a system has to become ready.
         let build_config = ClientConfig {
-            request_timeout: Duration::from_millis(workload.readiness_timeout_ms),
+            request_timeout: limits.readiness_timeout,
             ..ClientConfig::default()
         };
         let build_client = runtime
@@ -321,9 +320,9 @@ impl RrflowAdapter {
         })
     }
 
-    /// Store a repository's text chunks as records of the lab's chunk table, in commits bounded
-    /// by the server's request size and claim count, so a planning task can retrieve them.
-    pub fn import_chunks(&self, chunks: &[TextChunk]) -> Result<()> {
+    /// Adds `table` to the schema as an open relational table, then stores `records`, each
+    /// one `put` mutation, in commits bounded by the server's request size and claim count.
+    pub fn import_records(&self, table: &str, migration: &str, records: &[Value]) -> Result<()> {
         let session = self.session()?;
         let installed = self
             .runtime
@@ -340,9 +339,9 @@ impl RrflowAdapter {
             serde_json::to_value(installed.schema.ok_or("RRFlow returned no data schema")?)
                 .map_err(|error| error.to_string())?;
         registry["revision"] = json!(registry["revision"].as_u64().unwrap_or(0) + 1);
-        registry["migration"] = json!("add the lab's imported repository text");
-        registry["tables"][CHUNK_TABLE] = json!({"model": "relational", "mode": "strict"});
-        registry["records"][CHUNK_TABLE] = json!({
+        registry["migration"] = json!(migration);
+        registry["tables"][table] = json!({"model": "relational", "mode": "strict"});
+        registry["records"][table] = json!({
             "properties": {},
             "allow_additional_properties": true,
             "unique_properties": []
@@ -350,10 +349,10 @@ impl RrflowAdapter {
         self.commit(decode(
             json!([{"mutation": "put_schema", "registry": registry}]),
         )?)?;
-        let mut mutations: Vec<Vec<TransactionMutation>> = Vec::with_capacity(chunks.len());
-        let mut sizes = Vec::with_capacity(chunks.len());
-        for chunk in chunks {
-            let one: Vec<TransactionMutation> = decode(json!([chunk.mutation()]))?;
+        let mut mutations: Vec<Vec<TransactionMutation>> = Vec::with_capacity(records.len());
+        let mut sizes = Vec::with_capacity(records.len());
+        for record in records {
+            let one: Vec<TransactionMutation> = decode(json!([record]))?;
             sizes.push(
                 serde_json::to_vec(&one)
                     .map_err(|error| error.to_string())?

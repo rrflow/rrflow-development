@@ -1,10 +1,8 @@
 //! Run and combine comparison-lab tests. See eval/lab/README.md.
-use rrflow_eval::lab::adapter::connect;
 use rrflow_eval::lab::catalog::{
     launch_arguments, launch_info, resolve_test, vectordbbench_arguments, Pod, SystemDefinition,
     TestDefinition,
 };
-use rrflow_eval::lab::custom::CustomProtocol;
 use rrflow_eval::lab::definitions::content::{
     lab_files, pinned_keys, references_of, RrflowContent, RRFLOW_PRODUCT,
 };
@@ -24,7 +22,6 @@ use rrflow_eval::lab::references::{
     compare, ComparedSeek, Comparison, HardwareClass, ListedAnswer, MeasuredSpeed, ReferenceFile,
     TestConditions,
 };
-use rrflow_eval::lab::rrflow::RrflowAdapter;
 use rrflow_eval::lab::settings::{
     approve_all, build_plan, launch_digest, needs_approval, planned_files, runs_somewhere,
     waiting_for_approval, Definitions, LabPlan, LabSettings, PlannedTest, SystemState,
@@ -42,6 +39,9 @@ use rrflow_eval::storage::{schema, Digest, Id};
 use rrflow_evaluation_core::report::{ArtifactReference, LabReport, SystemStatus};
 use rrflow_evaluation_core::Availability;
 use rrflow_evaluation_core::{canonical_json, sha256_hex, Result};
+use rrflow_lab_systems::adapters::custom::CustomProtocol;
+use rrflow_lab_systems::adapters::rrflow::RrflowAdapter;
+use rrflow_lab_systems::registry::connect;
 use serde::de::DeserializeOwned;
 use std::collections::{BTreeMap, BTreeSet};
 use std::io::Write;
@@ -219,7 +219,7 @@ fn run(arguments: &Arguments) -> Result<ExitCode> {
     let inputs = prepare_inputs(&manifest)?;
     let environment = environment(&arguments.notes);
     eprintln!("running {id}");
-    let (run, raw) = match connect(binding, &manifest.workload) {
+    let (run, raw) = match connect(binding, &manifest.workload.connection_limits()) {
         Ok(adapter) => run_system_with_progress(
             &manifest,
             binding,
@@ -662,7 +662,16 @@ fn import_repository(arguments: &Arguments) -> Result<ExitCode> {
         credential("RRFLOW_LAB_SECRET")?,
         std::time::Duration::from_secs(300),
     )?;
-    adapter.import_chunks(&text.chunks)?;
+    let records = text
+        .chunks
+        .iter()
+        .map(|chunk| chunk.mutation())
+        .collect::<Vec<_>>();
+    adapter.import_records(
+        CHUNK_TABLE,
+        "add the lab's imported repository text",
+        &records,
+    )?;
     println!(
         "{}",
         serde_json::json!({

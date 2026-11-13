@@ -1,12 +1,13 @@
 //! One file per system and one file per test, so a new system or a newer pin takes a file and
 //! not code. A manifest is generated from them, so a report's digests stay what they were. How a
 //! system starts is data too: `run_system.sh` asks for its arguments and has no case per system.
+use super::manifest::VectorComparisonManifest;
 use super::manifest::{CorpusSpec, QualitySpec, WorkloadSpec};
-use super::manifest::{IndexSpec, SearchSetting, SystemBinding, VectorComparisonManifest};
 use super::{require, Result};
 use crate::storage::Id;
 use rrflow_evaluation_core::report::TestIdentity;
 use rrflow_evaluation_core::Availability;
+use rrflow_lab_systems::binding::{IndexSpec, SearchSetting, SystemBinding};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};

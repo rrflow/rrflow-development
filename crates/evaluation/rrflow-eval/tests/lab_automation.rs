@@ -8,7 +8,7 @@ use rrflow_eval::lab::definitions::content::{
 use rrflow_eval::lab::definitions::home::{DefinitionHome, PublishKind, PublishOptions};
 use rrflow_eval::lab::definitions::pack::{read_pack, PackContent, TrustedKeys};
 use rrflow_eval::lab::driver::{binding_sha256, test_sha256};
-use rrflow_eval::lab::manifest::{IndexSpec, VectorComparisonManifest};
+use rrflow_eval::lab::manifest::VectorComparisonManifest;
 use rrflow_eval::lab::settings::{
     approve_all, build_plan, launch_digest, needs_approval, planned_files, Definitions, LabPlan,
     LabSettings, PlannedTest, SystemState, SystemTuning, TURNED_OFF_REASON,
@@ -16,6 +16,7 @@ use rrflow_eval::lab::settings::{
 use rrflow_eval::storage::Id;
 use rrflow_evaluation_core::Availability;
 use rrflow_evaluation_core::Result;
+use rrflow_lab_systems::binding::IndexSpec;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 

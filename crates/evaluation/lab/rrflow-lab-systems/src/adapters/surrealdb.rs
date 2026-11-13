@@ -1,10 +1,10 @@
 //! SurrealDB over its public `/sql` endpoint, as probed on 3.3.5.
-use super::adapter::{
-    describe, required_credentials, split_by_size, wait_until, CollectionSpec, Http, PointBatch,
-    SearchRequest, SystemAdapter,
+use crate::adapter::{
+    describe, required_credentials, split_by_size, wait_until, CollectionSpec, ConnectionLimits,
+    Http, PointBatch, SearchRequest, SystemAdapter,
 };
-use super::manifest::{IndexSpec, LabMetric, SystemBinding, WorkloadSpec};
-use super::Result;
+use crate::binding::{IndexSpec, LabMetric, SystemBinding};
+use rrflow_evaluation_core::Result;
 use serde_json::Value;
 use std::fmt::Write as _;
 use std::sync::OnceLock;
@@ -64,13 +64,13 @@ pub struct SurrealAdapter {
 }
 
 impl SurrealAdapter {
-    pub fn new(binding: &SystemBinding, workload: &WorkloadSpec) -> Result<Self> {
+    pub fn new(binding: &SystemBinding, limits: &ConnectionLimits) -> Result<Self> {
         let (user, secret) = required_credentials(binding)?;
         let token = base64(format!("{user}:{secret}").as_bytes());
         Ok(Self {
             http: Http::new(
                 &binding.endpoint,
-                workload,
+                limits,
                 vec![
                     ("Authorization".into(), format!("Basic {token}")),
                     ("Accept".into(), "application/json".into()),

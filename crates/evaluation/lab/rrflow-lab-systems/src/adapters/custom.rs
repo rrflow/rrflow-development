@@ -1,8 +1,10 @@
 //! Any other system joins through this small HTTP protocol, usually behind a thin
 //! shim. The types below own the protocol; its schema is generated from them.
-use super::adapter::{wait_until, CollectionSpec, Http, PointBatch, SearchRequest, SystemAdapter};
-use super::manifest::{IndexSpec, LabMetric, SearchSetting, SystemBinding, WorkloadSpec};
-use super::Result;
+use crate::adapter::{
+    wait_until, CollectionSpec, ConnectionLimits, Http, PointBatch, SearchRequest, SystemAdapter,
+};
+use crate::binding::{IndexSpec, LabMetric, SearchSetting, SystemBinding};
+use rrflow_evaluation_core::Result;
 use schemars::JsonSchema;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -84,9 +86,9 @@ pub struct CustomAdapter {
 }
 
 impl CustomAdapter {
-    pub fn new(binding: &SystemBinding, workload: &WorkloadSpec) -> Self {
+    pub fn new(binding: &SystemBinding, limits: &ConnectionLimits) -> Self {
         Self {
-            http: Http::new(&binding.endpoint, workload, Vec::new()),
+            http: Http::new(&binding.endpoint, limits, Vec::new()),
         }
     }
 

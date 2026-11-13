@@ -3,9 +3,10 @@
 //! Generation uses only addition, multiplication and square root, which IEEE 754
 //! fixes exactly. Trigonometric or logarithmic steps could differ between
 //! platforms and change the digest.
-use super::manifest::{CorpusSource, CorpusSpec, LabMetric};
+use super::manifest::{CorpusSource, CorpusSpec};
 use super::{sha256_hex, Result};
 use crate::storage::Digest;
+use rrflow_lab_systems::binding::LabMetric;
 use std::cmp::Ordering;
 use std::path::Path;
 

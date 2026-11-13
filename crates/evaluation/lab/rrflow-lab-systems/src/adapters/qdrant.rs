@@ -1,9 +1,10 @@
 //! Qdrant over its public REST API, as probed on v1.20.0.
-use super::adapter::{
-    describe, wait_until, CollectionSpec, Http, PointBatch, SearchRequest, SystemAdapter,
+use crate::adapter::{
+    describe, wait_until, CollectionSpec, ConnectionLimits, Http, PointBatch, SearchRequest,
+    SystemAdapter,
 };
-use super::manifest::{IndexSpec, LabMetric, SystemBinding, WorkloadSpec};
-use super::Result;
+use crate::binding::{IndexSpec, LabMetric, SystemBinding};
+use rrflow_evaluation_core::Result;
 use serde_json::{json, Value};
 use std::sync::OnceLock;
 use std::time::Instant;
@@ -15,9 +16,9 @@ pub struct QdrantAdapter {
 }
 
 impl QdrantAdapter {
-    pub fn new(binding: &SystemBinding, workload: &WorkloadSpec) -> Self {
+    pub fn new(binding: &SystemBinding, limits: &ConnectionLimits) -> Self {
         Self {
-            http: Http::new(&binding.endpoint, workload, Vec::new()),
+            http: Http::new(&binding.endpoint, limits, Vec::new()),
             collection: OnceLock::new(),
             exact: OnceLock::new(),
         }

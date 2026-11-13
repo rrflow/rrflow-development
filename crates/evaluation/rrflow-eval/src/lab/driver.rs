@@ -1,9 +1,8 @@
 //! Runs one system at a time so systems never compete for a machine, then combines
 //! the runs into one report. A failing system stays visible and cannot vanish.
-use super::adapter::{CollectionSpec, PointBatch, SearchRequest, SystemAdapter};
 use super::corpus::{exact_answers, generate, GroundTruth, VectorSet};
+use super::manifest::VectorComparisonManifest;
 use super::manifest::{CorpusSource, CorpusSpec, QualitySpec, WorkloadSpec};
-use super::manifest::{SearchSetting, SystemBinding, SystemKind, VectorComparisonManifest};
 use super::{canonical_json, require, sha256_hex, Result};
 use crate::storage::{Digest, Id};
 use rrflow_evaluation_core::report::TestIdentity;
@@ -13,6 +12,8 @@ use rrflow_evaluation_core::report::{
     ViewDefinition, REPORT_SCHEMA_VERSION,
 };
 use rrflow_evaluation_core::Availability;
+use rrflow_lab_systems::adapter::{CollectionSpec, PointBatch, SearchRequest, SystemAdapter};
+use rrflow_lab_systems::binding::{SearchSetting, SystemBinding, SystemKind};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;

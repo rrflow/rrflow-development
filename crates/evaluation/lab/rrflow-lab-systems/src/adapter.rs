@@ -1,11 +1,16 @@
 //! The one boundary every compared system implements. Each adapter speaks only
 //! the system's public API, so no comparator code enters this repository.
-use super::manifest::{
-    IndexSpec, LabMetric, SearchSetting, SystemBinding, SystemKind, WorkloadSpec,
-};
-use super::Result;
+use crate::binding::{IndexSpec, LabMetric, SearchSetting, SystemBinding};
+use rrflow_evaluation_core::Result;
 use serde_json::Value;
 use std::time::{Duration, Instant};
+
+/// How long a system may take to answer one request, and to become ready.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ConnectionLimits {
+    pub request_timeout: Duration,
+    pub readiness_timeout: Duration,
+}
 
 #[derive(Debug, Clone)]
 pub struct CollectionSpec<'a> {
@@ -100,10 +105,14 @@ fn truncated(text: &str) -> String {
 }
 
 impl Http {
-    pub(crate) fn new(base: &str, workload: &WorkloadSpec, headers: Vec<(String, String)>) -> Self {
+    pub(crate) fn new(
+        base: &str,
+        limits: &ConnectionLimits,
+        headers: Vec<(String, String)>,
+    ) -> Self {
         let agent = ureq::Agent::config_builder()
             .http_status_as_error(false)
-            .timeout_global(Some(Duration::from_millis(workload.request_timeout_ms)))
+            .timeout_global(Some(limits.request_timeout))
             .build()
             .new_agent();
         Self {
@@ -219,18 +228,6 @@ pub(crate) fn required_instance(binding: &SystemBinding) -> Result<String> {
         binding.id.as_str(),
         "instance",
     )
-}
-
-pub fn connect(binding: &SystemBinding, workload: &WorkloadSpec) -> Result<Box<dyn SystemAdapter>> {
-    Ok(match binding.kind {
-        SystemKind::Rrflow => Box::new(super::rrflow::RrflowAdapter::connect(binding, workload)?),
-        SystemKind::Qdrant => Box::new(super::qdrant::QdrantAdapter::new(binding, workload)),
-        SystemKind::Surrealdb => {
-            Box::new(super::surrealdb::SurrealAdapter::new(binding, workload)?)
-        }
-        SystemKind::Milvus => Box::new(super::milvus::MilvusAdapter::new(binding, workload)),
-        SystemKind::Custom => Box::new(super::custom::CustomAdapter::new(binding, workload)),
-    })
 }
 
 #[cfg(test)]

@@ -78,6 +78,10 @@ fn workspace_packages_use_the_canonical_grouped_layout() {
             "rrflow-evaluation-core",
             "crates/evaluation/rrflow-evaluation-core/Cargo.toml",
         ),
+        (
+            "rrflow-lab-systems",
+            "crates/evaluation/lab/rrflow-lab-systems/Cargo.toml",
+        ),
     ]
     .into_iter()
     .map(|(name, path)| (name.to_owned(), PathBuf::from(path)))

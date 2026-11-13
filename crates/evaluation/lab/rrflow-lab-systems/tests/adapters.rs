@@ -2,17 +2,18 @@
 //! real systems: Qdrant 1.20.0, SurrealDB 3.3.5 and Milvus 3.0.5. These prove the
 //! wire format stays right and failures are noticed. Measured results come from
 //! real runs, recorded in the package journal.
-use rrflow_eval::lab::adapter::{CollectionSpec, PointBatch, SearchRequest, SystemAdapter};
-use rrflow_eval::lab::custom::CustomAdapter;
-use rrflow_eval::lab::manifest::{
-    CredentialReferences, IndexSpec, LabMetric, SearchSetting, SystemBinding, SystemKind,
-    SystemLocation, WorkloadSpec,
+use rrflow_evaluation_core::{Availability, Id};
+use rrflow_lab_systems::adapter::{
+    CollectionSpec, ConnectionLimits, PointBatch, SearchRequest, SystemAdapter,
 };
-use rrflow_eval::lab::milvus::MilvusAdapter;
-use rrflow_eval::lab::qdrant::QdrantAdapter;
-use rrflow_eval::lab::surrealdb::SurrealAdapter;
-use rrflow_eval::storage::Id;
-use rrflow_evaluation_core::Availability;
+use rrflow_lab_systems::adapters::custom::CustomAdapter;
+use rrflow_lab_systems::adapters::milvus::MilvusAdapter;
+use rrflow_lab_systems::adapters::qdrant::QdrantAdapter;
+use rrflow_lab_systems::adapters::surrealdb::SurrealAdapter;
+use rrflow_lab_systems::binding::{
+    CredentialReferences, IndexSpec, LabMetric, SearchSetting, SystemBinding, SystemKind,
+    SystemLocation,
+};
 use serde_json::{json, Value};
 use std::io::{Read, Write};
 use std::net::TcpListener;
@@ -93,17 +94,10 @@ impl ScriptedServer {
     }
 }
 
-fn workload() -> WorkloadSpec {
-    WorkloadSpec {
-        queries: 1,
-        k: 3,
-        warmup_queries: 0,
-        ingest_batch: 2,
-        concurrency: vec![1],
-        filtered: true,
-        request_timeout_ms: 5_000,
-        readiness_timeout_ms: 5_000,
-        max_case_seconds: 5,
+fn workload() -> ConnectionLimits {
+    ConnectionLimits {
+        request_timeout: Duration::from_millis(5_000),
+        readiness_timeout: Duration::from_millis(5_000),
     }
 }
 
