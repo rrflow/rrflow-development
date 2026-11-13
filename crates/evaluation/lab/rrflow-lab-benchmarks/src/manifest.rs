@@ -1,7 +1,7 @@
 //! The frozen, typed definition of one vector comparison: its corpus, workload,
 //! quality target and the systems it runs against.
-use super::{require, Result};
 use rrflow_evaluation_core::report::TestIdentity;
+use rrflow_evaluation_core::{require, Result};
 use rrflow_lab_datasets::corpus::{CorpusSource, CorpusSpec};
 use rrflow_lab_systems::adapter::ConnectionLimits;
 use rrflow_lab_systems::binding::SystemBinding;

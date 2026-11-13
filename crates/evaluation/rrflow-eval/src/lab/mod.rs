@@ -4,15 +4,9 @@
 //! Results are diagnostic evidence for optimization. They configure nothing,
 //! and they are not J-04 acceptance, parity or superiority claims. The harness
 //! grades every system with its own exact oracle, so no system grades itself.
-pub mod catalog;
 pub mod definitions;
-pub mod driver;
-pub mod import;
-pub mod manifest;
 pub mod provider;
-pub mod references;
 pub mod settings;
-pub mod sources;
 pub mod study;
 pub mod tasks;
 

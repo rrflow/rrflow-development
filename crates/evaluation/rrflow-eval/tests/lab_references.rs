@@ -5,14 +5,14 @@ use rrflow_eval::lab::definitions::content::{lab_files, RrflowContent};
 use rrflow_eval::lab::definitions::pack::{
     build_pack, generate_key, PackContent as _, PackRequest,
 };
-use rrflow_eval::lab::references::{
-    compare, AnswerResult, Comparison, HardwareClass, Provenance, ReferenceFile, ReferenceOrigin,
-    ReferenceSource, SeekResult, TestConditions, ANSWERS_NOT_MEASURED,
-};
 use rrflow_eval::storage::Id;
 use rrflow_evaluation_core::report::{
     DimensionDefinition, LabEvidenceClass, LabReport, MetricDefinition, MetricDirection,
     Observation, ReportSystem, SystemStatus, TestIdentity,
+};
+use rrflow_lab_benchmarks::references::{
+    compare, AnswerResult, Comparison, HardwareClass, Provenance, ReferenceFile, ReferenceOrigin,
+    ReferenceSource, SeekResult, TestConditions, ANSWERS_NOT_MEASURED,
 };
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};

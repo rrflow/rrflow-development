@@ -1,8 +1,4 @@
 //! Run and combine comparison-lab tests. See eval/lab/README.md.
-use rrflow_eval::lab::catalog::{
-    launch_arguments, launch_info, resolve_test, vectordbbench_arguments, Pod, SystemDefinition,
-    TestDefinition,
-};
 use rrflow_eval::lab::definitions::content::{
     lab_files, pinned_keys, references_of, RrflowContent, RRFLOW_PRODUCT,
 };
@@ -11,21 +7,11 @@ use rrflow_eval::lab::definitions::pack::{
     build_pack, generate_key, read_pack, InstallOutcome, PackContent as _, PackRequest, PackStore,
     StoreStatus, TrustedKey, TrustedKeys, VerifiedPack, MAX_PACK_BYTES,
 };
-use rrflow_eval::lab::driver::{
-    combine, empty_run, now_unix_ms, prepare_inputs, run_system_with_progress, SystemRun,
-};
-use rrflow_eval::lab::import::{import_vectordbbench, MAX_IMPORT_BYTES};
-use rrflow_eval::lab::manifest::VectorComparisonManifest;
 use rrflow_eval::lab::provider::ClaudeCode;
-use rrflow_eval::lab::references::{
-    compare, ComparedSeek, Comparison, HardwareClass, ListedAnswer, MeasuredSpeed, ReferenceFile,
-    TestConditions,
-};
 use rrflow_eval::lab::settings::{
     approve_all, build_plan, launch_digest, needs_approval, planned_files, runs_somewhere,
     waiting_for_approval, Definitions, LabPlan, LabSettings, PlannedTest, SystemState,
 };
-use rrflow_eval::lab::sources::SourceList;
 use rrflow_eval::lab::study::{
     audit_runs, check_study, plan_study, CaptureAudit, RequirementStatus, StudyCheck, StudyConfig,
     StudyRequirements,
@@ -38,10 +24,24 @@ use rrflow_eval::storage::{schema, Digest, Id};
 use rrflow_evaluation_core::report::{ArtifactReference, LabReport, SystemStatus};
 use rrflow_evaluation_core::Availability;
 use rrflow_evaluation_core::{canonical_json, sha256_hex, Result};
+use rrflow_lab_benchmarks::catalog::{
+    launch_arguments, launch_info, resolve_test, vectordbbench_arguments, Pod, SystemDefinition,
+    TestDefinition,
+};
+use rrflow_lab_benchmarks::driver::{
+    combine, empty_run, now_unix_ms, prepare_inputs, run_system_with_progress, SystemRun,
+};
+use rrflow_lab_benchmarks::import::{import_vectordbbench, MAX_IMPORT_BYTES};
+use rrflow_lab_benchmarks::manifest::VectorComparisonManifest;
+use rrflow_lab_benchmarks::references::{
+    compare, ComparedSeek, Comparison, HardwareClass, ListedAnswer, MeasuredSpeed, ReferenceFile,
+    TestConditions,
+};
 use rrflow_lab_datasets::knowledge::{read_repository_text, CHUNK_TABLE};
 use rrflow_lab_systems::adapters::custom::CustomProtocol;
 use rrflow_lab_systems::adapters::rrflow::RrflowAdapter;
 use rrflow_lab_systems::registry::connect;
+use rrflow_lab_systems::sources::SourceList;
 use serde::de::DeserializeOwned;
 use std::collections::{BTreeMap, BTreeSet};
 use std::io::Write;
@@ -1351,7 +1351,7 @@ fn show_settings(json: bool) -> Result<ExitCode> {
 fn known_system<'a>(
     definitions: &'a Definitions,
     name: &str,
-) -> Result<(Id, &'a rrflow_eval::lab::catalog::SystemDefinition)> {
+) -> Result<(Id, &'a rrflow_lab_benchmarks::catalog::SystemDefinition)> {
     definitions
         .systems
         .iter()

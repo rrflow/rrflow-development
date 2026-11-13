@@ -1,14 +1,14 @@
 //! Another harness's results, restated in this lab's report so a client can show them
 //! beside ours. They stay labelled as imported, because this lab did not measure them.
 //! Only named result fields are read, so a source's connection settings never enter a report.
-use super::driver::now_unix_ms;
-use super::{require, sha256_hex, Result};
-use crate::storage::{Digest, Id};
+use crate::driver::now_unix_ms;
 use rrflow_evaluation_core::report::{
     ArtifactReference, DimensionDefinition, LabEvidenceClass, LabReport, MetricDefinition,
     MetricDirection, Observation, ReportSystem, SystemStatus, TestIdentity, Verdict,
     VerdictOutcome, ViewDefinition, REPORT_SCHEMA_VERSION,
 };
+use rrflow_evaluation_core::{require, sha256_hex, Result};
+use rrflow_evaluation_core::{Digest, Id};
 use serde::Deserialize;
 use serde_json::Value;
 use std::collections::BTreeMap;

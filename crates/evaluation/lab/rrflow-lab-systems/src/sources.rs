@@ -1,8 +1,8 @@
 //! The outside systems, suites, datasets and studies the lab knows about, what was pinned,
 //! and why each is here. `check_sources.py` reports newer releases; adopting one stays a
 //! deliberate change to a manifest, so nothing here moves a pin by itself.
-use super::{require, Result};
-use crate::storage::Id;
+use rrflow_evaluation_core::Id;
+use rrflow_evaluation_core::{require, Result};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;

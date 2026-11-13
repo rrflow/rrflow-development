@@ -1,11 +1,11 @@
 //! What RRFlow's lab carries in a definition pack: its systems, its tests and its list of outside
 //! sources, each checked the way the lab itself would read it.
 use super::pack::{PackContent, TrustedKeys};
-use crate::lab::catalog::{resolve_test, SystemDefinition, TestDefinition};
-use crate::lab::references::ReferenceFile;
-use crate::lab::sources::SourceList;
 use crate::lab::Result;
 use crate::storage::Id;
+use rrflow_lab_benchmarks::catalog::{resolve_test, SystemDefinition, TestDefinition};
+use rrflow_lab_benchmarks::references::ReferenceFile;
+use rrflow_lab_systems::sources::SourceList;
 use std::collections::BTreeMap;
 use std::path::Path;
 

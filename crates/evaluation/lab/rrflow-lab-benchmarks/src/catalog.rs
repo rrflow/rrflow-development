@@ -1,12 +1,12 @@
 //! One file per system and one file per test, so a new system or a newer pin takes a file and
 //! not code. A manifest is generated from them, so a report's digests stay what they were. How a
 //! system starts is data too: `run_system.sh` asks for its arguments and has no case per system.
-use super::manifest::VectorComparisonManifest;
-use super::manifest::{QualitySpec, WorkloadSpec};
-use super::{require, Result};
-use crate::storage::Id;
+use crate::manifest::VectorComparisonManifest;
+use crate::manifest::{QualitySpec, WorkloadSpec};
 use rrflow_evaluation_core::report::TestIdentity;
 use rrflow_evaluation_core::Availability;
+use rrflow_evaluation_core::Id;
+use rrflow_evaluation_core::{require, Result};
 use rrflow_lab_datasets::corpus::CorpusSpec;
 use rrflow_lab_systems::binding::{IndexSpec, SearchSetting, SystemBinding};
 use schemars::JsonSchema;
@@ -303,7 +303,7 @@ pub fn resolve_test(
         bindings.push(binding);
     }
     let manifest = VectorComparisonManifest {
-        schema_version: super::manifest::MANIFEST_SCHEMA_VERSION,
+        schema_version: crate::manifest::MANIFEST_SCHEMA_VERSION,
         test: test.test.clone(),
         corpus: test.corpus.clone(),
         workload: test.workload.clone(),

@@ -2,7 +2,6 @@
 //! requirements say what any study must do, why, and where that comes from. A check reports
 //! each one, and a plan is written only once the binding ones are met. The audit then proves
 //! from the runs themselves that the data arrived, because a study can look complete without it.
-use super::sources::SourceList;
 use super::tasks::{
     exact_mcnemar, shuffle, CaptureField, SpendLimits, StudyStage, TaskArm, TaskComparisonManifest,
     TaskModel, TaskRun, TaskRunOutcome,
@@ -10,6 +9,7 @@ use super::tasks::{
 use super::{canonical_json, require, sha256_hex, Result};
 use crate::storage::{Digest, Id};
 use rrflow_evaluation_core::Availability;
+use rrflow_lab_systems::sources::SourceList;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};

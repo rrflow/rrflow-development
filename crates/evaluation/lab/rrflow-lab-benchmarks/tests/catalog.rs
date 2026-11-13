@@ -1,12 +1,12 @@
 //! A system or a test is a file. These tests hold the files to what the lab always ran, so moving
 //! to them changes nothing, and to what must never get into a file.
-use rrflow_eval::lab::catalog::{
+use rrflow_evaluation_core::Id;
+use rrflow_lab_benchmarks::catalog::{
     launch_arguments, launch_info, resolve_test, vectordbbench_arguments, Pod, SystemDefinition,
     TestDefinition,
 };
-use rrflow_eval::lab::driver::binding_sha256;
-use rrflow_eval::lab::manifest::VectorComparisonManifest;
-use rrflow_eval::storage::Id;
+use rrflow_lab_benchmarks::driver::binding_sha256;
+use rrflow_lab_benchmarks::manifest::VectorComparisonManifest;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
@@ -18,7 +18,7 @@ const SURREAL: &str =
     "surrealdb/surrealdb@sha256:3db515b88e79737aa828c05fbf1515748004ba57495ff89a013851cc3f1ad4b9";
 
 fn lab() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../eval/lab")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../../eval/lab")
 }
 
 fn read(path: PathBuf) -> String {

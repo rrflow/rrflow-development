@@ -10,3 +10,4 @@ pub mod adapter;
 pub mod adapters;
 pub mod binding;
 pub mod registry;
+pub mod sources;

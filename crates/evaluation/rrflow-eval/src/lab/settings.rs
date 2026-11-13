@@ -6,12 +6,12 @@
 //! tuned system has a different binding digest and a limit line that says what changed, so it
 //! cannot be read as the baseline. A launch a person has not approved cannot start, because the
 //! files a run reads say there is nothing to start.
-use super::catalog::{LaunchSpec, SystemDefinition, TestDefinition};
 use super::definitions::content::{stem, systems_of};
-use super::manifest::VectorComparisonManifest;
 use super::{canonical_json, sha256_hex, Result};
 use crate::storage::Id;
 use rrflow_evaluation_core::Availability;
+use rrflow_lab_benchmarks::catalog::{LaunchSpec, SystemDefinition, TestDefinition};
+use rrflow_lab_benchmarks::manifest::VectorComparisonManifest;
 use rrflow_lab_datasets::corpus::CorpusSource;
 use rrflow_lab_datasets::corpus::CORPUS_DIRECTORY_ENV;
 use rrflow_lab_systems::binding::{IndexSpec, SearchSetting, SystemBinding};
@@ -534,7 +534,8 @@ pub fn build_plan(definitions: &Definitions, settings: &LabSettings) -> Result<L
             systems: Vec::new(),
             manifest: None,
         };
-        let mut manifest = super::catalog::resolve_test(test, &definitions.systems)?;
+        let mut manifest =
+            rrflow_lab_benchmarks::catalog::resolve_test(test, &definitions.systems)?;
         match plan_systems(definitions, settings, &mut manifest)
             .and_then(|systems| manifest.validate().map(|()| systems))
         {
