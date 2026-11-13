@@ -36,7 +36,7 @@ The owner's words of 2026-11-13: "files that are far too long need to be clearly
 | R8 | `[workspace.lints]`: `unsafe_code` denied outside named crates, `clippy::undocumented_unsafe_blocks`, `unreachable_pub`, `missing_debug_implementations`; `cargo-deny` for licences and advisories | standard workspace hygiene | CI clippy and `cargo deny check` |
 | R9 | Tests: unit tests in a sibling `tests.rs` (`#[cfg(test)] mod tests;`); integration and public-API tests in `tests/`. `rrd-engine/src/engine/tests/` (42.8k lines inside the crate) moves to `tests/` wherever it uses the public API | Cargo conventions | the shape check |
 | R10 | Names: `rrd-*` internal, `rrflow-*` outward (existing rule). Types carry no crate prefix except the facade (`RrdEngine`, `RrdClient`). The estate-to-engram rename is finished with correct casing, and its shims are removed (POAM-078) | consistent vocabulary | a vocabulary check like the existing retired-name bans |
-| R11 | No unconsumed crates or lab code in production crates: `rrd-maintenance` is removed; `physical_policy_lab.rs` moves to the Lab; `rrd-cluster`, `rrd-kubernetes` and `pgvector` are kept only if the owner names them product scope | one current implementation | the architecture test lists every crate with a consumer or an owner decision |
+| R11 | No unconsumed crates or lab code in production crates: `rrd-maintenance` is removed and `physical_policy_lab.rs` moves to the Lab. `rrd-cluster`, `rrd-kubernetes` and the pgvector adapter are product scope (owner, 2026-11-13). They serve the shippin panel and cloud synchronization, so they move to the cloud tier and gain real consumers and tests (kernel package K15) | one current implementation | the architecture test lists every crate with a consumer or an owner decision |
 
 **Target tiers** (directories follow tiers after the moves):
 
@@ -48,6 +48,7 @@ The owner's words of 2026-11-13: "files that are far too long need to be clearly
 | 3 | `crates/governance/` | `rrd-security`, `rrd-estate` (renamed to engram), `rrd-observation` |
 | 4 | `crates/authority/` | `rrd-engine` |
 | 5 | `crates/interfaces/` | `rrd-server`, `rrd-client`, `rrflow-cli`, `rrflow-mcp`, `rrflow-edge` |
+| 5 | `crates/cloud/` | `rrd-cluster` (replication and synchronization), `rrd-kubernetes` (operator for the shippin.cloud deployment), the pgvector adapter. Feature-gated and optional: never required for local readiness, and consuming only public engine contracts |
 | — | `crates/evaluation/` | the Lab and qualification, dev-only, as today |
 
 **First splits**, one PR each, with behavior unchanged:
@@ -182,5 +183,5 @@ This implements S6 of the [kernel contract](../roadmap/kernel-contract.md#36-s6-
 ## 5. Owner decisions
 
 1. **Approve this structure** as written, or with changes. No file moves before approval.
-2. **`rrd-cluster`, `rrd-kubernetes` and `pgvector`:** product scope, or parked outside the workspace? The default is parked.
+2. **`rrd-cluster`, `rrd-kubernetes` and `pgvector`:** decided 2026-11-13. They are product scope for the shippin panel and for synchronizing with the cloud offering, comparable to SurrealDB Cloud or ArangoDB's managed service and backed by shippinAI. They move to `crates/cloud/` under K15.
 3. **Limits:** 800 lines for Rust and 400 for TS/TSX are the proposed caps. The default is these values.
