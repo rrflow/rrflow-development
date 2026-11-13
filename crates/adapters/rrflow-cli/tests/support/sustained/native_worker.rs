@@ -3,7 +3,7 @@
 //! The helper is this test executable, not an installed product service. Its
 //! blocking platform calls never run on the driver's current-thread runtime.
 use super::{native, DriverResult};
-use rrflow_eval::storage::{AllocationEnforcement, NativeAllocationReceipt, NativeMetric};
+use rrflow_qualification_storage::{AllocationEnforcement, NativeAllocationReceipt, NativeMetric};
 use serde::{Deserialize, Serialize};
 use std::{
     path::PathBuf,
@@ -488,7 +488,7 @@ mod tests {
         let campaign = super::super::smoke_campaign();
         let mut receipt = NativeAllocationReceipt {
             format_version: 1,
-            kind: rrflow_eval::storage::NativeAllocationKind::CgroupV2,
+            kind: rrflow_qualification_storage::NativeAllocationKind::CgroupV2,
             nonce: "11".repeat(32).try_into().unwrap(),
             engine_bytes: campaign.allocation.engine_bytes,
             host_bytes: campaign.allocation.host_bytes,

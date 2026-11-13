@@ -1,6 +1,6 @@
 //! Native read-only sampling. Address-space mappings, committed private bytes,
 //! and resident bytes are distinct quantities; unavailable data is explicit.
-use rrflow_eval::storage::NativeMetric;
+use rrflow_qualification_storage::NativeMetric;
 #[path = "native_allocation.rs"]
 mod allocation;
 #[cfg(target_os = "linux")]

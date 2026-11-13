@@ -3,7 +3,7 @@
 use super::Estate;
 use rrd_client::RequestOptions;
 use rrd_contract::{CloseSession, CreateSession, ReadStorageDiagnostics, SessionLimits};
-use rrflow_eval::storage::*;
+use rrflow_qualification_storage::*;
 use std::{
     io::Read,
     path::PathBuf,
@@ -994,12 +994,12 @@ fn failed_campaign_preserves_closed_cause_and_readback_provenance() {
     );
     let manifest: StorageManifest = serde_json::from_str(include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../../evaluation/rrflow-eval/tests/fixtures/storage/manifest.json"
+        "/../../evaluation/qualification/rrflow-qualification-storage/tests/fixtures/storage/manifest.json"
     )))
     .unwrap();
     let mut result: StorageResult = serde_json::from_str(include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../../evaluation/rrflow-eval/tests/fixtures/storage/result.json"
+        "/../../evaluation/qualification/rrflow-qualification-storage/tests/fixtures/storage/result.json"
     )))
     .unwrap();
     result.manifest_sha256 = manifest_digest(&manifest).unwrap();
@@ -1193,7 +1193,7 @@ fn installed_sustained_capacity() {
 fn smoke_campaign() -> StorageCampaign {
     let mut storage: StorageManifest = serde_json::from_str(include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../../evaluation/rrflow-eval/tests/fixtures/storage/manifest.json"
+        "/../../evaluation/qualification/rrflow-qualification-storage/tests/fixtures/storage/manifest.json"
     )))
     .unwrap();
     storage.evidence_class = EvidenceClass::NativeCapacity;

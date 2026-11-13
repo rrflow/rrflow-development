@@ -5269,7 +5269,7 @@ dependencies = [
  "rrd-security",
  "rrd-server",
  "rrd-store",
- "rrflow-eval",
+ "rrflow-qualification-storage",
  "serde",
  "serde_json",
  "sha2",
@@ -5291,24 +5291,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rrflow-eval"
-version = "1.0.0"
-dependencies = [
- "ed25519-dalek",
- "getrandom 0.4.3",
- "rrd-client",
- "rrd-contract",
- "rrflow-evaluation-core",
- "schemars",
- "serde",
- "serde_json",
- "sha2",
- "tempfile",
- "tokio",
- "ureq",
-]
-
-[[package]]
 name = "rrflow-evaluation-core"
 version = "1.0.0"
 dependencies = [
@@ -5316,6 +5298,95 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
+]
+
+[[package]]
+name = "rrflow-lab"
+version = "1.0.0"
+dependencies = [
+ "rrd-contract",
+ "rrflow-evaluation-core",
+ "rrflow-lab-benchmarks",
+ "rrflow-lab-datasets",
+ "rrflow-lab-definitions",
+ "rrflow-lab-evals",
+ "rrflow-lab-systems",
+ "schemars",
+ "serde",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
+name = "rrflow-lab-benchmarks"
+version = "1.0.0"
+dependencies = [
+ "rrflow-evaluation-core",
+ "rrflow-lab-datasets",
+ "rrflow-lab-systems",
+ "schemars",
+ "serde",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
+name = "rrflow-lab-datasets"
+version = "1.0.0"
+dependencies = [
+ "rrflow-evaluation-core",
+ "schemars",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "rrflow-lab-definitions"
+version = "1.0.0"
+dependencies = [
+ "ed25519-dalek",
+ "getrandom 0.4.3",
+ "rrflow-evaluation-core",
+ "rrflow-lab-benchmarks",
+ "rrflow-lab-systems",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "rrflow-lab-evals"
+version = "1.0.0"
+dependencies = [
+ "rrd-contract",
+ "rrflow-evaluation-core",
+ "rrflow-lab-datasets",
+ "rrflow-lab-systems",
+ "schemars",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "rrflow-lab-experiments"
+version = "1.0.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
+name = "rrflow-lab-systems"
+version = "1.0.0"
+dependencies = [
+ "rrd-client",
+ "rrd-contract",
+ "rrflow-evaluation-core",
+ "schemars",
+ "serde",
+ "serde_json",
+ "tokio",
+ "ureq",
 ]
 
 [[package]]
@@ -5333,6 +5404,19 @@ dependencies = [
  "serde_json",
  "tempfile",
  "tokio",
+]
+
+[[package]]
+name = "rrflow-qualification-storage"
+version = "1.0.0"
+dependencies = [
+ "rrd-contract",
+ "rrflow-evaluation-core",
+ "schemars",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
 ]
 
 [[package]]

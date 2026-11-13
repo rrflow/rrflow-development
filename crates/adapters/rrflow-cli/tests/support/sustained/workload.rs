@@ -2,7 +2,9 @@
 //! independently from request coordinates, never copied out of engine answers.
 use rrd_client::{RequestOptions, RrdClient, Session};
 use rrd_contract::*;
-use rrflow_eval::storage::{digest, Digest, ReadKeyDistribution, StorageLoadKind, WriteTransition};
+use rrflow_qualification_storage::{
+    digest, Digest, ReadKeyDistribution, StorageLoadKind, WriteTransition,
+};
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::time::Instant;

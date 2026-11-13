@@ -10,7 +10,7 @@ use rrd_contract::{
     CreateSession, ExecuteQuery, QueryBudget, QueryValue, SessionLimits, TransactionMutation,
 };
 use rrd_engine::RrdEngine;
-use rrflow_eval::storage::{
+use rrflow_qualification_storage::{
     digest, AcknowledgementLedger, Attempt, AttemptOutcome, ExpectedOperation, ExpectedResolution,
     Readback,
 };
@@ -384,7 +384,7 @@ fn expected(name: &str) -> BTreeMap<String, String> {
         })
         .collect()
 }
-fn receipt_hash(receipt: &CommitReceipt) -> rrflow_eval::storage::Digest {
+fn receipt_hash(receipt: &CommitReceipt) -> rrflow_qualification_storage::Digest {
     let mut receipt = receipt.clone();
     receipt.idempotent_replay = false;
     digest("c07c.installed.receipt", &receipt).unwrap()

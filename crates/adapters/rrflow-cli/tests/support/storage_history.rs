@@ -2,7 +2,7 @@
 //! barriers, the 100-cycle qualification corpus and power loss are separate.
 use super::*;
 use rrd_contract::{AbortTransaction, CommitReceipt, CorrelationId, TransactionLease};
-use rrflow_eval::storage::{
+use rrflow_qualification_storage::{
     digest, AcknowledgementLedger, Attempt, AttemptOutcome, Digest, ExpectedOperation,
     ExpectedResolution, Id, Readback,
 };

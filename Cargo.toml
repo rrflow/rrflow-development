@@ -22,8 +22,15 @@ members = [
     "crates/persistence/rrd-lsm",
     "crates/adapters/rrflow-cli",
     "crates/adapters/rrflow-mcp",
-    "crates/evaluation/rrflow-eval",
     "crates/evaluation/rrflow-evaluation-core",
+    "crates/evaluation/lab/rrflow-lab-systems",
+    "crates/evaluation/lab/rrflow-lab-datasets",
+    "crates/evaluation/lab/rrflow-lab-benchmarks",
+    "crates/evaluation/lab/rrflow-lab-evals",
+    "crates/evaluation/lab/rrflow-lab-definitions",
+    "crates/evaluation/lab/rrflow-lab",
+    "crates/evaluation/lab/rrflow-lab-experiments",
+    "crates/evaluation/qualification/rrflow-qualification-storage",
 ]
 
 # Remaining future member. Current dependency arrows point inward:

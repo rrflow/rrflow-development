@@ -435,7 +435,7 @@ jobs:
       - name: Enforce RRFlow engine ownership
         run: cargo test -p rrd-engine --test workspace_architecture --locked
       - name: Test provider screening evidence consistency
-        run: cargo test --locked -p rrflow-eval --test provider_compatibility
+        run: cargo test --locked -p rrflow-lab-experiments --test provider_compatibility
       - name: Enforce kernel dependency boundary
         run: |
           tree="$(cargo tree --locked -p rrd-core --edges normal --depth 1 --prefix none --format '{p}' --color never)"
@@ -473,7 +473,7 @@ jobs:
           - name: service-protocol
             packages: "-p rrd-server -p rrd-client -p rrflow-mcp -p rrflow-cli"
           - name: product-operations
-            packages: "-p rrd-kubernetes -p rrd-observation -p rrflow-edge -p rrflow-eval -p rrflow-evaluation-core"
+            packages: "-p rrd-kubernetes -p rrd-observation -p rrflow-edge -p rrflow-qualification-storage -p rrflow-evaluation-core -p rrflow-lab-systems -p rrflow-lab-datasets -p rrflow-lab-benchmarks -p rrflow-lab-evals -p rrflow-lab-definitions -p rrflow-lab -p rrflow-lab-experiments"
     env:
       CARGO_BUILD_JOBS: "2"
       CARGO_PROFILE_TEST_DEBUG: "0"
@@ -692,8 +692,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cargo test --locked -p rrflow-eval --test storage_contract generated_schemas_and_synthetic_receipts_match_goldens -- --exact --list | grep -Fx 'generated_schemas_and_synthetic_receipts_match_goldens: test'
-          cargo test --locked -p rrflow-eval --test storage_contract generated_schemas_and_synthetic_receipts_match_goldens -- --exact
+          cargo test --locked -p rrflow-qualification-storage --test storage_contract generated_schemas_and_synthetic_receipts_match_goldens -- --exact --list | grep -Fx 'generated_schemas_and_synthetic_receipts_match_goldens: test'
+          cargo test --locked -p rrflow-qualification-storage --test storage_contract generated_schemas_and_synthetic_receipts_match_goldens -- --exact
 
   installed-reopen:
     name: installed 100-cycle reopen (${{ matrix.os }})
