@@ -166,7 +166,7 @@ run in the `changes` job and the verify policy step.
 ## Pull request limits
 
 After lane selection, the `changes` job runs `scripts/ci/check_pr_governance.py`
-and fails a pull request that breaks a work-in-progress limit. The limits
+and fails a pull request that breaks a work-in-progress limit; size alone only warns. The limits
 exist because on 2026-11-09 the repository held 27 open pull requests, 20 of
 them drafts, most 130 to 420 commits behind `main`, with two merged into
 `main` carrying no file changes; prose in `AGENTS.md` had not prevented any
@@ -177,7 +177,7 @@ of it.
 | changed files | at least one | never | #298 and #299 merged with zero changes |
 | base branch | `main` | never | eight stacked lab pull requests could not enter the queue in turn |
 | merge-base age | 3 days | never | DORA's trunk-based capability: merge to trunk at least daily, three or fewer active branches |
-| changed lines | 400 | yes | Google reviews a median change of about 24 lines and approves most in under four hours (Sadowski et al., ICSE-SEIP 2018); the Cisco/SmartBear study of 2,500 reviews found review effectiveness fall past 200 to 400 lines |
+| hand-written changed lines | 400, advisory only | not needed | The cited studies (Sadowski et al., ICSE-SEIP 2018; Cisco/SmartBear, 2,500 reviews) measure human line-by-line review. The owner lands complete packages as one pull request, generated projections are not reviewed line by line (GitHub collapses `linguist-generated` files), and size labels in practice (Kubernetes `size/*`) inform rather than block. Above 400 hand-written lines the job prints a warning that points the reviewer to the change brief and traceability map; generated SDK, OpenAPI, signal, schema-golden and lockfile lines are excluded from the count. Changed 2026-11-13 at the owner's direction |
 | open pull requests | 5 | yes | teams running parallel agents size concurrency by pull requests awaiting review; conflicts grow faster than linearly with parallel agents |
 | open per author | 3 | yes | open-source projects admitting agents cap contributors at about three open pull requests |
 
