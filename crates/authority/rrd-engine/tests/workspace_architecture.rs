@@ -736,7 +736,7 @@ fn alpha_storage_closure_has_one_required_physical_dependency_and_current_reader
     let segment_module = fs::read_to_string(
         metadata
             .root
-            .join("crates/persistence/rrd-lsm/src/segment/mod.rs"),
+            .join("crates/persistence/rrd-lsm/src/segment.rs"),
     )
     .expect("segment module source must be readable");
     let segment_format = fs::read_to_string(

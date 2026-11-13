@@ -238,7 +238,7 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "C-07",
         "F-01",
     ),
-    "crates/persistence/rrd-lsm/src/segment/mod.rs": (
+    "crates/persistence/rrd-lsm/src/segment.rs": (
         "C-04",
         "C-05",
         "C-06",
@@ -1238,7 +1238,7 @@ PLANNED_PATHS: dict[str, tuple[str, ...]] = {
     "crates/persistence/rrd-lsm/tests/hybrid_segment.rs": ("C-06", "C-07"),
     "crates/persistence/rrd-lsm/tests/mapped_page_lifetime.rs": ("C-07", "F-01"),
     "crates/persistence/rrd-lsm/tests/write_diagnostics.rs": ("C-07", "J-04"),
-    "crates/persistence/rrd-lsm/src/segment/mod.rs": ("C-06",),
+    "crates/persistence/rrd-lsm/src/segment.rs": ("C-06",),
     "crates/persistence/rrd-lsm/src/segment/format.rs": ("C-06", "C-07"),
     "crates/persistence/rrd-lsm/src/segment/spine.rs": ("C-06", "C-07"),
     "crates/persistence/rrd-lsm/src/segment/column.rs": ("C-06", "C-07"),
