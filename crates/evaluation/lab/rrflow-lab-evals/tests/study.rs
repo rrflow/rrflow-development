@@ -1,19 +1,19 @@
 //! A study has to be fit to answer its question before it can spend anything, and its runs have
 //! to prove their data arrived. No test here can start a model.
-use rrflow_eval::lab::provider::{parse_claude_output, AgentProvider, AgentReply, AgentRequest};
-use rrflow_eval::lab::study::{
+use rrflow_evaluation_core::report::{SystemStatus, TestIdentity, VerdictOutcome};
+use rrflow_evaluation_core::Availability;
+use rrflow_evaluation_core::Id;
+use rrflow_evaluation_core::Result;
+use rrflow_lab_evals::provider::{parse_claude_output, AgentProvider, AgentReply, AgentRequest};
+use rrflow_lab_evals::study::{
     audit_runs, check_study, discordant_pairs_needed, plan_study, resolve_study, AnalysisChoices,
     CatalogReference, RequirementStatus, StudyCheck, StudyConfig, StudyRequirements, TaskSelection,
 };
-use rrflow_eval::lab::tasks::{
+use rrflow_lab_evals::tasks::{
     charged_usd, combine_task_runs, run_order, run_task, AgentTask, Preregistration, RunInputs,
     RunKey, SpendLimits, StudyStage, TaskArm, TaskComparisonManifest, TaskModel, TaskProviderKind,
     TaskRun, TaskRunOutcome,
 };
-use rrflow_eval::storage::Id;
-use rrflow_evaluation_core::report::{SystemStatus, TestIdentity, VerdictOutcome};
-use rrflow_evaluation_core::Availability;
-use rrflow_evaluation_core::Result;
 use rrflow_lab_systems::sources::SourceList;
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -27,7 +27,7 @@ fn id(text: &str) -> Id {
 }
 
 fn lab_file(name: &str) -> String {
-    let path = format!("{}/../../../eval/lab/{name}", env!("CARGO_MANIFEST_DIR"));
+    let path = format!("{}/../../../../eval/lab/{name}", env!("CARGO_MANIFEST_DIR"));
     std::fs::read_to_string(&path).unwrap_or_else(|error| panic!("{path}: {error}"))
 }
 
@@ -390,7 +390,7 @@ fn a_study_names_its_key_and_never_holds_it() {
 #[test]
 fn a_changed_catalog_or_an_arm_that_cannot_run_stops_the_check() {
     let mut changed = pilot();
-    changed.catalog.sha256 = rrflow_eval::storage::Digest::try_from("b".repeat(64)).unwrap();
+    changed.catalog.sha256 = rrflow_evaluation_core::Digest::try_from("b".repeat(64)).unwrap();
     let refused = check_study(&changed, &catalog(), &requirements(), None).unwrap_err();
     assert!(refused.contains("catalog changed"), "{refused}");
 

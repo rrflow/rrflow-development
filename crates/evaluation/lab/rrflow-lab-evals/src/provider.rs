@@ -1,6 +1,6 @@
 //! How an agent is called and what its output says about usage. One place owns this, so a
 //! paired trial and a task run read a provider's output the same way.
-use super::Result;
+use rrflow_evaluation_core::Result;
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::io::Read;

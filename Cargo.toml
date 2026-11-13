@@ -27,6 +27,7 @@ members = [
     "crates/evaluation/lab/rrflow-lab-systems",
     "crates/evaluation/lab/rrflow-lab-datasets",
     "crates/evaluation/lab/rrflow-lab-benchmarks",
+    "crates/evaluation/lab/rrflow-lab-evals",
 ]
 
 # Remaining future member. Current dependency arrows point inward:

@@ -5300,6 +5300,7 @@ dependencies = [
  "rrflow-evaluation-core",
  "rrflow-lab-benchmarks",
  "rrflow-lab-datasets",
+ "rrflow-lab-evals",
  "rrflow-lab-systems",
  "schemars",
  "serde",
@@ -5338,6 +5339,19 @@ name = "rrflow-lab-datasets"
 version = "1.0.0"
 dependencies = [
  "rrflow-evaluation-core",
+ "schemars",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "rrflow-lab-evals"
+version = "1.0.0"
+dependencies = [
+ "rrd-contract",
+ "rrflow-evaluation-core",
+ "rrflow-lab-datasets",
+ "rrflow-lab-systems",
  "schemars",
  "serde",
  "serde_json",

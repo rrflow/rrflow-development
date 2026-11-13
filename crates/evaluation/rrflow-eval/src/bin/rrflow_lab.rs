@@ -7,18 +7,9 @@ use rrflow_eval::lab::definitions::pack::{
     build_pack, generate_key, read_pack, InstallOutcome, PackContent as _, PackRequest, PackStore,
     StoreStatus, TrustedKey, TrustedKeys, VerifiedPack, MAX_PACK_BYTES,
 };
-use rrflow_eval::lab::provider::ClaudeCode;
 use rrflow_eval::lab::settings::{
     approve_all, build_plan, launch_digest, needs_approval, planned_files, runs_somewhere,
     waiting_for_approval, Definitions, LabPlan, LabSettings, PlannedTest, SystemState,
-};
-use rrflow_eval::lab::study::{
-    audit_runs, check_study, plan_study, CaptureAudit, RequirementStatus, StudyCheck, StudyConfig,
-    StudyRequirements,
-};
-use rrflow_eval::lab::tasks::{
-    charged_usd, combine_task_runs, run_order, run_task, RunInputs, RunKey, TaskComparisonManifest,
-    TaskRun,
 };
 use rrflow_eval::storage::{schema, Digest, Id};
 use rrflow_evaluation_core::report::{ArtifactReference, LabReport, SystemStatus};
@@ -38,6 +29,15 @@ use rrflow_lab_benchmarks::references::{
     TestConditions,
 };
 use rrflow_lab_datasets::knowledge::{read_repository_text, CHUNK_TABLE};
+use rrflow_lab_evals::provider::ClaudeCode;
+use rrflow_lab_evals::study::{
+    audit_runs, check_study, plan_study, CaptureAudit, RequirementStatus, StudyCheck, StudyConfig,
+    StudyRequirements,
+};
+use rrflow_lab_evals::tasks::{
+    charged_usd, combine_task_runs, run_order, run_task, RunInputs, RunKey, TaskComparisonManifest,
+    TaskRun,
+};
 use rrflow_lab_systems::adapters::custom::CustomProtocol;
 use rrflow_lab_systems::adapters::rrflow::RrflowAdapter;
 use rrflow_lab_systems::registry::connect;

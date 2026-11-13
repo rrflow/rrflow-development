@@ -1,8 +1,6 @@
 //! The lab must grade independently, keep failures visible, and refuse results that
 //! cannot honestly sit side by side.
 use rrflow_eval::lab::settings::{LabPlan, LabSettings};
-use rrflow_eval::lab::study::{CaptureAudit, StudyCheck, StudyConfig, StudyRequirements};
-use rrflow_eval::lab::tasks::{TaskComparisonManifest, TaskRun};
 use rrflow_eval::storage::{schema, Id};
 use rrflow_evaluation_core::report::{LabReport, SystemStatus, TestIdentity, VerdictOutcome};
 use rrflow_evaluation_core::Availability;
@@ -16,6 +14,8 @@ use rrflow_lab_benchmarks::manifest::{QualitySpec, VectorComparisonManifest, Wor
 use rrflow_lab_benchmarks::references::{Comparison, ReferenceFile};
 use rrflow_lab_datasets::corpus::{exact_answers, generate, read_imported, GroundTruth, VectorSet};
 use rrflow_lab_datasets::corpus::{CorpusSource, CorpusSpec};
+use rrflow_lab_evals::study::{CaptureAudit, StudyCheck, StudyConfig, StudyRequirements};
+use rrflow_lab_evals::tasks::{TaskComparisonManifest, TaskRun};
 use rrflow_lab_systems::adapter::{CollectionSpec, PointBatch, SearchRequest, SystemAdapter};
 use rrflow_lab_systems::adapters::custom::CustomProtocol;
 use rrflow_lab_systems::binding::{
