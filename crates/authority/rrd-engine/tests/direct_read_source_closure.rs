@@ -104,13 +104,13 @@ const ALLOWED_USES: &[AllowedUse] = &[
         operation: "exact vector candidate oracle",
     },
     AllowedUse {
-        path: "crates/kernel/rrd-core/src/runtime.rs",
+        path: "crates/kernel/rrd-core/src/runtime/tests.rs",
         kind: SensitiveReadUse::DataSnapshotReducer,
         count: 1,
         operation: "kernel data reducer missing-table rejection self-test",
     },
     AllowedUse {
-        path: "crates/kernel/rrd-core/src/runtime.rs",
+        path: "crates/kernel/rrd-core/src/runtime/tests.rs",
         kind: SensitiveReadUse::GraphSnapshotReducer,
         count: 1,
         operation: "kernel graph reducer self-test",
