@@ -2499,8 +2499,12 @@ fn data_transaction_atomically_commits_every_public_model_and_replays_after_rest
         .as_array()
         .unwrap()
         .iter()
-        .any(|candidate| candidate["name"] == "index:document-title"
-            && candidate["selected"] == true));
+        // The index's commit-maintained entries serve an equality on its
+        // field at the head; proving an artifact fresh would read the family.
+        .any(
+            |candidate| candidate["name"] == "commit_index:document-title"
+                && candidate["selected"] == true
+        ));
     assert_eq!(
         payload(&indexed)["rows"][0]["identity"],
         "record:document:alpha"

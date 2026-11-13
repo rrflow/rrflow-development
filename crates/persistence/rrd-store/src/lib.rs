@@ -23,6 +23,7 @@ mod gc;
 mod invocation;
 mod key_codec;
 mod keyspaces;
+pub mod lexical;
 mod object;
 mod outcome;
 mod projection;
@@ -38,10 +39,11 @@ pub use access::{
     FunctionArtifactMediaTypeRecord, FunctionArtifactRecord, FunctionCatalogueHeadRecord,
     FunctionCatalogueMembershipRecord, FunctionCataloguePublication, FunctionCatalogueSnapshot,
     FunctionDefinitionRecord, FunctionInvocationReceiptRecord, IndexCommitBindingDefinition,
-    IndexCommitBindingKind, IndexSourceDelta, IndexSourceRow, RuntimeAdjacencyDirection,
-    RuntimeReadAccessPath, RuntimeReadBudget, RuntimeReadEvidence, RuntimeReadPathEvidence,
-    RuntimeVectorDeltaRead, RuntimeVersionedRead, RuntimeVersionedSource, SemanticCommitPlan,
-    TransactionFunctionBindingRecord, VectorSourceAddress, VectorSourceDelta, VectorSourceVersion,
+    IndexCommitBindingKind, IndexLookup, IndexSourceDelta, IndexSourceRow, LexicalHit,
+    LexicalSearch, RuntimeAdjacencyDirection, RuntimeReadAccessPath, RuntimeReadBudget,
+    RuntimeReadEvidence, RuntimeReadPathEvidence, RuntimeVectorDeltaRead, RuntimeVersionedRead,
+    RuntimeVersionedSource, SemanticCommitPlan, TransactionFunctionBindingRecord,
+    VectorSourceAddress, VectorSourceDelta, VectorSourceVersion,
     FUNCTION_CATALOGUE_STATE_FORMAT_VERSION, FUNCTION_INVOCATION_RECEIPT_FORMAT_VERSION,
     INDEX_COMMIT_BINDING_CONTRACT_VERSION, INDEX_SOURCE_DELTA_CONTRACT_VERSION,
     RUNTIME_VERSIONED_READ_CONTRACT_VERSION, VECTOR_SOURCE_DELTA_CONTRACT_VERSION,
@@ -94,6 +96,9 @@ pub use rrd_core::{
     RuntimeChangePage, RuntimeCommitOutcome, SnapshotHandle, SnapshotId,
 };
 pub use rrd_lsm::filesystem;
+/// The physical write-batch payload ceiling every commit must fit; see
+/// [`RuntimeRepository::measure_commit_with_control`].
+pub const PHYSICAL_BATCH_PAYLOAD_BYTES: usize = rrd_lsm::WAL_MAX_PAYLOAD_BYTES;
 pub use rrd_lsm::{
     publish_rename as publish_durable_rename, sync_directory as sync_directory_metadata,
     DatabaseOptions, MutableLimits, MutableResource, ProjectedReadResource, TailRepairPlan,

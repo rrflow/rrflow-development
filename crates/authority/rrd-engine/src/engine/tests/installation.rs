@@ -52,6 +52,7 @@ fn plan_with_source_read(project: &Path, enabled: bool) -> InstallationPreview {
         "default",
         None,
         crate::InstallationPlanningOptions {
+            attunement_follow: None,
             attunement_proposal: None,
             allow_project_source_read: enabled,
         },

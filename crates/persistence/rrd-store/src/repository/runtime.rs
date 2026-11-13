@@ -280,25 +280,71 @@ impl<'a> RuntimeRepository<'a> {
             &sources,
             read_budget(max_keys, "runtime data snapshot")?,
         )?;
-        let snapshot = if read.schema_revision.is_some() {
-            let schema = schema_at_read(&read, &direct.changes)?;
-            RuntimeDataSnapshot::from_changes(
-                &direct.changes,
-                &schema,
-                scope.clone(),
-                valid_at,
-                read.commit_cursor,
-            )?
-        } else {
-            RuntimeDataSnapshot::from_claim_changes(
-                &direct.changes,
-                scope.clone(),
-                valid_at,
-                read.commit_cursor,
-            )?
-        };
+        let snapshot = reduce_data_snapshot(&read, &direct.changes, valid_at)?;
         Ok(RuntimeDataSnapshotRead {
             read,
+            selected_versions: selected_version_count(&direct.changes)?,
+            read_evidence: direct.evidence,
+            snapshot,
+        })
+    }
+
+    /// A data snapshot at a captured read stamp that reads every source
+    /// except the records of `excluded` kinds, plus the listed identities.
+    /// A caller that answered some kinds from commit-maintained indexes at
+    /// this stamp reads only the identities those indexes selected, and the
+    /// rest of the estate at the same stamp, so one answer never mixes two
+    /// states. Every version read is authenticated as in [`Self::data_snapshot`].
+    pub fn data_snapshot_at(
+        &self,
+        read: &ReadStamp,
+        valid_at: Millis,
+        max_keys: usize,
+        excluded: &std::collections::BTreeSet<rrd_core::RuntimeType>,
+        identities: &[RuntimeVersionedSource],
+    ) -> Result<RuntimeDataSnapshotRead> {
+        if identities
+            .iter()
+            .any(|source| !matches!(source, RuntimeVersionedSource::Identity { .. }))
+        {
+            return Err(Error::Substrate(
+                "a selective snapshot names identities only".into(),
+            ));
+        }
+        let transaction = self.storage.begin_transaction()?;
+        let schema: Option<RuntimeSchemaRegistry> = get_json(
+            &*transaction,
+            keyspaces::RUNTIME_SCHEMAS,
+            &keyspaces::runtime_schema_key(&read.scope),
+        )?;
+        if schema.as_ref().map(|schema| schema.revision) != read.schema_revision {
+            return Err(Error::ReadStampMismatch(read.manifest_id.clone()));
+        }
+        let mut sources = Vec::new();
+        for source in RuntimeVersionedSource::all() {
+            match source {
+                RuntimeVersionedSource::Records { kind: None } if !excluded.is_empty() => {
+                    for kind in schema.iter().flat_map(|schema| schema.records.keys()) {
+                        if !excluded.contains(kind) {
+                            sources.push(RuntimeVersionedSource::Records {
+                                kind: Some(kind.clone()),
+                            });
+                        }
+                    }
+                }
+                source => sources.push(source),
+            }
+        }
+        sources.extend(identities.iter().cloned());
+        let direct = read_versioned_access(
+            &*transaction,
+            read,
+            &sources,
+            read_budget(max_keys, "runtime data snapshot")?,
+        )?;
+        let snapshot = reduce_data_snapshot(read, &direct.changes, valid_at)?;
+        Ok(RuntimeDataSnapshotRead {
+            read: read.clone(),
             selected_versions: selected_version_count(&direct.changes)?,
             read_evidence: direct.evidence,
             snapshot,
@@ -355,6 +401,126 @@ impl<'a> RuntimeRepository<'a> {
             .into()),
             Err(error) => Err(error.into()),
         }
+    }
+
+    /// Exact physical size of the batch that
+    /// [`Self::commit_with_control_builder`] would write for this commit and
+    /// these control transitions, measured by staging both in a transaction
+    /// that is never committed. The batch is admitted when the size is at
+    /// most [`crate::PHYSICAL_BATCH_PAYLOAD_BYTES`]. Writes that would be refused for
+    /// any other reason are refused here too.
+    pub fn measure_commit_with_control<E, C>(
+        &self,
+        commit: &RuntimeCommit,
+        build: impl FnOnce(&ReadStamp, &RuntimeCommitOutcome) -> std::result::Result<C, E>,
+    ) -> std::result::Result<usize, E>
+    where
+        E: From<Error>,
+        C: AsRef<[ControlTransition]>,
+    {
+        commit.validate().map_err(Error::from)?;
+        let mut transaction = self.storage.begin_transaction()?;
+        transaction.measure_only()?;
+        let plan = prepare_semantic_commit(&*transaction, commit, None, None, None)?;
+        let outcome = plan.apply(&mut *transaction)?;
+        let read = read_stamp_with(&*transaction, &commit.scope)?;
+        let transitions = build(&read, &outcome)?;
+        super::control::prepare_control_batch(&mut *transaction, transitions.as_ref())?;
+        let bytes = transaction.staged_encoded_bytes();
+        transaction.rollback()?;
+        Ok(bytes)
+    }
+
+    /// Exact BM25 top-k over the current postings of a commit-bound index at
+    /// the head read stamp. A stamp behind the head, a valid time before the
+    /// index's watermark, or an index without a BM25 binding is reported
+    /// as not applicable so the caller can read the versioned history instead.
+    /// Reaching `max_keys` refuses the search rather than rank partially.
+    #[allow(clippy::too_many_arguments)]
+    pub fn lexical_search(
+        &self,
+        read: &ReadStamp,
+        index: &rrd_core::ProjectionId,
+        query: &str,
+        valid_at: u64,
+        top_k: usize,
+        max_keys: u64,
+    ) -> Result<crate::LexicalSearch> {
+        let transaction = self.storage.begin_transaction()?;
+        read.validate()?;
+        let head = read_stamp_with(&*transaction, &read.scope)?;
+        if head.commit_cursor != read.commit_cursor || head.manifest_id != read.manifest_id {
+            return Ok(crate::LexicalSearch::NotApplicable(format!(
+                "read stamp at cursor {} is not the head at cursor {}",
+                read.commit_cursor, head.commit_cursor
+            )));
+        }
+        let Some((config, _, _)) =
+            crate::access::lexical_binding(&*transaction, &read.scope, index)?
+        else {
+            return Ok(crate::LexicalSearch::NotApplicable(format!(
+                "index {index} has no BM25 commit binding"
+            )));
+        };
+        crate::access::lexical_index::search(
+            &*transaction,
+            &read.scope,
+            index,
+            &config,
+            query,
+            valid_at,
+            top_k,
+            max_keys,
+        )
+    }
+
+    /// Current records of a scalar commit-bound index whose leading indexed
+    /// values equal `values`, visible at `valid_at`, at the head read stamp.
+    /// Like [`Self::lexical_search`], a stamp behind the head or a valid time
+    /// before the index's watermark is not applicable. The caller
+    /// reads the returned identities at its stamp and evaluates every
+    /// predicate, so the index narrows a read and never answers alone.
+    pub fn index_lookup(
+        &self,
+        read: &ReadStamp,
+        index: &rrd_core::ProjectionId,
+        values: &[rrd_core::RuntimeValue],
+        valid_at: u64,
+        max_entries: usize,
+    ) -> Result<crate::IndexLookup> {
+        let transaction = self.storage.begin_transaction()?;
+        read.validate()?;
+        let head = read_stamp_with(&*transaction, &read.scope)?;
+        if head.commit_cursor != read.commit_cursor || head.manifest_id != read.manifest_id {
+            return Ok(crate::IndexLookup::NotApplicable(format!(
+                "read stamp at cursor {} is not the head at cursor {}",
+                read.commit_cursor, head.commit_cursor
+            )));
+        }
+        let Some(definition) = crate::access::commit_binding(&*transaction, &read.scope, index)?
+        else {
+            return Ok(crate::IndexLookup::NotApplicable(format!(
+                "index {index} has no commit binding"
+            )));
+        };
+        let watermark = crate::access::lexical_index::watermark(&*transaction, &read.scope, index)?;
+        if valid_at < watermark {
+            return Ok(crate::IndexLookup::NotApplicable(format!(
+                "valid time {valid_at} precedes the watermark {watermark} of index {index}"
+            )));
+        }
+        let (references, keys_read) = crate::access::scalar_lookup(
+            &*transaction,
+            &read.scope,
+            &definition,
+            values,
+            valid_at,
+            max_entries,
+        )?;
+        Ok(crate::IndexLookup::Records {
+            references,
+            keys_read,
+        })
     }
 
     pub fn commit_data_transaction(
@@ -646,6 +812,32 @@ impl<'a> RuntimeRepository<'a> {
             snapshot,
         })
     }
+}
+
+/// Reduces directly selected, authenticated versions into the data snapshot
+/// visible at `valid_at` under `read`.
+fn reduce_data_snapshot(
+    read: &ReadStamp,
+    changes: &[RuntimeChange],
+    valid_at: Millis,
+) -> Result<RuntimeDataSnapshot> {
+    Ok(if read.schema_revision.is_some() {
+        let schema = schema_at_read(read, changes)?;
+        RuntimeDataSnapshot::from_changes(
+            changes,
+            &schema,
+            read.scope.clone(),
+            valid_at,
+            read.commit_cursor,
+        )?
+    } else {
+        RuntimeDataSnapshot::from_claim_changes(
+            changes,
+            read.scope.clone(),
+            valid_at,
+            read.commit_cursor,
+        )?
+    })
 }
 
 fn selected_version_count(changes: &[RuntimeChange]) -> Result<u64> {

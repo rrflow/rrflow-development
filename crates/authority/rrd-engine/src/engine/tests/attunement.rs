@@ -117,9 +117,11 @@ impl Installed {
                 &credential.principal_id,
                 credential.credential().as_bytes(),
                 &CreateSession {
+                    // Long enough for a debug build to step a large Parse,
+                    // whose test clock follows the job's own transition times.
                     limits: SessionLimits {
-                        idle_timeout_ms: 120_000,
-                        absolute_timeout_ms: 120_000,
+                        idle_timeout_ms: 900_000,
+                        absolute_timeout_ms: 900_000,
                         max_open_transactions: 2,
                     },
                 },
@@ -925,6 +927,7 @@ fn inventory_output_bound_preserves_runtime_checkpoint_and_head_after_reopen() {
         reasoning: defaults.reasoning,
         recall: defaults.recall,
         query: defaults.query,
+        attunement_follow: None,
     };
     let file = tempfile::NamedTempFile::new().unwrap();
     std::fs::write(file.path(), toml::to_string(&input).unwrap()).unwrap();

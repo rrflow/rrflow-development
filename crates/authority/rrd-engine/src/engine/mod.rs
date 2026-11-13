@@ -39,11 +39,11 @@ use rrd_contract::{
     PollLiveQuery, PreviewTransaction, QueryExecutionAnalysisSnapshot, QueryExecutionSnapshot,
     QueryFullTextConfiguration, QueryIndexCatalogueSnapshot, QueryIndexKind,
     QueryIndexMaintenanceSnapshot, QueryIndexSnapshot, QueryIndexState, QueryPlanCandidate,
-    QueryPlanSnapshot, QueryResult, QueryRowSnapshot, QueryTextAnalyzer, QueryTextStemmer,
-    QueryTextTokenizer, QueryTransactionResult, QueryValue, ReadAudit, ReadChangefeed,
-    ReadDataSnapshot, ReadDiagnosticSnapshot, Readiness, RenewSession, ReplaceFunctionCatalogue,
-    RequestContext, ResourceId, ResourceKind, ResourcePath, RestoreInstanceBackup,
-    RestoreInstanceBackupResult, RetireVectorQuantizationArtifact,
+    QueryPlanSnapshot, QueryResult, QueryRowSnapshot, QueryTextAnalyzer, QueryTextIdentifiers,
+    QueryTextStemmer, QueryTextTokenizer, QueryTransactionResult, QueryValue, ReadAudit,
+    ReadChangefeed, ReadDataSnapshot, ReadDiagnosticSnapshot, Readiness, RenewSession,
+    ReplaceFunctionCatalogue, RequestContext, ResourceId, ResourceKind, ResourcePath,
+    RestoreInstanceBackup, RestoreInstanceBackupResult, RetireVectorQuantizationArtifact,
     RetireVectorQuantizationArtifactResult, RetrievalContextPair, RetrievalContribution,
     RetrievalFacet, RetrievalFusion, RetrievalGroup, RetrievalHit, RetrievalMatrixCell,
     RetrievalOutput, RetrievalPrefetch, RetrievalQuery, RetrievalQueryResult,
@@ -123,7 +123,7 @@ mod observation_source;
 mod project_map;
 pub use attunement::{
     AttunementCommand, AttunementControlResult, AttunementReceiptView, AttunementReplanPreview,
-    AttunementReplanReceiptView, AttunementReplanResult,
+    AttunementReplanReceiptView, AttunementReplanResult, FollowOutcome, FollowTick,
 };
 mod invocation;
 mod knowledge;

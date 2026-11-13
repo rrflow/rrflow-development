@@ -621,6 +621,36 @@ pub struct EstateConfigurationInput {
     pub reasoning: ReasoningLimits,
     pub recall: RecallLimits,
     pub query: QueryBudget,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub attunement_follow: Option<AttunementFollowPolicy>,
+}
+
+/// The served engine keeps its project attuned: every `interval_ms` it looks
+/// for a change to the project's files, and when it finds one it derives the
+/// successor attunement plan from the committed evidence, accepts it and steps
+/// it to the end, as the installed operator, through the public attunement
+/// operations and their receipts. Sealed into the installation plan; absent
+/// means the engine never attunes on its own.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct AttunementFollowPolicy {
+    pub interval_ms: u64,
+}
+
+impl AttunementFollowPolicy {
+    pub const MIN_INTERVAL_MS: u64 = 1_000;
+    pub const MAX_INTERVAL_MS: u64 = 3_600_000;
+
+    pub fn validate(&self) -> Result<()> {
+        if !(Self::MIN_INTERVAL_MS..=Self::MAX_INTERVAL_MS).contains(&self.interval_ms) {
+            return invalid(format!(
+                "attunement follow interval must be in {}..={} ms",
+                Self::MIN_INTERVAL_MS,
+                Self::MAX_INTERVAL_MS
+            ));
+        }
+        Ok(())
+    }
 }
 
 impl EstateConfigurationInput {
@@ -634,7 +664,11 @@ impl EstateConfigurationInput {
         self.storage.validate()?;
         self.reasoning.validate()?;
         self.recall.validate()?;
-        self.query.validate()
+        self.query.validate()?;
+        if let Some(follow) = &self.attunement_follow {
+            follow.validate()?;
+        }
+        Ok(())
     }
 }
 
@@ -651,6 +685,8 @@ pub struct EstateConfiguration {
     pub reasoning: ReasoningLimits,
     pub recall: RecallLimits,
     pub query: QueryBudget,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub attunement_follow: Option<AttunementFollowPolicy>,
     pub configuration_sha256: String,
 }
 
@@ -668,6 +704,7 @@ impl EstateConfiguration {
             reasoning: input.reasoning,
             recall: input.recall,
             query: input.query,
+            attunement_follow: input.attunement_follow,
             configuration_sha256: String::new(),
         };
         configuration.configuration_sha256 = estate_configuration_sha256(&configuration)?;
@@ -682,6 +719,7 @@ impl EstateConfiguration {
             reasoning: self.reasoning.clone(),
             recall: self.recall.clone(),
             query: self.query.clone(),
+            attunement_follow: self.attunement_follow,
         }
         .validate()?;
         if self.revision == 0 {
@@ -691,6 +729,21 @@ impl EstateConfiguration {
             return invalid("estate configuration digest does not match its content");
         }
         Ok(())
+    }
+
+    /// The same configuration with the engine keeping its project attuned at
+    /// `policy`, or never when `None`; the digest is recomputed.
+    pub fn with_attunement_follow(
+        mut self,
+        policy: Option<AttunementFollowPolicy>,
+    ) -> Result<Self> {
+        if let Some(policy) = &policy {
+            policy.validate()?;
+        }
+        self.attunement_follow = policy;
+        self.configuration_sha256 = estate_configuration_sha256(&self)?;
+        self.validate()?;
+        Ok(self)
     }
 
     pub fn validate_query_budget(&self, requested: &QueryBudget) -> Result<()> {
@@ -761,6 +814,7 @@ impl Default for EstateConfiguration {
                     max_storage_keys: 100_000,
                 },
                 query: QueryBudget::default(),
+                attunement_follow: None,
             },
         )
         .expect("default estate configuration is valid")

@@ -29,8 +29,9 @@ pub use arrow::{
     ArrowSnapshot,
 };
 pub use bm25::{
-    highlight_offsets, Bm25Analyzer, Bm25Artifact, Bm25Config, Bm25Document, Bm25Hit, Bm25Offset,
-    Bm25Posting, Bm25Stemmer, Bm25Tokenizer, BM25_ARTIFACT_CONTRACT_VERSION,
+    highlight_offsets, Bm25Analyzer, Bm25Artifact, Bm25Config, Bm25Document, Bm25Hit,
+    Bm25Identifiers, Bm25Offset, Bm25Posting, Bm25Stemmer, Bm25Tokenizer,
+    BM25_ARTIFACT_CONTRACT_VERSION,
 };
 pub use catalog::{Catalog, SchemaVersion, SourceWatermarks};
 pub use cold_history::{
@@ -63,4 +64,5 @@ pub use plan::{
     LogicalOperator, LogicalPlan, Parameters, PhysicalOperator, PhysicalPlan, PlanExplanation,
     QueryFieldTypes,
 };
+pub use plan::{BoundCommitIndex, CommitIndexProbe, MAX_COMMIT_INDEX_TOP_K};
 pub use syntax::*;

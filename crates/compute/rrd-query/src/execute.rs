@@ -139,7 +139,10 @@ pub fn execute<E: StorageEngine>(
     }
     // BM25 corpus statistics are calculated from the complete authoritative
     // source snapshot, before relational predicates narrow the result set.
-    let bm25_scores = bm25_scores(&loaded.rows, &shape, loaded.bm25)?;
+    let bm25_scores = match loaded.ranked.take() {
+        Some(ranked) => ranked_scores(&loaded.rows, &shape, ranked)?,
+        None => bm25_scores(&loaded.rows, &shape, loaded.bm25)?,
+    };
     let has_match = shape
         .filters
         .iter()
@@ -274,14 +277,29 @@ enum ReadPath {
         artifact_digest: String,
         artifact_rows: u64,
     },
+    CommitIndex {
+        id: rrd_core::ProjectionId,
+        probe: crate::plan::CommitIndexProbe,
+        model: rrd_core::RuntimeLogicalModel,
+        fallback: Vec<RuntimeVersionedSource>,
+    },
 }
 
 struct LoadedAccess {
     rows: Vec<QueryRow>,
     right_rows: Option<Vec<QueryRow>>,
     bm25: Option<Bm25Artifact>,
+    /// Scores a commit-bound BM25 index computed over every current document.
+    ranked: Option<Ranked>,
     selected_versions: usize,
     read_evidence: RuntimeReadEvidence,
+}
+
+/// A commit-bound BM25 ranking: scores and matched terms by row identity, and
+/// the configuration that analysed them.
+struct Ranked {
+    config: Bm25Config,
+    hits: BTreeMap<String, (f64, Vec<String>)>,
 }
 
 impl ReadPath {
@@ -381,6 +399,32 @@ impl ReadPath {
                     traversals,
                 })
             }
+            PhysicalOperator::CommitIndexRead {
+                id,
+                probe,
+                model,
+                fallback,
+                exact,
+                stable_order,
+            } if *exact
+                && traversals.is_empty()
+                && shape.join.is_none()
+                && fallback == &plan.logical.version_sources
+                && stable_order
+                    == if matches!(probe, crate::plan::CommitIndexProbe::Bm25 { .. }) {
+                        "bm25_score_desc_identity_ascending"
+                    } else {
+                        "global_cursor"
+                    }
+                && selected[0].name == format!("commit_index:{id}") =>
+            {
+                Ok(Self::CommitIndex {
+                    id: id.clone(),
+                    probe: probe.clone(),
+                    model: *model,
+                    fallback: fallback.clone(),
+                })
+            }
             PhysicalOperator::MaterializedIndex {
                 id,
                 kind,
@@ -430,6 +474,112 @@ impl ReadPath {
         shape: &PlanShape,
         budget: RuntimeReadBudget,
     ) -> Result<LoadedAccess> {
+        if let Self::CommitIndex {
+            id,
+            probe,
+            model,
+            fallback,
+        } = self
+        {
+            let max_keys = budget.max_keys;
+            let (selected, ranked, index_keys) = match probe {
+                crate::plan::CommitIndexProbe::Scalar { values } => {
+                    match engine.runtime().index_lookup(
+                        stamp,
+                        id,
+                        values,
+                        shape.valid_at,
+                        usize::try_from(max_keys).unwrap_or(usize::MAX),
+                    )? {
+                        rrd_store::IndexLookup::Records {
+                            references,
+                            keys_read,
+                        } => (Some(references), None, keys_read),
+                        rrd_store::IndexLookup::NotApplicable(_) => (None, None, 0),
+                    }
+                }
+                crate::plan::CommitIndexProbe::Bm25 {
+                    query,
+                    config,
+                    top_k,
+                } => match engine.runtime().lexical_search(
+                    stamp,
+                    id,
+                    query,
+                    shape.valid_at,
+                    *top_k,
+                    max_keys,
+                )? {
+                    rrd_store::LexicalSearch::Hits {
+                        hits, keys_read, ..
+                    } => {
+                        let references = hits.iter().map(|hit| hit.record.clone()).collect();
+                        let ranked = Ranked {
+                            config: config.clone(),
+                            hits: hits
+                                .into_iter()
+                                .map(|hit| {
+                                    (
+                                        result_identity::typed(
+                                            ResultIdentityFamily::Record,
+                                            &hit.record,
+                                        ),
+                                        (hit.score, hit.matched_terms),
+                                    )
+                                })
+                                .collect(),
+                        };
+                        (Some(references), Some(ranked), keys_read)
+                    }
+                    rrd_store::LexicalSearch::NotApplicable(_) => (None, None, 0),
+                },
+            };
+            // The index's keys count against the same read budget.
+            let budget = RuntimeReadBudget::new(
+                max_keys
+                    .checked_sub(index_keys)
+                    .filter(|keys| *keys > 0)
+                    .ok_or_else(|| {
+                        Error::Budget(format!(
+                            "index {id} read {index_keys} keys of a {max_keys}-key budget"
+                        ))
+                    })?,
+            )?;
+            let Some(references) = selected else {
+                return Self::Versioned {
+                    sources: fallback.clone(),
+                }
+                .load(engine, stamp, shape, budget);
+            };
+            if references.is_empty() {
+                let validation = engine.runtime().read_versioned(
+                    stamp,
+                    &[RuntimeVersionedSource::Schema],
+                    budget,
+                )?;
+                return Ok(LoadedAccess {
+                    rows: Vec::new(),
+                    right_rows: None,
+                    bm25: None,
+                    ranked: ranked.map(|ranked| Ranked {
+                        hits: BTreeMap::new(),
+                        ..ranked
+                    }),
+                    selected_versions: 0,
+                    read_evidence: validation.evidence,
+                });
+            }
+            let sources = references
+                .into_iter()
+                .map(|reference| RuntimeVersionedSource::Identity {
+                    model: *model,
+                    reference,
+                })
+                .collect::<Vec<_>>();
+            let mut loaded = Self::Versioned { sources }.load(engine, stamp, shape, budget)?;
+            loaded.ranked = ranked;
+            return Ok(loaded);
+        }
         if let Self::Index {
             id,
             kind,
@@ -488,6 +638,7 @@ impl ReadPath {
                 rows: artifact.rows,
                 right_rows: None,
                 bm25: artifact.bm25,
+                ranked: None,
                 selected_versions: 0,
                 read_evidence: validation.evidence,
             });
@@ -764,7 +915,9 @@ impl ReadPath {
                     &mut |changes| expansion.next(changes),
                 )?
             }
-            Self::Index { .. } => unreachable!("indexes return above"),
+            Self::Index { .. } | Self::CommitIndex { .. } => {
+                unreachable!("indexes return above")
+            }
         };
         let selected_versions = selected.changes.len();
         let rows = rows_for_source(
@@ -787,6 +940,7 @@ impl ReadPath {
             rows,
             right_rows,
             bm25: None,
+            ranked: None,
             selected_versions,
             read_evidence: selected.evidence,
         })
@@ -1395,6 +1549,51 @@ fn bm25_scores(
                 offsets: hit.offsets,
             };
             Ok((hit.identity, evidence))
+        })
+        .collect()
+}
+
+/// Evidence for rows a commit-bound BM25 index ranked: its scores and
+/// matched terms, with highlights recomputed from each row's own text.
+fn ranked_scores(
+    rows: &[QueryRow],
+    shape: &PlanShape,
+    ranked: Ranked,
+) -> Result<BTreeMap<String, Bm25Evidence>> {
+    let Some(filter) = shape
+        .filters
+        .iter()
+        .find(|filter| filter.comparison.is_match())
+    else {
+        return Err(Error::Integrity(
+            "a commit-bound BM25 ranking was loaded for a query without MATCH".into(),
+        ));
+    };
+    rows.iter()
+        .filter_map(|row| {
+            let (score, matched_terms) = ranked.hits.get(&row.identity)?;
+            let Some(RuntimeValue::String(text)) = row.values.get(&filter.field) else {
+                return Some(Err(Error::Integrity(format!(
+                    "BM25 hit {} has no authoritative source text",
+                    row.identity
+                ))));
+            };
+            Some((|| {
+                let offsets = crate::bm25::analyze_with_offsets(&ranked.config, text)?
+                    .into_iter()
+                    .filter(|token| matched_terms.contains(&token.term))
+                    .map(|token| token.offset)
+                    .collect::<Vec<_>>();
+                Ok((
+                    row.identity.clone(),
+                    Bm25Evidence {
+                        score: *score,
+                        matched_terms: matched_terms.clone(),
+                        highlight: highlight_offsets(text, &offsets, "<em>", "</em>")?,
+                        offsets,
+                    },
+                ))
+            })())
         })
         .collect()
 }

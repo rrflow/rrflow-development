@@ -84,11 +84,16 @@ impl RrdEngine {
                 "hybrid BM25 candidates were truncated by the execution budget".into(),
             ));
         }
+        // A built artifact and commit-maintained postings both serve the
+        // ranking from an index.
         let text_access_path = if text_plan.operators.iter().any(|operator| {
             matches!(
                 operator,
                 rrd_query::PhysicalOperator::MaterializedIndex {
                     kind: rrd_query::IndexKind::Bm25 { .. },
+                    ..
+                } | rrd_query::PhysicalOperator::CommitIndexRead {
+                    probe: rrd_query::CommitIndexProbe::Bm25 { .. },
                     ..
                 }
             )

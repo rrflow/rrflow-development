@@ -102,11 +102,27 @@ fn default_plan_completes_after_inventory_and_derives_the_successor_from_evidenc
     assert!(!evidence.embedding_binding);
     assert_eq!(
         evidence.available.iter().copied().collect::<Vec<_>>(),
-        vec![Phase::Connect, Phase::Inventory],
+        vec![Phase::Connect, Phase::Inventory, Phase::Parse],
         "only installed executors are available"
     );
     let derived: Vec<Phase> = preview.plan.phases.iter().map(|step| step.phase).collect();
-    assert_eq!(derived, vec![Phase::Connect, Phase::Inventory]);
+    assert_eq!(
+        derived,
+        vec![Phase::Connect, Phase::Inventory, Phase::Parse],
+        "the Rust and Python sources have bound grammars, so Parse is selected"
+    );
+    let policy = preview.plan.phases[2]
+        .parse_policy
+        .as_ref()
+        .expect("a derived Parse step carries its policy");
+    assert_eq!(
+        policy
+            .bindings
+            .iter()
+            .map(|binding| binding.extension.as_str())
+            .collect::<Vec<_>>(),
+        vec!["py", "pyi", "rs"]
+    );
     // Any client can recompute the plan from the evidence the preview carries.
     let recomputed = derive_attunement_plan(
         &installed.preview.attunement,
@@ -156,7 +172,7 @@ fn default_plan_completes_after_inventory_and_derives_the_successor_from_evidenc
         vec![installed.job.as_str(), accepted.successor.job.id.as_str()]
     );
 
-    // The successor runs to completion on the same two executors and the
+    // The successor runs Connect, Inventory and Parse to completion and the
     // receipts survive a reopen.
     let successor = accepted.successor.job.clone();
     let s_started = call(
@@ -180,7 +196,7 @@ fn default_plan_completes_after_inventory_and_derives_the_successor_from_evidenc
         s_started.status.job.updated_at_unix_ms + 1,
     )
     .unwrap();
-    let s_done = call(
+    let s_inventoried = call(
         &engine,
         &session,
         &step(&s_connected.status.job),
@@ -188,7 +204,20 @@ fn default_plan_completes_after_inventory_and_derives_the_successor_from_evidenc
         s_connected.status.job.updated_at_unix_ms + 1,
     )
     .unwrap();
+    assert_eq!(s_inventoried.status.job.current_phase, Some(Phase::Parse));
+    let s_done = call(
+        &engine,
+        &session,
+        &step(&s_inventoried.status.job),
+        "d-successor-parse",
+        s_inventoried.status.job.updated_at_unix_ms + 1,
+    )
+    .unwrap();
     assert_eq!(s_done.status.job.state, State::Succeeded);
+    assert_eq!(
+        s_done.status.job.checkpoints.last().map(|c| c.phase),
+        Some(Phase::Parse)
+    );
     drop(engine);
     let late = s_done.status.job.updated_at_unix_ms + 1_000;
     let engine = installed.reopen(late);

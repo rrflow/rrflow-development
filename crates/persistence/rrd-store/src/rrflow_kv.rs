@@ -156,6 +156,18 @@ impl StorageTransaction for RrflowKvTransaction<'_> {
         self.transaction.delete(key).map_err(Error::from)
     }
 
+    fn measure_only(&mut self) -> Result<()> {
+        self.transaction.measure_only().map_err(Error::from)
+    }
+
+    fn staged_encoded_bytes(&self) -> usize {
+        self.transaction.encoded_len()
+    }
+
+    fn is_measuring(&self) -> bool {
+        self.transaction.is_measuring()
+    }
+
     fn commit(self: Box<Self>, durability: Durability) -> Result<TransactionCommit> {
         let Self {
             store,
@@ -1968,6 +1980,7 @@ mod tests {
                 fields: vec!["status".into()],
                 kind: crate::IndexCommitBindingKind::Scalar { unique: false },
                 configuration_sha256: digest::sha256_hex(b"item-status:scalar"),
+                lexical: None,
             },
             crate::IndexCommitBindingDefinition {
                 id: ProjectionId::new("item-code").unwrap(),
@@ -1975,6 +1988,7 @@ mod tests {
                 fields: vec!["code".into()],
                 kind: crate::IndexCommitBindingKind::Scalar { unique: true },
                 configuration_sha256: digest::sha256_hex(b"item-code:unique"),
+                lexical: None,
             },
             crate::IndexCommitBindingDefinition {
                 id: ProjectionId::new("item-title-bm25").unwrap(),
@@ -1982,6 +1996,7 @@ mod tests {
                 fields: vec!["title".into()],
                 kind: crate::IndexCommitBindingKind::Bm25,
                 configuration_sha256: digest::sha256_hex(b"item-title:bm25"),
+                lexical: Some(crate::lexical::Bm25Config::default()),
             },
         ];
         let scope = failure_scope();
@@ -2139,6 +2154,17 @@ mod tests {
                     ),
                     (keyspaces::RUNTIME_SCALAR_ENTRIES, "scalar index entry", 1),
                     (keyspaces::RUNTIME_UNIQUE_ENTRIES, "unique index entry", 1),
+                    (
+                        keyspaces::RUNTIME_TERM_DICTIONARY,
+                        "BM25 term dictionary entry",
+                        1,
+                    ),
+                    (
+                        keyspaces::RUNTIME_TERM_STATISTICS,
+                        "BM25 term statistics",
+                        1,
+                    ),
+                    (keyspaces::RUNTIME_TERM_POSTINGS, "BM25 term posting", 1),
                     (keyspaces::RUNTIME_VECTORS, "current vector", 1),
                     (keyspaces::RUNTIME_VECTOR_VERSIONS, "vector version", 1),
                     (

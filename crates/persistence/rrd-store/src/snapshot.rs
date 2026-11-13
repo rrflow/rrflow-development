@@ -54,6 +54,15 @@ impl StorageTransaction for SnapshotRead<'_, '_> {
     fn delete(&mut self, _key: Vec<u8>) -> Result<()> {
         Err(read_only())
     }
+    fn measure_only(&mut self) -> Result<()> {
+        Err(read_only())
+    }
+    fn staged_encoded_bytes(&self) -> usize {
+        0
+    }
+    fn is_measuring(&self) -> bool {
+        false
+    }
     fn commit(self: Box<Self>, _durability: Durability) -> Result<TransactionCommit> {
         Err(read_only())
     }

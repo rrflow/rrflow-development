@@ -449,6 +449,115 @@ pub(super) fn schema_mutation(
     Ok(Some(RuntimeMutation::Schema { registry }))
 }
 
+/// The indexes parsed source is read through: exact lookups of a symbol by
+/// name and of every fact of a file by path, and BM25 over chunk text that
+/// indexes code identifiers whole and by their words. Each is maintained in
+/// the commit that writes the facts, so a question reads current facts
+/// without scanning them.
+pub(super) fn index_definitions() -> Result<Vec<rrd_query::IndexDefinition>> {
+    let record = |kind: &str| -> Result<rrd_query::Source> {
+        Ok(rrd_query::Source::Record {
+            kind: RuntimeType::new(kind).map_err(contract)?,
+        })
+    };
+    let definition = |id: &str, kind: &str, field: &str, index: rrd_query::IndexKind| {
+        Ok(rrd_query::IndexDefinition {
+            id: rrd_core::ProjectionId::new(id).map_err(contract)?,
+            source: record(kind)?,
+            fields: vec![field.into()],
+            unique: false,
+            kind: index,
+            filters: Vec::new(),
+        })
+    };
+    let code = rrd_query::Bm25Config {
+        identifiers: rrd_query::Bm25Identifiers::WholeAndParts,
+        ..rrd_query::Bm25Config::default()
+    };
+    [
+        definition(
+            "source-symbol-name",
+            SYMBOL,
+            "name",
+            rrd_query::IndexKind::Scalar,
+        ),
+        definition(
+            "source-symbol-path",
+            SYMBOL,
+            "path",
+            rrd_query::IndexKind::Scalar,
+        ),
+        definition(
+            "source-span-path",
+            SPAN,
+            "path",
+            rrd_query::IndexKind::Scalar,
+        ),
+        definition(
+            "source-chunk-path",
+            CHUNK,
+            "path",
+            rrd_query::IndexKind::Scalar,
+        ),
+        definition(
+            "source-chunk-text",
+            CHUNK,
+            "text",
+            rrd_query::IndexKind::Bm25 { config: code },
+        ),
+    ]
+    .into_iter()
+    .collect()
+}
+
+/// Defines any of [`index_definitions`] the scope does not have yet, once the
+/// parsed-source tables exist. The store backfills facts already published.
+pub(super) fn ensure_indexes(
+    engine: &RrdEngine,
+    scope: &ScopeId,
+    context: &rrd_query::IndexMutationContext,
+) -> Result<()> {
+    let Some(schema) = engine.storage.runtime().schema(scope)? else {
+        return Ok(());
+    };
+    if !schema
+        .records
+        .contains_key(&RuntimeType::new(CHUNK).map_err(contract)?)
+    {
+        return Ok(());
+    }
+    let repository = rrd_query::IndexCatalogueRepository::new(&engine.storage, scope.clone());
+    let existing = repository
+        .load()
+        .map_err(|error| ServiceError::Query(error.to_string()))?;
+    let missing = index_definitions()?
+        .into_iter()
+        .filter(|definition| !existing.entries.contains_key(&definition.id))
+        .collect::<Vec<_>>();
+    if missing.is_empty() {
+        return Ok(());
+    }
+    let mut sources = Vec::new();
+    for definition in &missing {
+        if !sources.contains(&definition.source) {
+            sources.push(definition.source.clone());
+        }
+    }
+    let catalogue = rrd_query::Catalog::capture_for_sources(
+        &engine.storage,
+        scope,
+        &sources,
+        RuntimeReadBudget::new(engine.estate_configuration.query.max_storage_keys)?,
+    )
+    .map_err(|error| ServiceError::Query(error.to_string()))?;
+    for definition in missing {
+        repository
+            .create(context, &catalogue, definition)
+            .map_err(|error| ServiceError::Query(error.to_string()))?;
+    }
+    Ok(())
+}
+
 /// Retires a file that left the project or its parse bindings: its facts and
 /// its state.
 pub(super) fn retire_file(state: &FileState, at: u64) -> Result<Vec<RuntimeMutation>> {

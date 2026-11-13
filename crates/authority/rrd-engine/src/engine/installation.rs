@@ -51,6 +51,9 @@ pub const ATTUNEMENT_PROPOSAL_FORMAT_VERSION: u16 = 1;
 pub struct InstallationPlanningOptions {
     pub attunement_proposal: Option<AttunementProposal>,
     pub allow_project_source_read: bool,
+    /// Seal a policy under which the served engine keeps the project attuned;
+    /// `None` keeps whatever the configuration file says.
+    pub attunement_follow: Option<rrd_contract::AttunementFollowPolicy>,
 }
 
 mod admission;
@@ -61,12 +64,12 @@ mod policy;
 pub(super) mod recovery;
 
 use inventory::project_inventory_sha256_excluding;
-#[allow(unused_imports)] // Parse admission consumes this when its worker is wired.
-pub(in crate::engine) use inventory::read_selected_source;
 pub(super) use inventory::{
     prepare_project_inventory, project_entries, project_inventory_sha256,
     read_admitted_inventory_file, validate_selected_inventory_path, ProjectEntry,
 };
+#[allow(unused_imports)] // Parse admission consumes this when its worker is wired.
+pub(in crate::engine) use inventory::{project_change_fingerprint, read_selected_source};
 
 use recovery::{
     acknowledge_intent, load_or_create_intent, materialize_secret, read_existing_intent,
@@ -705,6 +708,7 @@ impl RrdEngine {
             InstallationPlanningOptions {
                 attunement_proposal: proposal.cloned(),
                 allow_project_source_read: false,
+                attunement_follow: None,
             },
             executable,
         )
@@ -734,7 +738,12 @@ impl RrdEngine {
         let adopted_estate_entries = existing_estate_entries(&project)?;
         reject_existing_estate(&project, adopted_estate_entries.as_deref())?;
         let (profile, profile_sha256) = DefaultInstallProfile::load(profile_id)?;
-        let configuration = load_engram_configuration(configuration_path)?;
+        let mut configuration = load_engram_configuration(configuration_path)?;
+        if let Some(follow) = options.attunement_follow {
+            configuration = configuration
+                .with_attunement_follow(Some(follow))
+                .map_err(|error| ServiceError::Contract(error.to_string()))?;
+        }
         let executable_sha256 = sha256_file(executable)?;
         let project_precondition_sha256 = project_inventory_sha256(project.project(), &profile)?;
         let identity_seed = installation_identity_seed(
@@ -1535,7 +1544,23 @@ impl RrdEngine {
             ));
         }
         engine.installed_project_root = Some(project.project().clone());
+        engine.installed_estate_root = Some(project.clone());
         Ok(engine)
+    }
+
+    /// The installed operator credential, read when needed and never kept.
+    pub(in crate::engine) fn installed_operator_key(&self) -> Result<ApiKeyDocument> {
+        let project = self
+            .installed_estate_root
+            .as_ref()
+            .ok_or(ServiceError::ProjectBindingMismatch)?;
+        let (project, locator, _) = read_locator_anchored(project)?;
+        let document = read_api_key_document(&safe_join(&project, &locator.operator_credential)?)
+            .map_err(|error| ServiceError::Storage(error.to_string()))?;
+        if document.plan_sha256 != locator.plan_sha256 {
+            return Err(ServiceError::ProjectBindingMismatch);
+        }
+        Ok(document)
     }
 
     pub fn read_installed_api_key(project: &Path) -> Result<ApiKeyDocument> {

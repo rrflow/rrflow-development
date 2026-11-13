@@ -19,6 +19,12 @@ pub(crate) trait AccessRead {
 
     fn scan_range(&self, start: &[u8], end: &[u8], limit: usize)
         -> Result<Vec<(Vec<u8>, Vec<u8>)>>;
+
+    /// True when writes prepared from this reader are being measured, not
+    /// committed; see `RuntimeRepository::measure_commit_with_control`.
+    fn measuring(&self) -> bool {
+        false
+    }
 }
 
 impl AccessRead for dyn StorageTransaction + '_ {
@@ -33,6 +39,10 @@ impl AccessRead for dyn StorageTransaction + '_ {
         limit: usize,
     ) -> Result<Vec<(Vec<u8>, Vec<u8>)>> {
         self.scan(start, end, limit)
+    }
+
+    fn measuring(&self) -> bool {
+        self.is_measuring()
     }
 }
 
@@ -284,8 +294,7 @@ pub(crate) fn validate_read_stamp(
             proof.verify_change(change, root)?;
         }
     }
-    let catalog_revision = read_sequence(reader, &keyspaces::catalog_revision_key(&read.scope))?;
-    if read.catalog_revision != catalog_revision
+    if !catalog_revision_in_effect(reader, read)?
         || read.head_digest != retained_head.as_ref().map(|change| change.digest.clone())
         || read.schema_revision != schema_revision
     {
@@ -643,6 +652,41 @@ pub(crate) fn values_for_scope<T: DeserializeOwned>(
         .into_iter()
         .map(|(_, value)| serde_json::from_slice(&value).map_err(Error::from))
         .collect()
+}
+
+/// True when the catalogue revision a historical stamp names was in effect at
+/// some moment the runtime cursor stood at the stamp's cursor: it took effect
+/// at or before that cursor, and the next revision, if any, took effect at or
+/// after it. A revision without recorded history is accepted only while it is
+/// still current, as before history was recorded.
+fn catalog_revision_in_effect(
+    reader: &(impl AccessRead + ?Sized),
+    read: &ReadStamp,
+) -> Result<bool> {
+    let current = read_sequence(reader, &keyspaces::catalog_revision_key(&read.scope))?;
+    if read.catalog_revision > current {
+        return Ok(false);
+    }
+    let cursor_of = |revision: u64| -> Result<Option<u64>> {
+        let key = keyspaces::catalog_revision_cursor_key(&read.scope, revision);
+        get(reader, keyspaces::META, &key)?
+            .as_deref()
+            .map(decode_sequence)
+            .transpose()
+    };
+    let took_effect = if read.catalog_revision == 0 {
+        Some(0)
+    } else {
+        cursor_of(read.catalog_revision)?
+    };
+    if read.catalog_revision == current {
+        return Ok(took_effect.is_none_or(|cursor| cursor <= read.commit_cursor));
+    }
+    let (Some(took_effect), Some(replaced)) = (took_effect, cursor_of(read.catalog_revision + 1)?)
+    else {
+        return Ok(false);
+    };
+    Ok(took_effect <= read.commit_cursor && read.commit_cursor <= replaced)
 }
 
 #[cfg(test)]

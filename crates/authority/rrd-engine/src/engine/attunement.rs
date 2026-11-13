@@ -24,6 +24,8 @@ use std::time::Instant;
 
 mod discovery;
 mod evidence;
+mod follow;
+pub use follow::{FollowOutcome, FollowTick};
 mod inventory;
 #[cfg(target_os = "linux")]
 mod linux_supervisor;
@@ -300,13 +302,16 @@ impl RrdEngine {
         job: &AttunementJob,
         old: &AttunementPlan,
     ) -> Result<AttunementReplanPreview> {
-        // Connect and Inventory record read-only source observations. A successor
-        // retains their history and binds fresh source. Other completed effects
-        // require explicit reconciliation before a successor can start.
+        // Connect and Inventory record read-only source observations, and Parse
+        // publishes only engine-owned facts addressed by content, which a
+        // successor's Parse reconciles itself: unchanged files keep their
+        // facts, edited files are reparsed and departed files retired. A
+        // successor retains their history and binds fresh source. Other
+        // completed effects require explicit reconciliation first.
         if job.checkpoints.iter().any(|checkpoint| {
             !matches!(
                 checkpoint.phase,
-                AttunementPhase::Connect | AttunementPhase::Inventory
+                AttunementPhase::Connect | AttunementPhase::Inventory | AttunementPhase::Parse
             )
         }) || !matches!(
             job.state,

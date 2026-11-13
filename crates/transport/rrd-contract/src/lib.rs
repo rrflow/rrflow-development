@@ -104,10 +104,10 @@ pub use cold_history::{
     ColdHistoryReadResult, ReadColdHistory,
 };
 pub use deployment::{
-    estate_configuration_sha256, ClockPolicy, ColdHistoryCompression, ColdHistoryPolicy,
-    DeploymentForm, DeploymentProfile, EndpointPresentation, EstateConfiguration,
-    EstateConfigurationInput, InstalledEstateIdentity, ReasoningLimits, RecallLimits,
-    StorageLimits, StorageProfileKind, DEPLOYMENT_PROFILE_CONTRACT_VERSION,
+    estate_configuration_sha256, AttunementFollowPolicy, ClockPolicy, ColdHistoryCompression,
+    ColdHistoryPolicy, DeploymentForm, DeploymentProfile, EndpointPresentation,
+    EstateConfiguration, EstateConfigurationInput, InstalledEstateIdentity, ReasoningLimits,
+    RecallLimits, StorageLimits, StorageProfileKind, DEPLOYMENT_PROFILE_CONTRACT_VERSION,
     ESTATE_CONFIGURATION_FORMAT_VERSION, MAX_CLOCK_ROLLBACK_MS, MAX_REASONING_RUN_ELAPSED_MS,
     MAX_REASONING_STEPS, MAX_REASONING_STEP_ELAPSED_MS,
 };
@@ -288,7 +288,7 @@ use std::fmt;
 pub const PROTOCOL: &str = "rrd";
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const OPENAPI_DOCUMENT_SHA256: &str =
-    "4bd01d8ba6fe748921d4ec21da277c83b7f9e1d61015274b8828023c6e86607d";
+    "5c8f066adccbabf9860d0a1fc3569267fda2760816c3402e884e4a00a4832f0d";
 pub const MAX_ID_BYTES: usize = 128;
 pub const MAX_MESSAGE_BYTES: usize = 4_096;
 pub const MAX_CAPABILITIES: usize = 512;
@@ -734,6 +734,19 @@ pub enum QueryTextStemmer {
     English,
 }
 
+/// How a code identifier such as `read_stamp` or `RrdEngine` is indexed.
+/// `pieces` keeps only the tokenizer's pieces; `whole_and_parts` also indexes
+/// each `_`-joined identifier whole and the case-change parts of a
+/// mixed-case piece, so a question can name an identifier whole or by its
+/// words.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum QueryTextIdentifiers {
+    #[default]
+    Pieces,
+    WholeAndParts,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct QueryFullTextConfiguration {
@@ -751,6 +764,8 @@ pub struct QueryFullTextConfiguration {
     pub max_token_chars: u16,
     #[serde(default)]
     pub stemmer: QueryTextStemmer,
+    #[serde(default)]
+    pub identifiers: QueryTextIdentifiers,
     #[serde(default = "default_query_bm25_k1_micros")]
     pub k1_micros: u32,
     #[serde(default = "default_query_bm25_b_micros")]
@@ -767,6 +782,7 @@ impl Default for QueryFullTextConfiguration {
             min_token_chars: default_query_min_token_chars(),
             max_token_chars: default_query_max_token_chars(),
             stemmer: QueryTextStemmer::default(),
+            identifiers: QueryTextIdentifiers::default(),
             k1_micros: default_query_bm25_k1_micros(),
             b_micros: default_query_bm25_b_micros(),
         }

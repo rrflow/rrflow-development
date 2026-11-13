@@ -327,7 +327,24 @@ impl StorageTransaction for RrflowMxTransaction<'_> {
         self.writes.delete(key)
     }
 
+    fn measure_only(&mut self) -> Result<()> {
+        self.writes.measure_only()
+    }
+
+    fn staged_encoded_bytes(&self) -> usize {
+        self.writes.encoded_len()
+    }
+
+    fn is_measuring(&self) -> bool {
+        self.writes.is_measuring()
+    }
+
     fn commit(self: Box<Self>, _durability: Durability) -> Result<TransactionCommit> {
+        if self.writes.is_measuring() {
+            return Err(Error::Substrate(
+                "a measuring transaction cannot commit".into(),
+            ));
+        }
         let Self {
             store,
             snapshot_sequence,

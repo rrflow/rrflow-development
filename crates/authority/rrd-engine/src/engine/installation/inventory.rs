@@ -319,6 +319,56 @@ fn validate_selected_inventory_path_once(
     Ok(())
 }
 
+/// A cheap fingerprint of the project as the Inventory would see it: the same
+/// walk, exclusions and Git inputs, hashing each admitted entry's path and
+/// filesystem observation (size, times, permissions and object identity)
+/// instead of its content. It changes whenever a file is added, removed,
+/// renamed or written; equal fingerprints may still hide an edit that kept
+/// every observation, which the content-addressed Inventory would catch.
+pub(in crate::engine) fn project_change_fingerprint(
+    project: &AnchoredPath,
+    profile: &DefaultInstallProfile,
+) -> Result<String> {
+    let policy = profile.inventory_policy.compile()?;
+    let budget = WorkBudget::new(policy.source.limits.elapsed_ms);
+    let mut git = GitInputs::read(project, &policy, &budget)?;
+    let mut entries = Vec::<WalkEntry>::new();
+    let admitted_lease = super::lease::admit_existing(project)?;
+    collect_project_entries(
+        project,
+        WalkOptions {
+            excluded_relative: None,
+            lease_admitted: admitted_lease.is_some(),
+            record_exclusions: false,
+        },
+        &policy,
+        &budget,
+        &mut git,
+        &mut entries,
+    )?;
+    entries.sort_by(|left, right| left.path.relative_path().cmp(right.path.relative_path()));
+    let mut aggregate = IncrementalSha256::new();
+    aggregate.update(b"rrflow-project-change-fingerprint-v1\0");
+    aggregate.update(policy.sha256.as_bytes());
+    aggregate.update(git.identity()?.as_bytes());
+    for entry in entries.iter().filter(|entry| entry.excluded.is_none()) {
+        budget.check()?;
+        let relative = entry.path.relative_path();
+        let relative = relative.to_string_lossy();
+        aggregate.update(&(relative.len() as u64).to_be_bytes());
+        aggregate.update(relative.as_bytes());
+        let observation = match entry.observed.as_ref() {
+            Some(SourceLeaf::Ordinary(observation)) => {
+                observation.revision_sha256().map_err(storage_error)?
+            }
+            Some(other) => format!("{other:?}"),
+            None => String::new(),
+        };
+        aggregate.update(observation.as_bytes());
+    }
+    Ok(aggregate.finalize_hex())
+}
+
 pub(super) fn project_inventory_sha256_excluding(
     project: &AnchoredPath,
     profile: &DefaultInstallProfile,

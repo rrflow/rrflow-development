@@ -47,6 +47,34 @@ pub struct BoundQuery {
     pub schema_revision: u64,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub index_candidates: Vec<BoundIndexCandidate>,
+    /// Scalar and BM25 indexes over this record source. Each has a commit
+    /// binding from the moment it is defined, so its entries or postings are
+    /// current at the head without a built artifact.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub commit_indexes: Vec<BoundCommitIndex>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BoundCommitIndex {
+    pub id: ProjectionId,
+    pub kind: IndexKind,
+    pub fields: Vec<String>,
+    pub model: rrd_core::RuntimeLogicalModel,
+}
+
+/// What a commit-bound index is asked for.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "probe", rename_all = "snake_case")]
+pub enum CommitIndexProbe {
+    /// Equality on the index's leading fields.
+    Scalar { values: Vec<RuntimeValue> },
+    /// The query's only predicate, a MATCH on the index's field, ranked over
+    /// every current document and cut at `top_k`.
+    Bm25 {
+        query: String,
+        config: crate::Bm25Config,
+        top_k: usize,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -133,6 +161,18 @@ pub enum PhysicalOperator {
         config_digest: String,
         artifact_digest: String,
         artifact_rows: u64,
+        exact: bool,
+        stable_order: String,
+    },
+    /// Narrows the read to the identities a commit-bound index selects at the
+    /// head, then reads those identities' authenticated versions; every
+    /// predicate is still evaluated. When the index cannot answer for this
+    /// stamp or valid time, `fallback` is read instead.
+    CommitIndexRead {
+        id: ProjectionId,
+        probe: CommitIndexProbe,
+        model: rrd_core::RuntimeLogicalModel,
+        fallback: Vec<RuntimeVersionedSource>,
         exact: bool,
         stable_order: String,
     },
@@ -340,13 +380,57 @@ pub(crate) fn prepare_binding(
         Vec::new()
     };
     let version_sources = bound_version_sources(query, &filters, schema)?;
+    let commit_indexes = match (&query.source, &query.join) {
+        (Source::Record { kind }, None) => {
+            let model = schema
+                .logical_model(kind)
+                .map_err(|error| Error::Binding(error.to_string()))?;
+            catalog
+                .indexes
+                .entries
+                .values()
+                .filter(|entry| {
+                    entry.definition.source == query.source
+                        && entry.definition.filters.is_empty()
+                        && matches!(
+                            entry.definition.kind,
+                            IndexKind::Scalar | IndexKind::Bm25 { .. }
+                        )
+                })
+                .map(|entry| BoundCommitIndex {
+                    id: entry.definition.id.clone(),
+                    kind: entry.definition.kind.clone(),
+                    fields: entry.definition.fields.clone(),
+                    model,
+                })
+                .collect()
+        }
+        _ => Vec::new(),
+    };
+    // A query a commit-bound index can serve at the head is addressed like an
+    // identity read: its catalogue needs only the schema, because the index
+    // names the identities to read, and the family is read in full only if
+    // the index declines at execution.
+    let commit_served = query.join.is_none()
+        && known_at_cursor == catalog.read.commit_cursor
+        && select_commit_index(
+            &commit_indexes,
+            &filters,
+            query.limit,
+            filters
+                .iter()
+                .find(|filter| filter.comparison.is_match())
+                .map(|filter| filter.field.as_str()),
+        )
+        .is_some();
     let addressed = query.join.is_none()
-        && matches!(
-            version_sources.as_slice(),
-            [RuntimeVersionedSource::Identity { .. }
-                | RuntimeVersionedSource::IdentityRange { .. }
-                | RuntimeVersionedSource::Adjacency { .. }]
-        );
+        && (commit_served
+            || matches!(
+                version_sources.as_slice(),
+                [RuntimeVersionedSource::Identity { .. }
+                    | RuntimeVersionedSource::IdentityRange { .. }
+                    | RuntimeVersionedSource::Adjacency { .. }]
+            ));
     let source_cursor = catalog
         .source_watermarks
         .for_source_at(&query.source, known_at_cursor);
@@ -392,6 +476,7 @@ pub(crate) fn prepare_binding(
             explain_analyze: query.explain_analyze,
             schema_revision: schema.revision,
             index_candidates,
+            commit_indexes,
         },
         required_catalogue_sources,
     ))
@@ -488,6 +573,22 @@ pub fn plan(bound: &BoundQuery) -> Result<PhysicalPlan> {
                 })
         })
         .flatten();
+    let commit_index = (selected_index.is_none()
+        && !identity_read
+        && !identity_range_read
+        && !adjacency_read
+        && !traversal
+        && bound.join.is_none()
+        && bound.known_at_cursor == bound.read.commit_cursor)
+        .then(|| {
+            select_commit_index(
+                &bound.commit_indexes,
+                &bound.filters,
+                bound.limit,
+                match_field,
+            )
+        })
+        .flatten();
     let mut candidates = if traversal {
         vec![
             CandidatePath {
@@ -565,6 +666,30 @@ pub fn plan(bound: &BoundQuery) -> Result<PhysicalPlan> {
                 selected: false,
                 exact: false,
                 reason: "rejected: no projection generation and grounding proof supplied".into(),
+            },
+        ]
+    } else if let Some((index, probe)) = &commit_index {
+        vec![
+            CandidatePath {
+                name: format!("commit_index:{}", index.id),
+                selected: true,
+                exact: true,
+                reason: match probe {
+                    CommitIndexProbe::Scalar { values } => format!(
+                        "selected: commit-maintained entries for {} leading value(s) name the identities to read at the head; every predicate is still evaluated",
+                        values.len()
+                    ),
+                    CommitIndexProbe::Bm25 { top_k, .. } => format!(
+                        "selected: commit-maintained postings rank every current document and name the top {top_k} identities to read at the head"
+                    ),
+                },
+            },
+            CandidatePath {
+                name: "versioned_source_read".into(),
+                selected: false,
+                exact: true,
+                reason: "fallback: read when the index cannot answer for this stamp or valid time"
+                    .into(),
             },
         ]
     } else {
@@ -667,6 +792,19 @@ pub fn plan(bound: &BoundQuery) -> Result<PhysicalPlan> {
             } else {
                 "identity_ascending".into()
             },
+        }
+    } else if let Some((index, probe)) = commit_index {
+        PhysicalOperator::CommitIndexRead {
+            id: index.id.clone(),
+            stable_order: if matches!(probe, CommitIndexProbe::Bm25 { .. }) {
+                "bm25_score_desc_identity_ascending".into()
+            } else {
+                "global_cursor".into()
+            },
+            probe,
+            model: index.model,
+            fallback: bound.version_sources.clone(),
+            exact: true,
         }
     } else if traversal {
         PhysicalOperator::AdjacencyTraversal {
@@ -1298,3 +1436,61 @@ pub(crate) fn field_types_for_bound_source(
         .remove(field)
         .ok_or_else(|| Error::Binding(format!("field {field:?} is not present in the source")))
 }
+
+/// The commit-bound index a query can narrow its read with: a BM25 index when
+/// its only predicate is a MATCH on the index's field, otherwise the scalar
+/// index whose leading fields the query binds by equality the furthest.
+fn select_commit_index<'a>(
+    commit_indexes: &'a [BoundCommitIndex],
+    filters: &[BoundFilter],
+    limit: Option<usize>,
+    match_field: Option<&str>,
+) -> Option<(&'a BoundCommitIndex, CommitIndexProbe)> {
+    if let Some(field) = match_field {
+        let [filter] = filters else {
+            return None;
+        };
+        let RuntimeValue::String(query) = &filter.value else {
+            return None;
+        };
+        return commit_indexes.iter().find_map(|index| match &index.kind {
+            IndexKind::Bm25 { config } if index.fields.as_slice() == [field] => Some((
+                index,
+                CommitIndexProbe::Bm25 {
+                    query: query.clone(),
+                    config: config.clone(),
+                    top_k: limit
+                        .unwrap_or(MAX_COMMIT_INDEX_TOP_K)
+                        .min(MAX_COMMIT_INDEX_TOP_K),
+                },
+            )),
+            _ => None,
+        });
+    }
+    commit_indexes
+        .iter()
+        .filter(|index| matches!(index.kind, IndexKind::Scalar))
+        .filter_map(|index| {
+            let values = index
+                .fields
+                .iter()
+                .map_while(|field| {
+                    filters.iter().find_map(|filter| {
+                        (filter.field == *field && filter.comparison == ComparisonOperator::Equal)
+                            .then(|| filter.value.clone())
+                    })
+                })
+                .collect::<Vec<_>>();
+            (!values.is_empty()).then_some((index, values))
+        })
+        .max_by(|(left, left_values), (right, right_values)| {
+            left_values
+                .len()
+                .cmp(&right_values.len())
+                .then_with(|| right.id.cmp(&left.id))
+        })
+        .map(|(index, values)| (index, CommitIndexProbe::Scalar { values }))
+}
+
+/// Documents a commit-bound BM25 read ranks at most.
+pub const MAX_COMMIT_INDEX_TOP_K: usize = 10_000;

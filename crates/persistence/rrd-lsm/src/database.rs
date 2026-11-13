@@ -896,6 +896,11 @@ impl Database {
             )
         });
         let validation_started = diagnostics.is_some().then(PhaseClock::start);
+        if transaction.is_measuring() {
+            return Err(Error::InvalidTransaction(
+                "a measuring transaction cannot commit".into(),
+            ));
+        }
         self.ensure_writer_ready()?;
         self.validate_transaction_owner(&transaction)?;
         for key in transaction.pending().keys() {

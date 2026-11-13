@@ -101,6 +101,37 @@ Each package is one pull request under the 400-line candidate rule unless the ow
 
 C-07 remains its own storage exit and is not claimed by any package above.
 
+## Installed code-knowledge slice (2026-11-12)
+
+The owner asked to see RRFlow learn a project and keep learning it: install, let the engine read the code, ask questions answered from the code itself, and have edits relearned without a person driving attunement. P1 and the P3 series landed every piece of Parse except the switch, so this slice finishes P3 and does the parts of P5, J3 and J6 that a question over real code needs, as one pull request. P4's relations, P9 and J7's embeddings, and the Connectome views come after it and build on its records.
+
+**Real-run baseline on main `15d1b65c`** (this repository, 2,826 tracked files, Windows 11 laptop with other containers running; each run is a fresh clone, `install plan --mode existing`, `install apply`, `serve`, then the public operations):
+
+| Step | Observed |
+| --- | --- |
+| Install plan and apply | 24 s and 16 s |
+| Connect and Inventory | 6 s and 18 s; evidence: 781 Rust, 106 Python and 15 Go files with bound grammars |
+| Derived successor plan | `[connect, inventory]`: `EXECUTABLE_PHASES` (`engine/attunement/evidence.rs:14`) omits Parse, so nothing reads a file's content |
+| Parse switched on locally, default policy | Selected for 902 files; the first commit is refused with `write batch encoded_bytes limit 16777216` and the next Step retries the same batch. Halving `max_commit_bytes` to 8 MiB fails identically, so the physical batch is more than twice the step's JSON estimate ([POAM-065](../poam/rrflow-1.0-alpha/poam-065.md)) |
+| Parse with an operator policy of 1 MiB commits | About 40 Steps; 901 files parsed into 52,620 symbols, 22,506 spans and 12,383 chunks with 20 error nodes; `crates/transport/rrd-contract/src/lib.rs` rejected as `facts_exceed_commit_budget` |
+| `context-assemble` after Parse | Refused for every question: `runtime versioned read exceeded key budget 100000`, because it reads the whole estate snapshot before ranking |
+| `WHERE name = "control_attunement"` over `source-symbol` | Refused the same way after 99,954 keys; the store writes scalar entries at commit and no query reads them |
+| Before Parse, context over paths only | About 225 ms; "where is the LSM compaction policy" misses `rrd-lsm/src/database.rs` |
+| Swapping the binary under an existing install | `ProjectBindingMismatch`: the installation binds `executable_sha256`, so a rebuilt engine needs a new install |
+| A request whose payload does not decode | The server answers under a derived request identity, so the SDK reports "identity differs" and hides the real message (for example a missing `max_storage_keys`) |
+
+**Scope of the pull request:**
+
+1. **Parse is an executable capability** and the installed oracle `installed_binary_replans_and_reads_receipt_after_forced_restart(true)` runs. Parse sizes each commit from the store's physical encoding before it commits, as POAM-065 requires, rather than from a JSON estimate, and a file whose facts exceed one commit is published in pages under one file state instead of being rejected.
+2. **Parse declares its indexes** through the existing commit-time bindings: scalar on `source-symbol.name` and on `path` for symbols, spans and chunks; BM25 over `source-chunk.text` and `source-symbol.name`.
+3. **Persistent lexical postings (E-03, P5).** The BM25 binding maintains dictionary, document statistics and postings in the reserved `TermPosting` key family in the same transaction as the records, removes them on retirement, and survives reopen. Identifiers index as both the whole token and its `_` and case parts, which is the default for the plan's open tokenizer decision and stays configurable.
+4. **rrflowQL reads the indexes (J3).** An equality on a scalar-indexed field and a `MATCH` on a BM25 field read the entries at the request's read stamp; keys examined are proportional to the result; the answer equals a full scan.
+5. **Context assembly reads through the indexes (first part of J6).** The lexical stage takes its top-k from the persistent postings and loads only those records, and graph expansion starts from the hits. A request no longer reads the whole snapshot, and its stages name the access path they used.
+6. **The engine keeps a project attuned.** A `follow` policy in the estate configuration, shown in the install preview and sealed by `install apply`, lets the served engine notice that the project's source changed, derive and accept the successor plan, and step it to completion through the existing maintenance worker under its own audited actor, so an edit is reparsed and reindexed for the next question. Without the policy nothing runs, as today.
+7. **The server answers an undecodable request under the caller's identity**, so clients see the typed error.
+
+**Accepted when**, on a fresh install of this repository with the built binary: Parse completes with no rejected file; "where is the LSM compaction policy", "how does the vector planner choose TurboQuant or the exact scan" and "which code commits a parse step checkpoint" each return the defining source chunk among the first five items, inside the default budgets and under a second warm; the symbol lookup returns its definition and references within the default key budget; after an edit to one Rust file, the next answer reflects the edit, and only that file was reparsed; and all of it holds after a restart. The journal records each run's commands, binary revision and timings, and anything that misses is recorded rather than tuned around.
+
 ## Invariants for every package
 
 - One owner per concept: the capability catalogue, like the operation catalogue, drives schema, SDKs, reference projections and conformance; profiles declare availability, never sequence.
@@ -116,9 +147,9 @@ C-07 remains its own storage exit and is not claimed by any package above.
 | --- | --- | --- |
 | P1 | derived plan read through the public operations; no `phase-unavailable` | [recorded](../evidence/change-journals/gate-d/d-02-evidence-derived-attunement-20261111.md): evidence matched an independent count; derived plan is `[connect, inventory]` until P3 |
 | P2 | organisation proposal and regenerated project map | to be recorded |
-| P3 | all Rust, Python and Go files parsed; one edit reparses one file | to be recorded |
+| P3 | all Rust, Python and Go files parsed; one edit reparses one file | [partial, 2026-11-13](../evidence/change-journals/gate-d/d-02-code-knowledge-slice-20261112.md): the installed engine parsed 901 of 902 files with no client driving it and relearned one edit by reparsing one file; `rrd-contract/src/lib.rs` exceeds one physical batch |
 | P4 | cross-file reference query by traversal | to be recorded |
-| P5 | two text questions under 100 ms warm | to be recorded |
+| P5 | two text questions under 100 ms warm | [partial, 2026-11-13](../evidence/change-journals/gate-d/d-02-code-knowledge-slice-20261112.md): context questions through persistent postings answer in 336 to 448 ms, symbol lookups in 5 ms; the dogfood MATCH questions are not yet rerun |
 | P6 | product-path load of this repository without a hand-written loader | to be recorded |
 | P7 | the same questions scoped to one domain | to be recorded |
 | P8 | verification Passed after restart, Failed after an edit | to be recorded |

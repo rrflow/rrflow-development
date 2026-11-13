@@ -96,15 +96,20 @@ impl RrdEngine {
         let scope = self.query_scope(&request.scope)?;
         let key_budget = usize::try_from(request.max_storage_keys)
             .map_err(|_| ServiceError::Query("context key budget exceeds usize".into()))?;
+        let stamp = self.storage.runtime().read_stamp(&scope)?;
+        let lexical = self.commit_lexical(request, &stamp, key_budget)?;
         let RuntimeDataSnapshotRead {
             read,
             selected_versions,
             read_evidence,
             snapshot,
-        } = self
-            .storage
-            .runtime()
-            .data_snapshot(&scope, request.valid_at, key_budget)?;
+        } = self.storage.runtime().data_snapshot_at(
+            &stamp,
+            request.valid_at,
+            key_budget.saturating_sub(lexical.keys_read),
+            &lexical.excluded,
+            &lexical.identities,
+        )?;
         if snapshot.known_at_cursor != read.commit_cursor
             || snapshot.schema_revision != read.schema_revision.unwrap_or(0)
         {
@@ -179,6 +184,9 @@ impl RrdEngine {
         {
             let mut sources = BTreeMap::<String, TextSource>::new();
             for (reference, record) in &records {
+                if lexical.excluded.contains(&reference.kind) {
+                    continue;
+                }
                 let text = record_text(&record.properties);
                 if !text.is_empty() {
                     sources.insert(
@@ -269,22 +277,76 @@ impl RrdEngine {
                 }
             }
         }
+        let mut commit_hits = 0_usize;
+        for (index, hits) in &lexical.hits {
+            let top_k = usize::try_from(request.max_items)
+                .map_err(|_| ServiceError::Query("context item bound exceeds usize".into()))?;
+            if hits.len() > top_k {
+                retrieval_truncated = true;
+            }
+            for (ordinal, hit) in hits.iter().take(top_k).enumerate() {
+                let Some(record) = records.get(&hit.record) else {
+                    // The posting named a version the stamp's snapshot does
+                    // not show at this valid time; it contributes nothing.
+                    continue;
+                };
+                let rank = u64::try_from(ordinal + 1)
+                    .map_err(|_| ServiceError::Contract("context text rank exceeds u64".into()))?;
+                let identity = record_identity(&hit.record);
+                let evidence = ContextEvidence {
+                    kind: ContextEvidenceKind::Text,
+                    source: format!("record:{}:commit_bm25", hit.record.kind),
+                    source_rank: rank,
+                    source_score: hit.score,
+                    contribution: reciprocal_rank(TEXT_WEIGHT, rank),
+                    plan_sha256: context_digest(&(
+                        "rrd-context-commit-bm25-plan-v1",
+                        index.as_str(),
+                        read.manifest_id.as_str(),
+                        request.query.as_str(),
+                    ))?,
+                    evidence_sha256: context_digest(&(
+                        "rrd-context-commit-bm25-evidence-v1",
+                        read.manifest_id.as_str(),
+                        &identity,
+                        &hit.matched_terms,
+                        rank,
+                        hit.score.to_bits(),
+                    ))?,
+                };
+                add_candidate(
+                    &mut candidates,
+                    identity,
+                    public_properties(&record.properties)?,
+                    evidence,
+                );
+                text_roots.push((hit.record.clone(), rank));
+                commit_hits += 1;
+            }
+        }
+        let lexical_selected = text_source_count > 0 || !lexical.hits.is_empty();
         stages.push(context_plan_stage(
             ContextPlanStageKind::Lexical,
-            if text_source_count == 0 {
-                ContextPlanStageStatus::Skipped
-            } else {
+            if lexical_selected {
                 ContextPlanStageStatus::Selected
+            } else {
+                ContextPlanStageStatus::Skipped
             },
-            (text_source_count > 0).then_some(ContextAccessPath::SnapshotBm25),
-            text_source_count > 0,
+            lexical_selected.then_some(if lexical.hits.is_empty() {
+                ContextAccessPath::SnapshotBm25
+            } else {
+                ContextAccessPath::CommitBm25
+            }),
+            lexical_selected,
             if request.query.trim().is_empty() {
                 "request supplied no lexical intent".into()
-            } else if text_source_count == 0 {
+            } else if !lexical_selected {
                 "captured temporal snapshot contained no visible textual records or claims".into()
             } else {
                 format!(
-                    "rebuilt BM25 over {text_source_count} visible textual source(s) from the captured temporal snapshot"
+                    "ranked {} kind(s) from commit-maintained BM25 postings ({commit_hits} hit(s), {} key(s)) and rebuilt BM25 over {text_source_count} other visible textual source(s) at the same stamp",
+                    lexical.covered.len(),
+                    lexical.keys_read
                 )
             },
         )?);
@@ -886,6 +948,112 @@ fn claim_values(claim: &Claim) -> BTreeMap<String, QueryValue> {
                 .unwrap_or(QueryValue::Null),
         ),
     ])
+}
+
+/// What the commit-maintained BM25 indexes answered for a context request.
+#[derive(Default)]
+struct CommitLexical {
+    /// Record kinds a BM25 index ranked.
+    covered: BTreeSet<RuntimeType>,
+    /// Record kinds the snapshot reads only by identity: those ranked from
+    /// postings, and those whose only indexes are scalar lookups.
+    excluded: BTreeSet<RuntimeType>,
+    /// The hits' identities, read at the request's stamp.
+    identities: Vec<rrd_store::RuntimeVersionedSource>,
+    hits: Vec<(rrd_core::ProjectionId, Vec<rrd_store::LexicalHit>)>,
+    keys_read: usize,
+}
+
+impl RrdEngine {
+    /// Ranks every record kind that has a commit-bound BM25 index over a text
+    /// field from its postings at `stamp`. A kind whose index cannot answer
+    /// for this stamp or valid time is left to the snapshot.
+    fn commit_lexical(
+        &self,
+        request: &AssembleContext,
+        stamp: &ReadStamp,
+        key_budget: usize,
+    ) -> Result<CommitLexical> {
+        let mut lexical = CommitLexical::default();
+        if request.query.trim().is_empty() {
+            return Ok(lexical);
+        }
+        let catalogue =
+            rrd_query::IndexCatalogueRepository::new(&self.storage, stamp.scope.clone())
+                .load()
+                .map_err(|error| ServiceError::Query(error.to_string()))?;
+        let schema = self.storage.runtime().schema(&stamp.scope)?;
+        let top_k = usize::try_from(request.max_items)
+            .map_err(|_| ServiceError::Query("context item bound exceeds usize".into()))?
+            .saturating_add(1);
+        for entry in catalogue.entries.values() {
+            let (rrd_query::IndexKind::Bm25 { .. }, rrd_query::Source::Record { kind }) =
+                (&entry.definition.kind, &entry.definition.source)
+            else {
+                continue;
+            };
+            if lexical.covered.contains(kind) {
+                continue;
+            }
+            let Some(model) = schema
+                .as_ref()
+                .and_then(|schema| schema.logical_model(kind).ok())
+            else {
+                continue;
+            };
+            let remaining = key_budget.saturating_sub(lexical.keys_read) as u64;
+            match self.storage.runtime().lexical_search(
+                stamp,
+                &entry.definition.id,
+                &request.query,
+                request.valid_at,
+                top_k,
+                remaining,
+            )? {
+                rrd_store::LexicalSearch::Hits {
+                    hits, keys_read, ..
+                } => {
+                    lexical.keys_read = lexical
+                        .keys_read
+                        .saturating_add(usize::try_from(keys_read).unwrap_or(usize::MAX));
+                    lexical.covered.insert(kind.clone());
+                    lexical.identities.extend(hits.iter().map(|hit| {
+                        rrd_store::RuntimeVersionedSource::Identity {
+                            model,
+                            reference: hit.record.clone(),
+                        }
+                    }));
+                    lexical.hits.push((entry.definition.id.clone(), hits));
+                }
+                rrd_store::LexicalSearch::NotApplicable(_) => {}
+            }
+        }
+        // A kind reached only through scalar lookups is read by identity on
+        // demand, not scanned; a kind whose BM25 index could not answer is
+        // read and ranked from the snapshot.
+        let lexical_kinds = catalogue
+            .entries
+            .values()
+            .filter(|entry| matches!(entry.definition.kind, rrd_query::IndexKind::Bm25 { .. }))
+            .filter_map(|entry| match &entry.definition.source {
+                rrd_query::Source::Record { kind } => Some(kind.clone()),
+                _ => None,
+            })
+            .collect::<BTreeSet<_>>();
+        lexical.excluded = catalogue
+            .entries
+            .values()
+            .filter(|entry| matches!(entry.definition.kind, rrd_query::IndexKind::Scalar))
+            .filter_map(|entry| match &entry.definition.source {
+                rrd_query::Source::Record { kind } if !lexical_kinds.contains(kind) => {
+                    Some(kind.clone())
+                }
+                _ => None,
+            })
+            .chain(lexical.covered.iter().cloned())
+            .collect();
+        Ok(lexical)
+    }
 }
 
 fn record_text(properties: &RuntimeProperties) -> String {

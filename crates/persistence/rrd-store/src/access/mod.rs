@@ -6,6 +6,7 @@
 
 mod function;
 mod index;
+pub(crate) mod lexical_index;
 mod proof_nodes;
 pub(crate) mod runtime_state;
 mod semantic_commit;
@@ -22,12 +23,14 @@ pub use function::{
     FUNCTION_CATALOGUE_STATE_FORMAT_VERSION, FUNCTION_INVOCATION_RECEIPT_FORMAT_VERSION,
 };
 pub(crate) use index::{
-    encode_record_index_effects, index_source_deltas, synchronize_index_commit_bindings,
+    commit_binding, encode_record_index_effects, index_source_deltas, lexical_binding,
+    scalar_lookup, synchronize_index_commit_bindings,
 };
 pub use index::{
     IndexCommitBindingDefinition, IndexCommitBindingKind, IndexSourceDelta, IndexSourceRow,
     INDEX_COMMIT_BINDING_CONTRACT_VERSION, INDEX_SOURCE_DELTA_CONTRACT_VERSION,
 };
+pub use lexical_index::{IndexLookup, LexicalHit, LexicalSearch};
 pub(crate) use semantic_commit::prepare_semantic_commit;
 pub use semantic_commit::SemanticCommitPlan;
 pub(crate) use vector::{

@@ -1475,7 +1475,7 @@ fn install_requires_an_explicit_plan_digest_and_verify_is_read_only_by_shape() {
 #[test]
 fn installed_engine_plans_applies_serves_discovers_authenticates_and_reopens() {
     installed_lifecycle("existing");
-    installed_binary_replans_and_reads_receipt_after_forced_restart(false);
+    installed_binary_replans_and_reads_receipt_after_forced_restart(true);
 }
 
 #[test]
@@ -4036,6 +4036,7 @@ fn configured_cold_history_publishes_and_reads_after_process_restart() {
         reasoning: default.reasoning,
         recall: default.recall,
         query: default.query,
+        attunement_follow: None,
     };
     input.storage.cold_history = Some(rrd_contract::ColdHistoryPolicy {
         interval_ms: 25,

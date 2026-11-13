@@ -57,6 +57,9 @@ pub(crate) enum Space {
     RuntimeIndexBindingSets,
     RuntimeScalarEntries,
     RuntimeUniqueEntries,
+    RuntimeTermDictionary,
+    RuntimeTermStatistics,
+    RuntimeTermPostings,
     RuntimeOutbox,
     RuntimeAudit,
     RuntimeCommits,
@@ -103,6 +106,9 @@ pub(crate) const RUNTIME_INDEX_BINDING_VERSIONS: Space = Space::RuntimeIndexBind
 pub(crate) const RUNTIME_INDEX_BINDING_SETS: Space = Space::RuntimeIndexBindingSets;
 pub(crate) const RUNTIME_SCALAR_ENTRIES: Space = Space::RuntimeScalarEntries;
 pub(crate) const RUNTIME_UNIQUE_ENTRIES: Space = Space::RuntimeUniqueEntries;
+pub(crate) const RUNTIME_TERM_DICTIONARY: Space = Space::RuntimeTermDictionary;
+pub(crate) const RUNTIME_TERM_STATISTICS: Space = Space::RuntimeTermStatistics;
+pub(crate) const RUNTIME_TERM_POSTINGS: Space = Space::RuntimeTermPostings;
 pub(crate) const RUNTIME_OUTBOX: Space = Space::RuntimeOutbox;
 pub(crate) const RUNTIME_AUDIT: Space = Space::RuntimeAudit;
 pub(crate) const RUNTIME_COMMITS: Space = Space::RuntimeCommits;
@@ -148,6 +154,9 @@ impl Space {
             Self::RuntimeVectors | Self::RuntimeVectorVersions => KeyFamily::Vector,
             Self::RuntimeScalarEntries => KeyFamily::Scalar,
             Self::RuntimeUniqueEntries => KeyFamily::Unique,
+            Self::RuntimeTermDictionary => KeyFamily::TermDictionary,
+            Self::RuntimeTermStatistics => KeyFamily::TermStatistic,
+            Self::RuntimeTermPostings => KeyFamily::TermPosting,
             Self::RuntimeOutgoingEdges | Self::RuntimeOutgoingEdgeVersions => {
                 KeyFamily::OutgoingEdge
             }
@@ -201,6 +210,9 @@ impl Space {
             Self::RuntimeVectors => 0x01,
             Self::RuntimeVectorVersions => 0x02,
             Self::RuntimeScalarEntries | Self::RuntimeUniqueEntries => 0x01,
+            Self::RuntimeTermDictionary
+            | Self::RuntimeTermStatistics
+            | Self::RuntimeTermPostings => 0x01,
             Self::RuntimeOutgoingEdges | Self::RuntimeIncomingEdges => 0x01,
             Self::RuntimeOutgoingEdgeVersions | Self::RuntimeIncomingEdgeVersions => 0x02,
             Self::RuntimeOutbox => 0x01,
@@ -796,6 +808,69 @@ pub(crate) fn runtime_index_entry_prefix(
     )
 }
 
+/// One document's postings for one term of a BM25 index.
+pub(crate) fn runtime_term_posting_key(
+    scope: &ScopeId,
+    index: &ProjectionId,
+    term: &str,
+    reference: &RuntimeRef,
+) -> Vec<u8> {
+    encode(
+        RUNTIME_TERM_POSTINGS,
+        &[
+            KeyPart::Text(scope.as_str()),
+            KeyPart::Text(index.as_str()),
+            KeyPart::Text(term),
+            KeyPart::Text(reference.kind.as_str()),
+            KeyPart::Text(reference.id.as_str()),
+        ],
+    )
+}
+
+/// Every posting of one term, or of the whole index when `term` is `None`.
+pub(crate) fn runtime_term_posting_prefix(
+    scope: &ScopeId,
+    index: &ProjectionId,
+    term: Option<&str>,
+) -> Vec<u8> {
+    let mut parts = vec![KeyPart::Text(scope.as_str()), KeyPart::Text(index.as_str())];
+    if let Some(term) = term {
+        parts.push(KeyPart::Text(term));
+    }
+    encode(RUNTIME_TERM_POSTINGS, &parts)
+}
+
+/// One term's document frequency in a BM25 index.
+pub(crate) fn runtime_term_dictionary_key(
+    scope: &ScopeId,
+    index: &ProjectionId,
+    term: &str,
+) -> Vec<u8> {
+    encode(
+        RUNTIME_TERM_DICTIONARY,
+        &[
+            KeyPart::Text(scope.as_str()),
+            KeyPart::Text(index.as_str()),
+            KeyPart::Text(term),
+        ],
+    )
+}
+
+pub(crate) fn runtime_term_dictionary_prefix(scope: &ScopeId, index: &ProjectionId) -> Vec<u8> {
+    encode(
+        RUNTIME_TERM_DICTIONARY,
+        &[KeyPart::Text(scope.as_str()), KeyPart::Text(index.as_str())],
+    )
+}
+
+/// A BM25 index's document and token totals.
+pub(crate) fn runtime_term_statistics_key(scope: &ScopeId, index: &ProjectionId) -> Vec<u8> {
+    encode(
+        RUNTIME_TERM_STATISTICS,
+        &[KeyPart::Text(scope.as_str()), KeyPart::Text(index.as_str())],
+    )
+}
+
 pub(crate) fn runtime_index_value_prefix<'a>(
     space: Space,
     scope: &'a ScopeId,
@@ -1027,6 +1102,7 @@ enum SystemEntry {
     RuntimeAccumulatorState = 0x0c,
     RuntimeAccumulatorNode = 0x0d,
     ControlRestoreProgress = 0x0e,
+    CatalogueRevisionCursor = 0x0f,
 }
 
 fn system_key(entry: SystemEntry, parts: &[KeyPart<'_>]) -> Vec<u8> {
@@ -1079,6 +1155,15 @@ pub(crate) fn catalog_revision_key(scope: &ScopeId) -> Vec<u8> {
     system_key(
         SystemEntry::CatalogueRevision,
         &[KeyPart::Text(scope.as_str())],
+    )
+}
+
+/// The runtime cursor at which a scope's catalogue revision took effect, so a
+/// historical read stamp can prove the revision it names was current then.
+pub(crate) fn catalog_revision_cursor_key(scope: &ScopeId, revision: u64) -> Vec<u8> {
+    system_key(
+        SystemEntry::CatalogueRevisionCursor,
+        &[KeyPart::Text(scope.as_str()), KeyPart::U64(revision)],
     )
 }
 
@@ -1192,6 +1277,9 @@ mod tests {
             RUNTIME_INDEX_BINDING_SETS,
             RUNTIME_SCALAR_ENTRIES,
             RUNTIME_UNIQUE_ENTRIES,
+            RUNTIME_TERM_DICTIONARY,
+            RUNTIME_TERM_STATISTICS,
+            RUNTIME_TERM_POSTINGS,
             RUNTIME_OUTBOX,
             RUNTIME_AUDIT,
             RUNTIME_COMMITS,

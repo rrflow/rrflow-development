@@ -163,7 +163,13 @@ pub(crate) fn prepare_semantic_commit(
             last_claim_sequence: None,
             outbox_count: 0,
         },
-        writes: TransactionWriteSet::default(),
+        writes: {
+            let mut writes = TransactionWriteSet::default();
+            if reader.measuring() {
+                writes.measure_only()?;
+            }
+            writes
+        },
     };
     let mut outbox_count = 0;
     let mut staged_relations = BTreeMap::<RuntimeRef, Option<RuntimeRelation>>::new();

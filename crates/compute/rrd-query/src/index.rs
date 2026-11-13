@@ -1054,6 +1054,10 @@ fn commit_binding_definitions(
                         fields: entry.definition.fields.clone(),
                         kind: binding_kind,
                         configuration_sha256,
+                        lexical: match &entry.definition.kind {
+                            IndexKind::Bm25 { config } => Some(config.clone()),
+                            _ => None,
+                        },
                     }),
             )
         })
