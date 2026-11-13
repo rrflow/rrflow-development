@@ -5300,6 +5300,7 @@ dependencies = [
  "rrflow-evaluation-core",
  "rrflow-lab-benchmarks",
  "rrflow-lab-datasets",
+ "rrflow-lab-definitions",
  "rrflow-lab-evals",
  "rrflow-lab-systems",
  "schemars",
@@ -5340,6 +5341,19 @@ version = "1.0.0"
 dependencies = [
  "rrflow-evaluation-core",
  "schemars",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "rrflow-lab-definitions"
+version = "1.0.0"
+dependencies = [
+ "ed25519-dalek",
+ "getrandom 0.4.3",
+ "rrflow-evaluation-core",
+ "rrflow-lab-benchmarks",
+ "rrflow-lab-systems",
  "serde",
  "serde_json",
 ]

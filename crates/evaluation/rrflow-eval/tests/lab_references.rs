@@ -1,19 +1,17 @@
 //! Published results are claims someone else made. These tests hold the comparison to what makes
 //! showing them honest: every row names its source, nothing is ranked unless every condition
 //! matches, a gap cannot read as a result, and answer quality is not invented.
-use rrflow_eval::lab::definitions::content::{lab_files, RrflowContent};
-use rrflow_eval::lab::definitions::pack::{
-    build_pack, generate_key, PackContent as _, PackRequest,
-};
-use rrflow_eval::storage::Id;
 use rrflow_evaluation_core::report::{
     DimensionDefinition, LabEvidenceClass, LabReport, MetricDefinition, MetricDirection,
     Observation, ReportSystem, SystemStatus, TestIdentity,
 };
+use rrflow_evaluation_core::Id;
 use rrflow_lab_benchmarks::references::{
     compare, AnswerResult, Comparison, HardwareClass, Provenance, ReferenceFile, ReferenceOrigin,
     ReferenceSource, SeekResult, TestConditions, ANSWERS_NOT_MEASURED,
 };
+use rrflow_lab_definitions::content::{lab_files, RrflowContent};
+use rrflow_lab_definitions::pack::{build_pack, generate_key, PackContent as _, PackRequest};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 

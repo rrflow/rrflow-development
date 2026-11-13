@@ -6,7 +6,6 @@
 //! tuned system has a different binding digest and a limit line that says what changed, so it
 //! cannot be read as the baseline. A launch a person has not approved cannot start, because the
 //! files a run reads say there is nothing to start.
-use super::definitions::content::{stem, systems_of};
 use super::{canonical_json, sha256_hex, Result};
 use crate::storage::Id;
 use rrflow_evaluation_core::Availability;
@@ -14,6 +13,7 @@ use rrflow_lab_benchmarks::catalog::{LaunchSpec, SystemDefinition, TestDefinitio
 use rrflow_lab_benchmarks::manifest::VectorComparisonManifest;
 use rrflow_lab_datasets::corpus::CorpusSource;
 use rrflow_lab_datasets::corpus::CORPUS_DIRECTORY_ENV;
+use rrflow_lab_definitions::content::{stem, systems_of};
 use rrflow_lab_systems::binding::{IndexSpec, SearchSetting, SystemBinding};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -305,7 +305,7 @@ impl LabSettings {
             .map_err(|error| format!("{}: {error}", parent.display()))?;
         let mut bytes = serde_json::to_vec_pretty(self).map_err(|error| error.to_string())?;
         bytes.push(b'\n');
-        super::definitions::pack::write_atomically(path, &bytes)
+        rrflow_lab_definitions::pack::write_atomically(path, &bytes)
     }
 }
 

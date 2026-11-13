@@ -282,7 +282,7 @@ A report's runs record the pack's number and manifest digest, and whether it had
 - **Signed.** A pack's manifest is read only after its Ed25519 signature checks
   against a trusted key, and it names every file by size and SHA-256.
 - **Trust does not come from a folder.** A build pins its publisher's public keys in
-  [`lab-trusted-keys.json`](../../crates/evaluation/rrflow-eval/assets/lab-trusted-keys.json).
+  [`lab-trusted-keys.json`](../../crates/evaluation/lab/rrflow-lab-definitions/assets/lab-trusted-keys.json).
   Another publisher is trusted only by `rrflow-lab definitions trust --file FILE`.
 - **It only moves forward.** A lower sequence is refused, and so is the same
   sequence with different content. `definitions revert` steps back locally, states

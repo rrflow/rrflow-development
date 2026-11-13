@@ -1,8 +1,8 @@
 //! What RRFlow's lab carries in a definition pack: its systems, its tests and its list of outside
 //! sources, each checked the way the lab itself would read it.
-use super::pack::{PackContent, TrustedKeys};
-use crate::lab::Result;
-use crate::storage::Id;
+use crate::pack::{PackContent, TrustedKeys};
+use rrflow_evaluation_core::Id;
+use rrflow_evaluation_core::Result;
 use rrflow_lab_benchmarks::catalog::{resolve_test, SystemDefinition, TestDefinition};
 use rrflow_lab_benchmarks::references::ReferenceFile;
 use rrflow_lab_systems::sources::SourceList;
@@ -17,11 +17,11 @@ pub struct RrflowContent;
 
 /// The publisher keys this build trusts with nothing else set up.
 pub fn pinned_keys() -> Result<TrustedKeys> {
-    serde_json::from_str(include_str!("../../../assets/lab-trusted-keys.json"))
+    serde_json::from_str(include_str!("../assets/lab-trusted-keys.json"))
         .map_err(|error| format!("the pinned keys: {error}"))
 }
 
-pub(crate) fn stem<'a>(path: &'a str, folder: &str) -> Option<&'a str> {
+pub fn stem<'a>(path: &'a str, folder: &str) -> Option<&'a str> {
     path.strip_prefix(folder)?
         .strip_prefix('/')?
         .strip_suffix(".json")
@@ -37,9 +37,7 @@ fn parse_system(path: &str, text: &str) -> Result<SystemDefinition> {
     Ok(system)
 }
 
-pub(crate) fn systems_of(
-    files: &BTreeMap<String, String>,
-) -> Result<BTreeMap<Id, SystemDefinition>> {
+pub fn systems_of(files: &BTreeMap<String, String>) -> Result<BTreeMap<Id, SystemDefinition>> {
     let mut systems = BTreeMap::new();
     for (path, text) in files {
         if let Some(name) = stem(path, "systems") {

@@ -94,6 +94,10 @@ fn workspace_packages_use_the_canonical_grouped_layout() {
             "rrflow-lab-evals",
             "crates/evaluation/lab/rrflow-lab-evals/Cargo.toml",
         ),
+        (
+            "rrflow-lab-definitions",
+            "crates/evaluation/lab/rrflow-lab-definitions/Cargo.toml",
+        ),
     ]
     .into_iter()
     .map(|(name, path)| (name.to_owned(), PathBuf::from(path)))
@@ -136,7 +140,7 @@ fn workspace_packages_use_the_canonical_grouped_layout() {
 
 /// RRFlow Lab's crates by dependency tier. A lab crate may depend only on
 /// crates in a lower tier; the `rrflow-lab` tool alone composes every domain.
-const LAB_TIERS: [&[&str]; 3] = [
+const LAB_TIERS: [&[&str]; 4] = [
     &["rrflow-lab-systems", "rrflow-lab-datasets"],
     &[
         "rrflow-lab-benchmarks",
@@ -144,8 +148,10 @@ const LAB_TIERS: [&[&str]; 3] = [
         "rrflow-lab-evals",
         "rrflow-lab-probes",
         "rrflow-lab-tuning",
-        "rrflow-lab-definitions",
     ],
+    // A definition pack carries tests, systems and references, so it reads the
+    // benchmark catalog and references below it.
+    &["rrflow-lab-definitions"],
     &["rrflow-lab"],
 ];
 

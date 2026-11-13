@@ -1,11 +1,6 @@
 //! A person should do three things and have the rest happen. These tests hold that automation to
 //! the rules a hand-run process kept by care: a toggle cannot hide a system, tuning cannot pass as
 //! the baseline, a folder cannot bring its own trust, and reading a status changes nothing.
-use rrflow_eval::lab::definitions::content::{
-    lab_files, pinned_keys, RrflowContent, RRFLOW_PRODUCT,
-};
-use rrflow_eval::lab::definitions::home::{DefinitionHome, PublishKind, PublishOptions};
-use rrflow_eval::lab::definitions::pack::{read_pack, PackContent, TrustedKeys};
 use rrflow_eval::lab::settings::{
     approve_all, build_plan, launch_digest, needs_approval, planned_files, Definitions, LabPlan,
     LabSettings, PlannedTest, SystemState, SystemTuning, TURNED_OFF_REASON,
@@ -16,6 +11,9 @@ use rrflow_evaluation_core::Result;
 use rrflow_lab_benchmarks::catalog::{launch_arguments, launch_info, SystemDefinition};
 use rrflow_lab_benchmarks::driver::{binding_sha256, test_sha256};
 use rrflow_lab_benchmarks::manifest::VectorComparisonManifest;
+use rrflow_lab_definitions::content::{lab_files, pinned_keys, RrflowContent, RRFLOW_PRODUCT};
+use rrflow_lab_definitions::home::{DefinitionHome, PublishKind, PublishOptions};
+use rrflow_lab_definitions::pack::{read_pack, PackContent, TrustedKeys};
 use rrflow_lab_systems::binding::IndexSpec;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -87,7 +85,7 @@ fn publish(
     home: &DefinitionHome,
     files: &BTreeMap<String, String>,
     now: u64,
-) -> rrflow_eval::lab::definitions::home::PublishOutcome {
+) -> rrflow_lab_definitions::home::PublishOutcome {
     home.publish(files, &Example, &nobody(), &options(now))
         .unwrap()
 }

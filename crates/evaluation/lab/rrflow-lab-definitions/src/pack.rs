@@ -7,8 +7,8 @@
 //! is refused, so an old pack cannot replace a new one, and a pack expires, so one cannot be held
 //! back forever. A patch carries only changed files and reuses the rest by digest, so there is no
 //! patch language to get wrong. A failed install changes nothing.
-use crate::lab::{require, sha256_hex, Result};
 use ed25519_dalek::{Signature, Signer as _, SigningKey, VerifyingKey};
+use rrflow_evaluation_core::{require, sha256_hex, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use std::io::Write as _;
@@ -700,7 +700,7 @@ fn differences(
 }
 
 /// Replaces `path` whole or not at all.
-pub(crate) fn write_atomically(path: &Path, bytes: &[u8]) -> Result<()> {
+pub fn write_atomically(path: &Path, bytes: &[u8]) -> Result<()> {
     let parent = path.parent().ok_or("a store path has no parent")?;
     let name = path
         .file_name()

@@ -1,12 +1,4 @@
 //! Run and combine comparison-lab tests. See eval/lab/README.md.
-use rrflow_eval::lab::definitions::content::{
-    lab_files, pinned_keys, references_of, RrflowContent, RRFLOW_PRODUCT,
-};
-use rrflow_eval::lab::definitions::home::{DefinitionHome, PublishKind, PublishOptions};
-use rrflow_eval::lab::definitions::pack::{
-    build_pack, generate_key, read_pack, InstallOutcome, PackContent as _, PackRequest, PackStore,
-    StoreStatus, TrustedKey, TrustedKeys, VerifiedPack, MAX_PACK_BYTES,
-};
 use rrflow_eval::lab::settings::{
     approve_all, build_plan, launch_digest, needs_approval, planned_files, runs_somewhere,
     waiting_for_approval, Definitions, LabPlan, LabSettings, PlannedTest, SystemState,
@@ -29,6 +21,14 @@ use rrflow_lab_benchmarks::references::{
     TestConditions,
 };
 use rrflow_lab_datasets::knowledge::{read_repository_text, CHUNK_TABLE};
+use rrflow_lab_definitions::content::{
+    lab_files, pinned_keys, references_of, RrflowContent, RRFLOW_PRODUCT,
+};
+use rrflow_lab_definitions::home::{DefinitionHome, PublishKind, PublishOptions};
+use rrflow_lab_definitions::pack::{
+    build_pack, generate_key, read_pack, InstallOutcome, PackContent as _, PackRequest, PackStore,
+    StoreStatus, TrustedKey, TrustedKeys, VerifiedPack, MAX_PACK_BYTES,
+};
 use rrflow_lab_evals::provider::ClaudeCode;
 use rrflow_lab_evals::study::{
     audit_runs, check_study, plan_study, CaptureAudit, RequirementStatus, StudyCheck, StudyConfig,

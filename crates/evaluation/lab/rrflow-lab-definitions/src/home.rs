@@ -5,12 +5,12 @@
 //! on a machine that publishes, the signing key and an outbox to send from. The key is never in a
 //! repository and never in the outbox. A folder of packs never brings its own trust: its public
 //! keys travel beside the packs only so a person can choose to trust them.
-use super::pack::{
+use crate::pack::{
     build_pack, generate_key, key_from_private, read_pack, write_atomically, InstallKind,
     InstallOutcome, PackContent, PackRequest, PackStore, TrustedKey, TrustedKeys, MAX_PACK_BYTES,
     MAX_PACK_FILES,
 };
-use crate::lab::Result;
+use rrflow_evaluation_core::Result;
 use serde::Serialize;
 use std::collections::BTreeMap;
 use std::io::Write as _;
