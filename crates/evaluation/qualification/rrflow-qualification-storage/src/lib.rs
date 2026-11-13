@@ -1,3 +1,5 @@
+//! RRFlow's storage release gate: the acceptance manifest, results, campaigns,
+//! ledgers and receipts that qualify the storage engine for a release.
 //! C-07's early storage subset of the J-04 measurement contract.
 //! Validation admits evidence structure; it cannot authenticate a measurement
 //! or prove an engine enforces the manifest's proposed resource envelope.

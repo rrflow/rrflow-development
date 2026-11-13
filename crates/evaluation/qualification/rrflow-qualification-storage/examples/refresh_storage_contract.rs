@@ -1,6 +1,6 @@
 //! Refresh synthetic contract projections after an intentional contract change.
 //! This does not run a workload or produce native storage qualification.
-use rrflow_eval::storage::{
+use rrflow_qualification_storage::{
     catalogue_digest, manifest_digest, schema, validate_result, CampaignResult, CandidateCiReceipt,
     EvidenceClass, FleetResult, FleetTrialResult, ProgressEvent, StorageAcceptanceManifest,
     StorageAcceptanceReport, StorageCampaign, StorageLaunchReceipt, StorageManifest, StorageResult,
@@ -40,7 +40,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     write(&fixtures.join("manifest.json"), &manifest)?;
     write(&fixtures.join("result.json"), &result)?;
     write(&fixtures.join("report.json"), &report)?;
-    let schemas = root.join("../../../eval/schemas");
+    let schemas = root.join("../../../../eval/schemas");
     write(
         &schemas.join("storage-manifest-v1.json"),
         &schema::<StorageManifest>(),

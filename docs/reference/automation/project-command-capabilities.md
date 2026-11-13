@@ -293,7 +293,7 @@ capability implementation:
 | `rrd-core::RuntimeTraceEvent` and engine trace helpers | Bounded causal trace events, MX/KV parity for current trace bytes, concurrent append, and incomplete-span visibility after reopen. | Traces are evidence, not activity/routine state. Current direct `StorageEngine` trace writes and `Lifecycle`/`Workflow` vocabulary require H-05/I/J convergence through authorized engine operations. |
 | `rrd-estate::LocalProcessDriver` | Useful no-shell argv, path, identity, timeout, cleanup, and effect-gap characterization. | It is an RRD deployment implementation inside the wrong domain, not a generic project-activity adapter. Preserve its safety semantics in `rrflow-local-process`; remove direct storage/private JSON/marker authority as specified by its owner. |
 | `rrflow-cli::dev::supervisor` | Development-only process observation and cleanup behavior. | A duplicate supervisor and bootstrap authority scheduled for direct removal; it cannot be generalized into routines. |
-| `rrflow-eval::run_trial` | A provider-specific controlled-evaluation harness that directly invokes installed provider CLIs and records trial output. | Evaluation evidence only. It is not an installed project capability, public operation, adapter conformance proof, or runtime implementation. |
+| `rrflow-lab-experiments::run_trial` | A provider-specific controlled-evaluation harness that directly invokes installed provider CLIs and records trial output. | Evaluation evidence only. It is not an installed project capability, public operation, adapter conformance proof, or runtime implementation. |
 
 No current contract type, persistent binding, candidate discovery module,
 engine activity operation, local activity adapter, installation surface, or

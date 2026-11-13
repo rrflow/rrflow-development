@@ -46,7 +46,7 @@ struct ScreeningSummary {
 
 fn main() {
     if let Err(error) = run() {
-        eprintln!("rrflow-eval: {error}");
+        eprintln!("rrflow-lab-experiments: {error}");
         std::process::exit(1);
     }
 }
@@ -54,14 +54,13 @@ fn main() {
 fn run() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
     match args.get(1).map(String::as_str) {
-        Some("storage") => rrflow_eval::storage::cli::run(&args[2..]).map_err(Into::into),
         Some("run") => run_trial(&args[2..]),
         Some("summarize") => summarize(
             Path::new(args.get(2).ok_or("result directory required")?),
             args.get(3).map(Path::new),
         ),
         Some("verify") => verify(Path::new(args.get(2).ok_or("summary file required")?)),
-        _ => Err("usage: rrflow-eval run <provider> <repo> <scenario> <arm> <expected> <prompt-file> <output-file> | summarize <result-dir> [new-summary-file] | verify <summary-file> | storage <schema|validate|verify>".into()),
+        _ => Err("usage: rrflow-lab-experiments run <provider> <repo> <scenario> <arm> <expected> <prompt-file> <output-file> | summarize <result-dir> [new-summary-file] | verify <summary-file>".into()),
     }
 }
 

@@ -1,4 +1,4 @@
-use rrflow_eval::storage::*;
+use rrflow_qualification_storage::*;
 use serde_json::{json, Value};
 use std::path::Path;
 use std::process::Command;
@@ -435,7 +435,7 @@ fn generated_schemas_and_synthetic_receipts_match_goldens() {
     );
     assert_eq!(manifest_schema["$defs"]["Id"]["maxLength"], json!(96));
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
-    let schema_root = root.join("../../../eval/schemas");
+    let schema_root = root.join("../../../../eval/schemas");
     golden(
         &schema_root.join("storage-manifest-v1.json"),
         &schema::<StorageManifest>(),
@@ -515,8 +515,8 @@ fn cli_is_bounded_preserves_reports_and_retains_failed_oracle() {
     std::fs::write(&manifest_path, serde_json::to_vec(&manifest).unwrap()).unwrap();
     std::fs::write(&result_path, serde_json::to_vec(&result).unwrap()).unwrap();
     let invoke = || {
-        Command::new(env!("CARGO_BIN_EXE_rrflow-eval"))
-            .args(["storage", "verify"])
+        Command::new(env!("CARGO_BIN_EXE_rrflow-qualification-storage"))
+            .args(["verify"])
             .arg(&manifest_path)
             .arg(&result_path)
             .arg(&report_path)
@@ -531,8 +531,8 @@ fn cli_is_bounded_preserves_reports_and_retains_failed_oracle() {
     assert!(!invoke().status.success());
     assert_eq!(std::fs::read(&report_path).unwrap(), retained);
     std::fs::write(&manifest_path, vec![b' '; MAX_DOCUMENT_BYTES as usize + 1]).unwrap();
-    let output = Command::new(env!("CARGO_BIN_EXE_rrflow-eval"))
-        .args(["storage", "validate"])
+    let output = Command::new(env!("CARGO_BIN_EXE_rrflow-qualification-storage"))
+        .args(["validate"])
         .arg(manifest_path)
         .output()
         .unwrap();

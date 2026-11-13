@@ -1945,12 +1945,11 @@ pub(super) mod tests {
     pub(crate) fn fixture() -> (StorageCampaign, SustainedSegment) {
         // Contract fixtures deliberately do not represent native observations.
         let mut manifest: StorageManifest =
-            serde_json::from_str(include_str!("../../tests/fixtures/storage/manifest.json"))
-                .unwrap();
+            serde_json::from_str(include_str!("../tests/fixtures/storage/manifest.json")).unwrap();
         manifest.evidence_class = EvidenceClass::NativeCapacity;
         manifest.budgets.estates = limit(1);
         let mut result: StorageResult =
-            serde_json::from_str(include_str!("../../tests/fixtures/storage/result.json")).unwrap();
+            serde_json::from_str(include_str!("../tests/fixtures/storage/result.json")).unwrap();
         result.manifest_sha256 = manifest_digest(&manifest).unwrap();
         let campaign = StorageCampaign {
             format_version: 1,

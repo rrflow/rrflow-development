@@ -73,7 +73,6 @@ fn workspace_packages_use_the_canonical_grouped_layout() {
             "rrd-observation",
             "crates/operations/rrd-observation/Cargo.toml",
         ),
-        ("rrflow-eval", "crates/evaluation/rrflow-eval/Cargo.toml"),
         (
             "rrflow-evaluation-core",
             "crates/evaluation/rrflow-evaluation-core/Cargo.toml",
@@ -99,6 +98,14 @@ fn workspace_packages_use_the_canonical_grouped_layout() {
             "crates/evaluation/lab/rrflow-lab-definitions/Cargo.toml",
         ),
         ("rrflow-lab", "crates/evaluation/lab/rrflow-lab/Cargo.toml"),
+        (
+            "rrflow-lab-experiments",
+            "crates/evaluation/lab/rrflow-lab-experiments/Cargo.toml",
+        ),
+        (
+            "rrflow-qualification-storage",
+            "crates/evaluation/qualification/rrflow-qualification-storage/Cargo.toml",
+        ),
     ]
     .into_iter()
     .map(|(name, path)| (name.to_owned(), PathBuf::from(path)))

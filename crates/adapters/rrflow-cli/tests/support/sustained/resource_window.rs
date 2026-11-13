@@ -57,7 +57,7 @@ pub(super) fn overlapping_samples(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rrflow_eval::storage::{AllocationEnforcement, NativeMetric};
+    use rrflow_qualification_storage::{AllocationEnforcement, NativeMetric};
 
     #[test]
     fn initial_observation_does_not_skip_the_first_period() {

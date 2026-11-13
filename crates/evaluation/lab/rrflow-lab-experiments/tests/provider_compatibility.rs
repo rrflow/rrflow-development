@@ -12,7 +12,7 @@ fn existing_summary_preserves_paired_regression_and_token_accounting() {
         )
         .unwrap();
     }
-    let output = Command::new(env!("CARGO_BIN_EXE_rrflow-eval"))
+    let output = Command::new(env!("CARGO_BIN_EXE_rrflow-lab-experiments"))
         .arg("summarize")
         .arg(temp.path())
         .output()
@@ -46,7 +46,7 @@ fn screening_summary_is_constructed_from_complete_pairs_and_detects_tampering() 
         }
     }
     let report = temp.path().join("report.json");
-    let binary = env!("CARGO_BIN_EXE_rrflow-eval");
+    let binary = env!("CARGO_BIN_EXE_rrflow-lab-experiments");
     let output = Command::new(binary)
         .arg("summarize")
         .arg(&trials)
@@ -100,14 +100,14 @@ fn screening_summary_is_constructed_from_complete_pairs_and_detects_tampering() 
 
 #[test]
 fn provider_run_argument_rejection_does_not_invoke_a_provider() {
-    let output = Command::new(env!("CARGO_BIN_EXE_rrflow-eval"))
+    let output = Command::new(env!("CARGO_BIN_EXE_rrflow-lab-experiments"))
         .arg("run")
         .output()
         .unwrap();
     assert!(!output.status.success());
     assert!(String::from_utf8_lossy(&output.stderr).contains("run expects seven arguments"));
     for (arm, expected) in [("arbitrary", "x"), ("runtime", ""), ("runtime", "  ")] {
-        let output = Command::new(env!("CARGO_BIN_EXE_rrflow-eval"))
+        let output = Command::new(env!("CARGO_BIN_EXE_rrflow-lab-experiments"))
             .args([
                 "run",
                 "codex",
@@ -136,7 +136,7 @@ fn summarize_refuses_to_pair_different_repositories() {
         )
         .unwrap();
     }
-    let output = Command::new(env!("CARGO_BIN_EXE_rrflow-eval"))
+    let output = Command::new(env!("CARGO_BIN_EXE_rrflow-lab-experiments"))
         .arg("summarize")
         .arg(temp.path())
         .output()
@@ -159,7 +159,7 @@ fn fabricated_success_and_duplicate_provider_names_are_rejected() {
     });
     let path = temp.path().join("contradictory.json");
     std::fs::write(&path, serde_json::to_vec(&report).unwrap()).unwrap();
-    let output = Command::new(env!("CARGO_BIN_EXE_rrflow-eval"))
+    let output = Command::new(env!("CARGO_BIN_EXE_rrflow-lab-experiments"))
         .args(["verify", path.to_str().unwrap()])
         .output()
         .unwrap();
@@ -172,8 +172,8 @@ fn fabricated_success_and_duplicate_provider_names_are_rejected() {
 #[test]
 fn historical_summary_with_no_repository_per_trial_is_not_qualified() {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../../eval/results/2026-08-18-summary.json");
-    let output = Command::new(env!("CARGO_BIN_EXE_rrflow-eval"))
+        .join("../../../../eval/results/2026-08-18-summary.json");
+    let output = Command::new(env!("CARGO_BIN_EXE_rrflow-lab-experiments"))
         .arg("verify")
         .arg(path)
         .output()

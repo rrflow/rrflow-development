@@ -180,7 +180,7 @@ def lifecycle_receipts(output: str) -> list[dict]:
 def storage_history_receipts(output: str, durable: list[dict]) -> list[dict]:
     """Admit bounded collector output, not another semantic history oracle.
 
-    The native fixture calls the canonical rrflow-eval ledger reconciler at
+    The native fixture calls the canonical rrflow-qualification-storage ledger reconciler at
     every reopen. Here we reject incomplete schedules and unknown/secret-bearing
     fields before retaining its evidence; a producer summary alone is insufficient.
     """
