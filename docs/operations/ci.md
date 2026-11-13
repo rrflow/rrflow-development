@@ -295,7 +295,7 @@ diagnosis; timestamps and unfinished job inventories can be incomplete. The
 tool refuses inconsistent source/attempt metadata and incomplete paginated
 inventories. Its JSON is an informational snapshot, not a CI receipt, acceptance
 decision, root-cause diagnosis, or authority to skip a gate. The existing
-`rrflow-eval storage acceptance ci-receipt` remains the evidence boundary.
+`rrflow-qualification-storage acceptance ci-receipt` remains the evidence boundary.
 
 The Linux lifecycle and Windows/macOS portability lanes also build the native
 `rrflow` primary and Rust `rrflowdb` example, stage separate digest-checked
@@ -417,7 +417,7 @@ entire response. The public client records uncertainty; three forced native
 kill/reopens require stable exact retries, six predeclared claim values, no
 rejected effects, quota recovery and an unchanged runtime head. Each mode
 retains four logical commit identities and 13 attempts (11 acknowledged,
-one rejected, one initially uncertain) checked by the existing `rrflow-eval`
+one rejected, one initially uncertain) checked by the existing `rrflow-qualification-storage`
 ledger. The runner requires both closed, build-bound `storage_histories`
 receipts and rejects omitted schedules or unknown nested fields. Production
 engine bytes have no fault switch. These three-cycle response-boundary cases

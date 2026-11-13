@@ -233,7 +233,7 @@ schema, fixture and protocol-version consequences before committing changes.
 ## Refresh synthetic projections
 
 After an intentional installed-configuration or evaluation-contract change,
-`cargo run --locked -p rrflow-eval --example refresh_storage_contract` regenerates
+`cargo run --locked -p rrflow-qualification-storage --example refresh_storage_contract` regenerates
 the storage and sustained campaign schemas and existing synthetic manifest/result/report fixtures
 with canonical Rust serializers and digests. It preserves the independent
 ledger inputs, refuses a non-synthetic manifest, and does not execute a native

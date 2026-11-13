@@ -164,7 +164,7 @@ def main():
     args = parser.parse_args()
     observer = ProgressObserver(args.evidence.resolve(), None, args.progress_interval_ms, args.progress_max_bytes) if args.observe_progress else None
     campaign = bounded_json(args.campaign)
-    validated = run("cargo", "run", "--quiet", "--locked", "-p", "rrflow-eval", "--", "storage", "campaign", "validate", str(args.campaign.resolve()), timeout=1800)
+    validated = run("cargo", "run", "--quiet", "--locked", "-p", "rrflow-qualification-storage", "--", "campaign", "validate", str(args.campaign.resolve()), timeout=1800)
     identity = re.fullmatch(r"valid storage campaign: ([0-9a-f]{64}) purpose=(?:Characterization|Qualification); no workload executed\s*", validated.stdout)
     require(identity is not None, "canonical campaign identity absent")
     require(not args.evidence.exists() and args.evidence.parent.is_dir(), "evidence directory must be new with an existing parent")
@@ -232,7 +232,7 @@ def main():
         print(result.stdout, end="")
         print(result.stderr, end="", file=sys.stderr)
         require(result.returncode == 0 and f"test {CASE} ... ok" in result.stdout, "installed campaign failed; retained artifacts required")
-        run("cargo", "run", "--quiet", "--locked", "-p", "rrflow-eval", "--", "storage", "campaign", "verify", str(args.evidence.resolve()), timeout=1800)
+        run("cargo", "run", "--quiet", "--locked", "-p", "rrflow-qualification-storage", "--", "campaign", "verify", str(args.evidence.resolve()), timeout=1800)
         state.update(status="completed", reason=None)
 
 

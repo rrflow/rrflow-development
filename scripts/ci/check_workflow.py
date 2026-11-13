@@ -965,10 +965,10 @@ def verify_storage_contract_preflight(jobs: dict[str, str]) -> None:
         "        shell: bash\n"
         "        run: |\n"
         "          set -euo pipefail\n"
-        "          cargo test --locked -p rrflow-eval --test storage_contract "
+        "          cargo test --locked -p rrflow-qualification-storage --test storage_contract "
         "generated_schemas_and_synthetic_receipts_match_goldens -- --exact --list | "
         "grep -Fx 'generated_schemas_and_synthetic_receipts_match_goldens: test'\n"
-        "          cargo test --locked -p rrflow-eval --test storage_contract "
+        "          cargo test --locked -p rrflow-qualification-storage --test storage_contract "
         "generated_schemas_and_synthetic_receipts_match_goldens -- --exact"
     )
     require(preflight.count(command + "\n") == 1, "storage preflight must run the exact golden test")

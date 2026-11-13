@@ -1,0 +1,26 @@
+[package]
+name = "rrflow-lab"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "RRFlow Lab's tool: settings, run plans and the command that runs every lab domain"
+
+[dependencies]
+rrflow-evaluation-core = { path = "../../rrflow-evaluation-core" }
+rrflow-lab-benchmarks = { path = "../rrflow-lab-benchmarks" }
+rrflow-lab-datasets = { path = "../rrflow-lab-datasets" }
+rrflow-lab-definitions = { path = "../rrflow-lab-definitions" }
+rrflow-lab-evals = { path = "../rrflow-lab-evals" }
+rrflow-lab-systems = { path = "../rrflow-lab-systems" }
+schemars = "1.2"
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+[dev-dependencies]
+rrd-contract = { path = "../../../transport/rrd-contract" }
+tempfile = "3"
+
+[[bin]]
+name = "rrflow-lab"
+path = "src/main.rs"

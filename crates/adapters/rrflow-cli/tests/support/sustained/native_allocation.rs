@@ -1,8 +1,10 @@
 //! Read-only kernel verification of launcher-owned memory admission. An
 //! environment string alone is never evidence that an engine belongs to it.
 #[cfg(any(windows, target_os = "linux"))]
-use rrflow_eval::storage::NativeAllocationKind;
-use rrflow_eval::storage::{AllocationEnforcement, NativeAllocationReceipt, StorageCampaign};
+use rrflow_qualification_storage::NativeAllocationKind;
+use rrflow_qualification_storage::{
+    AllocationEnforcement, NativeAllocationReceipt, StorageCampaign,
+};
 use std::io::Read;
 use std::path::PathBuf;
 
@@ -63,7 +65,7 @@ pub(crate) fn receipt(
     if raw.len() > 4096 {
         return Err("native allocation receipt exceeds admission".into());
     }
-    let receipt: NativeAllocationReceipt = rrflow_eval::storage::decode(raw.as_bytes())?;
+    let receipt: NativeAllocationReceipt = rrflow_qualification_storage::decode(raw.as_bytes())?;
     receipt.validate(campaign)?;
     let actual = harness_digest()?;
     if actual != receipt.harness_sha256.as_str() {

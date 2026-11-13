@@ -73,10 +73,38 @@ fn workspace_packages_use_the_canonical_grouped_layout() {
             "rrd-observation",
             "crates/operations/rrd-observation/Cargo.toml",
         ),
-        ("rrflow-eval", "crates/evaluation/rrflow-eval/Cargo.toml"),
         (
             "rrflow-evaluation-core",
             "crates/evaluation/rrflow-evaluation-core/Cargo.toml",
+        ),
+        (
+            "rrflow-lab-systems",
+            "crates/evaluation/lab/rrflow-lab-systems/Cargo.toml",
+        ),
+        (
+            "rrflow-lab-datasets",
+            "crates/evaluation/lab/rrflow-lab-datasets/Cargo.toml",
+        ),
+        (
+            "rrflow-lab-benchmarks",
+            "crates/evaluation/lab/rrflow-lab-benchmarks/Cargo.toml",
+        ),
+        (
+            "rrflow-lab-evals",
+            "crates/evaluation/lab/rrflow-lab-evals/Cargo.toml",
+        ),
+        (
+            "rrflow-lab-definitions",
+            "crates/evaluation/lab/rrflow-lab-definitions/Cargo.toml",
+        ),
+        ("rrflow-lab", "crates/evaluation/lab/rrflow-lab/Cargo.toml"),
+        (
+            "rrflow-lab-experiments",
+            "crates/evaluation/lab/rrflow-lab-experiments/Cargo.toml",
+        ),
+        (
+            "rrflow-qualification-storage",
+            "crates/evaluation/qualification/rrflow-qualification-storage/Cargo.toml",
         ),
     ]
     .into_iter()
@@ -120,7 +148,7 @@ fn workspace_packages_use_the_canonical_grouped_layout() {
 
 /// RRFlow Lab's crates by dependency tier. A lab crate may depend only on
 /// crates in a lower tier; the `rrflow-lab` tool alone composes every domain.
-const LAB_TIERS: [&[&str]; 3] = [
+const LAB_TIERS: [&[&str]; 4] = [
     &["rrflow-lab-systems", "rrflow-lab-datasets"],
     &[
         "rrflow-lab-benchmarks",
@@ -128,8 +156,10 @@ const LAB_TIERS: [&[&str]; 3] = [
         "rrflow-lab-evals",
         "rrflow-lab-probes",
         "rrflow-lab-tuning",
-        "rrflow-lab-definitions",
     ],
+    // A definition pack carries tests, systems and references, so it reads the
+    // benchmark catalog and references below it.
+    &["rrflow-lab-definitions"],
     &["rrflow-lab"],
 ];
 
