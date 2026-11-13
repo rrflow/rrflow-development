@@ -1,12 +1,12 @@
 //! Run and combine comparison-lab tests. See eval/lab/README.md.
-use rrflow_eval::lab::settings::{
-    approve_all, build_plan, launch_digest, needs_approval, planned_files, runs_somewhere,
-    waiting_for_approval, Definitions, LabPlan, LabSettings, PlannedTest, SystemState,
-};
-use rrflow_eval::storage::{schema, Digest, Id};
 use rrflow_evaluation_core::report::{ArtifactReference, LabReport, SystemStatus};
 use rrflow_evaluation_core::Availability;
 use rrflow_evaluation_core::{canonical_json, sha256_hex, Result};
+use rrflow_evaluation_core::{schema, Digest, Id};
+use rrflow_lab::settings::{
+    approve_all, build_plan, launch_digest, needs_approval, planned_files, runs_somewhere,
+    waiting_for_approval, Definitions, LabPlan, LabSettings, PlannedTest, SystemState,
+};
 use rrflow_lab_benchmarks::catalog::{
     launch_arguments, launch_info, resolve_test, vectordbbench_arguments, Pod, SystemDefinition,
     TestDefinition,

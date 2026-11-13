@@ -5293,23 +5293,13 @@ dependencies = [
 name = "rrflow-eval"
 version = "1.0.0"
 dependencies = [
- "ed25519-dalek",
- "getrandom 0.4.3",
- "rrd-client",
  "rrd-contract",
  "rrflow-evaluation-core",
- "rrflow-lab-benchmarks",
- "rrflow-lab-datasets",
- "rrflow-lab-definitions",
- "rrflow-lab-evals",
- "rrflow-lab-systems",
  "schemars",
  "serde",
  "serde_json",
  "sha2",
  "tempfile",
- "tokio",
- "ureq",
 ]
 
 [[package]]
@@ -5320,6 +5310,23 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
+]
+
+[[package]]
+name = "rrflow-lab"
+version = "1.0.0"
+dependencies = [
+ "rrd-contract",
+ "rrflow-evaluation-core",
+ "rrflow-lab-benchmarks",
+ "rrflow-lab-datasets",
+ "rrflow-lab-definitions",
+ "rrflow-lab-evals",
+ "rrflow-lab-systems",
+ "schemars",
+ "serde",
+ "serde_json",
+ "tempfile",
 ]
 
 [[package]]

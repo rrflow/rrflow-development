@@ -98,6 +98,7 @@ fn workspace_packages_use_the_canonical_grouped_layout() {
             "rrflow-lab-definitions",
             "crates/evaluation/lab/rrflow-lab-definitions/Cargo.toml",
         ),
+        ("rrflow-lab", "crates/evaluation/lab/rrflow-lab/Cargo.toml"),
     ]
     .into_iter()
     .map(|(name, path)| (name.to_owned(), PathBuf::from(path)))

@@ -471,7 +471,7 @@ fn files_under(root: &Path) -> Vec<PathBuf> {
 }
 
 fn real_lab() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../eval/lab")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../../eval/lab")
 }
 
 #[test]

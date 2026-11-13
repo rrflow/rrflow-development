@@ -17,7 +17,7 @@ repository=$(cd "$here/../.." && pwd)
 
 cd "$repository"
 # A debug build would misrepresent RRFlow.
-cargo build --locked --release -p rrflow-eval --bin rrflow-lab -p rrflow-cli --bin rrflow
+cargo build --locked --release -p rrflow-lab --bin rrflow-lab -p rrflow-cli --bin rrflow
 export RRFLOW_LAB_BIN=$CARGO_TARGET_DIR/release/rrflow-lab
 export RRFLOW_BIN=$CARGO_TARGET_DIR/release/rrflow
 export RRFLOW_LAB_MANIFEST=$here/$test_id.json

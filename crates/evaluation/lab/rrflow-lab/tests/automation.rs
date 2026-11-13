@@ -1,13 +1,13 @@
 //! A person should do three things and have the rest happen. These tests hold that automation to
 //! the rules a hand-run process kept by care: a toggle cannot hide a system, tuning cannot pass as
 //! the baseline, a folder cannot bring its own trust, and reading a status changes nothing.
-use rrflow_eval::lab::settings::{
+use rrflow_evaluation_core::Availability;
+use rrflow_evaluation_core::Id;
+use rrflow_evaluation_core::Result;
+use rrflow_lab::settings::{
     approve_all, build_plan, launch_digest, needs_approval, planned_files, Definitions, LabPlan,
     LabSettings, PlannedTest, SystemState, SystemTuning, TURNED_OFF_REASON,
 };
-use rrflow_eval::storage::Id;
-use rrflow_evaluation_core::Availability;
-use rrflow_evaluation_core::Result;
 use rrflow_lab_benchmarks::catalog::{launch_arguments, launch_info, SystemDefinition};
 use rrflow_lab_benchmarks::driver::{binding_sha256, test_sha256};
 use rrflow_lab_benchmarks::manifest::VectorComparisonManifest;
@@ -457,7 +457,7 @@ fn a_signing_key_others_can_read_is_refused() {
 // What this machine chooses, against the lab's real definitions.
 
 fn real_lab() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../eval/lab")
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../../eval/lab")
 }
 
 fn id(text: &str) -> Id {

@@ -6,9 +6,9 @@
 //! tuned system has a different binding digest and a limit line that says what changed, so it
 //! cannot be read as the baseline. A launch a person has not approved cannot start, because the
 //! files a run reads say there is nothing to start.
-use super::{canonical_json, sha256_hex, Result};
-use crate::storage::Id;
 use rrflow_evaluation_core::Availability;
+use rrflow_evaluation_core::Id;
+use rrflow_evaluation_core::{canonical_json, sha256_hex, Result};
 use rrflow_lab_benchmarks::catalog::{LaunchSpec, SystemDefinition, TestDefinition};
 use rrflow_lab_benchmarks::manifest::VectorComparisonManifest;
 use rrflow_lab_datasets::corpus::CorpusSource;

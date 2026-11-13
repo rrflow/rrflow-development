@@ -449,7 +449,7 @@ fn with_no_test_everything_is_listed_for_context() {
 // The lab's real references.
 
 fn real_lab() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../eval/lab")
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../../eval/lab")
 }
 
 fn real_references() -> Vec<ReferenceFile> {

@@ -29,6 +29,16 @@ pub fn sha256_hex(bytes: &[u8]) -> String {
         .collect()
 }
 
+/// A type's JSON Schema, draft 2020-12, as every evaluation schema is published.
+pub fn schema<T: JsonSchema>() -> serde_json::Value {
+    serde_json::to_value(
+        schemars::generate::SchemaSettings::draft2020_12()
+            .into_generator()
+            .into_root_schema_for::<T>(),
+    )
+    .expect("schema serializes")
+}
+
 /// JSON with sorted object keys, so a digest does not depend on field order.
 pub fn canonical_json(value: &impl Serialize) -> Result<Vec<u8>> {
     let mut canonical = serde_json::to_value(value).map_err(|error| error.to_string())?;

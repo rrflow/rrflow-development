@@ -47,14 +47,7 @@ pub fn decode<T: DeserializeOwned>(bytes: &[u8]) -> Result<T> {
     })
 }
 
-pub fn schema<T: JsonSchema>() -> serde_json::Value {
-    serde_json::to_value(
-        schemars::generate::SchemaSettings::draft2020_12()
-            .into_generator()
-            .into_root_schema_for::<T>(),
-    )
-    .expect("schema serializes")
-}
+pub use rrflow_evaluation_core::schema;
 
 impl StorageManifest {
     pub fn validate(&self) -> Result<()> {

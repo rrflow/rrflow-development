@@ -1,11 +1,11 @@
 //! The lab must grade independently, keep failures visible, and refuse results that
 //! cannot honestly sit side by side.
-use rrflow_eval::lab::settings::{LabPlan, LabSettings};
-use rrflow_eval::storage::{schema, Id};
 use rrflow_evaluation_core::report::{LabReport, SystemStatus, TestIdentity, VerdictOutcome};
 use rrflow_evaluation_core::Availability;
 use rrflow_evaluation_core::LabMetric;
 use rrflow_evaluation_core::{canonical_json, sha256_hex, Result};
+use rrflow_evaluation_core::{schema, Id};
+use rrflow_lab::settings::{LabPlan, LabSettings};
 use rrflow_lab_benchmarks::catalog::{SystemDefinition, TestDefinition};
 use rrflow_lab_benchmarks::driver::{
     combine, prepare_inputs, run_system, run_system_with_progress, Inputs, LabProgress, SystemRun,
@@ -561,9 +561,9 @@ fn imported_corpus(points_sha256: &str, queries_sha256: &str) -> CorpusSpec {
         source: CorpusSource::Imported {
             origin: "unit test vectors".into(),
             license: "test".into(),
-            points_sha256: rrflow_eval::storage::Digest::try_from(points_sha256.to_string())
+            points_sha256: rrflow_evaluation_core::Digest::try_from(points_sha256.to_string())
                 .unwrap(),
-            queries_sha256: rrflow_eval::storage::Digest::try_from(queries_sha256.to_string())
+            queries_sha256: rrflow_evaluation_core::Digest::try_from(queries_sha256.to_string())
                 .unwrap(),
             category_seed: 7,
         },
@@ -657,7 +657,7 @@ fn an_ivf_binding_needs_a_custom_system_and_probes_within_its_partitions() {
 
 #[test]
 fn the_checked_in_source_list_is_valid_and_names_every_compared_system() {
-    let directory = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../eval/lab");
+    let directory = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../../eval/lab");
     let list: SourceList =
         serde_json::from_slice(&std::fs::read(directory.join("sources.json")).unwrap()).unwrap();
     list.validate().unwrap();
@@ -729,7 +729,7 @@ fn runs_with_different_inputs_or_manifests_cannot_be_combined() {
     let mut b = run_with(&manifest_a, "b", &PerfectSystem::new(), &inputs);
     b.identities.insert(
         "truth".into(),
-        rrflow_eval::storage::Digest::try_from("0".repeat(64)).unwrap(),
+        rrflow_evaluation_core::Digest::try_from("0".repeat(64)).unwrap(),
     );
     let refused = combine(&manifest_a, &[a.clone(), b], Vec::new()).unwrap_err();
     assert!(refused.contains("different inputs"), "{refused}");
@@ -897,7 +897,7 @@ fn reports_have_no_winner_field_to_claim_superiority_with() {
 
 #[test]
 fn generated_schemas_match_the_checked_in_projections() {
-    let directory = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../eval/schemas");
+    let directory = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../../eval/schemas");
     for (name, generated) in [
         ("lab-manifest-v1.json", schema::<VectorComparisonManifest>()),
         ("lab-run-v1.json", schema::<SystemRun>()),
@@ -942,7 +942,7 @@ fn the_checked_in_manifests_are_valid_and_keep_every_comparator() {
         "vector-coco-i2i.json",
     ] {
         let path = Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../../eval/lab")
+            .join("../../../../eval/lab")
             .join(name);
         let manifest: VectorComparisonManifest =
             serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();
