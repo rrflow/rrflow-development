@@ -118,7 +118,7 @@ Connectome, from the survey above:
 
 - Two Sigma graph stacks, two schema-graph views, two inspectors, two
   prompt-flight UIs, and the API reference twice.
-- Five transport clients: the generated SDK, native `invoke`, the Vyrm fetch,
+- Five transport clients: the generated SDK, native `invoke`, the retired diagnostics fetch (`src/rrflow/diagnostics.ts`),
   the control-plane fetch and the inherited SurrealDB client.
 - Unused components: BetaBadge, BrutalistButton, FancyRadio, FloatingButton,
   HoverIcon, PropertyValue, Tile, the Placeholder page, two never-mounted
