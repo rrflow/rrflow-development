@@ -11,7 +11,9 @@ from check_pr_governance import (
     MAX_OPEN,
     MAX_PER_AUTHOR,
     Facts,
+    advisories,
     evaluate,
+    generated_line_count,
 )
 
 
@@ -39,11 +41,23 @@ class GovernanceTests(unittest.TestCase):
     def test_a_stacked_pull_request_is_refused(self):
         self.assertTrue(any("no stacks" in v for v in evaluate(facts(base_ref="agent/other"))))
 
-    def test_size_limit_applies_unless_the_owner_labels_an_integration(self):
+    def test_size_is_advisory_and_never_blocks_a_complete_package(self):
         big = facts(changed_lines=MAX_LINES + 1)
-        self.assertTrue(any("changed lines exceed" in v for v in evaluate(big)))
-        self.assertEqual(evaluate(facts(changed_lines=MAX_LINES + 1, labels=[INTEGRATION_LABEL])), [])
-        self.assertEqual(evaluate(facts(changed_lines=MAX_LINES)), [])
+        self.assertEqual(evaluate(big), [])
+        self.assertTrue(any("hand-written changed lines" in a for a in advisories(big)))
+        self.assertEqual(advisories(facts(changed_lines=MAX_LINES)), [])
+
+    def test_generated_lines_do_not_count_as_hand_written(self):
+        numstat = "\n".join([
+            "120\t30\tsdks/python/src/rrd_client/generated/endpoints.py",
+            "10\t2\teval/schemas/storage-manifest-v1.json",
+            "5\t5\tCargo.lock",
+            "40\t1\tcrates/authority/rrd-engine/src/engine/context.rs",
+            "-\t-\tdocs/evidence/image.png",
+        ])
+        self.assertEqual(generated_line_count(numstat), 172)
+        mostly_generated = facts(changed_lines=MAX_LINES + 100, generated_lines=200)
+        self.assertEqual(advisories(mostly_generated), [])
 
     def test_open_pull_request_cap_counts_every_open_pull_request(self):
         at_limit = facts(open_pull_requests=opened(MAX_OPEN - 1))
@@ -81,7 +95,7 @@ class GovernanceTests(unittest.TestCase):
     def test_every_violation_is_reported_at_once(self):
         violations = evaluate(facts(changed_files=0, changed_lines=MAX_LINES + 50, base_ref="dev",
                                     merge_base_age_days=10, open_pull_requests=opened(MAX_OPEN, author="agent")))
-        self.assertEqual(len(violations), 6)
+        self.assertEqual(len(violations), 5, "size is an advisory, so it is not among the violations")
 
 
 class LiveFactsCases(unittest.TestCase):
@@ -100,11 +114,15 @@ class LiveFactsCases(unittest.TestCase):
         def fake_json(url, token):
             calls.append(url)
             return live if url.endswith("/pulls/7") else []
-        with patch.object(governance, "github_json", side_effect=fake_json),                 patch.object(governance, "merge_base_age_days", return_value=0.5):
+        numstat = "8\t0\tsdks/go/generated/endpoints.go\n"
+        with patch.object(governance, "github_json", side_effect=fake_json), \
+                patch.object(governance, "merge_base_age_days", return_value=0.5), \
+                patch.object(governance, "diff_numstat", return_value=numstat):
             facts = governance.facts_from_github(event, "rrflow/rrflow-development", None, Path(tempfile.gettempdir()))
         self.assertEqual(facts.author, "owner")
         self.assertEqual(facts.labels, [governance.INTEGRATION_LABEL])
         self.assertEqual(facts.changed_lines, 12)
+        self.assertEqual(facts.generated_lines, 8)
         self.assertTrue(any(url.endswith("/pulls/7") for url in calls))
 
 
