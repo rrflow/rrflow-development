@@ -1,0 +1,770 @@
+[
+ {
+  "name": "replace-function-with-index",
+  "description": "Replace deprecated index functions such as `FULLTEXT()`,\n`NEAR()`, `WITHIN()`, or `WITHIN_RECTANGLE()` with a regular subquery.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": false,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "inline-subqueries",
+  "description": "Try to pull subqueries out into their surrounding scope, e.g.\n`FOR x IN (FOR y IN collection FILTER y.value >= 5 RETURN y.test) RETURN x.a`\nbecomes `FOR tmp IN collection FILTER tmp.value >= 5 LET x = tmp.test RETURN x.a`.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "replace-like-with-range",
+  "description": "Replace LIKE() function with range scans where possible.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": false,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "replace-entries-with-object-iteration",
+  "description": "Replace FOR ... ENTRIES(obj) enumeration with proper object iteration\nto avoid copying a lot of key/value pairs and storing intermediate results.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "simplify-conditions",
+  "description": "Replace parts in `CalculationNode` expressions with\nsimpler expressions.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "move-calculations-up",
+  "description": "Move calculations up in the processing pipeline as far as\npossible (ideally out of enumerations) so they are not executed in loops if not\nrequired. It is quite common that this rule enables further optimizations.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "move-filters-up",
+  "description": "Move filters up in the processing pipeline as far as possible\n(ideally out of inner loops) so they filter results as early as possible.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "remove-redundant-calculations",
+  "description": "Replace references to redundant calculations (expressions\nwith the exact same result) with a single reference, allowing other rules to\nremove no longer needed calculations.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "remove-unnecessary-filters",
+  "description": "Remove `FILTER` conditions that always evaluate to `true`.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "remove-unnecessary-calculations",
+  "description": "Remove all calculations whose result is not referenced in the\nquery. This can be a consequence of applying other optimizations.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "specialize-collect",
+  "description": "Appears whenever a `COLLECT` statement is used in a query to determine\nthe type of `CollectNode` to use.",
+  "flags": {
+   "hidden": true,
+   "clusterOnly": false,
+   "canBeDisabled": false,
+   "canCreateAdditionalPlans": true,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "remove-redundant-sorts",
+  "description": "Try to merge multiple `SORT` statements into fewer sorts.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "optimize-subqueries",
+  "description": "Apply optimizations to subqueries.\n\nThis rule adds a `LIMIT` statement to qualifying subqueries to make them return\nless data. It also modifies the result value of subqueries in case only the\nnumber of subquery results is checked later. This saves copying the document\ndata from the subquery to the outer scope and may enable follow-up\noptimizations.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "interchange-adjacent-enumerations",
+  "description": "Try out permutations of `FOR` statements in queries that contain\nmultiple loops, which may enable further optimizations by other rules.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": true,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "move-calculations-up-2",
+  "description": "Second pass of moving calculations up in the processing\npipeline as far as possible, to pull them out of inner loops etc.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "move-filters-up-2",
+  "description": "Second pass of moving filters up in the processing pipeline\nas far as possible so they filter results as early as possible.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "replace-equal-attribute-accesses",
+  "description": "Replace attribute accesses that are equal due to a filter statement\nwith the same value. This might enable other optimizations later on.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": true,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "remove-redundant-sorts-2",
+  "description": "Second pass of trying to merge multiple `SORT` statements\ninto fewer sorts.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "remove-sort-rand-limit-1",
+  "description": "Remove `SORT RAND() LIMIT 1` constructs by moving the random iteration\ninto `EnumerateCollectionNode`.\n\nThe RocksDB storage engine doesn't allow to seek random documents efficiently.\nThis optimization picks a pseudo-random document based on a limited number of\nseeks within the collection's key range, selecting a random start key in the\nkey range, and then going a few steps before or after that.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "remove-collect-variables",
+  "description": "Remove `INTO` and `AGGREGATE` clauses from `COLLECT`\nstatements if the result is not used.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "propagate-constant-attributes",
+  "description": "Insert constant values into `FILTER` conditions, replacing\ndynamic attribute values.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "remove-data-modification-out-variables",
+  "description": "Avoid setting the pseudo-variables `OLD` and `NEW` if they\nare not used in data modification queries.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "replace-or-with-in",
+  "description": "Combine multiple `OR` equality conditions on the same\nvariable or attribute with an `IN` condition.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "replace-any-eq-with-in",
+  "description": "Replace `ANY ==` array comparison expressions with equivalent `IN`\nexpressions to enable further optimizations and index usage.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "remove-redundant-or",
+  "description": "Combine multiple `OR` conditions for the same variable or\nattribute into a single condition.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "geo-index-optimizer",
+  "description": "Utilize geo-spatial indexes to remove `FILTER DISTANCE(...)`\nand SORT DISTANCE(...)`.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "use-vector-index",
+  "description": "Utilize a vector index to accelerate the comparison of\nvector embeddings with vector similarity AQL functions.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "push-filter-into-enumerate-near",
+  "description": "Push Filter into EnumerateNearVector node. Can also optimize\nfiltering by using `storedValues`. This rule is only enabled by the\n`use-vector-index` rule.",
+  "flags": {
+   "hidden": true,
+   "clusterOnly": false,
+   "canBeDisabled": false,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": true,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "materialize-for-enumerate-near",
+  "description": "Choose how each EnumerateNearVectorNode emits its document.\nIf the vector index storedValues cover the downstream projections, or if a\npushed-down filter already loaded the document, the vector node produces the\noutput directly. Otherwise a MaterializeRocksDBNode is inserted after the\nvector node to translate the doc-id into the full document.",
+  "flags": {
+   "hidden": true,
+   "clusterOnly": false,
+   "canBeDisabled": false,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "use-indexes",
+  "description": "Use indexes to iterate over collections, replacing\n`EnumerateCollectionNode` with `IndexNode` in the query plan.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "remove-filter-covered-by-index",
+  "description": "Replace or remove `FilterNode` if the filter conditions are\nalready covered by `IndexNode`.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "remove-unnecessary-filters-2",
+  "description": "Second pass of removing `FILTER` conditions that always\nevaluate to `true`.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "use-index-for-sort",
+  "description": "Use indexes to avoid `SORT` operations, removing `SortNode`\nfrom the query plan.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "sort-in-values",
+  "description": "Use a binary search for in-list lookups with a logarithmic\ncomplexity instead of the default linear complexity in-list lookup if the\ncomparison array on the right-hand side of an `IN` operator is pre-sorted by an\nextra function call.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "optimize-traversal-last-element-access",
+  "description": "Transform accesses to the last vertex or edge of the path\noutput variable (`p.vertices[-1]` and `p.edges[-1]`) emitted by AQL traversals\n(`FOR v, e, p IN ...`) with accesses to the vertex or edge variable\n(`v` and `e`). This can avoid computing the path variable at all and enable\nfurther optimizations that are not possible on the path variable `p`.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "optimize-traversals",
+  "description": "Try to move `FILTER` conditions into `TraversalNode` for\nearly pruning of results, apply traversal projections, and avoid calculating\nedge and path output variables that are not declared in the query for the\nAQL traversal.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "optimize-enumerate-path-filters",
+  "description": "Move `FILTER` conditions on the path output variable into the path search.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "optimize-paths",
+  "description": "Check how the output variables of `K_PATHS`, `K_SHORTEST_PATHS`,\nand `ALL_SHORTEST_PATHS` path search graph algorithms are used and avoid\nloading the vertex documents if they are not accessed in the query.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "remove-filter-covered-by-traversal",
+  "description": "Replace or remove `FilterNode` if the filter conditions are\nalready covered by `TraversalNode`.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "handle-arangosearch-views",
+  "description": "Appears whenever an `arangosearch` or `search-alias` View is accessed\nin a query.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": false,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "arangosearch-constrained-sort",
+  "description": "Make nodes of type `EnumerateViewNode` aware of `SORT` with a\nsubsequent `LIMIT` when using Views to reduce memory usage and avoid unnecessary\nsorting that has already been carried out by ArangoSearch internally.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "remove-unnecessary-calculations-2",
+  "description": "Second pass of removing all calculations whose result is not\nreferenced in the query. This can be a consequence of applying other\noptimizations",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "remove-redundant-path-var",
+  "description": "Avoid computing the variables emitted by AQL traversals if\nthey are declared but unused in the query, or only used in filters that are\npulled into the traversal, significantly reducing overhead.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "move-calculations-down",
+  "description": "Move calculations down in the processing pipeline as far as\npossible (below `FILTER`, `LIMIT` and `SUBQUERY` nodes) so they are executed as\nlate as possible and not before their results are required.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "fuse-filters",
+  "description": "Merges adjacent `FILTER` nodes together into a single\n`FILTER` node.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "move-filters-into-enumerate",
+  "description": "Move filters on non-indexed collection attributes into\n`IndexNode` or `EnumerateCollectionNode` to allow early pruning of\nnon-matching documents. This optimization can help to avoid a lot of temporary\ndocument copies. The optimization can also be applied to enumerations over\nnon-collection array.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "remove-unnecessary-calculations-3",
+  "description": "Third pass of removing all calculations whose result is not\nreferenced in the query. This can be a consequence of applying other\noptimizations",
+  "flags": {
+   "hidden": true,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": true,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "sort-limit",
+  "description": "Make `SORT` aware of a subsequent `LIMIT` to enable\noptimizations internal to the `SortNode` that allow to reduce memory usage\nand, in many cases, improve the sorting speed.\n\nA `SortNode` needs to be followed by a `LimitNode` with no intervening nodes\nthat may change the element count (e.g. a `FilterNode` which cannot be moved\nbefore the sort, or a source node like `EnumerateCollectionNode`).\n\nThe optimizer may choose not to apply the rule if it decides that it offers\nlittle or no benefit. In particular, it does not apply the rule if the input\nsize is very small or if the output from the `LimitNode` is similar in size to\nthe input. In exceptionally rare cases, this rule could result in some small\nslowdown. If observed, you can disable the rule for the affected query at the\ncost of increased memory usage.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "reduce-extraction-to-projection",
+  "description": "Modify `EnumerationCollectionNode` and `IndexNode` that would have\nextracted entire documents to only return a projection of each document.\n\nProjections are limited to at most 5 different document attributes by default.\nThe maximum number of projected attributes can optionally be adjusted by\nsetting the `maxProjections` hint for an AQL `FOR` operation.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "optimize-count",
+  "description": "Optimize subqueries to use an optimized code path for\ncounting documents.\n\nThe requirements are that the subquery result must only be used with the\n`COUNT()` or `LENGTH()` AQL function and not for anything else. The subquery\nitself must be read-only (no data modification subquery), not use nested `FOR`\nloops, no `LIMIT` statement, and no `FILTER` condition or calculation that\nrequires accessing document data. Accessing index data is supported for\nfiltering but not for further calculations.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "late-document-materialization-arangosearch",
+  "description": "Try to read from the underlying collections of a View as late\nas possible if the involved attributes are covered by the View index.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "late-document-materialization",
+  "description": "Try to read from collections as late as possible if the\ninvolved attributes are covered by inverted indexes.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "push-limit-into-index",
+  "description": "Reduce results early for a combination of `FILTER`, `SORT`,\nand `LIMIT` where the filter condition uses the `IN` comparison operator and\nthe condition and sort attributes are covered by a persistent index, so that\nthe limit can already be applied when reading from the index. Additional\nrequirements are that there is no outer loop and no post-filtering, and the\nattributes to sort by must all be in the same direction.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "batch-materialize-documents",
+  "description": "Batch document lookups from indexes for efficiency.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "late-materialization-offset-info",
+  "description": "Get the search highlighting offsets as late as possible to\navoid unnecessary reads.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": true
+  }
+ },
+ {
+  "name": "join-index-nodes",
+  "description": "Join adjacent index nodes and replace them with a join node\nin case the indexes qualify for it.\n\nIf two or more collections are joined using nested `FOR` loops and the\nattributes to join on are indexed by primary indexes or persistent indexes,\nthen a merge join can be performed because they are sorted. Returning\ndocument attributes from the outer loop is limited to attributes covered by\nthe index.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "use-index-for-collect",
+  "description": "Use indexes for a `COLLECT` operation if possible.\nPersistent indexes can speed up the scanning for distinct values up to orders\nof magnitude if the selectivity is low, i.e. if there are few different\nvalues. Furthermore, they can be used to cover eligible\n`COLLECT ... AGGREGATE` operations.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "push-down-late-materialization",
+  "description": "Defer loading documents when attributes accessed in `FILTER`\nand `SORT` operations are covered by an index. The rule can also push the\nmaterialization past `FOR` loops in case they are optimized to a merge join.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "materialize-into-separate-variable",
+  "description": "Introduce separate internal variables for projected\nattributes. This enables late materialization that avoids the creation of\ntemporary objects and having to look up attributes by key in these objects.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": false,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "optimize-projections",
+  "description": "Remove projections that are no longer used and store projection\nresults in separate output registers.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "remove-unnecessary-calculations-4",
+  "description": "Fourth pass of removing all calculations whose result is not\nreferenced in the query. This can be a consequence of applying other\noptimizations",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "async-prefetch",
+  "description": "Allow query execution nodes to asynchronously prefetch the\nnext batch while processing the current batch, allowing parts of the query to\nrun in parallel. This is only possible for certain operations in a query.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "immutable-search-condition",
+  "description": "Optimize immutable search condition for nested loops. There is no need\nto perform a real search repeatedly if the results can be cached in a bitset.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": true,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ },
+ {
+  "name": "splice-subqueries",
+  "description": "Appears if subqueries are spliced into the surrounding query,\nreducing overhead for executing subqueries by inlining the execution.\nThis mainly benefits queries which execute subqueries very often that only\nreturn a few results at a time.\n\nThis optimization is performed on all subqueries and is applied after all other\noptimizations.",
+  "flags": {
+   "hidden": false,
+   "clusterOnly": false,
+   "canBeDisabled": false,
+   "canCreateAdditionalPlans": false,
+   "disabledByDefault": false,
+   "enterpriseOnly": false
+  }
+ }
+]

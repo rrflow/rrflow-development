@@ -1,6 +1,7 @@
 # One engine: joining rrflowDB, rrflowQL, rrflowKV/LSM and rrflowCLD
 
-**Status:** active proposed engineering plan; no package below is implemented
+**Status:** historical; superseded on 2026-11-13 by the [kernel contract](kernel-contract.md), which carries every package listed here; kept as the record of the work and decisions it describes
+**Superseded by:** [RRFlow kernel contract](kernel-contract.md)
 **Coordinate:** `rrflow://rrflow-instance/data/work-package/one-engine-joins`
 **Owner:** supporting plan for P5 and P6 of the [one-engine execution plan](../architecture/one-engine-execution-plan.md#5-executable-packages-and-acceptance), under E-03/E-04 ([Gate E](rrflow-1.0/gate-e.md)), F-06 ([Gate F](rrflow-1.0/gate-f.md)) and J-04 ([Gate J](rrflow-1.0/gate-j.md))
 

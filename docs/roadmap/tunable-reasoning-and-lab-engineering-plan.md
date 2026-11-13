@@ -1,6 +1,7 @@
 # Tunable reasoning and RRFlow Lab: engineering plan
 
-**Status:** active proposed engineering plan; no package below is implemented
+**Status:** historical; superseded on 2026-11-13 by the [kernel contract](kernel-contract.md), which carries every package listed here; kept as the record of the work and decisions it describes
+**Superseded by:** [RRFlow kernel contract](kernel-contract.md)
 **Coordinate:** `rrflow://rrflow-instance/data/work-package/tunable-reasoning-and-lab`
 **Owner:** supporting plan for J-04 ([Gate J](rrflow-1.0/gate-j.md)), D-06 ([Gate D](rrflow-1.0/gate-d.md)) and G-05 ([Gate G](rrflow-1.0/gate-g.md)); it extends the [one-engine joins plan](one-engine-joins-engineering-plan.md), the [D-02 attunement plan](d02-evidence-driven-attunement-engineering-plan.md) and [ADR-0005](../decisions/0005-second-brain-personal-and-org-engrams.md)
 

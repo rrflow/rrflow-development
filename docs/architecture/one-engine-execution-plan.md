@@ -1,6 +1,7 @@
 # One-engine execution and verifiable handoff plan
 
-**Status:** active proposed supporting plan; runtime and CI enforcement not established
+**Status:** historical; superseded on 2026-11-13 by the [kernel contract](../roadmap/kernel-contract.md), which carries every package listed here; kept as the record of the work and decisions it describes
+**Superseded by:** [RRFlow kernel contract](../roadmap/kernel-contract.md)
 **Coordinate:** `rrflow://rrflow-instance/data/architecture/one-engine-execution-plan`
 **Owner:** supporting execution design for OBJ-14 and the existing roadmap
 
