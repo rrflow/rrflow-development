@@ -1,0 +1,40 @@
+//! Protocol identity and the request, query, vector and subscription limits every surface shares.
+
+pub const PROTOCOL: &str = "rrd";
+pub const PROTOCOL_VERSION: u16 = 1;
+pub const OPENAPI_DOCUMENT_SHA256: &str =
+    "4bd01d8ba6fe748921d4ec21da277c83b7f9e1d61015274b8828023c6e86607d";
+pub const MAX_ID_BYTES: usize = 128;
+pub const MAX_MESSAGE_BYTES: usize = 4_096;
+pub const MAX_CAPABILITIES: usize = 512;
+pub const MAX_TRANSACTION_CLAIMS: usize = 4_096;
+pub const MAX_DATA_SNAPSHOT_STORAGE_KEYS: u32 = 1_000_000;
+pub const MAX_VECTOR_DIMENSIONS: usize = 1_048_576;
+pub const MAX_QUERY_BYTES: usize = 64 * 1024;
+pub const MAX_QUERY_PARAMETERS: usize = 128;
+pub const MAX_QUERY_PARAMETER_BYTES: usize = 64 * 1024;
+pub const MAX_QUERY_STORAGE_KEYS: u64 = 1_000_000;
+pub const MAX_QUERY_ROWS: u64 = 100_000;
+pub const MAX_QUERY_OUTPUT_BYTES: u64 = 768 * 1024;
+pub const MAX_QUERY_BATCH_ROWS: u64 = 1_024;
+pub const MAX_QUERY_MEMORY_BYTES: u64 = 1024 * 1024 * 1024;
+pub const MAX_QUERY_SPILL_BYTES: u64 = 8 * 1024 * 1024 * 1024;
+pub const MAX_QUERY_ELAPSED_MS: u64 = 300_000;
+pub const MAX_QUERY_TRANSACTION_MUTATIONS: usize = 256;
+pub const MAX_QUERY_TRANSACTION_BINDING_BYTES: usize = 1024 * 1024;
+pub const MAX_LIVE_QUERY_DELTA_ROWS: u64 = 100_000;
+pub const MAX_LIVE_QUERY_WAIT_MS: u64 = 5_000;
+pub const MAX_VECTOR_STORAGE_KEYS: u64 = 1_000_000;
+pub const MAX_VECTOR_SEARCH_WORK: u64 = 1_000_000;
+pub const MAX_VECTOR_SEARCH_TOP_K: u64 = 100_000;
+pub const MAX_VECTOR_POINT_PAGE: u64 = 4_096;
+pub const MAX_CHANGEFEED_PAGE: u64 = 4_096;
+pub const MAX_CHANGEFEED_WAIT_MS: u64 = 5_000;
+pub const MAX_SUBSCRIPTION_IN_FLIGHT: u16 = 64;
+pub const MAX_SUBSCRIPTION_RETENTION_CURSORS: u64 = 10_000_000;
+pub const MIN_SUBSCRIPTION_HEARTBEAT_MS: u64 = 100;
+pub const MAX_SUBSCRIPTION_HEARTBEAT_MS: u64 = 30_000;
+pub const DEPLOYMENT_CONFORMANCE_FORMAT_VERSION: u16 = 1;
+pub const MAX_DEPLOYMENT_CONFORMANCE_DOCUMENTS: usize = 1_024;
+pub const MIN_LEASE_MS: u64 = 1_000;
+pub const MAX_LEASE_MS: u64 = 3_600_000;

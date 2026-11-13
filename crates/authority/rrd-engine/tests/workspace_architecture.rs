@@ -790,12 +790,7 @@ fn schema_catalogue_has_one_explicit_logical_model_authority() {
     let core_runtime =
         fs::read_to_string(metadata.root.join("crates/kernel/rrd-core/src/runtime.rs"))
             .expect("runtime snapshot source must be readable");
-    let public_contract = fs::read_to_string(
-        metadata
-            .root
-            .join("crates/transport/rrd-contract/src/lib.rs"),
-    )
-    .expect("public contract source must be readable");
+    let public_contract = public_contract_source(&metadata.root);
 
     let optional_table_field =
         "#[serde(default, skip_serializing_if = \"BTreeMap::is_empty\")]\n    pub tables:";
@@ -894,12 +889,7 @@ fn vector_writes_require_one_canonical_collection_address() {
         );
     }
 
-    let contract = fs::read_to_string(
-        metadata
-            .root
-            .join("crates/transport/rrd-contract/src/lib.rs"),
-    )
-    .expect("public contract source must be readable");
+    let contract = public_contract_source(&metadata.root);
     let put_vector = contract
         .split_once("    PutVector {")
         .expect("public PutVector mutation must exist")
@@ -963,12 +953,7 @@ fn vector_projection_lifecycle_has_no_duplicate_turboquant_authority() {
             .join("crates/authority/rrd-engine/src/engine/vector/quantization.rs"),
     )
     .expect("engine quantization source must be readable");
-    let contract = fs::read_to_string(
-        metadata
-            .root
-            .join("crates/transport/rrd-contract/src/lib.rs"),
-    )
-    .expect("public contract source must be readable");
+    let contract = public_contract_source(&metadata.root);
     let collection = fs::read_to_string(
         metadata
             .root
@@ -2456,4 +2441,31 @@ fn contains_identity(haystack: &[u8], needle: &[u8]) -> bool {
             needle != skill_prefix
                 || !haystack[offset + needle.len()..].starts_with(b"-development")
         })
+}
+
+/// Every source file of the public contract crate, in path order, as one text.
+///
+/// The contract is split into domain modules; rules about its source hold for the
+/// crate as a whole, not for whichever file a type happens to live in.
+fn public_contract_source(root: &Path) -> String {
+    fn collect(directory: &Path, files: &mut Vec<PathBuf>) {
+        for entry in fs::read_dir(directory).expect("public contract source must be readable") {
+            let path = entry
+                .expect("public contract entry must be readable")
+                .path();
+            if path.is_dir() {
+                collect(&path, files);
+            } else if path.extension().is_some_and(|extension| extension == "rs") {
+                files.push(path);
+            }
+        }
+    }
+    let mut files = Vec::new();
+    collect(&root.join("crates/transport/rrd-contract/src"), &mut files);
+    files.sort();
+    files
+        .iter()
+        .map(|path| fs::read_to_string(path).expect("public contract source must be readable"))
+        .collect::<Vec<_>>()
+        .join("\n")
 }
