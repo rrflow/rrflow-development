@@ -207,7 +207,7 @@ the complete pipeline; neither the empty anchor nor PR 48's CI qualifies it.
 - `crates/persistence/rrd-lsm/src/inspection.rs`
 - `crates/persistence/rrd-lsm/src/lib.rs`
 - `crates/persistence/rrd-lsm/src/manifest.rs`
-- `crates/persistence/rrd-lsm/src/segment.rs`
+- `crates/persistence/rrd-lsm/src/segment/mod.rs`
 - `crates/persistence/rrd-lsm/src/snapshot_bundle.rs`
 - `crates/persistence/rrd-lsm/src/wal.rs`
 - `crates/persistence/rrd-lsm/tests/filesystem.rs`

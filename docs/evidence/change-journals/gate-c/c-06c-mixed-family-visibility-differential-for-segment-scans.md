@@ -17,10 +17,10 @@ for acceptance and the [change-journal index](../) for discovery.
 ```text
 gate/package: C-06c / mixed-family visibility correctness differential for `rrd-lsm` immutable segments
 starting revision/tree/branch/remote/worktree: commit b108cf2af0dfe7b3933b73615e43faeff48eed1f; tree b974919; branch agent/connectome-temporal-runtime-visualizer; development remote https://github.com/rrflow/rrflow-development.git; origin remote https://github.com/rrflow/rrflow.git; worktree dirty at capture time
-baseline files/digests: crates/persistence/rrd-lsm/src/segment.rs=04355bbeee627340cbf701214f7f4ae2217a3da71fc81e83dbde367cce5eeebb
+baseline files/digests: crates/persistence/rrd-lsm/src/segment/mod.rs=04355bbeee627340cbf701214f7f4ae2217a3da71fc81e83dbde367cce5eeebb
 files read in full before editing: README.md; AGENTS.md; complete C-06a and C-06b journals in this map; `crates/persistence/rrd-lsm/src/lib.rs`; `crates/persistence/rrd-lsm/src/segment/{mod,format}.rs`; and `crates/persistence/rrd-lsm/tests/{segment,compaction,failure_matrix,manifest,maintenance,mvcc,snapshot_bundle,snapshot_memory,tiered_io,wal}.rs`. Upstream segment code was not copied
 source adaptation and research disposition: retained the v4 spine/Arrow-page contract and added deterministic memtable-oracle differentials over mixed key-family windows with tombstones and multi-version history; no upstream code path was imported
-files changed/created/deleted/moved: `crates/persistence/rrd-lsm/src/segment.rs`
+files changed/created/deleted/moved: `crates/persistence/rrd-lsm/src/segment/mod.rs`
   - added `mixed_family_memtable` and `visible_ranges_oracle` test helpers
   - added `visible_scan_matches_memtable_visibility_across_ranges_and_sequences` to compare `visible_from` against `Memtable::visible_from` for mixed families and snapshot cut points
   - added `visible_ranges_match_memtable_oracle_for_mixed_families` to compare `visible_ranges` against a deterministic memtable oracle across disjoint mixed-family ranges

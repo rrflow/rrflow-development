@@ -8,7 +8,7 @@
 
 **Starting revision:** `development/main` at `501a16bc`.
 
-**Change.** `crates/persistence/rrd-lsm/src/segment.rs` (2,802 lines) becomes the file-named module `segment.rs` (256 lines). Its items, and the 858-line `impl Segment` method by method, move by exact syn spans into child modules:
+**Change.** `crates/persistence/rrd-lsm/src/segment/mod.rs` (2,802 lines) becomes the file-named module `segment.rs` (256 lines). Its items, and the 858-line `impl Segment` method by method, move by exact syn spans into child modules:
 
 | Module | Contents | Lines |
 |---|---|---|

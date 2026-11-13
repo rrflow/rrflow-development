@@ -17,10 +17,10 @@ for acceptance and the [change-journal index](../) for discovery.
 ```text
 gate/package: C-06b / selective range scan projection in `rrd-lsm` immutable segments
 starting revision/tree/branch/remote/worktree: commit f033249; tree 0180ed6; branch agent/connectome-temporal-runtime-visualizer; development remote https://github.com/rrflow/rrflow-development.git; origin remote https://github.com/rrflow/rrflow.git; worktree dirty only from this package at capture time
-baseline files/digests: crates/persistence/rrd-lsm/src/segment.rs=04355bbeee627340cbf701214f7f4ae2217a3da71fc81e83dbde367cce5eeebb
+baseline files/digests: crates/persistence/rrd-lsm/src/segment/mod.rs=04355bbeee627340cbf701214f7f4ae2217a3da71fc81e83dbde367cce5eeebb
 files read in full before editing: README.md; AGENTS.md; complete C-06a journal in this map; `crates/persistence/rrd-lsm/src/lib.rs`; `crates/persistence/rrd-lsm/src/segment/{mod,format}.rs`; and `crates/persistence/rrd-lsm/tests/{segment,compaction,failure_matrix,manifest,maintenance,mvcc,snapshot_bundle,snapshot_memory,tiered_io,wal}.rs`. Upstream segment code was not copied
 source adaptation and research disposition: retained prior C-06v4 spine-column architecture; applied local storage contract to defer value-column reads until after key/sequence filters succeed. No new upstream compatibility layer, provider lifecycle, or storage API was imported
-files changed/created/deleted/moved: `crates/persistence/rrd-lsm/src/segment.rs`
+files changed/created/deleted/moved: `crates/persistence/rrd-lsm/src/segment/mod.rs`
   - split row-group reads into `load_key_spine` and `load_value_columns`
   - added shared `value_from_columns` accessor for validity-aware, value-page-only reads
   - rewrote `visible_from` and `visible_ranges` to lazy-load value pages only when a row is within scan range and visibility predicate

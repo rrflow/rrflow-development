@@ -55,7 +55,7 @@ provide the resource/debug evidence; no payload logging is added.
   passed before commit. The first documentation check rejected a status line
   lacking the required active/historical classification; corrected to active.
 
-Changed paths: `rrd-lsm/src/segment.rs`, `tests/tiered_io.rs`, this journal,
+Changed paths: `rrd-lsm/src/segment/mod.rs`, `tests/tiered_io.rs`, this journal,
 POAM-035 and generated navigation/inventory. No files moved or deleted.
 Stop conditions: no relaxed native cap, partial unauthenticated page exposure,
 new allocation authority, changed format or unsupported qualification claim.
