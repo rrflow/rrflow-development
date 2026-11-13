@@ -680,8 +680,9 @@ fn installed_binary_replans_and_reads_receipt_after_forced_restart(expect_parse:
                         parsed.failure
                     );
                 } else {
-                    // Today the executable set is Connect and Inventory, so
-                    // the derived plan omits Parse, the successor succeeds
+                    // Without a native parse supervisor the executable set is
+                    // Connect and Inventory, so the derived plan omits Parse,
+                    // reported unavailable rather than planned, the successor succeeds
                     // after its Inventory checkpoint, and no job reaches
                     // `phase-unavailable`.
                     assert_eq!(
@@ -1475,7 +1476,12 @@ fn install_requires_an_explicit_plan_digest_and_verify_is_read_only_by_shape() {
 #[test]
 fn installed_engine_plans_applies_serves_discovers_authenticates_and_reopens() {
     installed_lifecycle("existing");
-    installed_binary_replans_and_reads_receipt_after_forced_restart(true);
+    // Parse runs only where a native supervisor contains its worker; on any
+    // other platform the derived plan must not select it.
+    installed_binary_replans_and_reads_receipt_after_forced_restart(cfg!(any(
+        windows,
+        target_os = "linux"
+    )));
 }
 
 #[test]

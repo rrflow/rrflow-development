@@ -100,29 +100,36 @@ fn default_plan_completes_after_inventory_and_derives_the_successor_from_evidenc
         vec!["python", "rust"]
     );
     assert!(!evidence.embedding_binding);
+    // Parse is executable only where a native supervisor contains its worker.
+    let parse_supported = cfg!(any(windows, target_os = "linux"));
+    let mut executable = vec![Phase::Connect, Phase::Inventory];
+    if parse_supported {
+        executable.push(Phase::Parse);
+    }
     assert_eq!(
         evidence.available.iter().copied().collect::<Vec<_>>(),
-        vec![Phase::Connect, Phase::Inventory, Phase::Parse],
+        executable,
         "only installed executors are available"
     );
     let derived: Vec<Phase> = preview.plan.phases.iter().map(|step| step.phase).collect();
     assert_eq!(
-        derived,
-        vec![Phase::Connect, Phase::Inventory, Phase::Parse],
-        "the Rust and Python sources have bound grammars, so Parse is selected"
+        derived, executable,
+        "the Rust and Python sources have bound grammars, so Parse is selected where it can run"
     );
-    let policy = preview.plan.phases[2]
-        .parse_policy
-        .as_ref()
-        .expect("a derived Parse step carries its policy");
-    assert_eq!(
-        policy
-            .bindings
-            .iter()
-            .map(|binding| binding.extension.as_str())
-            .collect::<Vec<_>>(),
-        vec!["py", "pyi", "rs"]
-    );
+    if parse_supported {
+        let policy = preview.plan.phases[2]
+            .parse_policy
+            .as_ref()
+            .expect("a derived Parse step carries its policy");
+        assert_eq!(
+            policy
+                .bindings
+                .iter()
+                .map(|binding| binding.extension.as_str())
+                .collect::<Vec<_>>(),
+            vec!["py", "pyi", "rs"]
+        );
+    }
     // Any client can recompute the plan from the evidence the preview carries.
     let recomputed = derive_attunement_plan(
         &installed.preview.attunement,

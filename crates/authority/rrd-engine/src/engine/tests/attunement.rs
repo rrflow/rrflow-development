@@ -19,6 +19,8 @@ mod discovery;
 mod inventory_delta;
 pub(super) use inventory_delta::first_inventory_for_worker_with_setup_at;
 mod observation_delivery;
+// Parse needs a native supervisor for its worker (Windows and Linux).
+#[cfg(any(windows, target_os = "linux"))]
 mod parse_step;
 mod startup_binding;
 

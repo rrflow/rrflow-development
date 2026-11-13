@@ -66,6 +66,13 @@ Every question ran through `ContextAccessPath::CommitBm25` within the default 10
 - Not run: Linux and macOS, and the installed lifecycle cases that need the platform supervisors there; candidate CI is the oracle. The SDK conformance runner (`run_sdk_conformance.py`) needs `mvn`, which is absent locally.
 - Two pinned expectations changed with intent: `OPENAPI_DOCUMENT_SHA256` for the new public types, and three tests that expected a fallback scan or a built artifact now expect `commit_index:{id}` and still check their rows. One architecture rule (`direct_read_source_closure`) is unchanged: both snapshot reads share one reducer.
 
+## Surfaced by candidate CI and fixed here
+
+- **macOS:** the `engram process (macos-latest)` offline qualification failed after Parse joined the executable set. macOS has no native parse supervisor, and `parse::worker::start` returns `Unsupported` there, so the engine planned a Parse step it could not run.
+  - **Fix:** `EXECUTABLE_PHASES` includes Parse only on Windows and Linux. On macOS the derived plan stays `[connect, inventory]`, with Parse reported unavailable rather than planned and refused.
+  - **Tests:** the installed lifecycle case expects Parse exactly where a supervisor exists. The derivation test checks the platform's executable set, and the Parse-step tests compile only where a supervisor exists.
+  - **Gap:** a macOS parse supervisor is still missing.
+
 ## Surfaced and not fixed here
 
 - **Write amplification.** 1.34 MiB of parse facts as JSON measured 10.5 MiB physically: records, versions, the change log, a source delta per index carrying the indexed text, and postings. Parse with indexes is several times slower than without. Recorded in POAM-065; not changed here.
