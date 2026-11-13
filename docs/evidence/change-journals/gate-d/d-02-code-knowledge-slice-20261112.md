@@ -59,7 +59,12 @@ Every question ran through `ContextAccessPath::CommitBm25` within the default 10
 
 ## Commands
 
-@@COMMANDS@@
+- `cargo test --locked -q -p rrd-lsm`: 254 passed. `-p rrd-store`: 282 passed. `-p rrd-query`: 82 passed. `-p rrd-contract`: 200 passed. `-p rrd-server`: 36 passed. `-p rrd-engine --tests`: 544 passed, 13 ignored (unchanged). `-p rrflow-cli`: 75 passed. All with no failures, after merging main `297bd98f`.
+- `cargo test --locked -p rrflow-qualification-storage --test storage_contract`: 11 passed, with the storage manifest, campaign and segment schema goldens regenerated for the optional `attunement_follow` field (`RRFLOW_UPDATE_STORAGE_GOLDENS=1`; the diff adds only that field).
+- `cargo clippy --locked --workspace --all-targets -- -D warnings` and `cargo fmt --all -- --check`: clean.
+- `python scripts/ci/check_generated_surfaces.py --check`: 83 operations, OpenAPI `5c8f066a…`, 7 signal projections verified, after `pnpm generate`, each SDK's `scripts/generate.py`, `go run ./cmd/generate` and `--write` for the signal projections. `python scripts/ci/check_workflow.py`: CI policy OK. `python scripts/ci/check_documentation.py`: OK. `python scripts/knowledge/render_navigation.py`: OK.
+- Not run: Linux and macOS, and the installed lifecycle cases that need the platform supervisors there; candidate CI is the oracle. The SDK conformance runner (`run_sdk_conformance.py`) needs `mvn`, which is absent locally.
+- Two pinned expectations changed with intent: `OPENAPI_DOCUMENT_SHA256` for the new public types, and three tests that expected a fallback scan or a built artifact now expect `commit_index:{id}` and still check their rows. One architecture rule (`direct_read_source_closure`) is unchanged: both snapshot reads share one reducer.
 
 ## Surfaced and not fixed here
 
