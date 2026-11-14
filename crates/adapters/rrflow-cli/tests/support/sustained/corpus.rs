@@ -49,7 +49,7 @@ pub(super) async fn verify_reopened_window(
 }
 
 pub(super) async fn seed(
-    engram: &engram,
+    engram: &Engram,
     work: &mut Workload,
     campaign: &StorageCampaign,
     progress: &ProgressContext<'_>,
@@ -66,7 +66,7 @@ pub(super) async fn seed(
 }
 
 async fn seed_inner(
-    engram: &engram,
+    engram: &Engram,
     work: &mut Workload,
     campaign: &StorageCampaign,
     progress: &ProgressContext<'_>,

@@ -3,7 +3,7 @@ use crate::ServiceErrorKind;
 use std::collections::BTreeMap;
 
 use rrd_contract::{
-    CommitTransaction, DataengramOrganisation, DataLogicalModel, DataPropertySchema,
+    CommitTransaction, DataEngramOrganisation, DataLogicalModel, DataPropertySchema,
     DataRecordSchema, DataReference, DataSchemaMode, DataSchemaRegistry, DataTableSchema,
     DataValueType, DeploymentConformanceCorpus, ExecuteQuery, QueryBudget, QueryValue,
 };
@@ -49,7 +49,7 @@ fn run_corpus(engine: &RrdEngine, suffix: &str) -> Vec<CanonicalId> {
         registry: DataSchemaRegistry {
             revision: 1,
             migration: "install deployment conformance corpus".into(),
-            organisation: DataengramOrganisation::default(),
+            organisation: DataEngramOrganisation::default(),
             tables: BTreeMap::from([(
                 table.clone(),
                 DataTableSchema {

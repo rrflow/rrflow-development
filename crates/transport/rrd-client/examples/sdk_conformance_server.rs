@@ -7,7 +7,7 @@ use rrd_core::{
     RuntimeRecordSchema, RuntimeTableSchema, RuntimeType, RuntimeValueType, ScopeId,
 };
 use rrd_engine::RrdEngine;
-use rrd_engram::{engramRepository, MutationContext};
+use rrd_engram::{EngramRepository, MutationContext};
 use rrd_security::{Principal, PrincipalKind, ResourceGrant, SecurityRepository, SECURITY_FORMAT};
 use rrd_server::RrdHttpServer;
 use rrd_store::{RrflowKvStore, StorageEngine};
@@ -217,7 +217,7 @@ fn seed_engram(
     storage: &RrflowKvStore,
     corpus: &SdkConformanceCorpus,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    engramRepository::new(storage, corpus.identity.engram.clone()).create(&MutationContext {
+    EngramRepository::new(storage, corpus.identity.engram.clone()).create(&MutationContext {
         at: 110,
         actor: "sdk-conformance-harness".into(),
         request_id: "request-sdk-engram".into(),
@@ -238,7 +238,7 @@ fn seed_security(
     };
     let engram_resource = ResourcePath {
         segments: vec![ResourceId::new(
-            ResourceKind::engram,
+            ResourceKind::Engram,
             corpus.identity.engram.as_str(),
         )?],
     };
@@ -260,7 +260,7 @@ fn seed_security(
         SecurityAction::ChangefeedFollow,
         SecurityAction::BackupCreate,
         SecurityAction::BackupList,
-        SecurityAction::engramRead,
+        SecurityAction::EngramRead,
     ];
     let mut grants = actions
         .into_iter()
@@ -271,7 +271,7 @@ fn seed_security(
         })
         .collect::<Vec<_>>();
     grants.push(ResourceGrant {
-        action: SecurityAction::engramRead,
+        action: SecurityAction::EngramRead,
         resource_prefix: engram_resource,
         data_policy: None,
     });

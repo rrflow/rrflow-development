@@ -16,7 +16,7 @@ PR134/139/140; final native qualification must integrate admitted repairs.
 
 `Database::get` previously called `Segment::select_version` on every immutable
 segment. Each segment checked its own bounds, but dispatch and metadata access
-were linear in engram size. A private, derived balanced interval index now
+were linear in estate size. A private, derived balanced interval index now
 visits only overlapping candidate ranges. It stores two ordinals per segment,
 copies no keys or pages, and allocates nothing during lookup. Segment selection
 still authenticates pages and chooses the newest visible sequence, including
@@ -45,7 +45,7 @@ and [CPU profiling methodology](https://www.brendangregg.com/methodology.html)
 informed collecting bounded deltas rather than treating cumulative counters as
 causal proof.
 
-The failed 04559542 engram remains unchanged. A full private copy at
+The failed 04559542 estate remains unchanged. A full private copy at
 `/home/devcontainers/rrflow-c07-native-79663cdd/window-readback-diagnostic-20261026`
 was served with its original binary SHA-256
 `be77466dffe12cd2eee91bc3f5996702089c69481fcefd26310064e40f33c5ca`.
@@ -58,7 +58,7 @@ across four separated corpus windows, means were 10.171, 14.192 and 17.565 ms.
 The diagnostic checked presence/row counts, not every independent value; it
 does not substitute for the full corpus oracle. Counter deltas were 699 page
 loads, 200709 cache hits, zero evictions, 42738 filter checks and 53 handle
-reopens. The engram had 1477 segments. The CPU profile contained only 83
+reopens. The estate had 1477 segments. The CPU profile contained only 83
 samples, zero lost; `Segment::select_version` was the largest named symbol
 (8.43%). This supports investigating dispatch overhead, not a complete causal
 or end-to-end speedup claim.

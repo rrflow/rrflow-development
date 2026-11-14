@@ -7,7 +7,7 @@ use rrd_contract::{
 };
 
 impl RrdEngine {
-    fn endpoint_configuration_identity(&self) -> Result<InstalledengramIdentity> {
+    fn endpoint_configuration_identity(&self) -> Result<InstalledEngramIdentity> {
         self.installed_engram_identity().cloned().ok_or_else(|| {
             ServiceError::Contract(
                 "endpoint configuration requires an installed project identity".into(),
@@ -59,7 +59,7 @@ impl RrdEngine {
         self.authorize(
             session,
             token,
-            SecurityAction::engramRead,
+            SecurityAction::EngramRead,
             now,
             request_id,
             operation_id,
@@ -79,7 +79,7 @@ impl RrdEngine {
         self.authorize(
             session,
             token,
-            SecurityAction::engramAdmin,
+            SecurityAction::EngramAdmin,
             now,
             request_id,
             operation_id,
@@ -132,7 +132,7 @@ impl RrdEngine {
         self.authorize(
             session,
             token,
-            SecurityAction::engramAdmin,
+            SecurityAction::EngramAdmin,
             now,
             request_id,
             operation_id,

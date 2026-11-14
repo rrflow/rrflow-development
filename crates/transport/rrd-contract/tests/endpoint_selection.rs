@@ -9,6 +9,9 @@ use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::path::PathBuf;
 
+#[path = "support/observed_configuration.rs"]
+mod observed_configuration;
+
 fn root(name: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("tests/fixtures/endpoint-selection-observed")
@@ -18,9 +21,27 @@ fn json(name: &str, file: &str) -> Value {
     serde_json::from_slice(&std::fs::read(root(name).join(file)).unwrap()).unwrap()
 }
 fn observation(name: &str) -> (EndpointConfiguration, EndpointSelectionAllowance, Vec<u8>) {
+    let receipt = json(name, "receipt.json");
+    let files = json(name, "files.json");
+    let configuration = observed_configuration::project(
+        &std::fs::read(root(name).join("configuration.json")).unwrap(),
+        files["configuration.json"].as_str().unwrap(),
+        receipt["configurationSha256"].as_str().unwrap(),
+    );
+    let mut allowance: EndpointSelectionAllowance =
+        serde_json::from_value(json(name, "allowance.json")).unwrap();
+    assert_eq!(
+        allowance.configuration_sha256,
+        receipt["configurationSha256"]
+    );
+    assert!(
+        allowance.validate_for(&configuration).is_err(),
+        "the captured allowance cannot authorize the derived identity"
+    );
+    allowance.configuration_sha256 = configuration.sha256().unwrap();
     (
-        serde_json::from_value(json(name, "configuration.json")).unwrap(),
-        serde_json::from_value(json(name, "allowance.json")).unwrap(),
+        configuration,
+        allowance,
         std::fs::read(root(name).join("choice-content.json")).unwrap(),
     )
 }
@@ -29,6 +50,34 @@ fn sha(bytes: &[u8]) -> String {
         .iter()
         .map(|byte| format!("{byte:02x}"))
         .collect()
+}
+
+#[test]
+fn extra_request_fields_are_accepted_but_never_authoritative() {
+    use rrd_contract::EndpointSelectionRequest;
+    let schema = serde_json::to_value(schemars::schema_for!(EndpointSelectionRequest)).unwrap();
+    assert_eq!(schema["additionalProperties"], true);
+    let original = serde_json::json!({
+        "scope": "project",
+        "task_id": "task-1",
+        "attempt_id": "attempt-1",
+        "max_storage_keys": 1,
+        "expected_task_sha256": "a".repeat(64),
+        "expected_configuration_sha256": "b".repeat(64)
+    });
+    let expected: EndpointSelectionRequest = serde_json::from_value(original.clone()).unwrap();
+    expected.validate().unwrap();
+    let mut future = original;
+    future["endpoint"] = serde_json::json!("https://not-an-authorized-endpoint.example");
+    future["observation"] =
+        serde_json::json!({"decision": "grant", "credential": "not-a-credential"});
+    let decoded: EndpointSelectionRequest = serde_json::from_value(future).unwrap();
+    decoded.validate().unwrap();
+    assert_eq!(decoded, expected);
+    assert_eq!(
+        serde_json::to_value(decoded).unwrap(),
+        serde_json::to_value(expected).unwrap()
+    );
 }
 
 #[test]
@@ -52,7 +101,7 @@ fn retained_calls_bind_actual_bytes_and_no_learning_claim() {
             response
         );
         let receipt = json(name, "receipt.json");
-        assert_eq!(
+        assert_ne!(
             receipt["configurationSha256"],
             configuration.sha256().unwrap()
         );
@@ -108,7 +157,7 @@ fn retained_calls_bind_actual_bytes_and_no_learning_claim() {
 }
 
 #[test]
-fn actual_model_choice_and_withheld_candidate_abstention_validate() {
+fn captured_model_choice_and_abstention_validate_against_derived_inputs() {
     let (configuration, allowance, response) = observation("available");
     let choice = EndpointSelectionChoice::decode(&response, &allowance, &configuration).unwrap();
     assert!(

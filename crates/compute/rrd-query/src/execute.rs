@@ -787,11 +787,8 @@ fn rows_for_source(
                     RuntimeMutation::Event { event }
                         if &event.kind == kind && change.at <= valid_at =>
                     {
-                        let reference = rrd_core::RuntimeRef::new(
-                            event.kind.to_string(),
-                            format!("cursor:{}", change.cursor),
-                        )
-                        .expect("persisted event reference is valid");
+                        let reference =
+                            rrd_core::RuntimeRef::event(event.kind.clone(), change.cursor);
                         active.insert(reference, (change, event));
                     }
                     RuntimeMutation::Retire { retirement }

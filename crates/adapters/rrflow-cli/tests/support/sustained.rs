@@ -1,6 +1,6 @@
 //! Ordinary installed campaign. Explicit environment admission keeps a long
 //! campaign out of ordinary correctness CI; failure artifacts are never green.
-use super::engram;
+use super::Engram;
 use rrd_client::RequestOptions;
 use rrd_contract::{CloseSession, CreateSession, ReadStorageDiagnostics, SessionLimits};
 use rrflow_eval::storage::*;
@@ -102,7 +102,7 @@ fn bounded_json<T: serde::de::DeserializeOwned>(path: &std::path::Path) -> Drive
 }
 
 async fn session(
-    engram: &engram,
+    engram: &Engram,
     client: rrd_client::RrdClient,
     seed: u64,
     campaign: &StorageCampaign,
@@ -173,7 +173,7 @@ async fn session(
 /// Rotate only between bounded segments, after every in-flight request has
 /// joined. Closing the old lease prevents a day of accumulated live sessions.
 async fn rotate_session(
-    engram: &engram,
+    engram: &Engram,
     work: &mut Workload,
     campaign: &StorageCampaign,
     clients: u64,
@@ -1248,7 +1248,7 @@ fn smoke_campaign() -> StorageCampaign {
 #[test]
 #[ignore = "explicit installed trace correlation; not capacity qualification"]
 fn installed_sampler_trace_matches_server_and_store() {
-    let engram = engram::install("fresh");
+    let engram = Engram::install("fresh");
     let clock = Instant::now();
     let (mut child, client, _) = engram.start_for_with_trace(clock, Duration::from_secs(300), true);
     let credential = rrd_engine::RrdEngine::read_installed_api_key(&engram.project).unwrap();
@@ -1379,7 +1379,7 @@ fn check_sample_trace(bytes: &[u8], request_id: &str, credential: &str) -> [u64;
 fn installed_sampler_trace_during_write_load() {
     const RECORDS: u64 = 4_000;
     const PERIOD: u64 = 125;
-    let engram = engram::install("fresh");
+    let engram = Engram::install("fresh");
     let clock = Instant::now();
     let (mut child, client, _) = engram.start_for_with_trace(clock, Duration::from_secs(600), true);
     let credential = rrd_engine::RrdEngine::read_installed_api_key(&engram.project).unwrap();
@@ -1535,7 +1535,7 @@ fn installed_disjoint_writes_from_one_stamp_conflict_without_partial_effect() {
         RequestOptions::new(id, id, Some(id), Some(u64::MAX)).unwrap()
     }
 
-    let engram = engram::install("fresh");
+    let engram = Engram::install("fresh");
     let clock = Instant::now();
     let (child, client, _) = engram.start_for(clock, Duration::from_secs(300));
     let credential = rrd_engine::RrdEngine::read_installed_api_key(&engram.project).unwrap();
@@ -1728,7 +1728,7 @@ fn installed_disjoint_writes_from_one_stamp_conflict_without_partial_effect() {
 #[test]
 #[ignore = "explicit native capacity-driver smoke; candidate portability job"]
 fn installed_capacity_workload_smoke() {
-    let engram = engram::install("fresh");
+    let engram = Engram::install("fresh");
     let clock = Instant::now();
     let (child, client, _) = engram.start_for(clock, Duration::from_secs(300));
     let credential = rrd_engine::RrdEngine::read_installed_api_key(&engram.project).unwrap();
@@ -2330,7 +2330,7 @@ async fn run_engram(
     for point in &campaign.points {
         for seed in &campaign.seeds {
             writer.admit_next()?;
-            let engram = engram::install_configured("fresh", configuration.as_deref());
+            let engram = Engram::install_configured("fresh", configuration.as_deref());
             if engram.build["executable_sha256"].as_str()
                 != Some(campaign.storage.candidate.executable_sha256.as_str())
                 || engram.plan["configuration"]["configuration_sha256"].as_str()

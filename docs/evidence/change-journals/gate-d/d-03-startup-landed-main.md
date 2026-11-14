@@ -28,7 +28,7 @@ The [startup implementation](d-03-startup-binding-inspection.md) and
 [incremental publication](d-03-incremental-publication.md) remain at their
 canonical installation and Inventory owners. The reviewed diff retains their
 source-dependent guards, current-record reuse, shared read budget and progress
-work-set identity. Opening a verified engram still does not certify project
+work-set identity. Opening a verified estate still does not certify project
 freshness or authorize a dependent effect.
 
 ## Composed acceptance

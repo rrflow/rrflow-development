@@ -10,7 +10,7 @@ use rrd_contract::{
     ClaimPromotionSnapshot, ClaimTierSnapshot, CloseSession, CloseSubscription,
     CloseSubscriptionResult, CommitReceipt, CommitTransaction, CorrelationId, CreateInstanceBackup,
     CreateInstanceBackupResult, CreateSession, DataCategorySchema, DataCategoryTargets,
-    DataDomainSchema, DataEmbeddingProvenance, DataengramOrganisation, DataEventSchema,
+    DataDomainSchema, DataEmbeddingProvenance, DataEngramOrganisation, DataEventSchema,
     DataGeoPoint, DataGeoValue, DataLogicalModel, DataObjectReceipt, DataProperties,
     DataPropertySchema, DataRecordSchema, DataReference, DataRelationSchema, DataSchemaMode,
     DataSchemaRegistry, DataSeriesValue, DataSnapshot, DataSnapshotEntry, DataTableSchema,
@@ -23,17 +23,17 @@ use rrd_contract::{
     DiagnosticModelKind, DiagnosticModelSnapshot, DiagnosticReadStamp, DiagnosticRetentionPin,
     DiagnosticRetentionSnapshot, DiagnosticRuntimeReference, DiagnosticSectionSnapshot,
     DiagnosticSnapshot, DiagnosticSnapshotLease, DiagnosticVectorArtifactCatalogueSnapshot,
-    DiagnosticVectorArtifactKind, DiagnosticVectorArtifactSnapshot, EnsureQueryIndex,
-    EnsureQueryIndexResult, EnsureVectorCollection, EnsureVectorCollectionResult,
+    DiagnosticVectorArtifactKind, DiagnosticVectorArtifactSnapshot, EngramConfiguration,
+    EnsureQueryIndex, EnsureQueryIndexResult, EnsureVectorCollection, EnsureVectorCollectionResult,
     EnsureVectorIndex, EnsureVectorIndexResult, EnsureVectorPayloadIndex,
-    EnsureVectorPayloadIndexResult, engramConfiguration, ExecuteFunction, ExecuteQuery,
-    ExecuteQueryTransaction, ExecuteRetrievalQuery, ExportAudit, FollowChangefeed,
-    ForwardRollbackCounts, ForwardRollbackPlan, ForwardRollbackRequest, FunctionArtifact,
-    FunctionArtifactMediaType, FunctionCatalogue, FunctionDefinition, FunctionExecutionResult,
-    FunctionInvocationProposal, FunctionInvocationReceipt, FunctionRuntime, FunctionRuntimeKind,
-    HybridFusion, HybridSearchHit, HybridSearchResult, InstalledengramIdentity,
-    InstanceBackupCatalogueSnapshot, InstanceBackupSnapshot, ListInstanceBackups, ListQueryIndexes,
-    ListVectorCollections, ListVectorPayloadIndexes, ListVectorQuantizationArtifacts,
+    EnsureVectorPayloadIndexResult, ExecuteFunction, ExecuteQuery, ExecuteQueryTransaction,
+    ExecuteRetrievalQuery, ExportAudit, FollowChangefeed, ForwardRollbackCounts,
+    ForwardRollbackPlan, ForwardRollbackRequest, FunctionArtifact, FunctionArtifactMediaType,
+    FunctionCatalogue, FunctionDefinition, FunctionExecutionResult, FunctionInvocationProposal,
+    FunctionInvocationReceipt, FunctionRuntime, FunctionRuntimeKind, HybridFusion, HybridSearchHit,
+    HybridSearchResult, InstalledEngramIdentity, InstanceBackupCatalogueSnapshot,
+    InstanceBackupSnapshot, ListInstanceBackups, ListQueryIndexes, ListVectorCollections,
+    ListVectorPayloadIndexes, ListVectorQuantizationArtifacts,
     ListVectorQuantizationArtifactsResult, LiveQueryDeltaResult, LiveQueryRowChange,
     LogicalArchiveSnapshot, NamedVectorDefinition, OpenSubscription, OpenSubscriptionResult,
     PollLiveQuery, PreviewTransaction, QueryExecutionAnalysisSnapshot, QueryExecutionSnapshot,
@@ -109,10 +109,10 @@ mod endpoint_configuration;
 mod endpoint_proposal;
 mod endpoint_worker;
 pub use endpoint_proposal::EndpointCredentials;
-mod error;
 mod engram;
 mod engram_control;
 mod engram_layout;
+mod error;
 mod flight;
 mod function;
 mod inference;
@@ -162,15 +162,15 @@ use data::public_data_snapshot;
 pub use distributed::{
     DistributedAuthorityRead, DistributedReadRoute, PreparedDistributedAuthority,
 };
-pub use error::{Result, ServiceError, ServiceErrorKind};
 pub use engram_control::{
-    engramAdminAction, engramAdminResult, engramBackupReconcileOutcome, engramReconcileOutcome,
+    EngramAdminAction, EngramAdminResult, EngramBackupReconcileOutcome, EngramReconcileOutcome,
 };
+pub use error::{Result, ServiceError, ServiceErrorKind};
 pub use installation::{
     attunement_proposal_schema, load_attunement_proposal, load_engram_configuration,
     AttunementProposal, AttunementProposalStep, DefaultAttunementPhase, DefaultInstallProfile,
     InstallationPreview, InstallationVerificationCheck, InstallationVerificationReport,
-    InstallationVerificationStatus, InstalledengramRecord, ProjectLocator,
+    InstallationVerificationStatus, InstalledEngramRecord, ProjectLocator,
     ATTUNEMENT_PROPOSAL_FORMAT_VERSION, INSTALLATION_PREVIEW_FORMAT_VERSION,
 };
 pub use invocation::{

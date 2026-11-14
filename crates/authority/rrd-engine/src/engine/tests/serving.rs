@@ -191,7 +191,7 @@ fn opening_an_engram_another_engine_holds_is_refused_as_in_use() {
     let Err(error) = open(project.path(), &executable) else {
         panic!("a second engine opened an engram another engine holds");
     };
-    assert!(matches!(error, ServiceError::engramInUse(_)), "{error:?}");
+    assert!(matches!(error, ServiceError::EngramInUse(_)), "{error:?}");
     assert_eq!(
         error.kind(),
         crate::engine::ServiceErrorKind::FailedPrecondition

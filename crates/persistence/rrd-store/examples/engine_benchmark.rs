@@ -854,7 +854,7 @@ fn write_workload(
     let corpus = (0..config.operations)
         .map(|index| {
             Claim::new(
-                Subject::new(format!("benchmark:{index:012}")).expect("valid subject"),
+                Subject::new(format!("benchmark-{index:012}")).expect("valid subject"),
                 Predicate::new("value").expect("valid predicate"),
                 format!("payload-{index:012}"),
                 index as u64 + 1,

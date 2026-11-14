@@ -1,0 +1,40 @@
+{
+  "status": 401,
+  "request": {
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "context": {
+      "request_id": "controller-proof-f4d3362eb2584866861827b60a9b2adf",
+      "operation_id": "controller-proof-f4d3362eb2584866861827b60a9b2adf",
+      "idempotency_key": "controller-proof-f4d3362eb2584866861827b60a9b2adf",
+      "deadline_unix_ms": null
+    },
+    "resource": {
+      "segments": [
+        {
+          "kind": "instance",
+          "id": "instance-0976612a58664c75431765c9"
+        }
+      ]
+    },
+    "payload": {
+      "scope": "instance:instance-0976612a58664c75431765c9",
+      "task_id": "task-19c2df2501b33aecb8a127b8d15fa0e8c281d60e36172c73974b3a7029f4bf9f",
+      "expected_budget_sha256": "3ef9ac0b4612a5f5e5c9bc7085ef725a2ad9f33c0ec2d73475ca404007cf8fa7"
+    }
+  },
+  "response": {
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "request_id": "controller-proof-f4d3362eb2584866861827b60a9b2adf",
+    "operation_id": "controller-proof-f4d3362eb2584866861827b60a9b2adf",
+    "outcome": {
+      "status": "error",
+      "error": {
+        "code": "unauthenticated",
+        "message": "exactly one valid session and authorization header are required",
+        "retryable": false
+      }
+    }
+  }
+}

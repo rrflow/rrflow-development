@@ -1163,7 +1163,7 @@ fn pre_canonical_rrflow_state_blocks_a_parallel_installation_authority() {
 
 #[test]
 fn installed_backups_and_restore_staging_live_beside_the_storage_roots() {
-    use crate::engine::engram_layout::{validate_recovery_engram, engramLayout};
+    use crate::engine::engram_layout::{validate_recovery_engram, EngramLayout};
     use rrd_contract::{
         CreateInstanceBackup, CreateSession, ListInstanceBackups, RestoreInstanceBackup,
         SessionLimits,
@@ -1288,9 +1288,9 @@ fn installed_backups_and_restore_staging_live_beside_the_storage_roots() {
     );
 
     let layout =
-        engramLayout::new(&storage_root_id, &preview.installation.initial_principal_id).unwrap();
+        EngramLayout::new(&storage_root_id, &preview.installation.initial_principal_id).unwrap();
     validate_recovery_engram(
-        &super::super::engram_layout::engramFilesystem::admit(
+        &super::super::engram_layout::EngramFilesystem::admit(
             rrd_store::filesystem::AnchoredPath::open_root(project.path()).unwrap(),
             false,
         )
@@ -1309,7 +1309,7 @@ fn installed_backups_and_restore_staging_live_beside_the_storage_roots() {
     );
 }
 
-struct Installedengram {
+struct InstalledEngram {
     _project: tempfile::TempDir,
     project_path: PathBuf,
     executable: PathBuf,
@@ -1319,7 +1319,7 @@ struct Installedengram {
 
 /// Installs a project, opens it as the product does, and authenticates with
 /// the installed credential. The caller owns the session.
-fn install_and_open() -> (Installedengram, RrdEngine, SessionLease) {
+fn install_and_open() -> (InstalledEngram, RrdEngine, SessionLease) {
     use rrd_contract::{CreateSession, InstallationManagedPathKind, SessionLimits};
 
     let project = tempfile::tempdir().unwrap();
@@ -1353,7 +1353,7 @@ fn install_and_open() -> (Installedengram, RrdEngine, SessionLease) {
             "operation-installed-session",
         )
         .unwrap();
-    let engram = Installedengram {
+    let engram = InstalledEngram {
         project_path: project.path().to_path_buf(),
         active_root: project.path().join(
             &preview
@@ -1697,7 +1697,7 @@ fn a_restored_root_carries_the_installed_control_state() {
 /// Installs, backs up, stages a restore of that backup, then performs more
 /// audited work on the active engram so the restored state is visibly older
 /// than the active one. Returns the backup identity and the restore id.
-fn install_backup_and_stage() -> (Installedengram, String, CanonicalId) {
+fn install_backup_and_stage() -> (InstalledEngram, String, CanonicalId) {
     use rrd_contract::CreateInstanceBackup;
 
     let (engram, engine, lease) = install_and_open();
@@ -1745,7 +1745,7 @@ fn install_backup_and_stage() -> (Installedengram, String, CanonicalId) {
     (engram, backup.backup.backup_sha256, restore_id)
 }
 
-fn authenticated_readiness(engram: &Installedengram, now: u64) -> rrd_contract::Readiness {
+fn authenticated_readiness(engram: &InstalledEngram, now: u64) -> rrd_contract::Readiness {
     use rrd_contract::{CreateSession, SessionLimits};
 
     let engine = RrdEngine::open_installed(&engram.project_path, &engram.executable).unwrap();
@@ -1777,7 +1777,7 @@ fn authenticated_readiness(engram: &Installedengram, now: u64) -> rrd_contract::
 /// `open_installed` and reaches authenticated readiness at the backup's state.
 #[test]
 fn a_staged_restore_is_published_in_place_and_the_engram_opens_from_the_backup() {
-    use crate::engine::engram_layout::{validate_recovery_engram, engramLayout};
+    use crate::engine::engram_layout::{validate_recovery_engram, EngramLayout};
 
     let (engram, backup_sha256, restore_id) = install_backup_and_stage();
     let locator = RrdEngine::read_project_locator(&engram.project_path).unwrap();
@@ -1906,7 +1906,7 @@ fn a_staged_restore_is_published_in_place_and_the_engram_opens_from_the_backup()
         token,
         "the token key travels with the engram"
     );
-    let layout = engramLayout::new(
+    let layout = EngramLayout::new(
         &plan.storage_root_id,
         &RrdEngine::read_installed_api_key(&engram.project_path)
             .unwrap()
@@ -1914,7 +1914,7 @@ fn a_staged_restore_is_published_in_place_and_the_engram_opens_from_the_backup()
     )
     .unwrap();
     validate_recovery_engram(
-        &super::super::engram_layout::engramFilesystem::admit(
+        &super::super::engram_layout::EngramFilesystem::admit(
             rrd_store::filesystem::AnchoredPath::open_root(&engram.project_path).unwrap(),
             false,
         )

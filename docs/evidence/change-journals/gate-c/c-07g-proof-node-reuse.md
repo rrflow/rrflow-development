@@ -11,7 +11,7 @@ change brief before implementation. Driver: current Codex session. Baseline
 public main is `dd225072bcc639c89b0eef968625cc73303ea998`, tree
 `0ee0344e039b94ea23f124bb2a50209fc7263882`; opening commit is
 `f2abd3d92d192f5f775e7c349b92620e90811190`. PR130's bounded handles are a
-prerequisite for the final large-engram candidate; this store change can be
+prerequisite for the final large-estate candidate; this store change can be
 component-tested independently. The only push target is public development.
 
 The earlier PR133 review described selected code paths. Its prose did not
@@ -33,7 +33,7 @@ The driver then failed `corpus setup exceeded its frozen deadline`, after
 or actual 24-hour soak started. This is incomplete readback, not a demonstrated
 lost acknowledgement and not successful capacity qualification.
 
-The private failed engram remains under the owned Linux guest base
+The private failed estate remains under the owned Linux guest base
 `/home/devcontainers/rrflow-c07-native-79663cdd`, directory
 `desktop-integrated-files-8a6752b2/rrflow reopen zDA4u8`. Its evidence is
 `desktop-integrated-preflight-8a6752b2/evidence`. Retained identities:
@@ -51,7 +51,7 @@ cumulative observations, not a causal explanation or a whole-campaign peak.
 The host remained 4 CPUs/8 GiB, with the original 2-GiB engine allocation.
 
 A separate full copy, `handles-readback-diagnostic-1`, preserved the original
-engram. The public HTTP diagnostic replay queried 200 corpus records with
+estate. The public HTTP diagnostic replay queried 200 corpus records with
 vectors, stamped record reads and five-edge adjacency reads. Mean observed
 calls were 10.827 ms vector, 14.688 ms record and 19.476 ms relation. The sampled
 record/relationship requests used 104/216 accumulator-proof backing reads;

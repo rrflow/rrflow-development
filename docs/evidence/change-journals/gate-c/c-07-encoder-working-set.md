@@ -53,7 +53,7 @@ and violations. That is CI evidence, not sustained profile acceptance.
 Its full Desktop preflight failed after 3,929,933 ms at **69,246 acknowledged
 records / 69,248 intents**, on the unchanged 30-second corpus-write deadline.
 The continuation refused qualification. **No actual 24-hour soak started.**
-The private original engram was retained and left unchanged. At failure,
+The private original estate was retained and left unchanged. At failure,
 RSS was 438,108,160 bytes, private memory 485,892,096, 818 compactions and
 111 flushes had completed with zero failures, and 867 segments occupied
 1,944,916,289 bytes. There was no reported OOM, fencing, allocation denial,
@@ -64,10 +64,10 @@ progress, result, launch, continuation and sanitized profile artifacts.
 Result SHA-256: `7ab8933932a66fbb47b753821e27518ad2f241902b46193be4447bda6a6c66e2`;
 progress: `5f7efe1ad3555b08257248eaeb2d9427fa5f9c2d30b99eba8b34783189134e43`;
 perf report: `d388e16fb619d38c0cd0686aa0d84ef89aee0ff550f7cced6a75f635a56199cd`.
-No private engram, credential or raw stack-memory capture is published.
+No private estate, credential or raw stack-memory capture is published.
 
 A 25-second native `perf record -F 99 -g --call-graph dwarf` capture on a
-separate engram copy attributed 23.33% self samples to kernel page
+separate estate copy attributed 23.33% self samples to kernel page
 initialization, with reallocations under `RowGroupBuilder::append` and
 `append_page`; LZ4, memcpy and frees were also visible. The copy's server was
 terminated after profiling. This identifies useful allocation work to remove,

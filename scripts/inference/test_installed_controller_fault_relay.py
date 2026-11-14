@@ -1,5 +1,6 @@
 """Local HTTP correctness probes only; bytes here are not model or training data."""
 from concurrent.futures import ThreadPoolExecutor
+from copy import deepcopy
 from http.client import RemoteDisconnected
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import hashlib
@@ -13,6 +14,7 @@ import unittest
 from urllib.request import Request, urlopen
 
 from installed_controller_fault_relay import FaultRelay
+from installed_task_resume_proof import assert_resumed_budget, validate_resume_profiles
 
 
 class FaultRelayTests(unittest.TestCase):
@@ -72,11 +74,11 @@ class FaultRelayTests(unittest.TestCase):
                             self.assertTrue((output / 'relay-dropped-delivery.json').exists())
                         else:
                             self.assertEqual(pending.result(timeout=5), payload)
-                    if followup:
+                    for extra in range(int(followup)):
                         self.assertEqual(invoke(b'separate capacity transport probe'), payload)
-                        third = json.loads((output / 'relay-3-observation.json').read_text())
-                        self.assertFalse(third['heldBeforeEngineResponse'])
-                        self.assertEqual(third['responseSha256'], hashlib.sha256(payload).hexdigest())
+                        observed = json.loads((output / f'relay-{hold_call + extra + 1}-observation.json').read_text())
+                        self.assertFalse(observed['heldBeforeEngineResponse'])
+                        self.assertEqual(observed['responseSha256'], hashlib.sha256(payload).hexdigest())
                     self.assertEqual(relay.calls, hold_call + int(followup))
                     self.assertIsNone(relay.error)
                 finally:
@@ -97,6 +99,9 @@ class FaultRelayTests(unittest.TestCase):
 
     def test_third_call_passes_after_the_second_call_barrier(self):
         self.exercise(2, False, followup=True)
+
+    def test_both_resumed_calls_preserve_bytes_after_the_second_call_barrier(self):
+        self.exercise(2, False, followup=2)
 
     def test_invalid_hold_ordinal_is_rejected_before_startup(self):
         for ordinal in (0, 3):
@@ -174,6 +179,64 @@ class FaultRelayTests(unittest.TestCase):
             self.assertEqual(result.returncode, 2)
             self.assertIn(b'A new proof requires all build, profile, task and credential inputs.', result.stderr)
             self.assertFalse(output.exists())
+
+    def test_terminal_resume_requires_its_own_mode_and_profile_before_startup(self):
+        base = ['--worker', '--worker-terminal-resume', '--resume-profile', 'unused']
+        invalid = [['--worker-terminal-resume', '--resume-profile', 'unused'],
+                   ['--worker', '--worker-terminal-resume'], ['--resume-profile', 'unused']]
+        invalid += [base + extra for extra in (
+            ['--worker-terminal-rejection', '--capacity-task-source', 'unused'],
+            ['--capacity-task-source', 'unused'], ['--worker-interrupt'], ['--fault-case', 'stop'],
+            ['--recover-proof', 'unused'], ['--admission-only'],
+            ['--native-client', 'unused', '--native-client-timeout-ms', '1000'])]
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / 'must-not-exist'
+            for arguments in invalid + [base]:
+                with self.subTest(arguments=arguments):
+                    result = subprocess.run([sys.executable, str(Path(__file__).with_name('installed_controller_proof.py')),
+                                             '--output', str(output), *arguments], capture_output=True, timeout=10)
+                    self.assertEqual(result.returncode, 2)
+                    missing_inputs = b'A new proof requires all build, profile, task and credential inputs.'
+                    if arguments == base:
+                        self.assertIn(missing_inputs, result.stderr)
+                    else:
+                        self.assertNotIn(missing_inputs, result.stderr)
+                    self.assertFalse(output.exists())
+
+    def test_resume_profile_admits_only_a_larger_worker_output_allowance(self):
+        # In-memory configuration-shape probes only; no model/provider data.
+        original = {'selection_policy': {'controller_binding_id': 'transport-probe'},
+                    'worker_policy': {'bindings': [{'binding_id': 'transport-probe',
+                                      'generation': {'maximum_output_tokens': 1}}]}}
+        restored = deepcopy(original)
+        restored['worker_policy']['bindings'][0]['generation']['maximum_output_tokens'] = 2
+        validate_resume_profiles(original, restored)
+        for field in ['name', 'bindings', 'selection_policy']:
+            changed = deepcopy(restored)
+            changed[field] = None
+            with self.subTest(field=field), self.assertRaises((AssertionError, TypeError)):
+                validate_resume_profiles(original, changed)
+        for value in [True, 1, 0, -1, '2']:
+            changed = deepcopy(restored)
+            changed['worker_policy']['bindings'][0]['generation']['maximum_output_tokens'] = value
+            with self.subTest(value=value), self.assertRaises(AssertionError):
+                validate_resume_profiles(original, changed)
+
+    def test_resume_oracle_rejects_budget_resets_using_retained_control_bytes(self):
+        root = Path(__file__).resolve().parents[2]
+        capture = root / 'docs/evidence/change-journals/gate-g/task-worker-terminal-live-receipts/worker-authorized-terminal-worker-budget.json'
+        before = json.loads(capture.read_text(encoding='utf-8'))['response']['outcome']['payload']
+        # Explicit in-memory perturbation, not a new observed engine response.
+        after = deepcopy(before)
+        after['budget']['stopped'] = None
+        after['budget']['stop_expected_sha256'] = None
+        after['budget_sha256'] = 'different oracle probe, not a receipt'
+        assert_resumed_budget(before, after)
+        for field in ['reserved_steps', 'charged_elapsed_ms', 'deadline_unix_ms', 'started_at_unix_ms']:
+            changed = deepcopy(after)
+            changed['budget'][field] += 1
+            with self.subTest(field=field), self.assertRaises(AssertionError):
+                assert_resumed_budget(before, changed)
 
 
 if __name__ == '__main__':

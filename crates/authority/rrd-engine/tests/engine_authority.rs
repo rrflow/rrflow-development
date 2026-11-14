@@ -1,21 +1,22 @@
 use rrd_contract::{
     transaction_operation_sha256, AuditDecision, AuditPhase, BeginTransaction, CanonicalId,
-    CloseSession, CommitTransaction, CorrelationId, CreateSession, DataengramOrganisation,
+    CloseSession, CommitTransaction, CorrelationId, CreateSession, DataEngramOrganisation,
     DataLogicalModel, DataProperties, DataPropertySchema, DataRecordSchema, DataReference,
     DataSchemaMode, DataSchemaRegistry, DataTableSchema, DataValueType, DataVectorValue,
-    DiagnosticAuthority, DiagnosticStorageEvidenceLevel, EnsureQueryIndex, EnsureVectorCollection,
-    engramDesiredPhase, InstallationManagedPathKind, InstallationTargetKind, NamedVectorDefinition,
-    QueryBudget, QueryIndexKind, QueryValue, ReadAudit, ReadChangefeed, ReadDiagnosticSnapshot,
-    RequestContext, ResourceId, ResourceKind, ResourcePath, SecurityAction, SessionLimits,
-    StorageProfileKind, TransactionMutation, VectorMemoryTier, VectorSearchMetric, VectorValueKind,
+    DiagnosticAuthority, DiagnosticStorageEvidenceLevel, EngramDesiredPhase, EnsureQueryIndex,
+    EnsureVectorCollection, InstallationManagedPathKind, InstallationTargetKind,
+    NamedVectorDefinition, QueryBudget, QueryIndexKind, QueryValue, ReadAudit, ReadChangefeed,
+    ReadDiagnosticSnapshot, RequestContext, ResourceId, ResourceKind, ResourcePath, SecurityAction,
+    SessionLimits, StorageProfileKind, TransactionMutation, VectorMemoryTier, VectorSearchMetric,
+    VectorValueKind,
 };
 use rrd_core::{digest, Claim, Predicate, Producer, Subject};
 use rrd_engine::{
-    engramAdminAction, engramAdminResult, Invocation, InvocationCredential, RrdEngine,
+    EngramAdminAction, EngramAdminResult, Invocation, InvocationCredential, RrdEngine,
     RrdOperation, ServiceError,
 };
 use rrd_engram::{
-    DesiredPhase, DesiredTarget, engramRepository, LeaseRequest, LocalengramPermission,
+    DesiredPhase, DesiredTarget, EngramRepository, LeaseRequest, LocalEngramPermission,
     LocalOperatorPolicy, MutationContext, ObservationRequest, ObservedPhase, ReceiptBoundary,
     ReceiptRequest, ScheduleBackup, SetDesired, SetRecoveryPolicy, LOCAL_OPERATOR_POLICY_FORMAT,
 };
@@ -129,7 +130,7 @@ fn one_authority_coordinates_security_data_catalogues_audit_and_reopen() {
         expires_at_unix_ms: 10_000,
         engrams: BTreeMap::from([(
             "engram-a".into(),
-            BTreeSet::from([LocalengramPermission::Create]),
+            BTreeSet::from([LocalEngramPermission::Create]),
         )]),
     };
     fs::write(&operator_policy, serde_json::to_vec(&policy).unwrap()).unwrap();
@@ -144,17 +145,17 @@ fn one_authority_coordinates_security_data_catalogues_audit_and_reopen() {
             200,
             "create-engram-request".into(),
             canonical("create-engram-operation"),
-            engramAdminAction::Create,
+            EngramAdminAction::Create,
         )
         .unwrap()
     };
     assert!(matches!(
         create_engram(),
-        engramAdminResult::Mutation(result) if !result.idempotent_replay
+        EngramAdminResult::Mutation(result) if !result.idempotent_replay
     ));
     assert!(matches!(
         create_engram(),
-        engramAdminResult::Mutation(result) if result.idempotent_replay
+        EngramAdminResult::Mutation(result) if result.idempotent_replay
     ));
 
     let engine = RrdEngine::open_installed(&project, &executable).unwrap();
@@ -226,7 +227,7 @@ fn one_authority_coordinates_security_data_catalogues_audit_and_reopen() {
             registry: DataSchemaRegistry {
                 revision: 2,
                 migration: "install authority fixture schema".into(),
-                organisation: DataengramOrganisation::default(),
+                organisation: DataEngramOrganisation::default(),
                 tables: BTreeMap::from([
                     (
                         canonical("document"),
@@ -500,7 +501,7 @@ fn one_authority_coordinates_security_data_catalogues_audit_and_reopen() {
     let engram_audit = audit
         .records
         .iter()
-        .filter(|record| record.action == SecurityAction::engramAdmin)
+        .filter(|record| record.action == SecurityAction::EngramAdmin)
         .collect::<Vec<_>>();
     assert!(engram_audit
         .iter()
@@ -571,15 +572,15 @@ fn private(_path: &Path) {}
 
 #[test]
 fn public_admin_phase_type_does_not_reintroduce_a_physical_engram_dependency() {
-    let action = engramAdminAction::SetDesired {
+    let action = EngramAdminAction::SetDesired {
         instance: canonical("project-a"),
         idempotency_key: "desired-a".into(),
-        phase: engramDesiredPhase::Stopped,
+        phase: EngramDesiredPhase::Stopped,
         deployment: canonical("rrd-server"),
         version: "1.0.0".into(),
         configuration_sha256: "a".repeat(64),
     };
-    assert!(matches!(action, engramAdminAction::SetDesired { .. }));
+    assert!(matches!(action, EngramAdminAction::SetDesired { .. }));
 }
 
 #[test]
@@ -650,8 +651,8 @@ fn engram_recovery_prune_and_restore_are_one_fenced_engine_workflow() {
         engrams: BTreeMap::from([(
             "engram-a".into(),
             BTreeSet::from([
-                LocalengramPermission::PruneRecovery,
-                LocalengramPermission::RestoreRecovery,
+                LocalEngramPermission::PruneRecovery,
+                LocalEngramPermission::RestoreRecovery,
             ]),
         )]),
     };
@@ -659,7 +660,7 @@ fn engram_recovery_prune_and_restore_are_one_fenced_engine_workflow() {
     private(&policy_path);
 
     let authority = rrd_store::RrflowKvStore::open(&database).unwrap();
-    let repository = engramRepository::new(&authority, canonical("engram-a"));
+    let repository = EngramRepository::new(&authority, canonical("engram-a"));
     let engram_context = |at, request: &str, operation: &str| MutationContext {
         at,
         actor: "operator-one".into(),
@@ -741,7 +742,7 @@ fn engram_recovery_prune_and_restore_are_one_fenced_engine_workflow() {
 
     for (job, scheduled_at) in [("backup-one", 100), ("backup-two", 200)] {
         let authority = rrd_store::RrflowKvStore::open(&database).unwrap();
-        engramRepository::new(&authority, canonical("engram-a"))
+        EngramRepository::new(&authority, canonical("engram-a"))
             .schedule_backup(&ScheduleBackup {
                 context: engram_context(scheduled_at, job, job),
                 instance_id: canonical("instance-a"),
@@ -978,7 +979,7 @@ fn engram_recovery_prune_and_restore_are_one_fenced_engine_workflow() {
     divergent
         .claims()
         .append_batch(&[Claim::new(
-            Subject::new("restore:divergent").unwrap(),
+            Subject::new("restore-divergent").unwrap(),
             Predicate::new("status").unwrap(),
             "different",
             4_350,

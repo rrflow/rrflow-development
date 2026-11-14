@@ -17,7 +17,7 @@ use rrd_contract::{
     FollowChangefeed, HttpMethod as ContractHttpMethod, ListInstanceBackups, ListKnowledgeTrees,
     ListQueryIndexes, ListVectorCollections, ListVectorQuantizationArtifacts, Liveness,
     OpenSubscription, PollLiveQuery, PreviewTransaction, ReadAudit, ReadChangefeed,
-    ReadDiagnosticSnapshot, Readengram, Readiness, RenewSession, ReplaceKnowledgeTrees,
+    ReadDiagnosticSnapshot, ReadEngram, Readiness, RenewSession, ReplaceKnowledgeTrees,
     RequestContext, RequestEnvelope, ResourceId, ResourceKind, ResponseEnvelope, ResponseOutcome,
     RestoreInstanceBackup, RetireVectorQuantizationArtifact, RetrieveVectorPoints,
     ScrollVectorPoints, SearchVectors, ServiceCapabilities, PROTOCOL, PROTOCOL_VERSION,

@@ -8,10 +8,10 @@
 use super::{DurableTraceSpan, TraceIdentity};
 use rrd_core::{
     DataTransaction, Millis, ObjectReference, ProjectionId, ReadStamp, RuntimeChange,
-    RuntimeCommit, RuntimeCommitOutcome, RuntimeLogicalModel, RuntimeMutation, RuntimeProperties,
-    RuntimePropertySchema, RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry,
-    RuntimeTableSchema, RuntimeType, RuntimeValue, RuntimeValueType, ScopeId, TraceBoundary,
-    TraceDataClass, TraceLink, TraceOutcome,
+    RuntimeCommit, RuntimeCommitOutcome, RuntimeId, RuntimeLogicalModel, RuntimeMutation,
+    RuntimeProperties, RuntimePropertySchema, RuntimeRecord, RuntimeRecordSchema, RuntimeRef,
+    RuntimeSchemaRegistry, RuntimeTableSchema, RuntimeType, RuntimeValue, RuntimeValueType,
+    ScopeId, TraceBoundary, TraceDataClass, TraceLink, TraceOutcome,
 };
 use rrd_store::{
     DataRuntimeAccess, Error as StoreError, ImmutableObjectStore, RuntimeReadBudget,
@@ -287,23 +287,20 @@ where
         );
     }
 
-    let record_reference = VectorArtifactCatalogEntry::record_reference(&descriptor)?;
-    let object_id = format!("{}.{}.vector-bytes", stamp.id, stamp.generation);
-    // The public changefeed projects every identity this publication writes,
-    // and it accepts only canonical ids.
-    for id in [record_reference.id.as_str(), object_id.as_str()] {
-        if let Err(error) = rrd_contract::CanonicalId::new(id) {
-            return finish_publication_error(
-                data.engine(),
-                span,
-                "catalog_identity",
-                format!("vector artifact identity {id} is not public: {error}").into(),
-            );
+    // Both identities exist before any bytes are staged, so one their types refuse stores nothing.
+    let identities = (
+        VectorArtifactCatalogEntry::record_reference(&descriptor),
+        RuntimeId::new(format!("{}.{}.vector-bytes", stamp.id, stamp.generation)),
+    );
+    let (record_reference, object_id) = match identities {
+        (Ok(record), Ok(object)) => (record, object),
+        (Err(error), _) | (_, Err(error)) => {
+            return finish_publication_error(data.engine(), span, "catalog_identity", error.into())
         }
-    }
+    };
     let bytes = artifact.as_bytes();
     let object = match data.stage_object(
-        object_id,
+        object_id.as_str(),
         Some(record_reference.clone()),
         artifact.kind().media_type(),
         bytes,
@@ -538,15 +535,9 @@ where
     descriptor.validate()?;
     let scope = descriptor.scope().clone();
     let stamp = descriptor.stamp().clone();
-    // The public changefeed projects every identity this build writes, and it
-    // accepts only canonical ids.
+    // Both identities exist before any bytes are staged, so one their types refuse stores nothing.
     let record_reference = QuantizationArtifactEntry::record_reference(&descriptor)?;
-    let object_id = format!("{}.{}.quantized-bytes", stamp.id, stamp.generation);
-    for id in [record_reference.id.as_str(), object_id.as_str()] {
-        rrd_contract::CanonicalId::new(id).map_err(|error| {
-            format!("quantization artifact identity {id} is not public: {error}")
-        })?;
-    }
+    let object_id = RuntimeId::new(format!("{}.{}.quantized-bytes", stamp.id, stamp.generation))?;
     let generation_bytes = stamp.generation.to_be_bytes();
     let identity = TraceIdentity::derive(&[
         scope.as_str().as_bytes(),
@@ -592,7 +583,7 @@ where
                 Some(staged) => staged.clone(),
                 None => {
                     let object = data.stage_object(
-                        object_id.clone(),
+                        object_id.as_str(),
                         Some(record_reference.clone()),
                         artifact.kind().media_type(),
                         artifact.as_bytes(),

@@ -36,11 +36,11 @@ impl AppState {
         now: u64,
     ) -> HttpResponse {
         let engram = engram_action(path, "read").expect("route checked");
-        self.with_authenticated_envelope::<Readengram, _, _>(
+        self.with_authenticated_envelope::<ReadEngram, _, _>(
             headers,
             body,
             now,
-            RrdOperation::engramRead,
+            RrdOperation::EngramRead,
             None,
             |envelope, session, token| {
                 let engram = CanonicalId::new(engram).map_err(|error| {
@@ -50,7 +50,7 @@ impl AppState {
                     .resource
                     .segments
                     .iter()
-                    .find(|segment| segment.kind == ResourceKind::engram)
+                    .find(|segment| segment.kind == ResourceKind::Engram)
                     .map(|segment| &segment.id);
                 if resource_engram != Some(&engram) {
                     return Err(ApiError::new(

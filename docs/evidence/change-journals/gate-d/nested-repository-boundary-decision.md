@@ -19,7 +19,7 @@ The owner requests that setup detect nested repositories and offer exclusion,
 separate projects/instances (recommended), or both repositories in one
 instance; the user decides. The topology owner now specifies one or more
 explicitly selected source repositories in one project while keeping one
-project/engram/engine authority. Gate D states engine-owned preview, exact
+project/estate/engine authority. Gate D states engine-owned preview, exact
 binding, filesystem admission and real-project proof. Connectome presents the
 engine proposal. POAM-006 records the observed gap. This package changes no
 runtime or product status and does not implement these choices.

@@ -1,0 +1,44 @@
+{
+  "status": 200,
+  "request": {
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "context": {
+      "request_id": "controller-proof-2457e0bc79034557839b2e771e3283fc",
+      "operation_id": "controller-proof-2457e0bc79034557839b2e771e3283fc",
+      "idempotency_key": null,
+      "deadline_unix_ms": null
+    },
+    "resource": {
+      "segments": [
+        {
+          "kind": "instance",
+          "id": "instance-0976612a58664c75431765c9"
+        }
+      ]
+    },
+    "payload": {
+      "scope": "instance:instance-0976612a58664c75431765c9",
+      "task_id": "task-19c2df2501b33aecb8a127b8d15fa0e8c281d60e36172c73974b3a7029f4bf9f",
+      "attempt_id": "actual-worker-70328021c7614a0cbd88606ad064aca6"
+    }
+  },
+  "response": {
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "request_id": "controller-proof-2457e0bc79034557839b2e771e3283fc",
+    "operation_id": "controller-proof-2457e0bc79034557839b2e771e3283fc",
+    "outcome": {
+      "status": "ok",
+      "payload": {
+        "attempt": {
+          "attempt_id": "actual-worker-70328021c7614a0cbd88606ad064aca6",
+          "ordinal": 2,
+          "status": "stopped",
+          "outcome_sha256": null,
+          "result": null
+        }
+      }
+    }
+  }
+}

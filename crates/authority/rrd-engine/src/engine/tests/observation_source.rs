@@ -238,7 +238,7 @@ fn installed_source_binding_preview_apply_restart_revoke_and_replay() {
         .records
         .iter()
         .any(|record| record.operation_id == "apply"
-            && record.action == SecurityAction::engramAdmin
+            && record.action == SecurityAction::EngramAdmin
             && record.decision == AuditDecision::Allowed));
     let entries = engine.storage.control().journal_since(0, 1024).unwrap();
     let actions: Vec<_> = entries
@@ -349,7 +349,7 @@ fn installed_source_binding_preview_apply_restart_revoke_and_replay() {
             expires_at_unix_ms: u64::MAX,
             disabled: false,
             role_ids: std::collections::BTreeSet::new(),
-            grants: [SecurityAction::SessionCreate, SecurityAction::engramRead]
+            grants: [SecurityAction::SessionCreate, SecurityAction::EngramRead]
                 .into_iter()
                 .map(|action| ResourceGrant {
                     action,

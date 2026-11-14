@@ -68,7 +68,7 @@ fn inventory(root: &Path) -> BTreeMap<String, (u64, String)> {
     result
 }
 
-fn require_denied(engram: &engram, serve: bool) -> serde_json::Value {
+fn require_denied(engram: &Engram, serve: bool) -> serde_json::Value {
     let mut command = engram.command();
     command
         .args([
@@ -107,7 +107,7 @@ fn require_denied(engram: &engram, serve: bool) -> serde_json::Value {
         "stdout_bytes":output.stdout.len(),"stderr_bytes":output.stderr.len()})
 }
 
-fn target(engram: &engram, role: &str) -> PathBuf {
+fn target(engram: &Engram, role: &str) -> PathBuf {
     let locator = rrd_engine::RrdEngine::read_project_locator(&engram.project).unwrap();
     let root = engram.project.join(locator.storage_root);
     let inspector = rrd_store::RrflowKvInspector::open(&root).unwrap();
@@ -140,7 +140,7 @@ fn target(engram: &engram, role: &str) -> PathBuf {
 }
 
 async fn restore_backup(
-    engram: &engram,
+    engram: &Engram,
     work: &mut Workload,
     backup: &BackupEvidence,
     originals: &[(Prepared, Digest)],
@@ -305,7 +305,7 @@ fn run(mode: &str) {
     .unwrap();
     policy["storage"]["wal_flush_target_bytes"] = toml::Value::Integer(1);
     std::fs::write(&path, toml::to_string(&policy).unwrap()).unwrap();
-    let engram = engram::install_configured(mode, Some(&path));
+    let engram = Engram::install_configured(mode, Some(&path));
     assert_eq!(
         engram.plan["configuration"]["storage"]["wal_flush_target_bytes"],
         1

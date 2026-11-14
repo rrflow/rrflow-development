@@ -1,7 +1,7 @@
 use rrd_contract::{CanonicalId, InstallationTargetKind};
 use rrd_engine::RrdEngine;
 use rrd_engram::{
-    BackupJobState, BackupReconcileOutcome, DesiredPhase, DesiredTarget, engramRepository,
+    BackupJobState, BackupReconcileOutcome, DesiredPhase, DesiredTarget, EngramRepository,
     LeaseRequest, MutationContext, ObservationRequest, ObservedPhase, ReceiptBoundary,
     ReceiptRequest, ScheduleBackup, SetDesired,
 };
@@ -62,7 +62,7 @@ fn install_instance(state_root: &Path) -> PathBuf {
 
 fn prepare(database: &Path, state_root: &Path) -> PathBuf {
     let engine = RrflowKvStore::open(database).unwrap();
-    let repository = engramRepository::new(&engine, id("engram-a"));
+    let repository = EngramRepository::new(&engine, id("engram-a"));
     repository
         .create(&context(10, "create-engram", "create-engram"))
         .unwrap();
@@ -203,7 +203,7 @@ fn run_and_kill(database: &Path, state_root: &Path, marker: &Path, at: u64, afte
 
 fn job_state(database: &Path) -> (BackupJobState, u64) {
     let engine = RrflowKvStore::open(database).unwrap();
-    let document = engramRepository::new(&engine, id("engram-a"))
+    let document = EngramRepository::new(&engine, id("engram-a"))
         .load()
         .unwrap()
         .unwrap();

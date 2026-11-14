@@ -10,7 +10,7 @@
 use crate::attunement::{
     digest_json, validate_bounded_text, validate_contract_version, validate_project_relative_path,
 };
-use crate::{invalid, validate_sha256, CanonicalId, InstalledengramIdentity, Result};
+use crate::{invalid, validate_sha256, CanonicalId, InstalledEngramIdentity, Result};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -32,7 +32,7 @@ pub enum RestorePublicationActionKind {
     PublishCandidateRoot,
     /// Open the published root through the installed engine path and record
     /// the publication receipt in its control journal.
-    OpenPublishedengram,
+    OpenPublishedEngram,
 }
 
 pub const RESTORE_PUBLICATION_ACTIONS: [RestorePublicationActionKind; 5] = [
@@ -40,7 +40,7 @@ pub const RESTORE_PUBLICATION_ACTIONS: [RestorePublicationActionKind; 5] = [
     RestorePublicationActionKind::CarryTokenKey,
     RestorePublicationActionKind::QuarantineActiveRoot,
     RestorePublicationActionKind::PublishCandidateRoot,
-    RestorePublicationActionKind::OpenPublishedengram,
+    RestorePublicationActionKind::OpenPublishedEngram,
 ];
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -90,7 +90,7 @@ impl RestoreRootEvidence {
 pub struct RestorePublicationPlan {
     pub contract_version: u16,
     pub id: CanonicalId,
-    pub target: InstalledengramIdentity,
+    pub target: InstalledEngramIdentity,
     pub product_version: String,
     pub executable_sha256: String,
     pub restore_id: CanonicalId,

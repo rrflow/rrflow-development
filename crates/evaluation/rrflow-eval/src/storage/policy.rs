@@ -23,7 +23,7 @@ pub enum PolicyUnit {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum PolicyScope {
-    engramProcess,
+    EngramProcess,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -107,7 +107,7 @@ impl StorageManifest {
                 value,
                 unit,
                 kind,
-                scope: PolicyScope::engramProcess,
+                scope: PolicyScope::EngramProcess,
                 change_rule: PolicyChangeRule::NoInstalledStorageReconfigurationCapability,
             })
             .collect())

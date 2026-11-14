@@ -254,7 +254,7 @@ pub struct RuntimeTagRef {
 /// collection without an entry belongs to its default domain, so a registry
 /// written before organisation existed keeps its meaning and its digest.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct RuntimeengramOrganisation {
+pub struct RuntimeEngramOrganisation {
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub domains: BTreeMap<RuntimeType, RuntimeDomainSchema>,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
@@ -267,7 +267,7 @@ pub struct RuntimeengramOrganisation {
     pub kind_tags: BTreeMap<RuntimeType, BTreeSet<RuntimeTagRef>>,
 }
 
-impl RuntimeengramOrganisation {
+impl RuntimeEngramOrganisation {
     pub fn is_default(&self) -> bool {
         self.domains.is_empty()
             && self.categories.is_empty()
@@ -490,8 +490,8 @@ fn validate_label(subject: &str, id: &RuntimeType, title: &str, description: &st
 pub struct RuntimeSchemaRegistry {
     pub revision: u64,
     pub migration: String,
-    #[serde(default, skip_serializing_if = "RuntimeengramOrganisation::is_default")]
-    pub organisation: RuntimeengramOrganisation,
+    #[serde(default, skip_serializing_if = "RuntimeEngramOrganisation::is_default")]
+    pub organisation: RuntimeEngramOrganisation,
     /// Sole logical-model authority for every schema-bound table. Specialized
     /// maps below add family-specific constraints; they never create a table
     /// or infer its model.
@@ -509,7 +509,7 @@ impl RuntimeSchemaRegistry {
         Self {
             revision,
             migration: migration.into(),
-            organisation: RuntimeengramOrganisation::default(),
+            organisation: RuntimeEngramOrganisation::default(),
             tables: BTreeMap::new(),
             records: BTreeMap::new(),
             relations: BTreeMap::new(),
@@ -1743,7 +1743,7 @@ mod tests {
     #[test]
     fn default_organisation_is_omitted_from_the_persisted_registry() {
         let mut registry = organised();
-        registry.organisation = RuntimeengramOrganisation::default();
+        registry.organisation = RuntimeEngramOrganisation::default();
         let json = serde_json::to_value(&registry).unwrap();
         assert!(json.get("organisation").is_none());
         let organised = serde_json::to_value(organised()).unwrap();

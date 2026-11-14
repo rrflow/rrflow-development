@@ -9,7 +9,7 @@ fn bootstrap_commit() -> RuntimeCommit {
         expected_cursor: 0,
         mutations: vec![RuntimeMutation::Claim {
             claim: Claim::new(
-                Subject::new("runtime:installed-test").unwrap(),
+                Subject::new("runtime-installed-test").unwrap(),
                 Predicate::new("status").unwrap(),
                 "installed",
                 100,
@@ -137,7 +137,7 @@ fn checkpoint_commit(store: &dyn StorageEngine) -> rrd_core::ReadStamp {
         .insert(0, RuntimeMutation::Schema { registry });
     commit.mutations.push(RuntimeMutation::Record {
         record: rrd_core::RuntimeRecord {
-            reference: rrd_core::RuntimeRef::new("file", "src/lib.rs").unwrap(),
+            reference: rrd_core::RuntimeRef::new("file", "src-lib.rs").unwrap(),
             valid_from: 100,
             valid_to: None,
             properties: rrd_core::RuntimeProperties::new(),

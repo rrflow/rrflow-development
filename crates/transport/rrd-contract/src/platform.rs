@@ -46,7 +46,7 @@ pub const PLATFORM_TERMS: [PlatformTermDefinition; 25] = [
     term(
         "engram",
         PlatformTermRole::ControlResource,
-        Some(ResourceKind::engram),
+        Some(ResourceKind::Engram),
     ),
     term(
         "project",

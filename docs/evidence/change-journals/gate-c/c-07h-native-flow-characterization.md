@@ -14,12 +14,12 @@ engine behavior, profile minima or gate status.
 | Run | Candidate | Ordinary executable SHA-256 | Campaign SHA-256 |
 |---|---|---|---|
 | Windows high load | 79663cdd4d162379c82a2fab0ff3f87d5cbf907e | a43a6fde4afdecade3468f932c861e6d110783919bd2dcf2c07f593edde32840 | cf74425d3e10b26517f35f65fd3720325dd51d23aecd11d0ef6f691c52a415fe |
-| Windows two-engram fleet | d2882fb31625366fe115b1f4f1937ffce5422f1d | a43a6fde4afdecade3468f932c861e6d110783919bd2dcf2c07f593edde32840 | 8d3500b5d6175aba4edb2dd86ddb08ac8194a5c99903d4cc50df4132b704fbe0 |
+| Windows two-estate fleet | d2882fb31625366fe115b1f4f1937ffce5422f1d | a43a6fde4afdecade3468f932c861e6d110783919bd2dcf2c07f593edde32840 | 8d3500b5d6175aba4edb2dd86ddb08ac8194a5c99903d4cc50df4132b704fbe0 |
 | Linux WSL ext4 cold flow | 79663cdd4d162379c82a2fab0ff3f87d5cbf907e | 28f4fdc3a7d63bb0dad0d377e5d525196a95b8f1cd2d6f1f9b3d01ab4a892aed | 5084b098fa831a0fb980dd882cb0fa48f64b40548f8723cf1a73fccc71466f5e |
 
 Each run uses a real installed optimized engine, four CPU capacity units and a
 4 GiB kernel-enforced process-tree allocation. The fleet shares one allocation
-across both engrams. The Linux environment is Ubuntu under WSL2 kernel
+across both estates. The Linux environment is Ubuntu under WSL2 kernel
 6.18.33.2-microsoft-standard-WSL2, not a bare-metal Linux performance claim.
 Its isolated Rust toolchain is the repository-pinned 1.99.1. Candidate checkout
 fetches the pinned Connectome submodule; default readiness does not use it.
@@ -37,8 +37,8 @@ second is NOT a supported operating point. A completed characterization and a
 successful evidence verifier do not mean that its performance thresholds passed.
 
 The repaired fleet execution completed in 328140ms: quiet, equal and abusive
-trials, each with two independent installed engrams and four clients per engram.
-The ordinary rate is one request/second per engram; the abusive member doubles
+trials, each with two independent installed estates and four clients per estate.
+The ordinary rate is one request/second per estate; the abusive member doubles
 that rate. All six child campaigns completed: 520 offered operations across 50
 segments, zero rejected/uncertain operations and zero latency-budget violations.
 Forty-two phase/reopen boundary observations record explicit foreign-session
@@ -80,7 +80,7 @@ relax zero-residency acceptance or change host-wide cache settings. The
 [Linux fadvise contract](https://man7.org/linux/man-pages/man2/posix_fadvise.2.html)
 explains why advice alone is not proof: only actual observed residency is used.
 Windows process command inspection confirmed the earlier default temporary
-engrams were already on D: NTFS. No Windows volume defect is claimed.
+estates were already on D: NTFS. No Windows volume defect is claimed.
 
 The earlier 24-hour attempt was intentionally replaced after 116 segments by
 candidate d2882fb3 with the repaired harness, canonical owner-projection digest

@@ -101,7 +101,7 @@ ownership invariants, source cleanup, immutable conversion behavior and checked
 admission were reviewed against pinned Arrow source. Existing traces remain;
 pool diagnostics describe reservations rather than claiming RSS. Explicit
 focused integration and arithmetic steps are required in Linux topology and
-Windows/macOS engram partitions; workflow policy requires each once.
+Windows/macOS estate partitions; workflow policy requires each once.
 
 Full engine/query suites were not run locally for this native-only package:
 consumer search found no direct projected-buffer use there, and the affected
