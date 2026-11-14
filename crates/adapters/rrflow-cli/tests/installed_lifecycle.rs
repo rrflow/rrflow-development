@@ -767,6 +767,47 @@ fn assert_restarted_status(
         assert_eq!(result.rows[0].identity, "claim:installed-walking-product:status");
         assert_eq!(result.rows[0].values.get("object"), Some(&QueryValue::String(expected.into())));
         verify_parquet_export(&client, &session, &result).await;
+        let cursor_request = |action| rrd_contract::InspectStorageCursor {
+            scope: format!("instance:{}", client.instance_id()),
+            cursor_id: rrd_contract::CorrelationId::new("restart-range-cursor").unwrap(),
+            action,
+        };
+        let open_range = rrd_contract::StorageCursorAction::OpenRange {
+            batch_rows: 1,
+            batch_bytes: 4096,
+            lifetime_ms: 30_000,
+            start: vec![0],
+            end: vec![255],
+        };
+        let page = client
+            .inspect_storage_cursor(
+                &session,
+                cursor_request(open_range.clone()),
+                RequestOptions::read("restart-range-open", "restart-range-open").unwrap(),
+            )
+            .await
+            .unwrap();
+        assert!(page.source_open && page.rows > 0);
+        assert_eq!(
+            client
+                .inspect_storage_cursor(
+                    &session,
+                    cursor_request(open_range),
+                    RequestOptions::read("restart-range-retry", "restart-range-retry").unwrap(),
+                )
+                .await
+                .unwrap(),
+            page
+        );
+        assert!(client
+            .inspect_storage_cursor(
+                &session,
+                cursor_request(rrd_contract::StorageCursorAction::Release {}),
+                RequestOptions::read("restart-range-release", "restart-range-release").unwrap(),
+            )
+            .await
+            .unwrap()
+            .released);
         client
             .close_session(
                 &session,

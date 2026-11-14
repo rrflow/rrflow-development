@@ -48,6 +48,16 @@ def proof(kind, allocation, harness, nonce=None):
 
 
 @contextmanager
+def windows_allocation_proof(allocation, harness):
+    """Keep the receipt's image and pathname pinned throughout its owned job."""
+    from windows_harness_image import pin_harness_image, verify_receipt_digest
+    with pin_harness_image(harness) as pinned_digest:
+        receipt, binding = proof("windows_job", allocation, harness)
+        verify_receipt_digest(receipt, pinned_digest)
+        yield receipt, binding
+
+
+@contextmanager
 def linux_allocation(parent, allocation):
     root = Path("/sys/fs/cgroup").resolve(strict=True)
     parent = parent.resolve(strict=True)
@@ -198,14 +208,14 @@ def main():
             state["cleanup_confirmed"] = True
         elif sys.platform == "win32":
             from owned_windows_process import run_owned
-            receipt, binding = proof("windows_job", allocation, harness)
-            environment["RRFLOW_SUSTAINED_ALLOCATION_RECEIPT"] = json.dumps(receipt, separators=(",", ":"))
-            state["allocation"] = receipt
-            result = run_owned(command, env=environment, timeout=timeout,
-                               job_name="Local\\RRFlowCapacity-" + receipt["nonce"],
-                               cpu_rate=10000 * receipt["vcpus"] // receipt["host_logical_cpus"],
-                               process_memory_bytes=allocation["engine_bytes"], job_memory_bytes=allocation["engine_bytes"],
-                               on_bound=lambda: print("native_sustained_enforcement=" + json.dumps(receipt), flush=True))
+            with windows_allocation_proof(allocation, harness) as (receipt, binding):
+                environment["RRFLOW_SUSTAINED_ALLOCATION_RECEIPT"] = json.dumps(receipt, separators=(",", ":"))
+                state["allocation"] = receipt
+                result = run_owned(command, env=environment, timeout=timeout,
+                                   job_name="Local\\RRFlowCapacity-" + receipt["nonce"],
+                                   cpu_rate=10000 * receipt["vcpus"] // receipt["host_logical_cpus"],
+                                   process_memory_bytes=allocation["engine_bytes"], job_memory_bytes=allocation["engine_bytes"],
+                                   on_bound=lambda: print("native_sustained_enforcement=" + json.dumps(receipt), flush=True))
             state["cleanup_confirmed"] = True
         else:
             raise NotRun("this platform needs an independently verified native VM memory allocation")

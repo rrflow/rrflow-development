@@ -6,10 +6,13 @@ use rrflow_eval::storage::{digest, Digest, ReadKeyDistribution, StorageLoadKind,
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::atomic::{AtomicU64, Ordering};
 
+pub(super) const WORKLOAD_RECORD_KIND: &str = "capacity_document";
+
 type Result<T> = std::result::Result<T, String>;
 
 #[derive(Clone)]
 pub(super) struct Workload {
+    pub native_worker: super::native_worker::Owner,
     pub client: RrdClient,
     pub session: Session,
     pub valid_at: u64,
@@ -547,7 +550,7 @@ impl Workload {
     }
     fn mutations(&self, key: &str, revision: u64) -> Vec<TransactionMutation> {
         let mut mutations = vec![TransactionMutation::PutRecord {
-            reference: reference("capacity_document", key),
+            reference: reference(WORKLOAD_RECORD_KIND, key),
             valid_from: self.valid_at,
             valid_to: None,
             properties: BTreeMap::from([
@@ -558,8 +561,8 @@ impl Workload {
         for ordinal in 0..self.edges_per_record {
             mutations.push(TransactionMutation::PutRelation {
                 reference: reference("capacity_link", &format!("edge-{ordinal}-{key}")),
-                from: reference("capacity_document", key),
-                to: reference("capacity_document", "anchor"),
+                from: reference(WORKLOAD_RECORD_KIND, key),
+                to: reference(WORKLOAD_RECORD_KIND, "anchor"),
                 valid_from: self.valid_at,
                 valid_to: None,
                 properties: BTreeMap::from([("revision".into(), QueryValue::Unsigned(revision))]),
@@ -568,7 +571,7 @@ impl Workload {
         for ordinal in 0..self.vectors_per_record {
             mutations.push(TransactionMutation::PutVector {
                 reference: reference("capacity_vector", &format!("vector-{ordinal}-{key}")),
-                subject: reference("capacity_document", key),
+                subject: reference(WORKLOAD_RECORD_KIND, key),
                 collection_id: id("capacity_documents"),
                 vector_name: id("body"),
                 field: id("embedding"),
@@ -678,7 +681,7 @@ impl Workload {
                 .ok_or("schema revision overflow")?;
             registry.migration = "installed capacity corpus".into();
             for (name, model) in [
-                ("capacity_document", DataLogicalModel::Document),
+                (WORKLOAD_RECORD_KIND, DataLogicalModel::Document),
                 ("capacity_link", DataLogicalModel::GraphRelation),
                 ("capacity_vector", DataLogicalModel::Vector),
             ] {
@@ -701,7 +704,7 @@ impl Workload {
                 );
             }
             registry.records.insert(
-                id("capacity_document"),
+                id(WORKLOAD_RECORD_KIND),
                 DataRecordSchema {
                     properties: BTreeMap::from([
                         (
@@ -725,8 +728,8 @@ impl Workload {
             registry.relations.insert(
                 id("capacity_link"),
                 DataRelationSchema {
-                    from: BTreeSet::from([id("capacity_document")]),
-                    to: BTreeSet::from([id("capacity_document")]),
+                    from: BTreeSet::from([id(WORKLOAD_RECORD_KIND)]),
+                    to: BTreeSet::from([id(WORKLOAD_RECORD_KIND)]),
                     properties: BTreeMap::from([(
                         "revision".into(),
                         DataPropertySchema {
@@ -740,7 +743,7 @@ impl Workload {
             let mutations = vec![
                 TransactionMutation::PutSchema { registry },
                 TransactionMutation::PutRecord {
-                    reference: reference("capacity_document", "anchor"),
+                    reference: reference(WORKLOAD_RECORD_KIND, "anchor"),
                     valid_from: self.valid_at,
                     valid_to: None,
                     properties: BTreeMap::new(),
@@ -856,7 +859,7 @@ impl Workload {
         if write.retired() {
             let mut targets = vec![(
                 DataLogicalModel::Document,
-                reference("capacity_document", &key),
+                reference(WORKLOAD_RECORD_KIND, &key),
             )];
             targets.extend((0..self.edges_per_record).map(|n| {
                 (
@@ -1095,7 +1098,7 @@ impl Workload {
                     "capacity_vector",
                     &format!("vector-{expected_vector_ordinal}-{expected_key}"),
                 )
-                && hit.subject == reference("capacity_document", expected_key),
+                && hit.subject == reference(WORKLOAD_RECORD_KIND, expected_key),
             "search winner differs from independent oracle",
         )?;
         check(
@@ -1223,7 +1226,7 @@ impl Workload {
                 .ok_or("vector reference differs")?;
             check(
                 seen.insert(ordinal)
-                    && vector.subject == reference("capacity_document", key)
+                    && vector.subject == reference(WORKLOAD_RECORD_KIND, key)
                     && vector.value == self.vector(revision.wrapping_add(u64::from(ordinal))),
                 "mixed vector differs from independent input",
             )?;
