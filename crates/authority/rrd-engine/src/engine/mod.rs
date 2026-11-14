@@ -106,6 +106,8 @@ mod data;
 mod diagnostic;
 mod distributed;
 mod endpoint_configuration;
+mod endpoint_proposal;
+pub use endpoint_proposal::EndpointCredentials;
 mod error;
 mod estate;
 mod estate_control;

@@ -1,0 +1,43 @@
+{
+  "status": 412,
+  "request": {
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "context": {
+      "request_id": "controller-proof-ab736575de944184a1bd0cf0cf7f0dc0",
+      "operation_id": "controller-proof-ab736575de944184a1bd0cf0cf7f0dc0",
+      "idempotency_key": "controller-proof-ab736575de944184a1bd0cf0cf7f0dc0",
+      "deadline_unix_ms": null
+    },
+    "resource": {
+      "segments": [
+        {
+          "kind": "instance",
+          "id": "instance-420ac9086e1e9373e370c24f"
+        }
+      ]
+    },
+    "payload": {
+      "scope": "instance:instance-420ac9086e1e9373e370c24f",
+      "task_id": "task-1766eff76b0e11595b01c597f49455e512841bbc0444bae4aadaf62f5994c535",
+      "attempt_id": "actual-proposal-bd11b07deeb543bd80f3b5533e10aefe",
+      "max_storage_keys": 1000000,
+      "expected_task_sha256": "2768dc6ce9d208da12e2068699bec9bf40cdc64d1599dab309e14cc5e02200c3",
+      "expected_configuration_sha256": "437b908073101a41f6a8131ce182d360b46612cd563da885696c0ac784d65933"
+    }
+  },
+  "response": {
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "request_id": "controller-proof-ab736575de944184a1bd0cf0cf7f0dc0",
+    "operation_id": "controller-proof-ab736575de944184a1bd0cf0cf7f0dc0",
+    "outcome": {
+      "status": "error",
+      "error": {
+        "code": "failed_precondition",
+        "message": "TaskAttemptInvalidated(AuthorizationChanged)",
+        "retryable": false
+      }
+    }
+  }
+}

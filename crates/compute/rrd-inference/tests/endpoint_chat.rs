@@ -278,3 +278,40 @@ fn native_live_calls_retain_actual_bytes_and_uncertain_failures() {
         assert!(receipt["observation"]["elapsed_ms"].as_u64().unwrap() > 0);
     }
 }
+
+#[test]
+fn partial_reported_usage_preserves_unknowns_and_rejects_impossible_totals() {
+    let (configuration, allowance, request) = inputs("available");
+    let binding = &configuration.profile.as_ref().unwrap().bindings[0].id;
+    let prepared =
+        PreparedEndpointChat::new(&configuration, binding, &allowance, &request).unwrap();
+    let original = response("available");
+    let mut partial = original.clone();
+    partial["usage"]
+        .as_object_mut()
+        .unwrap()
+        .remove("completion_tokens");
+    let observed = prepared
+        .decode_response(serde_json::to_vec(&partial).unwrap())
+        .unwrap();
+    assert!(observed.usage.as_ref().unwrap().completion_tokens.is_none());
+    assert_eq!(
+        observed.usage.unwrap().prompt_tokens,
+        original["usage"]["prompt_tokens"].as_u64()
+    );
+    // Explicit in-memory denial perturbations of the retained response. These
+    // values are not provider observations and are never exported as examples.
+    partial["usage"]["total_tokens"] = serde_json::json!(0);
+    assert!(prepared
+        .decode_response(serde_json::to_vec(&partial).unwrap())
+        .is_err());
+    let mut overflow = original;
+    overflow["usage"]
+        .as_object_mut()
+        .unwrap()
+        .remove("total_tokens");
+    overflow["usage"]["prompt_tokens"] = serde_json::json!(u64::MAX);
+    assert!(prepared
+        .decode_response(serde_json::to_vec(&overflow).unwrap())
+        .is_err());
+}
