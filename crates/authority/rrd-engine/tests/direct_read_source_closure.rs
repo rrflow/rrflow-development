@@ -56,7 +56,7 @@ const ALLOWED_USES: &[AllowedUse] = &[
         operation: "interrupted-reopen inventory snapshot record oracle",
     },
     AllowedUse {
-        path: "crates/operations/rrd-cluster/src/artifact_transfer.rs",
+        path: "crates/operations/rrd-cluster/src/artifact_transfer/session.rs",
         kind: SensitiveReadUse::CausalLogPage,
         count: 1,
         operation: "bounded cluster artifact-transfer replay",
