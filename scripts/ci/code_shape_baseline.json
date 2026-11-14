@@ -85,8 +85,6 @@
   "crates/persistence/rrd-lsm/src/segment/mod.rs": 2802,
   "crates/persistence/rrd-lsm/src/segment/physical_policy_lab.rs": 2026,
   "crates/persistence/rrd-lsm/src/segment/reader.rs": 1840,
-  "crates/persistence/rrd-store/src/access/index.rs": 1019,
-  "crates/persistence/rrd-store/src/access/semantic_commit.rs": 1199,
   "crates/persistence/rrd-store/src/access/versioned_read.rs": 1784,
   "crates/persistence/rrd-store/src/backup.rs": 2468,
   "crates/persistence/rrd-store/src/key_codec.rs": 861,
