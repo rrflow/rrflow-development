@@ -790,12 +790,7 @@ fn schema_catalogue_has_one_explicit_logical_model_authority() {
     let core_runtime =
         fs::read_to_string(metadata.root.join("crates/kernel/rrd-core/src/runtime.rs"))
             .expect("runtime snapshot source must be readable");
-    let public_contract = fs::read_to_string(
-        metadata
-            .root
-            .join("crates/transport/rrd-contract/src/lib.rs"),
-    )
-    .expect("public contract source must be readable");
+    let public_contract = module_source(&metadata.root, "crates/transport/rrd-contract/src/lib.rs");
 
     let optional_table_field =
         "#[serde(default, skip_serializing_if = \"BTreeMap::is_empty\")]\n    pub tables:";
@@ -894,12 +889,7 @@ fn vector_writes_require_one_canonical_collection_address() {
         );
     }
 
-    let contract = fs::read_to_string(
-        metadata
-            .root
-            .join("crates/transport/rrd-contract/src/lib.rs"),
-    )
-    .expect("public contract source must be readable");
+    let contract = module_source(&metadata.root, "crates/transport/rrd-contract/src/lib.rs");
     let put_vector = contract
         .split_once("    PutVector {")
         .expect("public PutVector mutation must exist")
@@ -963,12 +953,7 @@ fn vector_projection_lifecycle_has_no_duplicate_turboquant_authority() {
             .join("crates/authority/rrd-engine/src/engine/vector/quantization.rs"),
     )
     .expect("engine quantization source must be readable");
-    let contract = fs::read_to_string(
-        metadata
-            .root
-            .join("crates/transport/rrd-contract/src/lib.rs"),
-    )
-    .expect("public contract source must be readable");
+    let contract = module_source(&metadata.root, "crates/transport/rrd-contract/src/lib.rs");
     let collection = fs::read_to_string(
         metadata
             .root
@@ -2456,4 +2441,44 @@ fn contains_identity(haystack: &[u8], needle: &[u8]) -> bool {
             needle != skill_prefix
                 || !haystack[offset + needle.len()..].starts_with(b"-development")
         })
+}
+
+/// A module's whole source: the file plus every file of its child-module folder, in path order.
+///
+/// Rules about a module's source hold for the module however it is split into files. A crate root
+/// (`lib.rs` or `main.rs`) stands for every source file of its crate.
+fn module_source(root: &Path, relative: &str) -> String {
+    fn collect(directory: &Path, files: &mut Vec<PathBuf>) {
+        let Ok(entries) = fs::read_dir(directory) else {
+            return;
+        };
+        for entry in entries {
+            let path = entry.expect("module source entry must be readable").path();
+            if path.is_dir() {
+                collect(&path, files);
+            } else if path.extension().is_some_and(|extension| extension == "rs") {
+                files.push(path);
+            }
+        }
+    }
+    let file = root.join(relative);
+    let mut files = Vec::new();
+    if matches!(
+        file.file_name().and_then(|name| name.to_str()),
+        Some("lib.rs" | "main.rs")
+    ) {
+        collect(
+            file.parent().expect("crate root has a source directory"),
+            &mut files,
+        );
+    } else {
+        files.push(file.clone());
+        collect(&file.with_extension(""), &mut files);
+    }
+    files.sort();
+    files
+        .iter()
+        .map(|path| fs::read_to_string(path).expect("module source must be readable"))
+        .collect::<Vec<_>>()
+        .join("\n")
 }
