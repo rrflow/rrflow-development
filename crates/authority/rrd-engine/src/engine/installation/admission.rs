@@ -26,7 +26,7 @@ pub(super) fn inspect(
             let intent = read_existing_intent(project, layout, preview, executable_sha256)?;
             let result = replay_installation_result(project, preview, executable, clock)?;
             if intent.is_some() {
-                validate_recovery_estate(project, layout)?;
+                validate_recovery_estate(project, layout, &preview.installation)?;
             }
             return Ok(Admission::Published {
                 intent: intent.map(Box::new),
@@ -46,7 +46,7 @@ pub(super) fn inspect(
             &preview.installation.configuration.clock,
             "install.apply.recover",
         )?)?;
-        validate_recovery_estate(project, layout)?;
+        validate_recovery_estate(project, layout, &preview.installation)?;
         if project_inventory_sha256_excluding(
             project.project(),
             profile,
@@ -59,13 +59,27 @@ pub(super) fn inspect(
     }
     reject_existing_estate(project)?;
     validate_installation_target(project, preview.installation.target_kind)?;
+    validate_plan_ancestors(project, &preview.installation, true, true)?;
     if project_inventory_sha256(project.project(), profile)?
         != preview.installation.project_precondition_sha256
     {
         return Err(ServiceError::ProjectBindingMismatch);
     }
-    for managed in &preview.installation.managed_paths {
+    validate_new_paths(project, &preview.installation.managed_paths)?;
+    Ok(Admission::New(observe_required(
+        clock,
+        "install.apply.new",
+    )?))
+}
+
+pub(super) fn validate_new_paths(
+    project: &EstateFilesystem,
+    paths: &[rrd_contract::InstallationManagedPath],
+) -> Result<()> {
+    for managed in paths {
         if managed.kind != InstallationManagedPathKind::InstallationLease
+            && managed.removal_rule
+                != rrd_contract::InstallationRemovalRule::RetainExistingDirectory
             && project
                 .managed(&managed.relative_path)?
                 .try_exists()
@@ -73,9 +87,15 @@ pub(super) fn inspect(
         {
             return Err(ServiceError::ProjectBindingMismatch);
         }
+        if let Some(proof) = &managed.publication_proof {
+            if project
+                .managed(&proof.relative_path)?
+                .try_exists()
+                .map_err(storage_error)?
+            {
+                return Err(ServiceError::ProjectBindingMismatch);
+            }
+        }
     }
-    Ok(Admission::New(observe_required(
-        clock,
-        "install.apply.new",
-    )?))
+    Ok(())
 }

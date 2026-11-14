@@ -47,6 +47,12 @@ mod platform {
             "native directory enforcement unavailable",
         ))
     }
+    pub(super) fn directory_security_sha256(_: &File) -> io::Result<String> {
+        Err(io::Error::new(
+            io::ErrorKind::Unsupported,
+            "directory security inspection unavailable",
+        ))
+    }
 }
 
 fn denied(message: &'static str) -> io::Error {
@@ -55,6 +61,24 @@ fn denied(message: &'static str) -> io::Error {
 
 pub(in crate::engine) fn pin_private_directory(path: &AnchoredPath) -> io::Result<AnchoredPath> {
     path.pin_directory_checked(platform::validate_directory)
+}
+
+/// Read security from a retained, no-follow directory handle, without changing it.
+pub(in crate::engine) fn directory_security_sha256(path: &AnchoredPath) -> io::Result<String> {
+    let mut digest = None;
+    path.pin_directory_checked(|file| {
+        let first = platform::directory_security_sha256(file)?;
+        let second = platform::directory_security_sha256(file)?;
+        if first != second {
+            return Err(io::Error::new(
+                io::ErrorKind::WouldBlock,
+                "directory security changed while observed",
+            ));
+        }
+        digest = Some(first);
+        Ok(())
+    })?;
+    digest.ok_or_else(|| io::Error::other("directory security observation missing"))
 }
 
 pub(in crate::engine) fn create_private_directory_anchored(

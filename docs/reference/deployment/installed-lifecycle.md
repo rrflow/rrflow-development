@@ -615,13 +615,33 @@ D-01's installed foundation is accepted; wider operational and release gates rem
 
 ### Private estate-directory admission
 
-The four engine-owned boundaries `.rrflow`, `.rrflow/rrd`,
-`.rrflow/rrd/roots` and `.rrflow/credentials` are created with private native
-security. Unix creation requests mode `0700`; admission requires that mode
-and effective-user ownership on the opened directory. Windows creation
-supplies a protected owner/LocalSystem DACL with object/container inheritance;
-admission inspects the directory handle's owner, DACL and non-reparse disk
-attributes. The default project-parent ACL is not used as the security policy.
+New engine-owned boundaries `.rrflow`, `.rrflow/rrd`, `.rrflow/rrd/roots`
+and `.rrflow/credentials` use private native security. Unix creation requests
+mode `0700`; admission requires that mode and effective-user ownership on the
+opened directory. Windows creation supplies a protected owner/LocalSystem DACL
+with object/container inheritance; admission inspects the directory handle's
+owner, DACL and non-reparse disk attributes. The default project-parent ACL is
+not used as the security policy for these private objects.
+
+For an existing project, a preview can instead retain an existing `.rrflow`
+or `.rrflow/rrd` as a project-owned ancestor. The approved plan binds its native
+object identity and security descriptor; existing contents and permissions are
+left in place. The private `roots` and `credentials` directories must still be
+new and pass private admission. The locator and bootstrap files must be absent;
+private staging and identity-bound publication proofs prevent an identical
+project-owned file from being treated as an RRFlow output. A changed ancestor
+before apply requires a new preview. Ordinary source edits can then be
+replanned; a changed retained security descriptor after installation currently
+fails closed and has no re-admission command. Existing data are not migrated
+or incorporated into the newly created storage root.
+
+Retained-ancestor security snapshots are implemented for Windows and Linux;
+other Unix targets currently fail closed for this existing-directory case.
+The candidate recovery protocol also refuses unproven or incomplete private
+staging files, which may require manual diagnosis after an interruption within
+a file write. The installation-stage tests do not prove every possible crash
+window. These restrictions do not apply to an installation with entirely new
+private estate directories.
 
 Apply and recovery validate every present boundary before reading recovery
 secrets or advancing store work. Installed locator, credential, open and
@@ -630,9 +650,8 @@ only during new or interrupted apply. A changed mode, unsupported ACL or
 non-directory object is refused without permission repair; project-owned
 parents are never tightened. Creation does not replace an existing object.
 
-These checks extend the private-object boundary. Existing pre-alpha estates
-with incompatible directory permissions
-are refused rather than silently upgraded.
+These checks extend the private-object boundary. A pre-existing private child
+or conflicting managed file is refused rather than silently adopted.
 
 ### Retained filesystem authority
 

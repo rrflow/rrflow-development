@@ -83,6 +83,14 @@ in the real checkout. The [repair journal](../../evidence/change-journals/gate-d
 retains the failing oracle and limits. The installer repair and real-project
 acceptance remain open.
 
+The retained-directory repair candidate still refuses incomplete or unproven
+private staging after an interruption between file creation and publication
+proof. Its stage-boundary process-kill tests do not cover every write or sync
+window. A changed retained parent security descriptor also has no supported
+post-install re-admission path; non-Linux Unix retained-directory security
+snapshots are not implemented. Resolve these limits and prove native recovery
+before treating the inherited-directory workflow as qualified.
+
 D-01/D-03 and H-06 own remediation and the real-checkout acceptance in
 [Gate D](../../roadmap/rrflow-1.0/gate-d.md#nested-repository-setup). It includes
 bounded, explicitly authorized metadata roots and source identity, user choice,
