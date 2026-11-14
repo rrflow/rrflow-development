@@ -11,13 +11,122 @@ use rrd_contract::{
     InstallationRecordKind, InstallationRemovalRule, InstallationResult,
     InstallationSpecialization, InstallationStorageGeneration, InstallationTargetKind,
     InstalledEstateIdentity, MemorySeatDefinition, ResumeAttunement, SecurityAction,
-    StorageProfileKind, ATTUNEMENT_PHASES, INSTALLATION_PLAN_CONTRACT_VERSION,
+    StorageProfileKind, ATTUNEMENT_CONTRACT_VERSION, INSTALLATION_PLAN_CONTRACT_VERSION,
     INSTALL_ATTUNEMENT_CONTRACT_VERSION,
 };
 use schemars::{schema_for, JsonSchema};
 use serde::{Deserialize, Serialize};
 
+// Test fixture only: runtime plans own their positions and may differ.
+const ATTUNEMENT_PHASES: [AttunementPhase; 11] = [
+    AttunementPhase::Connect,
+    AttunementPhase::Inventory,
+    AttunementPhase::Parse,
+    AttunementPhase::Normalize,
+    AttunementPhase::EntityLink,
+    AttunementPhase::LexicalIndex,
+    AttunementPhase::Embed,
+    AttunementPhase::VectorIndex,
+    AttunementPhase::Graph,
+    AttunementPhase::Ground,
+    AttunementPhase::Verify,
+];
+
 const CREATED_AT: u64 = 1_800_000_000_000;
+
+#[test]
+fn attunement_schema_projects_version_and_plan_bounds() {
+    let plan = serde_json::to_value(schema_for!(AttunementPlan)).unwrap();
+    assert_eq!(
+        plan["properties"]["contract_version"]["const"],
+        serde_json::json!(ATTUNEMENT_CONTRACT_VERSION)
+    );
+    assert_eq!(plan["properties"]["phases"]["minItems"], 1);
+    assert_eq!(
+        plan["properties"]["phases"]["maxItems"],
+        serde_json::json!(rrd_contract::MAX_ATTUNEMENT_PHASES)
+    );
+    let installation = serde_json::to_value(schema_for!(InstallationResult)).unwrap();
+    assert!(installation["properties"]["contract_version"]
+        .get("const")
+        .is_none());
+}
+
+#[test]
+fn public_replan_operations_have_exact_authentication_and_mutation_boundaries() {
+    let catalogue = rrd_contract::endpoint_catalogue();
+    for (id, path, mutation, action) in [
+        (
+            "attunement-pause",
+            "/v1/attunement/pause",
+            true,
+            SecurityAction::EstateAdmin,
+        ),
+        (
+            "attunement-recover-expired",
+            "/v1/attunement/recover-expired",
+            true,
+            SecurityAction::EstateAdmin,
+        ),
+        (
+            "attunement-resume",
+            "/v1/attunement/resume",
+            true,
+            SecurityAction::EstateAdmin,
+        ),
+        (
+            "attunement-start",
+            "/v1/attunement/start",
+            true,
+            SecurityAction::EstateAdmin,
+        ),
+        (
+            "attunement-step",
+            "/v1/attunement/step",
+            true,
+            SecurityAction::EstateAdmin,
+        ),
+        (
+            "attunement-replan-preview",
+            "/v1/attunement/replan/preview",
+            false,
+            SecurityAction::EstateAdmin,
+        ),
+        (
+            "attunement-replan-accept",
+            "/v1/attunement/replan/accept",
+            true,
+            SecurityAction::EstateAdmin,
+        ),
+        (
+            "attunement-replan-receipt-read",
+            "/v1/attunement/replan/receipt/read",
+            false,
+            SecurityAction::EstateRead,
+        ),
+    ] {
+        let endpoint = catalogue
+            .endpoints
+            .iter()
+            .find(|endpoint| endpoint.operation.as_str() == id)
+            .unwrap();
+        assert_eq!(endpoint.path, path);
+        assert_eq!(endpoint.mutation, mutation);
+        assert_eq!(endpoint.action.fixed_action(), Some(action));
+        assert_eq!(
+            endpoint.authentication,
+            rrd_contract::EndpointAuthentication::SessionBearer
+        );
+    }
+    assert!(serde_json::from_value::<rrd_contract::StartAttunement>(serde_json::json!({
+        "contract_version": 1, "job_id": "job-a", "plan_sha256": "bad", "expected_revision": 1, "lease_ms": 100,
+        "unknown_effect": true
+    })).is_err());
+    let invalid: rrd_contract::StartAttunement = serde_json::from_value(serde_json::json!({
+        "contract_version": 2, "job_id": "job-a", "plan_sha256": "bad", "expected_revision": 1, "lease_ms": 100
+    })).unwrap();
+    assert!(invalid.validate().is_err());
+}
 
 #[test]
 fn attunement_status_is_an_authenticated_read_operation() {
@@ -104,19 +213,23 @@ fn target() -> InstalledEstateIdentity {
 
 fn attunement_plan() -> AttunementPlan {
     let mut plan = AttunementPlan {
-        contract_version: INSTALL_ATTUNEMENT_CONTRACT_VERSION,
+        contract_version: ATTUNEMENT_CONTRACT_VERSION,
         id: canonical_id("attune-01"),
         target: target(),
         source_sha256: digest(1),
         phases: ATTUNEMENT_PHASES
             .iter()
             .copied()
-            .map(|phase| AttunementPhasePlan {
-                phase,
-                sequence: phase.sequence(),
-                configuration_sha256: digest(100 + u64::from(phase.sequence())),
-                estimated_items: u64::from(phase.sequence()) * 10,
-                estimated_input_bytes: u64::from(phase.sequence()) * 1_024,
+            .enumerate()
+            .map(|(index, phase)| {
+                let sequence = u16::try_from(index + 1).unwrap();
+                AttunementPhasePlan {
+                    phase,
+                    sequence,
+                    configuration_sha256: digest(100 + u64::from(sequence)),
+                    estimated_items: u64::from(sequence) * 10,
+                    estimated_input_bytes: u64::from(sequence) * 1_024,
+                }
             })
             .collect(),
         estimated_min_duration_ms: 1_800_000,
@@ -125,6 +238,51 @@ fn attunement_plan() -> AttunementPlan {
     };
     plan.plan_sha256 = attunement_plan_sha256(&plan).unwrap();
     plan
+}
+
+#[test]
+fn bound_plan_accepts_a_project_specific_sequence() {
+    let mut plan = attunement_plan();
+    let mut connect_again = plan.phases[0].clone();
+    connect_again.sequence = 2;
+    let mut verify = plan.phases.last().unwrap().clone();
+    verify.sequence = 3;
+    plan.phases = vec![plan.phases[0].clone(), connect_again, verify];
+    plan.plan_sha256 = attunement_plan_sha256(&plan).unwrap();
+    assert!(plan.validate().is_ok());
+    let mut wrong_version = plan.clone();
+    wrong_version.contract_version = INSTALL_ATTUNEMENT_CONTRACT_VERSION;
+    wrong_version.plan_sha256 = attunement_plan_sha256(&wrong_version).unwrap();
+    assert!(wrong_version.validate().is_err());
+
+    let running = job(&plan, AttunementJobState::Running, 2, 3, CREATED_AT + 3_000);
+    assert_eq!(running.current_phase, Some(AttunementPhase::Verify));
+    running.validate(&plan).unwrap();
+    let mut changed = running.clone();
+    changed.checkpoints[1].configuration_sha256 = digest(999);
+    changed.checkpoints[1].checkpoint_sha256 =
+        attunement_checkpoint_sha256(&changed.checkpoints[1]).unwrap();
+    assert!(changed.validate(&plan).is_err());
+    let mut skipped = running.clone();
+    skipped.checkpoints.remove(0);
+    assert!(skipped.validate(&plan).is_err());
+    let mut early_success = running.clone();
+    early_success.state = AttunementJobState::Succeeded;
+    early_success.current_phase = None;
+    early_success.lease = None;
+    assert!(early_success.validate(&plan).is_err());
+    let mut no_verification = plan.clone();
+    no_verification.phases.pop();
+    no_verification.plan_sha256 = attunement_plan_sha256(&no_verification).unwrap();
+    assert!(no_verification.validate().is_err());
+    let mut foreign = plan.clone();
+    foreign.source_sha256 = digest(999);
+    foreign.plan_sha256 = attunement_plan_sha256(&foreign).unwrap();
+    assert!(running.validate(&foreign).is_err());
+    assert_eq!(running.next_phase(&foreign), None);
+    let mut tampered = plan.clone();
+    tampered.phases[2].phase = AttunementPhase::Inventory;
+    assert_eq!(running.next_phase(&tampered), None);
 }
 
 fn bootstrap() -> InstallationBootstrap {
@@ -409,26 +567,26 @@ fn installation_result(plan: &InstallationPlan) -> InstallationResult {
 fn checkpoints(plan: &AttunementPlan, count: usize) -> Vec<AttunementPhaseCheckpoint> {
     let mut output = Vec::new();
     let mut input_sha256 = plan.source_sha256.clone();
-    for phase in ATTUNEMENT_PHASES.iter().copied().take(count) {
-        let phase_output = digest(200 + u64::from(phase.sequence()));
+    for planned in plan.phases.iter().take(count) {
+        let phase = planned.phase;
+        let sequence = planned.sequence;
+        let phase_output = digest(200 + u64::from(sequence));
         let mut checkpoint = AttunementPhaseCheckpoint {
-            contract_version: INSTALL_ATTUNEMENT_CONTRACT_VERSION,
+            contract_version: ATTUNEMENT_CONTRACT_VERSION,
             job_id: canonical_id("job-01"),
             plan_sha256: plan.plan_sha256.clone(),
             phase,
-            sequence: phase.sequence(),
-            configuration_sha256: plan.phases[usize::from(phase.sequence() - 1)]
-                .configuration_sha256
-                .clone(),
+            sequence,
+            configuration_sha256: planned.configuration_sha256.clone(),
             input_sha256,
             output_sha256: phase_output.clone(),
             coordinates: AttunementRuntimeCoordinates {
-                runtime_manifest_sha256: digest(300 + u64::from(phase.sequence())),
-                runtime_cursor: u64::from(phase.sequence()),
+                runtime_manifest_sha256: digest(300 + u64::from(sequence)),
+                runtime_cursor: u64::from(sequence),
                 schema_revision: Some(1),
-                catalogue_revision: u64::from(phase.sequence()),
+                catalogue_revision: u64::from(sequence),
             },
-            committed_at_unix_ms: CREATED_AT + 100 + u64::from(phase.sequence()),
+            committed_at_unix_ms: CREATED_AT + 100 + u64::from(sequence),
             checkpoint_sha256: digest(0),
         };
         checkpoint.checkpoint_sha256 = attunement_checkpoint_sha256(&checkpoint).unwrap();
@@ -445,7 +603,7 @@ fn job(
     revision: u64,
     updated_at_unix_ms: u64,
 ) -> AttunementJob {
-    let phase = ATTUNEMENT_PHASES.get(checkpoint_count).copied();
+    let phase = plan.phases.get(checkpoint_count).map(|step| step.phase);
     let current_phase = match state {
         AttunementJobState::Pending
         | AttunementJobState::Cancelled
@@ -464,11 +622,11 @@ fn job(
         code: canonical_id("phase-execution-failed"),
         message: "phase execution failed before commit".into(),
         retryable: true,
-        evidence_sha256: digest(400 + u64::from(phase.unwrap().sequence())),
+        evidence_sha256: digest(400 + u64::try_from(checkpoint_count + 1).unwrap()),
         observed_at_unix_ms: updated_at_unix_ms,
     });
     AttunementJob {
-        contract_version: INSTALL_ATTUNEMENT_CONTRACT_VERSION,
+        contract_version: ATTUNEMENT_CONTRACT_VERSION,
         id: canonical_id("job-01"),
         plan_id: plan.id.clone(),
         plan_sha256: plan.plan_sha256.clone(),
@@ -495,7 +653,7 @@ fn verification(
 ) -> AttunementVerification {
     let last = job.checkpoints.last().unwrap();
     let mut verification = AttunementVerification {
-        contract_version: INSTALL_ATTUNEMENT_CONTRACT_VERSION,
+        contract_version: ATTUNEMENT_CONTRACT_VERSION,
         job_id: job.id.clone(),
         plan_sha256: job.plan_sha256.clone(),
         job_revision: job.revision,
@@ -598,22 +756,22 @@ fn golden_contract() -> GoldenAttunementContract {
         installation_plan,
         installation_result,
         status: AttunementStatus {
-            contract_version: INSTALL_ATTUNEMENT_CONTRACT_VERSION,
+            contract_version: ATTUNEMENT_CONTRACT_VERSION,
             observed_at_unix_ms: running.updated_at_unix_ms + 1,
             job: running,
         },
         state_snapshots,
         resume: ResumeAttunement {
-            contract_version: INSTALL_ATTUNEMENT_CONTRACT_VERSION,
+            contract_version: ATTUNEMENT_CONTRACT_VERSION,
             job_id: paused.id.clone(),
             plan_sha256: paused.plan_sha256.clone(),
             expected_job_revision: paused.revision,
             last_checkpoint_sha256: command_checkpoint(&paused),
-            resume_from_phase: paused.next_phase().unwrap(),
+            resume_from_phase: paused.current_phase.unwrap(),
             requested_at_unix_ms: paused.updated_at_unix_ms + 1,
         },
         cancel: CancelAttunement {
-            contract_version: INSTALL_ATTUNEMENT_CONTRACT_VERSION,
+            contract_version: ATTUNEMENT_CONTRACT_VERSION,
             job_id: paused.id.clone(),
             plan_sha256: paused.plan_sha256.clone(),
             expected_job_revision: paused.revision,
@@ -699,14 +857,14 @@ fn install_and_attunement_contract_matches_golden_json() {
     let actual = serde_json::to_value(&fixture).unwrap();
     if std::env::var_os("RRFLOW_UPDATE_GOLDEN").is_some() {
         let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("fixtures/install-attunement-v1.json");
+            .join("fixtures/install-attunement-v2.json");
         let mut encoded = serde_json::to_string_pretty(&actual).unwrap();
         encoded.push('\n');
         std::fs::write(path, encoded).unwrap();
         return;
     }
     let expected: serde_json::Value =
-        serde_json::from_str(include_str!("../fixtures/install-attunement-v1.json")).unwrap();
+        serde_json::from_str(include_str!("../fixtures/install-attunement-v2.json")).unwrap();
     assert_eq!(
         actual,
         expected,
@@ -927,12 +1085,12 @@ fn validation_rejects_skipped_phases_and_mismatched_digests() {
 
     let paused = job(&plan, AttunementJobState::Paused, 1, 3, CREATED_AT + 3_000);
     let mut stale_resume = ResumeAttunement {
-        contract_version: INSTALL_ATTUNEMENT_CONTRACT_VERSION,
+        contract_version: ATTUNEMENT_CONTRACT_VERSION,
         job_id: paused.id.clone(),
         plan_sha256: paused.plan_sha256.clone(),
         expected_job_revision: paused.revision,
         last_checkpoint_sha256: command_checkpoint(&paused),
-        resume_from_phase: paused.next_phase().unwrap(),
+        resume_from_phase: paused.next_phase(&plan).unwrap(),
         requested_at_unix_ms: paused.updated_at_unix_ms + 1,
     };
     stale_resume.expected_job_revision -= 1;
@@ -1071,4 +1229,87 @@ fn bootstrap_rejects_unknown_effects_versions_and_unbounded_generation() {
     let mut json = serde_json::to_value(&plan).unwrap();
     json["bootstrap"]["initial_records"][0] = serde_json::json!("unknown_record");
     assert!(serde_json::from_value::<InstallationPlan>(json).is_err());
+}
+
+#[test]
+fn replan_seed_preserves_the_existing_engine_wire_digest() {
+    let digest = rrd_contract::attunement_replan_seed(
+        &canonical_id("job-test"),
+        5,
+        &"a".repeat(64),
+        2,
+        &"b".repeat(64),
+    )
+    .unwrap();
+    assert_eq!(
+        digest,
+        "a2b55f6708f6bd425c4ffea1a6002bcff1a49568d2a5d54619b9497908196e8f"
+    );
+}
+
+#[test]
+fn public_attunement_control_commands_require_the_plan_contract_version() {
+    for version in [
+        INSTALL_ATTUNEMENT_CONTRACT_VERSION,
+        ATTUNEMENT_CONTRACT_VERSION,
+    ] {
+        let job_id = CanonicalId::new("versioned-job").unwrap();
+        let digest = "0".repeat(64);
+        let preview = rrd_contract::AttunementReplanPreview {
+            predecessor_job_id: job_id.clone(),
+            predecessor_revision: 1,
+            generation: 1,
+            plan: attunement_plan(),
+            proposal_sha256: digest.clone(),
+        };
+        let outcomes = [
+            rrd_contract::StartAttunement {
+                contract_version: version,
+                job_id: job_id.clone(),
+                plan_sha256: digest.clone(),
+                expected_revision: 1,
+                lease_ms: 100,
+            }
+            .validate()
+            .is_ok(),
+            rrd_contract::StepAttunement {
+                contract_version: version,
+                job_id: job_id.clone(),
+                expected_revision: 1,
+                lease_generation: 1,
+            }
+            .validate()
+            .is_ok(),
+            rrd_contract::PauseAttunement {
+                contract_version: version,
+                job_id: job_id.clone(),
+                expected_revision: 1,
+                lease_generation: 1,
+            }
+            .validate()
+            .is_ok(),
+            rrd_contract::RecoverExpiredAttunement {
+                contract_version: version,
+                job_id: job_id.clone(),
+                expected_revision: 1,
+            }
+            .validate()
+            .is_ok(),
+            rrd_contract::PreviewAttunementReplan {
+                contract_version: version,
+                job_id,
+                expected_revision: 1,
+            }
+            .validate()
+            .is_ok(),
+            rrd_contract::AcceptAttunementReplan {
+                contract_version: version,
+                preview,
+                proposal_sha256: digest,
+            }
+            .validate()
+            .is_ok(),
+        ];
+        assert_eq!(outcomes, [version == ATTUNEMENT_CONTRACT_VERSION; 6]);
+    }
 }

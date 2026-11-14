@@ -22,18 +22,22 @@ pub use capabilities::product_capability_catalogue;
 pub use edge::{OfflineDocument, OfflineEdgeConfig, OfflineEdgeIndex, OfflineQueryResult};
 #[cfg(feature = "full")]
 pub use engine::{
-    load_estate_configuration, AttunementCommand, AttunementControlResult, AttunementReceiptView,
-    AuthorizedInvocation, ClockAssessment, ClockAssessmentStatus, ClockObservation,
-    ClockObservationFailure, ClockSourceKind, ClockTrustLevel, DefaultAttunementPhase,
-    DefaultInstallProfile, DistributedAuthorityRead, DistributedReadRoute, EstateAdminAction,
-    EstateAdminResult, EstateBackupReconcileOutcome, EstateReconcileOutcome, InstallationPreview,
-    InstallationVerificationCheck, InstallationVerificationReport, InstallationVerificationStatus,
-    InstalledEstateRecord, InstalledTailRepairPlan, InstalledTailRepairReceipt, Invocation,
-    InvocationCompletion, InvocationCredential, PreparedDistributedAuthority, ProjectLocator,
-    ReasoningBudgetStop, Result, RrdEngine, RrdOperation, ServiceError, ServiceErrorKind,
-    ServingPublisher, ServingRecord, ServingRegistration, TaskEmbeddingAttempt,
-    TaskReasoningBudget, TransactionAdmissionSnapshot, CLOCK_OBSERVATION_FORMAT_VERSION,
-    MAX_AUDIT_PAGE_RECORDS, MAX_JWT_CREDENTIAL_BYTES, TOKEN_KEY_BYTES,
+    attunement_proposal_schema, load_attunement_proposal, load_estate_configuration,
+    AttunementCommand, AttunementControlResult, AttunementProposal, AttunementProposalStep,
+    AttunementReceiptView, AttunementReplanPreview, AttunementReplanReceiptView,
+    AttunementReplanResult, AuthorizedInvocation, ClockAssessment, ClockAssessmentStatus,
+    ClockObservation, ClockObservationFailure, ClockSourceKind, ClockTrustLevel,
+    DefaultAttunementPhase, DefaultInstallProfile, DistributedAuthorityRead, DistributedReadRoute,
+    EstateAdminAction, EstateAdminResult, EstateBackupReconcileOutcome, EstateReconcileOutcome,
+    InstallationPreview, InstallationVerificationCheck, InstallationVerificationReport,
+    InstallationVerificationStatus, InstalledEstateRecord, InstalledTailRepairPlan,
+    InstalledTailRepairReceipt, Invocation, InvocationCompletion, InvocationCredential,
+    PreparedDistributedAuthority, ProjectLocator, ReasoningBudgetStop, Result, RrdEngine,
+    RrdOperation, ServiceError, ServiceErrorKind, ServingPublisher, ServingRecord,
+    ServingRegistration, TaskEmbeddingAttempt, TaskReasoningBudget, TransactionAdmissionSnapshot,
+    ATTUNEMENT_PROPOSAL_FORMAT_VERSION, CLOCK_OBSERVATION_FORMAT_VERSION,
+    INSTALLATION_PREVIEW_FORMAT_VERSION, MAX_AUDIT_PAGE_RECORDS, MAX_JWT_CREDENTIAL_BYTES,
+    TOKEN_KEY_BYTES,
 };
 #[cfg(feature = "full")]
 pub use operator::{

@@ -274,26 +274,51 @@ impl<'a> RuntimeRepository<'a> {
         self.commit_at_read(commit, None, None, None)
     }
 
-    /// Cold-start composition boundary for runtime and control authority. Both
-    /// plans are validated against one physical snapshot and become visible
-    /// through one authoritative commit or not at all.
+    /// Composition boundary for already encoded runtime and control effects.
+    /// Both become visible through one authoritative commit or not at all.
     pub fn commit_with_control_transitions(
         &self,
         commit: &RuntimeCommit,
         transitions: &[ControlTransition],
     ) -> Result<(RuntimeCommitOutcome, Vec<ControlJournalEntry>)> {
-        commit.validate()?;
+        self.commit_with_control_builder(commit, |_, _| Ok::<_, Error>((transitions, ())))
+            .map(|(outcome, entries, ())| (outcome, entries))
+    }
+
+    /// Builds control checkpoints against the resulting runtime read identity
+    /// inside the same physical transaction. The builder receives validated,
+    /// staged state, not a published receipt. It must only construct/validate
+    /// transitions: external effects or an independent storage commit are not
+    /// permitted. It runs once, with no automatic retry.
+    ///
+    /// Builder, control-CAS or storage-admission rejection drops all staged
+    /// effects. Only authoritative commit success returns the caller's value;
+    /// uncertain native I/O errors still require ordinary outcome reconciliation.
+    pub fn commit_with_control_builder<T, E, C>(
+        &self,
+        commit: &RuntimeCommit,
+        build: impl FnOnce(&ReadStamp, &RuntimeCommitOutcome) -> std::result::Result<(C, T), E>,
+    ) -> std::result::Result<(RuntimeCommitOutcome, Vec<ControlJournalEntry>, T), E>
+    where
+        E: From<Error>,
+        C: AsRef<[ControlTransition]>,
+    {
+        commit.validate().map_err(Error::from)?;
         let mut transaction = self.storage.begin_transaction()?;
         let plan = prepare_semantic_commit(&*transaction, commit, None, None, None)?;
-        let entries = super::control::prepare_control_batch(&mut *transaction, transitions)?;
         let outcome = plan.apply(&mut *transaction)?;
+        let read = read_stamp_with(&*transaction, &commit.scope)?;
+        let (transitions, value) = build(&read, &outcome)?;
+        let entries =
+            super::control::prepare_control_batch(&mut *transaction, transitions.as_ref())?;
         match transaction.commit(Durability::Authoritative) {
-            Ok(_) => Ok((outcome, entries)),
+            Ok(_) => Ok((outcome, entries, value)),
             Err(Error::TransactionConflict { .. }) => Err(Error::RuntimeConflict {
                 expected: commit.expected_cursor,
                 actual: self.cursor()?,
-            }),
-            Err(error) => Err(error),
+            }
+            .into()),
+            Err(error) => Err(error.into()),
         }
     }
 
