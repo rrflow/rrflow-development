@@ -1,0 +1,14 @@
+{
+  "observedAt": "2026-11-07T01:12:33.548310+00:00",
+  "healthStatus": 200,
+  "authenticatedModelsStatus": 200,
+  "modelIds": [
+    "swag-qwen3-coder-intent-20261028"
+  ],
+  "expectedAliasPresent": true,
+  "profileSha256": "7765a4b1c1e454fd70b276725589bf713b66b952e0f94310897bded76646d669",
+  "modelGenerationRequested": false,
+  "loadedWeightsVerified": false,
+  "qualityQualified": false,
+  "priorUnknownAttemptRetained": true
+}

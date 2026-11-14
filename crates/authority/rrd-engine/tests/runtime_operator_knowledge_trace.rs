@@ -144,7 +144,7 @@ fn knowledge(installed: &InstalledEstateIdentity) -> OperatorKnowledgeBinding {
         dimensions: 3,
         projection: ProjectionStamp {
             contract_version: DATA_RUNTIME_CONTRACT_VERSION,
-            id: rrd_core::ProjectionId::new("operator:pgvector:knowledge").unwrap(),
+            id: rrd_core::ProjectionId::new("operator-pgvector-knowledge").unwrap(),
             generation: 1,
             source_cursor: 7,
             config_digest: "22".repeat(32),

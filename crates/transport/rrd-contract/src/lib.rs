@@ -14,9 +14,20 @@ mod storage_cursor;
 pub use storage_cursor::{InspectStorageCursor, StorageCursorAction, StorageCursorSnapshot};
 mod endpoint_binding;
 mod endpoint_configuration;
+mod endpoint_generation;
+mod endpoint_worker;
+pub use endpoint_generation::{
+    EndpointGenerationSettings, EndpointResponseFormat, EndpointTokenParameter,
+};
+pub use endpoint_worker::{
+    EndpointWorkerBinding, EndpointWorkerPolicy, TaskWorkerContext, TaskWorkerOutput,
+    TaskWorkerRequest, TaskWorkerSourceProvenance, TaskWorkerSourceRequest,
+    ENDPOINT_WORKER_VERSION, TASK_WORKER_SOURCE_VERSION,
+};
 mod endpoint_policy;
 mod endpoint_proposal;
 mod endpoint_selection;
+mod task_assessment;
 pub use endpoint_policy::EndpointSelectionPolicy;
 pub use endpoint_proposal::*;
 pub use endpoint_selection::{
@@ -24,6 +35,7 @@ pub use endpoint_selection::{
     EndpointSelectionCandidate, EndpointSelectionChoice, EndpointSelectionLimits,
     ENDPOINT_SELECTION_VERSION,
 };
+pub use task_assessment::*;
 mod observation_source;
 pub use observation_source::*;
 mod observation_delivery;
@@ -54,11 +66,11 @@ mod websocket;
 pub use attunement::{
     attunement_checkpoint_sha256, attunement_plan_sha256, attunement_replan_accept_sha256,
     attunement_replan_preview_sha256, attunement_replan_seed, attunement_verification_sha256,
-    installation_plan_sha256, installation_result_sha256, AcceptAttunementReplan,
-    AttunementCancelResult, AttunementControlResponse, AttunementFailure, AttunementJob,
-    AttunementJobPage, AttunementJobState, AttunementJobSummary, AttunementLease, AttunementPhase,
-    AttunementPhaseCheckpoint, AttunementPhasePlan, AttunementPlan, AttunementReadResult,
-    AttunementReceipt, AttunementReceiptReadResult, AttunementReplanPreview,
+    installation_initial_grants, installation_plan_sha256, installation_result_sha256,
+    AcceptAttunementReplan, AttunementCancelResult, AttunementControlResponse, AttunementFailure,
+    AttunementJob, AttunementJobPage, AttunementJobState, AttunementJobSummary, AttunementLease,
+    AttunementPhase, AttunementPhaseCheckpoint, AttunementPhasePlan, AttunementPlan,
+    AttunementReadResult, AttunementReceipt, AttunementReceiptReadResult, AttunementReplanPreview,
     AttunementReplanReceiptReadResult, AttunementReplanReceiptView, AttunementReplanResult,
     AttunementRuntimeCoordinates, AttunementSourceVerification, AttunementStatus,
     AttunementVerification, AttunementVerificationCheck, AttunementVerificationStatus,
@@ -232,9 +244,9 @@ pub use router::{
     ROUTER_CONTRACT_VERSION,
 };
 pub use sdk_conformance::{
-    SdkConformanceBackup, SdkConformanceChangefeed, SdkConformanceCorpus, SdkConformanceExpected,
-    SdkConformanceIdentity, SdkConformanceSession, SdkConformanceTransaction, SdkConformanceVector,
-    SDK_CONFORMANCE_FORMAT_VERSION,
+    SdkConformanceBackup, SdkConformanceChangefeed, SdkConformanceColdHistory,
+    SdkConformanceCorpus, SdkConformanceExpected, SdkConformanceIdentity, SdkConformanceSession,
+    SdkConformanceTransaction, SdkConformanceVector, SDK_CONFORMANCE_FORMAT_VERSION,
 };
 pub use task::{
     CloseTask, ListTasks, OpenTask, ReadTask, TaskPage, TaskReadResult, TaskRecord, TaskResult,
@@ -268,7 +280,7 @@ use std::fmt;
 pub const PROTOCOL: &str = "rrd";
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const OPENAPI_DOCUMENT_SHA256: &str =
-    "60d01903f277eede2c2a585d20477e213a64af19471a902df87fcfb24f89b99e";
+    "b99c0ee5e62cd0afc1fef72bb82626b860959c14d8330fb3b8ece7ea009753d5";
 pub const MAX_ID_BYTES: usize = 128;
 pub const MAX_MESSAGE_BYTES: usize = 4_096;
 pub const MAX_CAPABILITIES: usize = 512;
@@ -589,6 +601,7 @@ pub struct QueryResult {
     pub scope: String,
     pub read_manifest_sha256: String,
     pub known_at_cursor: u64,
+    pub result_identity_version: u16,
     pub schema_revision: u64,
     pub plan: QueryPlanSnapshot,
     pub execution: QueryExecutionSnapshot,
@@ -603,6 +616,9 @@ pub struct PollLiveQuery {
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub parameters: BTreeMap<String, QueryValue>,
     pub after_cursor: u64,
+    /// Identity version of the caller's retained snapshot; required on resume.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub result_identity_version: Option<u16>,
     #[serde(default)]
     pub budget: QueryBudget,
     pub max_delta_rows: u64,
@@ -619,6 +635,9 @@ impl PollLiveQuery {
             budget: self.budget.clone(),
         }
         .validate()?;
+        if self.result_identity_version == Some(0) {
+            return invalid("live query result identity version must be nonzero");
+        }
         if self.max_delta_rows == 0 || self.max_delta_rows > MAX_LIVE_QUERY_DELTA_ROWS {
             return invalid(format!(
                 "live query max_delta_rows must be in 1..={MAX_LIVE_QUERY_DELTA_ROWS}"
@@ -646,6 +665,7 @@ pub struct LiveQueryDeltaResult {
     pub timed_out: bool,
     pub waited_ms: u64,
     pub query_sha256: String,
+    pub result_identity_version: u16,
     pub from_cursor: u64,
     pub through_cursor: u64,
     pub head_cursor: u64,
@@ -832,6 +852,12 @@ pub struct QueryIndexSnapshot {
     pub source_cursor: u64,
     pub built_valid_at: Option<u64>,
     pub artifact_rows: Option<u64>,
+    /// Identity encoding of the derived rows, absent for older artifacts.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub result_identity_version: Option<u16>,
+    /// The stored index is not eligible until rebuilt with current identities.
+    #[serde(default)]
+    pub identity_rebuild_required: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub analytics_total_count: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -2783,6 +2809,9 @@ pub enum SubscriptionStream {
         #[serde(default)]
         budget: QueryBudget,
         max_delta_rows: u64,
+        /// Version of an existing caller snapshot when opening from a cursor.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        result_identity_version: Option<u16>,
     },
 }
 
@@ -2801,11 +2830,13 @@ impl SubscriptionStream {
                 parameters,
                 budget,
                 max_delta_rows,
+                result_identity_version,
             } => PollLiveQuery {
                 scope: scope.clone(),
                 query: query.clone(),
                 parameters: parameters.clone(),
                 after_cursor,
+                result_identity_version: *result_identity_version,
                 budget: budget.clone(),
                 max_delta_rows: *max_delta_rows,
                 wait_timeout_ms: 0,
@@ -2877,6 +2908,8 @@ pub struct SubscriptionSnapshot {
     pub subscription_id: CorrelationId,
     pub stream_sha256: String,
     pub acknowledged_cursor: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub result_identity_version: Option<u16>,
     pub retention_floor_cursor: u64,
     pub head_cursor: u64,
     pub batch_size: u64,
@@ -3095,6 +3128,8 @@ pub enum SecurityAction {
     ReasoningRead,
     ReasoningWrite,
     EndpointPropose,
+    WorkerExecute,
+    ProjectSourceRead,
     ObservationPrepare,
     ObservationDeliver,
     ObservationRead,
@@ -3105,7 +3140,7 @@ pub enum SecurityAction {
 impl SecurityAction {
     /// Canonical policy-action catalogue. Installation profiles and other
     /// projections consume this list instead of maintaining parallel copies.
-    pub const ALL: [Self; 57] = [
+    pub const ALL: [Self; 59] = [
         Self::ServiceInspect,
         Self::UnknownRequest,
         Self::SessionCreate,
@@ -3158,6 +3193,8 @@ impl SecurityAction {
         Self::ReasoningRead,
         Self::ReasoningWrite,
         Self::EndpointPropose,
+        Self::WorkerExecute,
+        Self::ProjectSourceRead,
         Self::ObservationPrepare,
         Self::ObservationDeliver,
         Self::ObservationRead,
@@ -4128,6 +4165,16 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             "TaskBudgetView",
         ),
         endpoint(
+            "task-budget-resume",
+            HttpMethod::Post,
+            "/v1/tasks/budget/resume",
+            EndpointAuthentication::SessionBearer,
+            true,
+            SecurityAction::ReasoningWrite,
+            "ResumeTaskBudget",
+            "TaskBudgetView",
+        ),
+        endpoint(
             "task-budget-stop",
             HttpMethod::Post,
             "/v1/tasks/budget/stop",
@@ -4196,6 +4243,36 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             SecurityAction::EndpointPropose,
             "EndpointSelectionRequest",
             "EndpointSelectionProposal",
+        ),
+        endpoint(
+            "task-worker-execute",
+            HttpMethod::Post,
+            "/v1/tasks/worker/execute",
+            EndpointAuthentication::SessionBearer,
+            true,
+            SecurityAction::WorkerExecute,
+            "TaskWorkerRequest",
+            "TaskWorkerOutput",
+        ),
+        endpoint(
+            "task-assessment-execute",
+            HttpMethod::Post,
+            "/v1/tasks/assessment/execute",
+            EndpointAuthentication::SessionBearer,
+            true,
+            SecurityAction::EndpointPropose,
+            "TaskAssessmentRequest",
+            "TaskAssessmentOutput",
+        ),
+        endpoint(
+            "task-assessment-read",
+            HttpMethod::Post,
+            "/v1/tasks/assessment/read",
+            EndpointAuthentication::SessionBearer,
+            false,
+            SecurityAction::ReasoningRead,
+            "ReadTaskAssessment",
+            "TaskAssessmentView",
         ),
         endpoint(
             "task-close",
@@ -4296,6 +4373,36 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             SecurityAction::VectorCollectionList,
             "ListVectorCollections",
             "VectorCollectionCatalogueSnapshot",
+        ),
+        endpoint(
+            "vector-index-ensure",
+            HttpMethod::Post,
+            "/v1/vector/indexes/ensure",
+            EndpointAuthentication::SessionBearer,
+            true,
+            SecurityAction::VectorCollectionEnsure,
+            "EnsureVectorIndex",
+            "EnsureVectorIndexResult",
+        ),
+        endpoint(
+            "vector-payload-index-delete",
+            HttpMethod::Post,
+            "/v1/vector/payload-indexes/delete",
+            EndpointAuthentication::SessionBearer,
+            true,
+            SecurityAction::VectorPayloadIndexDelete,
+            "DeleteVectorPayloadIndex",
+            "DeleteVectorPayloadIndexResult",
+        ),
+        endpoint(
+            "vector-payload-index-ensure",
+            HttpMethod::Post,
+            "/v1/vector/payload-indexes/ensure",
+            EndpointAuthentication::SessionBearer,
+            true,
+            SecurityAction::VectorPayloadIndexEnsure,
+            "EnsureVectorPayloadIndex",
+            "EnsureVectorPayloadIndexResult",
         ),
         endpoint(
             "vector-point-retrieve",
@@ -4694,14 +4801,18 @@ fn request_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "ConfigureTaskBudget" => schema_json::<RequestEnvelope<ConfigureTaskBudget>>(),
         "ExecuteTaskEmbedding" => schema_json::<RequestEnvelope<ExecuteTaskEmbedding>>(),
         "EndpointSelectionRequest" => schema_json::<RequestEnvelope<EndpointSelectionRequest>>(),
+        "TaskWorkerRequest" => schema_json::<RequestEnvelope<TaskWorkerRequest>>(),
+        "TaskAssessmentRequest" => schema_json::<RequestEnvelope<TaskAssessmentRequest>>(),
         "PrepareObservationDelivery" => {
             schema_json::<RequestEnvelope<PrepareObservationDelivery>>()
         }
         "DeliverObservation" => schema_json::<RequestEnvelope<DeliverObservation>>(),
         "ReadObservationDelivery" => schema_json::<RequestEnvelope<ReadObservationDelivery>>(),
+        "ReadTaskAssessment" => schema_json::<RequestEnvelope<ReadTaskAssessment>>(),
         "ReadTaskAttempt" => schema_json::<RequestEnvelope<ReadTaskAttempt>>(),
         "ReadTaskBudget" => schema_json::<RequestEnvelope<ReadTaskBudget>>(),
         "StopTaskBudget" => schema_json::<RequestEnvelope<StopTaskBudget>>(),
+        "ResumeTaskBudget" => schema_json::<RequestEnvelope<ResumeTaskBudget>>(),
         "AbortTransaction" => schema_json::<RequestEnvelope<AbortTransaction>>(),
         "AssembleContext" => schema_json::<RequestEnvelope<AssembleContext>>(),
         "BeginTransaction" => schema_json::<RequestEnvelope<BeginTransaction>>(),
@@ -4761,6 +4872,9 @@ fn request_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "RetrieveVectorPoints" => schema_json::<RequestEnvelope<RetrieveVectorPoints>>(),
         "ScrollVectorPoints" => schema_json::<RequestEnvelope<ScrollVectorPoints>>(),
         "SearchVectors" => schema_json::<RequestEnvelope<SearchVectors>>(),
+        "EnsureVectorIndex" => schema_json::<RequestEnvelope<EnsureVectorIndex>>(),
+        "EnsureVectorPayloadIndex" => schema_json::<RequestEnvelope<EnsureVectorPayloadIndex>>(),
+        "DeleteVectorPayloadIndex" => schema_json::<RequestEnvelope<DeleteVectorPayloadIndex>>(),
         "BuildVectorQuantizationArtifact" => {
             schema_json::<RequestEnvelope<BuildVectorQuantizationArtifact>>()
         }
@@ -4784,7 +4898,10 @@ fn response_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "EmbeddingModelCatalogue" => schema_json::<ResponseEnvelope<EmbeddingModelCatalogue>>(),
         "GenerateEmbeddingsResult" => schema_json::<ResponseEnvelope<GenerateEmbeddingsResult>>(),
         "TaskAttemptView" => schema_json::<ResponseEnvelope<TaskAttemptView>>(),
+        "TaskAssessmentView" => schema_json::<ResponseEnvelope<TaskAssessmentView>>(),
         "EndpointSelectionProposal" => schema_json::<ResponseEnvelope<EndpointSelectionProposal>>(),
+        "TaskAssessmentOutput" => schema_json::<ResponseEnvelope<TaskAssessmentOutput>>(),
+        "TaskWorkerOutput" => schema_json::<ResponseEnvelope<TaskWorkerOutput>>(),
         "TaskBudgetView" => schema_json::<ResponseEnvelope<TaskBudgetView>>(),
         "AuditExport" => schema_json::<ResponseEnvelope<AuditExport>>(),
         "AuditPage" => schema_json::<ResponseEnvelope<AuditPage>>(),
@@ -4864,6 +4981,13 @@ fn response_envelope_schema(name: &str) -> Result<serde_json::Value> {
             schema_json::<ResponseEnvelope<VectorCollectionCatalogueSnapshot>>()
         }
         "VectorSearchResult" => schema_json::<ResponseEnvelope<VectorSearchResult>>(),
+        "EnsureVectorIndexResult" => schema_json::<ResponseEnvelope<EnsureVectorIndexResult>>(),
+        "EnsureVectorPayloadIndexResult" => {
+            schema_json::<ResponseEnvelope<EnsureVectorPayloadIndexResult>>()
+        }
+        "DeleteVectorPayloadIndexResult" => {
+            schema_json::<ResponseEnvelope<DeleteVectorPayloadIndexResult>>()
+        }
         "BuildVectorQuantizationArtifactResult" => {
             schema_json::<ResponseEnvelope<BuildVectorQuantizationArtifactResult>>()
         }

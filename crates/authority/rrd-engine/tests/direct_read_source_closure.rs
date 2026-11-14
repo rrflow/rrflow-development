@@ -44,6 +44,24 @@ struct AllowedUse {
 
 const ALLOWED_USES: &[AllowedUse] = &[
     AllowedUse {
+        path: "crates/authority/rrd-engine/src/engine/tests/cold_history_oracle.rs",
+        kind: SensitiveReadUse::CausalLogPage,
+        count: 1,
+        operation: "test-only stamped source oracle for cold-history restart readback",
+    },
+    AllowedUse {
+        path: "crates/compute/rrd-query/tests/cold_history.rs",
+        kind: SensitiveReadUse::SnapshotCausalLogPage,
+        count: 2,
+        operation: "cold-history codec source oracle before and after reopen",
+    },
+    AllowedUse {
+        path: "crates/persistence/rrd-store/tests/cold_history_paging.rs",
+        kind: SensitiveReadUse::UnstampedCausalLogPage,
+        count: 1,
+        operation: "cold-history paging fixture entry-size oracle",
+    },
+    AllowedUse {
         path: "crates/authority/rrd-engine/src/engine/tests/attunement.rs",
         kind: SensitiveReadUse::CausalLogPage,
         count: 4,

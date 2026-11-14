@@ -68,6 +68,25 @@ func main() {
 	renewedBytes, err := json.Marshal(renewed)
 	check(err)
 	check(json.Unmarshal(renewedBytes, &session.Lease))
+	coldRequest := object(object(corpus["cold_history"])["read"])
+	cold, err := api.Call(context.Background(), rrd.OperationColdHistoryRead, coldRequest, read("cold-history", session, nil, time.Time{}))
+	check(err)
+	coldGeneration := object(cold["generation"])
+	coldChanges := array(cold["changes"])
+	require(text(cold["scope"]) == text(coldRequest["scope"]), "cold scope differs")
+	require(integer(coldGeneration["generation"]) == integer(coldRequest["generation"]), "cold generation differs")
+	require(integer(coldGeneration["through_cursor"]) > integer(coldGeneration["requested_after_cursor"]), "cold cursor did not advance")
+	require(len(coldChanges) > 0 && integer(coldGeneration["rows"]) == len(coldChanges), "cold changes differ")
+	for _, change := range coldChanges {
+		require(text(object(change)["scope"]) == text(cold["scope"]), "cold change scope differs")
+	}
+	seeded := false
+	for _, change := range coldChanges {
+		if text(object(change)["actor"]) == text(object(corpus["cold_history"])["expected_actor"]) {
+			seeded = true
+		}
+	}
+	require(seeded, "cold seeded history is absent")
 	_, err = api.Call(context.Background(), rrd.OperationVectorCollectionEnsure, object(vector["ensure"]), mutation("vector-ensure", session, nil, time.Time{}))
 	check(err)
 	previewLease, err := api.Call(context.Background(), rrd.OperationTransactionBegin, object(transaction["preview_begin"]), mutation("preview-begin", session, nil, time.Time{}))
@@ -105,6 +124,22 @@ func main() {
 	check(err)
 	require(text(quantized["access_path"]) == text(expected["quantized_access_path"]), "quantized search did not use TurboQuant")
 	require(containsVector(array(quantized["hits"]), text(expected["vector_reference"])), "quantized vector reference absent")
+	// The graph index and its payload index. The changefeed read below proves the
+	// scope stays readable with an index in it.
+	index := object(vector["index"])
+	_, err = api.Call(context.Background(), rrd.OperationVectorPayloadIndexEnsure, object(index["payload_index"]), mutation("payload-index-ensure", session, nil, time.Time{}))
+	check(err)
+	builtIndex, err := api.Call(context.Background(), rrd.OperationVectorIndexEnsure, object(index["ensure"]), mutation("index-ensure", session, nil, time.Time{}))
+	check(err)
+	require(text(object(builtIndex["index"])["kind"]) == text(expected["indexed_access_path"]), "index ensure did not build HNSW")
+	indexed, err := api.Call(context.Background(), rrd.OperationVectorSearch, object(index["search"]), read("indexed-search", session, nil, time.Time{}))
+	check(err)
+	require(text(indexed["access_path"]) == text(expected["indexed_access_path"]), "filtered search did not use the graph index")
+	require(containsVector(array(indexed["hits"]), text(expected["indexed_reference"])), "indexed vector reference absent")
+	_, err = api.Call(context.Background(), rrd.OperationVectorPayloadIndexEnsure, object(index["spare_payload_index"]), mutation("payload-index-spare", session, nil, time.Time{}))
+	check(err)
+	_, err = api.Call(context.Background(), rrd.OperationVectorPayloadIndexDelete, object(index["delete_payload_index"]), mutation("payload-index-delete", session, nil, time.Time{}))
+	check(err)
 	changes, err := api.Call(context.Background(), rrd.OperationChangefeedRead, object(changefeed["read"]), read("changefeed-read", session, nil, time.Time{}))
 	check(err)
 	followRead := clone(object(changefeed["read"]))

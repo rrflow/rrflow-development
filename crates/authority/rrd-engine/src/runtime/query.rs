@@ -409,7 +409,9 @@ pub fn execute_traced_query<E: StorageEngine>(
         Err(error) => {
             let outcome = if matches!(
                 error,
-                rrd_query::Error::Budget(_) | rrd_query::Error::StorageAdmission(_)
+                rrd_query::Error::Budget(_)
+                    | rrd_query::Error::DeadlineExceeded(_)
+                    | rrd_query::Error::StorageAdmission(_)
             ) {
                 TraceOutcome::Denied
             } else {
@@ -972,6 +974,7 @@ fn query_error_class(error: &rrd_query::Error) -> &'static str {
         rrd_query::Error::Catalog(_) => "catalog",
         rrd_query::Error::Binding(_) => "binding",
         rrd_query::Error::Budget(_) => "budget",
+        rrd_query::Error::DeadlineExceeded(_) => "deadline",
         rrd_query::Error::StorageAdmission(_) => "storage_admission",
         rrd_query::Error::Execution(_) => "execution",
         rrd_query::Error::Integrity(_) => "integrity",

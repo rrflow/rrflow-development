@@ -24,6 +24,7 @@ tokio-tungstenite = { version = "0.29", default-features = false, features = ["c
 rrd-contract = { path = "../rrd-contract" }
 
 [dev-dependencies]
+toml = { workspace = true }
 rrd-engine = { path = "../../authority/rrd-engine" }
 rrd-estate = { path = "../../authority/rrd-estate" }
 rrd-security = { path = "../../authority/rrd-security" }

@@ -1,0 +1,97 @@
+{
+  "status": 200,
+  "request": {
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "context": {
+      "request_id": "controller-proof-bf84cbc5c13d41fb88b3df806bcfd72e",
+      "operation_id": "controller-proof-bf84cbc5c13d41fb88b3df806bcfd72e",
+      "idempotency_key": null,
+      "deadline_unix_ms": null
+    },
+    "resource": {
+      "segments": [
+        {
+          "kind": "instance",
+          "id": "instance-ff5a41c8d602b5ea81c31036"
+        }
+      ]
+    },
+    "payload": {
+      "scope": "instance:instance-ff5a41c8d602b5ea81c31036",
+      "task_id": "task-18586ba0f21a4b5e6a359660ee4c85ab571250634c0453050493f274dd8a81a0",
+      "max_storage_keys": 1000000
+    }
+  },
+  "response": {
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "request_id": "controller-proof-bf84cbc5c13d41fb88b3df806bcfd72e",
+    "operation_id": "controller-proof-bf84cbc5c13d41fb88b3df806bcfd72e",
+    "outcome": {
+      "status": "ok",
+      "payload": {
+        "task": {
+          "format_version": 1,
+          "task_id": "task-18586ba0f21a4b5e6a359660ee4c85ab571250634c0453050493f274dd8a81a0",
+          "scope": "instance:instance-ff5a41c8d602b5ea81c31036",
+          "title": "Execute selected worker models through engine-owned task attempts",
+          "goal": "## Latest installed interruption evidence\n\nPublished head e35283303f4c5823c612686d32fb6bee1ac368ac contains harness 2f7a1a34 and its actual BF16 interruption/recovery evidence. Exactly two real calls occurred; the engine was killed after the worker response reached the relay but before engine acceptance. Reopen and a separate credential-free recovery retained the same selector, reserved worker, original deadline and two spent steps. No accepted worker result, retry, capacity clearance or provider-termination claim. Four focused relay tests, compile/workflow checks, captured-byte manifest verification and documentation/inventory checks pass.\n\n[Immutable result and raw receipts](https://github.com/rrflow/rrflow-development/blob/e35283303f4c5823c612686d32fb6bee1ac368ac/docs/evidence/change-journals/gate-g/task-worker-interruption-live.md). The installed primary remains c75c1896; no new engine or release bundle was built. Keep draft: remaining policy/credential acceptance and actual prerequisite landing precede ready-for-review and full candidate CI. Safe reconciliation/resume and the complete UI/project/RROFLOW/learning/release workflow remain open. Earlier briefs below retain their historical scope and starting observations.\n\n## Outcome and ownership\n\nAn accepted SWAG routing proposal previously had no admitted selected-worker call. This change adds `task-worker-execute`: RRFlow resolves the retained choice and current task/configuration, authorizes the call, reserves effort and shared capacity, and retains bounded model draft text under guarded completion. Text acceptance does not mutate a project, complete a task or create a training label.\n\nDriver: active SWAG session. G-01b/G-02a and POAM-009 own this increment; I-03/I-07 retain project effects and orchestration. Product version remains 1.0.0. This is a draft dependent on PR206 and the remaining native-client/startup/distribution chain. Public main through `906bec82` is ordinarily merged; no production source changed in that reconciliation. PR229 is not a release or full SWAG-completion claim.\n\n## Implementation and boundaries\n\n- One bounded HTTP model-content transport beneath the existing strict selector wrapper; explicit generation, response format, effort mapping and worker policy under the existing configuration approval digest.\n\n- One engine-owned selected-worker operation using current task/selection/configuration/context authorization, the existing attempt/budget ledger, shared endpoint capacity and guarded completion. Unknown execution remains uncertain across reopen; it is not silently retried.\n\n- Typed retained output, public catalogue/action/handler and generated SDK/OpenAPI projections. The Rust worker method uses one transport attempt and validates response identity. PR222 is ordinarily composed at `43d18059`; proposal and worker now share its catalogue-derived one-attempt carriage and contract-owned response validation. PR222 itself still requires protected landing.\n\n- The existing installed proof runner gains explicit worker mode and credential-free recovery of both attempts. No additional execution authority or direct provider dispatcher.\n\nNo provider rankings, task-specific routes, endpoint URLs, model names or credentials are embedded in product behavior. Missing configuration or unsupported effort remains a denial. Historical context is not current filesystem freshness or mutation permission. Native Claude/Codex subscription adapters remain separate required work.\n\n## Validation and retained failures\n\nThe native-client composition passed 189 contract/client tests, strict all-target/all-feature Clippy, 32 architecture checks, generated parity (72 operations/seven signals), formatting and repository checks. The retained real worker response is now a hash-checked conformance fixture; corruptions are explicit rejection probes, not training observations.\n\nAn exact-source native example at clean `43d18059` completed actual selector and worker calls against the separately identified `c75c1896` engine. Missing-credential denial, unchanged task state, restar",
+          "status": "open",
+          "opened_at_unix_ms": 1793475359378,
+          "idempotency_key": "controller-proof-a285f526a32c4d339b9a31800375482d",
+          "operation_sha256": "dd916fe21aa913ed1f9ec581b5bfabd311481f2d046a147bf4f5db8bf2e2947a",
+          "task_cursor": 4,
+          "known_at_cursor": 4
+        },
+        "read": {
+          "runtime_manifest_sha256": "afd2043c3304b93a2277c689838994249458264aff7dc99d9d6565d19e391d7e",
+          "runtime_cursor": 10,
+          "schema_revision": 3,
+          "catalogue_revision": 0
+        },
+        "selected_versions": 1,
+        "read_evidence": {
+          "contract_version": 1,
+          "key_budget": 1000000,
+          "point_reads": 10,
+          "range_scans": 1,
+          "keys_examined": 11,
+          "values_decoded": 11,
+          "decoded_bytes": 8106,
+          "stamp_validation": {
+            "method": "authenticated_current_head",
+            "change_reads": 0,
+            "proof_nodes": 0
+          },
+          "paths": [
+            {
+              "path": "read_stamp",
+              "point_reads": 5,
+              "range_scans": 0,
+              "keys_examined": 5,
+              "values_decoded": 5,
+              "decoded_bytes": 2547
+            },
+            {
+              "path": "record_versions",
+              "point_reads": 0,
+              "range_scans": 1,
+              "keys_examined": 1,
+              "values_decoded": 1,
+              "decoded_bytes": 5239
+            },
+            {
+              "path": "accumulator_proof",
+              "point_reads": 5,
+              "range_scans": 0,
+              "keys_examined": 5,
+              "values_decoded": 5,
+              "decoded_bytes": 320
+            }
+          ]
+        }
+      }
+    }
+  }
+}

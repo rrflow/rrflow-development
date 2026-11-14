@@ -1,0 +1,8 @@
+{
+  "httpStatus": 200,
+  "requestSha256": "5f45513c0c32eafdb443e9c41bb02258c3720b07898a2327db88575b7b721978",
+  "responseSha256": "24870f1a111f8bad75d80d219130a8ee4e94377b622af1664b951d178fd1369b",
+  "responseBytes": 1748,
+  "heldBeforeEngineResponse": true,
+  "generatedOrReplayedResponse": false
+}

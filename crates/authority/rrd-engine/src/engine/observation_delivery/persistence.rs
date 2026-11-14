@@ -141,9 +141,16 @@ fn source_references(
             references.operation = operation("ReadTaskAttempt")?;
             references.task_id = Some(request.task_id.to_string());
             references.attempt_id = Some(request.attempt_id.as_str().into());
+            // Bind the configuration that produced the retained result, not
+            // the later configuration authorizing this observation export.
             references.configuration_sha256 = attempt
                 .endpoint_proposal
-                .map(|proposal| proposal.configuration_sha256);
+                .map(|proposal| proposal.configuration_sha256)
+                .or_else(|| {
+                    attempt
+                        .worker_output
+                        .map(|worker| worker.configuration_sha256)
+                });
         }
         ObservationSource::AttunementJob {
             request,
@@ -347,13 +354,14 @@ impl RrdEngine {
         session: &CorrelationId,
         token: &CorrelationId,
         source: &ObservationSource,
+        retained_source_json: Option<&str>,
         context: &EngineControlContext<'_>,
     ) -> Result<()> {
         // Recheck current source-read authority without requiring the historical version
         // still to be current. This does not advance an attempt or execute a job.
         match source {
             ObservationSource::TaskAttempt { request, .. } => {
-                self.read_task_attempt(
+                let current = self.read_task_attempt(
                     session,
                     token,
                     request,
@@ -361,6 +369,30 @@ impl RrdEngine {
                     context.request_id,
                     context.operation_id,
                 )?;
+                if let Some(retained_json) = retained_source_json {
+                    let retained: TaskAttemptView =
+                        serde_json::from_str(retained_json).map_err(contract_json)?;
+                    let retained = retained.attempt.ok_or_else(corrupt)?;
+                    let current = current.attempt.ok_or_else(|| {
+                        ServiceError::StorageConflict("observation source attempt is absent".into())
+                    })?;
+                    if retained.attempt_id != current.attempt_id
+                        || retained.status != current.status
+                        || retained.outcome_sha256 != current.outcome_sha256
+                    {
+                        return Err(ServiceError::StorageConflict(
+                            "observation source attempt changed".into(),
+                        ));
+                    }
+                    if retained
+                        .worker_output
+                        .as_ref()
+                        .is_some_and(|output| output.source.is_some())
+                        && current.worker_output.is_none()
+                    {
+                        return Err(ServiceError::PermissionDenied);
+                    }
+                }
             }
             ObservationSource::AttunementJob { request, .. } => {
                 self.read_attunement_detail(

@@ -530,6 +530,7 @@ impl WebSocketDelivery {
                     .saturating_add(delta.updated.len())
                     .saturating_add(delta.removed.len());
                 if delta.from_cursor != self.from_cursor
+                    || delta.result_identity_version == 0
                     || delta.through_cursor != self.through_cursor
                     || delta.head_cursor < delta.through_cursor
                     || delta.timed_out

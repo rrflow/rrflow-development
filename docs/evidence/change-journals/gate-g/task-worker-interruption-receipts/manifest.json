@@ -1,0 +1,61 @@
+{
+  "kind": "actual installed interruption observations; not training or quality data",
+  "files": {
+    "recovery.json": {
+      "bytes": 3416,
+      "sha256": "555cfddcec7063b080073c738f73c158f93d8422e240395c5982a2eb9d8b3dd2"
+    },
+    "relay-1-observation.json": {
+      "bytes": 308,
+      "sha256": "80438db13706f35b2e35c58c9e4d3b558ac05a13b2068ec777c74c883829d5bf"
+    },
+    "relay-1-provider-response.json": {
+      "bytes": 651,
+      "sha256": "5ced485ed049452f8d6a6fff7525aebe9a34421baede8937d103dc6edca5a22a"
+    },
+    "relay-2-observation.json": {
+      "bytes": 308,
+      "sha256": "e5f183659dba84b2874b4a9ceb9ee6ea1bc47ec0f52b94f18d7a436c45e3b0ef"
+    },
+    "relay-2-provider-response.json": {
+      "bytes": 1806,
+      "sha256": "535b144a8c7864eef27f8d183ec2384539042f133dd64d570c8af41dcf25a6c9"
+    },
+    "relay-dropped-delivery.json": {
+      "bytes": 48,
+      "sha256": "5afaf3df5c917d321348a3cd0e4bd11d27a9669b0dfeabc3f24ab1dd1ac26600"
+    },
+    "result.json": {
+      "bytes": 5035,
+      "sha256": "6c73987744fbca320647861aa2c627d1ec707a45f0eee1f5d1630a45440b32ea"
+    },
+    "verification.json": {
+      "bytes": 456,
+      "sha256": "1049c661a22ea450714fb5f412b857a5a318b369e5f5f0a59aecc741f2364d2e"
+    },
+    "worker-authorized-reserved-budget.json": {
+      "bytes": 2022,
+      "sha256": "fbd076d98fa460f8053593a154f580518b7d86a916786ac66f6833a4683ca228"
+    },
+    "worker-authorized-reserved-worker.json": {
+      "bytes": 1273,
+      "sha256": "e3178cc7ee32bd5cb6dcba9d3419b52a6a1395a99e62ae58a7156cf703b4cb28"
+    },
+    "worker-caller-interruption.json": {
+      "bytes": 116,
+      "sha256": "b14efb4f2ebf53a9ee0481137619e518865f3affda4a646f9e5f4017f3eea9a7"
+    },
+    "worker-interrupt-reopened-budget.json": {
+      "bytes": 2022,
+      "sha256": "c06ef9e33a63665862d0841f99ccbce579bef2e9c49b064377445d924c167f36"
+    },
+    "worker-interrupt-reopened-worker-attempt.json": {
+      "bytes": 1273,
+      "sha256": "f0b8df3a8d4a3bcf4eb36e6c156eedaea6185c1273239b843fbe2ea83661b107"
+    },
+    "worker-process-interruption.json": {
+      "bytes": 204,
+      "sha256": "b1df415094be4882d1d9d480a0b7041d369b5a7caaecc4ff579494d1bdec5faa"
+    }
+  }
+}

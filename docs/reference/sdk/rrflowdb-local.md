@@ -6,10 +6,18 @@
 
 rrflowDB is usable through the native Rust engine and authenticated RRD client.
 This guide builds a real persistent local database, creates typed relational
-records and graph relationships in one transaction, queries them with rrflowQL,
-and reads them after restart. It uses no Turso, libSQL, SQLite, PostgreSQL server,
+records, a typed nested document, and graph relationships in one transaction,
+queries them with rrflowQL at a common read stamp, and reads them after restart.
+The example uses the local authenticated service; it does not demonstrate a
+stable daemon-free embedded library API. It uses no Turso, libSQL, SQLite, PostgreSQL server,
 cloud account, or external model. The [PostgreSQL profile](../protocol/postgresql.md)
 remains a separate unimplemented compatibility requirement.
+
+The example's document has an explicit schema. The query engine also supports
+bounded projection from registered schemaless record-like tables; dynamic
+property predicates and arbitrary join keys remain separate open work in
+[POAM-005](../../poam/rrflow-1.0-alpha/poam-005.md). This example does not
+establish general schemaless queries or production ACID qualification.
 
 ## How the components relate
 
@@ -107,6 +115,8 @@ printing the credential, then performs all data work through the public client.
 erDiagram
     DEVPULSE_PROJECT ||--o{ DEVPULSE_OWNS : from
     DEVPULSE_TASK ||--o| DEVPULSE_OWNS : to
+    DEVPULSE_DOCUMENT ||--o{ DEVPULSE_SUPPORTS : from
+    DEVPULSE_TASK ||--o{ DEVPULSE_SUPPORTS : to
     DEVPULSE_PROJECT {
         string id PK
         string slug UK
@@ -122,13 +132,27 @@ erDiagram
         string from_id FK
         string to_id FK
     }
+    DEVPULSE_DOCUMENT {
+        string id PK
+        string title
+        map metadata
+    }
+    DEVPULSE_SUPPORTS {
+        string id PK
+        string from_id FK
+        string to_id FK
+        string reason
+    }
 ```
 
 The native record identity is `(kind, id)`. Each owns relationship references
 existing project/task identities; its endpoint kinds, unique pair, and maximum
 one incoming relationship per task are schema constraints. Unlinked tasks are
 permitted. `slug` is required and unique; `name`, `title`, and `status` are
-required strings. Values also have valid-time intervals and commit coordinates.
+required strings. The document's title and metadata map are required; its
+supports relationship names a document and a task, requires a reason, and
+enforces a unique endpoint pair. Values also have valid-time intervals and
+commit coordinates.
 The diagram describes this application's schema, not additional platform
 project/estate/account authorities.
 
@@ -167,11 +191,12 @@ authorized queries and transactions.
 records/relationship. It refuses a second initialization. `update` commits a
 new temporal task version. `abort` opens and cancels an empty transaction.
 `read` captures the task query's committed cursor and uses that cursor for
-the project/relationship join at the same valid time. It rejects truncated
+the project/relationship join, document query, and document/relationship join
+at the same valid time. It rejects truncated
 results, row-count inconsistencies, foreign scope or differing cursor/schema
-stamps. `verify open|done` additionally checks the exact expected example task
-and its owning project relationship, independently of the returned values.
-Successful output retains both public query results and their read evidence,
+stamps. `verify open|done` additionally compares the example task, document,
+and relationships against fixed expected values.
+Successful output retains all four public query results and their read evidence,
 plus `verified_expected_status`; no credential is included. Running
 `verify open` after `update` must fail. The verifier is specific to this
 sample's one-task model, not a general health check for arbitrary user tables.

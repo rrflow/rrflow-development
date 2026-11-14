@@ -1,4 +1,4 @@
-# POAM-004 — stamped streamed DataFusion provider
+# POAM-004 â€” stamped streamed DataFusion provider
 
 **Status:** active parent-owned POA&M detail
 **Coordinate:** `rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-004`
@@ -45,6 +45,17 @@ draft cold schedule is configurable, but its behavior under sustained native
 maintenance and foreground load still needs measurement. The draft verifies
 an inclusion proof per scanned change, but its proof-node read cost and peak
 memory under large source logs have not been measured or separately admitted.
+The local F-06 candidate checks the cold decoder deadline at entry, after
+obtaining each batch, between rows, and before returning, including for empty
+artifacts. These checks are cooperative and cannot preempt a blocking Arrow
+operation or individual row decode. Public main's Parquet encoder can
+misattribute a resource error to deadline expiry by consulting the clock after
+the failure. The local F-06 candidate carries typed failure identity through
+JSON serialization and the buffered Parquet footer, but is not merged or
+qualified on the native matrix. Enforce and test deadline identity and
+completion across the owning boundaries before claiming a complete deadline
+guarantee.
+
 Derived cold files must not replace or reclaim their source until
 coverage, all intended streams, retention and recovery are proven.
 

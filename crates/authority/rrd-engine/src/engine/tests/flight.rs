@@ -10,6 +10,61 @@ use std::collections::{BTreeMap, BTreeSet};
 
 const INSTANCE_SCOPE: &str = "instance:test-instance";
 
+#[test]
+fn unrepresentable_context_reference_denies_flight_before_runtime_publication() {
+    use rrd_core::{
+        RuntimeCommit, RuntimeLogicalModel, RuntimeMutation, RuntimeRecord, RuntimeRef,
+        RuntimeSchemaRegistry, RuntimeTableSchema, RuntimeType, RuntimeValue, ScopeId,
+    };
+
+    let (_root, engine) = isolated_engine();
+    let mut registry = RuntimeSchemaRegistry::empty(1, "flight identity fixture");
+    registry.tables.insert(
+        RuntimeType::new("native-note").unwrap(),
+        RuntimeTableSchema::schemaless(RuntimeLogicalModel::Relational),
+    );
+    engine
+        .storage
+        .runtime()
+        .commit(&RuntimeCommit {
+            scope: ScopeId::new(INSTANCE_SCOPE).unwrap(),
+            at: 100,
+            actor: "flight-identity-test".into(),
+            expected_cursor: 0,
+            mutations: vec![
+                RuntimeMutation::Schema { registry },
+                RuntimeMutation::Record {
+                    record: RuntimeRecord {
+                        // An event identity is the one thing a canonical id cannot hold.
+                        reference: RuntimeRef::event(RuntimeType::new("native-note").unwrap(), 7),
+                        valid_from: 10,
+                        valid_to: None,
+                        properties: BTreeMap::from([(
+                            "body".into(),
+                            RuntimeValue::String("unique flight needle".into()),
+                        )]),
+                    },
+                },
+            ],
+        })
+        .unwrap();
+    let lease = session(&engine, "flight-native-reference-session");
+    let before = engine.storage.runtime().cursor().unwrap();
+    let error = engine
+        .launch_prompt_flight(
+            &lease.session_id,
+            &lease.token,
+            &id("flight-native-reference"),
+            &launch_request("unique flight needle", PromptFlightContextMode::Pruned),
+            1_300,
+            "flight-native-reference",
+            "flight-native-reference",
+        )
+        .unwrap_err();
+    assert!(error.to_string().contains("not representable"), "{error}");
+    assert_eq!(engine.storage.runtime().cursor().unwrap(), before);
+}
+
 pub(super) fn launch_request(
     prompt: &str,
     context_mode: PromptFlightContextMode,

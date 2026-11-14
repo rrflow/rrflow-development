@@ -2,15 +2,26 @@
 use super::{Result, RrdEngine};
 
 impl RrdEngine {
-    /// Offer one housekeeping quantum to the installed native storage owner.
-    /// Native maintenance offers do not queue. Derived cold-history reads can
-    /// still wait for storage; their admission and starvation bounds remain open.
-    /// Volatile estates have no physical maintenance.
+    /// Offer one housekeeping quantum. When cold history is configured,
+    /// alternate the preferred kind; if it has no work, try the other once.
+    /// Native admission does not queue. Cold reads may still wait for storage;
+    /// this ordering is not a wall-clock or cross-thread fairness guarantee.
     pub fn maintain_storage(&self) -> Result<bool> {
-        if self.maintain_native_storage()? {
-            return Ok(true);
+        let prefer_cold = self.estate_configuration.storage.cold_history.is_some()
+            && self
+                .cold_history_next
+                .fetch_xor(true, std::sync::atomic::Ordering::Relaxed);
+        if prefer_cold {
+            if self.maintain_cold_history()? {
+                return Ok(true);
+            }
+            self.maintain_native_storage()
+        } else {
+            if self.maintain_native_storage()? {
+                return Ok(true);
+            }
+            self.maintain_cold_history()
         }
-        self.maintain_cold_history()
     }
 
     /// Offer one native physical maintenance quantum without queueing.

@@ -270,6 +270,12 @@ impl Proposal {
     pub fn entries(&self) -> &[Entry] {
         &self.entries
     }
+    pub fn revisions(&self) -> &Revisions {
+        &self.revisions
+    }
+    pub fn scope(&self) -> &SourceScope {
+        &self.scope
+    }
     pub fn changes(&self) -> &Changes {
         &self.changes
     }

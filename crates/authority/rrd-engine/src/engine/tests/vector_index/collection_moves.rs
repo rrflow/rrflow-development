@@ -172,9 +172,12 @@ fn hnsw(engine: &RrdEngine, lease: &SessionLease, key: &str) {
                 build_policy: VectorIndexBuildPolicy::Cpu,
                 max_storage_keys: 100_000,
             },
+            &mutation_context(
+                &id(&format!("hnsw-{key}")),
+                &format!("request-hnsw-{key}"),
+                &format!("operation-hnsw-{key}"),
+            ),
             420,
-            &format!("request-hnsw-{key}"),
-            &format!("operation-hnsw-{key}"),
         )
         .unwrap();
 }

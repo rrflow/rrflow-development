@@ -1,0 +1,17 @@
+{
+  "sourceCommit": "75c26a80d5d1d07550070096df463d006aca6680",
+  "binarySha256": "c9f481103d6ba2a2cf1e0b42e386b084d92530bc42375b0039c7cf6722243636",
+  "files": {
+    "baseline.json": {
+      "sha256": "69812ea4c23fa8d539a2327adaff7875389abfe884735bf9312191bcf9dff681",
+      "bytes": 7447
+    },
+    "recovery.json": {
+      "sha256": "f5f1e5cc9e6b0b44ebca3c47551a5da5ae455e630627f3cc33e5143884ca6840",
+      "bytes": 6113
+    }
+  },
+  "independentRecoveryEqual": true,
+  "providerCallRequestedDuringRecovery": false,
+  "negativeCompletionInstalledTrialPassed": false
+}

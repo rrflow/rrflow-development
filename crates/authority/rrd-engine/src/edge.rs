@@ -36,7 +36,7 @@ impl OfflineEdgeConfig {
     pub fn standard(dimensions: u32, seed: u64) -> Result<Self> {
         Ok(Self {
             scope: ScopeId::new("instance:edge")?,
-            projection: ProjectionId::new("vector:edge:body")?,
+            projection: ProjectionId::new("vector-edge-body")?,
             collection: VectorCollectionAddress {
                 collection_id: "edge-documents".into(),
                 vector_name: "body".into(),
@@ -121,7 +121,7 @@ impl OfflineEdgeIndex {
             )?;
             let job = EmbeddingJob {
                 contract_version: EMBEDDING_CONTRACT_VERSION,
-                id: RuntimeId::new(format!("edge-embed:{}", document.id))?,
+                id: RuntimeId::new(format!("edge-embed-{}", document.id))?,
                 scope: config.scope.clone(),
                 read: ReadStamp::new(
                     config.scope.clone(),

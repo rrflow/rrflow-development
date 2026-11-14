@@ -10,6 +10,25 @@ independently.
 
 ## Observed deficiency
 
+The [selected-source worker regression](../../evidence/change-journals/gate-g/task-worker-selected-source.md)
+exposed a restart limitation on the installed bootstrap principal. The authorized
+security-authority replacement accepts adding `ProjectSourceRead` to that
+principal, but `installation.rs::with_installed_binding` subsequently compares
+its entire grant-action list with immutable `initial_grants` and returns
+`ProjectBindingMismatch` when opening the installed estate. Source edits and
+replanning are not the identified cause. The separate explicitly granted
+principal used in the original PR289 worker test was a test workaround for this
+limitation, not the only supported new-estate provisioning route. PR291 adds a
+[default-off source-read choice to a new installation's sealed initial plan](../../evidence/change-journals/gate-d/d-01-explicit-source-read-install-choice.md)
+and records the controlled installed worker, typed denial, serve/reopen, and
+fresh-auth readback proof. It does not change grants after installation or
+repair the existing bootstrap-principal mutation/restart mismatch. That
+post-install limitation remains open: reconcile governed security changes with
+installation binding, or reject unsupported changes before commit, and prove
+the resulting public restart behavior. This package does not redesign
+initialization or claim that the original-principal post-install mutation path
+works.
+
 Security policy, sessions, and audit have useful validation and denial behavior, but
 `rrd-security` still exposes a direct `StorageEngine` repository; policy and runtime data
 use separate observations; transaction authorization is operation-wide rather than
