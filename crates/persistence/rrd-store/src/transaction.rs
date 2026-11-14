@@ -56,6 +56,20 @@ pub trait StorageTransaction: Send {
     /// Discards the write set. Dropping an open transaction has the same state
     /// effect but does not return a receipt.
     fn rollback(self: Box<Self>) -> Result<TransactionRollback>;
+
+    /// Turns a transaction that has staged nothing into a measuring one: its
+    /// writes are no longer refused at the physical payload ceiling and it
+    /// can never commit. A caller stages a candidate batch, reads
+    /// [`StorageTransaction::staged_encoded_bytes`], and rolls back.
+    fn measure_only(&mut self) -> Result<()>;
+
+    /// Exact byte length of the staged writes in the physical write-batch
+    /// encoding, which is what the payload ceiling admits.
+    fn staged_encoded_bytes(&self) -> usize;
+
+    /// True for a measuring transaction; writes staged on its behalf are
+    /// measured rather than refused at the payload ceiling.
+    fn is_measuring(&self) -> bool;
 }
 
 /// Profile-neutral commit result. rrflowMX and rrflowKV expose the same
@@ -80,6 +94,7 @@ pub struct TransactionRollback {
 pub(crate) struct TransactionWriteSet {
     writes: BTreeMap<Vec<u8>, Option<Vec<u8>>>,
     write_size: WriteBatchSize,
+    measuring: bool,
 }
 
 impl TransactionWriteSet {
@@ -91,23 +106,43 @@ impl TransactionWriteSet {
         self.writes.get(key).map(|value| value.as_deref())
     }
 
+    pub(crate) fn measure_only(&mut self) -> Result<()> {
+        if !self.writes.is_empty() {
+            return Err(Error::Substrate(
+                "a transaction becomes measuring before it stages a write".into(),
+            ));
+        }
+        self.measuring = true;
+        Ok(())
+    }
+
+    pub(crate) fn is_measuring(&self) -> bool {
+        self.measuring
+    }
+
+    pub(crate) fn encoded_len(&self) -> usize {
+        self.write_size.encoded_len()
+    }
+
+    fn sized(&self, key: &[u8], value: Option<&[u8]>) -> Result<WriteBatchSize> {
+        let previous = self.writes.get(key).map(|value| value.as_deref());
+        Ok(if self.measuring {
+            self.write_size
+                .with_replacement_unbounded(key, previous, value)?
+        } else {
+            self.write_size.with_replacement(key, previous, value)?
+        })
+    }
+
     pub(crate) fn put(&mut self, key: Vec<u8>, value: Vec<u8>) -> Result<()> {
-        let size = self.write_size.with_replacement(
-            &key,
-            self.writes.get(&key).map(|value| value.as_deref()),
-            Some(&value),
-        )?;
+        let size = self.sized(&key, Some(&value))?;
         self.writes.insert(key, Some(value));
         self.write_size = size;
         Ok(())
     }
 
     pub(crate) fn delete(&mut self, key: Vec<u8>) -> Result<()> {
-        let size = self.write_size.with_replacement(
-            &key,
-            self.writes.get(&key).map(|value| value.as_deref()),
-            None,
-        )?;
+        let size = self.sized(&key, None)?;
         self.writes.insert(key, None);
         self.write_size = size;
         Ok(())

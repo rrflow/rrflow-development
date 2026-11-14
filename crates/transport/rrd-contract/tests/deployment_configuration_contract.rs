@@ -32,6 +32,7 @@ fn input() -> EstateConfigurationInput {
             max_storage_keys: 100_000,
         },
         query: QueryBudget::default(),
+        attunement_follow: None,
     }
 }
 

@@ -117,7 +117,9 @@ fn legacy_identity_artifact_is_skipped_until_full_rebuild_and_reopen() {
         )
     };
     let (selected, rows) = run(&store);
-    assert_eq!(selected, "versioned_source_read");
+    // The legacy artifact is not used; the index's commit-maintained entries
+    // narrow the read instead, and the rows are those of a full scan.
+    assert_eq!(selected, "commit_index:document-status-title");
     assert_eq!(rows.len(), 1);
     repository
         .begin_rebuild(&context(5, "legacy-rebuild"), &index.id)
@@ -367,7 +369,9 @@ fn exercise<E: StorageEngine>(engine: &E) {
             .find(|candidate| candidate.selected)
             .unwrap()
             .name,
-        "versioned_source_read"
+        // A stale artifact is never read; the commit-maintained entries are
+        // current at the head and narrow the read.
+        "commit_index:document-status-title"
     );
     assert_eq!(
         execute(engine, &stale_plan, &ExecutionBudget::default())

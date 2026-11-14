@@ -4,7 +4,7 @@
 //! twice.
 
 use super::super::inventory::Work;
-use super::publish::publish;
+use super::publish::{measure, publish, Batch};
 use super::records::{self, FileState, Outcome, Status};
 use super::worker::{Answer, Worker};
 use super::*;
@@ -130,8 +130,30 @@ pub(in crate::engine::attunement) fn execute(
         .as_ref()
         .ok_or(ServiceError::ProjectBindingMismatch)?;
     let scope = ScopeId::new(format!("instance:{}", engine.instance)).map_err(contract)?;
+    // The parsed-source tables and their indexes exist before any fact is
+    // written, so every fact is indexed in the commit that writes it.
+    let before_schema = engine.storage.runtime().read_stamp(&scope)?;
+    if let Some(schema) = records::schema_mutation(engine, &scope, &before_schema)? {
+        engine.storage.runtime().commit(&RuntimeCommit {
+            scope: scope.clone(),
+            at: elapsed_time(work.now, work.started)?,
+            actor: format!("session:{}", work.session.as_str()),
+            expected_cursor: before_schema.commit_cursor,
+            mutations: vec![schema],
+        })?;
+    }
+    records::ensure_indexes(
+        engine,
+        &scope,
+        &rrd_query::IndexMutationContext {
+            at: elapsed_time(work.now, work.started)?,
+            actor: format!("session:{}", work.session.as_str()),
+            request_id: work.context.request_id.as_str().into(),
+            operation_id: work.context.operation_id.as_str().into(),
+        },
+    )?;
     let read = engine.storage.runtime().read_stamp(&scope)?;
-    let mut states = records::load_states(engine, &read, &mut remaining_keys)?;
+    let states = records::load_states(engine, &read, &mut remaining_keys)?;
     let wanted = wanted(proposal.entries(), policy, work.before.id.as_str());
     let at = elapsed_time(work.now, work.started)?;
     let budget = policy.max_commit_bytes.min(
@@ -152,7 +174,8 @@ pub(in crate::engine::attunement) fn execute(
     {
         mutations.extend(records::retire_file(state, at)?);
     }
-    let mut used = encoded_len(&mutations)?;
+    let base_bytes = encoded_len(&mutations)?;
+    let mut used = base_bytes;
     let pending: Vec<&Wanted<'_>> = wanted
         .iter()
         .filter(|file| !settled(states.get(&file.state.path), &file.state))
@@ -160,19 +183,25 @@ pub(in crate::engine::attunement) fn execute(
     let mut remaining_input = policy.max_input_bytes;
     let mut worker: Option<Worker> = None;
     let mut started_workers = 0;
-    let mut done = 0;
+    let mut groups: Vec<Group> = Vec::new();
     let timeout = Duration::from_millis(policy.max_elapsed_ms);
+    let limit = rrd_store::PHYSICAL_BATCH_PAYLOAD_BYTES;
+    // The store's physical encoding of facts is several times their JSON
+    // size, so one measurement early in the batch sets how much JSON can be
+    // gathered; the exact measurement before publishing is the authority.
+    let mut calibrated = false;
+    let mut cap = budget;
     for file in &pending {
-        if done as u64 >= policy.max_files {
+        if groups.len() as u64 >= policy.max_files {
             break;
         }
         check()?;
-        let previous = states.get(&file.state.path);
+        let previous = states.get(&file.state.path).cloned();
         let next = file.state.clone();
         let mut source = Vec::new();
         let outcome_mutations = if file.bytes > policy.max_file_bytes {
             records::file_mutations(
-                previous,
+                previous.as_ref(),
                 next.clone(),
                 Outcome::Rejected("file_too_large".into()),
                 &source,
@@ -228,38 +257,88 @@ pub(in crate::engine::attunement) fn execute(
                     Outcome::Lost(reason.clone())
                 }
             };
-            records::file_mutations(previous, next.clone(), outcome, &source, at)?
+            records::file_mutations(previous.as_ref(), next.clone(), outcome, &source, at)?
         };
         let size = encoded_len(&outcome_mutations)?;
-        let outcome_mutations = if used.saturating_add(size) <= budget {
-            outcome_mutations
-        } else if done == 0 {
-            // One file whose facts cannot fit any commit is refused, not retried.
-            records::file_mutations(
-                previous,
-                next,
-                Outcome::Rejected("facts_exceed_commit_budget".into()),
-                &source,
-                at,
-            )?
-        } else {
+        if used.saturating_add(size) > cap && !groups.is_empty() {
             break;
-        };
-        used = used.saturating_add(encoded_len(&outcome_mutations)?);
-        for mutation in &outcome_mutations {
-            if let Some(state) = records::state_of(mutation)? {
-                states.insert(state.path.clone(), state);
-            }
         }
-        mutations.extend(outcome_mutations);
-        done += 1;
+        used = used.saturating_add(size);
+        groups.push(Group {
+            previous,
+            next,
+            mutations: outcome_mutations,
+            rejected: false,
+        });
+        if !calibrated && used >= (limit as u64) / 16 {
+            calibrated = true;
+            let summary = summary(&states, &groups, &kept)?;
+            let measured = measure(
+                engine,
+                &work,
+                &check,
+                &scope,
+                Batch {
+                    mutations: assemble(&mutations, &groups),
+                    finished: false,
+                    summary_sha256: &summary,
+                },
+            )? as u64;
+            // Gather at most nine tenths of the ceiling at the measured ratio.
+            let fit =
+                (u128::from(used) * (limit as u128 * 9 / 10) / u128::from(measured.max(1))) as u64;
+            cap = cap.min(fit.max(base_bytes.saturating_add(1)));
+        }
     }
     drop(worker);
-    states.retain(|path, _| kept.contains(path.as_str()));
-    let finished = done == pending.len();
-    let summary_sha256 = records::summary_sha256(&states)?;
+    // Publish the longest prefix of the batch the store admits. A single file
+    // whose facts cannot fit any batch is refused with the measured size and
+    // is not retried until its content changes.
+    let mut take = groups.len();
+    let (batch_mutations, summary_sha256) = loop {
+        let summary = summary(&states, &groups[..take], &kept)?;
+        let batch_mutations = assemble(&mutations, &groups[..take]);
+        let measured = measure(
+            engine,
+            &work,
+            &check,
+            &scope,
+            Batch {
+                mutations: batch_mutations.clone(),
+                finished: take == pending.len(),
+                summary_sha256: &summary,
+            },
+        )?;
+        if measured <= limit {
+            break (batch_mutations, summary);
+        }
+        match take {
+            0 => {
+                return Err(ServiceError::StorageAdmission(format!(
+                    "the Parse batch's base records measure {measured} bytes against the physical batch limit {limit}"
+                )))
+            }
+            1 if !groups[0].rejected => {
+                let group = &mut groups[0];
+                group.mutations = records::file_mutations(
+                    group.previous.as_ref(),
+                    group.next.clone(),
+                    Outcome::Rejected(format!("facts_exceed_physical_batch:{measured}>{limit}")),
+                    &[],
+                    at,
+                )?;
+                group.rejected = true;
+            }
+            1 => take = 0,
+            _ => {
+                let fit = (take as u128 * (limit as u128 * 9 / 10) / measured as u128) as usize;
+                take = fit.clamp(1, take - 1);
+            }
+        }
+    };
+    let finished = take == pending.len();
     permit.charge(
-        &mutations,
+        &batch_mutations,
         engine
             .estate_configuration
             .storage
@@ -269,11 +348,50 @@ pub(in crate::engine::attunement) fn execute(
         engine,
         &work,
         &check,
-        mutations,
         &scope,
-        finished,
-        &summary_sha256,
+        Batch {
+            mutations: batch_mutations,
+            finished,
+            summary_sha256: &summary_sha256,
+        },
     )
+}
+
+/// One file's answer in a batch: its records and the states either side.
+struct Group {
+    previous: Option<FileState>,
+    next: FileState,
+    mutations: Vec<RuntimeMutation>,
+    rejected: bool,
+}
+
+fn assemble(base: &[RuntimeMutation], groups: &[Group]) -> Vec<RuntimeMutation> {
+    base.iter()
+        .cloned()
+        .chain(
+            groups
+                .iter()
+                .flat_map(|group| group.mutations.iter().cloned()),
+        )
+        .collect()
+}
+
+/// The summary of every kept file's state once these groups are published.
+fn summary(
+    states: &BTreeMap<String, FileState>,
+    groups: &[Group],
+    kept: &std::collections::BTreeSet<&str>,
+) -> Result<String> {
+    let mut states = states.clone();
+    for group in groups {
+        for mutation in &group.mutations {
+            if let Some(state) = records::state_of(mutation)? {
+                states.insert(state.path.clone(), state);
+            }
+        }
+    }
+    states.retain(|path, _| kept.contains(path.as_str()));
+    records::summary_sha256(&states)
 }
 
 #[cfg(test)]

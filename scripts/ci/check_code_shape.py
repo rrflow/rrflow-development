@@ -10,14 +10,16 @@ Every tracked Rust file under `crates/` is classified and measured:
             at most HARNESS_LIMIT lines.
 - `source`  everything else: at most SOURCE_LIMIT lines (R1).
 
-Counted patterns, in entry and source files only:
+Counted patterns, in entry and source files only, totalled per crate so that moving code between
+files of a crate is neutral:
 
 - `mod_rs`                    a module file named `mod.rs` (R3)
 - `path_attribute`            `#[path = ...]` (R3)
 - `string_error`              `Result<..., String>` (R5)
 - `boxed_error`               `Box<dyn Error>` (R5)
 - `too_many_arguments_allow`  an allowed `clippy::too_many_arguments` (R7)
-- `direct_sha256`             `Sha256::new(` or `Sha256::digest(` outside the digest owner (R6)
+- `sha2_crate`                any `sha2::` path outside the digest owner (R6); the owner's own
+                              `rrd_core::digest::Sha256` hasher is the intended API and is not counted
 
 The recorded baseline (`code_shape_baseline.json`) lists every file that broke a rule when the
 rules landed, with its size or count at that time. The check fails when:
@@ -51,8 +53,20 @@ PATTERNS: dict[str, re.Pattern[str]] = {
     "string_error": re.compile(r"Result<[^;{}]*,\s*String\s*>"),
     "boxed_error": re.compile(r"Box<dyn\s+(?:std::error::)?Error"),
     "too_many_arguments_allow": re.compile(r"allow\([^)]*clippy::too_many_arguments"),
-    "direct_sha256": re.compile(r"Sha256::(?:new|digest)\("),
+    "sha2_crate": re.compile(r"(?<![A-Za-z0-9_])sha2::"),
 }
+
+
+def crate_of(path: str) -> str:
+    """The crate directory a file belongs to: pattern counts are kept per crate, so moving code
+    between files of one crate is neutral while a new site anywhere in the crate is refused."""
+    parts = path.split("/")
+    if "src" in parts:
+        return "/".join(parts[:parts.index("src")])
+    for marker in ("tests", "benches", "examples"):
+        if marker in parts:
+            return "/".join(parts[:parts.index(marker)])
+    return "/".join(parts[:-1])
 
 
 def classify(path: str) -> str:
@@ -102,13 +116,14 @@ def measure(files: dict[str, str]) -> Shape:
         if path.endswith("/mod.rs"):
             counts["mod_rs"] = 1
         for name, pattern in PATTERNS.items():
-            if name == "direct_sha256" and path == DIGEST_OWNER:
+            if name == "sha2_crate" and path == DIGEST_OWNER:
                 continue
             found = len(pattern.findall(text))
             if found:
                 counts[name] = found
         for name, count in counts.items():
-            shape.patterns.setdefault(name, {})[path] = count
+            owner = crate_of(path)
+            shape.patterns.setdefault(name, {})[owner] = shape.patterns.get(name, {}).get(owner, 0) + count
     return shape
 
 
@@ -132,9 +147,9 @@ def compare(baseline: Shape, current: Shape) -> list[str]:
         for path in sorted(set(before) | set(now)):
             recorded, count = before.get(path, 0), now.get(path, 0)
             if count > recorded:
-                problems.append(f"{path}: {name} rose from {recorded} to {count}; this pattern may only be removed")
+                problems.append(f"{path} (crate): {name} rose from {recorded} to {count}; this pattern may only be removed")
             elif count < recorded:
-                problems.append(f"{path}: {name} fell from {recorded} to {count}; run `check_code_shape.py --tighten`")
+                problems.append(f"{path} (crate): {name} fell from {recorded} to {count}; run `check_code_shape.py --tighten`")
     return problems
 
 
@@ -153,7 +168,7 @@ def tighten(baseline: Shape, current: Shape) -> Shape:
 
 
 def tracked_rust(root: Path) -> dict[str, str]:
-    listed = subprocess.run(["git", "ls-files", "-z", "--", "crates/*.rs"], cwd=root, check=True,
+    listed = subprocess.run(["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", "crates/*.rs"], cwd=root, check=True,
                             capture_output=True).stdout.decode("utf-8").split("\0")
     return {path: (root / path).read_text(encoding="utf-8") for path in listed if path}
 

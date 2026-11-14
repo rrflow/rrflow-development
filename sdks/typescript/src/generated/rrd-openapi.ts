@@ -1,4 +1,4 @@
-// OpenAPI SHA-256: 4bd01d8ba6fe748921d4ec21da277c83b7f9e1d61015274b8828023c6e86607d
+// OpenAPI SHA-256: 5c8f066adccbabf9860d0a1fc3569267fda2760816c3402e884e4a00a4832f0d
 export interface paths {
     "/v1/attunement/cancel": {
         parameters: {
@@ -10134,6 +10134,18 @@ export interface operations {
                                  */
                                 configuration: {
                                     /**
+                                     * @description The served engine keeps its project attuned: every `interval_ms` it looks
+                                     *     for a change to the project's files, and when it finds one it derives the
+                                     *     successor attunement plan from the committed evidence, accepts it and steps
+                                     *     it to the end, as the installed operator, through the public attunement
+                                     *     operations and their receipts. Sealed into the installation plan; absent
+                                     *     means the engine never attunes on its own.
+                                     */
+                                    attunement_follow?: {
+                                        /** Format: uint64 */
+                                        interval_ms: number;
+                                    } | null;
+                                    /**
                                      * @description Policy for wall-clock observations at governed durable-effect boundaries.
                                      *
                                      *     A value of zero is strict: any observed rollback from a persisted anchor is
@@ -10464,6 +10476,18 @@ export interface operations {
                                  *     configure-plan/configure-apply operation.
                                  */
                                 configuration: {
+                                    /**
+                                     * @description The served engine keeps its project attuned: every `interval_ms` it looks
+                                     *     for a change to the project's files, and when it finds one it derives the
+                                     *     successor attunement plan from the committed evidence, accepts it and steps
+                                     *     it to the end, as the installed operator, through the public attunement
+                                     *     operations and their receipts. Sealed into the installation plan; absent
+                                     *     means the engine never attunes on its own.
+                                     */
+                                    attunement_follow?: {
+                                        /** Format: uint64 */
+                                        interval_ms: number;
+                                    } | null;
                                     /**
                                      * @description Policy for wall-clock observations at governed durable-effect boundaries.
                                      *
@@ -18710,15 +18734,7 @@ export interface operations {
                                      */
                                     security_policy_revision: number;
                                     stages: {
-                                        /**
-                                         * @description The physical access path actually selected for a context stage.
-                                         *
-                                         *     These names describe algorithms, never project-, provider-, or
-                                         *     deployment-specific resources. New physical implementations extend this
-                                         *     contract instead of being smuggled through free-form strings.
-                                         * @enum {string|null}
-                                         */
-                                        access_path?: "request_seed" | "snapshot_bm25" | "snapshot_vector_exact" | "snapshot_graph_bidirectional_bfs" | "reciprocal_rank_fusion" | null;
+                                        access_path?: (("request_seed" | "snapshot_bm25" | "snapshot_vector_exact" | "snapshot_graph_bidirectional_bfs" | "reciprocal_rank_fusion") | "commit_bm25") | null;
                                         decision_sha256: string;
                                         exact: boolean;
                                         /**
@@ -18923,15 +18939,7 @@ export interface operations {
                                      */
                                     security_policy_revision: number;
                                     stages: {
-                                        /**
-                                         * @description The physical access path actually selected for a context stage.
-                                         *
-                                         *     These names describe algorithms, never project-, provider-, or
-                                         *     deployment-specific resources. New physical implementations extend this
-                                         *     contract instead of being smuggled through free-form strings.
-                                         * @enum {string|null}
-                                         */
-                                        access_path?: "request_seed" | "snapshot_bm25" | "snapshot_vector_exact" | "snapshot_graph_bidirectional_bfs" | "reciprocal_rank_fusion" | null;
+                                        access_path?: (("request_seed" | "snapshot_bm25" | "snapshot_vector_exact" | "snapshot_graph_bidirectional_bfs" | "reciprocal_rank_fusion") | "commit_bm25") | null;
                                         decision_sha256: string;
                                         exact: boolean;
                                         /**
@@ -21672,6 +21680,16 @@ export interface operations {
                                              */
                                             b_micros: number;
                                             /**
+                                             * @description How a code identifier such as `read_stamp` or `RrdEngine` is indexed.
+                                             *     `pieces` keeps only the tokenizer's pieces; `whole_and_parts` also indexes
+                                             *     each `_`-joined identifier whole and the case-change parts of a
+                                             *     mixed-case piece, so a question can name an identifier whole or by its
+                                             *     words.
+                                             * @default pieces
+                                             * @enum {string}
+                                             */
+                                            identifiers: "pieces" | "whole_and_parts";
+                                            /**
                                              * Format: uint32
                                              * @default 1200000
                                              */
@@ -24396,6 +24414,16 @@ export interface operations {
                                              * @default 750000
                                              */
                                             b_micros: number;
+                                            /**
+                                             * @description How a code identifier such as `read_stamp` or `RrdEngine` is indexed.
+                                             *     `pieces` keeps only the tokenizer's pieces; `whole_and_parts` also indexes
+                                             *     each `_`-joined identifier whole and the case-change parts of a
+                                             *     mixed-case piece, so a question can name an identifier whole or by its
+                                             *     words.
+                                             * @default pieces
+                                             * @enum {string}
+                                             */
+                                            identifiers: "pieces" | "whole_and_parts";
                                             /**
                                              * Format: uint32
                                              * @default 1200000
@@ -31688,6 +31716,16 @@ export interface operations {
                              */
                             b_micros?: number;
                             /**
+                             * @description How a code identifier such as `read_stamp` or `RrdEngine` is indexed.
+                             *     `pieces` keeps only the tokenizer's pieces; `whole_and_parts` also indexes
+                             *     each `_`-joined identifier whole and the case-change parts of a
+                             *     mixed-case piece, so a question can name an identifier whole or by its
+                             *     words.
+                             * @default pieces
+                             * @enum {string}
+                             */
+                            identifiers?: "pieces" | "whole_and_parts";
+                            /**
                              * Format: uint32
                              * @default 1200000
                              */
@@ -31793,6 +31831,16 @@ export interface operations {
                                          * @default 750000
                                          */
                                         b_micros: number;
+                                        /**
+                                         * @description How a code identifier such as `read_stamp` or `RrdEngine` is indexed.
+                                         *     `pieces` keeps only the tokenizer's pieces; `whole_and_parts` also indexes
+                                         *     each `_`-joined identifier whole and the case-change parts of a
+                                         *     mixed-case piece, so a question can name an identifier whole or by its
+                                         *     words.
+                                         * @default pieces
+                                         * @enum {string}
+                                         */
+                                        identifiers: "pieces" | "whole_and_parts";
                                         /**
                                          * Format: uint32
                                          * @default 1200000
@@ -31976,6 +32024,16 @@ export interface operations {
                                          * @default 750000
                                          */
                                         b_micros: number;
+                                        /**
+                                         * @description How a code identifier such as `read_stamp` or `RrdEngine` is indexed.
+                                         *     `pieces` keeps only the tokenizer's pieces; `whole_and_parts` also indexes
+                                         *     each `_`-joined identifier whole and the case-change parts of a
+                                         *     mixed-case piece, so a question can name an identifier whole or by its
+                                         *     words.
+                                         * @default pieces
+                                         * @enum {string}
+                                         */
+                                        identifiers: "pieces" | "whole_and_parts";
                                         /**
                                          * Format: uint32
                                          * @default 1200000
@@ -32205,6 +32263,16 @@ export interface operations {
                                          */
                                         b_micros: number;
                                         /**
+                                         * @description How a code identifier such as `read_stamp` or `RrdEngine` is indexed.
+                                         *     `pieces` keeps only the tokenizer's pieces; `whole_and_parts` also indexes
+                                         *     each `_`-joined identifier whole and the case-change parts of a
+                                         *     mixed-case piece, so a question can name an identifier whole or by its
+                                         *     words.
+                                         * @default pieces
+                                         * @enum {string}
+                                         */
+                                        identifiers: "pieces" | "whole_and_parts";
+                                        /**
                                          * Format: uint32
                                          * @default 1200000
                                          */
@@ -32336,6 +32404,16 @@ export interface operations {
                                          * @default 750000
                                          */
                                         b_micros: number;
+                                        /**
+                                         * @description How a code identifier such as `read_stamp` or `RrdEngine` is indexed.
+                                         *     `pieces` keeps only the tokenizer's pieces; `whole_and_parts` also indexes
+                                         *     each `_`-joined identifier whole and the case-change parts of a
+                                         *     mixed-case piece, so a question can name an identifier whole or by its
+                                         *     words.
+                                         * @default pieces
+                                         * @enum {string}
+                                         */
+                                        identifiers: "pieces" | "whole_and_parts";
                                         /**
                                          * Format: uint32
                                          * @default 1200000

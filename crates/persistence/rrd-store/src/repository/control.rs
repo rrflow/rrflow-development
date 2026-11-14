@@ -153,6 +153,12 @@ impl<'a> ControlRepository<'a> {
                 &keyspaces::catalog_revision_key(scope),
                 revision,
             )?;
+            let cursor = read_sequence(&*transaction, &keyspaces::runtime_cursor_key())?;
+            put_sequence(
+                &mut *transaction,
+                &keyspaces::catalog_revision_cursor_key(scope, revision),
+                cursor,
+            )?;
         }
         transaction.commit(Durability::Authoritative)?;
         let entry = entries.pop().expect("one validated control transition");

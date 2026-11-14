@@ -202,6 +202,9 @@ pub struct Transaction {
     buffered_bytes: usize,
     owner: Arc<TransactionSnapshots>,
     released: bool,
+    /// A measuring transaction stages writes past the physical payload
+    /// ceiling so a caller can learn a batch's exact size; it never commits.
+    measuring: bool,
 }
 
 impl Transaction {
@@ -214,7 +217,41 @@ impl Transaction {
             buffered_bytes: 0,
             owner,
             released: false,
+            measuring: false,
         })
+    }
+
+    /// Turns this transaction into a measuring one before it stages a write:
+    /// writes are no longer refused at the physical payload ceiling, and
+    /// committing it is refused. Use [`Transaction::encoded_len`] to read the
+    /// exact batch size, then roll it back.
+    pub fn measure_only(&mut self) -> Result<()> {
+        if !self.writes.is_empty() {
+            return Err(Error::InvalidTransaction(
+                "a transaction becomes measuring before it stages a write".into(),
+            ));
+        }
+        self.measuring = true;
+        Ok(())
+    }
+
+    pub fn is_measuring(&self) -> bool {
+        self.measuring
+    }
+
+    /// Exact byte length of the staged writes in the WAL payload encoding.
+    pub fn encoded_len(&self) -> usize {
+        self.write_size.encoded_len()
+    }
+
+    fn sized(&self, key: &[u8], value: Option<&[u8]>) -> Result<WriteBatchSize> {
+        let previous = self.writes.get(key).map(|value| value.as_deref());
+        if self.measuring {
+            self.write_size
+                .with_replacement_unbounded(key, previous, value)
+        } else {
+            self.write_size.with_replacement(key, previous, value)
+        }
     }
 
     /// Physical sequence captured when the transaction began.
@@ -267,11 +304,7 @@ impl Transaction {
     /// Buffers a value. Repeated mutations of the same key collapse to the
     /// final transaction-local value before conflict validation and WAL write.
     pub fn put(&mut self, key: Vec<u8>, value: Vec<u8>) -> Result<()> {
-        let size = self.write_size.with_replacement(
-            &key,
-            self.writes.get(&key).map(|value| value.as_deref()),
-            Some(&value),
-        )?;
+        let size = self.sized(&key, Some(&value))?;
         let reserved = self.reserve_replacement(&key, Some(&value))?;
         self.writes.insert(key, Some(value));
         self.write_size = size;
@@ -280,11 +313,7 @@ impl Transaction {
 
     /// Buffers a tombstone for one key.
     pub fn delete(&mut self, key: Vec<u8>) -> Result<()> {
-        let size = self.write_size.with_replacement(
-            &key,
-            self.writes.get(&key).map(|value| value.as_deref()),
-            None,
-        )?;
+        let size = self.sized(&key, None)?;
         let reserved = self.reserve_replacement(&key, None)?;
         self.writes.insert(key, None);
         self.write_size = size;

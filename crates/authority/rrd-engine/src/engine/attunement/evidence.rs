@@ -9,10 +9,20 @@ use rrd_attunement::inventory::EntryKind;
 use rrd_contract::{AttunementEvidence, WorkloadClass, ATTUNEMENT_EVIDENCE_FORMAT_VERSION};
 use std::collections::{BTreeMap, BTreeSet};
 
-/// The capabilities this engine can execute. This is the one owner of "what
-/// can run"; a profile may offer more, a derived plan never selects more.
-pub(in crate::engine) const EXECUTABLE_PHASES: [AttunementPhase; 2] =
-    [AttunementPhase::Connect, AttunementPhase::Inventory];
+/// The capabilities this engine can execute on this platform. This is the one
+/// owner of "what can run"; a profile may offer more, a derived plan never
+/// selects more. Parse needs a native supervisor to contain its worker, which
+/// exists on Windows and Linux; elsewhere it is reported unavailable rather
+/// than planned and refused at its first step.
+#[cfg(any(windows, target_os = "linux"))]
+pub(in crate::engine) const EXECUTABLE_PHASES: &[AttunementPhase] = &[
+    AttunementPhase::Connect,
+    AttunementPhase::Inventory,
+    AttunementPhase::Parse,
+];
+#[cfg(not(any(windows, target_os = "linux")))]
+pub(in crate::engine) const EXECUTABLE_PHASES: &[AttunementPhase] =
+    &[AttunementPhase::Connect, AttunementPhase::Inventory];
 
 /// Evidence from the job's committed Inventory, or `None` when the job has no
 /// Inventory checkpoint yet (a successor then only rebinds the plan).

@@ -173,6 +173,11 @@ pub enum InstallAction {
         /// Explicitly include the instance-scoped ProjectSourceRead grant in a new estate.
         #[arg(long, default_value_t = false)]
         allow_project_source_read: bool,
+        /// Seal a policy under which `serve` keeps the project attuned: every
+        /// interval it looks for changed files and, when it finds some, parses
+        /// and indexes them as the installed operator.
+        #[arg(long, value_name = "MS")]
+        follow_interval_ms: Option<u64>,
         /// Debug-test surrogate for the distribution executable.
         #[arg(long = "test-distribution-executable", hide = true)]
         test_distribution_executable: Option<std::path::PathBuf>,

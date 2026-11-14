@@ -58,6 +58,26 @@ impl WriteBatchSize {
         previous: Option<Option<&[u8]>>,
         value: Option<&[u8]>,
     ) -> Result<Self> {
+        let next = self.with_replacement_unbounded(key, previous, value)?;
+        if next.encoded_bytes > WAL_MAX_PAYLOAD_BYTES {
+            return Err(Error::WriteBatchLimit {
+                resource: WriteBatchResource::EncodedBytes,
+                limit: WAL_MAX_PAYLOAD_BYTES as u64,
+                observed: next.encoded_bytes as u64,
+            });
+        }
+        Ok(next)
+    }
+
+    /// The same accounting without the physical payload ceiling, for a
+    /// measuring transaction that reports a batch's size and never commits.
+    /// The operation-count ceiling still applies.
+    pub fn with_replacement_unbounded(
+        self,
+        key: &[u8],
+        previous: Option<Option<&[u8]>>,
+        value: Option<&[u8]>,
+    ) -> Result<Self> {
         validate_key(key)?;
         if let Some(value) = value {
             validate_value(value)?;
@@ -93,13 +113,6 @@ impl WriteBatchSize {
             .filter(|n| *n >= BATCH_HEADER_BYTES)
             .and_then(|n| n.checked_add(new))
             .ok_or_else(|| Error::InvalidBatch("encoded batch accounting overflow".into()))?;
-        if encoded_bytes > WAL_MAX_PAYLOAD_BYTES {
-            return Err(Error::WriteBatchLimit {
-                resource: WriteBatchResource::EncodedBytes,
-                limit: WAL_MAX_PAYLOAD_BYTES as u64,
-                observed: encoded_bytes as u64,
-            });
-        }
         Ok(Self {
             operations,
             encoded_bytes,

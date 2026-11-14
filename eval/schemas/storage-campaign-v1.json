@@ -1,5 +1,20 @@
 {
   "$defs": {
+    "AttunementFollowPolicy": {
+      "additionalProperties": false,
+      "description": "The served engine keeps its project attuned: every `interval_ms` it looks\nfor a change to the project's files, and when it finds one it derives the\nsuccessor attunement plan from the committed evidence, accepts it and steps\nit to the end, as the installed operator, through the public attunement\noperations and their receipts. Sealed into the installation plan; absent\nmeans the engine never attunes on its own.",
+      "properties": {
+        "interval_ms": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "interval_ms"
+      ],
+      "type": "object"
+    },
     "Budgets": {
       "additionalProperties": false,
       "description": "Proposed, frozen laboratory ceilings. They are NOT installed configuration.\nByte reservations are disjoint; recovery replay bytes differ from memory.",
@@ -1152,6 +1167,16 @@
       "additionalProperties": false,
       "description": "Effective, immutable configuration bound to an installation plan and\nsurfaced to every client. Mutating it requires a future governed\nconfigure-plan/configure-apply operation.",
       "properties": {
+        "attunement_follow": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AttunementFollowPolicy"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "clock": {
           "$ref": "#/$defs/ClockPolicy"
         },
