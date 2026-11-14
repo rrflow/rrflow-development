@@ -37,7 +37,7 @@
   "crates/authority/rrd-engine/src/runtime/data_plane.rs": 969,
   "crates/authority/rrd-engine/src/runtime/query.rs": 1039,
   "crates/authority/rrd-engine/src/runtime/vector_catalog.rs": 1660,
-  "crates/authority/rrd-engine/tests/workspace_architecture.rs": 2459,
+  "crates/authority/rrd-engine/tests/workspace_architecture.rs": 2445,
   "crates/authority/rrd-estate/src/backup_job.rs": 810,
   "crates/authority/rrd-estate/src/lib.rs": 1495,
   "crates/authority/rrd-estate/src/local_process.rs": 1363,
