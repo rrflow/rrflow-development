@@ -10,6 +10,11 @@ either independently.
 
 ## B-01 evidence (2026-09-04):
 
+The following describes the contract and fixture at the evidence date. The
+[plan-owned attunement candidate](../../evidence/change-journals/gate-d/d-02-plan-owned-attunement.md)
+records a later change to plan sequencing and fixture version; its integration
+and CI remain separate from this historical evidence.
+
 - `rrd-contract` defines strict provider-neutral installation plans/results and
   attunement plans, jobs, leases, phase checkpoints, status, resume, cancel,
   and verification payloads. They contain no provider hook, secret, local

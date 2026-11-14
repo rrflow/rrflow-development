@@ -1,0 +1,307 @@
+{
+  "purpose": "Observed git check-ignore decisions on authored parser cases; not learning records.",
+  "sources": [
+    {
+      "kind": "global",
+      "patterns": "*.tmp\n*.log\n"
+    },
+    {
+      "kind": "repository",
+      "patterns": "!*.log\n"
+    },
+    {
+      "kind": "worktree",
+      "directory": "",
+      "patterns": "*.log\n!root.log\nignored/\n!ignored/keep.txt\nout/*\n!out/keep/\nout/keep/*\n!out/keep/file\n\\#literal\n\\!literal\n**/cache/*.tmp\n/root-only\nfolder/\n"
+    },
+    {
+      "kind": "worktree",
+      "directory": "src",
+      "patterns": "!keep.log\n*.TMP\n"
+    },
+    {
+      "kind": "worktree",
+      "directory": "ignored",
+      "patterns": "!keep.txt\n"
+    }
+  ],
+  "cases": [
+    {
+      "path": "root.log",
+      "is_directory": false,
+      "ignore_case": false,
+      "ignored": false
+    },
+    {
+      "path": "other.log",
+      "is_directory": false,
+      "ignore_case": false,
+      "ignored": true
+    },
+    {
+      "path": "src/keep.log",
+      "is_directory": false,
+      "ignore_case": false,
+      "ignored": false
+    },
+    {
+      "path": "src/other.log",
+      "is_directory": false,
+      "ignore_case": false,
+      "ignored": true
+    },
+    {
+      "path": "other.tmp",
+      "is_directory": false,
+      "ignore_case": false,
+      "ignored": true
+    },
+    {
+      "path": "src/a.TMP",
+      "is_directory": false,
+      "ignore_case": false,
+      "ignored": true
+    },
+    {
+      "path": "src/a.tmp",
+      "is_directory": false,
+      "ignore_case": false,
+      "ignored": true
+    },
+    {
+      "path": "ignored/keep.txt",
+      "is_directory": false,
+      "ignore_case": false,
+      "ignored": true
+    },
+    {
+      "path": "ignored/other",
+      "is_directory": false,
+      "ignore_case": false,
+      "ignored": true
+    },
+    {
+      "path": "out/keep",
+      "is_directory": true,
+      "ignore_case": false,
+      "ignored": false
+    },
+    {
+      "path": "out/keep/file",
+      "is_directory": false,
+      "ignore_case": false,
+      "ignored": false
+    },
+    {
+      "path": "out/keep/other",
+      "is_directory": false,
+      "ignore_case": false,
+      "ignored": true
+    },
+    {
+      "path": "out/drop/file",
+      "is_directory": false,
+      "ignore_case": false,
+      "ignored": true
+    },
+    {
+      "path": "#literal",
+      "is_directory": false,
+      "ignore_case": false,
+      "ignored": true
+    },
+    {
+      "path": "!literal",
+      "is_directory": false,
+      "ignore_case": false,
+      "ignored": true
+    },
+    {
+      "path": "a/b/cache/a.tmp",
+      "is_directory": false,
+      "ignore_case": false,
+      "ignored": true
+    },
+    {
+      "path": "cache/a.tmp",
+      "is_directory": false,
+      "ignore_case": false,
+      "ignored": true
+    },
+    {
+      "path": "cache/a.txt",
+      "is_directory": false,
+      "ignore_case": false,
+      "ignored": false
+    },
+    {
+      "path": "root-only",
+      "is_directory": false,
+      "ignore_case": false,
+      "ignored": true
+    },
+    {
+      "path": "a/root-only",
+      "is_directory": false,
+      "ignore_case": false,
+      "ignored": false
+    },
+    {
+      "path": "folder",
+      "is_directory": true,
+      "ignore_case": false,
+      "ignored": true
+    },
+    {
+      "path": "folder/child",
+      "is_directory": false,
+      "ignore_case": false,
+      "ignored": true
+    },
+    {
+      "path": ".github/workflows/check.yml",
+      "is_directory": false,
+      "ignore_case": false,
+      "ignored": false
+    },
+    {
+      "path": "root.log",
+      "is_directory": false,
+      "ignore_case": true,
+      "ignored": false
+    },
+    {
+      "path": "other.log",
+      "is_directory": false,
+      "ignore_case": true,
+      "ignored": true
+    },
+    {
+      "path": "src/keep.log",
+      "is_directory": false,
+      "ignore_case": true,
+      "ignored": false
+    },
+    {
+      "path": "src/other.log",
+      "is_directory": false,
+      "ignore_case": true,
+      "ignored": true
+    },
+    {
+      "path": "other.tmp",
+      "is_directory": false,
+      "ignore_case": true,
+      "ignored": true
+    },
+    {
+      "path": "src/a.TMP",
+      "is_directory": false,
+      "ignore_case": true,
+      "ignored": true
+    },
+    {
+      "path": "src/a.tmp",
+      "is_directory": false,
+      "ignore_case": true,
+      "ignored": true
+    },
+    {
+      "path": "ignored/keep.txt",
+      "is_directory": false,
+      "ignore_case": true,
+      "ignored": true
+    },
+    {
+      "path": "ignored/other",
+      "is_directory": false,
+      "ignore_case": true,
+      "ignored": true
+    },
+    {
+      "path": "out/keep",
+      "is_directory": true,
+      "ignore_case": true,
+      "ignored": false
+    },
+    {
+      "path": "out/keep/file",
+      "is_directory": false,
+      "ignore_case": true,
+      "ignored": false
+    },
+    {
+      "path": "out/keep/other",
+      "is_directory": false,
+      "ignore_case": true,
+      "ignored": true
+    },
+    {
+      "path": "out/drop/file",
+      "is_directory": false,
+      "ignore_case": true,
+      "ignored": true
+    },
+    {
+      "path": "#literal",
+      "is_directory": false,
+      "ignore_case": true,
+      "ignored": true
+    },
+    {
+      "path": "!literal",
+      "is_directory": false,
+      "ignore_case": true,
+      "ignored": true
+    },
+    {
+      "path": "a/b/cache/a.tmp",
+      "is_directory": false,
+      "ignore_case": true,
+      "ignored": true
+    },
+    {
+      "path": "cache/a.tmp",
+      "is_directory": false,
+      "ignore_case": true,
+      "ignored": true
+    },
+    {
+      "path": "cache/a.txt",
+      "is_directory": false,
+      "ignore_case": true,
+      "ignored": false
+    },
+    {
+      "path": "root-only",
+      "is_directory": false,
+      "ignore_case": true,
+      "ignored": true
+    },
+    {
+      "path": "a/root-only",
+      "is_directory": false,
+      "ignore_case": true,
+      "ignored": false
+    },
+    {
+      "path": "folder",
+      "is_directory": true,
+      "ignore_case": true,
+      "ignored": true
+    },
+    {
+      "path": "folder/child",
+      "is_directory": false,
+      "ignore_case": true,
+      "ignored": true
+    },
+    {
+      "path": ".github/workflows/check.yml",
+      "is_directory": false,
+      "ignore_case": true,
+      "ignored": false
+    }
+  ],
+  "command": "git -c core.excludesFile=<explicit fixture> -c core.ignoreCase=<case> check-ignore --no-index -q -- <path>"
+}

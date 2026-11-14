@@ -50,7 +50,7 @@
     }
   ],
   "attunement_plan": {
-    "contract_version": 1,
+    "contract_version": 2,
     "estimated_max_duration_ms": 2700000,
     "estimated_min_duration_ms": 1800000,
     "id": "attune-01",
@@ -133,7 +133,7 @@
         "sequence": 11
       }
     ],
-    "plan_sha256": "3813d050efdd0b627a942a6a7a77b593245afafe222cb99ad336688189e1625d",
+    "plan_sha256": "ed9ad5706a4a5d176fe312c668a0153f220c6cb182512b57b0084e94fe6fd74e",
     "source_sha256": "0000000000000000000000000000000000000000000000000000000000000001",
     "target": {
       "estate_id": "developer-estate",
@@ -142,11 +142,11 @@
     }
   },
   "cancel": {
-    "contract_version": 1,
+    "contract_version": 2,
     "expected_job_revision": 3,
     "job_id": "job-01",
-    "last_checkpoint_sha256": "e1467c32a58549f9d64466f12ff085e08512d602f57a1c26b894565cbc3efc94",
-    "plan_sha256": "3813d050efdd0b627a942a6a7a77b593245afafe222cb99ad336688189e1625d",
+    "last_checkpoint_sha256": "e7bdc54e612e49c7f7cb0d905cfc00b608cbda835d8e29eec80a103d2fbca144",
+    "plan_sha256": "ed9ad5706a4a5d176fe312c668a0153f220c6cb182512b57b0084e94fe6fd74e",
     "reason": "operator requested cancellation",
     "requested_at_unix_ms": 1800000003001
   },
@@ -214,7 +214,7 @@
       }
     ],
     "attunement_plan_id": "attune-01",
-    "attunement_plan_sha256": "3813d050efdd0b627a942a6a7a77b593245afafe222cb99ad336688189e1625d",
+    "attunement_plan_sha256": "ed9ad5706a4a5d176fe312c668a0153f220c6cb182512b57b0084e94fe6fd74e",
     "bootstrap": {
       "activated_provider_bindings": [],
       "credential_entropy_bytes": 32,
@@ -447,7 +447,7 @@
         "removal_rule": "remove_if_owned_digest_matches"
       }
     ],
-    "plan_sha256": "1578ce519c200b3b0a06f71dc95023875581d3c1e89cb08c239bdc165aa09955",
+    "plan_sha256": "d7f3ab79b38676b491f57b12bb24e64ec785020ad8a8a87e3af2a23d4fdb24b8",
     "product_version": "1.0.0",
     "profile_id": "default",
     "profile_sha256": "0000000000000000000000000000000000000000000000000000000000000029",
@@ -513,17 +513,17 @@
     "installed_record_sha256": "000000000000000000000000000000000000000000000000000000000000001f",
     "locator_sha256": "0000000000000000000000000000000000000000000000000000000000000021",
     "plan_id": "install-01",
-    "plan_sha256": "1578ce519c200b3b0a06f71dc95023875581d3c1e89cb08c239bdc165aa09955",
-    "result_sha256": "3bedfbc00881781d8f7143cd85a5650e0391630c6ad0faefb6fda305c91861c1",
+    "plan_sha256": "d7f3ab79b38676b491f57b12bb24e64ec785020ad8a8a87e3af2a23d4fdb24b8",
+    "result_sha256": "ebf9dc0d02366364f69e19c7c14961e027c735b904f97bd5b264278444cf050c",
     "runtime_cursor": 1,
     "runtime_manifest_sha256": "000000000000000000000000000000000000000000000000000000000000001e"
   },
   "resume": {
-    "contract_version": 1,
+    "contract_version": 2,
     "expected_job_revision": 3,
     "job_id": "job-01",
-    "last_checkpoint_sha256": "e1467c32a58549f9d64466f12ff085e08512d602f57a1c26b894565cbc3efc94",
-    "plan_sha256": "3813d050efdd0b627a942a6a7a77b593245afafe222cb99ad336688189e1625d",
+    "last_checkpoint_sha256": "e7bdc54e612e49c7f7cb0d905cfc00b608cbda835d8e29eec80a103d2fbca144",
+    "plan_sha256": "ed9ad5706a4a5d176fe312c668a0153f220c6cb182512b57b0084e94fe6fd74e",
     "requested_at_unix_ms": 1800000003001,
     "resume_from_phase": "inventory"
   },
@@ -579,14 +579,14 @@
     }
   ],
   "status": {
-    "contract_version": 1,
+    "contract_version": 2,
     "job": {
       "checkpoints": [
         {
-          "checkpoint_sha256": "e1467c32a58549f9d64466f12ff085e08512d602f57a1c26b894565cbc3efc94",
+          "checkpoint_sha256": "e7bdc54e612e49c7f7cb0d905cfc00b608cbda835d8e29eec80a103d2fbca144",
           "committed_at_unix_ms": 1800000000101,
           "configuration_sha256": "0000000000000000000000000000000000000000000000000000000000000065",
-          "contract_version": 1,
+          "contract_version": 2,
           "coordinates": {
             "catalogue_revision": 1,
             "runtime_cursor": 1,
@@ -597,11 +597,11 @@
           "job_id": "job-01",
           "output_sha256": "00000000000000000000000000000000000000000000000000000000000000c9",
           "phase": "connect",
-          "plan_sha256": "3813d050efdd0b627a942a6a7a77b593245afafe222cb99ad336688189e1625d",
+          "plan_sha256": "ed9ad5706a4a5d176fe312c668a0153f220c6cb182512b57b0084e94fe6fd74e",
           "sequence": 1
         }
       ],
-      "contract_version": 1,
+      "contract_version": 2,
       "created_at_unix_ms": 1800000000010,
       "current_phase": "inventory",
       "id": "job-01",
@@ -613,7 +613,7 @@
         "id": "lease-01"
       },
       "plan_id": "attune-01",
-      "plan_sha256": "3813d050efdd0b627a942a6a7a77b593245afafe222cb99ad336688189e1625d",
+      "plan_sha256": "ed9ad5706a4a5d176fe312c668a0153f220c6cb182512b57b0084e94fe6fd74e",
       "revision": 2,
       "state": "running",
       "updated_at_unix_ms": 1800000002000
@@ -628,14 +628,14 @@
         "passed": true
       }
     ],
-    "contract_version": 1,
+    "contract_version": 2,
     "job_id": "job-01",
     "job_revision": 20,
-    "last_checkpoint_sha256": "ac65ce32a7161564316f47877e619cdc80317b880d5c90ffe91d7abbde44225f",
-    "plan_sha256": "3813d050efdd0b627a942a6a7a77b593245afafe222cb99ad336688189e1625d",
+    "last_checkpoint_sha256": "f9e2f56eeb8bfd0ea8c9b53d31238d70cd3bc3ed396d90b2dda44ae4c6ad3312",
+    "plan_sha256": "ed9ad5706a4a5d176fe312c668a0153f220c6cb182512b57b0084e94fe6fd74e",
     "runtime_manifest_sha256": "0000000000000000000000000000000000000000000000000000000000000137",
     "status": "passed",
-    "verification_sha256": "e0a8d9ab4f799b8094aacc956779c1017c8b82563ea2a2833409b43d7c4d4395",
+    "verification_sha256": "9d06c9304bf5cd5903e0c2c972dd4ec144ed2a4dabffa2d4549d3d369e1dd376",
     "verified_at_unix_ms": 1800000020001
   }
 }
