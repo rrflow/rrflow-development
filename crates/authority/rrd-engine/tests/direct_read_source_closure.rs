@@ -92,7 +92,7 @@ const ALLOWED_USES: &[AllowedUse] = &[
         operation: "explicit rollback current/target graph comparison",
     },
     AllowedUse {
-        path: "crates/authority/rrd-engine/src/runtime/data_plane.rs",
+        path: "crates/authority/rrd-engine/src/runtime/data_plane/attributes.rs",
         kind: SensitiveReadUse::CausalLogPage,
         count: 1,
         operation: "embedding trace-only conflict recovery verification",
