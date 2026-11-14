@@ -124,6 +124,22 @@ pub(in crate::http) fn api_error(error: ServiceError) -> ApiError {
     if let ServiceError::TransactionSnapshotStale { expected, actual } = error {
         return stale_transaction_error(expected, actual);
     }
+    if matches!(error, ServiceError::AttunementSourceChanged) {
+        let mut response = ApiError::new(
+            ErrorCode::FailedPrecondition,
+            "The project source changed after the plan was observed. Preview a replan or reconcile the job before continuing; acceptance is explicit.",
+            false,
+        );
+        response.body.details.insert(
+            CanonicalId::new("reason").expect("constant detail key"),
+            "attunement-source-changed".into(),
+        );
+        response.body.details.insert(
+            CanonicalId::new("next-action").expect("constant detail key"),
+            "preview-attunement-replan".into(),
+        );
+        return response;
+    }
     let message = error.to_string();
     let retryable = error.retryable();
     let code = match error.kind() {
