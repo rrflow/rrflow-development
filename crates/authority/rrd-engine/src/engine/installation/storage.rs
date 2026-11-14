@@ -138,10 +138,7 @@ pub(super) fn cleanup_pending_file(path: &AnchoredPath, expected: &[u8]) -> Resu
     }
 }
 
-pub(in super::super) fn read_regular_bounded(
-    path: &AnchoredPath,
-    maximum: u64,
-) -> Result<Vec<u8>> {
+pub(in super::super) fn read_regular_bounded(path: &AnchoredPath, maximum: u64) -> Result<Vec<u8>> {
     let file = path.open_read().map_err(storage_error)?;
     let metadata = file
         .metadata()
@@ -330,17 +327,11 @@ pub(in super::super) fn require_locator_record_match(
     Ok(())
 }
 
-pub(in super::super) fn attunement_plan_key(
-    instance: &CanonicalId,
-    plan: &CanonicalId,
-) -> String {
+pub(in super::super) fn attunement_plan_key(instance: &CanonicalId, plan: &CanonicalId) -> String {
     format!("server/state/{instance}/attunement/plan/{plan}")
 }
 
-pub(in super::super) fn attunement_job_key(
-    instance: &CanonicalId,
-    job: &CanonicalId,
-) -> String {
+pub(in super::super) fn attunement_job_key(instance: &CanonicalId, job: &CanonicalId) -> String {
     format!("server/state/{instance}/attunement/job/{job}")
 }
 
@@ -397,10 +388,7 @@ pub(in super::super) fn json_sha256<T: Serialize + ?Sized>(value: &T) -> Result<
         .map_err(contract_json)
 }
 
-pub(in super::super) fn canonical_prefixed(
-    prefix: &str,
-    sha256: &str,
-) -> Result<CanonicalId> {
+pub(in super::super) fn canonical_prefixed(prefix: &str, sha256: &str) -> Result<CanonicalId> {
     if !is_sha256(sha256) {
         return Err(ServiceError::Contract(
             "identity seed is not SHA-256".into(),

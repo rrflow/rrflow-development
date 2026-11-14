@@ -6,7 +6,7 @@
   "harness": 1500
  },
  "oversize": {
-  "crates/adapters/rrflow-cli/tests/installed_lifecycle.rs": 4171,
+  "crates/adapters/rrflow-cli/tests/installed_lifecycle.rs": 2634,
   "crates/adapters/rrflow-cli/tests/support/capacity.rs": 1667,
   "crates/adapters/rrflow-cli/tests/support/sustained.rs": 2839,
   "crates/adapters/rrflow-cli/tests/support/sustained/workload.rs": 1760,
@@ -15,13 +15,12 @@
   "crates/authority/rrd-engine/src/engine/endpoint_worker.rs": 1082,
   "crates/authority/rrd-engine/src/engine/estate_control.rs": 1465,
   "crates/authority/rrd-engine/src/engine/flight.rs": 1569,
-  "crates/authority/rrd-engine/src/engine/installation.rs": 2500,
   "crates/authority/rrd-engine/src/engine/reasoning_budget.rs": 915,
   "crates/authority/rrd-engine/src/engine/restore_publication.rs": 960,
   "crates/authority/rrd-engine/src/engine/retrieval_query.rs": 1276,
-  "crates/authority/rrd-engine/src/engine/tests/attunement.rs": 3671,
+  "crates/authority/rrd-engine/src/engine/tests/attunement.rs": 2727,
   "crates/authority/rrd-engine/src/engine/tests/function.rs": 1711,
-  "crates/authority/rrd-engine/src/engine/tests/installation.rs": 2296,
+  "crates/authority/rrd-engine/src/engine/tests/installation.rs": 1581,
   "crates/authority/rrd-engine/src/engine/tests/reasoning_budget/worker/source_bound.rs": 2446,
   "crates/authority/rrd-engine/src/engine/tests/reasoning_budget/worker/source_bound/assessment.rs": 2614,
   "crates/authority/rrd-engine/src/engine/tests/security.rs": 1571,
@@ -97,7 +96,7 @@
   "crates/transport/rrd-contract/tests/public_contract.rs": 3100,
   "crates/transport/rrd-server/src/http/websocket.rs": 889,
   "crates/transport/rrd-server/src/main.rs": 446,
-  "crates/transport/rrd-server/tests/http_process.rs": 4225
+  "crates/transport/rrd-server/tests/http_process.rs": 3883
  },
  "patterns": {
   "boxed_error": {

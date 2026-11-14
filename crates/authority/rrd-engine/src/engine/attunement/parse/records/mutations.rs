@@ -250,10 +250,7 @@ pub(in super::super) fn ensure_indexes(
 
 /// Retires a file that left the project or its parse bindings: its facts and
 /// its state.
-pub(in super::super) fn retire_file(
-    state: &FileState,
-    at: u64,
-) -> Result<Vec<RuntimeMutation>> {
+pub(in super::super) fn retire_file(state: &FileState, at: u64) -> Result<Vec<RuntimeMutation>> {
     let mut mutations = Vec::new();
     for (kind, ids) in fact_ids(state) {
         for id in ids {
@@ -275,9 +272,7 @@ pub(in super::super) fn state_of(mutation: &RuntimeMutation) -> Result<Option<Fi
 }
 
 /// One digest of every file's current answer, recorded by the Parse checkpoint.
-pub(in super::super) fn summary_sha256(
-    states: &BTreeMap<String, FileState>,
-) -> Result<String> {
+pub(in super::super) fn summary_sha256(states: &BTreeMap<String, FileState>) -> Result<String> {
     let rows: Vec<_> = states
         .values()
         .map(|state| {

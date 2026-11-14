@@ -73,6 +73,46 @@ Every question ran through `ContextAccessPath::CommitBm25` within the default 10
   - **Tests:** the installed lifecycle case expects Parse exactly where a supervisor exists. The derivation test checks the platform's executable set, and the Parse-step tests compile only where a supervisor exists.
   - **Gap:** a macOS parse supervisor is still missing.
 
+## Brought under the code-shape ratchet (2026-11-13)
+
+The code-shape ratchet (#381) landed while this package was queued. Merged with it, the package grew 20 files that were already over their size limits, added three new oversize files, added three allowed `too_many_arguments`, and added one hit on the digest rule. Nothing was exempted. Each fix moved code by exact syn item and method spans into domain modules, with behaviour unchanged:
+
+- **`rrd-contract`:**
+  - `lib.rs`: 7,685 → 332 lines, in 22 modules; the OpenAPI digest is unchanged.
+  - `deployment.rs`: split into 4 modules.
+- **`rrd-lsm`:** `database.rs` split into 9 modules.
+- **`rrd-store`:** `keyspaces.rs`, `rrflow_kv.rs`, `access/index.rs`, `access/semantic_commit.rs` and `repository/runtime.rs` each split by responsibility.
+- **`rrd-query`:** `execute.rs`, `plan.rs` and `index.rs` each split by responsibility.
+- **`rrd-engine`:**
+  - `attunement.rs`: its methods split into replan, read and control.
+  - `context.rs`, `installation.rs`, `installation/inventory.rs` and `parse/records.rs` each split by responsibility.
+  - The replan and restore tests moved into child test modules.
+- **Integration tests:** the loopback-worker and server-fixture helpers moved into `tests/support/`.
+- **`LexicalQuery`:** the lexical search takes a request struct instead of a long argument list, which removes the three allowances.
+
+Moved items keep their reach: `pub(super)` becomes `pub(in super::super)` one level deeper. Two other updates follow the moves:
+- Source-text architecture rules read whole modules through `module_source`.
+- The read-closure allowlist follows the reducer uses to their new files.
+
+The ratchet itself was corrected, in separate commits:
+- The digest rule now counts `sha2::` paths. It had flagged `rrd_core::digest::Sha256`, the intended API.
+- Pattern counts are kept per crate, so moving code between files of a crate is neutral.
+
+The re-run results:
+
+| Check | Result |
+|---|---|
+| `cargo test -p rrd-contract` | 200 passed |
+| `cargo test -p rrd-lsm` | 254 passed |
+| `cargo test -p rrd-store` | 282 passed |
+| `cargo test -p rrd-query` | 82 passed |
+| `cargo test -p rrd-engine --tests` | 544 passed |
+| Workspace clippy and fmt | clean |
+| Architecture and read-closure tests | 34 and 1 passed |
+| `storage_contract` | 11 passed |
+| Generated surfaces | unchanged |
+| `check_code_shape.py` | no violations; improvements locked with `--tighten` |
+
 ## Surfaced and not fixed here
 
 - **Write amplification.** 1.34 MiB of parse facts as JSON measured 10.5 MiB physically: records, versions, the change log, a source delta per index carrying the indexed text, and postings. Parse with indexes is several times slower than without. Recorded in POAM-065; not changed here.
