@@ -47,11 +47,11 @@ class MeasureTests(unittest.TestCase):
                 "fn b() -> Box<dyn std::error::Error> { todo!() }\n"
                 "#[allow(clippy::too_many_arguments)]\n"
                 "#[path = \"x_tests.rs\"] mod t;\n"
-                "let h = Sha256::digest(b\"x\");\n")
+                "let h = sha2::Sha256::digest(b\"x\");\n")
         shape = measure({"crates/a/x/src/thing/mod.rs": text, "crates/a/x/tests/t.rs": text,
-                         "crates/kernel/rrd-core/src/digest.rs": "Sha256::new()\n"})
+                         "crates/kernel/rrd-core/src/digest.rs": "sha2::Sha256::new()\n"})
         path = "crates/a/x/src/thing/mod.rs"
-        for name in ("mod_rs", "path_attribute", "string_error", "boxed_error", "too_many_arguments_allow", "direct_sha256"):
+        for name in ("mod_rs", "path_attribute", "string_error", "boxed_error", "too_many_arguments_allow", "sha2_crate"):
             self.assertEqual(shape.patterns[name], {path: 1}, name)
 
 

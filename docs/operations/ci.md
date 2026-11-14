@@ -141,7 +141,7 @@ structure and conventions standard) runs in `verify` on the full matrix and in
 `repository-invariants` otherwise. It holds non-test Rust files to 800 lines,
 `lib.rs` and `main.rs` to 200 and test files to 1,500. It also counts `mod.rs`
 files, `#[path]` attributes, string and boxed errors, allowed
-`too_many_arguments`, and direct SHA-256 use. Every file or site that broke a
+`too_many_arguments`, and direct use of the `sha2` crate outside the digest owner. Every file or site that broke a
 rule on 2026-11-13 is recorded in `scripts/ci/code_shape_baseline.json` with its
 size or count. A recorded entry may only shrink, a new violation fails, and an
 improvement must be locked in with `--tighten`, which never admits a

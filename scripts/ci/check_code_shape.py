@@ -17,7 +17,8 @@ Counted patterns, in entry and source files only:
 - `string_error`              `Result<..., String>` (R5)
 - `boxed_error`               `Box<dyn Error>` (R5)
 - `too_many_arguments_allow`  an allowed `clippy::too_many_arguments` (R7)
-- `direct_sha256`             `Sha256::new(` or `Sha256::digest(` outside the digest owner (R6)
+- `sha2_crate`                any `sha2::` path outside the digest owner (R6); the owner's own
+                              `rrd_core::digest::Sha256` hasher is the intended API and is not counted
 
 The recorded baseline (`code_shape_baseline.json`) lists every file that broke a rule when the
 rules landed, with its size or count at that time. The check fails when:
@@ -51,7 +52,7 @@ PATTERNS: dict[str, re.Pattern[str]] = {
     "string_error": re.compile(r"Result<[^;{}]*,\s*String\s*>"),
     "boxed_error": re.compile(r"Box<dyn\s+(?:std::error::)?Error"),
     "too_many_arguments_allow": re.compile(r"allow\([^)]*clippy::too_many_arguments"),
-    "direct_sha256": re.compile(r"Sha256::(?:new|digest)\("),
+    "sha2_crate": re.compile(r"(?<![A-Za-z0-9_])sha2::"),
 }
 
 
@@ -102,7 +103,7 @@ def measure(files: dict[str, str]) -> Shape:
         if path.endswith("/mod.rs"):
             counts["mod_rs"] = 1
         for name, pattern in PATTERNS.items():
-            if name == "direct_sha256" and path == DIGEST_OWNER:
+            if name == "sha2_crate" and path == DIGEST_OWNER:
                 continue
             found = len(pattern.findall(text))
             if found:
