@@ -366,6 +366,10 @@ jobs:
         run: python3 scripts/test_build_rrflow.py
       - name: Test experimental controller archive rejection
         run: python3 scripts/test_controller_trial_package.py
+      - name: Enforce the code-shape ratchet
+        run: |
+          python3 scripts/ci/test_code_shape.py
+          python3 scripts/ci/check_code_shape.py
       - name: Enforce repository CI policy
         run: |
           python3 scripts/ci/test_merge_alarm.py
@@ -1068,6 +1072,12 @@ jobs:
         # can break them, so every candidate the full matrix does not cover
         # runs them here; the full matrix runs them inside engine-suites.
         run: cargo test -p rrd-engine --locked --test workspace_architecture
+      - name: Enforce the code-shape ratchet
+        # File-size and pattern limits only tighten; the full matrix runs the
+        # same check inside verify.
+        run: |
+          python3 scripts/ci/test_code_shape.py
+          python3 scripts/ci/check_code_shape.py
 
   ci-gate:
     name: ci-gate
