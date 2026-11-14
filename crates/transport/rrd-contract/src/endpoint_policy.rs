@@ -15,6 +15,12 @@ use serde::{Deserialize, Serialize};
 #[serde(deny_unknown_fields)]
 pub struct EndpointSelectionPolicy {
     pub contract_version: u16,
+    pub purpose: crate::EndpointSelectionPurpose,
+    /// Explicit experimental permission; a reported alias is not weight attestation.
+    pub allow_unverified_identity: bool,
+    pub allow_network: bool,
+    /// Aggregate outstanding controller calls, including unresolved remote work.
+    pub maximum_concurrent_proposals: u32,
     pub controller_binding_id: CanonicalId,
     pub workload_class: WorkloadClass,
     pub limits: EndpointSelectionLimits,
@@ -30,6 +36,11 @@ impl EndpointSelectionPolicy {
         self.limits.validate()?;
         if self.contract_version != ENDPOINT_SELECTION_VERSION {
             return invalid("unsupported selector policy version");
+        }
+        if self.maximum_concurrent_proposals == 0
+            || self.maximum_concurrent_proposals as usize > crate::MAX_PROFILE_BINDINGS
+        {
+            return invalid("invalid controller concurrency limit");
         }
         let controller = bindings
             .iter()

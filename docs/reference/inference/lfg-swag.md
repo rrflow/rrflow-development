@@ -66,8 +66,10 @@ The next public capability is **propose endpoint selection**, owned by
 `RrdEngine` and exposed through the executable operation catalogue when its
 handler and authorization are implemented together. Its proposed semantic
 types are `EndpointSelectionRequest`, `EndpointSelectionPacket` and
-`EndpointSelectionProposal`; these names are design targets, not available SDK
-types. A separate admitted external activity executes a selected provider.
+`EndpointSelectionProposal`. Their Rust validators are implemented; the proposal
+schema is now exposed by existing task-attempt readback. No public operation
+creates a controller proposal yet. A separate admitted external activity executes
+a selected provider.
 Generating the proposal itself may invoke the configured controller, so it
 requires model-call authorization, egress admission and budget reservation;
 it must never masquerade as a free configuration read.
@@ -98,6 +100,59 @@ tests perturb those records in memory only. The
 [validation journal](../../evidence/change-journals/gate-g/controller-endpoint-choice-validation.md)
 records provenance and limits. These observations are not training targets,
 human review, provider-quality evidence or completion of G-01b.
+
+### Task-bound proposal semantics in progress
+
+`EndpointSelectionRequest` names an existing task and stable attempt, expected
+task/configuration digests and a bounded task-read allowance. It accepts no URL,
+credential, prompt or caller-authored candidate catalogue. The task-text packet
+omits the task creation replay key, binds an open task version/read coordinate
+and requires the exact configured selector and allowance. Task projection checks
+do not authorize repository context or establish source-edit freshness.
+
+`EndpointSelectionProposal` binds request, task, attempt, packet, configuration,
+allowance, service alias and observed request/response/content identities. Its
+only purpose is an experimental proposal. That purpose is not runtime permission,
+capability verification, loaded-weight attestation or worker-effect authority.
+`EndpointTokenUsage` retains missing counts as unknown and rejects overflow or
+contradictory partial totals; the native adapter uses this same validator while
+tolerating unrelated provider envelope metadata.
+
+These types alone are consistency checks, not an engine dispatcher.
+Constructing a valid tuple does not prove that a model produced it for that packet.
+Authenticated packet construction, explicit experimental policy admission,
+credential setup and installed execution still require implementation in the
+same [draft package](https://github.com/rrflow/rrflow-development/pull/206).
+The [semantics-stage journal](../../evidence/change-journals/gate-g/controller-task-proposal-semantics.md)
+records actual-task projection and retained-provider validation checks. No new
+provider execution or model-quality claim follows from those checks.
+
+### Durable proposal completion in progress
+
+The existing task-attempt ledger can now retain a bounded typed proposal or
+embedding output, with an exclusive kind and exact outcome digest. Its public
+readback validates scope/task/attempt identity. Reopening the estate preserves
+the output and original consumed budget; replay cannot reserve the same attempt
+again. This is internal completion support, not a public proposal dispatcher.
+
+Completion rechecks its supplied authority at the current runtime read stamp.
+Engine-owned control guards compare exact authority bytes atomically with the
+budget, attempt and runtime event. A conflict repeats admission, not the model
+call. Equal-byte guard replacements preserve authority values and participate
+in existing transaction accounting/audit. Callers must supply the relevant
+authorized dependencies; this mechanism alone does not discover them.
+
+`TaskAttemptStatus::Invalidated` records changed inputs or authorization without
+resetting charged effort or the original deadline. An otherwise eligible next
+attempt may use the remaining budget after fresh admission. Stop/deadline still
+take precedence. Uncertain endpoint failures retain `execution_may_continue` and
+do not authorize another call. Generic failed-attempt stop behavior is otherwise
+unchanged; provider fallback/reconciliation still needs its owning policy.
+
+The [completion-stage journal](../../evidence/change-journals/gate-g/controller-task-proposal-completion.md)
+records isolated-engine persistence, session/task interleavings and invalidation
+checks. It does not prove a source-edit successor plan, actual controller
+authorization, provider cancellation or installed-process crash recovery.
 
 ### Governed selector settings prerequisite
 
@@ -596,6 +651,46 @@ are distinct from denial; do not promise erasure from a remote backend without
 evidence. Secrets and raw prompts are excluded from cache logs and metric
 labels. Provider caches can remain opaque: report unsupported or unknown
 instead of manufacturing cache hits or cross-provider portability.
+
+## Experimental task endpoint proposal
+
+The draft implementation exposes `POST /v1/tasks/endpoint/propose` only through
+the authenticated engine handler. It requires initialized security authority and
+`EndpointPropose`, `TaskRead` and `ReasoningWrite`. Requests carry task/attempt
+identities and expected task/configuration digests. The existing offline
+`endpoint_selection proposal-request TASK CONFIGURATION ATTEMPT_ID` example uses
+the owning Rust contract to derive those digests from actual readback files.
+
+An installed selection policy supplies the prompt, candidates, generation bounds,
+aggregate concurrency and explicit `experimental_proposal`, network and unverified
+identity permissions. Task text is the packet's context; repository dependency
+capture and worker execution are separate capabilities. A reported service alias
+does not attest loaded weights or qualify a candidate's capabilities.
+
+`rrflow serve --endpoint-credentials PATH` accepts a bounded JSON mapping with
+`format_version: 1` and `entries`, each containing a configured `reference`
+(`provider`, `name`) and an `environment_variable`. Supply secrets through those
+explicit process environment names. The mapping contains references, not secret
+values. Startup resolves an immutable private map; the admitted engine call looks
+up only its configured reference. Missing credentials deny before reservation.
+Neither mappings nor secret values enter prompts, public configuration or receipts.
+
+Capacity admission is committed with the task budget and attempt. Known completed
+or denied calls release their entry at completion; uncertain remote work retains
+capacity across reopen. There is no automatic retry or uncertainty reconciliation.
+Read `task-attempt-read` to recover a receipt without calling the provider again.
+Changed authority/configuration/task inputs invalidate accepted-output publication
+while retaining consumed effort. Ordinary repository-edit successor plans are not
+implemented by this task-text operation.
+
+The [admission implementation record](../../evidence/change-journals/gate-g/controller-task-proposal-admission.md)
+separates local checks from required installed BF16 and candidate/merge-group proof.
+The [installed live histories](../../evidence/change-journals/gate-g/controller-task-proposal-installed-live.md)
+now prove one real BF16 completion, accepted-result reopen/replay and controlled
+configuration/session/Stop/lost-response cases. The public receipts preserve
+uncertainty; held-response Stop is not remote provider termination. Candidate CI
+and protected landing remain separate acceptance requirements.
+This experimental operation closes no Gate G or model-quality requirement.
 
 ## Acceptance and signals
 

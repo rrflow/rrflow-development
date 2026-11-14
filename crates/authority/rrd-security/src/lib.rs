@@ -493,6 +493,17 @@ impl<'a, E: StorageEngine> SecurityRepository<'a, E> {
             .transpose()
     }
 
+    /// Exact current authority bytes for an engine-owned atomic effect guard.
+    /// This is a storage identity, not a grant or a public credential response.
+    pub fn authority_snapshot(&self) -> Result<Option<(String, Vec<u8>)>> {
+        let key = security_key(&self.instance);
+        let Some(bytes) = self.engine.control().get(&key)? else {
+            return Ok(None);
+        };
+        decode_state(&bytes)?;
+        Ok(Some((key, bytes)))
+    }
+
     pub fn initialize(
         &self,
         state: SecurityState,

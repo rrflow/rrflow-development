@@ -116,6 +116,7 @@ pub struct RrdEngine {
     /// resource descriptors are public; credentials and runtime sessions are
     /// never serialized into durable RRD state.
     pub(crate) embedding_backends: Mutex<rrd_inference::EmbeddingBackendRegistry>,
+    pub(in crate::engine) endpoint_credentials: Option<super::EndpointCredentials>,
     pub(in crate::engine) storage_cursors: Mutex<super::storage_cursor::CursorRegistry>,
 }
 impl RrdEngine {
@@ -275,6 +276,7 @@ impl RrdEngine {
             hnsw_accelerators: Mutex::new(rrd_vector::HnswAcceleratorRegistry::default()),
             active_task_cancellations: Mutex::new(BTreeMap::new()),
             embedding_backends: Mutex::new(rrd_inference::EmbeddingBackendRegistry::default()),
+            endpoint_credentials: None,
             storage_cursors: Mutex::new(BTreeMap::new()),
         })
     }
@@ -319,6 +321,7 @@ impl RrdEngine {
             hnsw_accelerators: Mutex::new(rrd_vector::HnswAcceleratorRegistry::default()),
             active_task_cancellations: Mutex::new(BTreeMap::new()),
             embedding_backends: Mutex::new(rrd_inference::EmbeddingBackendRegistry::default()),
+            endpoint_credentials: None,
             storage_cursors: Mutex::new(BTreeMap::new()),
         })
     }
