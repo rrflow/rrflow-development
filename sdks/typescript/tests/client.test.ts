@@ -10,7 +10,10 @@ const jsonResponse = (value: unknown, status = 200) =>
   });
 
 test("generated catalogue tracks all mutation boundaries", () => {
-  assert.equal(Object.keys(endpoints).length, 62);
+  assert.equal(Object.keys(endpoints).length, 63);
+  assert.equal(endpoints["task-endpoint-propose"].path, "/v1/tasks/endpoint/propose");
+  assert.equal(endpoints["task-endpoint-propose"].authentication, "session_bearer");
+  assert.equal(endpoints["task-endpoint-propose"].mutation, true);
   assert.equal(endpoints["attunement-receipt-read"].path, "/v1/attunement/receipt/read");
   assert.equal(endpoints["attunement-receipt-read"].mutation, false);
   assert.equal(endpoints["attunement-cancel"].mutation, true);

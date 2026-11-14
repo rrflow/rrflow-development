@@ -1,0 +1,48 @@
+{
+  "sourceCommit": "d365d02891350590aa4495b46fc665ef313aec24",
+  "binarySha256": "7fe07a7198b864a2642c5a9a521e8e13ac7a7d935fd62e8477f2c075fd7680b9",
+  "runnerSha256": "75ad84d69c2ce1fec8ec1021eedef398144ba5508a2e70d841c7998b40cf9d80",
+  "relaySha256": "92e4d85c0080e4d9012ddf5d9a8b0790d2e41f264c874b8daca8202fb84ada4e",
+  "faultCase": "session",
+  "actualProviderCalls": 1,
+  "attempt": {
+    "attempt": {
+      "attempt_id": "actual-proposal-bd11b07deeb543bd80f3b5533e10aefe",
+      "ordinal": 1,
+      "status": "invalidated",
+      "outcome_sha256": null,
+      "result": null,
+      "invalidation": "authorization_changed"
+    }
+  },
+  "budget": {
+    "budget": {
+      "format_version": 1,
+      "instance_id": "instance-420ac9086e1e9373e370c24f",
+      "scope": "instance:instance-420ac9086e1e9373e370c24f",
+      "task_id": "task-1766eff76b0e11595b01c597f49455e512841bbc0444bae4aadaf62f5994c535",
+      "configuration_sha256": "2d382dbde4b923db65fb5ebbf841d12b45ec0e278c7cab41635dbff782072d55",
+      "limits": {
+        "max_run_elapsed_ms": 900000,
+        "max_steps": 256,
+        "max_step_elapsed_ms": 60000
+      },
+      "started_at_unix_ms": 1793316151044,
+      "deadline_unix_ms": 1793317051044,
+      "last_observed_at_unix_ms": 1793316153001,
+      "charged_elapsed_ms": 1967,
+      "reserved_steps": 1,
+      "active_attempt": null,
+      "execution_may_continue": false,
+      "stopped": null,
+      "stop_expected_sha256": null
+    },
+    "budget_sha256": "26ca911300d158c90e8aea69f49e188dfb379d52045dfb0adfb1c8218d7d50c6"
+  },
+  "freshProposal": null,
+  "restartReadbackEqual": true,
+  "ownedServersStopped": true,
+  "modelQualityQualified": false,
+  "trainingDataCreated": false,
+  "scope": "actual provider response held/dropped before engine publication; no provider termination claim"
+}

@@ -2,9 +2,9 @@
 
 package rrd
 
-// OpenAPI SHA-256: fae1001937d962419fb2ce610fe7617705678cc73fe3ce2247ebbbf8a8f39a46
+// OpenAPI SHA-256: 52b7e85144b8b7b4e75291033cf151a0674c97f87fff2054d66f23c97a4bfb6d
 
-const EndpointOpenAPIDocumentSHA256 = "fae1001937d962419fb2ce610fe7617705678cc73fe3ce2247ebbbf8a8f39a46"
+const EndpointOpenAPIDocumentSHA256 = "52b7e85144b8b7b4e75291033cf151a0674c97f87fff2054d66f23c97a4bfb6d"
 
 type OperationID string
 
@@ -55,6 +55,7 @@ const (
 	OperationTaskBudgetStop               OperationID = "task-budget-stop"
 	OperationTaskClose                    OperationID = "task-close"
 	OperationTaskEmbeddingExecute         OperationID = "task-embedding-execute"
+	OperationTaskEndpointPropose          OperationID = "task-endpoint-propose"
 	OperationTaskList                     OperationID = "task-list"
 	OperationTaskOpen                     OperationID = "task-open"
 	OperationTaskRead                     OperationID = "task-read"
@@ -120,6 +121,7 @@ var endpoints = map[OperationID]Endpoint{
 	OperationTaskBudgetStop:               {Method: "POST", Path: "/v1/tasks/budget/stop", Authentication: "session_bearer", Mutation: true},
 	OperationTaskClose:                    {Method: "POST", Path: "/v1/tasks/close", Authentication: "session_bearer", Mutation: true},
 	OperationTaskEmbeddingExecute:         {Method: "POST", Path: "/v1/tasks/embedding/execute", Authentication: "session_bearer", Mutation: true},
+	OperationTaskEndpointPropose:          {Method: "POST", Path: "/v1/tasks/endpoint/propose", Authentication: "session_bearer", Mutation: true},
 	OperationTaskList:                     {Method: "POST", Path: "/v1/tasks/list", Authentication: "session_bearer", Mutation: false},
 	OperationTaskOpen:                     {Method: "POST", Path: "/v1/tasks", Authentication: "session_bearer", Mutation: true},
 	OperationTaskRead:                     {Method: "POST", Path: "/v1/tasks/read", Authentication: "session_bearer", Mutation: false},
