@@ -116,13 +116,13 @@ const ALLOWED_USES: &[AllowedUse] = &[
         operation: "kernel graph reducer self-test",
     },
     AllowedUse {
-        path: "crates/authority/rrd-engine/src/engine/diagnostic.rs",
+        path: "crates/authority/rrd-engine/src/engine/diagnostic/graph.rs",
         kind: SensitiveReadUse::CausalLogPage,
         count: 1,
         operation: "explicit bounded diagnostic replay",
     },
     AllowedUse {
-        path: "crates/authority/rrd-engine/src/engine/diagnostic.rs",
+        path: "crates/authority/rrd-engine/src/engine/diagnostic/graph.rs",
         kind: SensitiveReadUse::GraphSnapshotReducer,
         count: 2,
         operation: "explicit diagnostic graph comparison",
