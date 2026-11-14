@@ -6,7 +6,7 @@
   "harness": 1500
  },
  "oversize": {
-  "crates/adapters/rrflow-cli/tests/installed_lifecycle.rs": 2634,
+  "crates/adapters/rrflow-cli/tests/installed_lifecycle.rs": 2400,
   "crates/adapters/rrflow-cli/tests/support/capacity.rs": 1667,
   "crates/adapters/rrflow-cli/tests/support/sustained.rs": 2839,
   "crates/adapters/rrflow-cli/tests/support/sustained/workload.rs": 1760,

@@ -168,7 +168,7 @@ def tighten(baseline: Shape, current: Shape) -> Shape:
 
 
 def tracked_rust(root: Path) -> dict[str, str]:
-    listed = subprocess.run(["git", "ls-files", "-z", "--", "crates/*.rs"], cwd=root, check=True,
+    listed = subprocess.run(["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", "crates/*.rs"], cwd=root, check=True,
                             capture_output=True).stdout.decode("utf-8").split("\0")
     return {path: (root / path).read_text(encoding="utf-8") for path in listed if path}
 
