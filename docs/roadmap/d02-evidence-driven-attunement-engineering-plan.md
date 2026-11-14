@@ -1,6 +1,7 @@
 # D-02 evidence-driven attunement and context-aligned organisation: engineering plan
 
-**Status:** active supporting work-package plan; no package below is implemented by this record
+**Status:** historical; superseded on 2026-11-13 by the [kernel contract](kernel-contract.md), which carries every package listed here; kept as the record of the work and decisions it describes
+**Superseded by:** [RRFlow kernel contract](kernel-contract.md)
 **Coordinate:** `rrflow://rrflow-instance/data/work-package/d-02-evidence-driven-attunement`
 **Owner:** implementation order and proof for OBJ-07 (install and attune), OBJ-06 (governed reasoning and recall), OBJ-14 (provable plan-to-effect flow) and OBJ-15 (configurable, measurable estate organisation); it refines [Gate D project-workflow packages](rrflow-1.0/gate-d.md#project-workflow-build-packages), the [installed project indexing plan](rrflow-1.0/project-indexing-execution-plan.md) and [ADR-0003](../decisions/0003-configurable-estate-organisation.md), and changes no objective, roadmap or POA&M status
 **Repository baseline:** main `ab32ec16` on 2026-11-11, after #314 absorbed every open candidate and #317 to #323 landed the editor's engine work and the leftover branches

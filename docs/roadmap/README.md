@@ -22,19 +22,20 @@ The canonical roadmap is accompanied by a subordinate link-only
 [change journals](../evidence/change-journals/). The roadmap owns requirements
 and completion; the active change record owns exact in-progress paths; generated
 views and journals provide discovery and evidence without changing status.
-The active [D-02 evidence-driven attunement and context-aligned organisation plan](d02-evidence-driven-attunement-engineering-plan.md)
-orders the packages that replace the profile-declared attunement sequence with
-engine-composed, evidence-derived plans, add domain proposals and scoped reads,
-and accept each package by a real run on this repository; it changes no status.
+The [RRFlow kernel contract](kernel-contract.md) is the one active engineering
+plan since 2026-11-13: six canonical schemas (settings, classification, System
+One decisions, the planner trigger table, the harness, and pods) and packages
+K0 to K14, each accepted by a real run; it changes no status. It supersedes the
+[D-02 attunement plan](d02-evidence-driven-attunement-engineering-plan.md), the installed indexing plan, the adaptive developer-build
+design, the second-mind program, the one-engine execution plan, the one-engine
+joins plan and the tunable reasoning and Lab plan, which stay as history.
 The active [E-04 TurboQuant persistent serving plan](e04-turboquant-persistent-serving-engineering-plan.md)
 orders the packages that make OBJ-13's persistent-search part executable and
 give clients a public TurboQuant path; it changes no gate status.
-The active [one-engine joins plan](one-engine-joins-engineering-plan.md)
-orders the packages that join rrflowDB, rrflowQL, rrflowKV/LSM and rrflowCLD into one
-engine the owner can measure and tune; it changes no status.
-The active [tunable reasoning and Lab plan](tunable-reasoning-and-lab-engineering-plan.md)
-joins settings, graph guidance, effort, fusion, Lab tuning and the optional Lab
-component into ordered packages; it changes no status.
+The historical [one-engine joins plan](one-engine-joins-engineering-plan.md)
+is carried by kernel packages K1, K2, K4, K5, K9 and K10.
+The historical [tunable reasoning and Lab plan](tunable-reasoning-and-lab-engineering-plan.md)
+is carried by kernel packages K2, K3, K4, K9 and K12.
 The completed C-06j work is recorded by the
 [scan-resistant cache integration plan](c06j-rrflowkv-scan-resistant-cache-engineering-plan.md).
 It specifies a configurable exact-byte production cache and a real persisted
@@ -60,8 +61,8 @@ and C-06g
 supporting history. None can change canonical dependency order or completion
 status.
 
-The [second-mind program](second-mind-program.md) records the owner's 2026-11-10
-direction against the code and orders the work that follows the engine.
+The historical [second-mind program](second-mind-program.md) records the owner's
+2026-11-10 direction; the kernel contract carries its order.
 
 | Release | Durable warp | Checkout record | State |
 |---|---|---|---|
@@ -70,8 +71,9 @@ direction against the code and orders the work that follows the engine.
 | Supporting record | Durable warp | Checkout record | Authority |
 |---|---|---|---|
 | RRFlow 1.0 execution navigation | [`rrflow://rrflow-instance/data/execution-map/rrflow-1.0`](rrflow://rrflow-instance/data/execution-map/rrflow-1.0) | [`rrflow-1.0-execution-map.md`](rrflow-1.0-execution-map.md) | stable links to canonical requirements, active scope, generated inventory, procedure, and evidence; roadmap checkboxes remain canonical |
-| One-engine joins plan | [`rrflow://rrflow-instance/data/work-package/one-engine-joins`](rrflow://rrflow-instance/data/work-package/one-engine-joins) | [`one-engine-joins-engineering-plan.md`](one-engine-joins-engineering-plan.md) | active package order and acceptance for joining rrflowQL, the indexes, vector search, context assembly and the hot and cold tiers into one engine; P5, P6, E-03, E-04 and F-06 remain open |
-| Tunable reasoning and Lab plan | [`rrflow://rrflow-instance/data/work-package/tunable-reasoning-and-lab`](rrflow://rrflow-instance/data/work-package/tunable-reasoning-and-lab) | [`tunable-reasoning-and-lab-engineering-plan.md`](tunable-reasoning-and-lab-engineering-plan.md) | active package order for one typed settings tree, steerable graph guidance, effort budgets, fusion, Lab tuning and the optional Lab component; J-04, D-06 and G-05 remain open |
+| RRFlow kernel contract | [`rrflow://rrflow-instance/data/work-package/kernel-contract`](rrflow://rrflow-instance/data/work-package/kernel-contract) | [`kernel-contract.md`](kernel-contract.md) | the one active engineering plan: canonical schemas S1 to S6 and packages K0 to K14; gate and POA&M status unchanged |
+| One-engine joins plan | [`rrflow://rrflow-instance/data/work-package/one-engine-joins`](rrflow://rrflow-instance/data/work-package/one-engine-joins) | [`one-engine-joins-engineering-plan.md`](one-engine-joins-engineering-plan.md) | historical; superseded by the kernel contract on 2026-11-13 |
+| Tunable reasoning and Lab plan | [`rrflow://rrflow-instance/data/work-package/tunable-reasoning-and-lab`](rrflow://rrflow-instance/data/work-package/tunable-reasoning-and-lab) | [`tunable-reasoning-and-lab-engineering-plan.md`](tunable-reasoning-and-lab-engineering-plan.md) | historical; superseded by the kernel contract on 2026-11-13 |
 | E-04 TurboQuant persistent serving plan | [`rrflow://rrflow-instance/data/work-package/e-04-turboquant-persistent-serving`](rrflow://rrflow-instance/data/work-package/e-04-turboquant-persistent-serving) | [`e04-turboquant-persistent-serving-engineering-plan.md`](e04-turboquant-persistent-serving-engineering-plan.md) | active package order and proof for OBJ-13 persistent search and the public TurboQuant path; E-04 and OBJ-13 remain open |
 | C-06j rrflowKV scan-resistant cache plan | [`rrflow://rrflow-instance/data/work-package/c-06j-rrflowkv-scan-resistant-cache`](rrflow://rrflow-instance/data/work-package/c-06j-rrflowkv-scan-resistant-cache) | [`c06j-rrflowkv-scan-resistant-cache-engineering-plan.md`](c06j-rrflowkv-scan-resistant-cache-engineering-plan.md) | completed exact-byte scope-aware cache integration and real mixed-family proof; canonical C-06 accepted |
 | C-06i rrflowKV adaptive page-compression plan | [`rrflow://rrflow-instance/data/work-package/c-06i-rrflowkv-adaptive-page-compression`](rrflow://rrflow-instance/data/work-package/c-06i-rrflowkv-adaptive-page-compression) | [`c06i-rrflowkv-adaptive-page-compression-engineering-plan.md`](c06i-rrflowkv-adaptive-page-compression-engineering-plan.md) | completed segment-v6 adaptive-LZ4 production slice and fixed-machine integration evidence contributing to accepted C-06 |

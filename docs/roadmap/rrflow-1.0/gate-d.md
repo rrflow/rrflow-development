@@ -8,7 +8,9 @@ This chapter is part of the canonical RRFlow 1.0 roadmap. The parent
 record owns release order and completion status; this file cannot change
 either independently.
 
-The [adaptive developer-build design](adaptive-developer-build-design.md)
+The [RRFlow kernel contract](../kernel-contract.md) carries Gate D's project-workflow
+work as packages K0, K5 and K6. The historical
+[adaptive developer-build design](adaptive-developer-build-design.md)
 maps the fixed default sequence to a proposed capability-selected replacement
 and a real-project acceptance oracle. It is supporting design, not accepted
 implementation or a change to the release gates below.

@@ -1,0 +1,1379 @@
+[
+ {
+  "label": "symbol lookup control_attunement",
+  "aql": "FOR s IN symbol FILTER s.name == @n RETURN {name: s.name, path: s.path, line: s.line}",
+  "rules": [
+   "move-calculations-up",
+   "move-filters-up",
+   "move-calculations-up-2",
+   "move-filters-up-2",
+   "use-indexes",
+   "remove-filter-covered-by-index",
+   "remove-unnecessary-calculations-2",
+   "reduce-extraction-to-projection",
+   "optimize-projections",
+   "async-prefetch"
+  ],
+  "estimated_cost": 17.105028178774276,
+  "nodes": [
+   {
+    "type": "SingletonNode",
+    "est_items": 1,
+    "est_cost": 1
+   },
+   {
+    "type": "IndexNode",
+    "est_items": 1,
+    "est_cost": 15.1,
+    "index": [
+     "symbol_name"
+    ],
+    "strategy": "document"
+   },
+   {
+    "type": "CalculationNode",
+    "est_items": 1,
+    "est_cost": 16.1
+   },
+   {
+    "type": "ReturnNode",
+    "est_items": 1,
+    "est_cost": 17.1
+   }
+  ],
+  "rows": 1,
+  "first": [
+   {
+    "name": "control_attunement",
+    "path": "crates/authority/rrd-engine/src/engine/attunement.rs",
+    "line": 742
+   }
+  ],
+  "stats": {
+   "scannedFull": 0,
+   "scannedIndex": 1,
+   "cursorsCreated": 1,
+   "filtered": 0,
+   "executionTime": 0.000387142994441092,
+   "peakMemoryUsage": 65536
+  },
+  "wall_ms": 15.6,
+  "profile_phases": {
+   "initializing": 9.829964255914092e-07,
+   "parsing": 3.938600275432691e-05,
+   "optimizing ast": 4.1480016079731286e-06,
+   "loading collections": 1.5247002011165023e-05,
+   "instantiating plan": 1.2406999303493649e-05,
+   "optimizing plan": 0.00013380399468587711,
+   "instantiating executors": 2.8550006391014904e-05,
+   "executing": 0.00014165199536364526,
+   "finalizing": 1.284800237044692e-05
+  }
+ },
+ {
+  "label": "symbol lookup, no index field (kind+line)",
+  "aql": "FOR s IN symbol FILTER s.kind == 'trait' AND s.line < 50 RETURN s.name",
+  "rules": [
+   "move-calculations-up",
+   "move-filters-up",
+   "move-calculations-up-2",
+   "move-filters-up-2",
+   "move-filters-into-enumerate",
+   "reduce-extraction-to-projection",
+   "optimize-projections",
+   "remove-unnecessary-calculations-4",
+   "async-prefetch"
+  ],
+  "estimated_cost": 38299.25,
+  "nodes": [
+   {
+    "type": "SingletonNode",
+    "est_items": 1,
+    "est_cost": 1
+   },
+   {
+    "type": "EnumerateCollectionNode",
+    "est_items": 17021,
+    "est_cost": 21278.2
+   },
+   {
+    "type": "ReturnNode",
+    "est_items": 17021,
+    "est_cost": 38299.2
+   }
+  ],
+  "rows": 13,
+  "first": [
+   "RedactedStderr",
+   "Stop",
+   "EstateBackupDriver"
+  ],
+  "stats": {
+   "scannedFull": 17021,
+   "scannedIndex": 0,
+   "cursorsCreated": 0,
+   "filtered": 17008,
+   "executionTime": 0.001854709000326693,
+   "peakMemoryUsage": 32768
+  },
+  "wall_ms": 17.3,
+  "profile_phases": {
+   "initializing": 7.739945431239903e-07,
+   "parsing": 4.1826002416200936e-05,
+   "optimizing ast": 4.237997927702963e-06,
+   "loading collections": 1.4900004316587001e-05,
+   "instantiating plan": 1.251199864782393e-05,
+   "optimizing plan": 0.00011395500041544437,
+   "instantiating executors": 2.9582995921373367e-05,
+   "executing": 0.0016253360008704476,
+   "finalizing": 3.0889001209288836e-05
+  }
+ },
+ {
+  "label": "BM25: where is the LSM compaction policy",
+  "aql": "FOR c IN chunk_search SEARCH ANALYZER(c.text IN TOKENS(@q, 'text_en'), 'text_en') SORT BM25(c) DESC LIMIT 5 RETURN {path: c.path, start: c.start, score: BM25(c)}",
+  "rules": [
+   "handle-arangosearch-views",
+   "arangosearch-constrained-sort",
+   "remove-unnecessary-calculations-2",
+   "async-prefetch"
+  ],
+  "estimated_cost": 7233,
+  "nodes": [
+   {
+    "type": "SingletonNode",
+    "est_items": 1,
+    "est_cost": 1
+   },
+   {
+    "type": "EnumerateViewNode",
+    "est_items": 7217,
+    "est_cost": 7218
+   },
+   {
+    "type": "LimitNode",
+    "est_items": 5,
+    "est_cost": 7223
+   },
+   {
+    "type": "CalculationNode",
+    "est_items": 5,
+    "est_cost": 7228
+   },
+   {
+    "type": "ReturnNode",
+    "est_items": 5,
+    "est_cost": 7233
+   }
+  ],
+  "rows": 5,
+  "first": [
+   {
+    "path": "crates/authority/rrd-engine/tests/workspace_architecture.rs",
+    "start": 661,
+    "score": 14.336307525634766
+   },
+   {
+    "path": "crates/kernel/rrd-core/src/telemetry.rs",
+    "start": 481,
+    "score": 12.780716896057129
+   },
+   {
+    "path": "crates/authority/rrd-engine/tests/workspace_architecture.rs",
+    "start": 721,
+    "score": 12.758726119995117
+   }
+  ],
+  "stats": {
+   "scannedFull": 0,
+   "scannedIndex": 3487,
+   "cursorsCreated": 0,
+   "filtered": 0,
+   "executionTime": 0.00048825399426277727,
+   "peakMemoryUsage": 65536
+  },
+  "wall_ms": 15.7,
+  "profile_phases": {
+   "initializing": 6.699992809444666e-07,
+   "parsing": 4.522599920164794e-05,
+   "optimizing ast": 2.8196998755447567e-05,
+   "loading collections": 1.4940000255592167e-05,
+   "instantiating plan": 1.0430005204398185e-05,
+   "optimizing plan": 0.00010939899948425591,
+   "instantiating executors": 3.25599976349622e-05,
+   "executing": 0.00023686500207986683,
+   "finalizing": 1.2207994586788118e-05
+  }
+ },
+ {
+  "label": "BM25: how does the vector planner choose TurboQuant or the exact scan",
+  "aql": "FOR c IN chunk_search SEARCH ANALYZER(c.text IN TOKENS(@q, 'text_en'), 'text_en') SORT BM25(c) DESC LIMIT 5 RETURN {path: c.path, start: c.start, score: BM25(c)}",
+  "rules": [
+   "handle-arangosearch-views",
+   "arangosearch-constrained-sort",
+   "remove-unnecessary-calculations-2",
+   "async-prefetch"
+  ],
+  "estimated_cost": 7233,
+  "nodes": [
+   {
+    "type": "SingletonNode",
+    "est_items": 1,
+    "est_cost": 1
+   },
+   {
+    "type": "EnumerateViewNode",
+    "est_items": 7217,
+    "est_cost": 7218
+   },
+   {
+    "type": "LimitNode",
+    "est_items": 5,
+    "est_cost": 7223
+   },
+   {
+    "type": "CalculationNode",
+    "est_items": 5,
+    "est_cost": 7228
+   },
+   {
+    "type": "ReturnNode",
+    "est_items": 5,
+    "est_cost": 7233
+   }
+  ],
+  "rows": 5,
+  "first": [
+   {
+    "path": "crates/compute/rrd-vector/src/runtime.rs",
+    "start": 1141,
+    "score": 27.79497528076172
+   },
+   {
+    "path": "crates/compute/rrd-vector/src/hnsw.rs",
+    "start": 481,
+    "score": 25.37540054321289
+   },
+   {
+    "path": "crates/compute/rrd-vector/src/cost.rs",
+    "start": 1,
+    "score": 22.78069496154785
+   }
+  ],
+  "stats": {
+   "scannedFull": 0,
+   "scannedIndex": 3607,
+   "cursorsCreated": 0,
+   "filtered": 0,
+   "executionTime": 0.0005878759984625503,
+   "peakMemoryUsage": 65536
+  },
+  "wall_ms": 14.9,
+  "profile_phases": {
+   "initializing": 1.0410003596916795e-06,
+   "parsing": 6.666900299023837e-05,
+   "optimizing ast": 4.787899524671957e-05,
+   "loading collections": 2.0778999896720052e-05,
+   "instantiating plan": 1.5791003534104675e-05,
+   "optimizing plan": 0.000115691997052636,
+   "instantiating executors": 3.451000520726666e-05,
+   "executing": 0.00027296099870000035,
+   "finalizing": 1.3129996659699827e-05
+  }
+ },
+ {
+  "label": "BM25 + crate filter (hybrid filter)",
+  "aql": "FOR c IN chunk_search SEARCH ANALYZER(c.text IN TOKENS(@q, 'text_en'), 'text_en') AND c.crate == 'rrd-lsm' SORT BM25(c) DESC LIMIT 5 RETURN {path: c.path, start: c.start}",
+  "rules": [
+   "handle-arangosearch-views",
+   "arangosearch-constrained-sort",
+   "remove-unnecessary-calculations-2",
+   "async-prefetch"
+  ],
+  "estimated_cost": 7233,
+  "nodes": [
+   {
+    "type": "SingletonNode",
+    "est_items": 1,
+    "est_cost": 1
+   },
+   {
+    "type": "EnumerateViewNode",
+    "est_items": 7217,
+    "est_cost": 7218
+   },
+   {
+    "type": "LimitNode",
+    "est_items": 5,
+    "est_cost": 7223
+   },
+   {
+    "type": "CalculationNode",
+    "est_items": 5,
+    "est_cost": 7228
+   },
+   {
+    "type": "ReturnNode",
+    "est_items": 5,
+    "est_cost": 7233
+   }
+  ],
+  "rows": 5,
+  "first": [
+   {
+    "path": "crates/persistence/rrd-lsm/tests/maintenance.rs",
+    "start": 541
+   },
+   {
+    "path": "crates/persistence/rrd-lsm/tests/hybrid_segment.rs",
+    "start": 481
+   },
+   {
+    "path": "crates/persistence/rrd-lsm/tests/compaction.rs",
+    "start": 721
+   }
+  ],
+  "stats": {
+   "scannedFull": 0,
+   "scannedIndex": 144,
+   "cursorsCreated": 0,
+   "filtered": 0,
+   "executionTime": 0.0002743829973042011,
+   "peakMemoryUsage": 32768
+  },
+  "wall_ms": 1.5,
+  "profile_phases": {
+   "initializing": 3.440000000409782e-07,
+   "parsing": 2.584500180091709e-05,
+   "optimizing ast": 1.473500014981255e-05,
+   "loading collections": 9.073002729564905e-06,
+   "instantiating plan": 5.4629999794997275e-06,
+   "optimizing plan": 6.584199581993744e-05,
+   "instantiating executors": 2.831400342984125e-05,
+   "executing": 0.00011664700286928564,
+   "finalizing": 9.73499845713377e-06
+  }
+ },
+ {
+  "label": "graph 1 hop: who references control_attunement",
+  "aql": "FOR s IN symbol FILTER s.name == @n FOR v IN 1..1 INBOUND s references RETURN DISTINCT {name: v.name, path: v.path}",
+  "rules": [
+   "use-indexes",
+   "remove-filter-covered-by-index",
+   "optimize-traversals",
+   "remove-unnecessary-calculations-2",
+   "reduce-extraction-to-projection",
+   "optimize-projections",
+   "async-prefetch"
+  ],
+  "estimated_cost": 65.75244123026746,
+  "nodes": [
+   {
+    "type": "SingletonNode",
+    "est_items": 1,
+    "est_cost": 1
+   },
+   {
+    "type": "IndexNode",
+    "est_items": 1,
+    "est_cost": 15.1,
+    "index": [
+     "symbol_name"
+    ],
+    "strategy": "document"
+   },
+   {
+    "type": "TraversalNode",
+    "est_items": 14,
+    "est_cost": 29.8,
+    "index": [
+     "base",
+     "levels"
+    ]
+   },
+   {
+    "type": "CalculationNode",
+    "est_items": 14,
+    "est_cost": 43.8
+   },
+   {
+    "type": "CollectNode",
+    "est_items": 11,
+    "est_cost": 54.8
+   },
+   {
+    "type": "ReturnNode",
+    "est_items": 11,
+    "est_cost": 65.8
+   }
+  ],
+  "rows": 8,
+  "first": [
+   {
+    "name": "cancel_attunement",
+    "path": "crates/transport/rrd-server/src/http/handlers/attunement.rs"
+   },
+   {
+    "name": "step_attunement",
+    "path": "crates/transport/rrd-server/src/http/handlers/attunement.rs"
+   },
+   {
+    "name": "start_attunement",
+    "path": "crates/transport/rrd-server/src/http/handlers/attunement.rs"
+   }
+  ],
+  "stats": {
+   "scannedFull": 0,
+   "scannedIndex": 17,
+   "cursorsCreated": 2,
+   "filtered": 0,
+   "executionTime": 0.0006023189998813905,
+   "peakMemoryUsage": 32768
+  },
+  "wall_ms": 15.6,
+  "profile_phases": {
+   "initializing": 3.858993295580149e-06,
+   "parsing": 0.0002092280046781525,
+   "optimizing ast": 2.667999069672078e-06,
+   "loading collections": 8.164002792909741e-06,
+   "instantiating plan": 1.2382995919324458e-05,
+   "optimizing plan": 0.00012708600115729496,
+   "instantiating executors": 5.6128003052435815e-05,
+   "executing": 0.0001723949972074479,
+   "finalizing": 9.549003152642399e-06
+  }
+ },
+ {
+  "label": "graph 2 hops inbound",
+  "aql": "FOR s IN symbol FILTER s.name == @n FOR v IN 1..2 INBOUND s references OPTIONS {uniqueVertices: 'global', order: 'bfs'} RETURN DISTINCT v.path",
+  "rules": [
+   "use-indexes",
+   "remove-filter-covered-by-index",
+   "optimize-traversals",
+   "remove-unnecessary-calculations-2",
+   "reduce-extraction-to-projection",
+   "optimize-projections",
+   "async-prefetch"
+  ],
+  "estimated_cost": 742.816223951172,
+  "nodes": [
+   {
+    "type": "SingletonNode",
+    "est_items": 1,
+    "est_cost": 1
+   },
+   {
+    "type": "IndexNode",
+    "est_items": 1,
+    "est_cost": 15.1,
+    "index": [
+     "symbol_name"
+    ],
+    "strategy": "document"
+   },
+   {
+    "type": "TraversalNode",
+    "est_items": 196,
+    "est_cost": 234.8,
+    "index": [
+     "base",
+     "levels"
+    ]
+   },
+   {
+    "type": "CalculationNode",
+    "est_items": 196,
+    "est_cost": 430.8
+   },
+   {
+    "type": "CollectNode",
+    "est_items": 156,
+    "est_cost": 586.8
+   },
+   {
+    "type": "ReturnNode",
+    "est_items": 156,
+    "est_cost": 742.8
+   }
+  ],
+  "rows": 5,
+  "first": [
+   "crates/authority/rrd-engine/src/engine/tests/attunement.rs",
+   "crates/transport/rrd-server/src/http/handlers/attunement.rs",
+   "crates/transport/rrd-client/tests/rrflowdb_local.rs"
+  ],
+  "stats": {
+   "scannedFull": 0,
+   "scannedIndex": 37,
+   "cursorsCreated": 10,
+   "filtered": 10,
+   "executionTime": 0.0005071080013294704,
+   "peakMemoryUsage": 65536
+  },
+  "wall_ms": 1.0,
+  "profile_phases": {
+   "initializing": 2.7899659471586347e-07,
+   "parsing": 0.00011251800606260076,
+   "optimizing ast": 1.7450001905672252e-06,
+   "loading collections": 7.544993422925472e-06,
+   "instantiating plan": 7.581002137158066e-06,
+   "optimizing plan": 8.829400030663237e-05,
+   "instantiating executors": 2.8697999368887395e-05,
+   "executing": 0.00025272199854953215,
+   "finalizing": 7.95800588093698e-06
+  }
+ },
+ {
+  "label": "graph shortest path crate rrflow-cli -> rrd-lsm",
+  "aql": "FOR a IN crate FILTER a.name == 'rrflow-cli' FOR b IN crate FILTER b.name == 'rrd-lsm' FOR v IN OUTBOUND SHORTEST_PATH a TO b depends RETURN v.name",
+  "rules": [
+   "move-filters-into-enumerate",
+   "optimize-projections",
+   "async-prefetch"
+  ],
+  "estimated_cost": 3797835.0422463976,
+  "nodes": [
+   {
+    "type": "SingletonNode",
+    "est_items": 1,
+    "est_cost": 1
+   },
+   {
+    "type": "EnumerateCollectionNode",
+    "est_items": 22,
+    "est_cost": 29.5
+   },
+   {
+    "type": "EnumerateCollectionNode",
+    "est_items": 484,
+    "est_cost": 635.5
+   },
+   {
+    "type": "ShortestPathNode",
+    "est_items": 2187,
+    "est_cost": 3793461.0,
+    "index": [
+     "base"
+    ]
+   },
+   {
+    "type": "CalculationNode",
+    "est_items": 2187,
+    "est_cost": 3795648.0
+   },
+   {
+    "type": "ReturnNode",
+    "est_items": 2187,
+    "est_cost": 3797835.0
+   }
+  ],
+  "rows": 3,
+  "first": [
+   "rrflow-cli",
+   "rrd-store",
+   "rrd-lsm"
+  ],
+  "stats": {
+   "scannedFull": 44,
+   "scannedIndex": 14,
+   "cursorsCreated": 2,
+   "filtered": 42,
+   "executionTime": 0.00044047499977750704,
+   "peakMemoryUsage": 65536
+  },
+  "wall_ms": 1.8,
+  "profile_phases": {
+   "initializing": 3.6600249586626887e-07,
+   "parsing": 0.0001671209975029342,
+   "optimizing ast": 2.2570020519196987e-06,
+   "loading collections": 7.70299811847508e-06,
+   "instantiating plan": 8.677001460455358e-06,
+   "optimizing plan": 9.029699867824093e-05,
+   "instantiating executors": 3.964400093536824e-05,
+   "executing": 0.00011645600170595571,
+   "finalizing": 7.09699816070497e-06
+  }
+ },
+ {
+  "label": "vector kNN top 5",
+  "aql": "LET q = (FOR c IN chunk FILTER c.path LIKE '%rrd-lsm/src/database.rs' LIMIT 1 RETURN c.vec)[0] FOR c IN chunk SORT APPROX_NEAR_COSINE(c.vec, q) DESC LIMIT 5 RETURN c.path",
+  "rules": [
+   "remove-unnecessary-calculations",
+   "optimize-subqueries",
+   "use-vector-index",
+   "move-calculations-down",
+   "move-filters-into-enumerate",
+   "reduce-extraction-to-projection",
+   "push-down-late-materialization",
+   "materialize-into-separate-variable",
+   "optimize-projections",
+   "remove-unnecessary-calculations-4",
+   "splice-subqueries"
+  ],
+  "estimated_cost": 9048.25,
+  "nodes": [
+   {
+    "type": "SingletonNode",
+    "est_items": 1,
+    "est_cost": 1
+   },
+   {
+    "type": "SubqueryStartNode",
+    "est_items": 1,
+    "est_cost": 2
+   },
+   {
+    "type": "EnumerateCollectionNode",
+    "est_items": 7217,
+    "est_cost": 9024.2
+   },
+   {
+    "type": "LimitNode",
+    "est_items": 1,
+    "est_cost": 9025.2
+   },
+   {
+    "type": "LimitNode",
+    "est_items": 1,
+    "est_cost": 9026.2
+   },
+   {
+    "type": "SubqueryEndNode",
+    "est_items": 1,
+    "est_cost": 9027.2
+   },
+   {
+    "type": "CalculationNode",
+    "est_items": 1,
+    "est_cost": 9028.2
+   },
+   {
+    "type": "EnumerateNearVectorNode",
+    "est_items": 5,
+    "est_cost": 9033.2
+   },
+   {
+    "type": "LimitNode",
+    "est_items": 5,
+    "est_cost": 9038.2
+   },
+   {
+    "type": "MaterializeNode",
+    "est_items": 5,
+    "est_cost": 9043.2
+   },
+   {
+    "type": "ReturnNode",
+    "est_items": 5,
+    "est_cost": 9048.2
+   }
+  ],
+  "rows": 5,
+  "first": [
+   "crates/persistence/rrd-lsm/src/database.rs",
+   "crates/persistence/rrd-lsm/src/segment/reader.rs",
+   "crates/persistence/rrd-lsm/src/manifest.rs"
+  ],
+  "stats": {
+   "scannedFull": 4325,
+   "scannedIndex": 0,
+   "cursorsCreated": 0,
+   "filtered": 4324,
+   "executionTime": 0.0076827170050819404,
+   "peakMemoryUsage": 32768
+  },
+  "wall_ms": 23.0,
+  "profile_phases": {
+   "initializing": 1.243002770934254e-06,
+   "parsing": 5.439300002763048e-05,
+   "optimizing ast": 5.77399623580277e-06,
+   "loading collections": 1.8392005586065352e-05,
+   "instantiating plan": 2.4140994355548173e-05,
+   "optimizing plan": 0.00022300200362224132,
+   "instantiating executors": 6.096799916122109e-05,
+   "executing": 0.007281628000782803,
+   "finalizing": 2.178300201194361e-05
+  }
+ },
+ {
+  "label": "vector kNN + filter crate",
+  "aql": "LET q = (FOR c IN chunk FILTER c.path LIKE '%rrd-lsm/src/database.rs' LIMIT 1 RETURN c.vec)[0] FOR c IN chunk FILTER c.crate == 'rrd-lsm' SORT APPROX_NEAR_COSINE(c.vec, q) DESC LIMIT 5 RETURN c.path",
+  "rules": [
+   "move-calculations-up",
+   "move-filters-up",
+   "remove-unnecessary-calculations",
+   "optimize-subqueries",
+   "move-calculations-up-2",
+   "move-filters-up-2",
+   "use-vector-index",
+   "remove-unnecessary-calculations-2",
+   "move-calculations-down",
+   "move-filters-into-enumerate",
+   "reduce-extraction-to-projection",
+   "optimize-projections",
+   "remove-unnecessary-calculations-4",
+   "splice-subqueries"
+  ],
+  "estimated_cost": 9043.25,
+  "nodes": [
+   {
+    "type": "SingletonNode",
+    "est_items": 1,
+    "est_cost": 1
+   },
+   {
+    "type": "SubqueryStartNode",
+    "est_items": 1,
+    "est_cost": 2
+   },
+   {
+    "type": "EnumerateCollectionNode",
+    "est_items": 7217,
+    "est_cost": 9024.2
+   },
+   {
+    "type": "LimitNode",
+    "est_items": 1,
+    "est_cost": 9025.2
+   },
+   {
+    "type": "LimitNode",
+    "est_items": 1,
+    "est_cost": 9026.2
+   },
+   {
+    "type": "SubqueryEndNode",
+    "est_items": 1,
+    "est_cost": 9027.2
+   },
+   {
+    "type": "CalculationNode",
+    "est_items": 1,
+    "est_cost": 9028.2
+   },
+   {
+    "type": "EnumerateNearVectorNode",
+    "est_items": 5,
+    "est_cost": 9033.2
+   },
+   {
+    "type": "LimitNode",
+    "est_items": 5,
+    "est_cost": 9038.2
+   },
+   {
+    "type": "ReturnNode",
+    "est_items": 5,
+    "est_cost": 9043.2
+   }
+  ],
+  "rows": 5,
+  "first": [
+   "crates/persistence/rrd-lsm/src/database.rs",
+   "crates/persistence/rrd-lsm/src/segment/reader.rs",
+   "crates/persistence/rrd-lsm/src/manifest.rs"
+  ],
+  "stats": {
+   "scannedFull": 4325,
+   "scannedIndex": 0,
+   "cursorsCreated": 0,
+   "filtered": 4324,
+   "executionTime": 0.00758895100443624,
+   "peakMemoryUsage": 65536
+  },
+  "wall_ms": 28.5,
+  "profile_phases": {
+   "initializing": 8.530041668564081e-07,
+   "parsing": 5.894499918213114e-05,
+   "optimizing ast": 6.239002686925232e-06,
+   "loading collections": 1.7839993233792484e-05,
+   "instantiating plan": 2.5222005206160247e-05,
+   "optimizing plan": 0.0002119209966622293,
+   "instantiating executors": 4.724199970951304e-05,
+   "executing": 0.0072061059981933795,
+   "finalizing": 1.8921004084404558e-05
+  }
+ },
+ {
+  "label": "range selectivity bytes > 500000",
+  "aql": "FOR f IN file FILTER f.bytes > @b RETURN f.path",
+  "rules": [
+   "move-calculations-up",
+   "move-filters-up",
+   "move-calculations-up-2",
+   "move-filters-up-2",
+   "use-indexes",
+   "remove-filter-covered-by-index",
+   "remove-unnecessary-calculations-2",
+   "reduce-extraction-to-projection",
+   "batch-materialize-documents",
+   "push-down-late-materialization",
+   "materialize-into-separate-variable",
+   "optimize-projections",
+   "remove-unnecessary-calculations-4",
+   "async-prefetch"
+  ],
+  "estimated_cost": 1874.278136484194,
+  "nodes": [
+   {
+    "type": "SingletonNode",
+    "est_items": 1,
+    "est_cost": 1
+   },
+   {
+    "type": "IndexNode",
+    "est_items": 909,
+    "est_cost": 56.3,
+    "index": [
+     "file_bytes"
+    ],
+    "strategy": "late materialized"
+   },
+   {
+    "type": "MaterializeNode",
+    "est_items": 909,
+    "est_cost": 965.3
+   },
+   {
+    "type": "ReturnNode",
+    "est_items": 909,
+    "est_cost": 1874.3
+   }
+  ],
+  "rows": 0,
+  "first": [],
+  "stats": {
+   "scannedFull": 0,
+   "scannedIndex": 0,
+   "cursorsCreated": 1,
+   "filtered": 0,
+   "executionTime": 0.0005926330049987882,
+   "peakMemoryUsage": 32768
+  },
+  "wall_ms": 23.6,
+  "profile_phases": {
+   "initializing": 1.915999746415764e-06,
+   "parsing": 7.157999789342284e-05,
+   "optimizing ast": 5.541005521081388e-06,
+   "loading collections": 2.3515000066254288e-05,
+   "instantiating plan": 2.125599712599069e-05,
+   "optimizing plan": 0.00029087800066918135,
+   "instantiating executors": 4.8005000280682e-05,
+   "executing": 0.00011038700176868588,
+   "finalizing": 2.4928995117079467e-05
+  }
+ },
+ {
+  "label": "range selectivity bytes > 100000",
+  "aql": "FOR f IN file FILTER f.bytes > @b RETURN f.path",
+  "rules": [
+   "move-calculations-up",
+   "move-filters-up",
+   "move-calculations-up-2",
+   "move-filters-up-2",
+   "use-indexes",
+   "remove-filter-covered-by-index",
+   "remove-unnecessary-calculations-2",
+   "reduce-extraction-to-projection",
+   "batch-materialize-documents",
+   "push-down-late-materialization",
+   "materialize-into-separate-variable",
+   "optimize-projections",
+   "remove-unnecessary-calculations-4",
+   "async-prefetch"
+  ],
+  "estimated_cost": 1874.278136484194,
+  "nodes": [
+   {
+    "type": "SingletonNode",
+    "est_items": 1,
+    "est_cost": 1
+   },
+   {
+    "type": "IndexNode",
+    "est_items": 909,
+    "est_cost": 56.3,
+    "index": [
+     "file_bytes"
+    ],
+    "strategy": "late materialized"
+   },
+   {
+    "type": "MaterializeNode",
+    "est_items": 909,
+    "est_cost": 965.3
+   },
+   {
+    "type": "ReturnNode",
+    "est_items": 909,
+    "est_cost": 1874.3
+   }
+  ],
+  "rows": 11,
+  "first": [
+   "crates/persistence/rrd-lsm/src/segment/mod.rs",
+   "crates/kernel/rrd-core/src/runtime.rs",
+   "crates/evaluation/qualification/rrflow-qualification-storage/src/sustained.rs"
+  ],
+  "stats": {
+   "scannedFull": 0,
+   "scannedIndex": 11,
+   "cursorsCreated": 1,
+   "filtered": 0,
+   "executionTime": 0.00037507800152525306,
+   "peakMemoryUsage": 32768
+  },
+  "wall_ms": 16.0,
+  "profile_phases": {
+   "initializing": 1.3460012269206345e-06,
+   "parsing": 4.263899609213695e-05,
+   "optimizing ast": 3.940003807656467e-06,
+   "loading collections": 1.9049999536946416e-05,
+   "instantiating plan": 1.2978998711332679e-05,
+   "optimizing plan": 0.0001527659987914376,
+   "instantiating executors": 2.8435999411158264e-05,
+   "executing": 0.00010095300240209326,
+   "finalizing": 1.2759002856910229e-05
+  }
+ },
+ {
+  "label": "range selectivity bytes > 20000",
+  "aql": "FOR f IN file FILTER f.bytes > @b RETURN f.path",
+  "rules": [
+   "move-calculations-up",
+   "move-filters-up",
+   "move-calculations-up-2",
+   "move-filters-up-2",
+   "use-indexes",
+   "remove-filter-covered-by-index",
+   "remove-unnecessary-calculations-2",
+   "reduce-extraction-to-projection",
+   "batch-materialize-documents",
+   "push-down-late-materialization",
+   "materialize-into-separate-variable",
+   "optimize-projections",
+   "remove-unnecessary-calculations-4",
+   "async-prefetch"
+  ],
+  "estimated_cost": 1874.278136484194,
+  "nodes": [
+   {
+    "type": "SingletonNode",
+    "est_items": 1,
+    "est_cost": 1
+   },
+   {
+    "type": "IndexNode",
+    "est_items": 909,
+    "est_cost": 56.3,
+    "index": [
+     "file_bytes"
+    ],
+    "strategy": "late materialized"
+   },
+   {
+    "type": "MaterializeNode",
+    "est_items": 909,
+    "est_cost": 965.3
+   },
+   {
+    "type": "ReturnNode",
+    "est_items": 909,
+    "est_cost": 1874.3
+   }
+  ],
+  "rows": 225,
+  "first": [
+   "crates/evaluation/lab/rrflow-lab-benchmarks/src/catalog.rs",
+   "crates/persistence/rrd-lsm/tests/transaction_conformance.rs",
+   "crates/authority/rrd-engine/src/engine/tests/endpoint_configuration.rs"
+  ],
+  "stats": {
+   "scannedFull": 0,
+   "scannedIndex": 225,
+   "cursorsCreated": 1,
+   "filtered": 0,
+   "executionTime": 0.000458901995443739,
+   "peakMemoryUsage": 32768
+  },
+  "wall_ms": 2.0,
+  "profile_phases": {
+   "initializing": 5.960027920082211e-07,
+   "parsing": 2.3947002773638815e-05,
+   "optimizing ast": 1.9009967218153179e-06,
+   "loading collections": 9.686998964753002e-06,
+   "instantiating plan": 7.681002898607403e-06,
+   "optimizing plan": 0.00010561700037214905,
+   "instantiating executors": 2.292199496878311e-05,
+   "executing": 0.00027770599990617484,
+   "finalizing": 1.1808006092905998e-05
+  }
+ },
+ {
+  "label": "range selectivity bytes > 5000",
+  "aql": "FOR f IN file FILTER f.bytes > @b RETURN f.path",
+  "rules": [
+   "move-calculations-up",
+   "move-filters-up",
+   "move-calculations-up-2",
+   "move-filters-up-2",
+   "use-indexes",
+   "remove-filter-covered-by-index",
+   "remove-unnecessary-calculations-2",
+   "reduce-extraction-to-projection",
+   "batch-materialize-documents",
+   "push-down-late-materialization",
+   "materialize-into-separate-variable",
+   "optimize-projections",
+   "remove-unnecessary-calculations-4",
+   "async-prefetch"
+  ],
+  "estimated_cost": 1874.278136484194,
+  "nodes": [
+   {
+    "type": "SingletonNode",
+    "est_items": 1,
+    "est_cost": 1
+   },
+   {
+    "type": "IndexNode",
+    "est_items": 909,
+    "est_cost": 56.3,
+    "index": [
+     "file_bytes"
+    ],
+    "strategy": "late materialized"
+   },
+   {
+    "type": "MaterializeNode",
+    "est_items": 909,
+    "est_cost": 965.3
+   },
+   {
+    "type": "ReturnNode",
+    "est_items": 909,
+    "est_cost": 1874.3
+   }
+  ],
+  "rows": 679,
+  "first": [
+   "crates/transport/rrd-contract/src/read.rs",
+   "crates/persistence/rrd-store/src/repository/projection.rs",
+   "crates/transport/rrd-client/examples/task_model_call.rs"
+  ],
+  "stats": {
+   "scannedFull": 0,
+   "scannedIndex": 679,
+   "cursorsCreated": 1,
+   "filtered": 0,
+   "executionTime": 0.000915723001526203,
+   "peakMemoryUsage": 98304
+  },
+  "wall_ms": 28.4,
+  "profile_phases": {
+   "initializing": 1.1210067896172404e-06,
+   "parsing": 5.2581999625544995e-05,
+   "optimizing ast": 3.82699363399297e-06,
+   "loading collections": 1.6728001355659217e-05,
+   "instantiating plan": 1.4573000953532755e-05,
+   "optimizing plan": 0.00015489399811485782,
+   "instantiating executors": 2.6863002858590335e-05,
+   "executing": 0.0006266670025070198,
+   "finalizing": 1.5088000509422272e-05
+  }
+ },
+ {
+  "label": "range selectivity bytes > 1000",
+  "aql": "FOR f IN file FILTER f.bytes > @b RETURN f.path",
+  "rules": [
+   "move-calculations-up",
+   "move-filters-up",
+   "move-calculations-up-2",
+   "move-filters-up-2",
+   "use-indexes",
+   "remove-filter-covered-by-index",
+   "remove-unnecessary-calculations-2",
+   "reduce-extraction-to-projection",
+   "batch-materialize-documents",
+   "push-down-late-materialization",
+   "materialize-into-separate-variable",
+   "optimize-projections",
+   "remove-unnecessary-calculations-4",
+   "async-prefetch"
+  ],
+  "estimated_cost": 1874.278136484194,
+  "nodes": [
+   {
+    "type": "SingletonNode",
+    "est_items": 1,
+    "est_cost": 1
+   },
+   {
+    "type": "IndexNode",
+    "est_items": 909,
+    "est_cost": 56.3,
+    "index": [
+     "file_bytes"
+    ],
+    "strategy": "late materialized"
+   },
+   {
+    "type": "MaterializeNode",
+    "est_items": 909,
+    "est_cost": 965.3
+   },
+   {
+    "type": "ReturnNode",
+    "est_items": 909,
+    "est_cost": 1874.3
+   }
+  ],
+  "rows": 868,
+  "first": [
+   "eval/lab/rrflow_settings.py",
+   "crates/transport/rrd-contract/tests/json_float_round_trip.rs",
+   "sdks/python/tests/test_signal_catalogue.py"
+  ],
+  "stats": {
+   "scannedFull": 0,
+   "scannedIndex": 868,
+   "cursorsCreated": 1,
+   "filtered": 0,
+   "executionTime": 0.0010070469943457283,
+   "peakMemoryUsage": 131072
+  },
+  "wall_ms": 17.2,
+  "profile_phases": {
+   "initializing": 1.196000084746629e-06,
+   "parsing": 4.8073001380544156e-05,
+   "optimizing ast": 4.608002200257033e-06,
+   "loading collections": 2.1756000933237374e-05,
+   "instantiating plan": 1.5099998563528061e-05,
+   "optimizing plan": 0.00015201399946818128,
+   "instantiating executors": 2.728900290094316e-05,
+   "executing": 0.0007237479949253611,
+   "finalizing": 1.532900205347687e-05
+  }
+ },
+ {
+  "label": "range selectivity bytes > 0",
+  "aql": "FOR f IN file FILTER f.bytes > @b RETURN f.path",
+  "rules": [
+   "move-calculations-up",
+   "move-filters-up",
+   "move-calculations-up-2",
+   "move-filters-up-2",
+   "use-indexes",
+   "remove-filter-covered-by-index",
+   "remove-unnecessary-calculations-2",
+   "reduce-extraction-to-projection",
+   "batch-materialize-documents",
+   "push-down-late-materialization",
+   "materialize-into-separate-variable",
+   "optimize-projections",
+   "remove-unnecessary-calculations-4",
+   "async-prefetch"
+  ],
+  "estimated_cost": 1874.278136484194,
+  "nodes": [
+   {
+    "type": "SingletonNode",
+    "est_items": 1,
+    "est_cost": 1
+   },
+   {
+    "type": "IndexNode",
+    "est_items": 909,
+    "est_cost": 56.3,
+    "index": [
+     "file_bytes"
+    ],
+    "strategy": "late materialized"
+   },
+   {
+    "type": "MaterializeNode",
+    "est_items": 909,
+    "est_cost": 965.3
+   },
+   {
+    "type": "ReturnNode",
+    "est_items": 909,
+    "est_cost": 1874.3
+   }
+  ],
+  "rows": 909,
+  "first": [
+   "eval/fixtures/rust-service/src/lib.rs",
+   "crates/authority/rrd-engine/src/engine/model/mod.rs",
+   "crates/evaluation/lab/rrflow-lab-systems/src/adapters/mod.rs"
+  ],
+  "stats": {
+   "scannedFull": 0,
+   "scannedIndex": 909,
+   "cursorsCreated": 1,
+   "filtered": 0,
+   "executionTime": 0.0010522820011829026,
+   "peakMemoryUsage": 131072
+  },
+  "wall_ms": 16.6,
+  "profile_phases": {
+   "initializing": 1.0940057109110057e-06,
+   "parsing": 5.213899567024782e-05,
+   "optimizing ast": 3.998000465799123e-06,
+   "loading collections": 2.9998998797964305e-05,
+   "instantiating plan": 1.507500564912334e-05,
+   "optimizing plan": 0.00016451899864478037,
+   "instantiating executors": 2.7308000426273793e-05,
+   "executing": 0.0007437280000885949,
+   "finalizing": 1.567399885971099e-05
+  }
+ },
+ {
+  "label": "limit 1 after equality on crate",
+  "aql": "FOR f IN file FILTER f.crate == 'rrd-engine' SORT f.bytes DESC LIMIT @n RETURN f.path",
+  "rules": [
+   "move-calculations-up",
+   "move-filters-up",
+   "move-calculations-up-2",
+   "move-filters-up-2",
+   "use-indexes",
+   "remove-filter-covered-by-index",
+   "remove-unnecessary-calculations-2",
+   "reduce-extraction-to-projection",
+   "optimize-projections",
+   "remove-unnecessary-calculations-4"
+  ],
+  "estimated_cost": 174.4281364841941,
+  "nodes": [
+   {
+    "type": "SingletonNode",
+    "est_items": 1,
+    "est_cost": 1
+   },
+   {
+    "type": "IndexNode",
+    "est_items": 32,
+    "est_cost": 12.4,
+    "index": [
+     "file_crate"
+    ],
+    "strategy": "document"
+   },
+   {
+    "type": "SortNode",
+    "est_items": 32,
+    "est_cost": 172.4,
+    "strategy": "standard"
+   },
+   {
+    "type": "LimitNode",
+    "est_items": 1,
+    "est_cost": 173.4
+   },
+   {
+    "type": "ReturnNode",
+    "est_items": 1,
+    "est_cost": 174.4
+   }
+  ],
+  "rows": 1,
+  "first": [
+   "crates/authority/rrd-engine/src/engine/tests/attunement.rs"
+  ],
+  "stats": {
+   "scannedFull": 0,
+   "scannedIndex": 186,
+   "cursorsCreated": 1,
+   "filtered": 0,
+   "executionTime": 0.0003767949965549633,
+   "peakMemoryUsage": 65536
+  },
+  "wall_ms": 1.0,
+  "profile_phases": {
+   "initializing": 5.300025804899633e-07,
+   "parsing": 1.9749000784941018e-05,
+   "optimizing ast": 1.9409999367780983e-06,
+   "loading collections": 7.903996447566897e-06,
+   "instantiating plan": 6.9829984568059444e-06,
+   "optimizing plan": 9.788700117496774e-05,
+   "instantiating executors": 2.3587002942804247e-05,
+   "executing": 0.00021013499645050615,
+   "finalizing": 1.2335003702901304e-05
+  }
+ },
+ {
+  "label": "limit 50 after equality on crate",
+  "aql": "FOR f IN file FILTER f.crate == 'rrd-engine' SORT f.bytes DESC LIMIT @n RETURN f.path",
+  "rules": [
+   "move-calculations-up",
+   "move-filters-up",
+   "move-calculations-up-2",
+   "move-filters-up-2",
+   "use-indexes",
+   "remove-filter-covered-by-index",
+   "remove-unnecessary-calculations-2",
+   "reduce-extraction-to-projection",
+   "optimize-projections",
+   "remove-unnecessary-calculations-4"
+  ],
+  "estimated_cost": 236.4281364841941,
+  "nodes": [
+   {
+    "type": "SingletonNode",
+    "est_items": 1,
+    "est_cost": 1
+   },
+   {
+    "type": "IndexNode",
+    "est_items": 32,
+    "est_cost": 12.4,
+    "index": [
+     "file_crate"
+    ],
+    "strategy": "document"
+   },
+   {
+    "type": "SortNode",
+    "est_items": 32,
+    "est_cost": 172.4,
+    "strategy": "standard"
+   },
+   {
+    "type": "LimitNode",
+    "est_items": 32,
+    "est_cost": 204.4
+   },
+   {
+    "type": "ReturnNode",
+    "est_items": 32,
+    "est_cost": 236.4
+   }
+  ],
+  "rows": 50,
+  "first": [
+   "crates/authority/rrd-engine/src/engine/tests/attunement.rs",
+   "crates/authority/rrd-engine/src/engine/tests/vector_index.rs",
+   "crates/authority/rrd-engine/src/engine/installation.rs"
+  ],
+  "stats": {
+   "scannedFull": 0,
+   "scannedIndex": 186,
+   "cursorsCreated": 1,
+   "filtered": 0,
+   "executionTime": 0.0004324609981267713,
+   "peakMemoryUsage": 65536
+  },
+  "wall_ms": 12.5,
+  "profile_phases": {
+   "initializing": 1.1640004231594503e-06,
+   "parsing": 3.815100353676826e-05,
+   "optimizing ast": 3.5769990063272417e-06,
+   "loading collections": 1.3630997273139656e-05,
+   "instantiating plan": 1.4039003872312605e-05,
+   "optimizing plan": 0.00013325399777386338,
+   "instantiating executors": 2.593600220279768e-05,
+   "executing": 0.0001922960000229068,
+   "finalizing": 1.3956996554043144e-05
+  }
+ }
+]

@@ -1,6 +1,7 @@
 # Second-mind program: owner direction and capability ledger
 
-**Status:** active supporting plan; no capability below is implemented by this record
+**Status:** historical; superseded on 2026-11-13 by the [kernel contract](kernel-contract.md), which carries every package listed here; kept as the record of the work and decisions it describes
+**Superseded by:** [RRFlow kernel contract](kernel-contract.md)
 **Coordinate:** `rrflow://rrflow-instance/data/work-package/second-mind-program`
 **Owner:** records the repository owner's direction of 2026-11-10 and orders the work; the [roadmap](rrflow-1.0.md) and [POA&M](../poam/rrflow-1.0-alpha.md) keep status authority
 **Verified against:** engine `main` at `2d2fba85` and Connectome `main` after #46, on 2026-11-10

@@ -1,6 +1,7 @@
 # Adaptive project execution and the developer build
 
-**Status:** active supporting design proposal; no runtime capability or gate accepted
+**Status:** historical; superseded on 2026-11-13 by the [kernel contract](../kernel-contract.md), which carries every package listed here; kept as the record of the work and decisions it describes
+**Superseded by:** [RRFlow kernel contract](../kernel-contract.md)
 **Coordinate:** `rrflow://rrflow-instance/data/design/adaptive-developer-build`
 **Owner:** [Gate D project-workflow build packages](gate-d.md#project-workflow-build-packages)
 **Baseline:** `2cadd3a9045e3c1a2d9f873fe4215343680ab18b`
