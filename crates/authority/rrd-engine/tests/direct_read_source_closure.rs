@@ -188,7 +188,7 @@ const ALLOWED_USES: &[AllowedUse] = &[
         operation: "public change-feed page at a caller-supplied cursor",
     },
     AllowedUse {
-        path: "crates/persistence/rrd-store/src/backup.rs",
+        path: "crates/persistence/rrd-store/src/backup/retention.rs",
         kind: SensitiveReadUse::UnstampedCausalLogPage,
         count: 1,
         operation: "explicit backup object-reference scan to the backup watermark",
