@@ -3,7 +3,8 @@
 use crate::{EmbeddingDispatchError, EmbeddingExecutionControl, NetworkPolicy};
 use rrd_contract::{
     CanonicalId, CredentialReference, EndpointConfiguration, EndpointLocator,
-    EndpointSelectionAllowance, EndpointSelectionChoice, WorkloadClass, MAX_ROUTE_REQUEST_BYTES,
+    EndpointSelectionAllowance, EndpointSelectionChoice, EndpointTokenUsage, WorkloadClass,
+    MAX_ROUTE_REQUEST_BYTES,
 };
 use rrd_core::digest::sha256_hex;
 use serde::{Deserialize, Serialize};
@@ -66,12 +67,21 @@ fn failure(reason: &'static str, sent: bool) -> EndpointChatFailure {
     }
 }
 
-/// Provider-reported usage. Missing/null counts remain unknown, never zero.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ChatUsage {
-    pub prompt_tokens: Option<u64>,
-    pub completion_tokens: Option<u64>,
-    pub total_tokens: Option<u64>,
+/// Provider envelopes may add metadata; the canonical retained usage is closed.
+#[derive(Deserialize)]
+struct ChatUsage {
+    prompt_tokens: Option<u64>,
+    completion_tokens: Option<u64>,
+    total_tokens: Option<u64>,
+}
+impl From<ChatUsage> for EndpointTokenUsage {
+    fn from(value: ChatUsage) -> Self {
+        Self {
+            prompt_tokens: value.prompt_tokens,
+            completion_tokens: value.completion_tokens,
+            total_tokens: value.total_tokens,
+        }
+    }
 }
 
 #[derive(Debug, Serialize)]
@@ -83,7 +93,7 @@ pub struct EndpointChatObservation {
     pub request_sha256: String,
     pub response_sha256: String,
     pub content_sha256: String,
-    pub usage: Option<ChatUsage>,
+    pub usage: Option<EndpointTokenUsage>,
     pub elapsed_ms: Option<u64>,
     pub http_status: Option<u16>,
     /// Exact bytes for an explicitly authorized evidence sink; not automatic logs.
@@ -301,16 +311,11 @@ impl<'a> PreparedEndpointChat<'a> {
         let choice =
             EndpointSelectionChoice::decode(content.as_bytes(), self.allowance, self.configuration)
                 .map_err(|_| failure("invalid endpoint selection choice", true))?;
-        if let Some(usage) = &response.usage {
-            if let (Some(input), Some(output), Some(total)) = (
-                usage.prompt_tokens,
-                usage.completion_tokens,
-                usage.total_tokens,
-            ) {
-                if input.checked_add(output) != Some(total) {
-                    return Err(failure("inconsistent reported usage", true));
-                }
-            }
+        let usage: Option<EndpointTokenUsage> = response.usage.map(Into::into);
+        if let Some(usage) = &usage {
+            usage
+                .validate()
+                .map_err(|_| failure("inconsistent reported usage", true))?;
         }
         Ok(EndpointChatObservation {
             choice,
@@ -323,7 +328,7 @@ impl<'a> PreparedEndpointChat<'a> {
             request_sha256: sha256_hex(&self.request),
             response_sha256: sha256_hex(&bytes),
             content_sha256: sha256_hex(content.as_bytes()),
-            usage: response.usage,
+            usage,
             elapsed_ms: None,
             http_status: None,
             response_bytes: bytes,

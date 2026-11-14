@@ -241,6 +241,16 @@ pub enum TaskAttemptStatus {
     Reserved,
     Accepted,
     Stopped,
+    Invalidated,
+}
+
+/// An affected attempt is no longer admissible. This does not reset spent
+/// effort or permanently stop otherwise eligible work under the same budget.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum TaskAttemptInvalidation {
+    InputsChanged,
+    AuthorizationChanged,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -251,6 +261,10 @@ pub struct TaskAttemptSnapshot {
     pub status: TaskAttemptStatus,
     pub outcome_sha256: Option<String>,
     pub result: Option<GenerateEmbeddingsResult>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub endpoint_proposal: Option<crate::EndpointSelectionProposal>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub invalidation: Option<TaskAttemptInvalidation>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -271,6 +285,13 @@ impl TaskAttemptView {
             if (attempt.status == TaskAttemptStatus::Accepted) != attempt.outcome_sha256.is_some() {
                 return invalid("only accepted attempts have an outcome digest");
             }
+            if (attempt.status == TaskAttemptStatus::Invalidated) != attempt.invalidation.is_some()
+            {
+                return invalid("only invalidated attempts have an invalidation reason");
+            }
+            if attempt.result.is_some() && attempt.endpoint_proposal.is_some() {
+                return invalid("an attempt cannot retain two output kinds");
+            }
             if let Some(result) = &attempt.result {
                 if attempt.status != TaskAttemptStatus::Accepted {
                     return invalid("only an accepted attempt can retain output");
@@ -283,6 +304,19 @@ impl TaskAttemptView {
                         != Some(crate::sha256_bytes(&bytes).as_str())
                 {
                     return invalid("retained output size or digest mismatch");
+                }
+            }
+            if let Some(proposal) = &attempt.endpoint_proposal {
+                if attempt.status != TaskAttemptStatus::Accepted
+                    || proposal.attempt_id != attempt.attempt_id
+                {
+                    return invalid("proposal must belong to its accepted attempt");
+                }
+                proposal.validate()?;
+                let bytes = serde_json::to_vec(proposal)
+                    .map_err(|e| crate::ContractError(e.to_string()))?;
+                if attempt.outcome_sha256.as_deref() != Some(crate::sha256_bytes(&bytes).as_str()) {
+                    return invalid("retained proposal digest mismatch");
                 }
             }
         }
