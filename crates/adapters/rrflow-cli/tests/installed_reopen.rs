@@ -32,7 +32,7 @@ const CYCLES: usize = 100;
 const STREAM_LIMIT: usize = 1024 * 1024;
 const CORPUS_SECONDS: u64 = 3600;
 
-struct engram {
+struct Engram {
     temp: owned_directory::OwnedDirectory,
     binary: PathBuf,
     project: PathBuf,
@@ -41,7 +41,7 @@ struct engram {
     at: u64,
 }
 
-impl engram {
+impl Engram {
     fn command(&self) -> Command {
         let mut command = Command::new(&self.binary);
         command
@@ -401,7 +401,7 @@ async fn read(
 }
 
 fn run(mode: &str) {
-    let engram = engram::install(mode);
+    let engram = Engram::install(mode);
     let credential = RrdEngine::read_installed_api_key(&engram.project).unwrap();
     // Freeze every request/effect identity before the first operation.
     let requests = (0..CYCLES)

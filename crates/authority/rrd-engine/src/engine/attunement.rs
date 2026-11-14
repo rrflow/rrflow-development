@@ -5,7 +5,7 @@
 
 use super::installation::{
     attunement_job_key, attunement_plan_key, canonical_prefixed, engram_configuration_key,
-    project_inventory_sha256, DefaultInstallProfile, InstalledengramRecord, INSTALLED_RECORD_KEY,
+    project_inventory_sha256, DefaultInstallProfile, InstalledEngramRecord, INSTALLED_RECORD_KEY,
 };
 use super::*;
 use rrd_contract::{
@@ -196,7 +196,7 @@ impl RrdEngine {
         let (_, authorization) = self.authorize(
             session,
             token,
-            SecurityAction::engramRead,
+            SecurityAction::EngramRead,
             now,
             request_id,
             operation_id,
@@ -215,8 +215,8 @@ impl RrdEngine {
             .map(Some)
     }
 
-    fn attunement_installed_record(&self) -> Result<InstalledengramRecord> {
-        let record: InstalledengramRecord = decode(
+    fn attunement_installed_record(&self) -> Result<InstalledEngramRecord> {
+        let record: InstalledEngramRecord = decode(
             &self
                 .storage
                 .control()
@@ -350,7 +350,7 @@ impl RrdEngine {
         self.authorize(
             session,
             token,
-            SecurityAction::engramAdmin,
+            SecurityAction::EngramAdmin,
             now,
             request_id,
             operation_id,
@@ -365,7 +365,7 @@ impl RrdEngine {
         self.authorize(
             session,
             token,
-            SecurityAction::engramAdmin,
+            SecurityAction::EngramAdmin,
             elapsed_time(now, started)?,
             request_id,
             operation_id,
@@ -390,7 +390,7 @@ impl RrdEngine {
         let (_, auth) = self.authorize(
             session,
             token,
-            SecurityAction::engramAdmin,
+            SecurityAction::EngramAdmin,
             now,
             context.request_id.as_str(),
             context.operation_id.as_str(),
@@ -420,7 +420,7 @@ impl RrdEngine {
         self.authorize(
             session,
             token,
-            SecurityAction::engramAdmin,
+            SecurityAction::EngramAdmin,
             at,
             context.request_id.as_str(),
             context.operation_id.as_str(),
@@ -457,7 +457,7 @@ impl RrdEngine {
         self.authorize(
             session,
             token,
-            SecurityAction::engramAdmin,
+            SecurityAction::EngramAdmin,
             at,
             context.request_id.as_str(),
             context.operation_id.as_str(),
@@ -599,7 +599,7 @@ impl RrdEngine {
         self.authorize(
             session,
             token,
-            SecurityAction::engramRead,
+            SecurityAction::EngramRead,
             now,
             request_id,
             operation_id,
@@ -630,7 +630,7 @@ impl RrdEngine {
         let (_, authorization) = self.authorize(
             session,
             token,
-            SecurityAction::engramRead,
+            SecurityAction::EngramRead,
             now,
             request_id,
             operation_id,
@@ -701,7 +701,7 @@ impl RrdEngine {
         let (_, auth) = self.authorize(
             session,
             token,
-            SecurityAction::engramAdmin,
+            SecurityAction::EngramAdmin,
             now,
             context.request_id.as_str(),
             context.operation_id.as_str(),
@@ -729,7 +729,7 @@ impl RrdEngine {
         self.authorize(
             session,
             token,
-            SecurityAction::engramAdmin,
+            SecurityAction::EngramAdmin,
             admitted_at,
             context.request_id.as_str(),
             context.operation_id.as_str(),
@@ -916,7 +916,7 @@ impl RrdEngine {
         self.authorize(
             session,
             token,
-            SecurityAction::engramAdmin,
+            SecurityAction::EngramAdmin,
             authorization_at,
             context.request_id.as_str(),
             context.operation_id.as_str(),
@@ -1009,7 +1009,7 @@ impl RrdEngine {
         next: &mut AttunementJob,
         at: u64,
     ) -> Result<()> {
-        let configuration: engramConfiguration = decode(
+        let configuration: EngramConfiguration = decode(
             &self
                 .storage
                 .control()

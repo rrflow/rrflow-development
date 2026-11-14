@@ -93,7 +93,7 @@ fn vectors() -> serde_json::Value {
         .unwrap();
     let projection = ProjectionStamp {
         contract_version: DATA_RUNTIME_CONTRACT_VERSION,
-        id: ProjectionId::new("vector:documents").unwrap(),
+        id: ProjectionId::new("vector-documents").unwrap(),
         generation: 1,
         source_cursor: 7,
         config_digest: "22".repeat(32),

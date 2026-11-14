@@ -35,9 +35,9 @@ binding was modified and no native admission guard was disabled.
 | Native enforcement harness | `501e0ae67761b836955383c75191c8ac66bea413f4c5edabab964ec984249d0a` |
 
 Owned guest base: `/home/devcontainers/rrflow-c07-native-79663cdd`.
-Stage: `desktop-integrated-preflight-05817485`; new engram parent:
+Stage: `desktop-integrated-preflight-05817485`; new estate parent:
 `desktop-integrated-files-05817485`. Source: `integrated-05817485`.
-The failed 8a6752b2 engram and diagnostic copies remain intact.
+The failed 8a6752b2 estate and diagnostic copies remain intact.
 
 At 2026-10-25 16:57:26 UTC, service
 `rrflow-c07-desktop-integrated-05817485` became active, invoking the repository's
@@ -54,7 +54,7 @@ A separate read-only operator observer samples progress counts and native
 process/cgroup CPU, memory and I/O once per minute, at most 240 times, and stops
 when the workload service ends. Its own host service has a 256 MiB limit and
 15000-second outer bound. It appends `operator-observations.jsonl` in the stage;
-it does not mutate the engram, campaign, harness or result. This supplemental
+it does not mutate the estate, campaign, harness or result. This supplemental
 sampling helps attribute setup phases and is not a new runtime signal/API or
 replacement for the harness's acceptance measurements.
 

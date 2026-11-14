@@ -35,7 +35,7 @@ POA&M item, the alpha objective, release readiness, or promotion complete.
   `d179a4e7abb44e8f54ecaa462e2a40bbbfa2d122` added the complete historical
   vocabulary and seat-identity records after documentation validation found
   their links to deleted source/test paths; and
-  `914f26277dbd72b8aae5784d4e9307ac0ca64510` added the complete engram-control
+  `914f26277dbd72b8aae5784d4e9307ac0ca64510` added the complete estate-control
   owner after final product-source review found one undeclared create-or-open
   call at the pre-canonical backup root.
 - Branch: `agent/connectome-temporal-runtime-visualizer`; all four planning
@@ -102,7 +102,7 @@ closed and preserves those bytes.
 | Baseline behavior | Canonical destination and retained behavior | Replacement evidence | Owner |
 |---|---|---|---|
 | Install failed after any pre-locator interruption and could strand new secret material | private `installation::recovery` intent; exact create-or-verify; explicit empty/committed/published/complete classification; one locator and acknowledgement | six focused recovery tests, including all eight typed stages, stable time/secret hashes, byte inventories, partial control, missing secret, drift, malformed/foreign/symbolic state | D-01, POAM-006/-016 |
-| `.rrflow/instance.toml`, `InstanceManifest`, `InstanceBinding`, and `ProjectAuthorityBinding` could define startup identity | `.rrflow/config.toml` plus engine-owned `InstalledengramRecord`, configuration, security, checkpoint, attunement plan/job, and project-relative paths | canonical install/open/verify, whole-project relocation, nested/neighbor/foreign denial, architecture absence scan | D-01, POAM-020 |
+| `.rrflow/instance.toml`, `InstanceManifest`, `InstanceBinding`, and `ProjectAuthorityBinding` could define startup identity | `.rrflow/config.toml` plus engine-owned `InstalledEstateRecord`, configuration, security, checkpoint, attunement plan/job, and project-relative paths | canonical install/open/verify, whole-project relocation, nested/neighbor/foreign denial, architecture absence scan | D-01, POAM-020 |
 | `open_project_store`, `open_bound`, public load-or-create token helpers, and product fixtures could create or bind state outside install | `RrdEngine::open_installed` for product callers; explicit `RrdEngine::open` only in component tests that do not claim installation | engine/server/client/MCP tests and source-policy scan | A-07, D-01 |
 | primary CLI exposed raw database operations and a second `dev` lifecycle | `version`, install plan/apply, serve, ready, and quick verify only | four real primary-binary parser/lifecycle tests and CI installed-lifecycle job | D-01, J-01 |
 | standalone security helper/binary and caller-authored bootstrap inputs initialized a physical path | initial security, audit, installed record, checkpoint, outbox, and attunement state in the one installation commit; exact secret reuse on retry | installation recovery/security assertions, deleted helper/binary/tests/callers | D-01, POAM-016 |
@@ -128,12 +128,12 @@ The active change record binds each baseline SHA-256, exact line count,
   POAM-006/-015/-016/-020/-021/-024;
 - complete instance topology, ADR-0002, agent bootstrap, installed lifecycle,
   local-process, Kubernetes, deployment-mode, server, Rust SDK, security, and
-  canonical engram/configuration research records, plus the complete historical
+  canonical estate/configuration research records, plus the complete historical
   platform-vocabulary note and seat-identity reference after their broken links
   surfaced;
 - the tracked `.rrflow/instance.toml`, complete reusable CI workflow, and both
   repository knowledge/inventory generators;
-- complete engine core, 1,435-line engram-control implementation, engram layout,
+- complete engine core, 1,435-line estate-control implementation, estate layout,
   1,487-line installation coordinator,
   token-key helper, standalone security bootstrap, module/public exports,
   operator boundary, instance runtime, runtime exports, operator knowledge,
@@ -182,15 +182,15 @@ Deleted paths:
 - `crates/adapters/rrflow-cli/tests/operator_surface.rs`; and
 - `crates/adapters/rrflow-cli/tests/security_bootstrap.rs`.
 
-Changed implementation paths are the declared engine core/engram-control/layout/installation/
+Changed implementation paths are the declared engine core/estate-control/layout/installation/
 token/module/export/operator/runtime/test surfaces; CLI manifest/main/command/
 installed/lifecycle test; MCP authority/config/tests; internal server
 main/composition/process tests; Rust client daemon/real-server fixtures and
-shared corpus; engram deployment catalogue/test; Kubernetes renderer/tests;
+shared corpus; estate deployment catalogue/test; Kubernetes renderer/tests;
 checked CRD/example; and CI reusable workflow. Changed evidence paths are the
 README, alpha objective, six POA&M details, topology, four deployment/protocol
 references, Rust SDK, security authority, seat identity, historical vocabulary,
-and canonical-engram research record.
+and canonical-estate research record.
 This journal is new; its nearest index and the Git-backed execution inventory
 are generated projections. No file was moved or renamed. `Cargo.lock` did not
 change.
@@ -208,7 +208,7 @@ trace. Existing typed errors remain the failure oracle.
 
 The debug oracle is a typed test-only observer, not an environment variable,
 sleep, release hook, provider hook, or second lifecycle switch. It returns a
-synthetic failure at each of eight stages: intent published, engram directories
+synthetic failure at each of eight stages: intent published, estate directories
 ready, storage ready, token ready, credential ready, engine committed, locator
 published, and intent acknowledged. The same production apply code executes on
 retry.
@@ -281,7 +281,7 @@ boundary remains POAM-006/-016 and D-02/D-06/J work.
 - Final source review found an unused public operator helper that still encoded
   `<project>/.rrflow/rrd` and an engine-internal application-backup driver that
   called create-or-open at that pre-canonical parent. Work was preserved, the
-  v5 plan was committed alone, and the complete 1,435-line engram-control owner
+  v5 plan was committed alone, and the complete 1,435-line estate-control owner
   was read. The helper was removed; the backup driver now calls
   `open_existing`, so a canonical installed `roots/<install-id>` layout cannot
   be silently converted into a second empty database. Its first focused test
@@ -320,10 +320,10 @@ boundary remains POAM-006/-016 and D-02/D-06/J work.
 | `cargo test -p rrflow-cli --test installed_lifecycle --locked -- --nocapture` | 4 passed |
 | `cargo test -p rrflow-mcp --test stdio --test stdio_daemon --locked` | 5 passed |
 | `cargo test -p rrd-server --test http_process --locked -- --nocapture` | 17 passed |
-| three named `rrd-server --test local_engram_driver` focused commands | 1 passed each; approximately 228/75/150 seconds |
+| three named `rrd-server --test local_estate_driver` focused commands | 1 passed each; approximately 228/75/150 seconds |
 | `cargo test -p rrd-client --test real_server --locked` | 3 passed; unused-import warning was removed afterward |
 | `python3 scripts/ci/run_sdk_conformance.py` | Rust, TypeScript, Python, Go, Java, and .NET passed one installed daemon; corpus SHA-256 `0f6ba4c172d58a64c69757c26bf502e93ed8b9cbe8394d84aaad1defe80fd09e` |
-| `cargo test -p rrd-engram --test deployment_catalog --locked` | 1 passed |
+| `cargo test -p rrd-estate --test deployment_catalog --locked` | 1 passed |
 | `cargo test -p rrd-kubernetes --locked` | 4 passed |
 | affected seven-package `--all-targets --no-run --locked` matrix | passed; every target compiled |
 | affected seven-package `cargo clippy --all-targets --locked -- -D warnings` | first run found redundant field syntax; rerun passed with no warning allowance |
@@ -378,7 +378,7 @@ boundary remains POAM-006/-016 and D-02/D-06/J work.
   external secret adapters/receipts, native ACLs, rotation, and secret
   accounting.
 - POAM-020/A/C/D/H/J own operation-specific public resource grammar, duplicate
-  engram hierarchy removal, cluster identity binding, and complete MX/KV
+  estate hierarchy removal, cluster identity binding, and complete MX/KV
   topology equivalence.
 - POAM-021 owns pure outward process effects, engine-prepared plans/fences,
   authenticated readiness/control receipts, bounded logs/resources, private

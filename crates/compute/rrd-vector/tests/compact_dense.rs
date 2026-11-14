@@ -41,7 +41,12 @@ fn candidate(
 
 fn config(scope: &ScopeId, dimensions: usize, metric: ScoreMetric) -> VectorSegmentConfig {
     VectorSegmentConfig {
-        id: ProjectionId::new(format!("vector:compact:{metric:?}").to_lowercase()).unwrap(),
+        id: ProjectionId::new(
+            format!("vector-compact-{metric:?}")
+                .to_lowercase()
+                .to_lowercase(),
+        )
+        .unwrap(),
         scope: scope.clone(),
         field: "body".into(),
         dimensions,

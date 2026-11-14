@@ -70,7 +70,7 @@ disabled. This is a native Windows development build.
 | `cargo test --locked -p rrd-client --test rrflowdb_local` | passed: one full installed relational/atomicity/reopen regression, including stale write and closed-session cases |
 | `cargo test --locked -p rrd-client -p rrd-contract -p rrd-server --all-targets` | client targets passed; contract fingerprint first failed, then corrected; later server local-driver target needed its existing controller binary (see below) |
 | `cargo test --locked -p rrd-contract -p rrd-server --all-targets` after fingerprint correction | contract tests and server HTTP/process targets passed; local-driver 3/4 passed before missing-binary prerequisite was resolved |
-| `cargo build --locked -p rrflow-cli --bin rrd-engram-controller` then `cargo test --locked -p rrd-server --test local_engram_driver` | 4/4 passed, including process-kill matrix |
+| `cargo build --locked -p rrflow-cli --bin rrd-estate-controller` then `cargo test --locked -p rrd-server --test local_estate_driver` | 4/4 passed, including process-kill matrix |
 | `cargo test --locked -p rrd-engine --lib engine::tests::recovery` | 5/5 passed |
 | `cargo test --locked -p rrd-engine --lib engine::tests::query_transaction` | 2/2 passed |
 | `cargo test --locked -p rrd-engine --lib` | 99/99 passed, including governed-function and recovery tests |
@@ -123,7 +123,7 @@ This is a local build receipt, not a signed distribution or promotion.
   projections/count/digest fixtures were intentionally updated together.
 - A test used a nonexistent descriptor field; it now asserts
   `action.fixed_action()` through the actual contract.
-- The server process test required `rrd-engram-controller`; an initial build
+- The server process test required `rrd-estate-controller`; an initial build
   selected its former-looking package name, then used its actual `rrflow-cli`
   package. The four-test target passed after building the prerequisite.
 - Host pnpm 10 could not read the pinned pnpm 12 multi-document lock; using

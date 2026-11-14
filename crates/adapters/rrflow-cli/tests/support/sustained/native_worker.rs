@@ -688,7 +688,7 @@ mod tests {
         campaign.allocation.vcpus = supplied.vcpus;
         let receipt = native::receipt(&campaign).unwrap().unwrap();
         let expected = receipt.enforcement().unwrap();
-        let engram = super::super::engram::install("fresh");
+        let engram = super::super::Engram::install("fresh");
         let clock = Instant::now();
         let (mut engine, _client, _) = engram.start_for(clock, Duration::from_secs(120));
         let engine_pid = engine.id();

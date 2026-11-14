@@ -43,9 +43,8 @@ would have seen no further changes.
 ## Remediation
 
 Pull request #271 writes the record as `{projection}.{generation}` and the
-object as `{projection}.{generation}.vector-bytes`, and it refuses any other
-non-canonical identity before it stages bytes. No migration is needed, because
-no public operation could create these artifacts before that change.
+object as `{projection}.{generation}.vector-bytes`. No migration is needed,
+because no public operation could create these artifacts before that change.
 
 The oracles are
 `engine::tests::vector_index::index_identities::a_scope_with_index_generations_keeps_its_public_changefeed`,
@@ -68,9 +67,21 @@ oracles are `cluster_identifiers_accept_only_the_canonical_grammar` in
 `rrd-cluster`'s `contracts`, and the changefeed read in `rrd-engine`'s
 `distributed_data_plane`.
 
-`ProjectionId`, `RuntimeId` and `RuntimeType` still accept any bytes except NUL,
-so the vector and quantization catalogues keep a check at the writer. Giving those
-types the grammar is the next package, and it removes those checks.
+Pull request #275 gives `ProjectionId`, `RuntimeType`, `RuntimeId`, `SnapshotId`,
+`RetentionPinId`, `OutboxId`, `Subject` and `Predicate` the same grammar in their
+types, so no writer can construct an identity the public projection refuses. The
+checks the vector and quantization catalogues kept at the writer are gone: they
+build both identities as types before they stage bytes.
+
+An event keeps its stored identity `cursor:{n}`, which is outside the grammar on
+purpose. Only `RuntimeId::event` issues it and `RuntimeId::new` refuses it, so no
+identifier a client supplies can collide with an event. The public projection reads
+the cursor with `event_cursor` instead of parsing text. `ScopeId` and `Reader` keep
+their namespaced forms; the
+[package's journal](../../evidence/change-journals/gate-h/h-04-kernel-identifier-grammar.md)
+gives each type's reason. The oracles are `rrd-core`'s `identifier_grammar` and
+`publication_refuses_an_identity_the_public_changefeed_cannot_project`, which now
+covers an id that is canonical alone and too long once publication adds to it.
 
 The row is Verifying until Gate C and Gate H record that evidence at the merged
 revision.
@@ -89,8 +100,8 @@ Roadmap owners: [Gate C](../../roadmap/rrflow-1.0/gate-c.md) and
 ## Closure evidence
 
 - **Canonical identities.** Every identity the vector artifact catalogue
-  writes, for its record and its object, is a public canonical id. The writer
-  checks this before it stages bytes.
+  writes, for its record and its object, is a public canonical id. The identity
+  types hold this, and the writer builds them before it stages bytes.
 - **A changefeed oracle.** After an HNSW and an exact-segment ensure, the
   scope's changefeed projects every change.
 - **Review of every engine-internal writer.** An inventory of the engine's

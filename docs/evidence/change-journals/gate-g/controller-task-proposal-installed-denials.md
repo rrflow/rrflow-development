@@ -24,7 +24,7 @@ adaptation, external research algorithm, runtime dependency or gate change appli
 `--admission-only` takes the existing actual profile/task inputs, build receipt and
 contract helper. It excludes provider credential arguments and recovery mode,
 requires an explicitly credentialed binding, and starts its own isolated installed
-engram with no provider credential map. The same actual PR body supplies task
+estate with no provider credential map. The same actual PR body supplies task
 context; no model output or correctness label is generated.
 
 The driver uses real public configuration preview/apply to disable network,
@@ -69,8 +69,8 @@ Binary SHA256 `7fe07a7198b864a2642c5a9a521e8e13ac7a7d935fd62e8477f2c075fd7680b9`
 runner SHA256 `27e9fc99981f2daa1908d5bff9c032a10e295b5e69453633add59490d2fddbd1`.
 Two mixed-mode subprocess checks exited 2 before creating output or a server.
 Syntax compilation passed. Re-running recovery against the original uncertain
-engram returned exactly the prior attempt and budget; the new receipt is in
-`installed-controller-recovery-after-denial-tooling/`. No failed engram was cleared
+estate returned exactly the prior attempt and budget; the new receipt is in
+`installed-controller-recovery-after-denial-tooling/`. No failed estate was cleared
 and no model request was repeated. Prior journal/capture bytes remain unchanged.
 
 Navigation/documentation/inventory/workflow and staged whitespace checks passed:

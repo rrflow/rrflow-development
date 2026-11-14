@@ -27,7 +27,7 @@ the evidence; no training labels, inferred consent or default prompt logs follow
 
 ## Actual results
 
-Each case used a separate installed engram and exactly two actual provider
+Each case used a separate installed estate and exactly two actual provider
 calls. The selector response passed through; the actual worker response was
 held until the engine's reservation and original deadline were read. The
 requested intervention then occurred before response delivery or publication.
@@ -45,7 +45,7 @@ the original accepted selector and unchanged task, two spent steps and the
 original deadline. Reopen without provider credentials returned the exact worker,
 selector and budget values. Four additional, separate `--recover-proof` commands
 also exited zero; their readbacks equal the original records and request no
-model operation. No original failed/uncertain engram was changed or discarded.
+model operation. No original failed/uncertain estate was changed or discarded.
 The runner stopped and waited for every child it owned.
 
 The [manifest](task-worker-completion-fault-receipts/manifest.json) binds the
@@ -56,10 +56,10 @@ name the configured provisional BF16 service; aliases do not attest weights.
 The elapsed figures are observations of this controlled experiment, not model
 quality, latency, cancellation or capacity benchmarks.
 
-Exact command arrays, process results, full logs and engrams remain in SWAG
+Exact command arrays, process results, full logs and estates remain in SWAG
 `.swag/evidence/20261031/worker-completion-faults/`. Commands use only supplied
 build/profile/task/credential paths. Private credentials, session tokens and
-installed engrams are excluded from publication. Selected receipts were checked
+installed estates are excluded from publication. Selected receipts were checked
 against the actual private key and credential-header fields before copying.
 Do not normalize these raw JSON bytes after hashing; CRLF is part of the capture.
 

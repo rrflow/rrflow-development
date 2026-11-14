@@ -2,7 +2,7 @@ use super::*;
 use rrd_contract::{
     BindingKind, BindingLimits, CredentialReference, DeclaredFootprint, DeploymentForm,
     DeploymentProfile, EndpointBinding, EndpointLocator, EndpointPresentation, GpuRequirement,
-    InstalledengramIdentity, KnowledgePath, KnowledgePathBinding, KnowledgeTree,
+    InstalledEngramIdentity, KnowledgePath, KnowledgePathBinding, KnowledgeTree,
     KnowledgeTreeCatalogue, ListKnowledgeTrees, ReplaceKnowledgeTrees, SessionLease,
     StorageProfileKind, WorkloadClass, DEPLOYMENT_PROFILE_CONTRACT_VERSION,
 };
@@ -21,7 +21,7 @@ fn bind_project(engine: &mut RrdEngine, root: &Path) {
     let configuration = engine.engram_configuration().clone();
     engine
         .bind_installed_state(
-            InstalledengramIdentity {
+            InstalledEngramIdentity {
                 project_id: project(),
                 engram_id: canonical("knowledge-engram"),
                 instance_id: instance(),

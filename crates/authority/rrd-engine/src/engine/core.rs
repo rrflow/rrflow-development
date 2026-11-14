@@ -77,8 +77,8 @@ pub(super) fn installed_storage_options(
 pub struct RrdEngine {
     pub(crate) storage: StorageProfile,
     pub(crate) storage_profile_kind: StorageProfileKind,
-    pub(crate) engram_configuration: engramConfiguration,
-    pub(crate) installed_engram: Option<InstalledengramIdentity>,
+    pub(crate) engram_configuration: EngramConfiguration,
+    pub(crate) installed_engram: Option<InstalledEngramIdentity>,
     pub(crate) installed_deployment: Option<DeploymentProfile>,
     /// The admitted project root of an installed engram. Retaining this
     /// capability does not authorize reads or establish a source snapshot.
@@ -260,7 +260,7 @@ impl RrdEngine {
         Ok(Self {
             storage: StorageProfile::rrflow_kv(storage),
             storage_profile_kind: StorageProfileKind::RrflowKv,
-            engram_configuration: engramConfiguration::default(),
+            engram_configuration: EngramConfiguration::default(),
             installed_engram: None,
             installed_deployment: None,
             installed_project_root: None,
@@ -305,7 +305,7 @@ impl RrdEngine {
         Ok(Self {
             storage: StorageProfile::rrflow_mx(),
             storage_profile_kind: StorageProfileKind::RrflowMx,
-            engram_configuration: engramConfiguration::default(),
+            engram_configuration: EngramConfiguration::default(),
             installed_engram: None,
             installed_deployment: None,
             installed_project_root: None,
@@ -341,11 +341,11 @@ impl RrdEngine {
         self.storage_profile_kind
     }
 
-    pub fn engram_configuration(&self) -> &engramConfiguration {
+    pub fn engram_configuration(&self) -> &EngramConfiguration {
         &self.engram_configuration
     }
 
-    pub fn installed_engram_identity(&self) -> Option<&InstalledengramIdentity> {
+    pub fn installed_engram_identity(&self) -> Option<&InstalledEngramIdentity> {
         self.installed_engram.as_ref()
     }
 
@@ -419,9 +419,9 @@ impl RrdEngine {
 
     pub(in crate::engine) fn bind_installed_state(
         &mut self,
-        identity: InstalledengramIdentity,
+        identity: InstalledEngramIdentity,
         deployment: DeploymentProfile,
-        configuration: engramConfiguration,
+        configuration: EngramConfiguration,
         storage_container: AnchoredPath,
     ) -> Result<()> {
         identity

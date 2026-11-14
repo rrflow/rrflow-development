@@ -10,7 +10,7 @@ Starting development main `6fe8b7590d913beda9b009551e5d2d2644e406d9`, tree `3bd8
 
 Previously plan validation and job progression required the global eleven-entry `ATTUNEMENT_PHASES`. This candidate binds checkpoints, next-step selection and resume to the exact positions, recognized phase kinds, configuration hashes and plan digest of the stored plan. It supports repeated kinds and requires exactly one final Verify step, so omitted steps do not themselves produce a successful job. The default profile still supplies eleven entries. The only implemented attunement step remains Connect; Verify and other unavailable steps fail explicitly. There is no public custom-plan submission or per-prompt planner in this package. This is a bounded linear attunement contract, not a dynamic reasoning graph, source freshness check, automatic project integration, SWAG routing, handoff, or alpha completion.
 
-Attunement envelopes now require version 2. Installation-result and restore-publication contracts retain version 1; the default plan content is unchanged but its identity and dependent installation digests change. Version-1 stored attunement plans and clients are not accepted by this candidate; no transition or upgrade path is provided. Do not assume an existing engram can resume its old job after this change. The resource cap of 32 remains an explicit finite bound, not a requirement that all projects execute the same steps.
+Attunement envelopes now require version 2. Installation-result and restore-publication contracts retain version 1; the default plan content is unchanged but its identity and dependent installation digests change. Version-1 stored attunement plans and clients are not accepted by this candidate; no transition or upgrade path is provided. Do not assume an existing estate can resume its old job after this change. The resource cap of 32 remains an explicit finite bound, not a requirement that all projects execute the same steps.
 
 ## Research and decisions
 
@@ -34,7 +34,7 @@ The new engine oracle inserts a test-only `[Connect, Connect, Verify]` plan dire
 
 - `cargo test --offline --locked -p rrd-contract --test attunement_contract`: 16 passed.
 - `cargo test --offline --locked -p rrd-engine --lib attunement`: 13 passed, one ignored native child fixture; the parent worker-kill/replay test passed.
-- `cargo test --offline --locked -p rrd-engine --lib a_staged_restore_is_published_in_place_and_the_engram_opens_from_the_backup`: one passed.
+- `cargo test --offline --locked -p rrd-engine --lib a_staged_restore_is_published_in_place_and_the_estate_opens_from_the_backup`: one passed.
 - `cargo test --offline --locked -p rrd-client --test rrflowdb_local`: four passed, including installed relation/query atomicity and reopen, attunement read and cancellation replay, and rejected truncated/foreign Parquet export.
 - `python scripts/ci/check_generated_surfaces.py --check`: passed, 62 operations and the digest above.
 - TypeScript `tsx scripts/generate.ts --check` and `tsc --noEmit`: passed using the matching-lockfile local dependency tree.

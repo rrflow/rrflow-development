@@ -4,7 +4,7 @@ use super::{
 };
 use rrd_contract::{
     AbortTransaction, AuditDecision, AuditPhase, BeginTransaction, CanonicalId, CloseSession,
-    CommitTransaction, CorrelationId, CreateSession, DataengramOrganisation,
+    CommitTransaction, CorrelationId, CreateSession, DataEngramOrganisation,
     EnsureVectorCollection, NamedVectorDefinition, PreviewTransaction, RenewSession,
     RequestContext, ResourceId, ResourceKind, ResourcePath, SecurityAction, SessionLimits,
     TransactionMutation, TransactionState, VectorMemoryTier, VectorSearchMetric, VectorValueKind,

@@ -227,7 +227,7 @@ fn rrflow_kv_mixed_family_mutations() -> Vec<RuntimeMutation> {
         },
         RuntimeMutation::Claim {
             claim: Claim::new(
-                Subject::new("entity:a").unwrap(),
+                Subject::new("entity-a").unwrap(),
                 Predicate::new("status").unwrap(),
                 "durable",
                 100,

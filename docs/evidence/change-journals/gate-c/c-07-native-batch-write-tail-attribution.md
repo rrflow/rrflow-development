@@ -283,7 +283,7 @@ Final repository results:
   promotion test is claimed. Those are outside this bounded diagnostic package
   and remain owned by their roadmap/POA&M records.
 - **Broad workspace process test:** the final workspace run's
-  `local_engram_driver` binary passed four synthetic process integration tests
+  `local_estate_driver` binary passed four synthetic process integration tests
   in 225.88 seconds. They cover child survival, forged-PID refusal, bounded kill
   fallback, and a 12-boundary controller crash matrix. Live inspection located
   the wall time in executable authentication, not the recovery state machine:
@@ -299,11 +299,11 @@ Final repository results:
   deficiency and is not a storage benchmark, real-world AI workload, or
   performance evidence for this package. Repair requires a separately planned
   test/package boundary; this storage diagnostic does not edit the unrelated
-  engram implementation.
+  estate implementation.
 - **Remaining known errors:** native write throughput has not passed the strict
   Fjall comparison retained by the owning evidence; the exact source of time
   spent inside `sync_data` is not separated; the historical extreme tail was
-  not reproduced; the engram process-integration suite repeatedly hashes a
+  not reproduced; the estate process-integration suite repeatedly hashes a
   1.185-GB debug executable and lacks per-test/per-boundary duration and retry
   reporting; C-07, J-02, J-04, POAM-012, D-01, every alpha objective, alpha
   readiness, and release promotion remain open.

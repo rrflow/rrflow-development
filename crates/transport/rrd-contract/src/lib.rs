@@ -90,9 +90,9 @@ pub use capability_surface::{
 };
 pub use deployment::{
     engram_configuration_sha256, ClockPolicy, DeploymentForm, DeploymentProfile,
-    EndpointPresentation, engramConfiguration, engramConfigurationInput, InstalledengramIdentity,
+    EndpointPresentation, EngramConfiguration, EngramConfigurationInput, InstalledEngramIdentity,
     ReasoningLimits, RecallLimits, StorageLimits, StorageProfileKind,
-    DEPLOYMENT_PROFILE_CONTRACT_VERSION, engram_CONFIGURATION_FORMAT_VERSION,
+    DEPLOYMENT_PROFILE_CONTRACT_VERSION, ENGRAM_CONFIGURATION_FORMAT_VERSION,
     MAX_CLOCK_ROLLBACK_MS, MAX_REASONING_RUN_ELAPSED_MS, MAX_REASONING_STEPS,
     MAX_REASONING_STEP_ELAPSED_MS,
 };
@@ -182,7 +182,7 @@ pub use memory_context::{
     MAX_CONTEXT_OUTPUT_BYTES, MAX_CONTEXT_QUERY_BYTES, MAX_CONTEXT_SEEDS, MAX_CONTEXT_STORAGE_KEYS,
 };
 pub use memory_engram::{
-    MemoryengramPlan, MemorySeatDefinition, MemoryWarp, PersistMemoryengram,
+    MemoryEngramPlan, MemorySeatDefinition, MemoryWarp, PersistMemoryEngram,
     ProviderRepresentation, ProviderRepresentationDefinition, ResolveMemoryWarp,
     ResolveSeatIdentity, ResolvedMemoryWarp, SeatIdentity, MAX_PROVIDER_REPRESENTATIONS,
     MEMORY_PROVIDER_IDENTITY_KIND, MEMORY_REPRESENTS_KIND, MEMORY_SEAT_KIND,
@@ -253,7 +253,7 @@ pub use websocket::{
     WebSocketAcknowledged, WebSocketBackpressure, WebSocketBackpressureTarget, WebSocketCancel,
     WebSocketCancellation, WebSocketCancellationDisposition, WebSocketConnected, WebSocketDelivery,
     WebSocketError, WebSocketErrorTarget, WebSocketFrame, WebSocketHeartbeat, WebSocketLimits,
-    WebSocketPayload, WebSocketPeer, WebSocketReceivengram, WebSocketRequest,
+    WebSocketPayload, WebSocketPeer, WebSocketReceiveState, WebSocketRequest,
     WebSocketRequestTarget, WebSocketResponse, WebSocketSendState, WebSocketSubscribe,
     WebSocketSubscribed, WebSocketUnsubscribe, WebSocketUnsubscribed, MAX_WEBSOCKET_BUFFER_BYTES,
     MAX_WEBSOCKET_CANCEL_REASON_BYTES, MAX_WEBSOCKET_ERROR_BYTES, MAX_WEBSOCKET_ERROR_DETAILS,
@@ -272,7 +272,7 @@ use std::fmt;
 pub const PROTOCOL: &str = "rrd";
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const OPENAPI_DOCUMENT_SHA256: &str =
-    "f14071c71318062cd2b1a9fca491a16d91b4481e98c3e0bcefeeaf98359ed580";
+    "e6bd6b60e12398a5ee5ddaf23f846e74288bc128f91acc561d9099381072d80f";
 pub const MAX_ID_BYTES: usize = 128;
 pub const MAX_MESSAGE_BYTES: usize = 4_096;
 pub const MAX_CAPABILITIES: usize = 512;
@@ -3103,8 +3103,8 @@ pub enum SecurityAction {
     BackupCreate,
     BackupList,
     RestoreCreate,
-    engramRead,
-    engramAdmin,
+    EngramRead,
+    EngramAdmin,
     AuditRead,
     AuditExport,
     FunctionCatalogueRead,
@@ -3167,8 +3167,8 @@ impl SecurityAction {
         Self::BackupCreate,
         Self::BackupList,
         Self::RestoreCreate,
-        Self::engramRead,
-        Self::engramAdmin,
+        Self::EngramRead,
+        Self::EngramAdmin,
         Self::AuditRead,
         Self::AuditExport,
         Self::FunctionCatalogueRead,
@@ -3750,7 +3750,7 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             "/v1/attunement/pause",
             EndpointAuthentication::SessionBearer,
             true,
-            SecurityAction::engramAdmin,
+            SecurityAction::EngramAdmin,
             "PauseAttunement",
             "AttunementControlResponse",
         ),
@@ -3760,7 +3760,7 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             "/v1/attunement/recover-expired",
             EndpointAuthentication::SessionBearer,
             true,
-            SecurityAction::engramAdmin,
+            SecurityAction::EngramAdmin,
             "RecoverExpiredAttunement",
             "AttunementControlResponse",
         ),
@@ -3770,7 +3770,7 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             "/v1/attunement/resume",
             EndpointAuthentication::SessionBearer,
             true,
-            SecurityAction::engramAdmin,
+            SecurityAction::EngramAdmin,
             "ResumeAttunementWithLease",
             "AttunementControlResponse",
         ),
@@ -3780,7 +3780,7 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             "/v1/attunement/start",
             EndpointAuthentication::SessionBearer,
             true,
-            SecurityAction::engramAdmin,
+            SecurityAction::EngramAdmin,
             "StartAttunement",
             "AttunementControlResponse",
         ),
@@ -3790,7 +3790,7 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             "/v1/attunement/step",
             EndpointAuthentication::SessionBearer,
             true,
-            SecurityAction::engramAdmin,
+            SecurityAction::EngramAdmin,
             "StepAttunement",
             "AttunementControlResponse",
         ),
@@ -3800,7 +3800,7 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             "/v1/attunement/replan/preview",
             EndpointAuthentication::SessionBearer,
             false,
-            SecurityAction::engramAdmin,
+            SecurityAction::EngramAdmin,
             "PreviewAttunementReplan",
             "AttunementReplanPreview",
         ),
@@ -3810,7 +3810,7 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             "/v1/attunement/replan/accept",
             EndpointAuthentication::SessionBearer,
             true,
-            SecurityAction::engramAdmin,
+            SecurityAction::EngramAdmin,
             "AcceptAttunementReplan",
             "AttunementReplanResult",
         ),
@@ -3820,7 +3820,7 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             "/v1/attunement/replan/receipt/read",
             EndpointAuthentication::SessionBearer,
             false,
-            SecurityAction::engramRead,
+            SecurityAction::EngramRead,
             "ReadAttunementReceipt",
             "AttunementReplanReceiptReadResult",
         ),
@@ -3830,7 +3830,7 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             "/v1/attunement/cancel",
             EndpointAuthentication::SessionBearer,
             true,
-            SecurityAction::engramAdmin,
+            SecurityAction::EngramAdmin,
             "CancelAttunement",
             "AttunementCancelResult",
         ),
@@ -3840,7 +3840,7 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             "/v1/attunement/receipt/read",
             EndpointAuthentication::SessionBearer,
             false,
-            SecurityAction::engramRead,
+            SecurityAction::EngramRead,
             "ReadAttunementReceipt",
             "AttunementReceiptReadResult",
         ),
@@ -3850,7 +3850,7 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             "/v1/attunement/read",
             EndpointAuthentication::SessionBearer,
             false,
-            SecurityAction::engramRead,
+            SecurityAction::EngramRead,
             "ReadAttunement",
             "AttunementReadResult",
         ),
@@ -3860,7 +3860,7 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             "/v1/attunement/jobs/list",
             EndpointAuthentication::SessionBearer,
             false,
-            SecurityAction::engramRead,
+            SecurityAction::EngramRead,
             "ListAttunementJobs",
             "AttunementJobPage",
         ),
@@ -3900,7 +3900,7 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             "/v1/configuration/endpoints/read",
             EndpointAuthentication::SessionBearer,
             false,
-            SecurityAction::engramRead,
+            SecurityAction::EngramRead,
             "ReadEndpointConfiguration",
             "EndpointConfiguration",
         ),
@@ -3910,7 +3910,7 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             "/v1/configuration/endpoints/preview",
             EndpointAuthentication::SessionBearer,
             false,
-            SecurityAction::engramAdmin,
+            SecurityAction::EngramAdmin,
             "PreviewEndpointConfiguration",
             "EndpointConfigurationPlan",
         ),
@@ -3920,7 +3920,7 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             "/v1/configuration/endpoints/apply",
             EndpointAuthentication::SessionBearer,
             true,
-            SecurityAction::engramAdmin,
+            SecurityAction::EngramAdmin,
             "ApplyEndpointConfiguration",
             "EndpointConfiguration",
         ),
@@ -3930,9 +3930,9 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             "/v1/engrams/{engram}/read",
             EndpointAuthentication::SessionBearer,
             false,
-            SecurityAction::engramRead,
-            "Readengram",
-            "engramSnapshot",
+            SecurityAction::EngramRead,
+            "ReadEngram",
+            "EngramSnapshot",
         ),
         endpoint(
             "endpoint-catalogue",
@@ -4142,6 +4142,16 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             false,
             SecurityAction::ReasoningRead,
             "ReadTaskBudget",
+            "TaskBudgetView",
+        ),
+        endpoint(
+            "task-budget-resume",
+            HttpMethod::Post,
+            "/v1/tasks/budget/resume",
+            EndpointAuthentication::SessionBearer,
+            true,
+            SecurityAction::ReasoningWrite,
+            "ResumeTaskBudget",
             "TaskBudgetView",
         ),
         endpoint(
@@ -4760,6 +4770,7 @@ fn request_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "ReadTaskAttempt" => schema_json::<RequestEnvelope<ReadTaskAttempt>>(),
         "ReadTaskBudget" => schema_json::<RequestEnvelope<ReadTaskBudget>>(),
         "StopTaskBudget" => schema_json::<RequestEnvelope<StopTaskBudget>>(),
+        "ResumeTaskBudget" => schema_json::<RequestEnvelope<ResumeTaskBudget>>(),
         "AbortTransaction" => schema_json::<RequestEnvelope<AbortTransaction>>(),
         "AssembleContext" => schema_json::<RequestEnvelope<AssembleContext>>(),
         "BeginTransaction" => schema_json::<RequestEnvelope<BeginTransaction>>(),
@@ -4812,7 +4823,7 @@ fn request_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "AcceptAttunementReplan" => schema_json::<RequestEnvelope<AcceptAttunementReplan>>(),
         "ReadAttunementReceipt" => schema_json::<RequestEnvelope<ReadAttunementReceipt>>(),
         "CancelAttunement" => schema_json::<RequestEnvelope<CancelAttunement>>(),
-        "Readengram" => schema_json::<RequestEnvelope<Readengram>>(),
+        "ReadEngram" => schema_json::<RequestEnvelope<ReadEngram>>(),
         "RenewSession" => schema_json::<RequestEnvelope<RenewSession>>(),
         "RestoreInstanceBackup" => schema_json::<RequestEnvelope<RestoreInstanceBackup>>(),
         "RetrieveVectorPoints" => schema_json::<RequestEnvelope<RetrieveVectorPoints>>(),
@@ -4886,7 +4897,7 @@ fn response_envelope_schema(name: &str) -> Result<serde_json::Value> {
         }
         "AttunementCancelResult" => schema_json::<ResponseEnvelope<AttunementCancelResult>>(),
         "EndpointCatalogue" => schema_json::<ResponseEnvelope<EndpointCatalogue>>(),
-        "engramSnapshot" => schema_json::<ResponseEnvelope<engramSnapshot>>(),
+        "EngramSnapshot" => schema_json::<ResponseEnvelope<EngramSnapshot>>(),
         "InstanceBackupCatalogueSnapshot" => {
             schema_json::<ResponseEnvelope<InstanceBackupCatalogueSnapshot>>()
         }
@@ -4998,11 +5009,11 @@ fn websocket_endpoint(
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct Readengram {}
+pub struct ReadEngram {}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub enum engramDesiredPhase {
+pub enum EngramDesiredPhase {
     Running,
     Stopped,
     Absent,
@@ -5010,7 +5021,7 @@ pub enum engramDesiredPhase {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub enum engramObservedPhase {
+pub enum EngramObservedPhase {
     Unknown,
     Provisioning,
     Starting,
@@ -5024,7 +5035,7 @@ pub enum engramObservedPhase {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub enum engramActivityClass {
+pub enum EngramActivityClass {
     Unknown,
     Active,
     Idle,
@@ -5034,7 +5045,7 @@ pub enum engramActivityClass {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub enum engramOperationKind {
+pub enum EngramOperationKind {
     Provision,
     Start,
     Stop,
@@ -5045,7 +5056,7 @@ pub enum engramOperationKind {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub enum engramOperationState {
+pub enum EngramOperationState {
     Pending,
     Leased,
     Prepared,
@@ -5057,7 +5068,7 @@ pub enum engramOperationState {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub enum engramReceiptBoundary {
+pub enum EngramReceiptBoundary {
     Prepared,
     Applied,
     Completed,
@@ -5066,7 +5077,7 @@ pub enum engramReceiptBoundary {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct engramActivityPolicySnapshot {
+pub struct EngramActivityPolicySnapshot {
     pub idle_after_ms: u64,
     pub stale_after_ms: u64,
     pub neglected_after_ms: u64,
@@ -5076,7 +5087,7 @@ pub struct engramActivityPolicySnapshot {
     Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema,
 )]
 #[serde(rename_all = "snake_case")]
-pub enum engramAuthorityResourceKind {
+pub enum EngramAuthorityResourceKind {
     Organisation,
     Account,
     Entitlement,
@@ -5093,7 +5104,7 @@ pub enum engramAuthorityResourceKind {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub enum engramAuthorityStatus {
+pub enum EngramAuthorityStatus {
     Pending,
     Ready,
     Degraded,
@@ -5103,7 +5114,7 @@ pub enum engramAuthorityStatus {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub enum engramAuthorityReceiptBoundary {
+pub enum EngramAuthorityReceiptBoundary {
     DesiredAccepted,
     Assigned,
     Applied,
@@ -5114,7 +5125,7 @@ pub enum engramAuthorityReceiptBoundary {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct engramAuthorityDesiredSnapshot {
+pub struct EngramAuthorityDesiredSnapshot {
     pub generation: u64,
     pub spec_sha256: String,
     pub updated_at_unix_ms: u64,
@@ -5122,9 +5133,9 @@ pub struct engramAuthorityDesiredSnapshot {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct engramAuthorityObservedSnapshot {
+pub struct EngramAuthorityObservedSnapshot {
     pub generation: u64,
-    pub status: engramAuthorityStatus,
+    pub status: EngramAuthorityStatus,
     pub observed_at_unix_ms: u64,
     pub evidence_sha256: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -5133,17 +5144,17 @@ pub struct engramAuthorityObservedSnapshot {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct engramAuthorityResourceSnapshot {
+pub struct EngramAuthorityResourceSnapshot {
     pub id: CanonicalId,
-    pub kind: engramAuthorityResourceKind,
+    pub kind: EngramAuthorityResourceKind,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub parent_ids: Vec<CanonicalId>,
     pub name: String,
     pub spec_sha256: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub desired: Option<engramAuthorityDesiredSnapshot>,
+    pub desired: Option<EngramAuthorityDesiredSnapshot>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub observed: Option<engramAuthorityObservedSnapshot>,
+    pub observed: Option<EngramAuthorityObservedSnapshot>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub secret_reference_ids: Vec<CanonicalId>,
     pub created_at_unix_ms: u64,
@@ -5152,26 +5163,26 @@ pub struct engramAuthorityResourceSnapshot {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct engramAuthorityReceiptSnapshot {
+pub struct EngramAuthorityReceiptSnapshot {
     pub id: CanonicalId,
     pub resource_id: CanonicalId,
     pub operation_id: CanonicalId,
     pub lease_epoch: u64,
-    pub boundary: engramAuthorityReceiptBoundary,
+    pub boundary: EngramAuthorityReceiptBoundary,
     pub at_unix_ms: u64,
     pub evidence_sha256: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct engramAuthoritySnapshot {
+pub struct EngramAuthoritySnapshot {
     pub catalogue_sha256: String,
-    pub resources: Vec<engramAuthorityResourceSnapshot>,
-    pub receipts: Vec<engramAuthorityReceiptSnapshot>,
+    pub resources: Vec<EngramAuthorityResourceSnapshot>,
+    pub receipts: Vec<EngramAuthorityReceiptSnapshot>,
     pub idempotency_binding_count: u32,
 }
 
-impl engramAuthoritySnapshot {
+impl EngramAuthoritySnapshot {
     pub fn empty() -> Self {
         Self {
             catalogue_sha256: sha256_bytes(
@@ -5186,9 +5197,9 @@ impl engramAuthoritySnapshot {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct engramDesiredSnapshot {
+pub struct EngramDesiredSnapshot {
     pub generation: u64,
-    pub phase: engramDesiredPhase,
+    pub phase: EngramDesiredPhase,
     pub deployment_ref: CanonicalId,
     pub version: String,
     pub configuration_sha256: String,
@@ -5197,9 +5208,9 @@ pub struct engramDesiredSnapshot {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct engramObservedSnapshot {
+pub struct EngramObservedSnapshot {
     pub generation: u64,
-    pub phase: engramObservedPhase,
+    pub phase: EngramObservedPhase,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub version: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -5213,27 +5224,27 @@ pub struct engramObservedSnapshot {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct engramActivitySnapshot {
+pub struct EngramActivitySnapshot {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub last_meaningful_runtime_at_unix_ms: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub last_heartbeat_at_unix_ms: Option<u64>,
-    pub class: engramActivityClass,
+    pub class: EngramActivityClass,
     pub evaluated_at_unix_ms: u64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct engramInstanceSnapshot {
+pub struct EngramInstanceSnapshot {
     pub id: CanonicalId,
-    pub desired: engramDesiredSnapshot,
-    pub observed: engramObservedSnapshot,
-    pub activity: engramActivitySnapshot,
+    pub desired: EngramDesiredSnapshot,
+    pub observed: EngramObservedSnapshot,
+    pub activity: EngramActivitySnapshot,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct engramLeaseSnapshot {
+pub struct EngramLeaseSnapshot {
     pub owner: CanonicalId,
     pub epoch: u64,
     pub acquired_at_unix_ms: u64,
@@ -5242,8 +5253,8 @@ pub struct engramLeaseSnapshot {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct engramReceiptSnapshot {
-    pub boundary: engramReceiptBoundary,
+pub struct EngramReceiptSnapshot {
+    pub boundary: EngramReceiptBoundary,
     pub lease_epoch: u64,
     pub at_unix_ms: u64,
     pub evidence_sha256: String,
@@ -5251,49 +5262,49 @@ pub struct engramReceiptSnapshot {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct engramOperationSnapshot {
+pub struct EngramOperationSnapshot {
     pub id: CanonicalId,
     pub instance_id: CanonicalId,
-    pub kind: engramOperationKind,
+    pub kind: EngramOperationKind,
     pub desired_generation: u64,
     pub request_sha256: String,
-    pub state: engramOperationState,
+    pub state: EngramOperationState,
     pub attempts: u32,
     pub created_at_unix_ms: u64,
     pub updated_at_unix_ms: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub lease: Option<engramLeaseSnapshot>,
+    pub lease: Option<EngramLeaseSnapshot>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub receipts: Vec<engramReceiptSnapshot>,
+    pub receipts: Vec<EngramReceiptSnapshot>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct engramSnapshot {
+pub struct EngramSnapshot {
     pub format_version: u16,
     pub id: CanonicalId,
     pub revision: u64,
     pub created_at_unix_ms: u64,
     pub updated_at_unix_ms: u64,
-    pub activity_policy: engramActivityPolicySnapshot,
-    pub authority: engramAuthoritySnapshot,
-    pub instances: Vec<engramInstanceSnapshot>,
-    pub operations: Vec<engramOperationSnapshot>,
+    pub activity_policy: EngramActivityPolicySnapshot,
+    pub authority: EngramAuthoritySnapshot,
+    pub instances: Vec<EngramInstanceSnapshot>,
+    pub operations: Vec<EngramOperationSnapshot>,
     pub idempotency_binding_count: u32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct engramMutationResult {
-    pub engram: engramSnapshot,
+pub struct EngramMutationResult {
+    pub engram: EngramSnapshot,
     pub idempotent_replay: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub enum engramBackupJobState {
+pub enum EngramBackupJobState {
     Pending,
     Leased,
     Prepared,
@@ -5303,7 +5314,7 @@ pub enum engramBackupJobState {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub enum engramBackupReceiptBoundary {
+pub enum EngramBackupReceiptBoundary {
     Prepared,
     Completed,
     Failed,
@@ -5311,8 +5322,8 @@ pub enum engramBackupReceiptBoundary {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct engramBackupReceiptSnapshot {
-    pub boundary: engramBackupReceiptBoundary,
+pub struct EngramBackupReceiptSnapshot {
+    pub boundary: EngramBackupReceiptBoundary,
     pub lease_epoch: u64,
     pub at_unix_ms: u64,
     pub evidence_sha256: String,
@@ -5320,7 +5331,7 @@ pub struct engramBackupReceiptSnapshot {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct engramBackupRecoveryPolicySnapshot {
+pub struct EngramBackupRecoveryPolicySnapshot {
     pub revision: u64,
     pub max_rpo_ms: u64,
     pub max_rto_ms: u64,
@@ -5330,21 +5341,21 @@ pub struct engramBackupRecoveryPolicySnapshot {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct engramBackupJobSnapshot {
+pub struct EngramBackupJobSnapshot {
     pub id: CanonicalId,
     pub instance_id: CanonicalId,
     pub source_generation: u64,
     pub label: String,
     pub request_sha256: String,
-    pub state: engramBackupJobState,
+    pub state: EngramBackupJobState,
     pub attempts: u32,
     pub created_at_unix_ms: u64,
     pub updated_at_unix_ms: u64,
-    pub recovery_policy: engramBackupRecoveryPolicySnapshot,
+    pub recovery_policy: EngramBackupRecoveryPolicySnapshot,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub lease: Option<engramLeaseSnapshot>,
+    pub lease: Option<EngramLeaseSnapshot>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub receipts: Vec<engramBackupReceiptSnapshot>,
+    pub receipts: Vec<EngramBackupReceiptSnapshot>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub backup_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -5357,23 +5368,23 @@ pub struct engramBackupJobSnapshot {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct engramBackupJobsSnapshot {
+pub struct EngramBackupJobsSnapshot {
     pub engram_id: CanonicalId,
     pub engram_revision: u64,
-    pub jobs: Vec<engramBackupJobSnapshot>,
+    pub jobs: Vec<EngramBackupJobSnapshot>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct engramBackupMutationResult {
-    pub engram: engramSnapshot,
-    pub job: engramBackupJobSnapshot,
+pub struct EngramBackupMutationResult {
+    pub engram: EngramSnapshot,
+    pub job: EngramBackupJobSnapshot,
     pub idempotent_replay: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct engramRecoveryPolicySnapshot {
+pub struct EngramRecoveryPolicySnapshot {
     pub instance_id: CanonicalId,
     pub revision: u64,
     pub max_rpo_ms: u64,
@@ -5385,7 +5396,7 @@ pub struct engramRecoveryPolicySnapshot {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct engramRecoveryPointSnapshot {
+pub struct EngramRecoveryPointSnapshot {
     pub backup_sha256: String,
     pub instance_id: CanonicalId,
     pub backup_job_id: CanonicalId,
@@ -5403,17 +5414,17 @@ pub struct engramRecoveryPointSnapshot {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub enum engramRetentionPinKindSnapshot {
+pub enum EngramRetentionPinKindSnapshot {
     Policy,
     ExplicitHold,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct engramRetentionPinSnapshot {
+pub struct EngramRetentionPinSnapshot {
     pub id: CanonicalId,
     pub backup_sha256: String,
-    pub kind: engramRetentionPinKindSnapshot,
+    pub kind: EngramRetentionPinKindSnapshot,
     pub created_at_unix_ms: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub expires_at_unix_ms: Option<u64>,
@@ -5423,7 +5434,7 @@ pub struct engramRetentionPinSnapshot {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct engramRestoreEvidenceSnapshot {
+pub struct EngramRestoreEvidenceSnapshot {
     pub restore_id: CanonicalId,
     pub instance_id: CanonicalId,
     pub backup_sha256: String,
@@ -5441,7 +5452,7 @@ pub struct engramRestoreEvidenceSnapshot {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct engramRecoveryPruneIntentSnapshot {
+pub struct EngramRecoveryPruneIntentSnapshot {
     pub id: CanonicalId,
     pub instance_id: CanonicalId,
     pub based_on_engram_revision: u64,
@@ -5454,19 +5465,19 @@ pub struct engramRecoveryPruneIntentSnapshot {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct engramRecoverySnapshot {
+pub struct EngramRecoverySnapshot {
     pub engram_id: CanonicalId,
     pub engram_revision: u64,
-    pub policies: Vec<engramRecoveryPolicySnapshot>,
-    pub recovery_points: Vec<engramRecoveryPointSnapshot>,
-    pub retention_pins: Vec<engramRetentionPinSnapshot>,
-    pub restore_evidence: Vec<engramRestoreEvidenceSnapshot>,
-    pub prune_intents: Vec<engramRecoveryPruneIntentSnapshot>,
+    pub policies: Vec<EngramRecoveryPolicySnapshot>,
+    pub recovery_points: Vec<EngramRecoveryPointSnapshot>,
+    pub retention_pins: Vec<EngramRetentionPinSnapshot>,
+    pub restore_evidence: Vec<EngramRestoreEvidenceSnapshot>,
+    pub prune_intents: Vec<EngramRecoveryPruneIntentSnapshot>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct engramRetentionDecisionSnapshot {
+pub struct EngramRetentionDecisionSnapshot {
     pub engram_revision: u64,
     pub instance_id: CanonicalId,
     pub evaluated_at_unix_ms: u64,
@@ -5476,16 +5487,16 @@ pub struct engramRetentionDecisionSnapshot {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct engramRecoveryMutationResult {
-    pub recovery: engramRecoverySnapshot,
+pub struct EngramRecoveryMutationResult {
+    pub recovery: EngramRecoverySnapshot,
     pub idempotent_replay: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct engramRecoveryPruneResult {
-    pub recovery: engramRecoverySnapshot,
-    pub decision: engramRetentionDecisionSnapshot,
+pub struct EngramRecoveryPruneResult {
+    pub recovery: EngramRecoverySnapshot,
+    pub decision: EngramRetentionDecisionSnapshot,
     pub catalogue_revision: u64,
     pub catalogue_sha256: String,
     pub pruned_backup_ids: Vec<String>,
@@ -5494,8 +5505,8 @@ pub struct engramRecoveryPruneResult {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct engramRecoveryRestoreResult {
-    pub recovery: engramRecoverySnapshot,
+pub struct EngramRecoveryRestoreResult {
+    pub recovery: EngramRecoverySnapshot,
     pub restore_id: CanonicalId,
     pub backup_sha256: String,
     pub inventory: LogicalArchiveSnapshot,
@@ -5584,7 +5595,7 @@ impl<'de> Deserialize<'de> for CanonicalId {
 #[serde(rename_all = "snake_case")]
 pub enum ResourceKind {
     Organization,
-    engram,
+    Engram,
     Project,
     Instance,
     Tenant,
@@ -5876,8 +5887,8 @@ pub struct ServiceCapabilities {
     pub implementation_version: String,
     pub deployment: DeploymentProfile,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub installed_engram: Option<InstalledengramIdentity>,
-    pub configuration: engramConfiguration,
+    pub installed_engram: Option<InstalledEngramIdentity>,
+    pub configuration: EngramConfiguration,
     pub instance: ResourceId,
     pub capabilities: Vec<CapabilityDescriptor>,
     pub product_capabilities: ProductCapabilityCatalogue,
@@ -6367,7 +6378,7 @@ pub struct DataTagReference {
 /// identity starts with `rrflow-`.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct DataengramOrganisation {
+pub struct DataEngramOrganisation {
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub domains: BTreeMap<CanonicalId, DataDomainSchema>,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
@@ -6380,7 +6391,7 @@ pub struct DataengramOrganisation {
     pub kind_tags: BTreeMap<CanonicalId, BTreeSet<DataTagReference>>,
 }
 
-impl DataengramOrganisation {
+impl DataEngramOrganisation {
     pub fn is_default(&self) -> bool {
         self.domains.is_empty()
             && self.categories.is_empty()
@@ -6418,8 +6429,8 @@ fn default_data_domain(identity: &str) -> &'static str {
 pub struct DataSchemaRegistry {
     pub revision: u64,
     pub migration: String,
-    #[serde(default, skip_serializing_if = "DataengramOrganisation::is_default")]
-    pub organisation: DataengramOrganisation,
+    #[serde(default, skip_serializing_if = "DataEngramOrganisation::is_default")]
+    pub organisation: DataEngramOrganisation,
     pub tables: BTreeMap<CanonicalId, DataTableSchema>,
     #[serde(default)]
     pub records: BTreeMap<CanonicalId, DataRecordSchema>,

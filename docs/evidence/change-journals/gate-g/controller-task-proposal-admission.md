@@ -105,12 +105,12 @@ this is explicitly not an engine-dispatch or loaded-weight attestation receipt.
 
 `scripts/inference/installed_controller_proof.py` is the repository-owned next
 proof driver. All model/profile/task inputs are supplied files. It uses a
-source-identified copied native binary, a new isolated engram, real public
+source-identified copied native binary, a new isolated estate, real public
 authorization/configuration/task operations, one actual endpoint attempt and
 restart/readback/replay checks. Task context is an explicitly recorded bounded
 projection of an actual PR body. Credentials/session tokens are never retained
 in its receipts. It records owned process identities and pre-call intent so an
-interrupted observation is recovered from the engram rather than blindly retried.
+interrupted observation is recovered from the estate rather than blindly retried.
 Only syntax is checked at this stage; the driver has not yet supplied live proof.
 
 Key validation commands (from the repository root unless stated):

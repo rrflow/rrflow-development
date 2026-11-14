@@ -1,6 +1,6 @@
 use rrd_cluster::{
     plan_distributed_authority, ClusterId, DistributedAuthorityCatalogue, LogicalTableId,
-    LogicalTablePolicy, NodeId, PlacementNode, PlacementNodengram, PlacementPolicy,
+    LogicalTablePolicy, NodeId, PlacementNode, PlacementNodeState, PlacementPolicy,
     ReadConsistency, RegionId, ReplicaHealth, ReplicaObservation, ReplicaRole, ShardId,
     ShardReadStamp, TenantId, TenantPlacementPolicy, WriteConsistency, ZoneId,
 };
@@ -16,7 +16,7 @@ fn node(index: u8) -> PlacementNode {
         node: NodeId::new(format!("node-{index}")).unwrap(),
         region: RegionId::new(format!("region-{region}")).unwrap(),
         zone: ZoneId::new(format!("zone-{index}")).unwrap(),
-        state: PlacementNodengram::Active,
+        state: PlacementNodeState::Active,
         voter_capacity: 32,
         learner_capacity: 32,
         observed_at: 100,

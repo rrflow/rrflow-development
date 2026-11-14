@@ -32,7 +32,7 @@ this bounded package.
 Owners reviewed: `README.md`, `AGENTS.md`, alpha objectives, dependency spine,
 Gate D, POAM-006/-013, ADR-0002, execution change-authoring and implementation
 navigation, installed-lifecycle reference and CI operations. Implementation
-review covered the engine manifest/composition, engram layout, installation
+review covered the engine manifest/composition, estate layout, installation
 callers, every secret-reader call site, installation and restore recovery,
 their fixtures and the actual primary-process lifecycle. Complete new
 private-file modules, token-key, recovery, publication and modified test files,
@@ -43,7 +43,7 @@ as mechanical diffs and verified by their owning tools.
 | Current behavior and source | Canonical replacement | Characterization/replacement oracle |
 |---|---|---|
 | `engine/token_key.rs` path check, reopen and private creation | `engine/token_key/private_file.rs`, `private_file/unix.rs`, `private_file/windows.rs`; token helpers delegate | actual hard-link regression, byte bounds, exclusive creation, native permissions, retained key |
-| `engine/installation/recovery.rs` separate intent reader | shared private reader; existing canonical intent comparison retained | interrupted intent denial leaves no engram and unchanged bytes; retry retains timestamp and cursors |
+| `engine/installation/recovery.rs` separate intent reader | shared private reader; existing canonical intent comparison retained | interrupted intent denial leaves no estate and unchanged bytes; retry retains timestamp and cursors |
 | `engine/restore_publication.rs` check then ordinary intent read | shared private reader and token reader | retained interrupted publication, backup/restore and restored readback corpus |
 | installed open/inspect/exact replay | same engine operations with shared reader | external aliases deny all three without changing project bytes or cursors |
 | primary CLI quick verification | unchanged adapter using hardened engine | real executable rejects linked credential, then completes normal lifecycle after fixture alias removal |
@@ -134,7 +134,7 @@ sanitizers, signed clean-machine bundles or model reasoning. Native Unix
 fixtures are required in candidate CI; the other omissions remain explicit
 D-01/J work. One-handle leaf reads do not establish a complete atomic snapshot
 or prevent all same-owner changes. This package adds no upgrade/migration
-promise for older pre-alpha engrams.
+promise for older pre-alpha estates.
 
 Checklist: owning prerequisite and stop conditions bound before edits; actual
 first failing oracle retained; replacement behavior mapped to existing

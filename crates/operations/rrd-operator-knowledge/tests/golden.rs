@@ -32,7 +32,7 @@ fn vector() -> serde_json::Value {
         dimensions: 3,
         projection: ProjectionStamp {
             contract_version: DATA_RUNTIME_CONTRACT_VERSION,
-            id: ProjectionId::new("operator:pgvector:fixture").unwrap(),
+            id: ProjectionId::new("operator-pgvector-fixture").unwrap(),
             generation: 2,
             source_cursor: 9,
             config_digest: "22".repeat(32),

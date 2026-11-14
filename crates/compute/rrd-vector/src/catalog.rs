@@ -506,7 +506,7 @@ mod tests {
     }
 
     fn artifact_entry() -> VectorArtifactCatalogEntry {
-        let descriptor = VectorProjectionDescriptor::from(segment("vector:body", 1, 1));
+        let descriptor = VectorProjectionDescriptor::from(segment("vector-body", 1, 1));
         let subject = VectorArtifactCatalogEntry::record_reference(&descriptor).unwrap();
         let bytes = b"current vector artifact";
         let object_key = ObjectReference::canonical_key(&digest::sha256_hex(bytes)).unwrap();
@@ -532,7 +532,7 @@ mod tests {
             descriptor: TurboQuantDescriptor {
                 stamp: ProjectionStamp {
                     contract_version: DATA_RUNTIME_CONTRACT_VERSION,
-                    id: ProjectionId::new("quant-turbo:body").unwrap(),
+                    id: ProjectionId::new("quant-turbo-body").unwrap(),
                     generation: 1,
                     source_cursor: 1,
                     config_digest: "11".repeat(32),
@@ -602,7 +602,7 @@ mod tests {
 
     #[test]
     fn catalog_enforces_cas_generation_retirement_and_quarantine() {
-        let id = ProjectionId::new("vector:body").unwrap();
+        let id = ProjectionId::new("vector-body").unwrap();
         let mut catalog = VectorCatalog::default();
         assert_eq!(catalog.publish(0, segment(id.as_str(), 1, 1)).unwrap(), 1);
         assert!(catalog.publish(0, segment(id.as_str(), 2, 2)).is_err());

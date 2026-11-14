@@ -1,6 +1,6 @@
 use rrd_contract::CanonicalId;
 use rrd_engram::{
-    engramRepository, LeaseRequest, LocalengramPermission, LocalOperatorPolicy, MutationContext,
+    EngramRepository, LeaseRequest, LocalEngramPermission, LocalOperatorPolicy, MutationContext,
     ObservationRequest, ObservedPhase, ReceiptBoundary, ReceiptRequest,
     LOCAL_OPERATOR_POLICY_FORMAT,
 };
@@ -90,10 +90,10 @@ fn authorized_admin_mutations_replay_reopen_and_journal_exact_identity() {
         engrams: BTreeMap::from([(
             "engram-a".into(),
             BTreeSet::from([
-                LocalengramPermission::Create,
-                LocalengramPermission::ManageRecoveryPolicy,
-                LocalengramPermission::ScheduleBackup,
-                LocalengramPermission::SetDesired,
+                LocalEngramPermission::Create,
+                LocalEngramPermission::ManageRecoveryPolicy,
+                LocalEngramPermission::ScheduleBackup,
+                LocalEngramPermission::SetDesired,
             ]),
         )]),
     };
@@ -158,7 +158,7 @@ fn authorized_admin_mutations_replay_reopen_and_journal_exact_identity() {
     assert_eq!(value(&invoke(desired))["idempotent_replay"], true);
 
     let engine = RrflowKvStore::open(&database).unwrap();
-    let repository = engramRepository::new(&engine, CanonicalId::new("engram-a").unwrap());
+    let repository = EngramRepository::new(&engine, CanonicalId::new("engram-a").unwrap());
     let transition_context = |at, request: &str| MutationContext {
         at,
         actor: "engram-worker".into(),
@@ -273,7 +273,7 @@ fn authorized_admin_mutations_replay_reopen_and_journal_exact_identity() {
     assert_eq!(value(&invoke(backup))["idempotent_replay"], true);
 
     let engine = RrflowKvStore::open(&database).unwrap();
-    let repository = engramRepository::new(&engine, CanonicalId::new("engram-a").unwrap());
+    let repository = EngramRepository::new(&engine, CanonicalId::new("engram-a").unwrap());
     let document = repository.load().unwrap().unwrap();
     assert_eq!(document.revision, 9);
     assert_eq!(document.instances.len(), 1);

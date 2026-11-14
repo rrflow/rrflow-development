@@ -13,8 +13,8 @@ pub(super) enum Admission {
 }
 
 pub(super) fn inspect(
-    project: &engramFilesystem,
-    layout: &engramLayout,
+    project: &EngramFilesystem,
+    layout: &EngramLayout,
     preview: &InstallationPreview,
     profile: &DefaultInstallProfile,
     executable: &Path,

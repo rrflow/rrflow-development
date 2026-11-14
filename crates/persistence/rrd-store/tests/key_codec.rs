@@ -19,7 +19,7 @@ fn hex(bytes: &[u8]) -> String {
 
 fn claim() -> Claim {
     Claim::new(
-        Subject::new("file:a").unwrap(),
+        Subject::new("file-a").unwrap(),
         Predicate::new("imports").unwrap(),
         "file:b",
         100,

@@ -1,0 +1,46 @@
+{
+  "status": 412,
+  "request": {
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "context": {
+      "request_id": "controller-proof-b1bef5239b2f4c43bb8b0d925edc70fa",
+      "operation_id": "controller-proof-b1bef5239b2f4c43bb8b0d925edc70fa",
+      "idempotency_key": "controller-proof-b1bef5239b2f4c43bb8b0d925edc70fa",
+      "deadline_unix_ms": null
+    },
+    "resource": {
+      "segments": [
+        {
+          "kind": "instance",
+          "id": "instance-0976612a58664c75431765c9"
+        }
+      ]
+    },
+    "payload": {
+      "scope": "instance:instance-0976612a58664c75431765c9",
+      "task_id": "task-19c2df2501b33aecb8a127b8d15fa0e8c281d60e36172c73974b3a7029f4bf9f",
+      "attempt_id": "actual-worker-70328021c7614a0cbd88606ad064aca6",
+      "selection_attempt_id": "actual-proposal-58cdd27c0ec845d283119fe55338d237",
+      "expected_selection_sha256": "380a27cd014f4ce75504ed46c028492b83f9c670f0f83e7f2eb06c4bf8b51015",
+      "expected_task_sha256": "62e20741c6862789c243005a39daf4dddd4c4ebd262c299e850e1e70859255fa",
+      "expected_configuration_sha256": "46de4bc84a0fd069c01e719b5a57b12c8a2a529324b5a369f3d7ab284080849a",
+      "max_storage_keys": 1000000,
+      "context": null
+    }
+  },
+  "response": {
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "request_id": "controller-proof-b1bef5239b2f4c43bb8b0d925edc70fa",
+    "operation_id": "controller-proof-b1bef5239b2f4c43bb8b0d925edc70fa",
+    "outcome": {
+      "status": "error",
+      "error": {
+        "code": "failed_precondition",
+        "message": "EndpointCallFailed { reason: \"chat response is incomplete or requests unsupported effects\", execution_may_continue: false }",
+        "retryable": false
+      }
+    }
+  }
+}
