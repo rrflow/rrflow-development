@@ -30,7 +30,7 @@ pub use index::{
     IndexCommitBindingDefinition, IndexCommitBindingKind, IndexSourceDelta, IndexSourceRow,
     INDEX_COMMIT_BINDING_CONTRACT_VERSION, INDEX_SOURCE_DELTA_CONTRACT_VERSION,
 };
-pub use lexical_index::{IndexLookup, LexicalHit, LexicalSearch};
+pub use lexical_index::{IndexLookup, LexicalHit, LexicalQuery, LexicalSearch};
 pub(crate) use semantic_commit::prepare_semantic_commit;
 pub use semantic_commit::SemanticCommitPlan;
 pub(crate) use vector::{

@@ -436,16 +436,12 @@ impl<'a> RuntimeRepository<'a> {
     /// index's watermark, or an index without a BM25 binding is reported
     /// as not applicable so the caller can read the versioned history instead.
     /// Reaching `max_keys` refuses the search rather than rank partially.
-    #[allow(clippy::too_many_arguments)]
     pub fn lexical_search(
         &self,
         read: &ReadStamp,
-        index: &rrd_core::ProjectionId,
-        query: &str,
-        valid_at: u64,
-        top_k: usize,
-        max_keys: u64,
+        request: crate::LexicalQuery<'_>,
     ) -> Result<crate::LexicalSearch> {
+        let index = request.index;
         let transaction = self.storage.begin_transaction()?;
         read.validate()?;
         let head = read_stamp_with(&*transaction, &read.scope)?;
@@ -462,16 +458,7 @@ impl<'a> RuntimeRepository<'a> {
                 "index {index} has no BM25 commit binding"
             )));
         };
-        crate::access::lexical_index::search(
-            &*transaction,
-            &read.scope,
-            index,
-            &config,
-            query,
-            valid_at,
-            top_k,
-            max_keys,
-        )
+        crate::access::lexical_index::search(&*transaction, &read.scope, &config, &request)
     }
 
     /// Current records of a scalar commit-bound index whose leading indexed

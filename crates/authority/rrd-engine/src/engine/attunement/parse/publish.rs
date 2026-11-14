@@ -110,7 +110,6 @@ pub(super) fn publish(
 }
 
 /// The job's next state and receipt for this Step.
-#[allow(clippy::too_many_arguments)]
 fn transition(
     engine: &RrdEngine,
     work: &Work<'_>,

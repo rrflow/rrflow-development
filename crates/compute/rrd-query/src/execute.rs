@@ -504,11 +504,13 @@ impl ReadPath {
                     top_k,
                 } => match engine.runtime().lexical_search(
                     stamp,
-                    id,
-                    query,
-                    shape.valid_at,
-                    *top_k,
-                    max_keys,
+                    rrd_store::LexicalQuery {
+                        index: id,
+                        text: query,
+                        valid_at: shape.valid_at,
+                        top_k: *top_k,
+                        max_keys,
+                    },
                 )? {
                     rrd_store::LexicalSearch::Hits {
                         hits, keys_read, ..

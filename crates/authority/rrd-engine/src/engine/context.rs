@@ -1004,11 +1004,13 @@ impl RrdEngine {
             let remaining = key_budget.saturating_sub(lexical.keys_read) as u64;
             match self.storage.runtime().lexical_search(
                 stamp,
-                &entry.definition.id,
-                &request.query,
-                request.valid_at,
-                top_k,
-                remaining,
+                rrd_store::LexicalQuery {
+                    index: &entry.definition.id,
+                    text: &request.query,
+                    valid_at: request.valid_at,
+                    top_k,
+                    max_keys: remaining,
+                },
             )? {
                 rrd_store::LexicalSearch::Hits {
                     hits, keys_read, ..

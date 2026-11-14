@@ -310,20 +310,34 @@ pub enum LexicalSearch {
     NotApplicable(String),
 }
 
-/// Exact BM25 top-k over the current postings of one index. `max_keys`
-/// bounds the keys read; reaching it refuses the search rather than return a
-/// partial ranking.
-#[allow(clippy::too_many_arguments)]
+/// One exact BM25 top-k request against one commit-time index.
+#[derive(Debug, Clone, Copy)]
+pub struct LexicalQuery<'a> {
+    pub index: &'a ProjectionId,
+    pub text: &'a str,
+    /// The valid time the ranking answers for.
+    pub valid_at: u64,
+    pub top_k: usize,
+    /// Keys the search may read; reaching it refuses rather than rank partially.
+    pub max_keys: u64,
+}
+
+/// Exact BM25 top-k over the current postings of one index. The request's
+/// `max_keys` bounds the keys read; reaching it refuses the search rather than
+/// return a partial ranking.
 pub(crate) fn search(
     reader: &(impl AccessRead + ?Sized),
     scope: &ScopeId,
-    index: &ProjectionId,
     config: &Bm25Config,
-    query: &str,
-    valid_at: u64,
-    top_k: usize,
-    max_keys: u64,
+    request: &LexicalQuery<'_>,
 ) -> Result<LexicalSearch> {
+    let LexicalQuery {
+        index,
+        text: query,
+        valid_at,
+        top_k,
+        max_keys,
+    } = *request;
     if top_k == 0 {
         return Err(Error::IndexConstraint(
             "BM25 top_k must be greater than zero".into(),

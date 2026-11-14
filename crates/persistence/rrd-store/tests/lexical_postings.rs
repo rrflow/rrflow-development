@@ -8,8 +8,8 @@ use rrd_core::{
 };
 use rrd_store::lexical::{analyze, bm25_contribution, Bm25Config, Bm25Identifiers};
 use rrd_store::{
-    ControlTransition, IndexCommitBindingDefinition, IndexCommitBindingKind, LexicalSearch,
-    RrflowKvStore, RrflowMxStore, StorageEngine,
+    ControlTransition, IndexCommitBindingDefinition, IndexCommitBindingKind, LexicalQuery,
+    LexicalSearch, RrflowKvStore, RrflowMxStore, StorageEngine,
 };
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -142,7 +142,16 @@ fn searched(engine: &dyn StorageEngine, query: &str, valid_at: u64) -> Vec<(Stri
     let read = engine.runtime().read_stamp(&scope()).unwrap();
     match engine
         .runtime()
-        .lexical_search(&read, &index(), query, valid_at, 10, 10_000)
+        .lexical_search(
+            &read,
+            LexicalQuery {
+                index: &index(),
+                text: query,
+                valid_at,
+                top_k: 10,
+                max_keys: 10_000,
+            },
+        )
         .unwrap()
     {
         LexicalSearch::Hits { hits, .. } => hits
@@ -240,7 +249,16 @@ fn exercise(engine: &dyn StorageEngine) {
     assert!(matches!(
         engine
             .runtime()
-            .lexical_search(&read, &index(), "planner", 25, 10, 10_000)
+            .lexical_search(
+                &read,
+                LexicalQuery {
+                    index: &index(),
+                    text: "planner",
+                    valid_at: 25,
+                    top_k: 10,
+                    max_keys: 10_000
+                }
+            )
             .unwrap(),
         LexicalSearch::NotApplicable(_)
     ));
@@ -250,7 +268,16 @@ fn exercise(engine: &dyn StorageEngine) {
     assert!(matches!(
         engine
             .runtime()
-            .lexical_search(&read, &index(), "planner", 1_000, 10, 10_000)
+            .lexical_search(
+                &read,
+                LexicalQuery {
+                    index: &index(),
+                    text: "planner",
+                    valid_at: 1_000,
+                    top_k: 10,
+                    max_keys: 10_000
+                }
+            )
             .unwrap(),
         LexicalSearch::NotApplicable(_)
     ));
@@ -263,7 +290,16 @@ fn exercise(engine: &dyn StorageEngine) {
     let head = engine.runtime().read_stamp(&scope()).unwrap();
     assert!(engine
         .runtime()
-        .lexical_search(&head, &index(), "the planner", 1_000, 10, 2)
+        .lexical_search(
+            &head,
+            LexicalQuery {
+                index: &index(),
+                text: "the planner",
+                valid_at: 1_000,
+                top_k: 10,
+                max_keys: 2
+            }
+        )
         .is_err());
 }
 
