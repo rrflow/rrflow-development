@@ -444,6 +444,7 @@ impl RrdEngine {
         let mut packet = ContextPacket {
             scope: request.scope.clone(),
             valid_at: request.valid_at,
+            result_identity_version: rrd_core::result_identity::RESULT_IDENTITY_VERSION,
             query_sha256: digest::sha256_hex(request.query.as_bytes()),
             read: context_read,
             plan,
@@ -755,7 +756,10 @@ fn add_graph_context(
                 })?;
                 let evidence = ContextEvidence {
                     kind: ContextEvidenceKind::Graph,
-                    source: format!("relation:{}:{}", edge.relation.kind, edge.relation.id),
+                    source: rrd_core::result_identity::typed(
+                        rrd_core::result_identity::ResultIdentityFamily::Relation,
+                        &edge.relation,
+                    ),
                     source_rank: evidence_rank,
                     source_score: 1.0 / f64::from(next_depth),
                     contribution: reciprocal_rank(GRAPH_WEIGHT, evidence_rank),
@@ -823,15 +827,14 @@ fn add_candidate(
 }
 
 fn record_identity(reference: &RuntimeRef) -> String {
-    format!("record:{}:{}", reference.kind, reference.id)
+    rrd_core::result_identity::typed(
+        rrd_core::result_identity::ResultIdentityFamily::Record,
+        reference,
+    )
 }
 
 fn claim_identity(claim: &Claim) -> String {
-    let mut identity = b"rrd-context-claim-v1\0".to_vec();
-    identity.extend_from_slice(claim.subject.as_str().as_bytes());
-    identity.push(0);
-    identity.extend_from_slice(claim.predicate.as_str().as_bytes());
-    format!("claim:{}", digest::sha256_hex(&identity))
+    rrd_core::result_identity::claim(&claim.subject, &claim.predicate)
 }
 
 fn claim_text(claim: &Claim) -> String {

@@ -1,0 +1,10 @@
+{
+  "observedAt": "2026-11-07T01:13:03.009758+00:00",
+  "metricsSha256": "e49814d080cf26e31315e7aef064a7e6dfba97cae8c9a7cbb940fdcf7973d872",
+  "samples": [
+    "vllm:num_requests_running{engine=\"0\",model_name=\"swag-qwen3-coder-intent-20261028\"} 0.0",
+    "vllm:num_requests_waiting{engine=\"0\",model_name=\"swag-qwen3-coder-intent-20261028\"} 0.0"
+  ],
+  "scope": "Point-in-time provider running/waiting counts only; not clearance of previous unknown attempt or proof of cross-estate shared admission",
+  "generationRequested": false
+}

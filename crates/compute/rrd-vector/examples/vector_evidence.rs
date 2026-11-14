@@ -89,7 +89,7 @@ fn main() {
         .map(|_| unit_vector(dimensions, &mut random))
         .collect::<Vec<_>>();
     let config = HnswConfig {
-        id: ProjectionId::new("vector:hnsw:evidence").unwrap(),
+        id: ProjectionId::new("vector-hnsw-evidence").unwrap(),
         scope: scope.clone(),
         field: "body".into(),
         dimensions,

@@ -90,7 +90,7 @@ fn shared_sdk_corpus_identity_matches_bundled_installation() {
     std::fs::write(&distribution, anchor).unwrap();
     let project = temporary.path().join("project");
     std::fs::create_dir(&project).unwrap();
-    let preview = RrdEngine::plan_installation(
+    let default_preview = RrdEngine::plan_installation(
         &project,
         InstallationTargetKind::FreshProject,
         &digest::sha256_hex(anchor),
@@ -99,6 +99,25 @@ fn shared_sdk_corpus_identity_matches_bundled_installation() {
         &distribution,
     )
     .unwrap();
+    let configuration = temporary.path().join("sdk-cold-policy.toml");
+    std::fs::write(
+        &configuration,
+        toml::to_string(&corpus.cold_history.installation_configuration()).unwrap(),
+    )
+    .unwrap();
+    let preview = RrdEngine::plan_installation(
+        &project,
+        InstallationTargetKind::FreshProject,
+        &digest::sha256_hex(anchor),
+        "default",
+        Some(&configuration),
+        &distribution,
+    )
+    .unwrap();
+    assert_ne!(
+        default_preview.installation.target.instance_id, preview.installation.target.instance_id,
+        "the SDK policy must participate in the installation identity"
+    );
     assert_eq!(
         preview.installation.target.instance_id,
         corpus.identity.instance

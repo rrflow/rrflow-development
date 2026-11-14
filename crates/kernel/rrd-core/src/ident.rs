@@ -1,44 +1,97 @@
 //! Validated identifiers.
 //!
-//! Identifiers are non-empty and exclude the NUL control byte. This is a
-//! semantic text invariant, independent of any physical storage encoding.
+//! An identifier that can reach a public projection holds the canonical grammar
+//! in its type, so a value that projection would refuse cannot be constructed.
+//! The rest are non-empty and exclude the NUL control byte, because they hold a
+//! deliberately namespaced form such as `instance:{id}`.
 
 use crate::error::{Error, Result};
-use serde::{Deserialize, Serialize};
-use std::fmt;
 
 const FORBIDDEN_NUL: u8 = 0x00;
 
-macro_rules! ident_type {
-    ($name:ident, $label:literal) => {
-        #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-        #[serde(try_from = "String", into = "String")]
-        pub struct $name(String);
+/// The longest canonical identifier, in bytes.
+pub const MAX_CANONICAL_ID_BYTES: usize = 128;
+
+/// Why `value` is not a canonical identifier, or `None` when it is.
+///
+/// This is the one grammar for an identifier that can reach a public projection,
+/// a SPIFFE identity or a certificate. `rrd-contract` has no workspace
+/// dependencies, so its `CanonicalId` keeps its own copy, and a test there proves
+/// the two agree.
+pub fn canonical_id_problem(value: &str) -> Option<&'static str> {
+    if value.is_empty() || value.len() > MAX_CANONICAL_ID_BYTES {
+        return Some("canonical id length must be in 1..=128 bytes");
+    }
+    let canonical = value.bytes().enumerate().all(|(index, byte)| {
+        byte.is_ascii_lowercase()
+            || byte.is_ascii_digit()
+            || (index > 0 && matches!(byte, b'-' | b'_' | b'.'))
+    });
+    (!canonical).then_some(
+        "canonical id must start with lowercase ASCII or a digit and contain only lowercase ASCII, digits, '-', '_', or '.'",
+    )
+}
+
+/// Refuses what no identifier can hold.
+pub(crate) fn check_text(kind: &'static str, value: &str) -> Result<()> {
+    if value.is_empty() {
+        return Err(Error::EmptyIdentifier { kind });
+    }
+    if value.as_bytes().contains(&FORBIDDEN_NUL) {
+        return Err(Error::SeparatorInIdentifier {
+            kind,
+            value: value.to_owned(),
+        });
+    }
+    Ok(())
+}
+
+/// Holds an identifier to the one canonical grammar.
+pub(crate) fn check_canonical(kind: &'static str, value: &str) -> Result<()> {
+    if value.is_empty() {
+        return Err(Error::EmptyIdentifier { kind });
+    }
+    match canonical_id_problem(value) {
+        Some(problem) => Err(Error::NonCanonicalIdentifier {
+            kind,
+            value: value.to_owned(),
+            problem,
+        }),
+        None => Ok(()),
+    }
+}
+
+/// An identifier type whose values have passed `$check`, by every path that makes one.
+macro_rules! text_ident {
+    ($name:ident, $label:literal, $check:path) => {
+        $crate::ident::text_ident!(@type $name, $label);
 
         impl $name {
-            pub fn new(value: impl Into<String>) -> Result<Self> {
+            pub fn new(value: impl Into<String>) -> $crate::error::Result<Self> {
                 let value = value.into();
-                if value.is_empty() {
-                    return Err(Error::EmptyIdentifier { kind: $label });
-                }
-                if value.as_bytes().contains(&FORBIDDEN_NUL) {
-                    return Err(Error::SeparatorInIdentifier {
-                        kind: $label,
-                        value,
-                    });
-                }
+                $check($label, &value)?;
                 Ok(Self(value))
-            }
-
-            pub fn as_str(&self) -> &str {
-                &self.0
             }
         }
 
         impl TryFrom<String> for $name {
-            type Error = Error;
-            fn try_from(value: String) -> Result<Self> {
+            type Error = $crate::error::Error;
+
+            fn try_from(value: String) -> $crate::error::Result<Self> {
                 Self::new(value)
+            }
+        }
+    };
+    (@type $name:ident, $label:literal) => {
+        #[derive(
+            Clone, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
+        )]
+        #[serde(try_from = "String", into = "String")]
+        pub struct $name(String);
+
+        impl $name {
+            pub fn as_str(&self) -> &str {
+                &self.0
             }
         }
 
@@ -48,23 +101,25 @@ macro_rules! ident_type {
             }
         }
 
-        impl fmt::Debug for $name {
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        impl std::fmt::Debug for $name {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 write!(f, "{}({:?})", $label, self.0)
             }
         }
 
-        impl fmt::Display for $name {
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        impl std::fmt::Display for $name {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 f.write_str(&self.0)
             }
         }
     };
 }
+pub(crate) use text_ident;
 
-ident_type!(Subject, "subject");
-ident_type!(Predicate, "predicate");
-ident_type!(Reader, "reader");
+text_ident!(Subject, "subject", check_canonical);
+text_ident!(Predicate, "predicate", check_canonical);
+// A principal in the access log, such as `agent:clyffy/worker`. It never reaches a public record.
+text_ident!(Reader, "reader", check_text);
 
 #[cfg(test)]
 mod tests {

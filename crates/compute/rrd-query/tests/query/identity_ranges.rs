@@ -84,7 +84,7 @@ fn history<E: StorageEngine>(engine: &E, known: u64) {
                     ("a", "a", true, true),
                     ("a", "a", false, false),
                     ("abcdefgh", "abcdefghx", true, true),
-                    ("é", "雪", true, true),
+                    ("zy", "zz", true, true),
                 ] {
                     let lo = if include_lower { ">=" } else { ">" };
                     let hi = if include_upper { "<=" } else { "<" };
@@ -128,10 +128,10 @@ fn populate<E: StorageEngine>(engine: &E) -> u64 {
         "aa",
         "abcdefgh",
         "abcdefghx",
-        "q\"uote",
-        "slash\\id",
-        "é",
-        "雪",
+        "q-uote",
+        "slash.id",
+        "zy",
+        "zz",
     ] {
         mutations.push(RuntimeMutation::Record {
             record: RuntimeRecord {
@@ -267,7 +267,19 @@ fn identity_ranges_resolve_parameters_and_preserve_fallback_predicates() {
         run(&engine, "id > \"z\" AND id < \"a\"", 100_000).returned_rows,
         0
     );
-    for filter in ["id > \"é\"", "id <= \"a\""] {
+    // A value no identifier can hold cannot narrow the scan, and the predicate still decides.
+    let query =
+        parse("FROM record:document AT VALID 40 KNOWN HEAD WHERE id > \"é\" PROJECT *").unwrap();
+    let physical = plan(&bind(&query, &Parameters::new(), &catalog).unwrap()).unwrap();
+    assert!(matches!(
+        physical.logical.version_sources.as_slice(),
+        [RuntimeVersionedSource::Records { .. }]
+    ));
+    assert!(
+        flattened_rows(&execute(&engine, &physical, &ExecutionBudget::default()).unwrap())
+            .is_empty()
+    );
+    for filter in ["id > \"zy\"", "id <= \"a\""] {
         let query = parse(&format!(
             "FROM record:document AT VALID 40 KNOWN HEAD WHERE {filter} PROJECT *"
         ))

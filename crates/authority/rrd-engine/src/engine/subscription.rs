@@ -12,6 +12,8 @@ struct SubscriptionState {
     open_operation_sha256: String,
     stream: SubscriptionStream,
     stream_sha256: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    result_identity_version: Option<u16>,
     acknowledged_cursor: u64,
     batch_size: u64,
     max_in_flight: u16,
@@ -70,6 +72,24 @@ impl RrdEngine {
         self.authorize_session_policy(&session, stream_action(&request.stream), now)?;
         ensure_subscription_scope(self, &request.stream)?;
 
+        let result_identity_version = match &request.stream {
+            SubscriptionStream::Changefeed { .. } => None,
+            SubscriptionStream::LiveQuery {
+                result_identity_version,
+                ..
+            } => {
+                let current = rrd_core::result_identity::RESULT_IDENTITY_VERSION;
+                if result_identity_version.is_some_and(|version| version != current)
+                    || (request.after_cursor > 0 && *result_identity_version != Some(current))
+                {
+                    return Err(ServiceError::Subscription(
+                        "live subscription continuation requires the current result identity version; establish a new baseline".into(),
+                    ));
+                }
+                Some(current)
+            }
+        };
+
         let head = self.storage.runtime().cursor()?;
         validate_resume_cursor(request.after_cursor, head, request.retention_cursor_window)?;
         let operation_sha256 = operation_digest(request)?;
@@ -97,6 +117,7 @@ impl RrdEngine {
             open_operation_sha256: operation_sha256,
             stream: request.stream.clone(),
             stream_sha256,
+            result_identity_version,
             acknowledged_cursor: request.after_cursor,
             batch_size: request.batch_size,
             max_in_flight: request.max_in_flight,
@@ -157,6 +178,7 @@ impl RrdEngine {
         let mut state = decode_subscription(&bytes)?;
         ensure_owner(&state, session_id)?;
         ensure_subscription_open(&state, now)?;
+        ensure_live_identity_current(&state)?;
         if state.stream_sha256 != resume.stream_sha256
             || state.connection_generation != resume.connection_generation
             || state.acknowledged_cursor != resume.acknowledged_cursor
@@ -222,6 +244,7 @@ impl RrdEngine {
         let mut state = decode_subscription(&bytes)?;
         ensure_owner(&state, session_id)?;
         ensure_subscription_open(&state, now)?;
+        ensure_live_identity_current(&state)?;
         ensure_generation(&state, connection_generation)?;
         self.authorize_session_policy(&session, stream_action(&state.stream), now)?;
         let head = self.storage.runtime().cursor()?;
@@ -265,12 +288,14 @@ impl RrdEngine {
                 parameters,
                 budget,
                 max_delta_rows,
+                ..
             } => {
                 let delta = self.poll_live_query_page(&PollLiveQuery {
                     scope: scope.clone(),
                     query: query.clone(),
                     parameters: parameters.clone(),
                     after_cursor,
+                    result_identity_version: state.result_identity_version,
                     budget: budget.clone(),
                     max_delta_rows: *max_delta_rows,
                     wait_timeout_ms: 0,
@@ -343,6 +368,7 @@ impl RrdEngine {
         let mut state = decode_subscription(&bytes)?;
         ensure_owner(&state, session_id)?;
         ensure_subscription_open(&state, now)?;
+        ensure_live_identity_current(&state)?;
         self.authorize_session_policy(&session, stream_action(&state.stream), now)?;
         ensure_generation(&state, acknowledgement.connection_generation)?;
         let position = state.pending.iter().position(|delivery| {
@@ -403,6 +429,7 @@ impl RrdEngine {
         let mut state = decode_subscription(&bytes)?;
         ensure_owner(&state, session_id)?;
         ensure_subscription_open(&state, now)?;
+        ensure_live_identity_current(&state)?;
         self.authorize_session_policy(&session, stream_action(&state.stream), now)?;
         ensure_generation(&state, coordinate.connection_generation)?;
         if state.acknowledged_cursor != coordinate.acknowledged_cursor {
@@ -571,6 +598,17 @@ fn ensure_subscription_open(state: &SubscriptionState, now: u64) -> Result<()> {
     Ok(())
 }
 
+fn ensure_live_identity_current(state: &SubscriptionState) -> Result<()> {
+    if matches!(&state.stream, SubscriptionStream::LiveQuery { .. })
+        && state.result_identity_version != Some(rrd_core::result_identity::RESULT_IDENTITY_VERSION)
+    {
+        return Err(ServiceError::Subscription(
+            "live subscription uses an obsolete result identity version; close it and establish a new baseline".into(),
+        ));
+    }
+    Ok(())
+}
+
 fn ensure_generation(state: &SubscriptionState, generation: u64) -> Result<()> {
     if generation == 0 || generation != state.connection_generation {
         return Err(ServiceError::SubscriptionConnectionReplaced);
@@ -610,6 +648,7 @@ fn subscription_snapshot(state: &SubscriptionState, head: u64) -> SubscriptionSn
         subscription_id: state.subscription_id.clone(),
         stream_sha256: state.stream_sha256.clone(),
         acknowledged_cursor: state.acknowledged_cursor,
+        result_identity_version: state.result_identity_version,
         retention_floor_cursor: head.saturating_sub(state.retention_cursor_window),
         head_cursor: head,
         batch_size: state.batch_size,

@@ -47,10 +47,10 @@ fn read(step: &str) -> RequestOptions {
 }
 
 #[tokio::test]
+#[ignore = "requires the real shared SDK conformance daemon"]
 async fn rust_sdk_passes_shared_real_daemon_conformance() {
-    let Ok(manifest_path) = std::env::var("RRD_SDK_CONFORMANCE_MANIFEST") else {
-        return;
-    };
+    let manifest_path = std::env::var("RRD_SDK_CONFORMANCE_MANIFEST")
+        .expect("real SDK conformance requires RRD_SDK_CONFORMANCE_MANIFEST");
     let manifest_bytes = std::fs::read(manifest_path).unwrap();
     let manifest: HarnessManifest = serde_json::from_slice(&manifest_bytes).unwrap();
     assert_eq!(manifest.format_version, 1);
@@ -135,6 +135,26 @@ async fn rust_sdk_passes_shared_real_daemon_conformance() {
         )
         .await
         .unwrap();
+
+    let cold = client
+        .read_cold_history(
+            &session,
+            corpus.cold_history.read.clone(),
+            read("cold-history"),
+        )
+        .await
+        .unwrap();
+    let generation = cold.generation.as_ref().expect("cold generation");
+    assert_eq!(cold.scope, corpus.cold_history.read.scope);
+    assert_eq!(generation.generation, 1);
+    assert!(generation.through_cursor > generation.requested_after_cursor);
+    assert!(!cold.changes.is_empty());
+    assert_eq!(generation.rows, cold.changes.len() as u64);
+    assert!(cold.changes.iter().all(|change| change.scope == cold.scope));
+    assert!(cold
+        .changes
+        .iter()
+        .any(|change| change.actor == corpus.cold_history.expected_actor));
 
     client
         .ensure_vector_collection(
@@ -270,6 +290,47 @@ async fn rust_sdk_passes_shared_real_daemon_conformance() {
     assert!(quantized.hits.iter().any(|hit| {
         format!("{}:{}", hit.reference.kind, hit.reference.id) == corpus.expected.vector_reference
     }));
+
+    // The graph index and its payload index. The changefeed read below proves
+    // the scope stays readable with an index in it.
+    let index = &corpus.vector.index;
+    client
+        .ensure_vector_payload_index(
+            &session,
+            index.payload_index.clone(),
+            mutation("payload-index-ensure"),
+        )
+        .await
+        .unwrap();
+    let built_index = client
+        .ensure_vector_index(&session, index.ensure.clone(), mutation("index-ensure"))
+        .await
+        .unwrap();
+    assert_eq!(built_index.index.kind, corpus.expected.indexed_access_path);
+    let indexed = client
+        .search_vectors(&session, index.search.clone(), read("indexed-search"))
+        .await
+        .unwrap();
+    assert_eq!(indexed.access_path, corpus.expected.indexed_access_path);
+    assert!(indexed.hits.iter().any(|hit| {
+        format!("{}:{}", hit.reference.kind, hit.reference.id) == corpus.expected.indexed_reference
+    }));
+    client
+        .ensure_vector_payload_index(
+            &session,
+            index.spare_payload_index.clone(),
+            mutation("payload-index-spare"),
+        )
+        .await
+        .unwrap();
+    client
+        .delete_vector_payload_index(
+            &session,
+            index.delete_payload_index.clone(),
+            mutation("payload-index-delete"),
+        )
+        .await
+        .unwrap();
 
     let changes = client
         .read_changefeed(

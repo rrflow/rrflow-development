@@ -7,6 +7,7 @@
     "auth",
     "backup",
     "cancellation",
+    "cold_history",
     "crud",
     "estate",
     "live_feeds",
@@ -19,8 +20,8 @@
     "versions"
   ],
   "identity": {
-    "instance": "instance-e94433b2dad856172e39d9e9",
-    "estate": "estate-e94433b2dad856172e39d9e9",
+    "instance": "instance-89934856ffa8d7922e791fb9",
+    "estate": "estate-89934856ffa8d7922e791fb9",
     "principal": "sdk-conformance",
     "api_key": "sdk-conformance-key"
   },
@@ -63,7 +64,7 @@
     },
     "commit_deadline_timeout_ms": 60000,
     "commit": {
-      "operation_sha256": "210bae5558003ef6529734ec98c7e1d170e2dcccebb62d879d5bcf519f2e0e88",
+      "operation_sha256": "9557b95e872fb8d8ad6463ebabca0180a5f1bcfb4d2c736115f43fbc3a65b66f",
       "mutations": [
         {
           "mutation": "put_record",
@@ -101,12 +102,40 @@
             ]
           },
           "properties": {}
+        },
+        {
+          "mutation": "put_vector",
+          "reference": {
+            "kind": "embedding",
+            "id": "sdk-conformance-body"
+          },
+          "subject": {
+            "kind": "document",
+            "id": "sdk-conformance"
+          },
+          "collection_id": "documents",
+          "vector_name": "body",
+          "field": "body-embedding",
+          "valid_from": 100,
+          "value": {
+            "kind": "dense",
+            "values": [
+              1.0,
+              0.0
+            ]
+          },
+          "properties": {
+            "bucket": {
+              "type": "unsigned",
+              "value": 1
+            }
+          }
         }
       ]
     }
   },
   "query": {
-    "scope": "instance:instance-e94433b2dad856172e39d9e9",
+    "scope": "instance:instance-89934856ffa8d7922e791fb9",
     "query": "FROM record:document AT VALID 100 KNOWN HEAD WHERE id = \"sdk-conformance\" PROJECT id, title EXPLAIN CONTRACT",
     "parameters": {},
     "budget": {
@@ -121,7 +150,7 @@
   },
   "vector": {
     "ensure": {
-      "scope": "instance:instance-e94433b2dad856172e39d9e9",
+      "scope": "instance:instance-89934856ffa8d7922e791fb9",
       "collection_id": "documents",
       "vectors": [
         {
@@ -131,11 +160,19 @@
           "dimensions": 2,
           "metric": "cosine",
           "memory_tier": "cached"
+        },
+        {
+          "name": "body",
+          "field": "body-embedding",
+          "kind": "dense",
+          "dimensions": 2,
+          "metric": "cosine",
+          "memory_tier": "cached"
         }
       ]
     },
     "search": {
-      "scope": "instance:instance-e94433b2dad856172e39d9e9",
+      "scope": "instance:instance-89934856ffa8d7922e791fb9",
       "valid_at": 100,
       "collection_id": "documents",
       "vector_name": "title",
@@ -154,7 +191,7 @@
     },
     "quantization": {
       "build": {
-        "scope": "instance:instance-e94433b2dad856172e39d9e9",
+        "scope": "instance:instance-89934856ffa8d7922e791fb9",
         "collection_id": "documents",
         "vector_name": "title",
         "method": {
@@ -165,12 +202,12 @@
         "max_storage_keys": 1000
       },
       "activate": {
-        "scope": "instance:instance-e94433b2dad856172e39d9e9",
+        "scope": "instance:instance-89934856ffa8d7922e791fb9",
         "artifact_id": "quant-turboquant-documents-title",
         "generation": 1
       },
       "search": {
-        "scope": "instance:instance-e94433b2dad856172e39d9e9",
+        "scope": "instance:instance-89934856ffa8d7922e791fb9",
         "valid_at": 100,
         "collection_id": "documents",
         "vector_name": "title",
@@ -189,11 +226,82 @@
         },
         "max_storage_keys": 1000
       }
+    },
+    "index": {
+      "delete_payload_index": {
+        "collection_id": "documents",
+        "field": "spare",
+        "scope": "instance:instance-89934856ffa8d7922e791fb9"
+      },
+      "ensure": {
+        "build_policy": {
+          "kind": "cpu"
+        },
+        "collection_id": "documents",
+        "configuration": {
+          "ef_construction": 8,
+          "filter_properties": [
+            "bucket"
+          ],
+          "kind": "hnsw",
+          "m": 4,
+          "max_level": 4,
+          "seed": 7
+        },
+        "max_storage_keys": 1000,
+        "scope": "instance:instance-89934856ffa8d7922e791fb9",
+        "vector_name": "body"
+      },
+      "payload_index": {
+        "collection_id": "documents",
+        "field": "bucket",
+        "kind": "unsigned",
+        "scope": "instance:instance-89934856ffa8d7922e791fb9"
+      },
+      "search": {
+        "collection_id": "documents",
+        "filter": {
+          "condition": {
+            "operator": {
+              "operator": "equals",
+              "value": {
+                "type": "unsigned",
+                "value": 1
+              }
+            },
+            "property": "bucket"
+          },
+          "kind": "condition"
+        },
+        "max_storage_keys": 1000,
+        "mode": {
+          "ef_search": 4,
+          "exact_rerank": 1,
+          "mode": "require_approximate"
+        },
+        "query": {
+          "kind": "dense",
+          "values": [
+            1.0,
+            0.0
+          ]
+        },
+        "scope": "instance:instance-89934856ffa8d7922e791fb9",
+        "top_k": 1,
+        "valid_at": 100,
+        "vector_name": "body"
+      },
+      "spare_payload_index": {
+        "collection_id": "documents",
+        "field": "spare",
+        "kind": "unsigned",
+        "scope": "instance:instance-89934856ffa8d7922e791fb9"
+      }
     }
   },
   "changefeed": {
     "read": {
-      "scope": "instance:instance-e94433b2dad856172e39d9e9",
+      "scope": "instance:instance-89934856ffa8d7922e791fb9",
       "after_cursor": 0,
       "limit": 128
     },
@@ -212,12 +320,37 @@
   },
   "estate": {},
   "expected": {
-    "endpoint_count": 76,
+    "endpoint_count": 83,
     "query_identity": "record:document:sdk-conformance",
     "vector_reference": "embedding:sdk-conformance-title",
     "quantized_access_path": "turboquant",
+    "indexed_access_path": "hnsw",
+    "indexed_reference": "embedding:sdk-conformance-body",
     "estate_revision": 1,
     "typed_error": "unauthenticated",
     "retry_attempts": 2
+  },
+  "cold_history": {
+    "policy": {
+      "interval_ms": 1000,
+      "max_changes": 128,
+      "max_input_bytes": 1048576,
+      "max_output_bytes": 1048576,
+      "max_memory_bytes": 67108864,
+      "max_elapsed_ms": 30000,
+      "row_group_rows": 16,
+      "compression": {
+        "kind": "zstd",
+        "level": 3
+      },
+      "dictionary": true,
+      "statistics": true
+    },
+    "read": {
+      "scope": "instance:instance-89934856ffa8d7922e791fb9",
+      "generation": 1,
+      "max_artifact_bytes": 1048576
+    },
+    "expected_actor": "sdk-conformance-harness"
   }
 }

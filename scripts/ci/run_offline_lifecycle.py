@@ -121,6 +121,7 @@ REQUIRED_CASES = frozenset({
     "fresh_installed_engine_survives_restart_and_restore",
     "installed_engine_plans_applies_serves_discovers_authenticates_and_reopens",
     "a_served_estate_is_found_proved_and_not_served_twice",
+    "installed_source_read_choice_is_explicit_and_reopens",
 })
 
 

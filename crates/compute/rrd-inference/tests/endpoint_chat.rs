@@ -97,7 +97,7 @@ fn network_denial_expiry_and_cancellation_precede_credentials_and_io() {
             panic!("credential resolution after denial")
         })
         .unwrap_err();
-    assert!(!denied.dispatch_may_have_occurred);
+    assert!(!denied.dispatch_may_have_occurred());
     let cancelled = EmbeddingCancellation::default();
     cancelled.cancel();
     let cancelled =
@@ -109,7 +109,7 @@ fn network_denial_expiry_and_cancellation_precede_credentials_and_io() {
                 panic!("resolution after stop")
             })
             .unwrap_err();
-        assert!(!failure.dispatch_may_have_occurred);
+        assert!(!failure.dispatch_may_have_occurred());
     }
     let failure = prepared
         .execute(NetworkPolicy::Allow, &control(), |reference, _| {
@@ -117,7 +117,7 @@ fn network_denial_expiry_and_cancellation_precede_credentials_and_io() {
         })
         .unwrap_err();
     assert_eq!(failure.reason, "credential unavailable");
-    assert!(!failure.dispatch_may_have_occurred);
+    assert!(!failure.dispatch_may_have_occurred());
     assert!(!serde_json::to_string(&failure).unwrap().contains(
         &configuration.profile.as_ref().unwrap().bindings[0]
             .credential
@@ -175,7 +175,7 @@ fn altered_model_truncation_unsupported_effects_and_bad_usage_fail() {
         let failure = prepared
             .decode_response(serde_json::to_vec(&value).unwrap())
             .unwrap_err();
-        assert!(failure.dispatch_may_have_occurred);
+        assert!(failure.dispatch_may_have_occurred());
     }
     let bytes = read("available", "choice-response.json");
     assert!(prepared
@@ -205,6 +205,22 @@ fn missing_usage_is_unknown_and_outer_response_is_bounded() {
         prepared.decode_response(bytes).unwrap_err().reason,
         "chat response exceeds byte limit"
     );
+}
+
+#[test]
+fn rejected_selection_after_completed_generation_does_not_retain_unknown_execution() {
+    let (configuration, allowance, request) = inputs("available");
+    let binding = &configuration.profile.as_ref().unwrap().bindings[0].id;
+    let prepared =
+        PreparedEndpointChat::new(&configuration, binding, &allowance, &request).unwrap();
+    let mut output = response("available");
+    output["choices"][0]["message"]["content"] = serde_json::json!("{}");
+    let error = prepared
+        .decode_response(serde_json::to_vec(&output).unwrap())
+        .unwrap_err();
+    assert_eq!(error.reason, "invalid endpoint selection choice");
+    assert!(error.dispatch_may_have_occurred());
+    assert!(!error.execution_may_continue());
 }
 
 #[test]

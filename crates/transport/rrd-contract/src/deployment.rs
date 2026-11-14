@@ -229,7 +229,7 @@ impl RecallLimits {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct ColdHistoryPolicy {
-    /// Target period between server offers; missed or busy offers are skipped.
+    /// Target period between offers; missed ticks are skipped and pending work coalesces.
     pub interval_ms: u64,
     pub max_changes: u64,
     pub max_input_bytes: u64,

@@ -982,14 +982,7 @@ impl RetrievalExecutionContext<'_> {
 }
 
 fn text_subject(identity: &str, kind: &CanonicalId) -> Result<DataReference> {
-    let prefix = format!("record:{kind}:");
-    let id = identity.strip_prefix(&prefix).ok_or_else(|| {
-        ServiceError::Query("keyword result identity differs from its document kind".into())
-    })?;
-    Ok(DataReference {
-        kind: kind.clone(),
-        id: CanonicalId::new(id).map_err(|error| ServiceError::Query(error.to_string()))?,
-    })
+    super::retrieval::text_subject(identity, kind)
 }
 
 fn required_payload_properties(

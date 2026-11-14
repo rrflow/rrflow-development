@@ -25,8 +25,12 @@ The result contains deterministically ordered `added`,
 `through_cursor`; repeating that cursor returns an empty idempotent result
 until authoritative runtime state advances.
 
-The query digest binds the contract version, canonical query, and typed
-parameters. A resume cursor beyond the captured head, a fixed `KNOWN` clause,
+Query results and live-query deltas carry `result_identity_version`. A poll
+from cursor zero establishes a baseline; a nonzero resume must include the
+same current version. A missing or different version is rejected with a request
+to establish a new baseline. The query digest binds that identity version as
+well as the contract version, canonical query, and typed parameters. A resume
+cursor beyond the captured head, a fixed `KNOWN` clause,
 truncated snapshot execution, duplicate row identities, a zero delta budget,
 or a delta exceeding `max_delta_rows` fails closed.
 

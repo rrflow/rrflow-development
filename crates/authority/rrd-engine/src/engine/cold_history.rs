@@ -8,8 +8,9 @@ use rrd_contract::{
     ColdHistoryGenerationSnapshot, ColdHistoryPolicy, ColdHistoryReadResult, ReadColdHistory,
 };
 use rrd_query::{
-    decode_cold_history_page, encode_cold_history_page, ColdHistoryReadExpectation,
-    ColdHistoryReadLimits, ParquetCompression, ParquetEncoding, ParquetExportLimits,
+    decode_cold_history_page, encode_cold_history_page, ColdHistoryReadError,
+    ColdHistoryReadExpectation, ColdHistoryReadLimits, ParquetCompression, ParquetEncoding,
+    ParquetExportLimits,
 };
 use rrd_store::filesystem::{AnchoredPath, OpenOptions};
 use std::io::{Read, Write};
@@ -215,27 +216,14 @@ impl RrdEngine {
             .anchored_path()
             .join("cold-history")
             .join(format!("{}.parquet", receipt.pending.artifact_sha256));
-        let file = path.open_read().map_err(io_error)?;
+        let mut file = path.open_read().map_err(io_error)?;
         if file.metadata().map_err(io_error)?.len() != receipt.pending.artifact_bytes {
             return Err(ServiceError::Storage(
                 "cold history artifact length mismatch".into(),
             ));
         }
         let length = native(receipt.pending.artifact_bytes)?;
-        let mut bytes = Vec::new();
-        bytes
-            .try_reserve_exact(length.saturating_add(1))
-            .map_err(|_| {
-                ServiceError::ConfigurationLimit("cold history artifact allocation failed".into())
-            })?;
-        file.take(receipt.pending.artifact_bytes.saturating_add(1))
-            .read_to_end(&mut bytes)
-            .map_err(io_error)?;
-        if bytes.len() != length {
-            return Err(ServiceError::Storage(
-                "cold history artifact changed while reading".into(),
-            ));
-        }
+        let bytes = read_cold_artifact(&mut file, length, deadline)?;
         let expectation = ColdHistoryReadExpectation {
             stamp: receipt.pending.stamp.clone(),
             requested_after: receipt.pending.requested_after,
@@ -255,7 +243,7 @@ impl RrdEngine {
                 deadline,
             },
         )
-        .map_err(ServiceError::from)?;
+        .map_err(cold_read_error)?;
         if decoded.row_groups as u64 != receipt.pending.row_groups {
             return Err(ServiceError::Storage(
                 "cold history row-group count differs from its receipt".into(),
@@ -518,6 +506,8 @@ impl RrdEngine {
                 ),
                 transition(&key, previous, &state, now, "cold_history.published")?,
             ])?;
+            #[cfg(test)]
+            tests::publication_checkpoint("receipt_committed");
             tracing::info!(target: "rrflow::parquet_compactor", generation, rows = receipt.pending.rows, bytes = receipt.pending.artifact_bytes, "cold history generation published");
             return Ok(true);
         }
@@ -564,7 +554,7 @@ impl RrdEngine {
                 Err(rrd_query::Error::Budget(_)) if scan_limit > 1 => {
                     scan_limit = (scan_limit / 2).max(1)
                 }
-                Err(error) => return Err(cold_query_error(error, deadline)),
+                Err(error) => return Err(error.into()),
             }
         };
         let source_sha256 = source_digest(&stamp, &page);
@@ -657,11 +647,10 @@ fn cold_source_error(error: rrd_store::Error) -> ServiceError {
     }
 }
 
-fn cold_query_error(error: rrd_query::Error, deadline: Instant) -> ServiceError {
-    if matches!(error, rrd_query::Error::Budget(_)) && Instant::now() >= deadline {
-        ServiceError::DeadlineExceeded
-    } else {
-        error.into()
+fn cold_read_error(error: ColdHistoryReadError) -> ServiceError {
+    match error {
+        ColdHistoryReadError::DeadlineExceeded => ServiceError::DeadlineExceeded,
+        ColdHistoryReadError::Query(error) => error.into(),
     }
 }
 
@@ -704,7 +693,7 @@ fn encode(
     deadline: Instant,
 ) -> Result<rrd_query::ColdHistoryPage> {
     encode_cold_history_page(stamp, page, limits(policy, deadline)?, encoding(policy))
-        .map_err(|error| cold_query_error(error, deadline))
+        .map_err(ServiceError::from)
 }
 
 fn source_digest(stamp: &ReadStamp, page: &rrd_core::RuntimeChangePage) -> String {
@@ -853,6 +842,51 @@ fn verify_head(
     )
 }
 
+/// Bound each read request and recheck the cooperative deadline between calls.
+/// An individual filesystem read can still block beyond the deadline.
+fn read_cold_artifact(
+    reader: &mut impl Read,
+    expected_bytes: usize,
+    deadline: Instant,
+) -> Result<Vec<u8>> {
+    let ceiling = expected_bytes.checked_add(1).ok_or_else(|| {
+        ServiceError::ConfigurationLimit("cold history artifact length overflow".into())
+    })?;
+    check_deadline(deadline)?;
+    let mut bytes = Vec::new();
+    bytes.try_reserve_exact(ceiling).map_err(|_| {
+        ServiceError::ConfigurationLimit("cold history artifact allocation failed".into())
+    })?;
+    bytes.resize(ceiling, 0);
+    let mut used = 0;
+    while used < ceiling {
+        check_deadline(deadline)?;
+        let end = used.saturating_add(64 * 1024).min(ceiling);
+        let count = match reader.read(&mut bytes[used..end]) {
+            Ok(count) => count,
+            Err(error) if error.kind() == std::io::ErrorKind::Interrupted => continue,
+            Err(error) => return Err(io_error(error)),
+        };
+        check_deadline(deadline)?;
+        if count > end - used {
+            return Err(ServiceError::Storage(
+                "cold history reader returned an invalid length".into(),
+            ));
+        }
+        if count == 0 {
+            break;
+        }
+        used += count;
+    }
+    if used != expected_bytes {
+        return Err(ServiceError::Storage(
+            "cold history artifact changed while reading".into(),
+        ));
+    }
+    bytes.truncate(used);
+    Ok(bytes)
+}
+
 fn verify_file(
     path: &AnchoredPath,
     expected: &str,
@@ -903,11 +937,17 @@ fn publish_file(
         .open(&staging)
         .map_err(io_error)?;
     file.write_all(bytes).map_err(io_error)?;
+    #[cfg(test)]
+    tests::publication_checkpoint("stage_written");
     check_deadline(deadline)?;
     file.sync_all().map_err(io_error)?;
     drop(file);
+    #[cfg(test)]
+    tests::publication_checkpoint("stage_synced");
     check_deadline(deadline)?;
     staging.rename_new_to(final_path).map_err(io_error)?;
+    #[cfg(test)]
+    tests::publication_checkpoint("artifact_renamed");
     verify_file(final_path, digest, bytes.len(), deadline)
 }
 
@@ -917,6 +957,30 @@ mod tests {
     use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
     use rrd_contract::ColdHistoryCompression;
     use rrd_core::{RuntimeLogicalModel, RuntimeRecord, RuntimeSchemaRegistry, RuntimeTableSchema};
+
+    pub(super) fn publication_checkpoint(name: &str) {
+        if std::env::var("RRFLOW_COLD_CRASH_CHECKPOINT").as_deref() != Ok(name) {
+            return;
+        }
+        let marker = std::env::var_os("RRFLOW_COLD_CRASH_MARKER").expect("checkpoint marker");
+        std::fs::write(marker, name).expect("write checkpoint marker");
+        let deadline = Instant::now() + Duration::from_secs(90);
+        while let Some(remaining) = deadline.checked_duration_since(Instant::now()) {
+            std::thread::park_timeout(remaining);
+        }
+        panic!("publication checkpoint was not terminated by its parent");
+    }
+
+    struct OwnedTestChild(std::process::Child);
+
+    impl Drop for OwnedTestChild {
+        fn drop(&mut self) {
+            if !matches!(self.0.try_wait(), Ok(Some(_))) {
+                let _ = self.0.kill();
+                let _ = self.0.wait();
+            }
+        }
+    }
 
     fn policy() -> ColdHistoryPolicy {
         ColdHistoryPolicy {
@@ -980,6 +1044,112 @@ mod tests {
     }
 
     #[test]
+    fn publication_survives_process_termination_at_each_boundary() {
+        use std::process::{Command, Stdio};
+
+        const TEST_NAME: &str =
+            "engine::cold_history::tests::publication_survives_process_termination_at_each_boundary";
+        if let Some(path) = std::env::var_os("RRFLOW_COLD_CRASH_ESTATE") {
+            let engine = open(Path::new(&path));
+            engine.maintain_cold_history_at(&policy(), 101).unwrap();
+            panic!("publication completed without reaching the requested checkpoint");
+        }
+
+        for checkpoint in [
+            "stage_written",
+            "stage_synced",
+            "artifact_renamed",
+            "receipt_committed",
+        ] {
+            let root = tempfile::tempdir().unwrap();
+            let path = root.path().join("estate");
+            let marker = root.path().join("checkpoint");
+            let engine = open(&path);
+            seed(&engine);
+            assert!(engine.maintain_cold_history_at(&policy(), 100).unwrap());
+            let prepared = state(&engine);
+            let pending = prepared.pending.as_ref().unwrap();
+            let expected = super::super::tests::cold_history_oracle::expected_changes(
+                &engine,
+                &pending.stamp,
+                pending.requested_after,
+                pending.scan_limit as usize,
+            );
+            let expected_cursor = pending.through_cursor;
+            drop(engine);
+
+            let mut child = OwnedTestChild(
+                Command::new(std::env::current_exe().unwrap())
+                    .arg("--exact")
+                    .arg(TEST_NAME)
+                    .arg("--nocapture")
+                    .env("RRFLOW_COLD_CRASH_ESTATE", &path)
+                    .env("RRFLOW_COLD_CRASH_CHECKPOINT", checkpoint)
+                    .env("RRFLOW_COLD_CRASH_MARKER", &marker)
+                    .stdout(Stdio::null())
+                    .stderr(Stdio::null())
+                    .spawn()
+                    .unwrap(),
+            );
+            let deadline = Instant::now() + Duration::from_secs(60);
+            while std::fs::read(&marker).ok().as_deref() != Some(checkpoint.as_bytes()) {
+                if let Some(status) = child.0.try_wait().unwrap() {
+                    panic!("child exited before {checkpoint}: {status}");
+                }
+                if Instant::now() >= deadline {
+                    panic!("child did not reach {checkpoint}");
+                }
+                std::thread::sleep(Duration::from_millis(10));
+            }
+            drop(child);
+
+            let engine = open(&path);
+            let reopened = state(&engine);
+            if checkpoint == "receipt_committed" {
+                assert_eq!(reopened.generation, 1);
+                assert!(reopened.pending.is_none());
+                assert_eq!(reopened.through_cursor, expected_cursor);
+            } else {
+                assert_eq!(reopened.generation, 0, "{checkpoint}");
+                assert_eq!(reopened.through_cursor, 0, "{checkpoint}");
+                assert!(reopened.pending.is_some(), "{checkpoint}");
+                assert!(engine.maintain_cold_history_at(&policy(), 102).unwrap());
+            }
+            let published = state(&engine);
+            assert_eq!(published.generation, 1, "{checkpoint}");
+            assert_eq!(published.through_cursor, expected_cursor, "{checkpoint}");
+            assert!(published.pending.is_none(), "{checkpoint}");
+            let key = "server/state/cold/cold-history/generation/00000000000000000001";
+            let receipt: ColdReceipt =
+                serde_json::from_slice(&engine.storage.control().get(key).unwrap().unwrap())
+                    .unwrap();
+            let artifact = engine
+                .storage
+                .as_rrflow_kv()
+                .unwrap()
+                .anchored_path()
+                .join("cold-history")
+                .join(format!("{}.parquet", receipt.pending.artifact_sha256));
+            let reader = ParquetRecordBatchReaderBuilder::try_new(artifact.open_read().unwrap())
+                .unwrap()
+                .build()
+                .unwrap();
+            let actual = reader
+                .flat_map(|batch| rrd_query::record_batch_to_rows(&batch.unwrap()).unwrap())
+                .map(|row| {
+                    let RuntimeValue::String(json) = &row.values["change_json"] else {
+                        panic!("history value")
+                    };
+                    serde_json::from_str::<RuntimeChange>(json).unwrap()
+                })
+                .collect::<Vec<_>>();
+            assert_eq!(actual, expected, "{checkpoint}");
+            assert!(!engine.maintain_cold_history_at(&policy(), 103).unwrap());
+            assert_eq!(state(&engine).generation, 1, "{checkpoint}");
+        }
+    }
+
+    #[test]
     fn prepared_history_replays_after_restart_and_new_writes_then_detects_corruption() {
         let root = tempfile::tempdir().unwrap();
         let path = root.path().join("estate");
@@ -990,16 +1160,12 @@ mod tests {
         let prepared = state(&engine);
         let pending = prepared.pending.as_ref().unwrap();
         assert_eq!(prepared.through_cursor, 0);
-        let original = engine
-            .storage
-            .runtime()
-            .read_changes(
-                &pending.stamp,
-                pending.requested_after,
-                pending.scan_limit as usize,
-            )
-            .unwrap()
-            .changes;
+        let original = super::super::tests::cold_history_oracle::expected_changes(
+            &engine,
+            &pending.stamp,
+            pending.requested_after,
+            pending.scan_limit as usize,
+        );
         let directory = engine
             .storage
             .as_rrflow_kv()
@@ -1103,6 +1269,64 @@ mod tests {
     }
 
     #[test]
+    fn embedded_maintenance_publishes_cold_history_while_native_debt_remains() {
+        use rrd_store::Durability;
+
+        let root = tempfile::tempdir().unwrap();
+        let mut engine = open(&root.path().join("estate"));
+        seed(&engine);
+        engine.estate_configuration.storage.cold_history = Some(policy());
+        let store = engine.storage.as_rrflow_kv().unwrap();
+        let mut ordinal = 0_u64;
+        let debt = || {
+            store
+                .physical_store_evidence()
+                .unwrap()
+                .compaction_debt_segments
+                .unwrap()
+        };
+        let mut replenish_debt = || {
+            for _ in 0..32 {
+                if debt() > 0 {
+                    return;
+                }
+                ordinal += 1;
+                let mut tx = store.begin_transaction().unwrap();
+                tx.put(
+                    format!("cold-fairness-{ordinal}").into_bytes(),
+                    b"ack".to_vec(),
+                )
+                .unwrap();
+                tx.commit(Durability::Authoritative).unwrap();
+                store.flush(ordinal).unwrap();
+            }
+            panic!("could not create native compaction debt");
+        };
+        replenish_debt();
+        assert!(engine.maintain_storage().unwrap());
+        replenish_debt();
+        assert!(engine.maintain_storage().unwrap());
+        let prepared = engine
+            .storage
+            .control()
+            .get("server/state/cold/cold-history/head")
+            .unwrap();
+        assert!(
+            prepared.is_some(),
+            "cold work must be offered while native debt remains"
+        );
+        assert!(state(&engine).pending.is_some());
+        assert!(debt() > 0);
+        assert!(engine.maintain_storage().unwrap());
+        assert_eq!(state(&engine).generation, 0);
+        assert!(state(&engine).pending.is_some());
+        replenish_debt();
+        assert!(engine.maintain_storage().unwrap());
+        assert_eq!(state(&engine).generation, 1);
+        assert!(debt() > 0);
+    }
+
+    #[test]
     fn changed_policy_replans_pending_work_without_rewinding_committed_cursor() {
         let root = tempfile::tempdir().unwrap();
         let engine = open(&root.path().join("estate"));
@@ -1155,6 +1379,143 @@ mod tests {
         );
         assert!(engine.maintain_cold_history_at(&policy, 104).unwrap());
         assert_eq!(state(&engine).through_cursor, 2);
+    }
+
+    #[test]
+    fn encoder_errors_keep_their_cause_after_deadline() {
+        let deadline = Instant::now();
+        let budget = rrd_query::Error::Budget("admitted bytes exceeded".into());
+        assert!(Instant::now() >= deadline);
+        assert!(matches!(
+            ServiceError::from(budget),
+            ServiceError::ConfigurationLimit(_)
+        ));
+        assert!(matches!(
+            ServiceError::from(rrd_query::Error::DeadlineExceeded("expired".into())),
+            ServiceError::DeadlineExceeded
+        ));
+    }
+
+    #[test]
+    fn decoder_deadline_and_resource_failures_are_distinct() {
+        let stamp =
+            ReadStamp::new(ScopeId::new("instance:cold").unwrap(), None, 0, 0, None).unwrap();
+        let expected = ColdHistoryReadExpectation {
+            stamp,
+            requested_after: 0,
+            through_cursor: 0,
+            rows: 0,
+            artifact_sha256: "0".repeat(64),
+        };
+        let deadline = Instant::now();
+        let limits = ColdHistoryReadLimits {
+            max_rows: 1,
+            max_encoded_bytes: 1,
+            max_decoded_bytes: 1,
+            max_memory_bytes: 64,
+            max_batch_rows: 1,
+            deadline,
+        };
+        let timeout = decode_cold_history_page(vec![0], &expected, limits).unwrap_err();
+        assert!(matches!(
+            cold_read_error(timeout),
+            ServiceError::DeadlineExceeded
+        ));
+        let future = Instant::now() + Duration::from_millis(500);
+        let resource = decode_cold_history_page(
+            vec![0, 0],
+            &expected,
+            ColdHistoryReadLimits {
+                deadline: future,
+                ..limits
+            },
+        )
+        .unwrap_err();
+        while Instant::now() < future {
+            std::thread::sleep(future.saturating_duration_since(Instant::now()));
+        }
+        assert!(matches!(
+            cold_read_error(resource),
+            ServiceError::ConfigurationLimit(_)
+        ));
+    }
+
+    #[test]
+    fn artifact_read_checks_deadline_and_exact_length() {
+        use std::io::{self, Cursor, Read};
+
+        let deadline = Instant::now() + Duration::from_secs(60);
+        assert_eq!(
+            read_cold_artifact(&mut Cursor::new(b"cold"), 4, deadline).unwrap(),
+            b"cold"
+        );
+        assert!(read_cold_artifact(&mut Cursor::new(b"cold"), 3, deadline).is_err());
+        assert!(read_cold_artifact(&mut Cursor::new(b"cold"), 5, deadline).is_err());
+
+        struct TrackingReader<'a> {
+            source: Cursor<&'a [u8]>,
+            largest_request: usize,
+            calls: usize,
+        }
+        impl Read for TrackingReader<'_> {
+            fn read(&mut self, bytes: &mut [u8]) -> io::Result<usize> {
+                self.largest_request = self.largest_request.max(bytes.len());
+                self.calls += 1;
+                self.source.read(bytes)
+            }
+        }
+        let data: Vec<u8> = (0..(2 * 64 * 1024 + 17))
+            .map(|index| (index % 251) as u8)
+            .collect();
+        let mut tracked = TrackingReader {
+            source: Cursor::new(&data),
+            largest_request: 0,
+            calls: 0,
+        };
+        assert_eq!(
+            read_cold_artifact(&mut tracked, data.len(), deadline).unwrap(),
+            data
+        );
+        assert!(tracked.calls >= 3);
+        assert!(tracked.largest_request <= 64 * 1024);
+
+        struct InterruptedOnce {
+            state: u8,
+        }
+        impl Read for InterruptedOnce {
+            fn read(&mut self, bytes: &mut [u8]) -> io::Result<usize> {
+                self.state += 1;
+                match self.state {
+                    1 => Err(io::ErrorKind::Interrupted.into()),
+                    2 => {
+                        bytes[0] = b'x';
+                        Ok(1)
+                    }
+                    _ => Ok(0),
+                }
+            }
+        }
+        assert_eq!(
+            read_cold_artifact(&mut InterruptedOnce { state: 0 }, 1, deadline).unwrap(),
+            b"x"
+        );
+
+        struct SlowReader {
+            calls: usize,
+        }
+        impl Read for SlowReader {
+            fn read(&mut self, bytes: &mut [u8]) -> io::Result<usize> {
+                self.calls += 1;
+                std::thread::sleep(Duration::from_millis(750));
+                bytes[0] = b'x';
+                Ok(1)
+            }
+        }
+        let mut slow = SlowReader { calls: 0 };
+        let error = read_cold_artifact(&mut slow, 4, Instant::now() + Duration::from_millis(500))
+            .unwrap_err();
+        assert!(matches!(error, ServiceError::DeadlineExceeded));
+        assert_eq!(slow.calls, 1);
     }
 
     #[test]
@@ -1252,6 +1613,152 @@ mod tests {
         file.sync_all().unwrap();
         assert!(read(&request).is_err());
         assert_eq!(state(&engine).through_cursor, 2);
+    }
+
+    #[test]
+    fn cold_history_denies_row_or_field_restricted_changefeed_grants() {
+        use rrd_security::{
+            DataPolicy, PolicyPredicate, Principal, PrincipalKind, ResourceGrant,
+            SecurityRepository, SecurityState,
+        };
+        use std::collections::BTreeSet;
+
+        let root = tempfile::tempdir().unwrap();
+        let mut engine = open(&root.path().join("estate"));
+        seed(&engine);
+        let policy = policy();
+        engine.estate_configuration.storage.cold_history = Some(policy.clone());
+        assert!(engine.maintain_cold_history_at(&policy, 100).unwrap());
+        assert!(engine.maintain_cold_history_at(&policy, 101).unwrap());
+        assert_eq!(state(&engine).generation, 1);
+
+        let resource = ResourcePath {
+            segments: vec![ResourceId::new(ResourceKind::Instance, "cold").unwrap()],
+        };
+        let principal = |name: &str, credential: &[u8], data_policy: Option<DataPolicy>| {
+            let id = CanonicalId::new(name).unwrap();
+            Principal {
+                id,
+                kind: PrincipalKind::User,
+                credential_sha256: digest::sha256_hex(credential),
+                credential_revision: 1,
+                not_before_unix_ms: 1,
+                expires_at_unix_ms: u64::MAX,
+                disabled: false,
+                role_ids: BTreeSet::new(),
+                grants: vec![
+                    ResourceGrant {
+                        action: SecurityAction::SessionCreate,
+                        resource_prefix: resource.clone(),
+                        data_policy: None,
+                    },
+                    ResourceGrant {
+                        action: SecurityAction::ChangefeedRead,
+                        resource_prefix: resource.clone(),
+                        data_policy,
+                    },
+                ],
+            }
+        };
+        let restricted_fields = principal(
+            "restricted-fields",
+            b"restricted-fields-key",
+            Some(DataPolicy {
+                tenant: None,
+                rows: Vec::new(),
+                allowed_fields: Some(BTreeSet::from(["body".into()])),
+            }),
+        );
+        let restricted_rows = principal(
+            "restricted-rows",
+            b"restricted-rows-key",
+            Some(DataPolicy {
+                tenant: None,
+                rows: vec![PolicyPredicate {
+                    field: "body".into(),
+                    value: RuntimeValue::String("before".into()),
+                }],
+                allowed_fields: None,
+            }),
+        );
+        let unrestricted = principal("unrestricted", b"unrestricted-key", None);
+        SecurityRepository::new(&engine.storage, CanonicalId::new("cold").unwrap())
+            .initialize(
+                SecurityState {
+                    format_version: rrd_security::SECURITY_FORMAT,
+                    revision: 1,
+                    principals: BTreeMap::from([
+                        (restricted_fields.id.clone(), restricted_fields),
+                        (restricted_rows.id.clone(), restricted_rows),
+                        (unrestricted.id.clone(), unrestricted),
+                    ]),
+                    roles: BTreeMap::new(),
+                    identity_bindings: BTreeMap::new(),
+                    jwt_issuers: BTreeMap::new(),
+                },
+                1,
+                "cold-security-test",
+                "cold-security-init",
+                "cold-security-init",
+            )
+            .unwrap();
+        let request = CreateSession {
+            limits: SessionLimits {
+                idle_timeout_ms: 5_000,
+                absolute_timeout_ms: 10_000,
+                max_open_transactions: 2,
+            },
+        };
+        for (name, key, denied) in [
+            (
+                "restricted-fields",
+                b"restricted-fields-key".as_slice(),
+                true,
+            ),
+            ("restricted-rows", b"restricted-rows-key".as_slice(), true),
+            ("unrestricted", b"unrestricted-key".as_slice(), false),
+        ] {
+            let session_request_id = format!("cold-{name}-session-request");
+            let lease = engine
+                .create_authenticated_session(
+                    &CanonicalId::new(name).unwrap(),
+                    key,
+                    &request,
+                    &CorrelationId::new(format!("cold-{name}-session")).unwrap(),
+                    1_000,
+                    &session_request_id,
+                    &session_request_id,
+                )
+                .unwrap();
+            for generation in [None, Some(1)] {
+                let read_request_id = format!("cold-{name}-read-{}", generation.unwrap_or(0));
+                let result = engine.read_cold_history(
+                    &lease.session_id,
+                    &lease.token,
+                    &ReadColdHistory {
+                        scope: "instance:cold".into(),
+                        generation,
+                        max_artifact_bytes: 1024 * 1024,
+                        budget: rrd_contract::QueryBudget::default(),
+                    },
+                    1_100,
+                    &read_request_id,
+                    &read_request_id,
+                );
+                if denied {
+                    assert!(
+                        matches!(result, Err(ServiceError::PermissionDenied)),
+                        "{name} generation {generation:?}: {result:?}"
+                    );
+                } else {
+                    let result = result.unwrap();
+                    assert_eq!(result.generation.is_some(), generation.is_some());
+                    if generation.is_some() {
+                        assert_eq!(result.changes.len(), 2);
+                    }
+                }
+            }
+        }
     }
 
     #[test]
