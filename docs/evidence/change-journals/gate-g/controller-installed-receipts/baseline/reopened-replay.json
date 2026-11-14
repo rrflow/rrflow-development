@@ -1,0 +1,43 @@
+{
+  "status": 412,
+  "request": {
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "context": {
+      "request_id": "controller-proof-21dca280bd064945be278873c34ef0bd",
+      "operation_id": "controller-proof-21dca280bd064945be278873c34ef0bd",
+      "idempotency_key": "controller-proof-21dca280bd064945be278873c34ef0bd",
+      "deadline_unix_ms": null
+    },
+    "resource": {
+      "segments": [
+        {
+          "kind": "instance",
+          "id": "instance-bea03d7119f36392d43d4da9"
+        }
+      ]
+    },
+    "payload": {
+      "scope": "instance:instance-bea03d7119f36392d43d4da9",
+      "task_id": "task-21e6cdee44cbaa6b36367cfe02bca581905462ee8349f6bd3acee1b17c9804be",
+      "attempt_id": "actual-proposal-82058cfe973e438fa8bb678cafd9acc0",
+      "max_storage_keys": 1000000,
+      "expected_task_sha256": "5b2c998ff48692a1d5720fdbc5b45aa59fcdcb6ff50428f64efba581fa56e02f",
+      "expected_configuration_sha256": "6a9aa5d87200bc671e7e417c16ad1ee01e3ddda5574677777d613fd23088d223"
+    }
+  },
+  "response": {
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "request_id": "controller-proof-21dca280bd064945be278873c34ef0bd",
+    "operation_id": "controller-proof-21dca280bd064945be278873c34ef0bd",
+    "outcome": {
+      "status": "error",
+      "error": {
+        "code": "failed_precondition",
+        "message": "ReasoningAttemptRecorded { outcome_sha256: Some(\"e10bbfc2fc44007755b56113e658b99bcfe760b66ee2efc3e828737488ca5a0c\") }",
+        "retryable": false
+      }
+    }
+  }
+}

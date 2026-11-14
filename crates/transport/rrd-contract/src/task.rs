@@ -273,7 +273,7 @@ impl TaskReadResult {
     }
 }
 
-fn validate_scope(scope: &str) -> Result<()> {
+pub(crate) fn validate_scope(scope: &str) -> Result<()> {
     if scope.is_empty() || scope.len() > MAX_ID_BYTES || scope.as_bytes().contains(&0) {
         return invalid("task scope is invalid");
     }

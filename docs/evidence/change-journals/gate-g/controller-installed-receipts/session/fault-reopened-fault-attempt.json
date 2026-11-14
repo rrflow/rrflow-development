@@ -1,0 +1,45 @@
+{
+  "status": 200,
+  "request": {
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "context": {
+      "request_id": "controller-proof-bc6d5def19b7499fb5e43183820cbde2",
+      "operation_id": "controller-proof-bc6d5def19b7499fb5e43183820cbde2",
+      "idempotency_key": null,
+      "deadline_unix_ms": null
+    },
+    "resource": {
+      "segments": [
+        {
+          "kind": "instance",
+          "id": "instance-420ac9086e1e9373e370c24f"
+        }
+      ]
+    },
+    "payload": {
+      "scope": "instance:instance-420ac9086e1e9373e370c24f",
+      "task_id": "task-1766eff76b0e11595b01c597f49455e512841bbc0444bae4aadaf62f5994c535",
+      "attempt_id": "actual-proposal-bd11b07deeb543bd80f3b5533e10aefe"
+    }
+  },
+  "response": {
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "request_id": "controller-proof-bc6d5def19b7499fb5e43183820cbde2",
+    "operation_id": "controller-proof-bc6d5def19b7499fb5e43183820cbde2",
+    "outcome": {
+      "status": "ok",
+      "payload": {
+        "attempt": {
+          "attempt_id": "actual-proposal-bd11b07deeb543bd80f3b5533e10aefe",
+          "ordinal": 1,
+          "status": "invalidated",
+          "outcome_sha256": null,
+          "result": null,
+          "invalidation": "authorization_changed"
+        }
+      }
+    }
+  }
+}
