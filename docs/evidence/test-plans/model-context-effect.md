@@ -118,7 +118,7 @@ and identifies whether it is exact, estimated, provider-reported, or evaluated.
 Client controls cannot launch an undeclared arm, rewrite completed trials, or
 promote a policy without a separately authorized engine operation.
 
-Retention or retirement follows engram policy and preserves experiment,
+Retention or retirement follows estate policy and preserves experiment,
 source, packet, result, and decision digests required to reproduce accepted
 claims. A context-maintenance routine cannot discard failed trials merely to
 improve an aggregate.

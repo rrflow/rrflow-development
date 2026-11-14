@@ -12,13 +12,13 @@
 //! publication receipt.
 
 use super::engram_layout::{
-    instance_operation_root, reject_existing_symlink_path, safe_join, engramFilesystem,
+    instance_operation_root, reject_existing_symlink_path, safe_join, EngramFilesystem,
     BACKUPS_DIRECTORY_NAME, RESTORES_DIRECTORY_NAME, STORAGE_DIRECTORY,
 };
 use super::installation::{
     canonical_prefixed, decode_control, engram_configuration_key, json_sha256, read_locator,
     require_locator_record_match, runtime_manifest_from_inspection, sha256_file,
-    DefaultInstallProfile, InstallationVerificationStatus, InstalledengramRecord, ProjectLocator,
+    DefaultInstallProfile, InstallationVerificationStatus, InstalledEngramRecord, ProjectLocator,
     INSTALLED_RECORD_KEY,
 };
 use super::token_key::{
@@ -190,7 +190,7 @@ struct PublicationReceipt {
 }
 
 struct PublicationPaths {
-    project: engramFilesystem,
+    project: EngramFilesystem,
     active: AnchoredPath,
     candidate: AnchoredPath,
     quarantine: AnchoredPath,
@@ -290,7 +290,7 @@ impl RrdEngine {
                     RestorePublicationActionKind::PublishCandidateRoot => {
                         (candidate.evidence.physical_sha256.clone(), 0)
                     }
-                    RestorePublicationActionKind::OpenPublishedengram => {
+                    RestorePublicationActionKind::OpenPublishedEngram => {
                         (active.installed.record_sha256.clone(), 1_024)
                     }
                 };
@@ -554,7 +554,7 @@ impl RrdEngine {
         }
         outputs.push(plan.candidate.physical_sha256.clone());
 
-        // OpenPublishedengram: the published root opens through the installed
+        // OpenPublishedEngram: the published root opens through the installed
         // engine path, records the receipt, and passes quick verification.
         // The receipt commit below changes the root's bytes, so a resumed run
         // checks the published root by its semantic watermarks and identity.
@@ -633,8 +633,8 @@ impl RrdEngine {
 /// Read-only evidence and installed control state of one storage root.
 struct RootReading {
     evidence: RestoreRootEvidence,
-    installed: InstalledengramRecord,
-    configuration: engramConfiguration,
+    installed: InstalledEngramRecord,
+    configuration: EngramConfiguration,
 }
 
 impl RootReading {
@@ -644,10 +644,10 @@ impl RootReading {
             root,
             super::core::installed_storage_options(&locator.storage)?,
         )?;
-        let installed: InstalledengramRecord =
+        let installed: InstalledEngramRecord =
             decode_control(&inspector, INSTALLED_RECORD_KEY, "installed engram record")?;
         installed.validate()?;
-        let configuration: engramConfiguration = decode_control(
+        let configuration: EngramConfiguration = decode_control(
             &inspector,
             &engram_configuration_key(&locator.identity.instance_id),
             "engram configuration",
@@ -678,7 +678,7 @@ enum TokenKeyState {
 }
 
 fn publication_paths(
-    project: &engramFilesystem,
+    project: &EngramFilesystem,
     locator: &ProjectLocator,
     restore_id: &CanonicalId,
 ) -> Result<PublicationPaths> {
@@ -707,7 +707,7 @@ fn storage_root_id(locator: &ProjectLocator) -> Result<CanonicalId> {
     CanonicalId::new(name).map_err(|_| ServiceError::ProjectBindingMismatch)
 }
 
-fn relative(project: &engramFilesystem, path: &AnchoredPath) -> Result<String> {
+fn relative(project: &EngramFilesystem, path: &AnchoredPath) -> Result<String> {
     path.diagnostic_path()
         .strip_prefix(project.project().diagnostic_path())
         .map_err(|_| ServiceError::ProjectBindingMismatch)?
@@ -767,7 +767,7 @@ fn catalogued_backup(
 
 fn active_token_key_sha256(
     active: &AnchoredPath,
-    installed: &InstalledengramRecord,
+    installed: &InstalledEngramRecord,
 ) -> Result<String> {
     let token_key = read_token_key(&active.join(TOKEN_KEY_FILE)).map_err(storage_error)?;
     let token_key_sha256 = digest::sha256_hex(&token_key);

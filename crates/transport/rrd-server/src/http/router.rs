@@ -47,18 +47,18 @@ macro_rules! http_dispatch_catalogue {
 }
 
 http_dispatch_catalogue! {
-    AttunementCancel => ("attunement-cancel", RrdOperation::engramAdmin),
-    AttunementRead => ("attunement-read", RrdOperation::engramRead),
-    AttunementJobList => ("attunement-job-list", RrdOperation::engramRead),
-    AttunementReceiptRead => ("attunement-receipt-read", RrdOperation::engramRead),
-    AttunementStart => ("attunement-start", RrdOperation::engramAdmin),
-    AttunementStep => ("attunement-step", RrdOperation::engramAdmin),
+    AttunementCancel => ("attunement-cancel", RrdOperation::EngramAdmin),
+    AttunementRead => ("attunement-read", RrdOperation::EngramRead),
+    AttunementJobList => ("attunement-job-list", RrdOperation::EngramRead),
+    AttunementReceiptRead => ("attunement-receipt-read", RrdOperation::EngramRead),
+    AttunementStart => ("attunement-start", RrdOperation::EngramAdmin),
+    AttunementStep => ("attunement-step", RrdOperation::EngramAdmin),
     AttunementReplanPreview => ("attunement-replan-preview", RrdOperation::AttunementReplanPreview),
-    AttunementReplanAccept => ("attunement-replan-accept", RrdOperation::engramAdmin),
-    AttunementReplanReceiptRead => ("attunement-replan-receipt-read", RrdOperation::engramRead),
-    AttunementPause => ("attunement-pause", RrdOperation::engramAdmin),
-    AttunementRecoverExpired => ("attunement-recover-expired", RrdOperation::engramAdmin),
-    AttunementResume => ("attunement-resume", RrdOperation::engramAdmin),
+    AttunementReplanAccept => ("attunement-replan-accept", RrdOperation::EngramAdmin),
+    AttunementReplanReceiptRead => ("attunement-replan-receipt-read", RrdOperation::EngramRead),
+    AttunementPause => ("attunement-pause", RrdOperation::EngramAdmin),
+    AttunementRecoverExpired => ("attunement-recover-expired", RrdOperation::EngramAdmin),
+    AttunementResume => ("attunement-resume", RrdOperation::EngramAdmin),
     AuditExport => ("audit-export", RrdOperation::AuditExport),
     AuditRead => ("audit-read", RrdOperation::AuditRead),
     BackupCreate => ("backup-create", RrdOperation::BackupCreate),
@@ -75,10 +75,10 @@ http_dispatch_catalogue! {
     FlightList => ("flight-list", RrdOperation::FlightRead),
     FlightRead => ("flight-read", RrdOperation::FlightRead),
     EndpointCatalogue => ("endpoint-catalogue", RrdOperation::ServiceInspect),
-    EndpointConfigurationRead => ("endpoint-configuration-read", RrdOperation::engramRead),
+    EndpointConfigurationRead => ("endpoint-configuration-read", RrdOperation::EngramRead),
     EndpointConfigurationPreview => ("endpoint-configuration-preview", RrdOperation::EndpointConfigurationPreview),
-    EndpointConfigurationApply => ("endpoint-configuration-apply", RrdOperation::engramAdmin),
-    engramRead => ("engram-read", RrdOperation::engramRead),
+    EndpointConfigurationApply => ("endpoint-configuration-apply", RrdOperation::EngramAdmin),
+    EngramRead => ("engram-read", RrdOperation::EngramRead),
     HealthLive => ("health-live", RrdOperation::ServiceInspect),
     HealthReady => ("health-ready", RrdOperation::ServiceInspect),
     KnowledgeTreeList => ("knowledge-tree-list", RrdOperation::KnowledgeTreeRead),
@@ -99,6 +99,7 @@ http_dispatch_catalogue! {
     TaskBudgetConfigure => ("task-budget-configure", RrdOperation::ReasoningWrite),
     TaskBudgetRead => ("task-budget-read", RrdOperation::ReasoningRead),
     TaskBudgetStop => ("task-budget-stop", RrdOperation::ReasoningWrite),
+    TaskBudgetResume => ("task-budget-resume", RrdOperation::ReasoningWrite),
     TaskEmbeddingExecute => ("task-embedding-execute", RrdOperation::ReasoningWrite),
     TaskEndpointPropose => ("task-endpoint-propose", RrdOperation::EndpointPropose),
     TaskWorkerExecute => ("task-worker-execute", RrdOperation::WorkerExecute),
@@ -353,6 +354,7 @@ impl AppState {
             }
             Some(HttpDispatch::TaskBudgetRead) => self.read_task_budget(&headers, &body, now),
             Some(HttpDispatch::TaskBudgetStop) => self.stop_task_budget(&headers, &body, now),
+            Some(HttpDispatch::TaskBudgetResume) => self.resume_task_budget(&headers, &body, now),
             Some(HttpDispatch::TaskEmbeddingExecute) => {
                 self.execute_task_embedding(&headers, &body, now)
             }
@@ -396,7 +398,7 @@ impl AppState {
                 self.retire_vector_quantization(&headers, &body, now)
             }
             Some(HttpDispatch::VectorSearch) => self.search_vectors(&headers, &body, now),
-            Some(HttpDispatch::engramRead) => self.read_engram(&headers, &body, &path, now),
+            Some(HttpDispatch::EngramRead) => self.read_engram(&headers, &body, &path, now),
             Some(HttpDispatch::TransactionPreview) => {
                 self.preview_transaction(&headers, &body, &path, now)
             }

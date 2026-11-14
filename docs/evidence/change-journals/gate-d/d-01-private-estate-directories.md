@@ -1,7 +1,7 @@
-# D-01.1 private engram-directory admission
+# D-01.1 private estate-directory admission
 
 **Status:** active bounded implementation evidence; D-01 remains open
-**Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/gate-d/d-01-private-engram-directories`
+**Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/gate-d/d-01-private-estate-directories`
 **Owner:** OBJ-07 prerequisite, D-01.1, POAM-006
 
 ## Baseline and brief
@@ -39,7 +39,7 @@ mount races and installation-wide exclusivity remain subsequent packages.
 
 Owners reviewed: README/AGENTS, OBJ-07, D-01 closure plan, POAM-006/-013,
 change-authoring and implementation-traceability procedures, bootstrap,
-installed-lifecycle and native CI. Complete source reads covered engram layout,
+installed-lifecycle and native CI. Complete source reads covered estate layout,
 private-file facade and both native implementations, token-key export boundary
 and installation recovery. Installation plan/apply, locator/open/inspection,
 publication/cleanup and storage-opening handoff were reviewed by function;
@@ -47,12 +47,12 @@ recovery test stages and native CI selection were inspected.
 
 | Previous behavior | Canonical replacement | Replacement evidence |
 |---|---|---|
-| `engram_layout.rs::owner_only_directory_builder` requests Unix mode or Windows defaults | Native create/validate helpers at the existing private-object boundary; original helper removed directly | Creation under a permissive parent stays private, exclusive, and leaves the parent permissive |
-| Recovery checks directory names/types | `validate_engram_directories` admits each existing private boundary before apply; recovery reuses it | Actual permissive-directory recovery regression, unchanged intent, absent store/credential, successful exact retry after explicit fixture correction |
-| Installed locator callers can traverse permissive engram directories | `read_locator` requires all four directory boundaries before installed access | Locator, credential, verify, open and replay denial with identical file bytes; exact replay succeeds after fixture correction |
+| `estate_layout.rs::owner_only_directory_builder` requests Unix mode or Windows defaults | Native create/validate helpers at the existing private-object boundary; original helper removed directly | Creation under a permissive parent stays private, exclusive, and leaves the parent permissive |
+| Recovery checks directory names/types | `validate_estate_directories` admits each existing private boundary before apply; recovery reuses it | Actual permissive-directory recovery regression, unchanged intent, absent store/credential, successful exact retry after explicit fixture correction |
+| Installed locator callers can traverse permissive estate directories | `read_locator` requires all four directory boundaries before installed access | Locator, credential, verify, open and replay denial with identical file bytes; exact replay succeeds after fixture correction |
 | Windows secret-specific security inspection | One shared owner/protected-DACL validator with separate file/directory shape and inheritance rules | Existing secret tests retained; directory permissive/null/unprotected/missing-inheritance ACL tests |
 
-Changed implementation: `engine/engram_layout.rs`, `installation.rs`,
+Changed implementation: `engine/estate_layout.rs`, `installation.rs`,
 `token_key.rs`, `token_key/private_file.rs`, `private_file/unix.rs` and
 `private_file/windows.rs`. New integration fixtures are inside the existing
 private-file test module, so the native `engine::token_key` CI invocation runs
@@ -83,9 +83,9 @@ all-races or hidden chain-of-thought claim is made.
 ## First failure and verification
 
 Before production changes, `cargo test --locked -p rrd-engine --lib
-permissive_engram_directory_cannot_advance_recovery -- --nocapture` failed:
-0 passed, 1 failed, at `permissive engram directory must deny recovery:
-.rrflow/rrd/roots`. The fixture interrupts after engram-directory creation,
+permissive_estate_directory_cannot_advance_recovery -- --nocapture` failed:
+0 passed, 1 failed, at `permissive estate directory must deny recovery:
+.rrflow/rrd/roots`. The fixture interrupts after estate-directory creation,
 changes a real Windows DACL, then tries exact recovery.
 
 The corrected production path denies all four directory substitutions before

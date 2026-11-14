@@ -77,7 +77,7 @@ fn public_resource_vocabulary_contains_every_canonical_resource() {
         resources,
         BTreeSet::from([
             ResourceKind::Organization,
-            ResourceKind::engram,
+            ResourceKind::Engram,
             ResourceKind::Project,
             ResourceKind::Instance,
             ResourceKind::Tenant,

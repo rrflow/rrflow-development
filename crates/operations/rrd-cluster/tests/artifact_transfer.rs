@@ -75,10 +75,10 @@ fn source_runtime(
 ) -> DataRuntime<RrflowMxStore, LocalObjectStore> {
     let runtime = DataRuntime::new(engine, objects);
     let scope = scope();
-    let subject = RuntimeRef::new("document", "doc:one").unwrap();
+    let subject = RuntimeRef::new("document", "doc-one").unwrap();
     let first = runtime
         .stage_object(
-            "artifact:first",
+            "artifact-first",
             Some(subject.clone()),
             "application/octet-stream",
             bytes,
@@ -86,7 +86,7 @@ fn source_runtime(
         .unwrap();
     let second = runtime
         .stage_object(
-            "artifact:alias",
+            "artifact-alias",
             Some(subject.clone()),
             "application/octet-stream",
             bytes,

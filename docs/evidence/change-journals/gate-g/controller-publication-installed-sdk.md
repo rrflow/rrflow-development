@@ -22,10 +22,10 @@ The executable was independently copied, checked for one hard link and hashed:
 The actual copied executable passed both Python SDK installed attunement cases:
 `RRFLOW_TEST_BINARY=<frozen executable> uv --directory sdks/python run --frozen
 pytest -o addopts= --color=no -q tests/test_installed_attunement.py` reports
-**two passed in 7.73 seconds**, with no skips. These use disposable engrams and
+**two passed in 7.73 seconds**, with no skips. These use disposable estates and
 exercise stale-source replan/start and selection after prior progress. The test
 verifies its executable copy's digest. No model, worker or training operation
-was invoked; credentials stay within private test engrams and process memory.
+was invoked; credentials stay within private test estates and process memory.
 SDK log SHA-256:
 `9cc0020d79762aa5fa806774b5c1980d649686fd377ed7fb1a735636771c23c5`.
 The primary's compact-JSON contract digest `12fd7107` matches independently

@@ -1,5 +1,6 @@
 //! Admission probes, not model-quality observations or learning records.
 mod observation;
+mod resume;
 mod terminal_response;
 use super::*;
 use crate::engine::operation_digest;
@@ -7,7 +8,7 @@ use rrd_contract::{
     ApplyEndpointConfiguration, EndpointConfiguration, EndpointGenerationSettings, EndpointLocator,
     EndpointProfileInput, EndpointResponseFormat, EndpointSelectionChoice,
     EndpointSelectionRequest, EndpointTokenParameter, EndpointWorkerAdapter, EndpointWorkerBinding,
-    EndpointWorkerPolicy, InstalledengramIdentity, PreviewEndpointConfiguration, ReadTaskAttempt,
+    EndpointWorkerPolicy, InstalledEngramIdentity, PreviewEndpointConfiguration, ReadTaskAttempt,
     TaskAttemptStatus,
 };
 use rrd_contract::{EndpointSelectionTask, ReadTask, TaskWorkerRequest, MAX_TASK_STORAGE_KEYS};
@@ -24,7 +25,7 @@ fn admitted_fixture(
 ) {
     let (root, mut engine, lease, task_id, _) = actual_request_fixture();
     configure(&mut engine, 8);
-    engine.installed_engram = Some(InstalledengramIdentity {
+    engine.installed_engram = Some(InstalledEngramIdentity {
         project_id: CanonicalId::new("worker-project").unwrap(),
         engram_id: CanonicalId::new("worker-engram").unwrap(),
         instance_id: instance(),

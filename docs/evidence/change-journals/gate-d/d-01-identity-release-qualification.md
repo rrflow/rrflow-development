@@ -15,8 +15,8 @@ and integration journals remain immutable.
 
 ## Traceability and decisions
 
-The engine's `engram_control.rs` imported `std::io::Write` only for the
-`debug_assertions` failure-injection helper. CLI `rrd-engram-controller.rs`
+The engine's `estate_control.rs` imported `std::io::Write` only for the
+`debug_assertions` failure-injection helper. CLI `rrd-estate-controller.rs`
 and `rrd-backup-controller.rs` imported `Path` and `Duration` only for their
 corresponding debug helpers. Gate these imports with the same condition as
 the existing uses. Keep the release helpers' explicit failure-injection

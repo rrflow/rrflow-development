@@ -31,10 +31,10 @@ benchmarks. The reported provider alias does not attest its weights.
 
 The adjacent [manifest](task-worker-terminal-baseline-receipts/manifest.json)
 binds two byte-preserved result receipts. Original captures, command arrays,
-process exits, binary/build receipt, profile/source identity and full engrams
+process exits, binary/build receipt, profile/source identity and full estates
 remain in SWAG `.swag/evidence/20261031/worker-terminal-response/`.
 Before copying, selected bytes were checked against the actual private credential
-and sensitive field names. Credentials and installed engrams remain local.
+and sensitive field names. Credentials and installed estates remain local.
 Separate public readback envelopes match the recovery payloads exactly.
 
 The pre-edit PR229 evidence brief scopes this journal, the two receipts/manifest

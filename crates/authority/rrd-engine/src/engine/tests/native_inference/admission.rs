@@ -151,7 +151,7 @@ fn cancelled_embedding_returns_while_worker_keeps_its_permit() {
 
 fn interrupted_embedding_keeps_its_permit(cancel: bool) {
     let (_root, mut engine) = isolated_engine();
-    let mut configuration = rrd_contract::engramConfiguration::default();
+    let mut configuration = rrd_contract::EngramConfiguration::default();
     configuration.reasoning.max_step_elapsed_ms = if cancel { 5_000 } else { 250 };
     configuration.configuration_sha256 =
         rrd_contract::engram_configuration_sha256(&configuration).unwrap();

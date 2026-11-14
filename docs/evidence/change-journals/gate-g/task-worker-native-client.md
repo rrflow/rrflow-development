@@ -68,7 +68,7 @@ installed runner, Rust SDK/LFG references, POAM-009 and this linked journal plus
 generated navigation/inventory. The old example source has one canonical
 replacement; historical frozen artifacts and journals remain unchanged.
 Seven invalid worker/native argument combinations exit 2 without creating an
-engram. The merge has no remaining unmerged files.
+estate. The merge has no remaining unmerged files.
 
 Owner contract/client tests, strict all-target/all-feature Clippy, formatting,
 Python syntax, generated-surface parity and repository checks gate publication.

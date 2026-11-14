@@ -35,7 +35,7 @@ impl Participation {
         target: u64,
         driver: &mut PointRun<'_>,
         writer: &mut CampaignWriter,
-        lease: (&engram, &mut u64, &mut Instant),
+        lease: (&Engram, &mut u64, &mut Instant),
     ) -> DriverResult<()> {
         let (engram, ordinal, opened) = lease;
         while self.shared.quiet_turn.load(Ordering::Acquire) < target {
@@ -73,7 +73,7 @@ impl Participation {
     pub async fn boundary(
         &self,
         stage: &str,
-        engram: &engram,
+        engram: &Engram,
         driver: &mut PointRun<'_>,
         ordinal: &mut u64,
         opened: &mut Instant,

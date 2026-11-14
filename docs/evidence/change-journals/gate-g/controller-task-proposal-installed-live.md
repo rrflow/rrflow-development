@@ -30,7 +30,7 @@ container was running without restart/OOM flags. A new owned loopback SSH forwar
 restored the configured endpoint. Authenticated model discovery and health returned
 200; unauthenticated discovery returned 401. Provider metrics showed zero running
 and waiting requests before a separately bounded new development trial. The old
-uncertain engram was preserved; later idle metrics do not prove historical
+uncertain estate was preserved; later idle metrics do not prove historical
 non-dispatch or authorize erasing its capacity.
 
 The actual installed engine admitted a task from an explicitly bounded projection
@@ -73,7 +73,7 @@ and successor-plan execution remain distinct missing capabilities.
 retained public response/observation files with byte sizes and SHA256. It includes
 the baseline accepted/replay/reopen records and each fault's actual provider
 responses, failed public admission/completion, budget and reopen result. Credential
-values and session-token fields were checked absent before copying. Private engram
+values and session-token fields were checked absent before copying. Private estate
 databases, credential files, binaries and unsanitized process environments were
 excluded. Previous failure receipts/journals remain unchanged.
 
@@ -82,7 +82,7 @@ supplied `--build-receipt`, `--contract-example`, `--profile`, `--task-source`,
 explicit credential-file/key/environment names and exclusive `--output`; repeated
 with `--fault-case configuration`, `session`, `stop`, and `disconnect`.
 All five complete trial runs passed. A final `--recover-proof` read of the accepted
-baseline engram matched its previous attempt/budget exactly without dispatch.
+baseline estate matched its previous attempt/budget exactly without dispatch.
 Exact local commands/results are retained under the operator's
 `.swag/evidence/20261029/controller-operation-plan/` and corresponding
 `installed-controller-proposal-connected/`, `installed-controller-fault-*/` and

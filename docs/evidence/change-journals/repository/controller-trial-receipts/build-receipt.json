@@ -176,8 +176,8 @@
             ],
             "opt_level": "3",
             "overflow_checks": false,
-            "package": "rrd-engram",
-            "target": "rrd_engram",
+            "package": "rrd-estate",
+            "target": "rrd_estate",
             "version": "1.0.0"
           },
           {

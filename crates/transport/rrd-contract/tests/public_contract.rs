@@ -2,22 +2,22 @@ use rrd_contract::{
     transaction_operation_sha256, ActivateVectorQuantizationArtifact, BeginTransaction,
     BuildVectorQuantizationArtifact, CanonicalId, CapabilityDescriptor, CapabilityStatus,
     CloseSession, CommitReceipt, CommitTransaction, CorrelationId, CreateInstanceBackup,
-    DataDomainSchema, DataengramOrganisation, DataLogicalModel, DataRecordSchema, DataReference,
+    DataDomainSchema, DataEngramOrganisation, DataLogicalModel, DataRecordSchema, DataReference,
     DataSchemaMode, DataSchemaRegistry, DataSnapshot, DataTableSchema, DataTarget,
     DeleteVectorCollection, DeleteVectorPayloadIndex, DeploymentForm, DeploymentProfile,
     EmbedAndSearchVectors, EmbeddingInput, EmbeddingNetworkPolicy, EndpointPresentation,
-    EnsureQueryIndex, EnsureVectorCollection, EnsureVectorIndex, EnsureVectorPayloadIndex,
-    ErrorBody, ErrorCode, engramActivityPolicySnapshot, engramAuthoritySnapshot,
-    engramBackupJobSnapshot, engramBackupJobState, engramBackupJobsSnapshot,
-    engramBackupRecoveryPolicySnapshot, engramConfiguration, engramMutationResult, engramSnapshot,
+    EngramActivityPolicySnapshot, EngramAuthoritySnapshot, EngramBackupJobSnapshot,
+    EngramBackupJobState, EngramBackupJobsSnapshot, EngramBackupRecoveryPolicySnapshot,
+    EngramConfiguration, EngramMutationResult, EngramSnapshot, EnsureQueryIndex,
+    EnsureVectorCollection, EnsureVectorIndex, EnsureVectorPayloadIndex, ErrorBody, ErrorCode,
     ExecuteQuery, ExecuteQueryTransaction, ExecuteRetrievalQuery, FollowChangefeed,
     ForwardRollbackCounts, ForwardRollbackRequest, GenerateEmbeddings, HybridFusion,
-    IdempotencyBinding, InstalledengramIdentity, ListQueryIndexes, ListVectorCollections,
+    IdempotencyBinding, InstalledEngramIdentity, ListQueryIndexes, ListVectorCollections,
     ListVectorPayloadIndexes, ListVectorQuantizationArtifacts, Liveness, NamedVectorDefinition,
     PollLiveQuery, PreviewTransaction, ProductCapability, ProductCapabilityCatalogue,
     ProductSurface, QueryBudget, QueryExecutionAnalysisSnapshot, QueryExecutionSnapshot,
     QueryIndexKind, QueryPlanCandidate, QueryPlanSnapshot, QueryResult, QueryRowSnapshot,
-    QueryValue, ReadAccessPath, ReadAudit, ReadChangefeed, ReadDataSnapshot, Readengram,
+    QueryValue, ReadAccessPath, ReadAudit, ReadChangefeed, ReadDataSnapshot, ReadEngram,
     ReadEvidence, ReadPathEvidence, ReadStampValidationEvidence, ReadStampValidationMethod,
     Readiness, RenewSession, RequestContext, RequestEnvelope, ResourceId, ResourceKind,
     ResourcePath, ResponseEnvelope, ResponseOutcome, RestoreInstanceBackup,
@@ -89,12 +89,12 @@ fn contract_fixture() -> ContractFixture {
                 storage_profile: StorageProfileKind::RrflowKv,
                 endpoint_presentation: EndpointPresentation::InProcess,
             },
-            installed_engram: Some(InstalledengramIdentity {
+            installed_engram: Some(InstalledEngramIdentity {
                 project_id: CanonicalId::new("alpha-project").unwrap(),
                 engram_id: CanonicalId::new("alpha-engram").unwrap(),
                 instance_id: CanonicalId::new("project-alpha").unwrap(),
             }),
-            configuration: engramConfiguration::default(),
+            configuration: EngramConfiguration::default(),
             instance: ResourceId::new(ResourceKind::Instance, "project-alpha").unwrap(),
             capabilities: vec![
                 CapabilityDescriptor {
@@ -207,7 +207,7 @@ fn contract_fixture() -> ContractFixture {
             resource: ResourcePath {
                 segments: vec![
                     ResourceId::new(ResourceKind::Organization, "local").unwrap(),
-                    ResourceId::new(ResourceKind::engram, "developer").unwrap(),
+                    ResourceId::new(ResourceKind::Engram, "developer").unwrap(),
                     ResourceId::new(ResourceKind::Project, "alpha").unwrap(),
                     ResourceId::new(ResourceKind::Instance, "project-alpha").unwrap(),
                 ],
@@ -353,18 +353,18 @@ fn malformed_identifiers_and_unknown_fields_fail_during_decode() {
 
 #[test]
 fn engram_read_contract_has_frozen_field_names_and_strict_empty_payload() {
-    let snapshot = engramSnapshot {
+    let snapshot = EngramSnapshot {
         format_version: 1,
         id: CanonicalId::new("engram-a").unwrap(),
         revision: 7,
         created_at_unix_ms: 10,
         updated_at_unix_ms: 20,
-        activity_policy: engramActivityPolicySnapshot {
+        activity_policy: EngramActivityPolicySnapshot {
             idle_after_ms: 300_000,
             stale_after_ms: 1_800_000,
             neglected_after_ms: 604_800_000,
         },
-        authority: engramAuthoritySnapshot::empty(),
+        authority: EngramAuthoritySnapshot::empty(),
         instances: Vec::new(),
         operations: Vec::new(),
         idempotency_binding_count: 0,
@@ -380,17 +380,17 @@ fn engram_read_contract_has_frozen_field_names_and_strict_empty_payload() {
             "stale_after_ms": 1800000,
             "neglected_after_ms": 604800000
         },
-        "authority": serde_json::to_value(engramAuthoritySnapshot::empty()).unwrap(),
+        "authority": serde_json::to_value(EngramAuthoritySnapshot::empty()).unwrap(),
         "instances": [],
         "operations": [],
         "idempotency_binding_count": 0
     });
     assert_eq!(serde_json::to_value(&snapshot).unwrap(), expected);
     assert_eq!(
-        serde_json::from_value::<engramSnapshot>(expected).unwrap(),
+        serde_json::from_value::<EngramSnapshot>(expected).unwrap(),
         snapshot
     );
-    let mutation = engramMutationResult {
+    let mutation = EngramMutationResult {
         engram: snapshot,
         idempotent_replay: true,
     };
@@ -402,30 +402,30 @@ fn engram_read_contract_has_frozen_field_names_and_strict_empty_payload() {
         .as_object_mut()
         .unwrap()
         .insert("unknown".into(), serde_json::json!(true));
-    assert!(serde_json::from_value::<engramMutationResult>(unknown).is_err());
+    assert!(serde_json::from_value::<EngramMutationResult>(unknown).is_err());
     assert_eq!(
-        serde_json::from_str::<Readengram>("{}").unwrap(),
-        Readengram {}
+        serde_json::from_str::<ReadEngram>("{}").unwrap(),
+        ReadEngram {}
     );
-    assert!(serde_json::from_str::<Readengram>(r#"{"unknown":true}"#).is_err());
+    assert!(serde_json::from_str::<ReadEngram>(r#"{"unknown":true}"#).is_err());
 }
 
 #[test]
 fn engram_backup_jobs_are_a_separate_strict_public_resource() {
-    let snapshot = engramBackupJobsSnapshot {
+    let snapshot = EngramBackupJobsSnapshot {
         engram_id: CanonicalId::new("engram-a").unwrap(),
         engram_revision: 8,
-        jobs: vec![engramBackupJobSnapshot {
+        jobs: vec![EngramBackupJobSnapshot {
             id: CanonicalId::new("backup-daily").unwrap(),
             instance_id: CanonicalId::new("instance-a").unwrap(),
             source_generation: 1,
             label: "daily.0001".into(),
             request_sha256: "a".repeat(64),
-            state: engramBackupJobState::Pending,
+            state: EngramBackupJobState::Pending,
             attempts: 0,
             created_at_unix_ms: 80,
             updated_at_unix_ms: 80,
-            recovery_policy: engramBackupRecoveryPolicySnapshot {
+            recovery_policy: EngramBackupRecoveryPolicySnapshot {
                 revision: 1,
                 max_rpo_ms: 86_400_000,
                 max_rto_ms: 3_600_000,
@@ -464,7 +464,7 @@ fn engram_backup_jobs_are_a_separate_strict_public_resource() {
     });
     assert_eq!(serde_json::to_value(&snapshot).unwrap(), expected);
     assert_eq!(
-        serde_json::from_value::<engramBackupJobsSnapshot>(expected.clone()).unwrap(),
+        serde_json::from_value::<EngramBackupJobsSnapshot>(expected.clone()).unwrap(),
         snapshot
     );
     let mut missing_policy = expected.clone();
@@ -472,10 +472,10 @@ fn engram_backup_jobs_are_a_separate_strict_public_resource() {
         .as_object_mut()
         .unwrap()
         .remove("recovery_policy");
-    assert!(serde_json::from_value::<engramBackupJobsSnapshot>(missing_policy).is_err());
+    assert!(serde_json::from_value::<EngramBackupJobsSnapshot>(missing_policy).is_err());
     let mut unknown = expected;
     unknown["jobs"][0]["unknown"] = serde_json::json!(true);
-    assert!(serde_json::from_value::<engramBackupJobsSnapshot>(unknown).is_err());
+    assert!(serde_json::from_value::<EngramBackupJobsSnapshot>(unknown).is_err());
 }
 
 #[test]
@@ -497,13 +497,13 @@ fn engram_recovery_posture_is_strict_bounded_by_identity_and_path_free() {
         "restore_evidence": [],
         "prune_intents": []
     });
-    let decoded: rrd_contract::engramRecoverySnapshot =
+    let decoded: rrd_contract::EngramRecoverySnapshot =
         serde_json::from_value(recovery.clone()).unwrap();
     assert_eq!(decoded.policies[0].revision, 1);
     assert!(!serde_json::to_string(&decoded).unwrap().contains("path"));
     let mut unknown = recovery;
     unknown["policies"][0]["target_path"] = serde_json::json!("/tmp/escape");
-    assert!(serde_json::from_value::<rrd_contract::engramRecoverySnapshot>(unknown).is_err());
+    assert!(serde_json::from_value::<rrd_contract::EngramRecoverySnapshot>(unknown).is_err());
 }
 
 #[test]
@@ -1965,7 +1965,7 @@ fn unified_catalogue_is_strict_round_trippable_and_rejects_mode_confusion() {
     let mut registry = DataSchemaRegistry {
         revision: 1,
         migration: "freeze public catalogue".into(),
-        organisation: DataengramOrganisation {
+        organisation: DataEngramOrganisation {
             domains: BTreeMap::from([(
                 CanonicalId::new("knowledge").unwrap(),
                 DataDomainSchema {
@@ -1978,7 +1978,7 @@ fn unified_catalogue_is_strict_round_trippable_and_rejects_mode_confusion() {
                 document.clone(),
                 CanonicalId::new("knowledge").unwrap(),
             )]),
-            ..DataengramOrganisation::default()
+            ..DataEngramOrganisation::default()
         },
         tables: BTreeMap::from([
             (
@@ -2173,7 +2173,7 @@ fn public_schema_requires_one_explicit_nonempty_table_map() {
     let registry = DataSchemaRegistry {
         revision: 1,
         migration: "reject inferred public table models".into(),
-        organisation: DataengramOrganisation::default(),
+        organisation: DataEngramOrganisation::default(),
         tables: BTreeMap::new(),
         records: BTreeMap::from([(document, DataRecordSchema::default())]),
         relations: BTreeMap::new(),

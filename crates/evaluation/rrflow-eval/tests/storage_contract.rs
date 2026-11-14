@@ -14,7 +14,7 @@ fn fixtures() -> (StorageManifest, StorageResult) {
         {"logical_id":"write-c", "request_sha256":hash('e'), "effect_sha256":hash('f'), "resolution":"either"}
     ]);
     let operations: Vec<ExpectedOperation> = serde_json::from_value(expected.clone()).unwrap();
-    let configuration = rrd_contract::engramConfiguration::default();
+    let configuration = rrd_contract::EngramConfiguration::default();
     let mut memtable = json!({});
     for field in [
         "versions",

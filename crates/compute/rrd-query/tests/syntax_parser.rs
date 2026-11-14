@@ -10,10 +10,8 @@ fn traversal_start_ids_round_trip_exactly_when_quoted() {
         "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
         "0000000000000000000000000000000000000000000000000000000000000000",
         "123",
-        "node:with spaces",
-        "quote\"and\\slash",
-        "λ source",
-        "line\nbreak\tvalue",
+        "cursor:7",
+        "a-b.c_d",
     ];
     for id in ids {
         let encoded = serde_json::to_string(id).unwrap();
@@ -28,7 +26,16 @@ fn traversal_start_ids_round_trip_exactly_when_quoted() {
     }
     let simple = "FROM traverse:edge START node:alpha DIRECTION OUTGOING DEPTH 1 AT VALID 1 KNOWN HEAD PROJECT node_id";
     assert_eq!(parse(simple).unwrap().canonical(), simple);
-    for invalid in ["\"\"", "\"\\u0000\"", "\"\0\""] {
+    for invalid in [
+        "\"\"",
+        "\"\\u0000\"",
+        "\"\0\"",
+        "\"node:with spaces\"",
+        "\"quote\\\"and\\\\slash\"",
+        "\"λ source\"",
+        "\"line\\nbreak\\tvalue\"",
+        "\"cursor:007\"",
+    ] {
         let text = format!("FROM traverse:edge START node:{invalid} DIRECTION OUTGOING DEPTH 1 AT VALID 1 KNOWN HEAD PROJECT node_id");
         assert!(parse(&text).is_err(), "{text}");
     }

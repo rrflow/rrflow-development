@@ -1,4 +1,4 @@
-# Verified engram startup without an unused project-source scan
+# Verified estate startup without an unused project-source scan
 
 **Status:** active implementation evidence; installed qualification pending
 **Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/gate-d/d-03-startup-binding-inspection`
@@ -34,7 +34,7 @@ are retained in `startup-first-failure.json`; this is an observed failing oracle
 not an inferred test result.
 
 Reviewed `AGENTS.md`, README ownership, ADR-0002, Gate D, POAM-006, installation
-open/inspect and bootstrap predicates, rooted engram layout, serving publication,
+open/inspect and bootstrap predicates, rooted estate layout, serving publication,
 source/Git observation and hashing, the native observation representation,
 attunement admission/readback helpers, and `RrflowKvInspector` snapshot lifetime.
 The explicit source/native probe used the documented
@@ -43,7 +43,7 @@ metadata observations are not proof of content equality. No upstream code or
 algorithm is adapted into the production change.
 
 Implementation review paths were `crates/authority/rrd-engine/src/engine/`
-`installation.rs`, `core.rs`, `clock.rs`, `engram_layout.rs`, `serving.rs`,
+`installation.rs`, `core.rs`, `clock.rs`, `estate_layout.rs`, `serving.rs`,
 `attunement.rs`, `installation/bootstrap.rs`, `installation/inventory.rs`,
 `installation/inventory/git_inputs.rs`, `tests/installation.rs`,
 `tests/attunement.rs` and the new test below; additionally
@@ -101,7 +101,7 @@ git diff --check
 Raw logs and native-probe records remain under
 `D:/projects/swag/.swag/evidence/20261030/engine-source-inventory/` with `startup-`,
 `native-plan-observation-` and `fresh-native-observation-` prefixes. The original
-failed/successful engrams and source-identified PR226 binary remain intact.
+failed/successful estates and source-identified PR226 binary remain intact.
 
 Changed paths are this installation owner, the attunement test module/new test,
 this linked journal, POAM-006 and generated navigation. Navigation, documentation,

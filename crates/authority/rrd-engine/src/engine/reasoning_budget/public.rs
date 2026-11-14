@@ -10,7 +10,7 @@ fn contract(error: rrd_contract::ContractError) -> ServiceError {
     ServiceError::Contract(error.to_string())
 }
 
-fn view(budget: Option<TaskReasoningBudget>) -> Result<TaskBudgetView> {
+pub(super) fn view(budget: Option<TaskReasoningBudget>) -> Result<TaskBudgetView> {
     let budget_sha256 = budget.as_ref().map(operation_digest).transpose()?;
     let result = TaskBudgetView {
         budget,

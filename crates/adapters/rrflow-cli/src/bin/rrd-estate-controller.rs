@@ -7,8 +7,8 @@ use std::path::PathBuf;
 #[cfg(debug_assertions)]
 use std::time::Duration;
 
-const HOLD_AFTER_EFFECT_ENV: &str = "RRD_engram_TEST_HOLD_AFTER_EFFECT_FILE";
-const HOLD_AFTER_STEP_ENV: &str = "RRD_engram_TEST_HOLD_AFTER_STEP_FILE";
+const HOLD_AFTER_EFFECT_ENV: &str = "RRD_ENGRAM_TEST_HOLD_AFTER_EFFECT_FILE";
+const HOLD_AFTER_STEP_ENV: &str = "RRD_ENGRAM_TEST_HOLD_AFTER_STEP_FILE";
 
 struct Args {
     db: PathBuf,

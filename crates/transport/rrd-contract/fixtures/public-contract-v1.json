@@ -75,7 +75,7 @@
       "clock": {
         "maximum_rollback_ms": 0
       },
-      "configuration_sha256": "2d382dbde4b923db65fb5ebbf841d12b45ec0e278c7cab41635dbff782072d55",
+      "configuration_sha256": "42b865d4d499e940b216c6148becc0a822c36ff6628fee6396f270373c237b87",
       "format_version": 3,
       "query": {
         "max_batch_rows": 256,

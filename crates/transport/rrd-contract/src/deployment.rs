@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 
 pub const DEPLOYMENT_PROFILE_CONTRACT_VERSION: u16 = 1;
-pub const engram_CONFIGURATION_FORMAT_VERSION: u16 = 3;
+pub const ENGRAM_CONFIGURATION_FORMAT_VERSION: u16 = 3;
 pub const MAX_CLOCK_ROLLBACK_MS: u64 = 3_600_000;
 pub const MAX_REASONING_RUN_ELAPSED_MS: u64 = 3_600_000;
 pub const MAX_REASONING_STEPS: u64 = 10_000;
@@ -23,13 +23,13 @@ pub const MAX_REASONING_STEP_ELAPSED_MS: u64 = 300_000;
 /// local installation must not fabricate a tenant merely to address itself.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct InstalledengramIdentity {
+pub struct InstalledEngramIdentity {
     pub project_id: CanonicalId,
     pub engram_id: CanonicalId,
     pub instance_id: CanonicalId,
 }
 
-impl InstalledengramIdentity {
+impl InstalledEngramIdentity {
     pub fn validate(&self) -> Result<()> {
         if self.project_id == self.engram_id
             || self.project_id == self.instance_id
@@ -41,7 +41,7 @@ impl InstalledengramIdentity {
     }
 }
 
-impl fmt::Display for InstalledengramIdentity {
+impl fmt::Display for InstalledEngramIdentity {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             formatter,
@@ -515,7 +515,7 @@ impl StorageLimits {
 /// so neither can be forged or silently retained across an edit.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct engramConfigurationInput {
+pub struct EngramConfigurationInput {
     pub format_version: u16,
     pub clock: ClockPolicy,
     pub storage: StorageLimits,
@@ -524,11 +524,11 @@ pub struct engramConfigurationInput {
     pub query: QueryBudget,
 }
 
-impl engramConfigurationInput {
+impl EngramConfigurationInput {
     pub fn validate(&self) -> Result<()> {
-        if self.format_version != engram_CONFIGURATION_FORMAT_VERSION {
+        if self.format_version != ENGRAM_CONFIGURATION_FORMAT_VERSION {
             return invalid(format!(
-                "engram configuration format version must be {engram_CONFIGURATION_FORMAT_VERSION}"
+                "engram configuration format version must be {ENGRAM_CONFIGURATION_FORMAT_VERSION}"
             ));
         }
         self.clock.validate()?;
@@ -544,7 +544,7 @@ impl engramConfigurationInput {
 /// configure-plan/configure-apply operation.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct engramConfiguration {
+pub struct EngramConfiguration {
     pub format_version: u16,
     pub revision: u64,
     pub clock: ClockPolicy,
@@ -555,8 +555,8 @@ pub struct engramConfiguration {
     pub configuration_sha256: String,
 }
 
-impl engramConfiguration {
-    pub fn from_input(revision: u64, input: engramConfigurationInput) -> Result<Self> {
+impl EngramConfiguration {
+    pub fn from_input(revision: u64, input: EngramConfigurationInput) -> Result<Self> {
         input.validate()?;
         if revision == 0 {
             return invalid("engram configuration revision must be greater than zero");
@@ -576,7 +576,7 @@ impl engramConfiguration {
     }
 
     pub fn validate(&self) -> Result<()> {
-        engramConfigurationInput {
+        EngramConfigurationInput {
             format_version: self.format_version,
             clock: self.clock.clone(),
             storage: self.storage.clone(),
@@ -640,12 +640,12 @@ impl engramConfiguration {
     }
 }
 
-impl Default for engramConfiguration {
+impl Default for EngramConfiguration {
     fn default() -> Self {
         Self::from_input(
             1,
-            engramConfigurationInput {
-                format_version: engram_CONFIGURATION_FORMAT_VERSION,
+            EngramConfigurationInput {
+                format_version: ENGRAM_CONFIGURATION_FORMAT_VERSION,
                 clock: ClockPolicy {
                     maximum_rollback_ms: 0,
                 },
@@ -668,7 +668,7 @@ impl Default for engramConfiguration {
     }
 }
 
-pub fn engram_configuration_sha256(configuration: &engramConfiguration) -> Result<String> {
+pub fn engram_configuration_sha256(configuration: &EngramConfiguration) -> Result<String> {
     let encoded = serde_json::to_vec(&(
         configuration.format_version,
         configuration.revision,

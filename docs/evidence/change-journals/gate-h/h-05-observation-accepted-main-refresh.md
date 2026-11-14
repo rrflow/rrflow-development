@@ -78,7 +78,7 @@ Strict-lint log SHA-256:
 ## Installed delivery and restart
 
 The isolated loopback trial used the newly built engine and the hash-verified
-retained RROFLOW receiver. It installed an engram over a copy of an actual SWAG
+retained RROFLOW receiver. It installed an estate over a copy of an actual SWAG
 document, explicitly configured export, prepared a real engine attunement-job
 observation, delivered it and read both sides. After abruptly terminating and
 reopening both owned processes, engine readback was identical. Acknowledged

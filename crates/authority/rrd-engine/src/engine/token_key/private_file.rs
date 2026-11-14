@@ -193,7 +193,7 @@ mod tests {
     #[cfg(any(unix, windows))]
     #[test]
     fn permissive_engram_directory_cannot_advance_recovery() {
-        use crate::engine::engram_layout::engramLayout;
+        use crate::engine::engram_layout::EngramLayout;
         use crate::engine::installation::recovery::InstallApplyStage;
         use crate::RrdEngine;
         use rrd_contract::InstallationTargetKind;
@@ -215,7 +215,7 @@ mod tests {
                 &executable,
             )
             .unwrap();
-            let layout = engramLayout::new(
+            let layout = EngramLayout::new(
                 &preview.installation.storage_root_id,
                 &preview.installation.initial_principal_id,
             )
@@ -227,7 +227,7 @@ mod tests {
                 &preview.installation.plan_sha256,
                 1_800_000_000_000,
                 &executable,
-                InstallApplyStage::engramDirectoriesReady,
+                InstallApplyStage::EngramDirectoriesReady,
             )
             .unwrap_err();
             assert!(error.to_string().contains("test installation failpoint"));

@@ -3,6 +3,9 @@ use rrd_contract::*;
 use serde_json::Value;
 use std::{collections::BTreeMap, path::PathBuf};
 
+#[path = "support/observed_configuration.rs"]
+mod observed_configuration;
+
 fn fixture(name: &str) -> Vec<u8> {
     std::fs::read(
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -12,9 +15,18 @@ fn fixture(name: &str) -> Vec<u8> {
     .unwrap()
 }
 
+fn projected_configuration() -> EndpointConfiguration {
+    let files: Value = serde_json::from_slice(&fixture("files.json")).unwrap();
+    let receipt: Value = serde_json::from_slice(&fixture("receipt.json")).unwrap();
+    observed_configuration::project(
+        &fixture("configuration.json"),
+        files["configuration.json"].as_str().unwrap(),
+        receipt["configurationSha256"].as_str().unwrap(),
+    )
+}
+
 fn proposed() -> (EndpointConfiguration, EndpointWorkerPolicy) {
-    let mut configuration: EndpointConfiguration =
-        serde_json::from_slice(&fixture("configuration.json")).unwrap();
+    let mut configuration = projected_configuration();
     let allowance: EndpointSelectionAllowance =
         serde_json::from_slice(&fixture("allowance.json")).unwrap();
     let request: Value = serde_json::from_slice(&fixture("choice-request.json")).unwrap();
@@ -79,11 +91,10 @@ fn proposed() -> (EndpointConfiguration, EndpointWorkerPolicy) {
 }
 
 #[test]
-fn worker_absence_preserves_identity_and_present_settings_require_a_new_approval() {
-    let original: EndpointConfiguration =
-        serde_json::from_slice(&fixture("configuration.json")).unwrap();
+fn worker_absence_preserves_projected_identity_and_new_settings_require_approval() {
+    let original = projected_configuration();
     let receipt: Value = serde_json::from_slice(&fixture("receipt.json")).unwrap();
-    assert_eq!(original.sha256().unwrap(), receipt["configurationSha256"]);
+    assert_ne!(original.sha256().unwrap(), receipt["configurationSha256"]);
     assert!(original.profile.as_ref().unwrap().worker_policy.is_none());
     assert!(serde_json::to_value(original).unwrap()["profile"]
         .get("worker_policy")

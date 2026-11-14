@@ -61,7 +61,7 @@ pub(super) async fn backup_started(
 }
 
 pub(super) async fn reopens(
-    engram: &engram,
+    engram: &Engram,
     child: &mut Option<super::super::process::Process>,
     work: &mut Workload,
     campaign: &StorageCampaign,
@@ -86,7 +86,7 @@ pub(super) async fn reopens(
 }
 
 async fn reopen_inner(
-    engram: &engram,
+    engram: &Engram,
     child: &mut Option<super::super::process::Process>,
     work: &mut Workload,
     campaign: &StorageCampaign,

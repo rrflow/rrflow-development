@@ -202,8 +202,8 @@ fn commit(storage: &dyn StorageEngine) -> PublicEvidence {
             },
         )
         .unwrap();
-    let source = RuntimeRef::new("file", "src/lib.rs").unwrap();
-    let target = RuntimeRef::new("file", "src/store.rs").unwrap();
+    let source = RuntimeRef::new("file", "src-lib.rs").unwrap();
+    let target = RuntimeRef::new("file", "src-store.rs").unwrap();
     let commit = RuntimeCommit {
         scope: scope.clone(),
         at: 100,

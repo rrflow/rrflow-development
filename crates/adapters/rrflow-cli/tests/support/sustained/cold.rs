@@ -3,7 +3,7 @@ use super::*;
 
 #[cfg(not(target_os = "linux"))]
 pub(super) async fn run(
-    _engram: &engram,
+    _engram: &Engram,
     _child: &mut Option<super::super::process::Process>,
     _work: &mut Workload,
     _campaign: &StorageCampaign,
@@ -16,7 +16,7 @@ pub(super) async fn run(
 
 #[cfg(target_os = "linux")]
 pub(super) async fn run(
-    engram: &engram,
+    engram: &Engram,
     child: &mut Option<super::super::process::Process>,
     work: &mut Workload,
     campaign: &StorageCampaign,

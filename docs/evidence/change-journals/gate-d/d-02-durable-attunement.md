@@ -18,7 +18,7 @@ Before: installation persisted a pending job but no engine handler could run,
 fence, pause, cancel or resume it. After: explicit authenticated embedded
 `read_attunement`/`control_attunement` operate that same job. This is an additive
 Rust engine API; existing HTTP/SDK operation catalogue and wire models are
-unchanged. engramRead admits status and engramAdmin admits mutations. Neither
+unchanged. EstateRead admits status and EstateAdmin admits mutations. Neither
 installation, task-open nor readiness activates work. Public client dispatch,
 source-effect authorization and the complete D-02c settings surface remain open.
 
@@ -84,7 +84,7 @@ chain of thought or a schema of reasoning.
 
 ## Failure oracles and results
 
-Focused cases install both fresh and existing engrams, then verify Start ->
+Focused cases install both fresh and existing estates, then verify Start ->
 Connect -> explicit unavailable Inventory, exact receipt replay after later
 state changes and reopen, retryable phase resume, competing claims, foreign
 workers/generations, pause/expiry recovery, cancellation fencing and terminal
@@ -92,7 +92,7 @@ persistence, invalid identity/token/deadline/lease, oversized encoding, finite
 transition limits with a cancellation reserve, and isolation of two installed
 projects. No manually fabricated indexed data is presented as ingestion proof.
 
-The native subprocess case opens the installed engram, durably claims a job,
+The native subprocess case opens the installed estate, durably claims a job,
 and is killed with its storage handle still open before the accepted response
 is delivered to the parent. A new process owner replays the original receipt,
 recovers the expired lease, resumes and publishes one Connect checkpoint.

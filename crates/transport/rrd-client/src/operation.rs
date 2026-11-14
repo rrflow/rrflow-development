@@ -10,15 +10,15 @@ use rrd_contract::{
     BuildVectorQuantizationArtifactResult, CanonicalId, ChangefeedFollowResult, ChangefeedPage,
     CloseTask, CommitReceipt, CommitTransaction, ContextPacket, CorrelationId,
     CreateInstanceBackup, CreateInstanceBackupResult, DeleteVectorPayloadIndex,
-    DeleteVectorPayloadIndexResult, DiagnosticSnapshot, EnsureVectorCollection,
+    DeleteVectorPayloadIndexResult, DiagnosticSnapshot, EngramSnapshot, EnsureVectorCollection,
     EnsureVectorCollectionResult, EnsureVectorIndex, EnsureVectorIndexResult,
-    EnsureVectorPayloadIndex, EnsureVectorPayloadIndexResult, engramSnapshot, ExecuteQuery,
-    ExportAudit, FollowChangefeed, InstanceBackupCatalogueSnapshot, KnowledgeTreeCatalogue,
-    LaunchPromptFlight, LaunchPromptFlightResult, ListInstanceBackups, ListKnowledgeTrees,
-    ListPromptFlights, ListTasks, ListVectorCollections, ListVectorQuantizationArtifacts,
+    EnsureVectorPayloadIndex, EnsureVectorPayloadIndexResult, ExecuteQuery, ExportAudit,
+    FollowChangefeed, InstanceBackupCatalogueSnapshot, KnowledgeTreeCatalogue, LaunchPromptFlight,
+    LaunchPromptFlightResult, ListInstanceBackups, ListKnowledgeTrees, ListPromptFlights,
+    ListTasks, ListVectorCollections, ListVectorQuantizationArtifacts,
     ListVectorQuantizationArtifactsResult, OpenTask, PreviewTransaction, PromptFlightPage,
     PromptFlightReadResult, QueryResult, ReadAudit, ReadChangefeed, ReadDiagnosticSnapshot,
-    Readengram, ReadPromptFlight, ReadTask, ReplaceKnowledgeTrees, ReplaceKnowledgeTreesResult,
+    ReadEngram, ReadPromptFlight, ReadTask, ReplaceKnowledgeTrees, ReplaceKnowledgeTreesResult,
     RequestContext, RequestEnvelope, ResourceId, ResourceKind, ResourcePath, ResponseEnvelope,
     ResponseOutcome, RestoreInstanceBackup, RestoreInstanceBackupResult,
     RetireVectorQuantizationArtifact, RetireVectorQuantizationArtifactResult, RetrieveVectorPoints,
@@ -752,12 +752,12 @@ impl RrdClient {
         &self,
         session: &Session,
         engram: CanonicalId,
-        request: Readengram,
+        request: ReadEngram,
         options: RequestOptions,
-    ) -> Result<engramSnapshot> {
+    ) -> Result<EngramSnapshot> {
         let resource = ResourcePath {
             segments: vec![
-                ResourceId::new(ResourceKind::engram, engram.as_str().to_owned())
+                ResourceId::new(ResourceKind::Engram, engram.as_str().to_owned())
                     .map_err(contract)?,
                 ResourceId::new(ResourceKind::Instance, self.instance.as_str().to_owned())
                     .map_err(contract)?,

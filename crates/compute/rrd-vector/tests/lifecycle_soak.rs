@@ -11,8 +11,8 @@ use std::collections::{BTreeSet, HashSet};
 #[test]
 fn deterministic_update_delete_reopen_and_generation_compaction_soak() {
     let scope = ScopeId::new("instance:vector-lifecycle-soak").unwrap();
-    let exact_id = ProjectionId::new("vector:exact:soak").unwrap();
-    let hnsw_id = ProjectionId::new("vector:hnsw:soak").unwrap();
+    let exact_id = ProjectionId::new("vector-exact-soak").unwrap();
+    let hnsw_id = ProjectionId::new("vector-hnsw-soak").unwrap();
     let mut random = 0x51a7_5eed_u64;
     let mut history = Vec::new();
     let mut cursor = 0;
