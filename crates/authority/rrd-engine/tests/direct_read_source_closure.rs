@@ -236,7 +236,7 @@ const ALLOWED_USES: &[AllowedUse] = &[
         operation: "runtime trace-phase oracle",
     },
     AllowedUse {
-        path: "crates/authority/rrd-engine/src/engine/cold_history.rs",
+        path: "crates/authority/rrd-engine/src/engine/cold_history/tests.rs",
         kind: SensitiveReadUse::CausalLogPage,
         count: 1,
         operation: "cold-history publication test oracle",
