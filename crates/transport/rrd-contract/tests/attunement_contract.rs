@@ -20,6 +20,82 @@ use serde::{Deserialize, Serialize};
 const CREATED_AT: u64 = 1_800_000_000_000;
 
 #[test]
+fn public_replan_operations_have_exact_authentication_and_mutation_boundaries() {
+    let catalogue = rrd_contract::endpoint_catalogue();
+    for (id, path, mutation, action) in [
+        (
+            "attunement-pause",
+            "/v1/attunement/pause",
+            true,
+            SecurityAction::EstateAdmin,
+        ),
+        (
+            "attunement-recover-expired",
+            "/v1/attunement/recover-expired",
+            true,
+            SecurityAction::EstateAdmin,
+        ),
+        (
+            "attunement-resume",
+            "/v1/attunement/resume",
+            true,
+            SecurityAction::EstateAdmin,
+        ),
+        (
+            "attunement-start",
+            "/v1/attunement/start",
+            true,
+            SecurityAction::EstateAdmin,
+        ),
+        (
+            "attunement-step",
+            "/v1/attunement/step",
+            true,
+            SecurityAction::EstateAdmin,
+        ),
+        (
+            "attunement-replan-preview",
+            "/v1/attunement/replan/preview",
+            false,
+            SecurityAction::EstateAdmin,
+        ),
+        (
+            "attunement-replan-accept",
+            "/v1/attunement/replan/accept",
+            true,
+            SecurityAction::EstateAdmin,
+        ),
+        (
+            "attunement-replan-receipt-read",
+            "/v1/attunement/replan/receipt/read",
+            false,
+            SecurityAction::EstateRead,
+        ),
+    ] {
+        let endpoint = catalogue
+            .endpoints
+            .iter()
+            .find(|endpoint| endpoint.operation.as_str() == id)
+            .unwrap();
+        assert_eq!(endpoint.path, path);
+        assert_eq!(endpoint.mutation, mutation);
+        assert_eq!(endpoint.action.fixed_action(), Some(action));
+        assert_eq!(
+            endpoint.authentication,
+            rrd_contract::EndpointAuthentication::SessionBearer
+        );
+    }
+    assert!(serde_json::from_value::<rrd_contract::StartAttunement>(serde_json::json!({
+        "contract_version": 1, "job_id": "job-a", "plan_sha256": "bad", "expected_revision": 1, "lease_ms": 100,
+        "unknown_effect": true
+    })).is_err());
+    let invalid: rrd_contract::StartAttunement = serde_json::from_value(serde_json::json!({
+        "contract_version": 2, "job_id": "job-a", "plan_sha256": "bad", "expected_revision": 1, "lease_ms": 100
+    })).unwrap();
+    assert!(invalid.validate().is_err());
+}
+
+#[test]
 fn attunement_status_is_an_authenticated_read_operation() {
     let catalogue = rrd_contract::endpoint_catalogue();
     let endpoint = catalogue
@@ -1071,4 +1147,20 @@ fn bootstrap_rejects_unknown_effects_versions_and_unbounded_generation() {
     let mut json = serde_json::to_value(&plan).unwrap();
     json["bootstrap"]["initial_records"][0] = serde_json::json!("unknown_record");
     assert!(serde_json::from_value::<InstallationPlan>(json).is_err());
+}
+
+#[test]
+fn replan_seed_preserves_the_existing_engine_wire_digest() {
+    let digest = rrd_contract::attunement_replan_seed(
+        &canonical_id("job-test"),
+        5,
+        &"a".repeat(64),
+        2,
+        &"b".repeat(64),
+    )
+    .unwrap();
+    assert_eq!(
+        digest,
+        "a2b55f6708f6bd425c4ffea1a6002bcff1a49568d2a5d54619b9497908196e8f"
+    );
 }
