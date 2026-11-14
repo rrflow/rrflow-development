@@ -1,9 +1,9 @@
 # Generated from rrd-contract; do not edit.
-# OpenAPI SHA-256: fae1001937d962419fb2ce610fe7617705678cc73fe3ce2247ebbbf8a8f39a46
+# OpenAPI SHA-256: 52b7e85144b8b7b4e75291033cf151a0674c97f87fff2054d66f23c97a4bfb6d
 from typing import Final, Literal, TypedDict
 
 ENDPOINT_OPENAPI_DOCUMENT_SHA256: Final[str] = (
-    "fae1001937d962419fb2ce610fe7617705678cc73fe3ce2247ebbbf8a8f39a46"
+    "52b7e85144b8b7b4e75291033cf151a0674c97f87fff2054d66f23c97a4bfb6d"
 )
 
 OperationId = Literal[
@@ -53,6 +53,7 @@ OperationId = Literal[
     "task-budget-stop",
     "task-close",
     "task-embedding-execute",
+    "task-endpoint-propose",
     "task-list",
     "task-open",
     "task-read",
@@ -355,6 +356,12 @@ ENDPOINTS: Final[dict[OperationId, Endpoint]] = {
         "method": "POST",
         "mutation": True,
         "path": "/v1/tasks/embedding/execute",
+    },
+    "task-endpoint-propose": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": True,
+        "path": "/v1/tasks/endpoint/propose",
     },
     "task-list": {
         "authentication": "session_bearer",

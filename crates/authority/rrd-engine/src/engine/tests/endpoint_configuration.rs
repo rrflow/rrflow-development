@@ -127,6 +127,10 @@ fn actual_selector_settings_follow_existing_configuration_approval_and_reopen() 
         .unwrap();
     let policy = rrd_contract::EndpointSelectionPolicy {
         contract_version: allowance.contract_version,
+        purpose: rrd_contract::EndpointSelectionPurpose::ExperimentalProposal,
+        allow_unverified_identity: true,
+        allow_network: true,
+        maximum_concurrent_proposals: controller.limits.max_concurrency,
         controller_binding_id: controller.id.clone(),
         workload_class: allowance.workload_class,
         limits: allowance.limits,

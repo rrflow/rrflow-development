@@ -1,0 +1,43 @@
+{
+  "status": 412,
+  "request": {
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "context": {
+      "request_id": "controller-proof-9484333deea5478fbe7a8333b218f922",
+      "operation_id": "controller-proof-9484333deea5478fbe7a8333b218f922",
+      "idempotency_key": "controller-proof-9484333deea5478fbe7a8333b218f922",
+      "deadline_unix_ms": null
+    },
+    "resource": {
+      "segments": [
+        {
+          "kind": "instance",
+          "id": "instance-99df97f08ba5491a74af865c"
+        }
+      ]
+    },
+    "payload": {
+      "scope": "instance:instance-99df97f08ba5491a74af865c",
+      "task_id": "task-b4baf6db019ed731999e952ccd3a5f74c8c288ff48a744523e16dcf4b5e95da2",
+      "attempt_id": "actual-proposal-83acc0f462ab42bab01070c608132a0b",
+      "max_storage_keys": 1000000,
+      "expected_task_sha256": "8b3fb37a59f5103294835df601bfe117e8cefec35fcee43c3a2371bf462ed2d4",
+      "expected_configuration_sha256": "bdef244f0542e4c0fa7c4c2bd79995988eacf465d2596f6a96d8faad322ddc8b"
+    }
+  },
+  "response": {
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "request_id": "controller-proof-9484333deea5478fbe7a8333b218f922",
+    "operation_id": "controller-proof-9484333deea5478fbe7a8333b218f922",
+    "outcome": {
+      "status": "error",
+      "error": {
+        "code": "failed_precondition",
+        "message": "EndpointCallFailed { reason: \"chat cancelled\", execution_may_continue: true }",
+        "retryable": false
+      }
+    }
+  }
+}
