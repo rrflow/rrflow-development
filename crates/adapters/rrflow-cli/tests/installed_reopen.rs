@@ -188,8 +188,24 @@ impl Estate {
         clock: Instant,
         lifetime: Duration,
     ) -> (process::Process, RrdClient, Value) {
+        self.start_for_with_trace(clock, lifetime, false)
+    }
+
+    fn start_for_with_trace(
+        &self,
+        clock: Instant,
+        lifetime: Duration,
+        trace: bool,
+    ) -> (process::Process, RrdClient, Value) {
         let started_ns = clock.elapsed().as_nanos() as u64;
         let mut command = self.command();
+        if trace {
+            command.env(
+                "RRFLOW_TRACE",
+                "rrd_server::diagnostic=debug,rrd_store::diagnostic=debug",
+            );
+            command.env("RRFLOW_TRACE_FORMAT", "json");
+        }
         command
             .args(["--json", "serve", "--project"])
             .arg(&self.project)
