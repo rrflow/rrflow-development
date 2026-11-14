@@ -1,6 +1,6 @@
 use super::*;
 use crate::engine::clock::FixedClock;
-use crate::engine::engram_layout::engramLayout;
+use crate::engine::engram_layout::EngramLayout;
 use crate::engine::installation::recovery::InstallApplyStage;
 use crate::engine::token_key::{read_api_key_document, read_token_key};
 use crate::InstallationPreview;
@@ -35,8 +35,8 @@ fn plan(project: &Path, executable: &Path) -> InstallationPreview {
     .unwrap()
 }
 
-fn layout(preview: &InstallationPreview) -> engramLayout {
-    engramLayout::new(
+fn layout(preview: &InstallationPreview) -> EngramLayout {
+    EngramLayout::new(
         &preview.installation.storage_root_id,
         &preview.installation.initial_principal_id,
     )
@@ -183,7 +183,7 @@ fn interrupted_installation_cannot_resume_at_a_different_root() {
 fn interrupted_apply_recovers_at_every_durable_stage_without_duplicate_authority() {
     let stages = [
         InstallApplyStage::IntentPublished,
-        InstallApplyStage::engramDirectoriesReady,
+        InstallApplyStage::EngramDirectoriesReady,
         InstallApplyStage::BootstrapStaged,
         InstallApplyStage::BootstrapReady,
         InstallApplyStage::StorageReady,
@@ -716,7 +716,7 @@ fn symbolic_intent_collision_is_preserved_and_rejected() {
 fn anchored_installation_preserves_outside_state_at_durable_boundaries() {
     for stage in [
         InstallApplyStage::IntentPublished,
-        InstallApplyStage::engramDirectoriesReady,
+        InstallApplyStage::EngramDirectoriesReady,
         InstallApplyStage::BootstrapStaged,
         InstallApplyStage::BootstrapReady,
         InstallApplyStage::LocatorPublished,

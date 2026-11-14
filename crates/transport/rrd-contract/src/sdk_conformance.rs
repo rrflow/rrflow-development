@@ -4,7 +4,7 @@ use crate::{
     CanonicalId, CloseSession, CommitTransaction, ContractError, CreateInstanceBackup,
     CreateSession, DeleteVectorPayloadIndex, EnsureVectorCollection, EnsureVectorIndex,
     EnsureVectorPayloadIndex, ErrorCode, ExecuteQuery, ListInstanceBackups, PreviewTransaction,
-    ReadChangefeed, Readengram, RenewSession, Result, SearchVectors, VectorQuantizationMethod,
+    ReadChangefeed, ReadEngram, RenewSession, Result, SearchVectors, VectorQuantizationMethod,
     VectorSearchMode, PROTOCOL, PROTOCOL_VERSION,
 };
 use schemars::JsonSchema;
@@ -50,7 +50,7 @@ pub struct SdkConformanceCorpus {
     pub vector: SdkConformanceVector,
     pub changefeed: SdkConformanceChangefeed,
     pub backup: SdkConformanceBackup,
-    pub engram: Readengram,
+    pub engram: ReadEngram,
     pub expected: SdkConformanceExpected,
 }
 

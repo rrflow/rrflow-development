@@ -44,7 +44,7 @@ invent checksums, weaken a failure oracle, or report unrun checks as passing.
   Certificate bootstrap now extracts Apt-authenticated trust roots before
   snapshot installation, avoiding an unpinned OpenSSL dependency upgrade.
 - The real SDK harness exposed the existing stale corpus installation identity.
-  Six instance/engram/scope references in `fixtures/rrd-sdk-conformance-v1.json`
+  Six instance/estate/scope references in `fixtures/rrd-sdk-conformance-v1.json`
   now match the actual deterministic installer result. The harness still fails
   on identity mismatch; no assertion or authorization boundary was removed.
   The resulting corpus SHA-256 is
@@ -86,7 +86,7 @@ Linux Rust 1.99.1 and the rebuilt SDK toolchains.
   guide's literal retired name. After correction, the focused test and the
   complete 29-test architecture suite passed.
 - `cargo test -p rrflow-cli --all-targets --locked`: 12 passed, including the
-  four installed-lifecycle tests and backup/engram controller tests.
+  four installed-lifecycle tests and backup/estate controller tests.
 - `cargo clippy -p rrflow-cli -p rrd-contract --all-targets --locked -- -D warnings`:
   passed, including the dependency closure.
 - `cargo test -p rrd-contract --test public_contract supported_sdks_share_one_strict_semantic_corpus --locked`:

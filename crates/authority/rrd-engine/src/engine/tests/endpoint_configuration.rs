@@ -2,12 +2,12 @@ use super::*;
 use rrd_contract::{
     ApplyEndpointConfiguration, BindingKind, BindingLimits, CredentialReference, DeclaredFootprint,
     EndpointBinding, EndpointConfiguration, EndpointConfigurationPlan, EndpointLocator,
-    EndpointProfileInput, InstalledengramIdentity, PreviewEndpointConfiguration, SessionLease,
+    EndpointProfileInput, InstalledEngramIdentity, PreviewEndpointConfiguration, SessionLease,
     WorkloadClass,
 };
 
 fn bind(engine: &mut RrdEngine, project: &str) {
-    engine.installed_engram = Some(InstalledengramIdentity {
+    engine.installed_engram = Some(InstalledEngramIdentity {
         project_id: CanonicalId::new(project).unwrap(),
         engram_id: CanonicalId::new("endpoint-engram").unwrap(),
         instance_id: instance(),
@@ -507,7 +507,7 @@ fn endpoint_configuration_read_permission_does_not_allow_preview_or_apply() {
         expires_at_unix_ms: u64::MAX,
         disabled: false,
         role_ids: BTreeSet::new(),
-        grants: [SecurityAction::SessionCreate, SecurityAction::engramRead]
+        grants: [SecurityAction::SessionCreate, SecurityAction::EngramRead]
             .into_iter()
             .map(|action| ResourceGrant {
                 action,

@@ -17,7 +17,7 @@ its prerequisite candidates.
 The [integrated failure record](c-07g-integrated-native-growth.md) is the first
 native oracle: after all 10k writes and independent readbacks, restart exits
 with `multiply linked file denied`, then TempDir unwinding removes the failed
-engram. A link-count check of `!= 1` also rejects zero links, so the old message
+estate. A link-count check of `!= 1` also rejects zero links, so the old message
 does not establish a hard-link attack or publication bug. Native publication
 already uses exclusive rename APIs; no speculative publication rewrite follows.
 
@@ -41,7 +41,7 @@ retained-handle reopen retains its original strict validation.
 Normal completion drops it normally. Explicit retention changes only cleanup
 ownership; it neither copies files nor chooses a new path. The installed
 startup failure branch terminates the child, collects/reaps its bounded output,
-then retains that original engram and prints a local private-state location.
+then retains that original estate and prints a local private-state location.
 It does not print credentials or automatically upload those bytes. Retention
 uses the existing admitted workload allocation; it does not grow another copy.
 Unrelated state and successful-run cleanup remain covered.
@@ -66,7 +66,7 @@ This uses existing Rust/native file metadata and TempDir ownership, with no
 external algorithm adaptation. No new research claim is made. The previously
 reviewed PSI source supports only the diagnostic stall interpretation. Bounded
 file context and private original-state retention are necessary because the
-first failed engram no longer exists; neither is itself a startup repair.
+first failed estate no longer exists; neither is itself a startup repair.
 
 ## Verification and limitations
 

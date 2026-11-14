@@ -1,8 +1,8 @@
 use rrd_contract::{CanonicalId, InstallationTargetKind};
 use rrd_engine::RrdEngine;
 use rrd_engram::{
-    DesiredInstance, DesiredPhase, DesiredTarget, DriverErrorKind, DriverRequest, engramDriver,
-    engramRepository, LocalArgument, LocalDeployment, LocalDeploymentCatalog, LocalProcessDriver,
+    DesiredInstance, DesiredPhase, DesiredTarget, DriverErrorKind, DriverRequest, EngramDriver,
+    EngramRepository, LocalArgument, LocalDeployment, LocalDeploymentCatalog, LocalProcessDriver,
     LocalReadiness, LocalShutdown, MutationContext, OperationKind, OperationState,
     ReconcileBoundary, ReconcileOutcome, Reconciler, SetDesired, LOCAL_DEPLOYMENT_FORMAT,
 };
@@ -231,9 +231,9 @@ fn run_controller_and_kill(
 ) {
     let marker = marker.with_extension(format!("{at}.held"));
     let hold_variable = if after_effect {
-        "RRD_engram_TEST_HOLD_AFTER_EFFECT_FILE"
+        "RRD_ENGRAM_TEST_HOLD_AFTER_EFFECT_FILE"
     } else {
-        "RRD_engram_TEST_HOLD_AFTER_STEP_FILE"
+        "RRD_ENGRAM_TEST_HOLD_AFTER_STEP_FILE"
     };
     let deadline = Instant::now() + Duration::from_secs(90);
     'retry: loop {
@@ -278,7 +278,7 @@ fn run_controller_and_kill(
                     continue 'retry;
                 }
                 let engine = RrflowKvStore::open(database).unwrap();
-                let repository = engramRepository::new(&engine, id("engram-a"));
+                let repository = EngramRepository::new(&engine, id("engram-a"));
                 let document = repository.load().unwrap().unwrap();
                 let operation_failures = document
                     .operations
@@ -310,7 +310,7 @@ fn run_controller_and_kill(
 
 fn operation_state(database: &Path, operation: &str) -> (OperationState, u64) {
     let engine = RrflowKvStore::open(database).unwrap();
-    let repository = engramRepository::new(&engine, id("engram-a"));
+    let repository = EngramRepository::new(&engine, id("engram-a"));
     let document = repository.load().unwrap().unwrap();
     (
         document.operation(&id(operation)).unwrap().state,
@@ -352,7 +352,7 @@ fn real_rrd_child_survives_controller_reopen_and_stops_without_data_deletion() {
     install_instance(&state_root, "project-a");
     {
         let engine = RrflowKvStore::open(&database).unwrap();
-        let repository = engramRepository::new(&engine, id("engram-a"));
+        let repository = EngramRepository::new(&engine, id("engram-a"));
         repository.create(&context(10, "create-engram")).unwrap();
         repository
             .set_desired(&SetDesired {
@@ -392,7 +392,7 @@ fn real_rrd_child_survives_controller_reopen_and_stops_without_data_deletion() {
         },
     };
     let mut replay_driver = replay_driver;
-    rrd_engram::engramDriver::apply(&mut replay_driver, &request).unwrap();
+    rrd_engram::EngramDriver::apply(&mut replay_driver, &request).unwrap();
     assert_eq!(process_pid(&state_root), Some(started_pid));
     let instance_root = state_root.join("instances/project-a");
     assert!(instance_root.join("RRD.PROCESS.STDOUT.LOG").is_file());
@@ -422,7 +422,7 @@ fn real_rrd_child_survives_controller_reopen_and_stops_without_data_deletion() {
     );
     {
         let engine = RrflowKvStore::open(&database).unwrap();
-        let repository = engramRepository::new(&engine, id("engram-a"));
+        let repository = EngramRepository::new(&engine, id("engram-a"));
         repository
             .set_desired(&SetDesired {
                 context: context(80, "stop-project-a"),
@@ -605,7 +605,7 @@ fn controller_process_kill_matrix_converges_across_start_and_stop_effect_gaps() 
     install_instance(&state_root, "project-a");
     {
         let engine = RrflowKvStore::open(&database).unwrap();
-        let repository = engramRepository::new(&engine, id("engram-a"));
+        let repository = EngramRepository::new(&engine, id("engram-a"));
         repository.create(&context(10, "create-engram")).unwrap();
         repository
             .set_desired(&SetDesired {
@@ -660,7 +660,7 @@ fn controller_process_kill_matrix_converges_across_start_and_stop_effect_gaps() 
 
     {
         let engine = RrflowKvStore::open(&database).unwrap();
-        let repository = engramRepository::new(&engine, id("engram-a"));
+        let repository = EngramRepository::new(&engine, id("engram-a"));
         repository
             .set_desired(&SetDesired {
                 context: context(90, "stop-project-a"),

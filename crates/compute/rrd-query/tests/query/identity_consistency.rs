@@ -9,7 +9,7 @@ fn series_identity_uses_sample_table_and_id_through_reopen() {
         panic!("fixture schema")
     };
     registry.tables.insert(
-        RuntimeType::new("other:sample").unwrap(),
+        RuntimeType::new("other-sample").unwrap(),
         RuntimeTableSchema::schemaless(RuntimeLogicalModel::TimeSeries),
     );
     let original = fixture
@@ -21,7 +21,7 @@ fn series_identity_uses_sample_table_and_id_through_reopen() {
         })
         .unwrap();
     let mut second = original;
-    second.reference = RuntimeRef::new("other:sample", "latency-100").unwrap();
+    second.reference = RuntimeRef::new("other-sample", "latency-100").unwrap();
     fixture
         .mutations
         .push(RuntimeMutation::SeriesSample { sample: second });
@@ -43,7 +43,7 @@ fn series_identity_uses_sample_table_and_id_through_reopen() {
             .collect::<BTreeSet<_>>()
     };
     let expected = BTreeSet::from([
-        "series:other%3Asample:latency-100".to_string(),
+        "series:other-sample:latency-100".to_string(),
         "series:sample:latency-100".to_string(),
     ]);
     assert_eq!(run(&store), expected);

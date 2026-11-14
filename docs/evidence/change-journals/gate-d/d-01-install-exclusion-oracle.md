@@ -46,7 +46,7 @@ Created `engine/tests/installation_concurrency.rs` and registered it in
 in full and the complete diff reviewed. No implementation was moved, removed,
 or replaced. The reviewed production boundary is
 `installation.rs::apply_installation_with_observer`, its eight observer stages,
-`installation/inventory.rs`, `engram_layout.rs`, and private-file native opens;
+`installation/inventory.rs`, `estate_layout.rs`, and private-file native opens;
 the implementation receipt will enumerate complete source review for its edits.
 Owner reads include README, alpha objective, dependency spine, Gate D,
 POAM-006, change-authoring procedure and agent bootstrap.

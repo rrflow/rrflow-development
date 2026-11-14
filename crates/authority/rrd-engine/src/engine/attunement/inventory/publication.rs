@@ -64,7 +64,7 @@ impl Publication<'_> {
         self.engine.authorize(
             self.work.session,
             self.work.token,
-            SecurityAction::engramAdmin,
+            SecurityAction::EngramAdmin,
             self.at()?,
             self.work.context.request_id.as_str(),
             self.work.context.operation_id.as_str(),

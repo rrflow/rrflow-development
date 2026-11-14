@@ -222,7 +222,7 @@ fn indivisible_backup_entry_is_denied_without_publication_and_can_resume() {
 
 fn claim(name: &str, at: u64) -> Claim {
     Claim::new(
-        Subject::new(format!("backup:{name}")).unwrap(),
+        Subject::new(format!("backup-{name}")).unwrap(),
         Predicate::new("status").unwrap(),
         "retained",
         at,

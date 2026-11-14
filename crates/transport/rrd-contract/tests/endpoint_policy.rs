@@ -7,6 +7,9 @@ use rrd_contract::{
 use serde_json::Value;
 use std::path::PathBuf;
 
+#[path = "support/observed_configuration.rs"]
+mod observed_configuration;
+
 fn bytes(file: &str) -> Vec<u8> {
     std::fs::read(
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -16,8 +19,13 @@ fn bytes(file: &str) -> Vec<u8> {
     .unwrap()
 }
 fn proposed() -> (EndpointConfiguration, EndpointSelectionPolicy) {
-    let configuration: EndpointConfiguration =
-        serde_json::from_slice(&bytes("configuration.json")).unwrap();
+    let receipt: Value = serde_json::from_slice(&bytes("receipt.json")).unwrap();
+    let files: Value = serde_json::from_slice(&bytes("files.json")).unwrap();
+    let configuration = observed_configuration::project(
+        &bytes("configuration.json"),
+        files["configuration.json"].as_str().unwrap(),
+        receipt["configurationSha256"].as_str().unwrap(),
+    );
     let allowance: EndpointSelectionAllowance =
         serde_json::from_slice(&bytes("allowance.json")).unwrap();
     let request: Value = serde_json::from_slice(&bytes("choice-request.json")).unwrap();
@@ -47,7 +55,7 @@ fn proposed() -> (EndpointConfiguration, EndpointSelectionPolicy) {
 }
 
 #[test]
-fn policy_is_explicit_and_absence_preserves_actual_configuration_identity() {
+fn policy_is_explicit_and_absence_preserves_projected_configuration_identity() {
     let (configuration, policy) = proposed();
     let profile = configuration.profile.as_ref().unwrap();
     assert!(profile.selection_policy.is_none());
@@ -59,7 +67,7 @@ fn policy_is_explicit_and_absence_preserves_actual_configuration_identity() {
     policy.validate_for(&profile.bindings).unwrap();
     assert!(policy.allowance(&configuration).is_err());
     let receipt: Value = serde_json::from_slice(&bytes("receipt.json")).unwrap();
-    assert_eq!(
+    assert_ne!(
         configuration.sha256().unwrap(),
         receipt["configurationSha256"]
     );

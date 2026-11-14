@@ -12,9 +12,10 @@ pub const ENDPOINT_WORKER_VERSION: u16 = 1;
 
 /// Typed worker adapter selection. The policy may name future adapters while
 /// the engine executes only adapters it explicitly implements.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum EndpointWorkerAdapter {
+    #[default]
     OpenaiChatCompletionsV1,
     SwagChatCompletionsV1,
     LfgChatCompletionsV1,
@@ -23,12 +24,6 @@ pub enum EndpointWorkerAdapter {
         request_schema_sha256: String,
         response_schema_sha256: String,
     },
-}
-
-impl Default for EndpointWorkerAdapter {
-    fn default() -> Self {
-        Self::OpenaiChatCompletionsV1
-    }
 }
 
 impl EndpointWorkerAdapter {

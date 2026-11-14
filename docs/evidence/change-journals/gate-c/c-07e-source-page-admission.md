@@ -103,7 +103,7 @@ Commands used the dedicated `target/c07e-source-page-build` build directory.
 OpenAPI: `737574186cd6443f5aa108bf429c7a4e8b078d5cf48406472e4bd6038604b6de`.
 Configuration: `d4f28eec17effe5d50947d8b6ca25c967e8c7f6cf31af6d284c2031de73444da`.
 The installed bootstrap oracle verifies the fixed SDK anchor's new
-instance/engram suffix `83fd04e75ef1faaa29bf3054`.
+instance/estate suffix `83fd04e75ef1faaa29bf3054`.
 
 The first full engine suite had 157 passes and one stale SDK-anchor failure;
 the corrected focused and full suites passed. Evaluation fixture failures

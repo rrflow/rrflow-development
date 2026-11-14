@@ -39,7 +39,7 @@ SSH then required a Tailscale identity check. Those later observations do not
 establish whether the earlier request reached the provider.
 
 The proof driver now accepts `--recover-proof EXISTING --output NEW`. It verifies
-the retained binary hash/build identity, reopens that same installed engram,
+the retained binary hash/build identity, reopens that same installed estate,
 authenticates and reads only task-attempt/task-budget operations. It does not
 pass provider credential configuration, replay a proposal, reset the store or
 create a replacement task. Mixed recovery/dispatch arguments are rejected before
@@ -83,5 +83,5 @@ The PR stays draft. Successful installed inference, accepted-result replay,
 Stop/revocation/configuration-change cases, candidate CI and protected landing
 are still required. No new GPU training, admitted dataset, worker effect,
 ordinary-edit successor plan, Connectome/RROFLOW journey, release image or
-29 GB qualification is claimed. Preserve the uncertain engram; restoring a tunnel
+29 GB qualification is claimed. Preserve the uncertain estate; restoring a tunnel
 alone is not authority to clear it or retry the unknown effect.

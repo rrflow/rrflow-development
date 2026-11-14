@@ -445,7 +445,7 @@ fn serve(
 /// Another process holds the engram, so this one fails before binding. Name
 /// the endpoint it recorded, if any; only `rrflow ready` can prove it.
 fn engram_open_elsewhere(project: &Path, error: ServiceError) -> BoxError {
-    if !matches!(error, ServiceError::engramInUse(_)) {
+    if !matches!(error, ServiceError::EngramInUse(_)) {
         return error.into();
     }
     match RrdEngine::read_serving_record(project) {

@@ -11,7 +11,7 @@ starts at clean `8b9ce1fb1ac9322bed1c07dee526ff67e8331ab1`. The existing runner
 could prove accepted worker output and restart but rejected worker fault modes.
 It now accepts explicit `--worker --worker-interrupt` for one HTTP proof: hold
 the real provider's worker response before the engine receives it, kill only
-the runner-owned engine child and reopen the same installed engram without a
+the runner-owned engine child and reopen the same installed estate without a
 provider credential mapping or another model operation.
 
 The existing `FaultRelay` gains a bounded `hold_call` parameter, defaulting to
@@ -74,7 +74,7 @@ provenance-bound `c75c1896` engine, frozen contract helper, explicit short-worke
 profile and captured real PR task from the prior native experiment. Freeze this
 committed runner/relay and record their hashes before the new provider calls.
 Then independently run the existing read-only recovery against the preserved
-engram. A failed live oracle remains a failure; do not substitute another engram
+estate. A failed live oracle remains a failure; do not substitute another estate
 or weaken validation to obtain a success.
 
 No new protocol research, algorithm adaptation, production trace or resource

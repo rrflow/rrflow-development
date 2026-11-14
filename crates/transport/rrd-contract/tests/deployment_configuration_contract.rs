@@ -1,21 +1,21 @@
 use rrd_contract::{
     engram_configuration_sha256, CanonicalId, ClockPolicy, DeploymentForm, DeploymentProfile,
-    EndpointPresentation, engramConfiguration, engramConfigurationInput, InstalledengramIdentity,
+    EndpointPresentation, EngramConfiguration, EngramConfigurationInput, InstalledEngramIdentity,
     QueryBudget, ReasoningLimits, RecallLimits, StorageProfileKind,
-    engram_CONFIGURATION_FORMAT_VERSION, MAX_CLOCK_ROLLBACK_MS,
+    ENGRAM_CONFIGURATION_FORMAT_VERSION, MAX_CLOCK_ROLLBACK_MS,
 };
 
-fn identity() -> InstalledengramIdentity {
-    InstalledengramIdentity {
+fn identity() -> InstalledEngramIdentity {
+    InstalledEngramIdentity {
         project_id: CanonicalId::new("rrflow").unwrap(),
         engram_id: CanonicalId::new("local-engram").unwrap(),
         instance_id: CanonicalId::new("rrflow-local").unwrap(),
     }
 }
 
-fn input() -> engramConfigurationInput {
-    engramConfigurationInput {
-        format_version: engram_CONFIGURATION_FORMAT_VERSION,
+fn input() -> EngramConfigurationInput {
+    EngramConfigurationInput {
+        format_version: ENGRAM_CONFIGURATION_FORMAT_VERSION,
         storage: rrd_contract::StorageLimits::default(),
         clock: ClockPolicy {
             maximum_rollback_ms: 0,
@@ -49,14 +49,14 @@ fn canonical_identity_deployment_and_configuration_round_trip() {
     };
     profile.validate().unwrap();
 
-    let configuration = engramConfiguration::from_input(7, input()).unwrap();
+    let configuration = EngramConfiguration::from_input(7, input()).unwrap();
     configuration.validate().unwrap();
     assert_eq!(
         configuration.configuration_sha256,
         engram_configuration_sha256(&configuration).unwrap()
     );
     let encoded = serde_json::to_vec(&configuration).unwrap();
-    let decoded: engramConfiguration = serde_json::from_slice(&encoded).unwrap();
+    let decoded: EngramConfiguration = serde_json::from_slice(&encoded).unwrap();
     assert_eq!(decoded, configuration);
 }
 
@@ -64,25 +64,25 @@ fn canonical_identity_deployment_and_configuration_round_trip() {
 fn configuration_rejects_invalid_limits_and_digest_drift() {
     let mut invalid = input();
     invalid.reasoning.max_steps = 0;
-    assert!(engramConfiguration::from_input(1, invalid).is_err());
+    assert!(EngramConfiguration::from_input(1, invalid).is_err());
 
-    let mut configuration = engramConfiguration::from_input(1, input()).unwrap();
+    let mut configuration = EngramConfiguration::from_input(1, input()).unwrap();
     configuration.query.max_rows += 1;
     assert!(configuration.validate().is_err());
 }
 
 #[test]
 fn read_retention_ceiling_is_positive_bounded_and_sealed() {
-    let baseline = engramConfiguration::from_input(1, input()).unwrap();
+    let baseline = EngramConfiguration::from_input(1, input()).unwrap();
     for (views, bytes) in [(0, 1), (65_537, 1), (1, 0), (1, (1 << 40) + 1)] {
         let mut invalid = input();
         invalid.storage.native_transactions = views;
         invalid.storage.native_transaction_bytes = bytes;
-        assert!(engramConfiguration::from_input(1, invalid).is_err());
+        assert!(EngramConfiguration::from_input(1, invalid).is_err());
         let mut invalid = input();
         invalid.storage.active_read_views = views;
         invalid.storage.pinned_read_bytes = bytes;
-        assert!(engramConfiguration::from_input(1, invalid).is_err());
+        assert!(EngramConfiguration::from_input(1, invalid).is_err());
     }
     for field in 0..4 {
         let mut changed = input();
@@ -95,7 +95,7 @@ fn read_retention_ceiling_is_positive_bounded_and_sealed() {
         } else {
             changed.storage.pinned_read_bytes += 1;
         }
-        let changed = engramConfiguration::from_input(1, changed).unwrap();
+        let changed = EngramConfiguration::from_input(1, changed).unwrap();
         assert_ne!(baseline.configuration_sha256, changed.configuration_sha256);
         let mut tampered = baseline.clone();
         tampered.storage = changed.storage;
@@ -105,15 +105,15 @@ fn read_retention_ceiling_is_positive_bounded_and_sealed() {
 
 #[test]
 fn recovery_reserve_is_positive_bounded_and_sealed() {
-    let baseline = engramConfiguration::from_input(1, input()).unwrap();
+    let baseline = EngramConfiguration::from_input(1, input()).unwrap();
     for reserve in [0, (1 << 40) + 1] {
         let mut invalid = input();
         invalid.storage.recovery_reserve_bytes = reserve;
-        assert!(engramConfiguration::from_input(1, invalid).is_err());
+        assert!(EngramConfiguration::from_input(1, invalid).is_err());
     }
     let mut changed = input();
     changed.storage.recovery_reserve_bytes += 1;
-    let changed = engramConfiguration::from_input(1, changed).unwrap();
+    let changed = EngramConfiguration::from_input(1, changed).unwrap();
     assert_ne!(baseline.configuration_sha256, changed.configuration_sha256);
     let mut tampered = baseline;
     tampered.storage.recovery_reserve_bytes += 1;
@@ -122,17 +122,17 @@ fn recovery_reserve_is_positive_bounded_and_sealed() {
 
 #[test]
 fn clock_rollback_policy_is_strict_bounded_and_digest_bound() {
-    let strict = engramConfiguration::from_input(1, input()).unwrap();
+    let strict = EngramConfiguration::from_input(1, input()).unwrap();
     assert_eq!(strict.clock.maximum_rollback_ms, 0);
 
     let mut maximum = input();
     maximum.clock.maximum_rollback_ms = MAX_CLOCK_ROLLBACK_MS;
-    let maximum = engramConfiguration::from_input(1, maximum).unwrap();
+    let maximum = EngramConfiguration::from_input(1, maximum).unwrap();
     assert_ne!(maximum.configuration_sha256, strict.configuration_sha256);
 
     let mut unbounded = input();
     unbounded.clock.maximum_rollback_ms = MAX_CLOCK_ROLLBACK_MS + 1;
-    assert!(engramConfiguration::from_input(1, unbounded).is_err());
+    assert!(EngramConfiguration::from_input(1, unbounded).is_err());
 }
 
 #[test]
@@ -164,10 +164,10 @@ fn deployment_axes_reject_inconsistent_combinations() {
 
 #[test]
 fn strict_contract_rejects_unknown_and_legacy_scalar_fields() {
-    let configuration = engramConfiguration::from_input(1, input()).unwrap();
+    let configuration = EngramConfiguration::from_input(1, input()).unwrap();
     let mut value = serde_json::to_value(configuration).unwrap();
     value["deployment_mode"] = serde_json::json!("local_daemon");
-    assert!(serde_json::from_value::<engramConfiguration>(value).is_err());
+    assert!(serde_json::from_value::<EngramConfiguration>(value).is_err());
 
     let identity = serde_json::json!({
         "organization_id": "local",
@@ -175,7 +175,7 @@ fn strict_contract_rejects_unknown_and_legacy_scalar_fields() {
         "engram_id": "local-engram",
         "instance_id": "rrflow-local"
     });
-    assert!(serde_json::from_value::<InstalledengramIdentity>(identity).is_err());
+    assert!(serde_json::from_value::<InstalledEngramIdentity>(identity).is_err());
 }
 
 #[test]
@@ -183,12 +183,12 @@ fn checkpoint_quota_is_finite_restart_configuration_and_digest_bound() {
     for entries in [0, 65_537, u64::MAX] {
         let mut config = input();
         config.storage.checkpoint_entries = entries;
-        assert!(engramConfiguration::from_input(1, config).is_err());
+        assert!(EngramConfiguration::from_input(1, config).is_err());
     }
-    let baseline = engramConfiguration::from_input(1, input()).unwrap();
+    let baseline = EngramConfiguration::from_input(1, input()).unwrap();
     let mut changed = input();
     changed.storage.checkpoint_entries = 7;
-    let changed = engramConfiguration::from_input(1, changed).unwrap();
+    let changed = EngramConfiguration::from_input(1, changed).unwrap();
     assert_ne!(baseline.configuration_sha256, changed.configuration_sha256);
     let mut tampered = baseline;
     tampered.storage.checkpoint_entries = 7;

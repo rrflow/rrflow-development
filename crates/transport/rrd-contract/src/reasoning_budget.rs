@@ -150,6 +150,40 @@ impl StopTaskBudget {
     }
 }
 
+/// Explicit recovery of known-completed stopped work, never a budget reset or
+/// permission to redispatch a recorded attempt. Read back after a lost reply.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ResumeTaskBudget {
+    pub scope: String,
+    pub task_id: CanonicalId,
+    pub expected_budget_sha256: String,
+}
+impl ResumeTaskBudget {
+    pub fn validate(&self) -> Result<()> {
+        validate_vector_scope(&self.scope)?;
+        validate_sha256(&self.expected_budget_sha256, "expected budget digest")
+    }
+
+    pub fn validate_response(&self, response: &TaskBudgetView) -> Result<()> {
+        response.validate()?;
+        let Some(budget) = &response.budget else {
+            return invalid("resume response has no budget");
+        };
+        if budget.scope != self.scope
+            || budget.task_id != self.task_id
+            || budget.stopped.is_some()
+            || budget.active_attempt.is_some()
+            || budget.execution_may_continue
+            || budget.stop_expected_sha256.is_some()
+            || response.budget_sha256.as_ref() == Some(&self.expected_budget_sha256)
+        {
+            return invalid("resume response identity or state mismatch");
+        }
+        Ok(())
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct TaskBudgetView {

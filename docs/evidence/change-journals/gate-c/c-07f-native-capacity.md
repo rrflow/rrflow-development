@@ -28,7 +28,7 @@ role and native code; paths, credentials and payloads are absent. Ordinary
 builds exclude both protocols. The owned process guard closes control pipes,
 caps output, and kills/reaps its children.
 
-The existing installed-crash engram owns installation, real primary staging,
+The existing installed-crash Estate owns installation, real primary staging,
 session, request identity and public-client flow. Its capacity extension uses
 that owner for a separately admitted small native volume. The corpus fills
 only its create-new filler file, requires the selected native error, freezes
@@ -82,7 +82,7 @@ Relevant implementation reads:
   filesystem and file_io, diagnostic crash/installed controls, lib/error,
   recovery_limits and existing MVCC/inspection/compaction characterizations.
 - rrd-store rrflow_kv, control, lib and the native options/inspector lowering.
-- rrd-engine installation, installation/lease, engram_layout, core options,
+- rrd-engine installation, installation/lease, estate_layout, core options,
   restore_publication, token_key/private_file, clock, module/lib exports and
   installation characterizations.
 - CLI command, installed adapter, installed_crash, installed_lifecycle,
@@ -218,7 +218,7 @@ rejected its 150,000-key query request against the sealed 100,000-key ceiling.
 The bounded windows now also respect the default 512 KiB output ceiling. Reads
 included the installed TOML defaults; no engine ceiling was raised.
 
-Windows engram integration exposed a native mandatory-lock conflict while
+Windows estate integration exposed a native mandatory-lock conflict while
 inspection issued an EOF read on the empty MANIFEST.LOCK through another
 handle. Inspection now hashes exactly its pre-admitted extent and rechecks the
 length afterward. Empty files need no read; the exclusive repair lease is
@@ -356,7 +356,7 @@ these paths; earlier WAL success does not validate the modified candidate.
 ## Offline timeout evidence and debug hashing cost
 
 Continued from `ebb70266284bfb01c729229bf53d091b257a038a` in PR 71. Native
-macOS engram job 120232488067 in run 39897715995 failed the unchanged
+macOS estate job 120232488067 in run 39897715995 failed the unchanged
 540-second isolated harness deadline. Retained offline-macos-latest artifact
 reported command deadline but discarded every partial lifecycle observation.
 This is a qualification failure, not evidence of a specific engine startup
@@ -443,7 +443,7 @@ not poison the WAL or manifest publication. Actual write/sync/rename errors
 retain existing uncertainty and fencing. Real ENOSPC diagnostic barriers
 remain after admission, so an external capacity change still exercises native
 failure handling. This does not reserve physical blocks, guarantee metadata
-or inode capacity, bound all engram disk usage, or admit external backup
+or inode capacity, bound all estate disk usage, or admit external backup
 archive/staging effects. Read-only open/inspection do not require free space
 simply to observe existing acknowledged data.
 
@@ -497,7 +497,7 @@ generated-surface checks passed before staging.
 
 ### Candidate SDK identity projection correction
 
-Starting revision: `9f0f3bf3b3e0bcd41411308a4086f268ce38be76`. Required candidate run `39902969502` exposed a stale shared corpus: optional-engine job `120248753326` and macOS engram job `120248753430` failed the existing `shared_sdk_corpus_identity_matches_bundled_installation` assertion; SDK job `120248753437` independently reported the same planned identity `304f5c8569d429363f7d65c1`. The new sealed default recovery reserve changes the deterministic installation identity. Read the complete shared corpus, its typed validation, the identity characterization and the installation projection example. Refreshed the six instance/engram/scope occurrences in `fixtures/rrd-sdk-conformance-v1.json`; all payloads, expectations and anchor bytes remain intact. PR brief was posted before this correction. No local runtime suite executed; the next candidate must repeat the unchanged identity and five-language conformance oracles. No gate/status change.
+Starting revision: `9f0f3bf3b3e0bcd41411308a4086f268ce38be76`. Required candidate run `39902969502` exposed a stale shared corpus: optional-engine job `120248753326` and macOS estate job `120248753430` failed the existing `shared_sdk_corpus_identity_matches_bundled_installation` assertion; SDK job `120248753437` independently reported the same planned identity `304f5c8569d429363f7d65c1`. The new sealed default recovery reserve changes the deterministic installation identity. Read the complete shared corpus, its typed validation, the identity characterization and the installation projection example. Refreshed the six instance/estate/scope occurrences in `fixtures/rrd-sdk-conformance-v1.json`; all payloads, expectations and anchor bytes remain intact. PR brief was posted before this correction. No local runtime suite executed; the next candidate must repeat the unchanged identity and five-language conformance oracles. No gate/status change.
 
 
 ### Linux selected-create exhaustion correction, 2026-10-23

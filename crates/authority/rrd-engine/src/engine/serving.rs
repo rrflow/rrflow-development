@@ -5,7 +5,7 @@
 //! endpoint candidate, never readiness: a caller proves it with the
 //! authenticated readiness challenge.
 
-use super::engram_layout::{safe_join, engramFilesystem, engram_DIRECTORY};
+use super::engram_layout::{safe_join, EngramFilesystem, ENGRAM_DIRECTORY};
 use super::installation::{
     publish_new_file, read_locator, read_locator_anchored, read_regular_bounded,
 };
@@ -68,7 +68,7 @@ impl ServingRecord {
 /// longer runs.
 #[derive(Debug)]
 pub struct ServingPublisher {
-    project: engramFilesystem,
+    project: EngramFilesystem,
     instance_id: CanonicalId,
     product_version: String,
 }
@@ -86,7 +86,7 @@ impl RrdEngine {
         let root = self.installed_project_root.clone().ok_or_else(|| {
             ServiceError::Contract("only an installed engram records a served endpoint".into())
         })?;
-        let (project, locator, _) = read_locator_anchored(&engramFilesystem::admit(root, false)?)?;
+        let (project, locator, _) = read_locator_anchored(&EngramFilesystem::admit(root, false)?)?;
         if &locator.identity.instance_id != self.instance_id() {
             return Err(ServiceError::ProjectBindingMismatch);
         }
@@ -130,7 +130,7 @@ impl ServingPublisher {
         let path = safe_join(&self.project, SERVING_RECORD_RELATIVE_PATH)?;
         let temporary = safe_join(
             &self.project,
-            &format!("{engram_DIRECTORY}/.serving.pending"),
+            &format!("{ENGRAM_DIRECTORY}/.serving.pending"),
         )?;
         remove_stale(&temporary)?;
         remove_stale(&path)?;

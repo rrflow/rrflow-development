@@ -161,7 +161,7 @@ impl RrdEngine {
             let retention_sha256 = diagnostic_retention_sha256(&retention)?;
             let query_indexes = diagnostic_query_indexes(self, &scope, &request.scope)?;
             let vector_collections = diagnostic_vector_collections(self, &scope, &request.scope)?;
-            let engram = rrd_engram::engramRepository::new(&self.storage, self.instance.clone())
+            let engram = rrd_engram::EngramRepository::new(&self.storage, self.instance.clone())
                 .load()?
                 .as_ref()
                 .map(rrd_engram::public_snapshot);
@@ -695,7 +695,7 @@ fn diagnostic_sections(
     vector_artifacts: &DiagnosticVectorArtifactCatalogueSnapshot,
     query_indexes: &QueryIndexCatalogueSnapshot,
     vector_collections: &VectorCollectionCatalogueSnapshot,
-    engram: Option<&rrd_contract::engramSnapshot>,
+    engram: Option<&rrd_contract::EngramSnapshot>,
     storage: &DiagnosticStorageSnapshot,
     changes: &ChangefeedPage,
     audit: &AuditPage,

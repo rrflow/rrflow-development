@@ -1,0 +1,46 @@
+{
+  "status": 412,
+  "request": {
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "context": {
+      "request_id": "controller-proof-7793a9fd393a4e64b4a34cef9950f14c",
+      "operation_id": "controller-proof-7793a9fd393a4e64b4a34cef9950f14c",
+      "idempotency_key": "controller-proof-7793a9fd393a4e64b4a34cef9950f14c",
+      "deadline_unix_ms": null
+    },
+    "resource": {
+      "segments": [
+        {
+          "kind": "instance",
+          "id": "instance-0976612a58664c75431765c9"
+        }
+      ]
+    },
+    "payload": {
+      "scope": "instance:instance-0976612a58664c75431765c9",
+      "task_id": "task-19c2df2501b33aecb8a127b8d15fa0e8c281d60e36172c73974b3a7029f4bf9f",
+      "attempt_id": "actual-resumed-worker-4361d2314ff2415e8a809109d5086941",
+      "selection_attempt_id": "actual-resumed-proposal-72d3b231047f40a98185ebb5319d2929",
+      "expected_selection_sha256": "220862abfb3f65a3e5f2004a4a1973f71dba0ad6f40133eb11e568bc3bdd5c84",
+      "expected_task_sha256": "62e20741c6862789c243005a39daf4dddd4c4ebd262c299e850e1e70859255fa",
+      "expected_configuration_sha256": "de61345abfd42c0a80fcb2fac06f259adac5db54d6ac8d884afcda97960ab59b",
+      "max_storage_keys": 1000000,
+      "context": null
+    }
+  },
+  "response": {
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "request_id": "controller-proof-7793a9fd393a4e64b4a34cef9950f14c",
+    "operation_id": "controller-proof-7793a9fd393a4e64b4a34cef9950f14c",
+    "outcome": {
+      "status": "error",
+      "error": {
+        "code": "failed_precondition",
+        "message": "ReasoningAttemptRecorded { outcome_sha256: Some(\"81766460465ead2c805d8a3a4850abf8481c01a62aa3830c96b386352ca6e61f\") }",
+        "retryable": false
+      }
+    }
+  }
+}

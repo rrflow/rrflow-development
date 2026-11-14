@@ -4,7 +4,7 @@ use super::clock::{assess, observe_required, require_accepted, ClockSource, Host
 use super::*;
 use crate::engine::engram_layout::{
     create_engram_directories, reject_existing_engram, safe_join, validate_engram_directories,
-    validate_managed_relative, validate_recovery_engram, engramFilesystem, engramLayout,
+    validate_managed_relative, validate_recovery_engram, EngramFilesystem, EngramLayout,
     LOCATOR_RELATIVE_PATH, STORAGE_DIRECTORY,
 };
 use crate::engine::memory_engram::build_memory_engram_plan;
@@ -15,10 +15,10 @@ use crate::engine::token_key::{
 use rrd_contract::{
     attunement_plan_sha256, installation_plan_sha256, installation_result_sha256, AttunementJob,
     AttunementJobState, AttunementPhase, AttunementPhasePlan, AttunementPlan, DeploymentProfile,
-    engramConfiguration, engramConfigurationInput, InstallationActionDisposition,
+    EngramConfiguration, EngramConfigurationInput, InstallationActionDisposition,
     InstallationActionKind, InstallationActionResult, InstallationManagedPathKind,
     InstallationPlan, InstallationPlanAction, InstallationResult, InstallationTargetKind,
-    InstalledengramIdentity, PersistMemoryengram, StorageProfileKind, ATTUNEMENT_CONTRACT_VERSION,
+    InstalledEngramIdentity, PersistMemoryEngram, StorageProfileKind, ATTUNEMENT_CONTRACT_VERSION,
     INSTALLATION_PLAN_CONTRACT_VERSION, INSTALL_ATTUNEMENT_CONTRACT_VERSION, MAX_ATTUNEMENT_PHASES,
 };
 use rrd_core::digest::Sha256 as IncrementalSha256;
@@ -294,7 +294,7 @@ impl DefaultInstallProfile {
 /// Loads the bundled default or one explicitly selected, bounded operator
 /// configuration. Planning is the only lifecycle stage that reads this file;
 /// apply consumes the effective configuration sealed into the plan.
-pub fn load_engram_configuration(path: Option<&Path>) -> Result<engramConfiguration> {
+pub fn load_engram_configuration(path: Option<&Path>) -> Result<EngramConfiguration> {
     let bytes = match path {
         None => DEFAULT_CONFIGURATION_BYTES.to_vec(),
         Some(path) => read_regular_bounded(
@@ -302,11 +302,11 @@ pub fn load_engram_configuration(path: Option<&Path>) -> Result<engramConfigurat
             MAX_CONFIGURATION_BYTES,
         )?,
     };
-    let input: engramConfigurationInput = toml::from_str(
+    let input: EngramConfigurationInput = toml::from_str(
         std::str::from_utf8(&bytes).map_err(|error| ServiceError::Contract(error.to_string()))?,
     )
     .map_err(|error| ServiceError::Contract(error.to_string()))?;
-    let configuration = engramConfiguration::from_input(1, input)
+    let configuration = EngramConfiguration::from_input(1, input)
         .map_err(|error| ServiceError::Contract(error.to_string()))?;
     super::core::installed_storage_options(&configuration.storage)?;
     Ok(configuration)
@@ -349,7 +349,7 @@ impl InstallationPreview {
 pub struct ProjectLocator {
     pub format_version: u16,
     pub product_version: String,
-    pub identity: InstalledengramIdentity,
+    pub identity: InstalledEngramIdentity,
     pub storage_root: String,
     pub token_key: String,
     pub operator_credential: String,
@@ -396,7 +396,7 @@ impl ProjectLocator {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct InstalledengramRecord {
+pub struct InstalledEngramRecord {
     pub format_version: u16,
     pub installation: InstallationPlan,
     pub attunement_plan_sha256: String,
@@ -409,7 +409,7 @@ pub struct InstalledengramRecord {
     pub record_sha256: String,
 }
 
-impl InstalledengramRecord {
+impl InstalledEngramRecord {
     pub(super) fn validate(&self) -> Result<()> {
         self.installation
             .validate()
@@ -574,7 +574,7 @@ impl RrdEngine {
         let instance_id = canonical_prefixed("instance", &identity_seed)?;
         let engram_id = canonical_prefixed("engram", &identity_seed)?;
         let project_id = canonical_prefixed("project", &identity_seed)?;
-        let target = InstalledengramIdentity {
+        let target = InstalledEngramIdentity {
             project_id,
             engram_id,
             instance_id,
@@ -605,7 +605,7 @@ impl RrdEngine {
         attunement.plan_sha256 = attunement_plan_sha256(&attunement)
             .map_err(|error| ServiceError::Contract(error.to_string()))?;
 
-        let layout = engramLayout::new(&install_id, &profile.initial_principal_id)?;
+        let layout = EngramLayout::new(&install_id, &profile.initial_principal_id)?;
         let absent = digest::sha256_hex(b"rrflow-install-managed-path-absent-v1");
         let managed_paths = layout.managed_paths(&absent);
         let bootstrap = bootstrap::build(&profile, &layout)?;
@@ -796,7 +796,7 @@ impl RrdEngine {
         }
 
         let started = Instant::now();
-        let layout = engramLayout::new(
+        let layout = EngramLayout::new(
             &preview.installation.storage_root_id,
             &preview.installation.initial_principal_id,
         )?;
@@ -912,7 +912,7 @@ impl RrdEngine {
         observe_install_stage(
             preview,
             started,
-            InstallApplyStage::engramDirectoriesReady,
+            InstallApplyStage::EngramDirectoriesReady,
             InstallRecoveryState::OwnedIntent,
             None,
             observer,
@@ -1004,7 +1004,7 @@ impl RrdEngine {
         let installed_at_unix_ms = intent.clock_anchor().observed_at_unix_ms;
 
         let memory_plan = build_memory_engram_plan(
-            &PersistMemoryengram {
+            &PersistMemoryEngram {
                 scope: format!("instance:{instance_id}"),
                 seat: preview.installation.initial_seat.clone(),
                 representations: Vec::new(),
@@ -1083,7 +1083,7 @@ impl RrdEngine {
             &operation_id,
         )?;
         let bootstrap_control_sequence = transitions.len() as u64 + 5;
-        let mut installed = InstalledengramRecord {
+        let mut installed = InstalledEngramRecord {
             format_version: INSTALLED_RECORD_FORMAT,
             installation: preview.installation.clone(),
             attunement_plan_sha256: preview.attunement.plan_sha256.clone(),
@@ -1277,7 +1277,7 @@ impl RrdEngine {
     }
 
     pub(super) fn open_installed_anchored(
-        project: &engramFilesystem,
+        project: &EngramFilesystem,
         executable: &Path,
         clock: &dyn ClockSource,
     ) -> Result<Self> {
@@ -1308,7 +1308,7 @@ impl RrdEngine {
             .control()
             .get(INSTALLED_RECORD_KEY)?
             .ok_or_else(|| ServiceError::Storage("installed engram record is missing".into()))?;
-        let installed: InstalledengramRecord = decode_json(&bytes, "installed engram record")?;
+        let installed: InstalledEngramRecord = decode_json(&bytes, "installed engram record")?;
         installed.validate()?;
         require_locator_record_match(&locator, &installed)?;
         bootstrap::verify(&project, &installed.installation)?;
@@ -1323,7 +1323,7 @@ impl RrdEngine {
             .control()
             .get(&engram_configuration_key(&locator.identity.instance_id))?
             .ok_or_else(|| ServiceError::Storage("engram configuration is missing".into()))?;
-        let configuration: engramConfiguration =
+        let configuration: EngramConfiguration =
             decode_json(&configuration_bytes, "engram configuration")?;
         configuration
             .validate()
@@ -1397,7 +1397,7 @@ impl RrdEngine {
     }
 
     pub(super) fn inspect_installed_anchored(
-        project: &engramFilesystem,
+        project: &EngramFilesystem,
         executable: &Path,
         clock: &dyn ClockSource,
         boundary: &'static str,
@@ -1439,7 +1439,7 @@ impl RrdEngine {
     }
 
     fn with_installed_binding<T>(
-        project: &engramFilesystem,
+        project: &EngramFilesystem,
         executable: &Path,
         clock: &dyn ClockSource,
         boundary: &'static str,
@@ -1465,19 +1465,19 @@ impl RrdEngine {
             &storage_root,
             super::core::installed_storage_options(&locator.storage)?,
         )?;
-        let installed: InstalledengramRecord =
+        let installed: InstalledEngramRecord =
             decode_control(&inspector, INSTALLED_RECORD_KEY, "installed engram record")?;
         installed.validate()?;
         require_locator_record_match(&locator, &installed)?;
         bootstrap::verify(&project, &installed.installation)?;
-        let layout = engramLayout::new(
+        let layout = EngramLayout::new(
             &installed.installation.storage_root_id,
             &installed.installation.initial_principal_id,
         )?;
         if installed.installation.bootstrap != bootstrap::build(&profile, &layout)? {
             return Err(ServiceError::ProjectBindingMismatch);
         }
-        let configuration: engramConfiguration = decode_control(
+        let configuration: EngramConfiguration = decode_control(
             &inspector,
             &engram_configuration_key(&locator.identity.instance_id),
             "engram configuration",
@@ -1625,7 +1625,7 @@ fn installation_identity_seed(
     ))
 }
 
-fn initial_project_root_sha256(project: &engramFilesystem) -> Result<String> {
+fn initial_project_root_sha256(project: &EngramFilesystem) -> Result<String> {
     let canonical = project
         .project()
         .diagnostic_path()
@@ -1643,7 +1643,7 @@ fn installation_actions(
         InstallationActionKind::ValidateProject,
         InstallationActionKind::AcquireInstallationLease,
         InstallationActionKind::PrepareCredentials,
-        InstallationActionKind::CreateengramDirectories,
+        InstallationActionKind::CreateEngramDirectories,
         InstallationActionKind::MaterializeBootstrap,
         InstallationActionKind::CreateStorageRoot,
         InstallationActionKind::DeliverCredentials,
@@ -1697,7 +1697,7 @@ fn validate_sealed_preview(
         &installation.configuration.configuration_sha256,
     )?;
     let install_id = canonical_prefixed("install", &seed)?;
-    let expected_target = InstalledengramIdentity {
+    let expected_target = InstalledEngramIdentity {
         project_id: canonical_prefixed("project", &seed)?,
         engram_id: canonical_prefixed("engram", &seed)?,
         instance_id: canonical_prefixed("instance", &seed)?,
@@ -1718,7 +1718,7 @@ fn validate_sealed_preview(
     let expected_phases = planned_attunement_steps(&steps)?;
     let absent = digest::sha256_hex(b"rrflow-install-managed-path-absent-v1");
     let expected_paths =
-        engramLayout::new(&install_id, &profile.initial_principal_id)?.managed_paths(&absent);
+        EngramLayout::new(&install_id, &profile.initial_principal_id)?.managed_paths(&absent);
     let expected_actions = installation_actions(
         &installation.configuration.configuration_sha256,
         &preview.attunement.plan_sha256,
@@ -1737,7 +1737,7 @@ fn validate_sealed_preview(
         || installation.bootstrap
             != bootstrap::build(
                 profile,
-                &engramLayout::new(&install_id, &profile.initial_principal_id)?,
+                &EngramLayout::new(&install_id, &profile.initial_principal_id)?,
             )?
         || installation.initial_principal_id != profile.initial_principal_id
         || installation.initial_grants != SecurityAction::ALL
@@ -1761,19 +1761,19 @@ fn validate_sealed_preview(
 fn canonical_project(
     project: &Path,
     target_kind: InstallationTargetKind,
-) -> Result<engramFilesystem> {
+) -> Result<EngramFilesystem> {
     let project = canonical_project_root(project)?;
     validate_installation_target(&project, target_kind)?;
     Ok(project)
 }
 
-fn canonical_project_root(project: &Path) -> Result<engramFilesystem> {
+fn canonical_project_root(project: &Path) -> Result<EngramFilesystem> {
     let project = AnchoredPath::open_root(project).map_err(storage_error)?;
-    engramFilesystem::admit(project, true)
+    EngramFilesystem::admit(project, true)
 }
 
 fn validate_installation_target(
-    project: &engramFilesystem,
+    project: &EngramFilesystem,
     target_kind: InstallationTargetKind,
 ) -> Result<()> {
     if target_kind == InstallationTargetKind::FreshProject {
@@ -1915,14 +1915,14 @@ pub(super) fn sha256_file(path: &Path) -> Result<String> {
     Ok(hasher.finalize_hex())
 }
 
-pub(super) fn read_locator(project: &Path) -> Result<(engramFilesystem, ProjectLocator, Vec<u8>)> {
+pub(super) fn read_locator(project: &Path) -> Result<(EngramFilesystem, ProjectLocator, Vec<u8>)> {
     let project = canonical_project(project, InstallationTargetKind::ExistingProject)?;
     read_locator_anchored(&project)
 }
 
 pub(super) fn read_locator_anchored(
-    project: &engramFilesystem,
-) -> Result<(engramFilesystem, ProjectLocator, Vec<u8>)> {
+    project: &EngramFilesystem,
+) -> Result<(EngramFilesystem, ProjectLocator, Vec<u8>)> {
     validate_engram_directories(project, false)?;
     let path = safe_join(project, LOCATOR_RELATIVE_PATH)?;
     let bytes = read_regular_bounded(&path, MAX_LOCATOR_BYTES)?;
@@ -2007,8 +2007,8 @@ fn publish_new_file_with_stage(
 }
 
 fn cleanup_locator_pending(
-    project: &engramFilesystem,
-    layout: &engramLayout,
+    project: &EngramFilesystem,
+    layout: &EngramLayout,
     locator_bytes: &[u8],
 ) -> Result<()> {
     cleanup_pending_file(&safe_join(project, &layout.locator_pending)?, locator_bytes)
@@ -2051,7 +2051,7 @@ pub(super) fn read_regular_bounded(path: &AnchoredPath, maximum: u64) -> Result<
 }
 
 fn replay_installation_result(
-    project: &engramFilesystem,
+    project: &EngramFilesystem,
     preview: &InstallationPreview,
     executable: &Path,
     clock: &dyn ClockSource,
@@ -2067,7 +2067,7 @@ fn replay_installation_result(
         &safe_join(project, &locator.storage_root)?,
         super::core::installed_storage_options(&locator.storage)?,
     )?;
-    let installed: InstalledengramRecord =
+    let installed: InstalledEngramRecord =
         decode_control(&inspector, INSTALLED_RECORD_KEY, "installed engram record")?;
     let job_id = canonical_prefixed("job", &preview.attunement.plan_sha256)?;
     build_installation_result(
@@ -2087,7 +2087,7 @@ fn replay_installation_result(
 fn build_installation_result(
     preview: &InstallationPreview,
     job_id: &CanonicalId,
-    installed: &InstalledengramRecord,
+    installed: &InstalledEngramRecord,
     runtime_manifest_sha256: &str,
     runtime_cursor: u64,
     control_journal_sequence: u64,
@@ -2189,7 +2189,7 @@ fn decode_json<T: DeserializeOwned>(bytes: &[u8], label: &str) -> Result<T> {
 
 pub(super) fn require_locator_record_match(
     locator: &ProjectLocator,
-    installed: &InstalledengramRecord,
+    installed: &InstalledEngramRecord,
 ) -> Result<()> {
     if locator.plan_sha256 != installed.installation.plan_sha256
         || locator.profile_id != installed.installation.profile_id
@@ -2248,7 +2248,7 @@ pub(super) fn runtime_manifest_from_inspection(
     Ok(read.manifest_id)
 }
 
-fn installed_record_sha256(record: &InstalledengramRecord) -> Result<String> {
+fn installed_record_sha256(record: &InstalledEngramRecord) -> Result<String> {
     json_sha256(&(
         record.format_version,
         &record.installation,

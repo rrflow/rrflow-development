@@ -33,7 +33,7 @@ No mutation control, source scan, current-source guarantee or replan was added.
 The full `cargo test --offline --locked -p rrd-contract --quiet` suite passed;
 the `rrflow-eval` synthetic `storage_contract` target passed 11 tests. The real
 installed HTTP/Rust client source-edit and reopen test passed, as did the real
-server security test for no session, denied engramRead and audit readback.
+server security test for no session, denied EstateRead and audit readback.
 `python scripts/ci/check_generated_surfaces.py --write` and `--check` passed
 with 56 operations and seven signal projections. TypeScript's six client tests
 and `go test ./...` passed. The engine attunement suite passed nine tests with

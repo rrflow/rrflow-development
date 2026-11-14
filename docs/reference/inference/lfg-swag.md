@@ -145,13 +145,22 @@ human review, provider-quality evidence or completion of G-01b.
 
 `EndpointSelectionRequest` names an existing task and stable attempt, expected
 task/configuration digests and a bounded task-read allowance. It accepts no URL,
-credential, prompt or caller-authored candidate catalogue. It may carry one
+credential, prompt or new candidate catalogue. Optional typed routing input can
+narrow the configured candidates; it does not grant authority or verify its own
+provenance. The request may carry one
 exact prompt-flight identity (`flight_id`, prompt cohort digest and optional
 context-request digest), which must match the named task and the retained
 flight record exactly before the proposal is admitted. The task-text packet
 omits the task creation replay key, binds an open task version/read coordinate
 and requires the exact configured selector and allowance. Task projection checks
 do not authorize repository context or establish source-edit freshness.
+
+Unknown request fields are accepted and ignored for forward compatibility; they
+do not enter the typed request, its operation identity, or controller packet.
+Adding an LFG observation as an unknown field does not mean it was read,
+validated or used. That needs a separately implemented, authorized engine path.
+The [request extension journal](../../evidence/change-journals/gate-g/lfg-endpoint-request-extensions.md)
+records the compatibility oracle and its limits.
 
 `EndpointSelectionProposal` binds request, task, attempt, packet, configuration,
 allowance, service alias, observed request/response/content identities, and the
@@ -164,9 +173,9 @@ tolerating unrelated provider envelope metadata.
 
 These types alone are consistency checks, not an engine dispatcher.
 Constructing a valid tuple does not prove that a model produced it for that packet.
-Authenticated packet construction, explicit experimental policy admission,
-credential setup and installed execution still require implementation in the
-same [draft package](https://github.com/rrflow/rrflow-development/pull/206).
+Authenticated packet construction, experimental policy admission and installed
+controller proposal execution were implemented in
+[PR206](https://github.com/rrflow/rrflow-development/pull/206).
 The [semantics-stage journal](../../evidence/change-journals/gate-g/controller-task-proposal-semantics.md)
 records actual-task projection and retained-provider validation checks. No new
 provider execution or model-quality claim follows from those checks.
@@ -736,6 +745,16 @@ completion does not imply acceptable output, attested identity or retry permissi
 Malformed, mismatched, oversized and lost responses remain uncertain. A failed
 attempt still spends its step and elapsed effort and stops its task budget.
 This classification applies to newly observed calls, not historical reservations.
+`task-budget-resume` allows an explicit authenticated transition from `cancelled`
+or `attempt_failed` when the task is open, no active or uncertain work remains,
+the estate configuration matches and original time/steps remain available.
+Supply the current `task-budget-read` digest as `expected_budget_sha256`.
+The engine preserves the original deadline, spent effort, repetition history and
+all attempts. Resume dispatches nothing and cannot clear capacity leases. A new
+attempt must separately pass current authorization/input/capacity admission;
+old attempt IDs remain non-replayable. Stale resume requests conflict. After a
+lost acknowledgement read the budget; do not automatically retry or reset it.
+The operation does not reconcile unknown provider outcomes or extend deadlines.
 Read `task-attempt-read` to recover a receipt without calling the provider again.
 Changed authority/configuration/task inputs invalidate accepted-output publication
 while retaining consumed effort. Ordinary repository-edit successor plans are not

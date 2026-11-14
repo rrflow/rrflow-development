@@ -7,7 +7,7 @@ pub(super) use campaign::{execute, Participation};
 use rrd_contract::{ErrorCode, InspectStorageCursor, StorageCursorAction};
 
 struct Member {
-    engram: engram,
+    engram: Engram,
     child: Option<process::Process>,
     work: Workload,
     original_receipts: Digest,
@@ -15,7 +15,7 @@ struct Member {
 }
 impl Member {
     async fn create(ordinal: u64, clock: Instant) -> DriverResult<Self> {
-        let engram = engram::install("fresh");
+        let engram = Engram::install("fresh");
         let (child, client, _) = engram.start_for(clock, Duration::from_secs(600));
         let credential = rrd_engine::RrdEngine::read_installed_api_key(&engram.project)
             .map_err(|e| e.to_string())?;

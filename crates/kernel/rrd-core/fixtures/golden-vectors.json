@@ -108,7 +108,7 @@
       "config_digest": "2222222222222222222222222222222222222222222222222222222222222222",
       "contract_version": 1,
       "generation": 1,
-      "id": "vector:documents",
+      "id": "vector-documents",
       "source_cursor": 7,
       "state": "ready"
     },

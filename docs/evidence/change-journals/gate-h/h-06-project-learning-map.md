@@ -37,7 +37,7 @@ Knowledge paths are project-scoped external database/reasoning adapters.
 Baseline requirements distinguish presentation, fact corrections and candidate
 graph/retrieval policies; bind evidence, retention and current authorization;
 and require comparison and governed promotion. The UI journey provisions the
-approved engram automatically, preserves its identity on reopen and keeps
+approved estate automatically, preserves its identity on reopen and keeps
 concurrent projects isolated. Retained-session inspection cannot invoke tools
 or models; a new execution needs current admission. Learning methods remain
 distinct proposals under existing G/I owners. Optional managed-service roles

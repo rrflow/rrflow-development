@@ -9,7 +9,7 @@ Starting revision `c8d8e2e2aa1bc3f3e7ca28a9aa2603b36a010e58`, tree
 The branch `agent/h06-project-learning-map` records this evidence before its
 product-contract edits; the pull request description carries the change brief.
 
-The owner requested an explicit path from per-project native engrams and
+The owner requested an explicit path from per-project native estates and
 knowledge paths to graph baselines, Connectome session replay, RROFLOW learning
 and optional rrflow.ai/rroflow.ai access and shippin.cloud devspaces. Existing
 contracts own the pieces but do not provide the complete linked user journey.

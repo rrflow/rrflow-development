@@ -2558,7 +2558,7 @@ fn authenticated_engram_read_returns_the_public_snapshot_only() {
     {
         let engine = RrflowKvStore::open(&root).unwrap();
         let repository =
-            rrd_engram::engramRepository::new(&engine, CanonicalId::new("engram-a").unwrap());
+            rrd_engram::EngramRepository::new(&engine, CanonicalId::new("engram-a").unwrap());
         repository
             .create(&engram_context(10, "create-engram"))
             .unwrap();

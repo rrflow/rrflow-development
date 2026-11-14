@@ -854,7 +854,7 @@ impl Parser {
         let start_kind = self.word("traversal start kind")?;
         self.punctuation(TokenKind::Colon, "':' in traversal start")?;
         let start_id = self.traversal_id()?;
-        let start = RuntimeRef::new(start_kind, start_id)
+        let start = RuntimeRef::parse(start_kind, start_id)
             .map_err(|error| ParseError::new(offset, error.to_string()))?;
         self.keyword("DIRECTION")?;
         let direction_token = self.next("traversal direction")?;

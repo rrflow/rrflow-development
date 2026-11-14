@@ -5,7 +5,7 @@ pub type Result<T> = std::result::Result<T, ServiceError>;
 #[derive(Debug)]
 pub enum ServiceError {
     Contract(String),
-    engram(String),
+    Engram(String),
     Storage(String),
     StorageConflict(String),
     /// A proven-absent transaction commit whose read cursor is no longer current.
@@ -78,7 +78,7 @@ pub enum ServiceError {
     /// The currently observed project precondition differs from the accepted plan.
     AttunementSourceChanged,
     /// Another process holds the installed engram's single writer lock.
-    engramInUse(String),
+    EngramInUse(String),
     ClockUnavailable(ClockObservationFailure),
     ClockRollback {
         observed_at_unix_ms: u64,
@@ -144,7 +144,7 @@ impl ServiceError {
             | Self::EndpointCallFailed { .. }
             | Self::ProjectBindingMismatch
             | Self::AttunementSourceChanged
-            | Self::engramInUse(_) => ServiceErrorKind::FailedPrecondition,
+            | Self::EngramInUse(_) => ServiceErrorKind::FailedPrecondition,
             Self::TransactionQuota
             | Self::StorageAdmission(_)
             | Self::InferenceBusy
@@ -159,7 +159,7 @@ impl ServiceError {
             Self::StorageConflict(_) | Self::TransactionSnapshotStale { .. } => {
                 ServiceErrorKind::Conflict
             }
-            Self::Storage(_) | Self::Backup(_) | Self::engram(_) => ServiceErrorKind::Internal,
+            Self::Storage(_) | Self::Backup(_) | Self::Engram(_) => ServiceErrorKind::Internal,
         }
     }
 
@@ -185,7 +185,7 @@ impl fmt::Display for ServiceError {
                 f,
                 "host clock rollback exceeds policy: observed {observed_at_unix_ms}, installation anchor {anchor_unix_ms}, maximum rollback {maximum_rollback_ms} ms"
             ),
-            Self::engramInUse(detail) => {
+            Self::EngramInUse(detail) => {
                 write!(f, "the installed engram is already open in another process ({detail})")
             }
             _ => write!(f, "{self:?}"),
@@ -215,7 +215,7 @@ impl From<rrd_store::Error> for ServiceError {
             | rrd_store::Error::ReclamationLimit { .. } => Self::StorageAdmission(message),
             rrd_store::Error::RuntimeReadBudgetExceeded { .. } => Self::ConfigurationLimit(message),
             rrd_store::Error::IndexConstraint(_) => Self::Query(message),
-            rrd_store::Error::ActiveWriter(_) => Self::engramInUse(message),
+            rrd_store::Error::ActiveWriter(_) => Self::EngramInUse(message),
             rrd_store::Error::RuntimeConflict { .. }
             | rrd_store::Error::RuntimeSchemaConflict { .. }
             | rrd_store::Error::IdempotencyConflict(_)
@@ -228,7 +228,7 @@ impl From<rrd_store::Error> for ServiceError {
 
 impl From<rrd_engram::Error> for ServiceError {
     fn from(value: rrd_engram::Error) -> Self {
-        Self::engram(value.to_string())
+        Self::Engram(value.to_string())
     }
 }
 

@@ -1,5 +1,5 @@
 use super::{require, Result};
-use rrd_contract::{CapabilityStatus, DiagnosticStorageSnapshot, engramConfiguration};
+use rrd_contract::{CapabilityStatus, DiagnosticStorageSnapshot, EngramConfiguration};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -218,7 +218,7 @@ pub struct StorageManifest {
     pub candidate: Candidate,
     pub environment: Environment,
     pub corpus_sha256: Digest,
-    pub installed_configuration: engramConfiguration,
+    pub installed_configuration: EngramConfiguration,
     pub storage_observation: DiagnosticStorageSnapshot,
     pub budgets: Budgets,
     #[schemars(length(min = 1, max = 256))]
