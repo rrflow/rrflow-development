@@ -10,7 +10,8 @@ Every tracked Rust file under `crates/` is classified and measured:
             at most HARNESS_LIMIT lines.
 - `source`  everything else: at most SOURCE_LIMIT lines (R1).
 
-Counted patterns, in entry and source files only:
+Counted patterns, in entry and source files only, totalled per crate so that moving code between
+files of a crate is neutral:
 
 - `mod_rs`                    a module file named `mod.rs` (R3)
 - `path_attribute`            `#[path = ...]` (R3)
@@ -54,6 +55,18 @@ PATTERNS: dict[str, re.Pattern[str]] = {
     "too_many_arguments_allow": re.compile(r"allow\([^)]*clippy::too_many_arguments"),
     "sha2_crate": re.compile(r"(?<![A-Za-z0-9_])sha2::"),
 }
+
+
+def crate_of(path: str) -> str:
+    """The crate directory a file belongs to: pattern counts are kept per crate, so moving code
+    between files of one crate is neutral while a new site anywhere in the crate is refused."""
+    parts = path.split("/")
+    if "src" in parts:
+        return "/".join(parts[:parts.index("src")])
+    for marker in ("tests", "benches", "examples"):
+        if marker in parts:
+            return "/".join(parts[:parts.index(marker)])
+    return "/".join(parts[:-1])
 
 
 def classify(path: str) -> str:
@@ -109,7 +122,8 @@ def measure(files: dict[str, str]) -> Shape:
             if found:
                 counts[name] = found
         for name, count in counts.items():
-            shape.patterns.setdefault(name, {})[path] = count
+            owner = crate_of(path)
+            shape.patterns.setdefault(name, {})[owner] = shape.patterns.get(name, {}).get(owner, 0) + count
     return shape
 
 
@@ -133,9 +147,9 @@ def compare(baseline: Shape, current: Shape) -> list[str]:
         for path in sorted(set(before) | set(now)):
             recorded, count = before.get(path, 0), now.get(path, 0)
             if count > recorded:
-                problems.append(f"{path}: {name} rose from {recorded} to {count}; this pattern may only be removed")
+                problems.append(f"{path} (crate): {name} rose from {recorded} to {count}; this pattern may only be removed")
             elif count < recorded:
-                problems.append(f"{path}: {name} fell from {recorded} to {count}; run `check_code_shape.py --tighten`")
+                problems.append(f"{path} (crate): {name} fell from {recorded} to {count}; run `check_code_shape.py --tighten`")
     return problems
 
 

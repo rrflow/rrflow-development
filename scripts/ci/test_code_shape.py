@@ -52,7 +52,19 @@ class MeasureTests(unittest.TestCase):
                          "crates/kernel/rrd-core/src/digest.rs": "sha2::Sha256::new()\n"})
         path = "crates/a/x/src/thing/mod.rs"
         for name in ("mod_rs", "path_attribute", "string_error", "boxed_error", "too_many_arguments_allow", "sha2_crate"):
-            self.assertEqual(shape.patterns[name], {path: 1}, name)
+            self.assertEqual(shape.patterns[name], {"crates/a/x": 1}, name)
+
+
+class CrateTotalsTests(unittest.TestCase):
+    def test_moving_a_pattern_between_files_of_a_crate_is_neutral(self):
+        site = "fn a() -> Result<u8, String> { todo!() }\n"
+        before = measure({"crates/a/x/src/lib.rs": site, "crates/a/x/src/other.rs": ""})
+        after = measure({"crates/a/x/src/lib.rs": "", "crates/a/x/src/other.rs": site})
+        self.assertEqual(compare(before, after), [])
+        added = measure({"crates/a/x/src/lib.rs": site, "crates/a/x/src/other.rs": site})
+        self.assertTrue(any("rose from 1 to 2" in p for p in compare(before, added)))
+        elsewhere = measure({"crates/a/x/src/lib.rs": "", "crates/b/y/src/lib.rs": site})
+        self.assertTrue(any("crates/b/y (crate): string_error rose from 0 to 1" in p for p in compare(before, elsewhere)))
 
 
 class RatchetTests(unittest.TestCase):
@@ -81,7 +93,7 @@ class RatchetTests(unittest.TestCase):
     def test_a_new_pattern_site_fails(self):
         current = Shape(oversize={"crates/a/x/src/big.rs": 900},
                         patterns={"string_error": {"crates/a/x/src/e.rs": 3, "crates/a/x/src/f.rs": 1}})
-        self.assertTrue(any("f.rs: string_error rose from 0 to 1" in p for p in compare(self.baseline, current)))
+        self.assertTrue(any("f.rs (crate): string_error rose from 0 to 1" in p for p in compare(self.baseline, current)))
 
     def test_improvement_must_be_recorded_and_then_holds(self):
         current = Shape(oversize={}, patterns={"string_error": {"crates/a/x/src/e.rs": 1}})

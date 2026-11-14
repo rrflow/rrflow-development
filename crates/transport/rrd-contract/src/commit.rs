@@ -3,7 +3,6 @@
 use crate::*;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -36,14 +35,7 @@ impl CommitTransaction {
 /// than hashing arbitrary input-object key order.
 pub fn transaction_operation_sha256(mutations: &[TransactionMutation]) -> String {
     let bytes = serde_json::to_vec(mutations).expect("public transaction mutations serialize");
-    let digest = Sha256::digest(bytes);
-    let mut output = String::with_capacity(64);
-    const HEX: &[u8; 16] = b"0123456789abcdef";
-    for byte in digest {
-        output.push(HEX[usize::from(byte >> 4)] as char);
-        output.push(HEX[usize::from(byte & 0x0f)] as char);
-    }
-    output
+    sha256_bytes(&bytes)
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
