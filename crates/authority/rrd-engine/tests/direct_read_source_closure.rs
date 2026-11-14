@@ -44,7 +44,7 @@ struct AllowedUse {
 
 const ALLOWED_USES: &[AllowedUse] = &[
     AllowedUse {
-        path: "crates/authority/rrd-engine/src/engine/tests/attunement.rs",
+        path: "crates/authority/rrd-engine/src/engine/tests/attunement/inventory.rs",
         kind: SensitiveReadUse::CausalLogPage,
         count: 4,
         operation: "bounded Inventory mutation, partial-publication and resume-uniqueness oracles",
@@ -326,7 +326,7 @@ const ALLOWED_USES: &[AllowedUse] = &[
         operation: "store trace oracle over committed changes",
     },
     AllowedUse {
-        path: "crates/transport/rrd-server/tests/http_process.rs",
+        path: "crates/transport/rrd-server/tests/http_process/data_transaction.rs",
         kind: SensitiveReadUse::UnstampedCausalLogPage,
         count: 1,
         operation: "public data-transaction replay oracle after restart",
