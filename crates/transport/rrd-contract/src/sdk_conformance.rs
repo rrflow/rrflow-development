@@ -1,21 +1,24 @@
 use crate::{
     endpoint_catalogue, transaction_operation_sha256, AbortTransaction,
     ActivateVectorQuantizationArtifact, BeginTransaction, BuildVectorQuantizationArtifact,
-    CanonicalId, CloseSession, CommitTransaction, ContractError, CreateInstanceBackup,
-    CreateSession, EnsureVectorCollection, ErrorCode, ExecuteQuery, ListInstanceBackups,
-    PreviewTransaction, ReadChangefeed, ReadEstate, RenewSession, Result, SearchVectors,
-    VectorQuantizationMethod, VectorSearchMode, PROTOCOL, PROTOCOL_VERSION,
+    CanonicalId, CloseSession, ColdHistoryPolicy, CommitTransaction, ContractError,
+    CreateInstanceBackup, CreateSession, DeleteVectorPayloadIndex, EnsureVectorCollection,
+    EnsureVectorIndex, EnsureVectorPayloadIndex, ErrorCode, ExecuteQuery, ListInstanceBackups,
+    PreviewTransaction, ReadChangefeed, ReadColdHistory, ReadEstate, RenewSession, Result,
+    SearchVectors, VectorQuantizationMethod, VectorSearchMode, PROTOCOL, PROTOCOL_VERSION,
 };
+use crate::{EstateConfiguration, EstateConfigurationInput};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 
 pub const SDK_CONFORMANCE_FORMAT_VERSION: u16 = 1;
 
-const REQUIRED_DOMAINS: [&str; 13] = [
+const REQUIRED_DOMAINS: [&str; 14] = [
     "auth",
     "backup",
     "cancellation",
+    "cold_history",
     "crud",
     "estate",
     "live_feeds",
@@ -48,6 +51,7 @@ pub struct SdkConformanceCorpus {
     pub query: ExecuteQuery,
     pub vector: SdkConformanceVector,
     pub changefeed: SdkConformanceChangefeed,
+    pub cold_history: SdkConformanceColdHistory,
     pub backup: SdkConformanceBackup,
     pub estate: ReadEstate,
     pub expected: SdkConformanceExpected,
@@ -87,6 +91,21 @@ pub struct SdkConformanceVector {
     pub ensure: EnsureVectorCollection,
     pub search: SearchVectors,
     pub quantization: SdkConformanceQuantization,
+    pub index: SdkConformanceVectorIndex,
+}
+
+/// The graph index of the corpus's second named vector: declare the payload
+/// index it filters on, build it, search through it, and delete an unrelated
+/// payload index. It has its own named vector, so the TurboQuant search above
+/// keeps its access path.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct SdkConformanceVectorIndex {
+    pub payload_index: EnsureVectorPayloadIndex,
+    pub ensure: EnsureVectorIndex,
+    pub search: SearchVectors,
+    pub spare_payload_index: EnsureVectorPayloadIndex,
+    pub delete_payload_index: DeleteVectorPayloadIndex,
 }
 
 /// The quantization lifecycle on the corpus's vector: build a TurboQuant
@@ -110,6 +129,32 @@ pub struct SdkConformanceChangefeed {
     pub cancel_after_ms: u64,
 }
 
+/// Installed cold policy and read request shared by all SDK conformance clients.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct SdkConformanceColdHistory {
+    pub policy: ColdHistoryPolicy,
+    pub read: ReadColdHistory,
+    pub expected_actor: String,
+}
+
+impl SdkConformanceColdHistory {
+    /// One corpus-owned input used by both the planner projection and daemon harness.
+    pub fn installation_configuration(&self) -> EstateConfigurationInput {
+        let default = EstateConfiguration::default();
+        let mut input = EstateConfigurationInput {
+            format_version: default.format_version,
+            clock: default.clock,
+            storage: default.storage,
+            reasoning: default.reasoning,
+            recall: default.recall,
+            query: default.query,
+        };
+        input.storage.cold_history = Some(self.policy.clone());
+        input
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct SdkConformanceBackup {
@@ -124,6 +169,8 @@ pub struct SdkConformanceExpected {
     pub query_identity: String,
     pub vector_reference: String,
     pub quantized_access_path: CanonicalId,
+    pub indexed_access_path: CanonicalId,
+    pub indexed_reference: String,
     pub estate_revision: u64,
     pub typed_error: ErrorCode,
     pub retry_attempts: u8,
@@ -176,7 +223,21 @@ impl SdkConformanceCorpus {
         self.vector.quantization.build.validate()?;
         self.vector.quantization.activate.validate()?;
         self.vector.quantization.search.validate()?;
+        self.vector.index.payload_index.validate()?;
+        self.vector.index.ensure.validate()?;
+        self.vector.index.search.validate()?;
+        self.vector.index.spare_payload_index.validate()?;
+        self.vector.index.delete_payload_index.validate()?;
         self.changefeed.read.validate()?;
+        self.cold_history.policy.validate()?;
+        self.cold_history.read.validate()?;
+        if self.cold_history.read.generation != Some(1)
+            || self.cold_history.expected_actor.is_empty()
+            || self.cold_history.expected_actor.len() > 128
+            || self.cold_history.expected_actor.contains('\0')
+        {
+            return invalid("SDK cold-history generation or seeded actor is invalid");
+        }
         self.backup.create.validate()?;
         let scope = format!("instance:{}", self.identity.instance);
         if self.query.scope != scope
@@ -185,7 +246,13 @@ impl SdkConformanceCorpus {
             || self.vector.quantization.build.scope != scope
             || self.vector.quantization.activate.scope != scope
             || self.vector.quantization.search.scope != scope
+            || self.vector.index.payload_index.scope != scope
+            || self.vector.index.ensure.scope != scope
+            || self.vector.index.search.scope != scope
+            || self.vector.index.spare_payload_index.scope != scope
+            || self.vector.index.delete_payload_index.scope != scope
             || self.changefeed.read.scope != scope
+            || self.cold_history.read.scope != scope
         {
             return invalid("SDK conformance requests must target the fixture instance scope");
         }
@@ -217,6 +284,26 @@ impl SdkConformanceCorpus {
         {
             return invalid(
                 "SDK conformance quantization must build, activate and require TurboQuant on the corpus vector",
+            );
+        }
+        let index = &self.vector.index;
+        if index.ensure.collection_id != self.vector.ensure.collection_id
+            || Some(&index.ensure.vector_name) == self.vector.search.vector_name.as_ref()
+            || index.search.collection_id.as_ref() != Some(&index.ensure.collection_id)
+            || index.search.vector_name.as_ref() != Some(&index.ensure.vector_name)
+            || index.payload_index.collection_id != index.ensure.collection_id
+            || index.search.filter.is_none()
+            || index.spare_payload_index.field != index.delete_payload_index.field
+            || index.spare_payload_index.field == index.payload_index.field
+            || !matches!(
+                index.search.mode,
+                VectorSearchMode::RequireApproximate { .. }
+            )
+            || self.expected.indexed_access_path.as_str() != "hnsw"
+            || self.expected.indexed_reference.is_empty()
+        {
+            return invalid(
+                "SDK conformance vector index must filter and require HNSW on its own named vector",
             );
         }
         if self.changefeed.follow_wait_timeout_ms == 0

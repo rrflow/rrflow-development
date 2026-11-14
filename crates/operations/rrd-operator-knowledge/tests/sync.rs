@@ -28,7 +28,7 @@ fn binding() -> OperatorKnowledgeBinding {
         dimensions: 3,
         projection: ProjectionStamp {
             contract_version: DATA_RUNTIME_CONTRACT_VERSION,
-            id: ProjectionId::new("operator:sync").unwrap(),
+            id: ProjectionId::new("operator-sync").unwrap(),
             generation: 1,
             source_cursor: 4,
             config_digest: "11".repeat(32),

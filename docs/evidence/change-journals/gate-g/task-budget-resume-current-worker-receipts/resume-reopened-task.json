@@ -1,0 +1,97 @@
+{
+  "status": 200,
+  "request": {
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "context": {
+      "request_id": "controller-proof-c3ebb81c35524c0080af42aafe6a6835",
+      "operation_id": "controller-proof-c3ebb81c35524c0080af42aafe6a6835",
+      "idempotency_key": null,
+      "deadline_unix_ms": null
+    },
+    "resource": {
+      "segments": [
+        {
+          "kind": "instance",
+          "id": "instance-0976612a58664c75431765c9"
+        }
+      ]
+    },
+    "payload": {
+      "scope": "instance:instance-0976612a58664c75431765c9",
+      "task_id": "task-19c2df2501b33aecb8a127b8d15fa0e8c281d60e36172c73974b3a7029f4bf9f",
+      "max_storage_keys": 1000000
+    }
+  },
+  "response": {
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "request_id": "controller-proof-c3ebb81c35524c0080af42aafe6a6835",
+    "operation_id": "controller-proof-c3ebb81c35524c0080af42aafe6a6835",
+    "outcome": {
+      "status": "ok",
+      "payload": {
+        "task": {
+          "format_version": 1,
+          "task_id": "task-19c2df2501b33aecb8a127b8d15fa0e8c281d60e36172c73974b3a7029f4bf9f",
+          "scope": "instance:instance-0976612a58664c75431765c9",
+          "title": "Resume safely stopped task budgets without resetting effort",
+          "goal": "## Problem and behavior\r\n\r\nA task whose failed or cancelled attempt is known to have finished needs an explicit recovery path. `task-budget-resume` admits that transition against the current budget digest, preserving original effort, deadline, repetition counts and attempt history. It dispatches nothing; the next attempt requires fresh admission. Active or uncertain work remains denied.\r\n\r\nThis advances G-01b/G-02a and POAM-009. It does not extend budgets, resolve unknown provider outcomes or execute project-file changes. Version remains 1.0.0.\r\n\r\n## Integration and source review\r\n\r\nConnectome's Tasks workspace is the production consumer. Native worker PR229 landed as `f4d74af4861e8f2f008e3c3bd8fcb4e1503c0294`; Connectome PR28 landed as `1032dd05e536e98f7b69eb55bdd64129a7472c31`, each after its protected checks passed. Native PR230 precedes UI PR29 and UI PR30. Discovery is already on main.\r\n\r\nThe ordinary merge is now committed as `a99d577aedcf05c9dc435114912ee666a6d0875b`, tree `8208acbfca35de2a2bbe83a2d63d47ef1bd1933f`. All 22 conflicts are resolved. Independent review and staged-tree verification preserve 54 resume-only and 455 landing-only paths. The combined canonical catalogue contains all 79 landed operations plus resume, with generated SDKs and OpenAPI digest `e6bd6b60e12398a5ee5ddaf23f846e74288bc128f91acc561d9099381072d80f`.\r\n\r\nReview caught and corrected an initial whole-file resolution that dropped the resume descriptor and request-schema arm. The linked journal preserves that failure, source review, toolchain corrections and validation. No incoming runtime modules or historical receipts were removed or relabeled.\r\n\r\n## Validation and remaining acceptance\r\n\r\n- Focused worker/resume, native HTTP effort, catalogue and observation checks: 20 passed.\r\n- Engine all-feature/all-target suite: 419 passed; four explicit subprocess/privileged fixtures ignored as documented.\r\n- Contract/server/client all-feature/all-target suites: 240 passed, none ignored.\r\n- Six-language real-daemon conformance passed; rerun verified pinned .NET SDK 10.0.402, Node 24.22.0 and pnpm 12.14.0 after identifying the earlier .NET toolchain mismatch.\r\n- Strict Clippy, formatting, generated surfaces, TypeScript lint/typecheck/seven tests/generation check, documentation, navigation and execution inventory passed.\r\n- Four unchanged incoming CRLF evidence files retain their original blobs; scoped whitespace checks pass.\r\n\r\nThe parent SWAG session owns final integration. A clean source-bound binary is building for the existing installed recovery driver. Fresh actual terminal rejection, same-task resume, new selection/worker, preserved original records/deadline, replay denial and independent credential-free readback are still required. Historical `6a4cbb04`/`ce20dc79` live evidence does not qualify this candidate. Keep this PR draft until the fresh trial and linked evidence are complete, then require full candidate and protected CI.\r\n\r\n[Current reconciliation journal](https://github.com/rrflow/rrflow-development/blob/codex/task-budget-resume/docs/evidence/change-journals/gate-g/task-budget-resume-current-worker.md) records scope, commands, failures and remaining boundaries. [Historical implementation](https://github.com/rrflow/rrflow-development/blob/codex/task-budget-resume/docs/evidence/change-journals/gate-g/task-budget-resume.md) and [proof harness](https://github.com/rrflow/rrflow-development/blob/codex/task-budget-resume/docs/evidence/change-journals/gate-g/task-budget-resume-proof.md) retain their source identities.\r\n\r\n## Limits and stop conditions\r\n\r\nExisting engine transactions, receipts and public contracts remain the only authorities. No new external algorithm, routing policy or telemetry ledger is introduced. Ordinary-edit UI replanning, source-grounded context, governed project effects, independently reviewed learning and native binary/score/choice assessment cycles remain unfinished.\r\n\r\nStop on changed scope, lost lineage, failed checks, unknown external outcomes or altered original budget/history. The previously policy-rejected option",
+          "status": "open",
+          "opened_at_unix_ms": 1794014002638,
+          "idempotency_key": "controller-proof-a3cec19a38b24949af90c3387d74a2f1",
+          "operation_sha256": "b33b26f39d869b1b2292ba9b37873cca5a1e28c6ee0eef89a49d55f513a43527",
+          "task_cursor": 4,
+          "known_at_cursor": 4
+        },
+        "read": {
+          "runtime_manifest_sha256": "a83ee8e8be0c3da66880b746e261fb16b61c93773b737b288c05981530088dea",
+          "runtime_cursor": 14,
+          "schema_revision": 3,
+          "catalogue_revision": 0
+        },
+        "selected_versions": 1,
+        "read_evidence": {
+          "contract_version": 1,
+          "key_budget": 1000000,
+          "point_reads": 11,
+          "range_scans": 1,
+          "keys_examined": 12,
+          "values_decoded": 12,
+          "decoded_bytes": 8260,
+          "stamp_validation": {
+            "method": "authenticated_current_head",
+            "change_reads": 0,
+            "proof_nodes": 0
+          },
+          "paths": [
+            {
+              "path": "read_stamp",
+              "point_reads": 5,
+              "range_scans": 0,
+              "keys_examined": 5,
+              "values_decoded": 5,
+              "decoded_bytes": 2609
+            },
+            {
+              "path": "record_versions",
+              "point_reads": 0,
+              "range_scans": 1,
+              "keys_examined": 1,
+              "values_decoded": 1,
+              "decoded_bytes": 5267
+            },
+            {
+              "path": "accumulator_proof",
+              "point_reads": 6,
+              "range_scans": 0,
+              "keys_examined": 6,
+              "values_decoded": 6,
+              "decoded_bytes": 384
+            }
+          ]
+        }
+      }
+    }
+  }
+}

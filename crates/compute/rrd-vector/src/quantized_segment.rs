@@ -1094,7 +1094,7 @@ mod tests {
             .collect::<Vec<_>>();
         QuantizedSegment::build(
             QuantizedSegmentConfig {
-                id: ProjectionId::new(format!("quant:{}", method.as_str())).unwrap(),
+                id: ProjectionId::new(format!("quant-{}", method.as_str())).unwrap(),
                 scope,
                 field: "body".into(),
                 dimensions: 64,

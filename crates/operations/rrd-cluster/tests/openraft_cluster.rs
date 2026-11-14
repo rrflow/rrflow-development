@@ -548,7 +548,7 @@ fn test_placement(shard: ShardId, epoch: u64) -> ShardPlacement {
 fn test_placement_for(shard: ShardId, epoch: u64, voter_ids: [u64; 3]) -> ShardPlacement {
     ShardPlacement {
         contract_version: CLUSTER_CONTRACT_VERSION,
-        cluster: ClusterId::new("cluster:consensus-test").unwrap(),
+        cluster: ClusterId::new("cluster-consensus-test").unwrap(),
         shard,
         epoch,
         policy: PlacementPolicy {

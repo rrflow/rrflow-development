@@ -1,0 +1,7 @@
+{
+  "sourceUrl": "https://github.com/rrflow/rrflow-development/pull/230",
+  "originalBodySha256": "1203bb92dafb4ccfeea159e8fa57a1d2976f223849133d4aecea746133c28a7e",
+  "projectedBodyBytes": 4096,
+  "truncated": true,
+  "use": "transport/admission proof only; no training or quality label"
+}

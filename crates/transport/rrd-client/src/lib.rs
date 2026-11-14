@@ -14,6 +14,7 @@ mod retry;
 mod session;
 mod subscription;
 mod transport;
+mod worker;
 
 #[allow(dead_code)] // The complete generated projection precedes full H-04 client migration.
 /// Catalogue-derived markers; metadata alone does not authorize a call.

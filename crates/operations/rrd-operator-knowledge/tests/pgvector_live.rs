@@ -55,7 +55,7 @@ fn binding(deployment: &PgvectorDeployment) -> OperatorKnowledgeBinding {
         dimensions: 3,
         projection: ProjectionStamp {
             contract_version: DATA_RUNTIME_CONTRACT_VERSION,
-            id: ProjectionId::new("operator:pgvector:live").unwrap(),
+            id: ProjectionId::new("operator-pgvector-live").unwrap(),
             generation: 1,
             source_cursor: 4,
             config_digest: deployment.digest().unwrap(),

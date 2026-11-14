@@ -4915,6 +4915,7 @@ dependencies = [
  "tempfile",
  "tokio",
  "tokio-tungstenite",
+ "toml",
 ]
 
 [[package]]

@@ -26,7 +26,10 @@ LANGUAGE_COMMANDS = {
             "--test",
             "sdk_conformance",
             "--locked",
+            "rust_sdk_passes_shared_real_daemon_conformance",
             "--",
+            "--exact",
+            "--ignored",
             "--nocapture",
         ]
     ],
@@ -88,12 +91,41 @@ def require_toolchains() -> None:
         )
 
 
-def run(command: list[str], env: dict[str, str] | None = None) -> None:
+def run(
+    command: list[str],
+    env: dict[str, str] | None = None,
+    required_output: str | None = None,
+) -> None:
     print("+", " ".join(command), flush=True)
     executable = shutil.which(command[0], path=None if env is None else env.get("PATH"))
     if executable is None:
         raise RuntimeError(f"SDK conformance executable is missing: {command[0]}")
-    subprocess.run([executable, *command[1:]], cwd=ROOT, env=env, check=True)
+    if required_output is None:
+        subprocess.run([executable, *command[1:]], cwd=ROOT, env=env, check=True)
+        return
+    seen = False
+    tail = ""
+    with subprocess.Popen(
+        [executable, *command[1:]],
+        cwd=ROOT,
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    ) as process:
+        assert process.stdout is not None
+        while chunk := process.stdout.read(4096):
+            print(chunk, end="", flush=True)
+            observed = tail + chunk
+            seen = seen or required_output in observed
+            tail = observed[-(len(required_output) - 1) :] if len(required_output) > 1 else ""
+        status = process.wait()
+    if status != 0:
+        raise subprocess.CalledProcessError(status, [executable, *command[1:]])
+    if not seen:
+        raise RuntimeError("SDK conformance test did not emit its required corpus success marker")
 
 
 def wait_for_manifest(
@@ -123,6 +155,7 @@ def main() -> None:
         "auth",
         "backup",
         "cancellation",
+        "cold_history",
         "crud",
         "estate",
         "live_feeds",
@@ -193,7 +226,12 @@ def main() -> None:
             environment["RRD_SDK_CONFORMANCE_MANIFEST"] = str(manifest_path)
             for language, commands in LANGUAGE_COMMANDS.items():
                 for command in commands:
-                    run(command, environment)
+                    marker = (
+                        f"SDK conformance OK: language=rust corpus_sha256={digest}"
+                        if language == "rust"
+                        else None
+                    )
+                    run(command, environment, required_output=marker)
                 print(
                     f"SDK conformance OK: language={language} corpus_sha256={digest}",
                     flush=True,

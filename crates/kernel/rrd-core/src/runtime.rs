@@ -5,6 +5,7 @@
 //! adapters allocate a single global cursor for every mutation, hash-chain the
 //! resulting changes, and reject a commit whose expected cursor is stale.
 
+use crate::ident::{check_canonical, check_text, text_ident};
 use crate::{
     digest, Claim, Error, GeoValue, Millis, ObjectReference, Predicate, Result, RuntimeGeo,
     RuntimeSchemaRegistry, RuntimeSeriesSample, RuntimeVector, SeriesValue, Subject,
@@ -12,78 +13,20 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
-use std::fmt;
 
-macro_rules! runtime_ident {
-    ($name:ident, $label:literal) => {
-        #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-        #[serde(try_from = "String", into = "String")]
-        pub struct $name(String);
-
-        impl $name {
-            pub fn new(value: impl Into<String>) -> Result<Self> {
-                let value = value.into();
-                validate_identifier($label, &value)?;
-                Ok(Self(value))
-            }
-
-            pub fn as_str(&self) -> &str {
-                &self.0
-            }
-        }
-
-        impl TryFrom<String> for $name {
-            type Error = Error;
-
-            fn try_from(value: String) -> Result<Self> {
-                Self::new(value)
-            }
-        }
-
-        impl From<$name> for String {
-            fn from(value: $name) -> Self {
-                value.0
-            }
-        }
-
-        impl fmt::Debug for $name {
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                write!(f, "{}({:?})", $label, self.0)
-            }
-        }
-
-        impl fmt::Display for $name {
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                f.write_str(&self.0)
-            }
-        }
-    };
-}
-
-runtime_ident!(ScopeId, "runtime scope");
-runtime_ident!(RuntimeType, "runtime type");
-runtime_ident!(RuntimeId, "runtime id");
-runtime_ident!(SnapshotId, "snapshot id");
-runtime_ident!(RetentionPinId, "retention pin id");
-runtime_ident!(ProjectionId, "projection id");
-runtime_ident!(OutboxId, "outbox id");
+// A scope is family-qualified, as in `instance:{id}` and `maintenance:{id}`, and the public contract
+// carries it as text.
+text_ident!(ScopeId, "runtime scope", check_text);
+text_ident!(RuntimeType, "runtime type", check_canonical);
+text_ident!(@type RuntimeId, "runtime id");
+text_ident!(SnapshotId, "snapshot id", check_canonical);
+text_ident!(RetentionPinId, "retention pin id", check_canonical);
+text_ident!(ProjectionId, "projection id", check_canonical);
+text_ident!(OutboxId, "outbox id", check_canonical);
 
 /// Wire version for the data-runtime transaction, snapshot, projection, and
 /// audit contracts. Unknown versions are rejected rather than guessed.
 pub const DATA_RUNTIME_CONTRACT_VERSION: u16 = 1;
-
-fn validate_identifier(kind: &'static str, value: &str) -> Result<()> {
-    if value.is_empty() {
-        return Err(Error::EmptyIdentifier { kind });
-    }
-    if value.as_bytes().contains(&0) {
-        return Err(Error::SeparatorInIdentifier {
-            kind,
-            value: value.to_owned(),
-        });
-    }
-    Ok(())
-}
 
 /// A stable, typed reference within one runtime scope.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -93,11 +36,73 @@ pub struct RuntimeRef {
 }
 
 impl RuntimeRef {
+    /// A reference by canonical id, which is all anything outside the kernel can name.
     pub fn new(kind: impl Into<String>, id: impl Into<String>) -> Result<Self> {
         Ok(Self {
             kind: RuntimeType::new(kind)?,
             id: RuntimeId::new(id)?,
         })
+    }
+
+    /// The event of this kind at `cursor`.
+    pub fn event(kind: RuntimeType, cursor: u64) -> Self {
+        Self {
+            kind,
+            id: RuntimeId::event(cursor),
+        }
+    }
+
+    /// Reads a reference back from storage or a query, where it may name an event.
+    pub fn parse(kind: impl Into<String>, id: impl Into<String>) -> Result<Self> {
+        Ok(Self {
+            kind: RuntimeType::new(kind)?,
+            id: RuntimeId::parse(id)?,
+        })
+    }
+}
+
+const EVENT_ID_PREFIX: &str = "cursor:";
+
+impl RuntimeId {
+    /// A canonical id. A caller cannot name an event this way.
+    pub fn new(value: impl Into<String>) -> Result<Self> {
+        let value = value.into();
+        check_canonical("runtime id", &value)?;
+        Ok(Self(value))
+    }
+
+    /// The identity of the event its commit placed at `cursor`. Its colon is outside the canonical
+    /// grammar on purpose: it keeps an event apart from every id a caller can supply, so no record
+    /// can collide with one.
+    pub fn event(cursor: u64) -> Self {
+        Self(format!("{EVENT_ID_PREFIX}{cursor}"))
+    }
+
+    /// The cursor this identity names, when it is an event's.
+    pub fn event_cursor(&self) -> Option<u64> {
+        self.0.strip_prefix(EVENT_ID_PREFIX)?.parse().ok()
+    }
+
+    /// Reads either form back, taking an event identity only as `event` writes it.
+    pub fn parse(value: impl Into<String>) -> Result<Self> {
+        let value = value.into();
+        if let Some(digits) = value.strip_prefix(EVENT_ID_PREFIX) {
+            if digits
+                .parse::<u64>()
+                .is_ok_and(|cursor| cursor.to_string() == digits)
+            {
+                return Ok(Self(value));
+            }
+        }
+        Self::new(value)
+    }
+}
+
+impl TryFrom<String> for RuntimeId {
+    type Error = Error;
+
+    fn try_from(value: String) -> Result<Self> {
+        Self::parse(value)
     }
 }
 
@@ -801,11 +806,7 @@ impl DataTransaction {
                 }
                 RuntimeMutation::Event { event } => {
                     let cursor = self.read.commit_cursor + ordinal as u64 + 1;
-                    let event_ref = RuntimeRef {
-                        kind: event.kind.clone(),
-                        id: RuntimeId::new(format!("cursor:{cursor}"))
-                            .expect("cursor event id is valid"),
-                    };
+                    let event_ref = RuntimeRef::event(event.kind.clone(), cursor);
                     records.insert(
                         event_ref.clone(),
                         RuntimeRecord {
@@ -816,12 +817,10 @@ impl DataTransaction {
                         },
                     );
                     if let Some(subject) = &event.subject {
-                        let relation_ref = RuntimeRef {
-                            kind: RuntimeType::new("emitted")
-                                .expect("static runtime type is valid"),
-                            id: RuntimeId::new(format!("cursor:{cursor}"))
-                                .expect("cursor relation id is valid"),
-                        };
+                        let relation_ref = RuntimeRef::event(
+                            RuntimeType::new("emitted").expect("static runtime type is valid"),
+                            cursor,
+                        );
                         relations.insert(
                             relation_ref.clone(),
                             RuntimeRelation {
@@ -1701,10 +1700,7 @@ fn resolve_snapshot_claims(
 }
 
 fn runtime_event_reference(event: &RuntimeEvent, cursor: u64) -> RuntimeRef {
-    RuntimeRef {
-        kind: event.kind.clone(),
-        id: RuntimeId::new(format!("cursor:{cursor}")).expect("cursor event id is valid"),
-    }
+    RuntimeRef::event(event.kind.clone(), cursor)
 }
 
 fn data_snapshot_model_error<T>(
@@ -1821,11 +1817,7 @@ impl RuntimeGraphSnapshot {
                     }
                 }
                 RuntimeMutation::Event { event } => {
-                    let event_ref = RuntimeRef {
-                        kind: event.kind.clone(),
-                        id: RuntimeId::new(format!("cursor:{}", change.cursor))
-                            .expect("cursor event id is valid"),
-                    };
+                    let event_ref = RuntimeRef::event(event.kind.clone(), change.cursor);
                     records.insert(
                         event_ref.clone(),
                         RuntimeRecord {
@@ -1836,12 +1828,10 @@ impl RuntimeGraphSnapshot {
                         },
                     );
                     if let Some(subject) = &event.subject {
-                        let relation_ref = RuntimeRef {
-                            kind: RuntimeType::new("emitted")
-                                .expect("static runtime type is valid"),
-                            id: RuntimeId::new(format!("cursor:{}", change.cursor))
-                                .expect("cursor relation id is valid"),
-                        };
+                        let relation_ref = RuntimeRef::event(
+                            RuntimeType::new("emitted").expect("static runtime type is valid"),
+                            change.cursor,
+                        );
                         relations.insert(
                             relation_ref.clone(),
                             RuntimeRelation {
@@ -2040,7 +2030,7 @@ fn duplicate_identity<T>(kind: &str, reference: &RuntimeRef) -> Result<T> {
 }
 
 fn validate_text(kind: &'static str, value: &str) -> Result<()> {
-    validate_identifier(kind, value)
+    check_text(kind, value)
 }
 
 fn validate_digest(kind: &'static str, value: &str) -> Result<()> {
@@ -2070,7 +2060,7 @@ fn valid_at_window(valid_from: Millis, valid_to: Option<Millis>, at: Millis) -> 
 
 fn validate_properties(properties: &RuntimeProperties) -> Result<()> {
     for key in properties.keys() {
-        validate_identifier("runtime property", key)?;
+        check_text("runtime property", key)?;
     }
     Ok(())
 }

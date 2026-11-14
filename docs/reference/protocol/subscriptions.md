@@ -39,6 +39,14 @@ the rrflowQL string, typed parameters, query budget, and maximum semantic-delta
 rows. Contract validation rejects unknown fields and values outside the
 declared bounds; `max_in_flight` is currently limited to 1 through 64.
 
+Live-query subscriptions bind the result identity version to their durable
+state and expose it in the subscription snapshot. Opening from a nonzero
+cursor requires the caller's matching version. A previously persisted live
+subscription without the current version cannot reconnect, deliver, acknowledge,
+or renew: close
+it and establish a new baseline and subscription. The engine does not rewrite
+its acknowledged cursor. Changefeed subscriptions are unaffected.
+
 The stream digest is stable for the accepted definition. Reusing the open
 idempotency key with the same request returns the existing subscription;
 changing the request conflicts. There is no update operation that silently

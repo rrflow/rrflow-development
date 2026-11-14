@@ -1,4 +1,4 @@
-# POAM-011 — public surfaces, SDKs, and Connectome
+# POAM-011 â€” public surfaces, SDKs, and Connectome
 
 **Status:** active parent-owned POA&M detail
 **Coordinate:** `rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-011`
@@ -21,6 +21,33 @@ resource/error behavior remain incomplete across the client surfaces. The
 language packages and Connectome also retain the runtime, packaging,
 reproducibility, offline-install, platform, and real-engine gaps recorded by
 their dedicated owners.
+
+The TypeScript SDK can silently round a valid 64-bit integer returned by the
+engine: a controlled public-client `cold-history-read` response carrying
+`through_cursor` 9007199254740993 was observed as 9007199254740992 on Node
+24.22.0. This was a wire-response reproduction, not an estate that reached
+that cursor. Ordinary small-value real-daemon SDK conformance does not cover
+this boundary. A subsequent isolated real-daemon test committed an unsigned
+property `9007199254740993`; Python read the exact value from the changefeed,
+while TypeScript read `9007199254740992` from the same daemon and session.
+This reproduces the defect on an accepted transaction, but does not establish
+restart durability or qualify the rest of the SDK. See the F-06 change journal.
+The current catalogue export contains recursive tagged `QueryValue` unions,
+nullable integers and floating-point values; a list of field-name exceptions
+cannot cover its operation schemas reliably. H-04 must define and implement
+a catalogue-derived, lossless, consistent model and request/response wire
+representation for the contract's full-width integers,
+then prove supported runtimes and real-daemon round trips and interoperability.
+The [F-06 journal](../../evidence/change-journals/gate-f/f-06-derived-cold-history.md)
+records the candidate impact; no fix or gate closure is claimed.
+
+On public main the standalone Rust SDK real-daemon conformance test returns
+normally when its manifest is absent, so Cargo can count it as passed without
+executing the corpus. The unmerged [F-06 candidate](../../evidence/change-journals/gate-f/f-06-derived-cold-history.md#rust-conformance-missing-setup-correction)
+marks ordinary runs ignored, requires the manifest on explicit execution and
+checks the real runner's corpus success marker. H-04 remains open until that
+correction and the full cross-surface qualification reach an accepted
+candidate.
 
 The generated-surface topology now names one executable operation/capability
 catalogue as semantic owner, but the complete one-invocation compiler and

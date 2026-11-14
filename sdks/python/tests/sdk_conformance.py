@@ -27,6 +27,7 @@ assert set(cast(list[str], corpus["required_domains"])) == {
     "auth",
     "backup",
     "cancellation",
+    "cold_history",
     "crud",
     "estate",
     "live_feeds",
@@ -113,6 +114,18 @@ with RrdClient(str(manifest["base_url"]), str(identity["instance"])) as client:
         ),
     )
     session = Session(session.principal_id, renewed)
+    cold_request = obj(obj(corpus["cold_history"])["read"])
+    cold = client.call("cold-history-read", cold_request, options("cold-history", session=session))
+    generation = obj(cold["generation"])
+    changes = cast(list[object], cold["changes"])
+    assert cold["scope"] == cold_request["scope"]
+    assert generation["generation"] == cold_request["generation"]
+    assert generation["through_cursor"] > generation["requested_after_cursor"]
+    assert changes and generation["rows"] == len(changes)
+    assert all(obj(change)["scope"] == cold["scope"] for change in changes)
+    assert any(
+        obj(change)["actor"] == obj(corpus["cold_history"])["expected_actor"] for change in changes
+    )
     client.call(
         "vector-collection-ensure",
         obj(vector["ensure"]),
@@ -201,6 +214,41 @@ with RrdClient(str(manifest["base_url"]), str(identity["instance"])) as client:
         f"{obj(obj(hit)['reference'])['kind']}:{obj(obj(hit)['reference'])['id']}"
         == expected["vector_reference"]
         for hit in cast(list[object], quantized["hits"])
+    )
+    # The graph index and its payload index. The changefeed read below proves the
+    # scope stays readable with an index in it.
+    index = obj(vector["index"])
+    client.call(
+        "vector-payload-index-ensure",
+        obj(index["payload_index"]),
+        options("payload-index-ensure", session=session, mutation=True),
+    )
+    built_index = client.call(
+        "vector-index-ensure",
+        obj(index["ensure"]),
+        options("index-ensure", session=session, mutation=True),
+    )
+    assert obj(built_index["index"])["kind"] == expected["indexed_access_path"]
+    indexed = client.call(
+        "vector-search",
+        obj(index["search"]),
+        options("indexed-search", session=session),
+    )
+    assert indexed["access_path"] == expected["indexed_access_path"]
+    assert any(
+        f"{obj(obj(hit)['reference'])['kind']}:{obj(obj(hit)['reference'])['id']}"
+        == expected["indexed_reference"]
+        for hit in cast(list[object], indexed["hits"])
+    )
+    client.call(
+        "vector-payload-index-ensure",
+        obj(index["spare_payload_index"]),
+        options("payload-index-spare", session=session, mutation=True),
+    )
+    client.call(
+        "vector-payload-index-delete",
+        obj(index["delete_payload_index"]),
+        options("payload-index-delete", session=session, mutation=True),
     )
     changes = client.call(
         "changefeed-read", obj(changefeed["read"]), options("changefeed-read", session=session)

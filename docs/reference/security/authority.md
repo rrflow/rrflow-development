@@ -189,6 +189,13 @@ from the reviewed input cannot appear during apply, and a changed configuration,
 source revision, adapter binding, template, placement, or action digest is a
 conflict requiring a new preview.
 
+The new-install CLI exposes only two initial grant lists: the existing default,
+or that exact list plus `ProjectSourceRead` when the operator explicitly passes
+`rrflow install plan --allow-project-source-read`. The preview names the
+resulting `instance_prefix` scope. It does not offer arbitrary grant editing or
+persist a post-install bootstrap change. Source eligibility and source/context
+export remain separate authorizations.
+
 ### Credential sources and sinks
 
 The provider-neutral engine sees credential-source descriptors and a bounded

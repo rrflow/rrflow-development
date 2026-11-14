@@ -456,8 +456,8 @@ pub(crate) fn runtime_change_key(cursor: u64) -> Vec<u8> {
     encode(RUNTIME_CHANGES, &[KeyPart::U64(cursor)])
 }
 
-pub(crate) fn runtime_event_reference(event: &RuntimeEvent, cursor: u64) -> Result<RuntimeRef> {
-    RuntimeRef::new(event.kind.as_str(), format!("cursor:{cursor}")).map_err(Error::from)
+pub(crate) fn runtime_event_reference(event: &RuntimeEvent, cursor: u64) -> RuntimeRef {
+    RuntimeRef::event(event.kind.clone(), cursor)
 }
 
 pub(crate) fn runtime_identity_key(
@@ -713,9 +713,9 @@ pub(crate) fn parse_runtime_adjacency_version_key(
     };
     Ok(RuntimeAdjacencyVersionKey {
         scope: ScopeId::new(scope)?,
-        node: RuntimeRef::new(node_kind, node_id)?,
-        relation: RuntimeRef::new(relation_kind, relation_id)?,
-        other: RuntimeRef::new(other_kind, other_id)?,
+        node: RuntimeRef::parse(node_kind, node_id)?,
+        relation: RuntimeRef::parse(relation_kind, relation_id)?,
+        other: RuntimeRef::parse(other_kind, other_id)?,
         effective_at,
         cursor,
     })
@@ -980,7 +980,7 @@ pub(crate) fn parse_runtime_identity_key(
             "runtime identity key has invalid field types".into(),
         ));
     };
-    Ok((ScopeId::new(scope)?, RuntimeRef::new(kind, id)?))
+    Ok((ScopeId::new(scope)?, RuntimeRef::parse(kind, id)?))
 }
 
 pub(crate) fn runtime_outbox_key(cursor: u64) -> Vec<u8> {
@@ -1246,7 +1246,7 @@ mod tests {
     fn access_and_sequence_keys_round_trip_in_order() {
         let codec = KeyCodec;
         let reader = Reader::new("agent:clyffy/worker").unwrap();
-        let (subject, predicate) = sp("a/b", "c");
+        let (subject, predicate) = sp("a-b", "c");
         let access = access_key(500, &reader, &subject, &predicate);
         assert_eq!(
             parse_access_key(codec, &access).unwrap(),
@@ -1282,8 +1282,8 @@ mod tests {
         let scope = ScopeId::new("project:graph-order").unwrap();
         let relation = RuntimeRelation {
             reference: RuntimeRef::new("imports", "a-b").unwrap(),
-            from: RuntimeRef::new("file", "src/a.rs").unwrap(),
-            to: RuntimeRef::new("file", "src/b.rs").unwrap(),
+            from: RuntimeRef::new("file", "src-a.rs").unwrap(),
+            to: RuntimeRef::new("file", "src-b.rs").unwrap(),
             valid_from: 100,
             valid_to: None,
             properties: Default::default(),
@@ -1413,7 +1413,7 @@ mod tests {
         }
 
         let claim = rrd_core::Claim::new(
-            Subject::new("document:alpha").unwrap(),
+            Subject::new("document-alpha").unwrap(),
             Predicate::new("status").unwrap(),
             "ready",
             100,
@@ -1437,7 +1437,7 @@ mod tests {
         let scope = ScopeId::new("project:version-fixture").unwrap();
         let reference = RuntimeRef::new("document", "alpha").unwrap();
         let claim = rrd_core::Claim::new(
-            Subject::new("document:alpha").unwrap(),
+            Subject::new("document-alpha").unwrap(),
             Predicate::new("status").unwrap(),
             "ready",
             100,

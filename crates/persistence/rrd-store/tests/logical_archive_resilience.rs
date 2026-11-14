@@ -18,7 +18,7 @@ use std::path::{Path, PathBuf};
 
 fn claim(name: impl std::fmt::Display, at: u64) -> Claim {
     Claim::new(
-        Subject::new(format!("archive:{name}")).unwrap(),
+        Subject::new(format!("archive-{name}")).unwrap(),
         Predicate::new("status").unwrap(),
         "retained",
         at,

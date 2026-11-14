@@ -1,0 +1,46 @@
+{
+  "status": 412,
+  "request": {
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "context": {
+      "request_id": "controller-proof-6dcef7d1425f4ac2a3105ce96ad3a9a1",
+      "operation_id": "controller-proof-6dcef7d1425f4ac2a3105ce96ad3a9a1",
+      "idempotency_key": "controller-proof-6dcef7d1425f4ac2a3105ce96ad3a9a1",
+      "deadline_unix_ms": null
+    },
+    "resource": {
+      "segments": [
+        {
+          "kind": "instance",
+          "id": "instance-ff5a41c8d602b5ea81c31036"
+        }
+      ]
+    },
+    "payload": {
+      "scope": "instance:instance-ff5a41c8d602b5ea81c31036",
+      "task_id": "task-18586ba0f21a4b5e6a359660ee4c85ab571250634c0453050493f274dd8a81a0",
+      "attempt_id": "actual-worker-4436966bc17f4f8d942592c11b2b2ec1",
+      "selection_attempt_id": "actual-proposal-83c78781cec44324a86d4ae7a9226c37",
+      "expected_selection_sha256": "ec9a418f07d022e651907a56af9f5a321bbd9cadb705e07666974c277cac2a99",
+      "expected_task_sha256": "577f6fa274a248066775047d98a1b2c8d77c6bbbdc7ba31f203c99a6e63beacf",
+      "expected_configuration_sha256": "d3f36631ed5fed44cf299d7327224d9120b3d3ba0d1a29e8f4f3c7f7906d1678",
+      "max_storage_keys": 1000000,
+      "context": null
+    }
+  },
+  "response": {
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "request_id": "controller-proof-6dcef7d1425f4ac2a3105ce96ad3a9a1",
+    "operation_id": "controller-proof-6dcef7d1425f4ac2a3105ce96ad3a9a1",
+    "outcome": {
+      "status": "error",
+      "error": {
+        "code": "failed_precondition",
+        "message": "EndpointCallFailed { reason: \"chat cancelled\", execution_may_continue: true }",
+        "retryable": false
+      }
+    }
+  }
+}

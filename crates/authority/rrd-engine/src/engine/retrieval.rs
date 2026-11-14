@@ -258,14 +258,20 @@ impl RrdEngine {
     }
 }
 
-fn text_subject(identity: &str, kind: &CanonicalId) -> Result<DataReference> {
-    let prefix = format!("record:{kind}:");
-    let id = identity.strip_prefix(&prefix).ok_or_else(|| {
-        ServiceError::Query("BM25 result identity differs from the hybrid document kind".into())
-    })?;
+pub(super) fn text_subject(identity: &str, kind: &CanonicalId) -> Result<DataReference> {
+    let reference = identity
+        .strip_prefix("record:")
+        .and_then(rrd_core::result_identity::parse_reference)
+        .filter(|reference| reference.kind.as_str() == kind.as_str())
+        .ok_or_else(|| {
+            ServiceError::Query(
+                "text result identity is malformed or differs from its document kind".into(),
+            )
+        })?;
     Ok(DataReference {
         kind: kind.clone(),
-        id: CanonicalId::new(id).map_err(|error| ServiceError::Query(error.to_string()))?,
+        id: CanonicalId::new(reference.id.as_str())
+            .map_err(|error| ServiceError::Query(error.to_string()))?,
     })
 }
 
@@ -286,4 +292,30 @@ fn reciprocal_rank_score(
     };
     contribution(text_rank, text_weight_millionths)
         + contribution(vector_rank, vector_weight_millionths)
+}
+
+#[cfg(test)]
+mod identity_tests {
+    use super::text_subject;
+    use rrd_contract::CanonicalId;
+
+    #[test]
+    fn text_results_require_the_expected_kind_and_canonical_reference() {
+        let kind = CanonicalId::new("note").unwrap();
+        assert_eq!(
+            text_subject("record:note:alpha", &kind)
+                .unwrap()
+                .id
+                .as_str(),
+            "alpha"
+        );
+        for invalid in [
+            "record:other:alpha",
+            "record:note:a:b",
+            "record:note:%3a",
+            "record:note:a%3Ab",
+        ] {
+            assert!(text_subject(invalid, &kind).is_err(), "{invalid}");
+        }
+    }
 }

@@ -277,4 +277,42 @@ fn metadata_commit_and_consistency_routes_share_one_engine_authority() {
         .prepare_distributed_authority(&second, "metadata-controller", 10_000)
         .unwrap();
     assert_eq!(successor.commit.mutations.len(), 1);
+
+    // POAM-046: this record lives in the scope the public changefeed reads.
+    let lease = engine
+        .create_session(
+            &rrd_contract::CreateSession {
+                limits: rrd_contract::SessionLimits {
+                    idle_timeout_ms: 9_000,
+                    absolute_timeout_ms: 10_000,
+                    max_open_transactions: 1,
+                },
+            },
+            &rrd_contract::CorrelationId::new("changefeed-session").unwrap(),
+            1_000,
+            "request-changefeed-session",
+            "operation-changefeed-session",
+        )
+        .unwrap();
+    let page = engine
+        .read_changefeed(
+            &lease.session_id,
+            &lease.token,
+            &rrd_contract::ReadChangefeed {
+                scope: "instance:cluster-metadata".into(),
+                after_cursor: 0,
+                limit: 128,
+            },
+            1_100,
+            "request-changefeed",
+            "operation-changefeed",
+        )
+        .unwrap();
+    assert!(page.changes.iter().any(|change| matches!(
+        &change.mutation,
+        rrd_contract::ChangeMutationSnapshot::Data {
+            mutation: rrd_contract::TransactionMutation::PutRecord { reference, .. },
+        } if reference.kind.as_str() == "rrd_cluster_topology"
+            && reference.id.as_str() == "cluster-a"
+    )));
 }

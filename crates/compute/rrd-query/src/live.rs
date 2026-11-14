@@ -29,6 +29,7 @@ pub struct LiveRowChange {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LiveQueryDelta {
     pub query_digest: String,
+    pub result_identity_version: u16,
     pub from_cursor: u64,
     pub through_cursor: u64,
     pub head_cursor: u64,
@@ -53,8 +54,17 @@ pub fn poll_live_query<E: StorageEngine>(
     query: &Query,
     parameters: &Parameters,
     after_cursor: u64,
+    result_identity_version: Option<u16>,
     budget: &LiveQueryBudget,
 ) -> Result<LiveQueryDelta> {
+    let current_identity = rrd_core::result_identity::RESULT_IDENTITY_VERSION;
+    if result_identity_version.is_some_and(|version| version != current_identity)
+        || (after_cursor > 0 && result_identity_version != Some(current_identity))
+    {
+        return Err(Error::Binding(
+            "live query continuation requires the current result identity version; restart from cursor zero".into(),
+        ));
+    }
     if !matches!(query.temporal.known_at, CursorExpr::Head) {
         return Err(Error::Binding(
             "live queries require KNOWN HEAD; the resume cursor is supplied separately".into(),
@@ -131,11 +141,13 @@ pub fn poll_live_query<E: StorageEngine>(
     }
     let query_digest = digest::sha256_hex(&serde_json::to_vec(&(
         query.contract_version,
+        current_identity,
         query.canonical(),
         parameters,
     ))?);
     Ok(LiveQueryDelta {
         query_digest,
+        result_identity_version: current_identity,
         from_cursor: after_cursor,
         through_cursor: head_cursor,
         head_cursor,

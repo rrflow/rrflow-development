@@ -15,7 +15,10 @@ class NoRedirect(HTTPRedirectHandler):
 
 
 class FaultRelay:
-    def __init__(self, upstream, output, timeout_seconds, request_limit, response_limit, maximum_calls, drop):
+    def __init__(self, upstream, output, timeout_seconds, request_limit, response_limit, maximum_calls, drop,
+                 *, hold_call=1):
+        if not 1 <= hold_call <= maximum_calls:
+            raise ValueError('held call must be within the explicit trial call bound')
         self.ready = threading.Event()
         self.release = threading.Event()
         self.error = None
@@ -72,11 +75,11 @@ class FaultRelay:
                     save(f'relay-{ordinal}-observation.json', {
                         'httpStatus': status, 'requestSha256': hashlib.sha256(body).hexdigest(),
                         'responseSha256': hashlib.sha256(data).hexdigest(),
-                        'responseBytes': len(data), 'heldBeforeEngineResponse': ordinal == 1,
+                        'responseBytes': len(data), 'heldBeforeEngineResponse': ordinal == hold_call,
                         'generatedOrReplayedResponse': False})
                     if status != 200:
                         raise RuntimeError('provider did not succeed; fault condition not established')
-                    if ordinal == 1:
+                    if ordinal == hold_call:
                         relay.ready.set()
                         if not relay.release.wait(timeout_seconds):
                             raise TimeoutError('fault action did not release actual response')

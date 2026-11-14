@@ -82,6 +82,7 @@ fn commit_request(object: &str) -> CommitTransaction {
 
 mod attunement;
 mod catalogue;
+pub(super) mod cold_history_oracle;
 mod context;
 mod data_crud;
 mod deployment_conformance;

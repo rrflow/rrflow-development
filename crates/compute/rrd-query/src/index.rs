@@ -3,6 +3,7 @@ use crate::{
     QueryRow, Result,
 };
 use crate::{CursorExpr, Filter, Projection, Query, Source, TemporalSelector, TimeExpr};
+use rrd_core::result_identity::RESULT_IDENTITY_VERSION;
 use rrd_core::{
     digest, ProjectionId, ProjectionStamp, ProjectionState, RuntimeValue, ScopeId,
     DATA_RUNTIME_CONTRACT_VERSION,
@@ -119,6 +120,9 @@ pub struct IndexEntry {
     pub built_valid_at: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub artifact_rows: Option<u64>,
+    /// Absent on artifacts built before the canonical result identity format.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub result_identity_version: Option<u16>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub prior_artifact: Option<IndexArtifactReference>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -173,6 +177,7 @@ pub struct IndexAnalyticsArtifact {
 impl IndexEntry {
     pub fn is_usable_at(&self, source_cursor: u64, valid_at: u64) -> bool {
         self.stamp.state == ProjectionState::Ready
+            && self.result_identity_version == Some(RESULT_IDENTITY_VERSION)
             && self.stamp.source_cursor == source_cursor
             && self.built_valid_at == Some(valid_at)
             && self.artifact_rows.is_some()
@@ -188,6 +193,7 @@ impl IndexEntry {
 #[serde(deny_unknown_fields)]
 pub struct IndexArtifact {
     pub contract_version: u16,
+    pub result_identity_version: u16,
     pub scope: ScopeId,
     pub definition: IndexDefinition,
     pub generation: u64,
@@ -209,6 +215,12 @@ impl IndexArtifact {
             return Err(Error::Integrity(format!(
                 "unsupported index artifact contract version {}",
                 self.contract_version
+            )));
+        }
+        if self.result_identity_version != RESULT_IDENTITY_VERSION {
+            return Err(Error::Integrity(format!(
+                "unsupported index result identity version {}",
+                self.result_identity_version
             )));
         }
         self.definition.validate()?;
@@ -508,6 +520,7 @@ impl<'a, E: StorageEngine> IndexCatalogueRepository<'a, E> {
                     },
                     built_valid_at: None,
                     artifact_rows: None,
+                    result_identity_version: None,
                     prior_artifact: None,
                     maintenance: None,
                     analytics_total_count: None,
@@ -537,7 +550,8 @@ impl<'a, E: StorageEngine> IndexCatalogueRepository<'a, E> {
                 .checked_add(1)
                 .ok_or_else(|| Error::Integrity("index generation overflow".into()))?;
             entry.prior_artifact = (entry.stamp.state == ProjectionState::Ready
-                && entry.maintenance.is_some())
+                && entry.maintenance.is_some()
+                && entry.result_identity_version == Some(RESULT_IDENTITY_VERSION))
             .then(|| IndexArtifactReference {
                 generation: entry.stamp.generation - 1,
                 source_cursor: entry.stamp.source_cursor,
@@ -551,6 +565,7 @@ impl<'a, E: StorageEngine> IndexCatalogueRepository<'a, E> {
             entry.stamp.state = ProjectionState::Building;
             entry.built_valid_at = None;
             entry.artifact_rows = None;
+            entry.result_identity_version = None;
             entry.maintenance = None;
             entry.analytics_total_count = None;
             entry.analytics_group_count = None;
@@ -651,6 +666,7 @@ impl<'a, E: StorageEngine> IndexCatalogueRepository<'a, E> {
         )?;
         let artifact = IndexArtifact {
             contract_version: INDEX_ARTIFACT_CONTRACT_VERSION,
+            result_identity_version: RESULT_IDENTITY_VERSION,
             scope: self.scope.clone(),
             definition,
             generation,
@@ -729,6 +745,56 @@ impl<'a, E: StorageEngine> IndexCatalogueRepository<'a, E> {
                 "index source cursor must name an existing authoritative change".into(),
             ));
         }
+        let current = self.load()?;
+        let entry = current
+            .entries
+            .get(id)
+            .ok_or_else(|| Error::Catalog(format!("unknown index {id}")))?;
+        if entry.stamp.state != ProjectionState::Building
+            || entry.stamp.generation != publication.generation
+        {
+            return Err(Error::Catalog(
+                "index publication is stale or not building".into(),
+            ));
+        }
+        let name = index_artifact_name(
+            &self.scope,
+            id,
+            publication.generation,
+            &publication.artifact_digest,
+        );
+        let bytes = self
+            .engine
+            .projections()
+            .get(&name)?
+            .ok_or_else(|| Error::Integrity("published index artifact is missing".into()))?;
+        if digest::sha256_hex(&bytes) != publication.artifact_digest {
+            return Err(Error::Integrity(
+                "published index artifact digest does not verify".into(),
+            ));
+        }
+        let artifact = IndexArtifact::decode(&bytes)?;
+        let analytics_group_count = artifact
+            .analytics
+            .as_ref()
+            .map(|value| u64::try_from(value.groups.len()))
+            .transpose()
+            .map_err(|_| Error::Budget("analytics group count exceeds u64".into()))?;
+        if artifact.scope != self.scope
+            || artifact.definition != entry.definition
+            || artifact.generation != publication.generation
+            || artifact.source_cursor != publication.source_cursor
+            || artifact.valid_at != publication.valid_at
+            || u64::try_from(artifact.rows.len()).ok() != Some(publication.artifact_rows)
+            || artifact.maintenance != publication.maintenance
+            || artifact.analytics.as_ref().map(|value| value.total_count)
+                != publication.analytics_total_count
+            || analytics_group_count != publication.analytics_group_count
+        {
+            return Err(Error::Integrity(
+                "index publication does not match its artifact".into(),
+            ));
+        }
         let id = id.clone();
         let publication = publication.clone();
         self.update(context, "index.ready", move |catalogue| {
@@ -738,6 +804,7 @@ impl<'a, E: StorageEngine> IndexCatalogueRepository<'a, E> {
                 .ok_or_else(|| Error::Catalog(format!("unknown index {id}")))?;
             if entry.stamp.generation != publication.generation
                 || entry.stamp.state != ProjectionState::Building
+                || entry.definition != artifact.definition
             {
                 return Err(Error::Catalog(
                     "index publication is stale or not building".into(),
@@ -748,6 +815,7 @@ impl<'a, E: StorageEngine> IndexCatalogueRepository<'a, E> {
             entry.stamp.state = ProjectionState::Ready;
             entry.built_valid_at = Some(publication.valid_at);
             entry.artifact_rows = Some(publication.artifact_rows);
+            entry.result_identity_version = Some(RESULT_IDENTITY_VERSION);
             entry.prior_artifact = None;
             entry.maintenance = Some(publication.maintenance);
             entry.analytics_total_count = publication.analytics_total_count;
