@@ -3,14 +3,15 @@ use super::clock::FixedClock;
 use super::clock::{assess, observe_required, require_accepted, ClockSource, HostSystemClock};
 use super::*;
 use crate::engine::estate_layout::{
-    create_estate_directories, reject_existing_estate, safe_join, validate_estate_directories,
-    validate_managed_relative, validate_recovery_estate, EstateFilesystem, EstateLayout,
+    bind_existing_ancestors, create_estate_directories, reject_existing_estate, safe_join,
+    validate_estate_directories, validate_managed_relative, validate_plan_ancestors,
+    validate_recovery_estate, EstateFilesystem, EstateLayout, ESTATE_DIRECTORY,
     LOCATOR_RELATIVE_PATH, STORAGE_DIRECTORY,
 };
 use crate::engine::memory_estate::build_memory_estate_plan;
 use crate::engine::token_key::{
-    read_api_key_document_anchored as read_api_key_document,
-    read_token_key_anchored as read_token_key, ApiKeyDocument,
+    read_api_key_document_anchored as read_api_key_document, read_private_anchored,
+    read_token_key_anchored as read_token_key, write_private_anchored, ApiKeyDocument,
 };
 use rrd_contract::{
     attunement_plan_sha256, installation_plan_sha256, installation_result_sha256, AttunementJob,
@@ -603,10 +604,21 @@ impl RrdEngine {
         attunement.plan_sha256 = attunement_plan_sha256(&attunement)
             .map_err(|error| ServiceError::Contract(error.to_string()))?;
 
-        let layout = EstateLayout::new(&install_id, &profile.initial_principal_id)?;
+        let retained_estate = project
+            .project()
+            .join(ESTATE_DIRECTORY)
+            .try_exists()
+            .map_err(storage_error)?;
+        let layout = EstateLayout::with_retained_estate(
+            &install_id,
+            &profile.initial_principal_id,
+            retained_estate,
+        )?;
         let absent = digest::sha256_hex(b"rrflow-install-managed-path-absent-v1");
-        let managed_paths = layout.managed_paths(&absent);
-        let bootstrap = bootstrap::build(&profile, &layout)?;
+        let mut managed_paths = layout.managed_paths(&absent);
+        bind_existing_ancestors(&project, &mut managed_paths)?;
+        admission::validate_new_paths(&project, &managed_paths)?;
+        let bootstrap = bootstrap::build(&profile, &layout, &managed_paths)?;
         let actions = installation_actions(
             &configuration.configuration_sha256,
             &attunement.plan_sha256,
@@ -794,10 +806,7 @@ impl RrdEngine {
         }
 
         let started = Instant::now();
-        let layout = EstateLayout::new(
-            &preview.installation.storage_root_id,
-            &preview.installation.initial_principal_id,
-        )?;
+        let layout = EstateLayout::for_plan(&preview.installation)?;
         validate_sealed_preview(preview, &profile, &profile_sha256, &executable_sha256)?;
 
         // Refused preconditions must not create even an empty admission file.
@@ -827,7 +836,7 @@ impl RrdEngine {
             admission::Admission::Published { intent, result } => {
                 if let Some(intent) = intent {
                     let (_, _, locator_bytes) = read_locator_anchored(&project)?;
-                    validate_recovery_estate(&project, &layout)?;
+                    validate_recovery_estate(&project, &layout, &preview.installation)?;
                     observe_install_stage(
                         preview,
                         started,
@@ -876,7 +885,7 @@ impl RrdEngine {
                 {
                     return Err(ServiceError::ProjectBindingMismatch);
                 }
-                validate_recovery_estate(&project, &layout)?;
+                validate_recovery_estate(&project, &layout, &preview.installation)?;
                 observe_install_stage(
                     preview,
                     started,
@@ -904,8 +913,8 @@ impl RrdEngine {
             .managed_path(InstallationManagedPathKind::OperatorCredential)
             .relative_path
             .clone();
-        create_estate_directories(&mut project)?;
-        validate_recovery_estate(&project, &layout)?;
+        create_estate_directories(&mut project, &preview.installation)?;
+        validate_recovery_estate(&project, &layout, &preview.installation)?;
         let locator_path = safe_join(&project, LOCATOR_RELATIVE_PATH)?;
         observe_install_stage(
             preview,
@@ -1224,11 +1233,19 @@ impl RrdEngine {
             .map_err(|error| ServiceError::Contract(error.to_string()))?
             .into_bytes();
         let locator_sha256 = digest::sha256_hex(&locator_bytes);
-        publish_new_file(
-            &locator_path,
-            &safe_join(&project, &layout.locator_pending)?,
-            &locator_bytes,
-        )?;
+        let locator_pending = safe_join(&project, &layout.locator_pending)?;
+        if let Some(proof) = &layout.locator_proof {
+            publish_into_retained_parent(
+                &locator_path,
+                &locator_pending,
+                &safe_join(&project, proof)?,
+                &locator_bytes,
+                &preview.installation.plan_sha256,
+                &mut || Ok(()),
+            )?;
+        } else {
+            publish_new_file(&locator_path, &locator_pending, &locator_bytes)?;
+        }
         observe_install_stage(
             preview,
             started,
@@ -1282,7 +1299,7 @@ impl RrdEngine {
         let preflight =
             Self::with_installed_binding(project, executable, clock, "install.open.preflight", Ok)?;
         require_accepted(&preflight.clock)?;
-        let (project, locator, _) = read_locator_anchored(project)?;
+        let (project, locator, locator_bytes) = read_locator_anchored(project)?;
         let (_, profile_sha256) = DefaultInstallProfile::load(locator.profile_id.as_str())?;
         if sha256_file(executable)? != locator.executable_sha256
             || profile_sha256 != locator.profile_sha256
@@ -1309,6 +1326,19 @@ impl RrdEngine {
         let installed: InstalledEstateRecord = decode_json(&bytes, "installed estate record")?;
         installed.validate()?;
         require_locator_record_match(&locator, &installed)?;
+        validate_plan_ancestors(&project, &installed.installation, false, false)?;
+        if let Some(proof) = &installed
+            .installation
+            .managed_path(InstallationManagedPathKind::LocatorPending)
+            .publication_proof
+        {
+            require_publication_proof(
+                &project.managed(LOCATOR_RELATIVE_PATH)?,
+                &project.managed(&proof.relative_path)?,
+                &locator_bytes,
+                &installed.installation.plan_sha256,
+            )?;
+        }
         bootstrap::verify(&project, &installed.installation)?;
         if locator.identity.instance_id != preflight.locator.identity.instance_id
             || locator.plan_sha256 != preflight.locator.plan_sha256
@@ -1467,12 +1497,24 @@ impl RrdEngine {
             decode_control(&inspector, INSTALLED_RECORD_KEY, "installed estate record")?;
         installed.validate()?;
         require_locator_record_match(&locator, &installed)?;
+        validate_plan_ancestors(&project, &installed.installation, false, false)?;
+        if let Some(proof) = &installed
+            .installation
+            .managed_path(InstallationManagedPathKind::LocatorPending)
+            .publication_proof
+        {
+            require_publication_proof(
+                &project.managed(LOCATOR_RELATIVE_PATH)?,
+                &project.managed(&proof.relative_path)?,
+                &locator_bytes,
+                &installed.installation.plan_sha256,
+            )?;
+        }
         bootstrap::verify(&project, &installed.installation)?;
-        let layout = EstateLayout::new(
-            &installed.installation.storage_root_id,
-            &installed.installation.initial_principal_id,
-        )?;
-        if installed.installation.bootstrap != bootstrap::build(&profile, &layout)? {
+        let layout = EstateLayout::for_plan(&installed.installation)?;
+        if installed.installation.bootstrap
+            != bootstrap::build(&profile, &layout, &installed.installation.managed_paths)?
+        {
             return Err(ServiceError::ProjectBindingMismatch);
         }
         let configuration: EstateConfiguration = decode_control(
@@ -1715,8 +1757,22 @@ fn validate_sealed_preview(
     };
     let expected_phases = planned_attunement_steps(&steps)?;
     let absent = digest::sha256_hex(b"rrflow-install-managed-path-absent-v1");
-    let expected_paths =
-        EstateLayout::new(&install_id, &profile.initial_principal_id)?.managed_paths(&absent);
+    let expected_layout = EstateLayout::for_plan(installation)?;
+    let mut expected_paths = expected_layout.managed_paths(&absent);
+    for (expected, actual) in expected_paths
+        .iter_mut()
+        .take(2)
+        .zip(&installation.managed_paths)
+    {
+        if actual.removal_rule == rrd_contract::InstallationRemovalRule::RetainExistingDirectory {
+            expected.precondition_sha256 = actual.precondition_sha256.clone();
+            expected.existing_directory_identity_sha256 =
+                actual.existing_directory_identity_sha256.clone();
+            expected.existing_directory_security_sha256 =
+                actual.existing_directory_security_sha256.clone();
+            expected.removal_rule = actual.removal_rule;
+        }
+    }
     let expected_actions = installation_actions(
         &installation.configuration.configuration_sha256,
         &preview.attunement.plan_sha256,
@@ -1733,10 +1789,7 @@ fn validate_sealed_preview(
         || installation.configuration.revision != 1
         || installation.initial_seat != profile.specialization.seat
         || installation.bootstrap
-            != bootstrap::build(
-                profile,
-                &EstateLayout::new(&install_id, &profile.initial_principal_id)?,
-            )?
+            != bootstrap::build(profile, &expected_layout, &installation.managed_paths)?
         || installation.initial_principal_id != profile.initial_principal_id
         || installation.initial_grants != SecurityAction::ALL
         || installation.credential_bytes != profile.credential_bytes
@@ -1940,6 +1993,132 @@ pub(super) fn publish_new_file(
     publish_new_file_with_stage(path, temporary, bytes, &mut || Ok(()))
 }
 
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct PublicationProof {
+    format_version: u16,
+    plan_sha256: String,
+    content_sha256: String,
+    object_identity_sha256: String,
+}
+
+fn read_publication_proof(path: &AnchoredPath) -> Result<Option<PublicationProof>> {
+    match read_private_anchored(path, MAX_LOCATOR_BYTES) {
+        Ok(bytes) => Ok(Some(decode_json(&bytes, "publication ownership proof")?)),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(error) => Err(storage_error(error)),
+    }
+}
+
+fn observed_publication(path: &AnchoredPath, expected: &[u8]) -> Result<String> {
+    let mut file = path.open_read().map_err(storage_error)?;
+    let before = path
+        .source_observation_for_file(&file)
+        .map_err(storage_error)?;
+    if before.kind() != rrd_store::filesystem::SourceKind::File
+        || before.bytes() != expected.len() as u64
+    {
+        return Err(ServiceError::ProjectBindingMismatch);
+    }
+    let mut actual = Vec::new();
+    (&mut file)
+        .take(MAX_LOCATOR_BYTES + 1)
+        .read_to_end(&mut actual)
+        .map_err(storage_error)?;
+    let after = path
+        .source_observation_for_file(&file)
+        .map_err(storage_error)?;
+    if before != after || actual != expected {
+        return Err(ServiceError::ProjectBindingMismatch);
+    }
+    before.object_identity_sha256().map_err(storage_error)
+}
+
+fn require_publication_proof(
+    path: &AnchoredPath,
+    proof: &AnchoredPath,
+    bytes: &[u8],
+    plan_sha256: &str,
+) -> Result<()> {
+    let proof = read_publication_proof(proof)?.ok_or(ServiceError::ProjectBindingMismatch)?;
+    if proof.format_version != 1
+        || proof.plan_sha256 != plan_sha256
+        || proof.content_sha256 != digest::sha256_hex(bytes)
+        || proof.object_identity_sha256 != observed_publication(path, bytes)?
+    {
+        return Err(ServiceError::ProjectBindingMismatch);
+    }
+    Ok(())
+}
+
+/// Publish into a retained project directory only after sealing the identity
+/// of the staged private file. An equal pre-existing file is not ownership.
+fn publish_into_retained_parent(
+    path: &AnchoredPath,
+    temporary: &AnchoredPath,
+    proof: &AnchoredPath,
+    bytes: &[u8],
+    plan_sha256: &str,
+    staged: &mut dyn FnMut() -> Result<()>,
+) -> Result<()> {
+    if bytes.len() as u64 > MAX_LOCATOR_BYTES {
+        return Err(ServiceError::ProjectBindingMismatch);
+    }
+    if path.try_exists().map_err(storage_error)? {
+        require_publication_proof(path, proof, bytes, plan_sha256)?;
+        if temporary.try_exists().map_err(storage_error)? {
+            return Err(ServiceError::ProjectBindingMismatch);
+        }
+        return Ok(());
+    }
+    let created = if !temporary.try_exists().map_err(storage_error)? {
+        if read_publication_proof(proof)?.is_some() {
+            return Err(ServiceError::ProjectBindingMismatch);
+        }
+        write_private_anchored(temporary, bytes).map_err(storage_error)?;
+        true
+    } else {
+        if read_private_anchored(temporary, MAX_LOCATOR_BYTES).map_err(storage_error)? != bytes {
+            return Err(ServiceError::ProjectBindingMismatch);
+        }
+        false
+    };
+    let identity = observed_publication(temporary, bytes)?;
+    match read_publication_proof(proof)? {
+        Some(record) => {
+            if record.format_version != 1
+                || record.plan_sha256 != plan_sha256
+                || record.content_sha256 != digest::sha256_hex(bytes)
+                || record.object_identity_sha256 != identity
+            {
+                return Err(ServiceError::ProjectBindingMismatch);
+            }
+        }
+        None if created => {
+            let record = PublicationProof {
+                format_version: 1,
+                plan_sha256: plan_sha256.into(),
+                content_sha256: digest::sha256_hex(bytes),
+                object_identity_sha256: identity,
+            };
+            write_private_anchored(proof, &serde_json::to_vec(&record).map_err(contract_json)?)
+                .map_err(storage_error)?;
+        }
+        None => return Err(ServiceError::ProjectBindingMismatch),
+    }
+    staged()?;
+    match temporary.rename_new_to(path) {
+        Ok(()) => {}
+        Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
+            require_publication_proof(path, proof, bytes, plan_sha256)?;
+            return Err(ServiceError::ProjectBindingMismatch);
+        }
+        Err(error) => return Err(storage_error(error)),
+    }
+    require_publication_proof(path, proof, bytes, plan_sha256)?;
+    Ok(())
+}
+
 fn publish_new_file_with_stage(
     path: &AnchoredPath,
     temporary: &AnchoredPath,
@@ -2009,6 +2188,15 @@ fn cleanup_locator_pending(
     layout: &EstateLayout,
     locator_bytes: &[u8],
 ) -> Result<()> {
+    if layout.locator_proof.is_some() {
+        if safe_join(project, &layout.locator_pending)?
+            .try_exists()
+            .map_err(storage_error)?
+        {
+            return Err(ServiceError::ProjectBindingMismatch);
+        }
+        return Ok(());
+    }
     cleanup_pending_file(&safe_join(project, &layout.locator_pending)?, locator_bytes)
 }
 

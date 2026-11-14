@@ -25,6 +25,18 @@ const PRIVATE_ESTATE_DIRECTORIES: [&str; 4] = [
     CREDENTIAL_DIRECTORY,
 ];
 
+fn is_project_ancestor(relative: &str) -> bool {
+    matches!(relative, ESTATE_DIRECTORY | STORAGE_DIRECTORY)
+}
+
+fn pin_estate_directory(relative: &str, path: &AnchoredPath) -> std::io::Result<AnchoredPath> {
+    if is_project_ancestor(relative) {
+        path.pin_directory()
+    } else {
+        super::token_key::pin_private_directory(path)
+    }
+}
+
 /// One admitted project plus the exact private directories selected beneath it.
 /// Retained directory identities, never display paths, authorize later effects.
 #[derive(Clone, Debug)]
@@ -48,12 +60,12 @@ impl EstateFilesystem {
     pub fn admit_missing_private_directories(&mut self, allow_missing: bool) -> Result<()> {
         for relative in PRIVATE_ESTATE_DIRECTORIES {
             if let Some(directory) = self.private.get(relative) {
-                super::token_key::pin_private_directory(directory)
+                pin_estate_directory(relative, directory)
                     .map_err(|error| estate_directory_error(relative, error))?;
                 continue;
             }
             let path = self.managed(relative)?;
-            match super::token_key::pin_private_directory(&path) {
+            match pin_estate_directory(relative, &path) {
                 Ok(directory) => {
                     self.private.insert(relative, directory);
                 }
@@ -94,11 +106,23 @@ impl EstateFilesystem {
         Ok(self.project.join(relative))
     }
 
-    pub fn create_private_directories(&mut self) -> Result<()> {
+    pub fn create_private_directories(
+        &mut self,
+        plan: &rrd_contract::InstallationPlan,
+    ) -> Result<()> {
         for relative in PRIVATE_ESTATE_DIRECTORIES {
             if let Some(directory) = self.private.get(relative) {
-                super::token_key::pin_private_directory(directory)
-                    .map_err(|error| estate_directory_error(relative, error))?;
+                let retained = plan.managed_paths.iter().any(|path| {
+                    path.relative_path == relative
+                        && path.removal_rule == InstallationRemovalRule::RetainExistingDirectory
+                });
+                if retained {
+                    pin_estate_directory(relative, directory)
+                        .map_err(|error| estate_directory_error(relative, error))?;
+                } else {
+                    super::token_key::pin_private_directory(directory)
+                        .map_err(|error| estate_directory_error(relative, error))?;
+                }
             } else {
                 let directory =
                     super::token_key::create_private_directory_anchored(&self.managed(relative)?)
@@ -108,6 +132,137 @@ impl EstateFilesystem {
         }
         Ok(())
     }
+}
+
+/// Bind preexisting ancestors without claiming ownership. Newly-created
+/// directories remain absent in the preview and private when applied.
+pub(super) fn bind_existing_ancestors(
+    project: &EstateFilesystem,
+    paths: &mut [InstallationManagedPath],
+) -> Result<()> {
+    for path in paths.iter_mut().take(2) {
+        match project
+            .project()
+            .join(&path.relative_path)
+            .source_observation()
+        {
+            Ok(observed) => {
+                if observed.kind() != rrd_store::filesystem::SourceKind::Directory {
+                    return Err(ServiceError::ProjectBindingMismatch);
+                }
+                let retained = project
+                    .private
+                    .get(path.relative_path.as_str())
+                    .ok_or(ServiceError::ProjectBindingMismatch)?;
+                let held = retained
+                    .source_observation()
+                    .map_err(|e| estate_directory_error(&path.relative_path, e))?;
+                let security = super::token_key::directory_security_sha256(retained)
+                    .map_err(|e| estate_directory_error(&path.relative_path, e))?;
+                if held
+                    .object_identity_sha256()
+                    .map_err(|e| ServiceError::Storage(e.to_string()))?
+                    != observed
+                        .object_identity_sha256()
+                        .map_err(|e| ServiceError::Storage(e.to_string()))?
+                    || project
+                        .project()
+                        .join(&path.relative_path)
+                        .source_observation()
+                        .map_err(|e| estate_directory_error(&path.relative_path, e))?
+                        != observed
+                {
+                    return Err(ServiceError::ProjectBindingMismatch);
+                }
+                path.precondition_sha256 = observed
+                    .revision_sha256()
+                    .map_err(|e| ServiceError::Storage(e.to_string()))?;
+                path.existing_directory_identity_sha256 = Some(
+                    observed
+                        .object_identity_sha256()
+                        .map_err(|e| ServiceError::Storage(e.to_string()))?,
+                );
+                path.existing_directory_security_sha256 = Some(security);
+                path.removal_rule = InstallationRemovalRule::RetainExistingDirectory;
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => return Err(estate_directory_error(&path.relative_path, error)),
+        }
+    }
+    Ok(())
+}
+
+/// Revalidate retained object identity after recovery; before the first write,
+/// also require the exact metadata revision observed by the approved preview.
+pub(super) fn validate_plan_ancestors(
+    project: &EstateFilesystem,
+    plan: &rrd_contract::InstallationPlan,
+    require_revision: bool,
+    allow_missing_owned: bool,
+) -> Result<()> {
+    for path in &plan.managed_paths[..4] {
+        let anchored = project.project().join(&path.relative_path);
+        if path.removal_rule == InstallationRemovalRule::RetainExistingDirectory {
+            let observed = anchored
+                .source_observation()
+                .map_err(|e| estate_directory_error(&path.relative_path, e))?;
+            if observed.kind() != rrd_store::filesystem::SourceKind::Directory
+                || Some(
+                    observed
+                        .object_identity_sha256()
+                        .map_err(|e| ServiceError::Storage(e.to_string()))?,
+                ) != path.existing_directory_identity_sha256
+                || (require_revision
+                    && observed
+                        .revision_sha256()
+                        .map_err(|e| ServiceError::Storage(e.to_string()))?
+                        != path.precondition_sha256)
+            {
+                return Err(ServiceError::ProjectBindingMismatch);
+            }
+            let retained = project
+                .private
+                .get(path.relative_path.as_str())
+                .ok_or(ServiceError::ProjectBindingMismatch)?;
+            let held = retained
+                .source_observation()
+                .map_err(|e| estate_directory_error(&path.relative_path, e))?;
+            if Some(
+                super::token_key::directory_security_sha256(retained)
+                    .map_err(|e| estate_directory_error(&path.relative_path, e))?,
+            ) != path.existing_directory_security_sha256
+                || held
+                    .object_identity_sha256()
+                    .map_err(|e| ServiceError::Storage(e.to_string()))?
+                    != observed
+                        .object_identity_sha256()
+                        .map_err(|e| ServiceError::Storage(e.to_string()))?
+            {
+                return Err(ServiceError::ProjectBindingMismatch);
+            }
+            let after = anchored
+                .source_observation()
+                .map_err(|e| estate_directory_error(&path.relative_path, e))?;
+            if after
+                .object_identity_sha256()
+                .map_err(|e| ServiceError::Storage(e.to_string()))?
+                != observed
+                    .object_identity_sha256()
+                    .map_err(|e| ServiceError::Storage(e.to_string()))?
+                || (require_revision && after != observed)
+            {
+                return Err(ServiceError::ProjectBindingMismatch);
+            }
+        } else {
+            match super::token_key::pin_private_directory(&anchored) {
+                Ok(_) => {}
+                Err(error)
+                    if allow_missing_owned && error.kind() == std::io::ErrorKind::NotFound => {}
+                Err(error) => return Err(estate_directory_error(&path.relative_path, error)),
+            }
+        }
+    }
+    Ok(())
 }
 
 fn estate_directory_error(relative: &str, error: std::io::Error) -> ServiceError {
@@ -123,10 +278,26 @@ pub(super) struct EstateLayout {
     pub locator_pending: String,
     pub bootstrap: String,
     pub bootstrap_pending: String,
+    pub bootstrap_proof: Option<String>,
+    pub locator_proof: Option<String>,
 }
 
 impl EstateLayout {
+    #[cfg(test)]
     pub fn new(storage_root_id: &CanonicalId, principal_id: &CanonicalId) -> Result<Self> {
+        Self::with_retained_estate(storage_root_id, principal_id, false)
+    }
+
+    pub fn with_retained_estate(
+        storage_root_id: &CanonicalId,
+        principal_id: &CanonicalId,
+        retained: bool,
+    ) -> Result<Self> {
+        let staging_directory = if retained {
+            CREDENTIAL_DIRECTORY
+        } else {
+            ESTATE_DIRECTORY
+        };
         let layout = Self {
             storage_root: format!("{STORAGE_ROOTS_DIRECTORY}/{storage_root_id}"),
             token_key: format!("{STORAGE_ROOTS_DIRECTORY}/{storage_root_id}/RRD.TOKEN"),
@@ -134,9 +305,13 @@ impl EstateLayout {
             install_intent: format!(
                 "{INSTALL_INTENT_PREFIX}{storage_root_id}{INSTALL_INTENT_SUFFIX}"
             ),
-            locator_pending: format!("{ESTATE_DIRECTORY}/.config.{storage_root_id}.pending"),
+            locator_pending: format!("{staging_directory}/.config.{storage_root_id}.pending"),
             bootstrap: format!("{ESTATE_DIRECTORY}/bootstrap.md"),
-            bootstrap_pending: format!("{ESTATE_DIRECTORY}/.bootstrap.{storage_root_id}.pending"),
+            bootstrap_pending: format!("{staging_directory}/.bootstrap.{storage_root_id}.pending"),
+            bootstrap_proof: retained
+                .then(|| format!("{CREDENTIAL_DIRECTORY}/.bootstrap.{storage_root_id}.proof")),
+            locator_proof: retained
+                .then(|| format!("{CREDENTIAL_DIRECTORY}/.config.{storage_root_id}.proof")),
         };
         for relative in [
             layout.storage_root.as_str(),
@@ -150,11 +325,28 @@ impl EstateLayout {
             validate_managed_relative(relative)?;
         }
         validate_intent_relative(&layout.install_intent)?;
+        for proof in [
+            layout.bootstrap_proof.as_deref(),
+            layout.locator_proof.as_deref(),
+        ]
+        .into_iter()
+        .flatten()
+        {
+            validate_managed_relative(proof)?;
+        }
         Ok(layout)
     }
 
+    pub fn for_plan(plan: &rrd_contract::InstallationPlan) -> Result<Self> {
+        let retained = plan
+            .managed_path(InstallationManagedPathKind::EstateDirectory)
+            .removal_rule
+            == InstallationRemovalRule::RetainExistingDirectory;
+        Self::with_retained_estate(&plan.storage_root_id, &plan.initial_principal_id, retained)
+    }
+
     pub fn managed_paths(&self, absent_sha256: &str) -> Vec<InstallationManagedPath> {
-        [
+        let mut paths: Vec<InstallationManagedPath> = [
             (
                 InstallationManagedPathKind::EstateDirectory,
                 ESTATE_DIRECTORY.to_owned(),
@@ -234,21 +426,49 @@ impl EstateLayout {
                     absent_sha256.to_owned()
                 },
                 removal_rule,
+                existing_directory_identity_sha256: None,
+                existing_directory_security_sha256: None,
+                publication_proof: None,
             },
         )
-        .collect()
+        .collect();
+        for (kind, proof) in [
+            (
+                InstallationManagedPathKind::BootstrapPending,
+                &self.bootstrap_proof,
+            ),
+            (
+                InstallationManagedPathKind::LocatorPending,
+                &self.locator_proof,
+            ),
+        ] {
+            if let Some(relative_path) = proof {
+                let path = paths
+                    .iter_mut()
+                    .find(|path| path.kind == kind)
+                    .expect("layout pending path");
+                path.publication_proof = Some(rrd_contract::InstallationPublicationProof {
+                    relative_path: relative_path.clone(),
+                    precondition_sha256: absent_sha256.to_owned(),
+                    removal_rule: InstallationRemovalRule::RemoveIfOwnedDigestMatches,
+                });
+            }
+        }
+        paths
     }
 }
 
-/// A new install may not coexist with either a pre-canonical
-/// `.rrflow/instance.toml` estate or an unrecognized `.rrflow` tree. Replay is
-/// resolved from the canonical locator before this check is called.
+/// A new install cannot adopt an already identified estate. Other existing
+/// project-owned entries are preserved and individual output collisions are
+/// checked against the approved plan before any write.
 pub(super) fn reject_existing_estate(project: &EstateFilesystem) -> Result<()> {
-    match project.project().join(ESTATE_DIRECTORY).metadata() {
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
-        Ok(_) => Err(ServiceError::ProjectBindingMismatch),
-        Err(error) => Err(ServiceError::Storage(error.to_string())),
-    }?;
+    for relative in [".rrflow/instance.toml", LOCATOR_RELATIVE_PATH] {
+        match project.project().join(relative).metadata() {
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Ok(_) => return Err(ServiceError::ProjectBindingMismatch),
+            Err(error) => return Err(ServiceError::Storage(error.to_string())),
+        }
+    }
     let entries = project
         .project()
         .entries()
@@ -269,8 +489,11 @@ pub(super) fn reject_existing_estate(project: &EstateFilesystem) -> Result<()> {
     Ok(())
 }
 
-pub(super) fn create_estate_directories(project: &mut EstateFilesystem) -> Result<()> {
-    project.create_private_directories()
+pub(super) fn create_estate_directories(
+    project: &mut EstateFilesystem,
+    plan: &rrd_contract::InstallationPlan,
+) -> Result<()> {
+    project.create_private_directories(plan)
 }
 
 pub(super) fn validate_estate_directories(
@@ -280,7 +503,7 @@ pub(super) fn validate_estate_directories(
     for relative in PRIVATE_ESTATE_DIRECTORIES {
         match project.private.get(relative) {
             Some(directory) => {
-                super::token_key::pin_private_directory(directory)
+                pin_estate_directory(relative, directory)
                     .map_err(|error| estate_directory_error(relative, error))?;
             }
             None if allow_missing => {}
@@ -293,8 +516,10 @@ pub(super) fn validate_estate_directories(
 pub(super) fn validate_recovery_estate(
     project: &EstateFilesystem,
     layout: &EstateLayout,
+    plan: &rrd_contract::InstallationPlan,
 ) -> Result<()> {
     validate_estate_directories(project, true)?;
+    validate_plan_ancestors(project, plan, false, true)?;
     let storage_id = Path::new(&layout.storage_root)
         .file_name()
         .and_then(|value| value.to_str())
@@ -311,25 +536,56 @@ pub(super) fn validate_recovery_estate(
         .file_name()
         .and_then(|value| value.to_str())
         .ok_or(ServiceError::ProjectBindingMismatch)?;
-    validate_directory_entries(
-        project,
-        ESTATE_DIRECTORY,
-        &[
-            "rrd",
-            "credentials",
-            "config.toml",
-            "bootstrap.md",
-            locator_pending,
-            bootstrap_pending,
-        ],
-    )?;
-    validate_directory_entries(
-        project,
-        STORAGE_DIRECTORY,
-        &["roots", BACKUPS_DIRECTORY_NAME, RESTORES_DIRECTORY_NAME],
-    )?;
+    if plan
+        .managed_path(InstallationManagedPathKind::EstateDirectory)
+        .removal_rule
+        != InstallationRemovalRule::RetainExistingDirectory
+    {
+        validate_directory_entries(
+            project,
+            ESTATE_DIRECTORY,
+            &[
+                "rrd",
+                "credentials",
+                "config.toml",
+                "bootstrap.md",
+                locator_pending,
+                bootstrap_pending,
+            ],
+        )?;
+    }
+    if plan
+        .managed_path(InstallationManagedPathKind::StorageDirectory)
+        .removal_rule
+        != InstallationRemovalRule::RetainExistingDirectory
+    {
+        validate_directory_entries(
+            project,
+            STORAGE_DIRECTORY,
+            &["roots", BACKUPS_DIRECTORY_NAME, RESTORES_DIRECTORY_NAME],
+        )?;
+    }
     validate_directory_entries(project, STORAGE_ROOTS_DIRECTORY, &[storage_id])?;
-    validate_directory_entries(project, CREDENTIAL_DIRECTORY, &[credential_name])
+    let mut credential_entries = vec![credential_name];
+    if let (Some(bootstrap_proof), Some(locator_proof)) =
+        (&layout.bootstrap_proof, &layout.locator_proof)
+    {
+        credential_entries.push(bootstrap_pending);
+        credential_entries.push(locator_pending);
+        credential_entries.push(
+            Path::new(bootstrap_proof)
+                .file_name()
+                .and_then(|value| value.to_str())
+                .ok_or(ServiceError::ProjectBindingMismatch)?,
+        );
+        credential_entries.push(
+            Path::new(locator_proof)
+                .file_name()
+                .and_then(|value| value.to_str())
+                .ok_or(ServiceError::ProjectBindingMismatch)?,
+        );
+    }
+    validate_directory_entries(project, CREDENTIAL_DIRECTORY, &credential_entries)
 }
 
 fn validate_directory_entries(

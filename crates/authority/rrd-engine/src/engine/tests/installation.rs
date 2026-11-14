@@ -1236,6 +1236,7 @@ fn installed_backups_and_restore_staging_live_beside_the_storage_roots() {
         )
         .unwrap(),
         &layout,
+        &preview.installation,
     )
     .expect("install recovery accepts an estate that holds backups and restore staging");
 
@@ -1255,6 +1256,7 @@ struct InstalledEstate {
     executable: PathBuf,
     instance: CanonicalId,
     active_root: PathBuf,
+    installation: rrd_contract::InstallationPlan,
 }
 
 /// Installs a project, opens it as the product does, and authenticates with
@@ -1304,6 +1306,7 @@ fn install_and_open() -> (InstalledEstate, RrdEngine, SessionLease) {
         _project: project,
         executable,
         instance: preview.installation.target.instance_id.clone(),
+        installation: preview.installation.clone(),
     };
     (estate, engine, lease)
 }
@@ -1860,6 +1863,7 @@ fn a_staged_restore_is_published_in_place_and_the_estate_opens_from_the_backup()
         )
         .unwrap(),
         &layout,
+        &estate.installation,
     )
     .expect("install recovery accepts the published estate");
 
@@ -1974,11 +1978,11 @@ fn an_interrupted_publication_resumes_from_its_recorded_stage() {
 
 #[cfg(windows)]
 #[test]
-fn inherited_estate_preview_reports_the_rejected_directory() {
+fn inherited_estate_preview_reports_retained_ownership() {
     let root = tempfile::tempdir().unwrap();
     std::fs::create_dir(root.path().join(".rrflow")).unwrap();
     let before = inventory(root.path());
-    let error = RrdEngine::plan_installation(
+    let preview = RrdEngine::plan_installation(
         root.path(),
         InstallationTargetKind::ExistingProject,
         &"1".repeat(64),
@@ -1986,12 +1990,52 @@ fn inherited_estate_preview_reports_the_rejected_directory() {
         None,
         &test_executable(),
     )
-    .unwrap_err();
-    assert!(
-        error.to_string().contains("estate directory .rrflow:"),
-        "unexpected error: {error}"
+    .unwrap();
+    let estate = preview
+        .installation
+        .managed_path(rrd_contract::InstallationManagedPathKind::EstateDirectory);
+    assert_eq!(
+        estate.removal_rule,
+        rrd_contract::InstallationRemovalRule::RetainExistingDirectory
     );
+    assert!(estate.existing_directory_identity_sha256.is_some());
+    assert!(estate.existing_directory_security_sha256.is_some());
+    for kind in [
+        rrd_contract::InstallationManagedPathKind::LocatorPending,
+        rrd_contract::InstallationManagedPathKind::BootstrapPending,
+    ] {
+        let pending = preview.installation.managed_path(kind);
+        assert!(pending.relative_path.starts_with(".rrflow/credentials/"));
+        assert!(pending.publication_proof.is_some());
+    }
     assert_eq!(inventory(root.path()), before);
+}
+
+#[cfg(windows)]
+#[test]
+fn retained_estate_does_not_accept_an_identical_replacement_as_its_bootstrap() {
+    let root = tempfile::tempdir().unwrap();
+    let estate = root.path().join(".rrflow");
+    std::fs::create_dir(&estate).unwrap();
+    let preview = plan(root.path());
+    let executable = test_executable();
+    RrdEngine::apply_installation_at(
+        root.path(),
+        InstallationTargetKind::ExistingProject,
+        &preview,
+        &preview.installation.plan_sha256,
+        1_800_000_000_000,
+        &executable,
+    )
+    .unwrap();
+    let bootstrap = estate.join("bootstrap.md");
+    let original = estate.join("original-bootstrap.md");
+    let contents = std::fs::read(&bootstrap).unwrap();
+    std::fs::rename(&bootstrap, &original).unwrap();
+    std::fs::write(&bootstrap, &contents).unwrap();
+    assert!(open_at(root.path(), &executable, 1_800_000_001_000).is_err());
+    assert_eq!(std::fs::read(&bootstrap).unwrap(), contents);
+    assert_eq!(std::fs::read(&original).unwrap(), contents);
 }
 
 #[cfg(windows)]
@@ -2047,4 +2091,201 @@ fn existing_project_preserves_inherited_estate_and_opens_after_replay() {
     }
     assert_eq!(acl(&estate), estate_acl);
     assert_eq!(acl(&old_storage), storage_acl);
+}
+
+#[cfg(windows)]
+#[test]
+fn retained_estate_preserves_a_concurrent_project_pending_file() {
+    use crate::engine::installation::recovery::InstallApplyStage;
+    let root = tempfile::tempdir().unwrap();
+    std::fs::create_dir(root.path().join(".rrflow")).unwrap();
+    let preview = plan(root.path());
+    let pending = root.path().join(format!(
+        ".rrflow/.bootstrap.{}.pending",
+        preview.installation.storage_root_id
+    ));
+    let content = preview.installation.bootstrap.rendered_instructions();
+    let result = RrdEngine::apply_installation_with_test_observer(
+        root.path(),
+        &preview,
+        &test_executable(),
+        &mut |stage, _| {
+            if stage == InstallApplyStage::IntentPublished {
+                std::fs::write(&pending, content.as_bytes()).unwrap();
+            }
+            Ok(())
+        },
+    );
+    result.expect("a user-owned file outside the planned private staging must be preserved");
+    assert_eq!(std::fs::read(&pending).unwrap(), content.as_bytes());
+    assert!(root.path().join(".rrflow/bootstrap.md").exists());
+}
+
+#[cfg(windows)]
+#[test]
+fn retained_estate_refuses_unproven_private_staging_without_removing_it() {
+    use crate::engine::installation::recovery::InstallApplyStage;
+    for complete in [false, true] {
+        let root = tempfile::tempdir().unwrap();
+        std::fs::create_dir(root.path().join(".rrflow")).unwrap();
+        let preview = plan(root.path());
+        let pending = root.path().join(
+            &preview
+                .installation
+                .managed_path(rrd_contract::InstallationManagedPathKind::BootstrapPending)
+                .relative_path,
+        );
+        let contents = if complete {
+            preview
+                .installation
+                .bootstrap
+                .rendered_instructions()
+                .into_bytes()
+        } else {
+            b"incomplete staging".to_vec()
+        };
+        let result = RrdEngine::apply_installation_with_test_observer(
+            root.path(),
+            &preview,
+            &test_executable(),
+            &mut |stage, _| {
+                if stage == InstallApplyStage::EstateDirectoriesReady {
+                    std::fs::write(&pending, &contents).unwrap();
+                }
+                Ok(())
+            },
+        );
+        assert!(result.is_err());
+        assert_eq!(std::fs::read(&pending).unwrap(), contents);
+        assert!(!root.path().join(".rrflow/bootstrap.md").exists());
+    }
+}
+
+#[cfg(windows)]
+#[test]
+fn retained_estate_rejects_a_concurrent_identical_bootstrap_file() {
+    use crate::engine::installation::recovery::InstallApplyStage;
+    let root = tempfile::tempdir().unwrap();
+    std::fs::create_dir(root.path().join(".rrflow")).unwrap();
+    let preview = plan(root.path());
+    let bootstrap = root.path().join(".rrflow/bootstrap.md");
+    let content = preview.installation.bootstrap.rendered_instructions();
+    let result = RrdEngine::apply_installation_with_test_observer(
+        root.path(),
+        &preview,
+        &test_executable(),
+        &mut |stage, _| {
+            if stage == InstallApplyStage::IntentPublished {
+                std::fs::write(&bootstrap, content.as_bytes()).unwrap();
+            }
+            Ok(())
+        },
+    );
+    assert!(
+        result.is_err(),
+        "matching bytes do not prove RRFlow owns a concurrent file"
+    );
+    assert_eq!(std::fs::read(&bootstrap).unwrap(), content.as_bytes());
+}
+
+#[cfg(windows)]
+#[test]
+fn retained_estate_rejects_changed_ancestors_before_writes_and_can_replan() {
+    let root = tempfile::tempdir().unwrap();
+    let estate = root.path().join(".rrflow");
+    std::fs::create_dir(&estate).unwrap();
+    std::fs::write(estate.join("user-note"), b"preserved").unwrap();
+    let preview = plan(root.path());
+    std::fs::write(estate.join("ordinary-edit"), b"new project content").unwrap();
+    let before = inventory(root.path());
+    let executable = test_executable();
+    assert!(RrdEngine::apply_installation_at(
+        root.path(),
+        InstallationTargetKind::ExistingProject,
+        &preview,
+        &preview.installation.plan_sha256,
+        1_800_000_000_000,
+        &executable
+    )
+    .is_err());
+    assert_eq!(
+        inventory(root.path()),
+        before,
+        "stale preview must not write"
+    );
+    let replacement = plan(root.path());
+    assert_ne!(
+        preview.installation.plan_sha256,
+        replacement.installation.plan_sha256
+    );
+    RrdEngine::apply_installation_at(
+        root.path(),
+        InstallationTargetKind::ExistingProject,
+        &replacement,
+        &replacement.installation.plan_sha256,
+        1_800_000_000_001,
+        &executable,
+    )
+    .unwrap();
+    assert_eq!(
+        std::fs::read(estate.join("ordinary-edit")).unwrap(),
+        b"new project content"
+    );
+    assert_eq!(
+        std::fs::read(estate.join("user-note")).unwrap(),
+        b"preserved"
+    );
+}
+
+#[cfg(windows)]
+#[test]
+fn retained_estate_rejects_replaced_directory_before_mutation() {
+    let root = tempfile::tempdir().unwrap();
+    let estate = root.path().join(".rrflow");
+    std::fs::create_dir(&estate).unwrap();
+    std::fs::write(estate.join("note"), b"same bytes").unwrap();
+    let preview = plan(root.path());
+    std::fs::rename(&estate, root.path().join("retained-old-directory")).unwrap();
+    std::fs::create_dir(&estate).unwrap();
+    std::fs::write(estate.join("note"), b"same bytes").unwrap();
+    let before = inventory(root.path());
+    let result = RrdEngine::apply_installation_at(
+        root.path(),
+        InstallationTargetKind::ExistingProject,
+        &preview,
+        &preview.installation.plan_sha256,
+        1_800_000_000_000,
+        &test_executable(),
+    );
+    assert!(result.is_err());
+    assert_eq!(inventory(root.path()), before);
+}
+
+#[cfg(windows)]
+#[test]
+fn retained_estate_rejects_changed_acl_before_mutation() {
+    let root = tempfile::tempdir().unwrap();
+    let estate = root.path().join(".rrflow");
+    std::fs::create_dir(&estate).unwrap();
+    let preview = plan(root.path());
+    let output = std::process::Command::new("icacls")
+        .arg(&estate)
+        .arg("/inheritance:d")
+        .output()
+        .unwrap();
+    assert!(output.status.success(), "fixture ACL change failed");
+    let before = inventory(root.path());
+    let result = RrdEngine::apply_installation_at(
+        root.path(),
+        InstallationTargetKind::ExistingProject,
+        &preview,
+        &preview.installation.plan_sha256,
+        1_800_000_000_000,
+        &test_executable(),
+    );
+    assert!(
+        result.is_err(),
+        "a changed permissions descriptor must invalidate the preview"
+    );
+    assert_eq!(inventory(root.path()), before);
 }
