@@ -6,7 +6,7 @@ use super::*;
 /// the previous state named that the new one does not, write the new facts with
 /// names and text sliced from `source`, the bytes the engine read and verified
 /// itself, and write the state. A worker's facts never supply content.
-pub(in super::super::super) fn file_mutations(
+pub(in super::super) fn file_mutations(
     previous: Option<&FileState>,
     mut next: FileState,
     outcome: Outcome<'_>,
@@ -117,7 +117,7 @@ pub(in super::super::super) fn file_mutations(
 
 /// The parsed-source tables registered in the instance's schema, when they are
 /// not there yet.
-pub(in super::super::super) fn schema_mutation(
+pub(in super::super) fn schema_mutation(
     engine: &RrdEngine,
     scope: &ScopeId,
     read: &ReadStamp,
@@ -144,7 +144,7 @@ pub(in super::super::super) fn schema_mutation(
 /// indexes code identifiers whole and by their words. Each is maintained in
 /// the commit that writes the facts, so a question reads current facts
 /// without scanning them.
-pub(in super::super::super) fn index_definitions() -> Result<Vec<rrd_query::IndexDefinition>> {
+pub(in super::super) fn index_definitions() -> Result<Vec<rrd_query::IndexDefinition>> {
     let record = |kind: &str| -> Result<rrd_query::Source> {
         Ok(rrd_query::Source::Record {
             kind: RuntimeType::new(kind).map_err(contract)?,
@@ -202,7 +202,7 @@ pub(in super::super::super) fn index_definitions() -> Result<Vec<rrd_query::Inde
 
 /// Defines any of [`index_definitions`] the scope does not have yet, once the
 /// parsed-source tables exist. The store backfills facts already published.
-pub(in super::super::super) fn ensure_indexes(
+pub(in super::super) fn ensure_indexes(
     engine: &RrdEngine,
     scope: &ScopeId,
     context: &rrd_query::IndexMutationContext,
@@ -250,7 +250,7 @@ pub(in super::super::super) fn ensure_indexes(
 
 /// Retires a file that left the project or its parse bindings: its facts and
 /// its state.
-pub(in super::super::super) fn retire_file(
+pub(in super::super) fn retire_file(
     state: &FileState,
     at: u64,
 ) -> Result<Vec<RuntimeMutation>> {
@@ -265,7 +265,7 @@ pub(in super::super::super) fn retire_file(
 }
 
 /// The state a mutation writes, when it writes one.
-pub(in super::super::super) fn state_of(mutation: &RuntimeMutation) -> Result<Option<FileState>> {
+pub(in super::super) fn state_of(mutation: &RuntimeMutation) -> Result<Option<FileState>> {
     match mutation {
         RuntimeMutation::Record { record } if record.reference.kind.as_str() == STATE => {
             Ok(Some(state_from(record)?))
@@ -275,7 +275,7 @@ pub(in super::super::super) fn state_of(mutation: &RuntimeMutation) -> Result<Op
 }
 
 /// One digest of every file's current answer, recorded by the Parse checkpoint.
-pub(in super::super::super) fn summary_sha256(
+pub(in super::super) fn summary_sha256(
     states: &BTreeMap<String, FileState>,
 ) -> Result<String> {
     let rows: Vec<_> = states

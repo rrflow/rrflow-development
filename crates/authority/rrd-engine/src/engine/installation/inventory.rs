@@ -30,7 +30,7 @@ mod source;
 mod walk;
 
 pub(in crate::engine) use entries::*;
-pub(in crate::engine) use scan::*;
+pub(super) use scan::*;
 pub(in crate::engine) use selected::*;
 pub(in crate::engine) use source::*;
 use walk::*;

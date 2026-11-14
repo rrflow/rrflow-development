@@ -9,7 +9,7 @@ pub(super) const CHUNK: &str = "source-chunk";
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub(in super::super::super) enum Status {
+pub(in super::super) enum Status {
     Parsed,
     /// The parser refused this content; only a change to the file can help.
     Rejected,
@@ -19,7 +19,7 @@ pub(in super::super::super) enum Status {
 
 /// What is known about one file. Serialized as a `source-parse` record.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub(in super::super::super) struct FileState {
+pub(in super::super) struct FileState {
     pub path: String,
     pub content_sha256: String,
     pub language: String,
@@ -228,7 +228,7 @@ pub(super) fn register(registry: &mut RuntimeSchemaRegistry) -> Result<bool> {
 }
 
 /// The latest non-retired `source-parse` state per path at `read`.
-pub(in super::super::super) fn load_states(
+pub(in super::super) fn load_states(
     engine: &RrdEngine,
     read: &ReadStamp,
     remaining: &mut u64,
@@ -266,7 +266,7 @@ pub(in super::super::super) fn load_states(
 }
 
 /// What one Step learned about one file.
-pub(in super::super::super) enum Outcome<'a> {
+pub(in super::super) enum Outcome<'a> {
     Parsed(&'a rrd_attunement::facts::SourceFacts),
     /// The parser refused this content, with the worker's code.
     Rejected(String),

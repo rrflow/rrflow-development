@@ -154,7 +154,7 @@ pub(super) fn revalidate_observations(
 
 /// Read only the admitted parent tree and return present tracked gitlink
 /// directories as provisional candidates. Child metadata is never opened.
-pub(in super::super::super) fn discover_gitlinks(
+pub(in super::super) fn discover_gitlinks(
     project: &AnchoredPath,
     profile: &DefaultInstallProfile,
     profile_sha256: String,

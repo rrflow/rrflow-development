@@ -263,7 +263,7 @@ pub(in crate::engine) fn project_change_fingerprint(
     Ok(aggregate.finalize_hex())
 }
 
-pub(in super::super::super) fn project_inventory_sha256_excluding(
+pub(in super::super) fn project_inventory_sha256_excluding(
     project: &AnchoredPath,
     profile: &DefaultInstallProfile,
     excluded_relative: Option<&Path>,
