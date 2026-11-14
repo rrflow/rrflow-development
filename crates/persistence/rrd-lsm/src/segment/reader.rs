@@ -358,7 +358,7 @@ pub(crate) struct ActiveReadViews {
 
 #[derive(Debug)]
 struct ActiveManifest {
-    manifest: Manifest,
+    manifest: Arc<Manifest>,
     references: usize,
     pinned_bytes: u64,
 }
@@ -373,7 +373,7 @@ impl ActiveReadViews {
 
     pub(crate) fn acquire(
         registry: &Arc<Mutex<Self>>,
-        manifest: Manifest,
+        manifest: Arc<Manifest>,
         pinned_bytes: u64,
         budget: ProjectedReadBudget,
     ) -> Result<ReadViewLease> {
@@ -401,7 +401,7 @@ impl ActiveReadViews {
         let digest = manifest.digest.clone();
         let (next_references, next_manifest_pinned) = match views.manifests.get(&digest) {
             Some(entry) => {
-                if entry.manifest != manifest {
+                if !Arc::ptr_eq(&entry.manifest, &manifest) && entry.manifest != manifest {
                     return Err(Error::PoisonedReadViewRegistry);
                 }
                 (
