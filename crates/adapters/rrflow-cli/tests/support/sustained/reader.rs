@@ -40,16 +40,30 @@ async fn diagnostics(work: &Workload, id: &str) -> DriverResult<DiagnosticStorag
         .map_err(|e| e.to_string())
 }
 impl HeldReader {
-    pub(super) async fn open(work: &Workload, segment: u64, clock: Instant) -> DriverResult<Self> {
+    pub(super) async fn open(
+        work: &Workload,
+        segment: u64,
+        clock: Instant,
+        selection: Option<&ReaderSelection>,
+    ) -> DriverResult<Self> {
         let id = format!("capacity-reader-{segment}");
         let baseline = diagnostics(work, &id).await?;
         let opened = cursor(
             work,
             &id,
-            StorageCursorAction::Open {
-                batch_rows: 1,
-                batch_bytes: 4 * 1024 * 1024,
-                lifetime_ms: 60_000,
+            match selection {
+                None => StorageCursorAction::Open {
+                    batch_rows: 1,
+                    batch_bytes: 4 * 1024 * 1024,
+                    lifetime_ms: 60_000,
+                },
+                Some(ReaderSelection::WorkloadRecords {}) => StorageCursorAction::OpenRecordKind {
+                    batch_rows: 1,
+                    batch_bytes: 4 * 1024 * 1024,
+                    lifetime_ms: 60_000,
+                    record_kind: rrd_contract::CanonicalId::new(workload::WORKLOAD_RECORD_KIND)
+                        .map_err(|error| error.to_string())?,
+                },
             },
         )
         .await?;

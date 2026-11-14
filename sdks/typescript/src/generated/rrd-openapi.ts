@@ -1,4 +1,4 @@
-// OpenAPI SHA-256: ef6c926875a6401769588bdf3efc09630ea415e7db6a3ac6eb987a045a601501
+// OpenAPI SHA-256: 7efde511a5ba3b1cad630d2c63c473a966fb871182c8bd3a5fb85c3673924a11
 export interface paths {
     "/v1/attunement/cancel": {
         parameters: {
@@ -22366,6 +22366,33 @@ export interface operations {
                             kind: "open";
                             /** Format: uint32 */
                             lifetime_ms: number;
+                        } | {
+                            /** Format: uint32 */
+                            batch_bytes: number;
+                            /** Format: uint16 */
+                            batch_rows: number;
+                            end: number[];
+                            /** @constant */
+                            kind: "open_range";
+                            /** Format: uint32 */
+                            lifetime_ms: number;
+                            start: number[];
+                        } | {
+                            /** Format: uint32 */
+                            batch_bytes: number;
+                            /** Format: uint16 */
+                            batch_rows: number;
+                            /** @constant */
+                            kind: "open_record_kind";
+                            /** Format: uint32 */
+                            lifetime_ms: number;
+                            /**
+                             * @description A canonical public identifier component.
+                             *
+                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                             *     labels are separate data and may use arbitrary Unicode.
+                             */
+                            record_kind: string;
                         } | {
                             /** @constant */
                             kind: "observe";
