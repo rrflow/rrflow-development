@@ -854,8 +854,7 @@ fn vector_writes_require_one_canonical_collection_address() {
         ),
     ];
     for (boundary, relative, required) in required_address_sources {
-        let source = fs::read_to_string(metadata.root.join(relative))
-            .unwrap_or_else(|error| panic!("cannot read {relative}: {error}"));
+        let source = module_source(&metadata.root, relative);
         assert!(
             source.contains(required),
             "{boundary} lost its mandatory canonical vector address"
