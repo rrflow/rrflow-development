@@ -176,20 +176,21 @@ fn claim_versions_are_counted_per_pair() {
 
 #[test]
 fn identifiers_containing_the_printable_separator_are_attributed_correctly() {
-    // `/` is legal in an identifier. Under the previous access-record encoding
-    // these two pairs were indistinguishable, so an access to one would have
-    // retained the other.
+    // `-`, `_` and `.` are legal in an identifier and `/` in a reader. Under the
+    // previous access-record encoding pairs like these were indistinguishable, so
+    // an access to one would have retained the other.
+    assert!(Subject::new("a/b").is_err());
     let (_dir, store) = store();
     store
         .claims()
-        .append_batch(&[claim("a/b", "c", "v1", 100), claim("a", "b/c", "v1", 100)])
+        .append_batch(&[claim("a-b", "c", "v1", 100), claim("a", "b-c", "v1", 100)])
         .unwrap();
 
     store
         .claims()
         .observe(
             &reader("r/1"),
-            &Subject::new("a/b").unwrap(),
+            &Subject::new("a-b").unwrap(),
             &Predicate::new("c").unwrap(),
             5_000,
         )
@@ -205,10 +206,10 @@ fn identifiers_containing_the_printable_separator_are_attributed_correctly() {
         .map(|p| format!("{}|{}", p.subject, p.predicate))
         .collect();
 
-    assert_eq!(retained, vec!["a/b|c"]);
+    assert_eq!(retained, vec!["a-b|c"]);
     assert_eq!(
         candidates,
-        vec!["a|b/c"],
+        vec!["a|b-c"],
         "access to one pair retained the other"
     );
 }

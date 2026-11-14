@@ -53,13 +53,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     std::fs::write(&distribution, INSTALL_ANCHOR_BYTES)?;
     let project = temporary.path().join("project");
     std::fs::create_dir_all(&project)?;
+    let configuration = temporary.path().join("sdk-cold-policy.toml");
+    std::fs::write(
+        &configuration,
+        toml::to_string(&corpus.cold_history.installation_configuration())?,
+    )?;
     let preview = RrdEngine::plan_installation(
         &project,
         InstallationTargetKind::FreshProject,
         // A fixed explicit identity keeps the single checked-in SDK corpus reproducible.
         &digest::sha256_hex(INSTALL_ANCHOR_BYTES),
         "default",
-        None,
+        Some(&configuration),
         &distribution,
     )?;
     if preview.installation.target.instance_id != corpus.identity.instance
@@ -95,6 +100,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     drop(storage);
 
     let engine = RrdEngine::open_installed(&project, &distribution)?;
+    // The seeded runtime history is authoritative. Prepare and publish one real
+    // generation before exposing the harness to the six language clients.
+    if !engine.maintain_cold_history()? || !engine.maintain_cold_history()? {
+        return Err("SDK cold-history fixture did not publish its seeded generation".into());
+    }
     let server = RrdHttpServer::bind(engine, "127.0.0.1:0".parse::<SocketAddr>()?)?;
     let server_address = server.local_addr();
     let (server_shutdown, receiver) = tokio::sync::oneshot::channel();
@@ -253,6 +263,8 @@ fn seed_security(
         SecurityAction::QueryExecute,
         SecurityAction::VectorCollectionEnsure,
         SecurityAction::VectorCollectionList,
+        SecurityAction::VectorPayloadIndexEnsure,
+        SecurityAction::VectorPayloadIndexDelete,
         SecurityAction::VectorSearch,
         SecurityAction::ChangefeedRead,
         SecurityAction::ChangefeedFollow,

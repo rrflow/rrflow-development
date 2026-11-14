@@ -310,7 +310,12 @@ fn expected(cycle: usize) -> BTreeMap<String, String> {
     (0..2)
         .map(|part| {
             (
-                format!("claim:reopen-{cycle}-{part}:reopen"),
+                format!(
+                    "claim:{}",
+                    rrd_core::digest::sha256_hex(
+                        format!("rrd-context-claim-v1\0reopen-{cycle}-{part}\0reopen").as_bytes()
+                    )
+                ),
                 format!("expected-{cycle}-{part}"),
             )
         })
@@ -499,15 +504,14 @@ fn run(mode: &str) {
             }
             read(&client, &session, estate.at, cycle + 1).await;
             ledger.readback.clear();
-            for (index, expected) in ledger.expected.iter().take(cycle + 1).enumerate() {
-                let values = observed
-                    .iter()
-                    .filter(|(key, _)| key.starts_with(&format!("claim:reopen-{index}-")))
-                    .map(|(key, value)| (key.clone(), value.clone()))
+            for (index, expected_operation) in ledger.expected.iter().take(cycle + 1).enumerate() {
+                let values = expected(index)
+                    .keys()
+                    .filter_map(|key| observed.get(key).map(|value| (key.clone(), value.clone())))
                     .collect::<BTreeMap<_, _>>();
                 ledger.readback.push(Readback::Present {
-                    logical_id: expected.logical_id.clone(),
-                    request_sha256: expected.request_sha256.clone(),
+                    logical_id: expected_operation.logical_id.clone(),
+                    request_sha256: expected_operation.request_sha256.clone(),
                     effect_sha256: digest("c07c.reopen.effect", &values).unwrap(),
                     receipt_sha256: stable[index].clone(),
                     applications: 1.try_into().unwrap(),

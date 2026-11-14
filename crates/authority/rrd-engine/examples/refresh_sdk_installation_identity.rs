@@ -22,12 +22,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     for byte in Sha256::digest(&anchor) {
         write!(&mut identity, "{byte:02x}")?;
     }
+    let configuration = temporary.path().join("sdk-cold-policy.toml");
+    std::fs::write(
+        &configuration,
+        toml::to_string(&corpus.cold_history.installation_configuration())?,
+    )?;
     let preview = RrdEngine::plan_installation(
         &project,
         InstallationTargetKind::FreshProject,
         &identity,
         "default",
-        None,
+        Some(&configuration),
         &executable,
     )?;
     if std::fs::read_dir(&project)?.next().is_some() {
@@ -42,7 +47,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     corpus.vector.quantization.build.scope.clone_from(&scope);
     corpus.vector.quantization.activate.scope.clone_from(&scope);
     corpus.vector.quantization.search.scope.clone_from(&scope);
-    corpus.changefeed.read.scope = scope;
+    corpus.vector.index.payload_index.scope.clone_from(&scope);
+    corpus.vector.index.ensure.scope.clone_from(&scope);
+    corpus.vector.index.search.scope.clone_from(&scope);
+    corpus
+        .vector
+        .index
+        .spare_payload_index
+        .scope
+        .clone_from(&scope);
+    corpus
+        .vector
+        .index
+        .delete_payload_index
+        .scope
+        .clone_from(&scope);
+    corpus.changefeed.read.scope.clone_from(&scope);
+    corpus.cold_history.read.scope = scope;
     corpus.validate()?;
     if std::env::args().skip(1).any(|arg| arg == "--check") {
         let original: SdkConformanceCorpus = serde_json::from_slice(&bytes)?;
@@ -62,7 +83,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "/vector/quantization/build/scope",
             "/vector/quantization/activate/scope",
             "/vector/quantization/search/scope",
+            "/vector/index/payload_index/scope",
+            "/vector/index/ensure/scope",
+            "/vector/index/search/scope",
+            "/vector/index/spare_payload_index/scope",
+            "/vector/index/delete_payload_index/scope",
             "/changefeed/read/scope",
+            "/cold_history/read/scope",
         ] {
             *original
                 .pointer_mut(pointer)

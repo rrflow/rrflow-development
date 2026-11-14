@@ -84,6 +84,7 @@ fn exercise<E: StorageEngine>(engine: &E) -> LiveQueryDelta {
         &query,
         &Parameters::new(),
         2,
+        Some(rrd_core::result_identity::RESULT_IDENTITY_VERSION),
         &LiveQueryBudget::default(),
     )
     .unwrap();
@@ -112,6 +113,7 @@ fn exercise<E: StorageEngine>(engine: &E) -> LiveQueryDelta {
         &open_query,
         &Parameters::new(),
         2,
+        Some(rrd_core::result_identity::RESULT_IDENTITY_VERSION),
         &LiveQueryBudget::default(),
     )
     .unwrap();
@@ -124,6 +126,7 @@ fn exercise<E: StorageEngine>(engine: &E) -> LiveQueryDelta {
         &query,
         &Parameters::new(),
         4,
+        Some(rrd_core::result_identity::RESULT_IDENTITY_VERSION),
         &LiveQueryBudget::default(),
     )
     .unwrap()
@@ -135,6 +138,7 @@ fn exercise<E: StorageEngine>(engine: &E) -> LiveQueryDelta {
             &query,
             &Parameters::new(),
             2,
+            Some(rrd_core::result_identity::RESULT_IDENTITY_VERSION),
             &LiveQueryBudget {
                 max_delta_rows: 1,
                 ..LiveQueryBudget::default()
@@ -167,11 +171,43 @@ fn resume_and_snapshot_contracts_fail_closed() {
             &fixed,
             &Parameters::new(),
             0,
+            None,
             &LiveQueryBudget::default(),
         ),
         Err(Error::Binding(_))
     ));
     let live = parse("FROM record:document AT VALID 100 KNOWN HEAD PROJECT id").unwrap();
+    for version in [None, Some(1), Some(u16::MAX)] {
+        assert!(
+            matches!(
+                poll_live_query(
+                    &engine,
+                    &scope(),
+                    &live,
+                    &Parameters::new(),
+                    2,
+                    version,
+                    &LiveQueryBudget::default(),
+                ),
+                Err(Error::Binding(_))
+            ),
+            "unsafe resume version {version:?}"
+        );
+    }
+    let initial = poll_live_query(
+        &engine,
+        &scope(),
+        &live,
+        &Parameters::new(),
+        0,
+        None,
+        &LiveQueryBudget::default(),
+    )
+    .unwrap();
+    assert_eq!(
+        initial.result_identity_version,
+        rrd_core::result_identity::RESULT_IDENTITY_VERSION
+    );
     assert!(matches!(
         poll_live_query(
             &engine,
@@ -179,6 +215,7 @@ fn resume_and_snapshot_contracts_fail_closed() {
             &live,
             &Parameters::new(),
             3,
+            Some(rrd_core::result_identity::RESULT_IDENTITY_VERSION),
             &LiveQueryBudget::default(),
         ),
         Err(Error::Binding(_))
@@ -189,6 +226,7 @@ fn resume_and_snapshot_contracts_fail_closed() {
         &live,
         &Parameters::new(),
         0,
+        None,
         &LiveQueryBudget {
             execution: rrd_query::ExecutionBudget {
                 max_rows: 1,

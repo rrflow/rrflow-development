@@ -373,7 +373,12 @@ fn expected(name: &str) -> BTreeMap<String, String> {
     (0..2)
         .map(|i| {
             (
-                format!("claim:crash-{name}-{i}:crash"),
+                format!(
+                    "claim:{}",
+                    rrd_core::digest::sha256_hex(
+                        format!("rrd-context-claim-v1\0crash-{name}-{i}\0crash").as_bytes()
+                    )
+                ),
                 format!("expected-{name}-{i}"),
             )
         })

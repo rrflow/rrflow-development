@@ -32,6 +32,34 @@ fn sha(bytes: &[u8]) -> String {
 }
 
 #[test]
+fn extra_request_fields_are_accepted_but_never_authoritative() {
+    use rrd_contract::EndpointSelectionRequest;
+    let schema = serde_json::to_value(schemars::schema_for!(EndpointSelectionRequest)).unwrap();
+    assert_eq!(schema["additionalProperties"], true);
+    let original = serde_json::json!({
+        "scope": "project",
+        "task_id": "task-1",
+        "attempt_id": "attempt-1",
+        "max_storage_keys": 1,
+        "expected_task_sha256": "a".repeat(64),
+        "expected_configuration_sha256": "b".repeat(64)
+    });
+    let expected: EndpointSelectionRequest = serde_json::from_value(original.clone()).unwrap();
+    expected.validate().unwrap();
+    let mut future = original;
+    future["endpoint"] = serde_json::json!("https://not-an-authorized-endpoint.example");
+    future["observation"] =
+        serde_json::json!({"decision": "grant", "credential": "not-a-credential"});
+    let decoded: EndpointSelectionRequest = serde_json::from_value(future).unwrap();
+    decoded.validate().unwrap();
+    assert_eq!(decoded, expected);
+    assert_eq!(
+        serde_json::to_value(decoded).unwrap(),
+        serde_json::to_value(expected).unwrap()
+    );
+}
+
+#[test]
 fn retained_calls_bind_actual_bytes_and_no_learning_claim() {
     for name in ["available", "withheld"] {
         for (file, digest) in json(name, "files.json").as_object().unwrap() {

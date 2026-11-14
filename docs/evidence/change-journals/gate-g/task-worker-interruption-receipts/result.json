@@ -1,0 +1,112 @@
+{
+  "sourceCommit": "c75c189612db7e7c8efe016fd92fb1052a3fb056",
+  "binarySha256": "60a708117899a022b04818c096af17a925c60eae06c554c39d00e5fe09e028fa",
+  "runnerSha256": "c9f5f38daee112cc482e8c61a3e7d1c68568a985ca31509822f8df2fdfbbf521",
+  "relaySha256": "af3b9eb9a9e42bd8fb081d8ac9556578c9484e8f01c44009d3ca412767deca7b",
+  "actualProviderCalls": 2,
+  "acceptedProposal": {
+    "contract_version": 1,
+    "purpose": "experimental_proposal",
+    "scope": "instance:instance-0067af9c94f19b220caa35cd",
+    "task_id": "task-12414cfcc2dd68241eeb4eabff464297b469a7b3bfba5140e3f4c82ef0e28fb6",
+    "attempt_id": "actual-proposal-d93c2d54a29a489bb279d72eaa1a4618",
+    "task_sha256": "24b87b5398dfa7a4f5ca3ec9a65ab732aaac9f31bc41fdeb86afb4745f794791",
+    "packet_sha256": "007e06bbe6209e3a8a34f0e17c7e11479658b15ce02eaf626b782d8cb06df1a9",
+    "configuration_sha256": "38ef58b4eec56e750dfa2587fd1e3b373966808d9752651ba4dc5a724addc58a",
+    "allowance_sha256": "92e39408f1b2255fef9de3c54e76ea7aecfdbf4a57abcd523bcd315e5bb58f9f",
+    "controller_binding_id": "swag-custom-bf16",
+    "service_id": "swag-qwen3-coder-intent-20261028",
+    "request_sha256": "eb28f8ddb38285e974394bbe4a619e2fa2dee865a1d39f36ba89087ec227a089",
+    "response_sha256": "5ced485ed049452f8d6a6fff7525aebe9a34421baede8937d103dc6edca5a22a",
+    "content_sha256": "f00ec144e84b0093c575418c45be469717d1725ba11736e3f0070c2fa666e6a2",
+    "choice": {
+      "kind": "select",
+      "binding_id": "swag-custom-bf16",
+      "effort": null
+    },
+    "usage": {
+      "prompt_tokens": 1907,
+      "completion_tokens": 20,
+      "total_tokens": 1927
+    },
+    "elapsed_ms": 1940,
+    "http_status": 200
+  },
+  "selectorAttempt": {
+    "attempt": {
+      "attempt_id": "actual-proposal-d93c2d54a29a489bb279d72eaa1a4618",
+      "ordinal": 1,
+      "status": "accepted",
+      "outcome_sha256": "1d4b5b2f037c4213633a1e7338a46a618822809ba08cb6a0acbefd32eafc0d5e",
+      "result": null,
+      "endpoint_proposal": {
+        "contract_version": 1,
+        "purpose": "experimental_proposal",
+        "scope": "instance:instance-0067af9c94f19b220caa35cd",
+        "task_id": "task-12414cfcc2dd68241eeb4eabff464297b469a7b3bfba5140e3f4c82ef0e28fb6",
+        "attempt_id": "actual-proposal-d93c2d54a29a489bb279d72eaa1a4618",
+        "task_sha256": "24b87b5398dfa7a4f5ca3ec9a65ab732aaac9f31bc41fdeb86afb4745f794791",
+        "packet_sha256": "007e06bbe6209e3a8a34f0e17c7e11479658b15ce02eaf626b782d8cb06df1a9",
+        "configuration_sha256": "38ef58b4eec56e750dfa2587fd1e3b373966808d9752651ba4dc5a724addc58a",
+        "allowance_sha256": "92e39408f1b2255fef9de3c54e76ea7aecfdbf4a57abcd523bcd315e5bb58f9f",
+        "controller_binding_id": "swag-custom-bf16",
+        "service_id": "swag-qwen3-coder-intent-20261028",
+        "request_sha256": "eb28f8ddb38285e974394bbe4a619e2fa2dee865a1d39f36ba89087ec227a089",
+        "response_sha256": "5ced485ed049452f8d6a6fff7525aebe9a34421baede8937d103dc6edca5a22a",
+        "content_sha256": "f00ec144e84b0093c575418c45be469717d1725ba11736e3f0070c2fa666e6a2",
+        "choice": {
+          "kind": "select",
+          "binding_id": "swag-custom-bf16",
+          "effort": null
+        },
+        "usage": {
+          "prompt_tokens": 1907,
+          "completion_tokens": 20,
+          "total_tokens": 1927
+        },
+        "elapsed_ms": 1940,
+        "http_status": 200
+      }
+    }
+  },
+  "workerAttempt": {
+    "attempt": {
+      "attempt_id": "actual-worker-5e0ef6a13b094b25b9707d10055055d4",
+      "ordinal": 2,
+      "status": "reserved",
+      "outcome_sha256": null,
+      "result": null
+    }
+  },
+  "budget": {
+    "budget": {
+      "format_version": 1,
+      "instance_id": "instance-0067af9c94f19b220caa35cd",
+      "scope": "instance:instance-0067af9c94f19b220caa35cd",
+      "task_id": "task-12414cfcc2dd68241eeb4eabff464297b469a7b3bfba5140e3f4c82ef0e28fb6",
+      "configuration_sha256": "2d382dbde4b923db65fb5ebbf841d12b45ec0e278c7cab41635dbff782072d55",
+      "limits": {
+        "max_run_elapsed_ms": 900000,
+        "max_steps": 256,
+        "max_step_elapsed_ms": 60000
+      },
+      "started_at_unix_ms": 1793472461868,
+      "deadline_unix_ms": 1793473361868,
+      "last_observed_at_unix_ms": 1793472465432,
+      "charged_elapsed_ms": 1967,
+      "reserved_steps": 2,
+      "active_attempt": "actual-worker-5e0ef6a13b094b25b9707d10055055d4",
+      "execution_may_continue": true,
+      "stopped": null,
+      "stop_expected_sha256": null
+    },
+    "budget_sha256": "4e0a4140feba7fcdcc43f09124b1e503fdf8a87c24234f9a4ff3fb278d56a9ed"
+  },
+  "restartReadbackEqual": true,
+  "recoveryProviderCredentialsSupplied": false,
+  "recoveryModelOperationRequested": false,
+  "ownedServersStopped": true,
+  "modelQualityQualified": false,
+  "trainingDataCreated": false,
+  "scope": "owned engine killed after actual worker response, before engine acceptance; retained uncertainty, no retry or provider termination claim"
+}

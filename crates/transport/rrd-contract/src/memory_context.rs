@@ -301,6 +301,7 @@ impl ContextPlanSnapshot {
 pub struct ContextPacket {
     pub scope: String,
     pub valid_at: u64,
+    pub result_identity_version: u16,
     pub query_sha256: String,
     pub read: ContextReadStamp,
     pub plan: ContextPlanSnapshot,
@@ -319,6 +320,9 @@ impl ContextPacket {
         }
         if self.valid_at == 0 {
             return invalid("context packet valid_at must be greater than zero");
+        }
+        if self.result_identity_version == 0 {
+            return invalid("context packet result identity version must be nonzero");
         }
         validate_sha256(&self.query_sha256, "query_sha256")?;
         self.read.validate()?;
@@ -373,6 +377,7 @@ pub fn context_packet_sha256(packet: &ContextPacket) -> Result<String> {
     let bytes = serde_json::to_vec(&(
         &packet.scope,
         packet.valid_at,
+        packet.result_identity_version,
         &packet.query_sha256,
         &packet.read,
         &packet.plan,

@@ -25,6 +25,7 @@ final class SdkConformanceTest {
             "auth",
             "backup",
             "cancellation",
+            "cold_history",
             "crud",
             "estate",
             "live_feeds",
@@ -104,6 +105,30 @@ final class SdkConformanceTest {
                 session.principalId(),
                 new Session.SessionLease(
                         renewed.path("session_id").asString(), renewed.path("token").asString()));
+
+        JsonNode coldRequest = corpus.path("cold_history").path("read");
+        JsonNode cold = api.call(
+                OperationId.COLD_HISTORY_READ,
+                coldRequest,
+                options("cold-history", session, false, Map.of(), null));
+        JsonNode coldGeneration = cold.path("generation");
+        assertEquals(coldRequest.path("scope").asString(), cold.path("scope").asString());
+        assertEquals(
+                coldRequest.path("generation").asLong(),
+                coldGeneration.path("generation").asLong());
+        assertTrue(coldGeneration.path("through_cursor").asLong()
+                > coldGeneration.path("requested_after_cursor").asLong());
+        assertTrue(cold.path("changes").size() > 0);
+        assertEquals(cold.path("changes").size(), coldGeneration.path("rows").asInt());
+        String expectedColdActor = corpus.path("cold_history").path("expected_actor").asString();
+        boolean seededCold = false;
+        for (JsonNode change : cold.path("changes")) {
+            assertEquals(cold.path("scope").asString(), change.path("scope").asString());
+            if (expectedColdActor.equals(change.path("actor").asString())) {
+                seededCold = true;
+            }
+        }
+        assertTrue(seededCold);
 
         api.call(
                 OperationId.VECTOR_COLLECTION_ENSURE,
@@ -190,6 +215,38 @@ final class SdkConformanceTest {
                 quantized.path("access_path").asString());
         assertTrue(containsVector(
                 quantized.path("hits"), expected.path("vector_reference").asString()));
+
+        // The graph index and its payload index. The changefeed read below proves
+        // the scope stays readable with an index in it.
+        JsonNode index = vector.path("index");
+        api.call(
+                OperationId.VECTOR_PAYLOAD_INDEX_ENSURE,
+                index.path("payload_index"),
+                options("payload-index-ensure", session, true, Map.of(), null));
+        JsonNode builtIndex = api.call(
+                OperationId.VECTOR_INDEX_ENSURE,
+                index.path("ensure"),
+                options("index-ensure", session, true, Map.of(), null));
+        assertEquals(
+                expected.path("indexed_access_path").asString(),
+                builtIndex.path("index").path("kind").asString());
+        JsonNode indexed = api.call(
+                OperationId.VECTOR_SEARCH,
+                index.path("search"),
+                options("indexed-search", session, false, Map.of(), null));
+        assertEquals(
+                expected.path("indexed_access_path").asString(),
+                indexed.path("access_path").asString());
+        assertTrue(containsVector(
+                indexed.path("hits"), expected.path("indexed_reference").asString()));
+        api.call(
+                OperationId.VECTOR_PAYLOAD_INDEX_ENSURE,
+                index.path("spare_payload_index"),
+                options("payload-index-spare", session, true, Map.of(), null));
+        api.call(
+                OperationId.VECTOR_PAYLOAD_INDEX_DELETE,
+                index.path("delete_payload_index"),
+                options("payload-index-delete", session, true, Map.of(), null));
 
         JsonNode changes = api.call(
                 OperationId.CHANGEFEED_READ,

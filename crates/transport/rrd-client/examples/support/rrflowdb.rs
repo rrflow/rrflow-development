@@ -14,6 +14,8 @@ pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 pub const PROJECT: &str = "devpulse_project";
 pub const TASK: &str = "devpulse_task";
 pub const OWNS: &str = "devpulse_owns";
+pub const DOCUMENT: &str = "devpulse_document";
+pub const SUPPORTS: &str = "devpulse_supports";
 
 pub fn id(value: &str) -> CanonicalId {
     CanonicalId::new(value).expect("static example identifier")
@@ -87,7 +89,7 @@ pub async fn abort(
 }
 
 pub fn extend_schema(mut schema: DataSchemaRegistry) -> Result<DataSchemaRegistry> {
-    if [PROJECT, TASK, OWNS]
+    if [PROJECT, TASK, OWNS, DOCUMENT, SUPPORTS]
         .iter()
         .any(|kind| schema.tables.contains_key(&id(kind)))
     {
@@ -154,6 +156,63 @@ pub fn extend_schema(mut schema: DataSchemaRegistry) -> Result<DataSchemaRegistr
             ..Default::default()
         },
     );
+    schema.tables.insert(
+        id(DOCUMENT),
+        DataTableSchema {
+            model: DataLogicalModel::Document,
+            mode: DataSchemaMode::Strict,
+            properties: BTreeMap::new(),
+            allow_additional_properties: false,
+        },
+    );
+    schema.records.insert(
+        id(DOCUMENT),
+        DataRecordSchema {
+            properties: BTreeMap::from([
+                (
+                    "title".into(),
+                    DataPropertySchema {
+                        value_type: DataValueType::String,
+                        required: true,
+                    },
+                ),
+                (
+                    "metadata".into(),
+                    DataPropertySchema {
+                        value_type: DataValueType::Map,
+                        required: true,
+                    },
+                ),
+            ]),
+            allow_additional_properties: false,
+            unique_properties: BTreeSet::new(),
+        },
+    );
+    schema.tables.insert(
+        id(SUPPORTS),
+        DataTableSchema {
+            model: DataLogicalModel::GraphRelation,
+            mode: DataSchemaMode::Strict,
+            properties: BTreeMap::new(),
+            allow_additional_properties: false,
+        },
+    );
+    schema.relations.insert(
+        id(SUPPORTS),
+        DataRelationSchema {
+            from: BTreeSet::from([id(DOCUMENT)]),
+            to: BTreeSet::from([id(TASK)]),
+            properties: BTreeMap::from([(
+                "reason".into(),
+                DataPropertySchema {
+                    value_type: DataValueType::String,
+                    required: true,
+                },
+            )]),
+            unique_pair: true,
+            ..Default::default()
+        },
+    );
     Ok(schema)
 }
 
@@ -181,6 +240,24 @@ pub fn task_record(title: &str, status: &str, at: u64) -> TransactionMutation {
     }
 }
 
+pub fn document_record(title: &str, revision: u64, at: u64) -> TransactionMutation {
+    TransactionMutation::PutRecord {
+        reference: reference(DOCUMENT, "context-note"),
+        valid_from: at,
+        valid_to: None,
+        properties: BTreeMap::from([
+            ("title".into(), QueryValue::String(title.into())),
+            (
+                "metadata".into(),
+                QueryValue::Map(BTreeMap::from([
+                    ("source".into(), QueryValue::String("local".into())),
+                    ("revision".into(), QueryValue::Unsigned(revision)),
+                ])),
+            ),
+        ]),
+    }
+}
+
 pub fn seed_mutations(schema: DataSchemaRegistry, at: u64) -> Vec<TransactionMutation> {
     vec![
         TransactionMutation::PutSchema { registry: schema },
@@ -193,6 +270,15 @@ pub fn seed_mutations(schema: DataSchemaRegistry, at: u64) -> Vec<TransactionMut
             valid_from: at,
             valid_to: None,
             properties: BTreeMap::new(),
+        },
+        document_record("Project context", 1, at),
+        TransactionMutation::PutRelation {
+            reference: reference(SUPPORTS, "context-first-task"),
+            from: reference(DOCUMENT, "context-note"),
+            to: reference(TASK, "first-task"),
+            valid_from: at,
+            valid_to: None,
+            properties: BTreeMap::from([("reason".into(), QueryValue::String("supports".into()))]),
         },
     ]
 }
@@ -298,11 +384,42 @@ pub async fn tasks(
     .await
 }
 
+pub async fn documents(
+    client: &RrdClient,
+    session: &Session,
+    at: u64,
+    known: u64,
+    key: &str,
+) -> Result<QueryResult> {
+    query(
+        client,
+        session,
+        format!("FROM record:{DOCUMENT} AT VALID $at KNOWN {known} PROJECT id, title, metadata"),
+        at,
+        key,
+    )
+    .await
+}
+
+pub async fn document_relationships(
+    client: &RrdClient,
+    session: &Session,
+    at: u64,
+    known: u64,
+    key: &str,
+) -> Result<QueryResult> {
+    query(client, session, format!(
+        "FROM record:{DOCUMENT} JOIN relation:{SUPPORTS} ON id = from_id AT VALID $at KNOWN {known} PROJECT left.id, right.to_id, right.reason"
+    ), at, key).await
+}
+
 /// A bounded application view, not another engine snapshot or lifecycle authority.
 #[derive(Clone, serde::Serialize)]
 pub struct DatabaseView {
     pub tasks: QueryResult,
     pub relationships: QueryResult,
+    pub documents: QueryResult,
+    pub document_relationships: QueryResult,
 }
 
 pub async fn read_view(
@@ -320,9 +437,27 @@ pub async fn read_view(
         &format!("{key}-join"),
     )
     .await?;
+    let documents = documents(
+        client,
+        session,
+        at,
+        tasks.known_at_cursor,
+        &format!("{key}-documents"),
+    )
+    .await?;
+    let document_relationships = document_relationships(
+        client,
+        session,
+        at,
+        tasks.known_at_cursor,
+        &format!("{key}-document-join"),
+    )
+    .await?;
     let view = DatabaseView {
         tasks,
         relationships,
+        documents,
+        document_relationships,
     };
     view.validate(&format!("instance:{}", client.instance_id()))?;
     Ok(view)
@@ -331,7 +466,12 @@ pub async fn read_view(
 impl DatabaseView {
     /// Never present partial or differently stamped queries as one complete view.
     pub fn validate(&self, scope: &str) -> Result<()> {
-        for result in [&self.tasks, &self.relationships] {
+        for result in [
+            &self.tasks,
+            &self.relationships,
+            &self.documents,
+            &self.document_relationships,
+        ] {
             result.execution.read_evidence.validate()?;
             if result.scope != scope
                 || result.execution.truncated
@@ -340,9 +480,16 @@ impl DatabaseView {
                 return Err("database view is incomplete or outside the requested scope".into());
             }
         }
-        if self.tasks.known_at_cursor != self.relationships.known_at_cursor
-            || self.tasks.schema_revision != self.relationships.schema_revision
-        {
+        if [
+            &self.relationships,
+            &self.documents,
+            &self.document_relationships,
+        ]
+        .iter()
+        .any(|result| {
+            self.tasks.known_at_cursor != result.known_at_cursor
+                || self.tasks.schema_revision != result.schema_revision
+        }) {
             return Err("database view has inconsistent read stamps".into());
         }
         Ok(())
@@ -369,6 +516,25 @@ impl DatabaseView {
                 QueryValue::String("first-task".into()),
             ),
         ]);
+        let expected_document = BTreeMap::from([
+            ("id".into(), QueryValue::String("context-note".into())),
+            ("title".into(), QueryValue::String("Project context".into())),
+            (
+                "metadata".into(),
+                QueryValue::Map(BTreeMap::from([
+                    ("source".into(), QueryValue::String("local".into())),
+                    ("revision".into(), QueryValue::Unsigned(1)),
+                ])),
+            ),
+        ]);
+        let expected_document_relationship = BTreeMap::from([
+            ("left.id".into(), QueryValue::String("context-note".into())),
+            (
+                "right.to_id".into(),
+                QueryValue::String("first-task".into()),
+            ),
+            ("right.reason".into(), QueryValue::String("supports".into())),
+        ]);
         if self.tasks.rows.len() != 1 || self.tasks.rows[0].values != expected_task {
             return Err("database task does not match the expected example state".into());
         }
@@ -376,6 +542,16 @@ impl DatabaseView {
             || self.relationships.rows[0].values != expected_relationship
         {
             return Err("database relationship does not match the expected example state".into());
+        }
+        if self.documents.rows.len() != 1 || self.documents.rows[0].values != expected_document {
+            return Err("database document does not match the expected example state".into());
+        }
+        if self.document_relationships.rows.len() != 1
+            || self.document_relationships.rows[0].values != expected_document_relationship
+        {
+            return Err(
+                "database document relationship does not match the expected example state".into(),
+            );
         }
         Ok(())
     }

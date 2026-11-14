@@ -27,12 +27,20 @@ pub fn artifact_transfer_trace_event(
             stamp: observation.read.clone(),
         },
         TraceLink::Snapshot {
+            // A digest, so the name holds the grammar and its length for any term and index.
+            // The attributes below carry each part for a reader.
             snapshot_id: SnapshotId::new(format!(
-                "raft:{}:{}:{}:{}",
-                observation.shard.0,
-                observation.grounded_snapshot.term,
-                observation.grounded_snapshot.commit_index,
-                observation.grounded_snapshot.state_digest
+                "raft-{}",
+                sha256_hex(
+                    format!(
+                        "{}\0{}\0{}\0{}",
+                        observation.shard.0,
+                        observation.grounded_snapshot.term,
+                        observation.grounded_snapshot.commit_index,
+                        observation.grounded_snapshot.state_digest
+                    )
+                    .as_bytes()
+                )
             ))
             .map_err(core_error)?,
             cursor: observation.read.commit_cursor,

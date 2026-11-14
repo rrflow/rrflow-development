@@ -568,7 +568,7 @@ fn encode_domain_effect(
             super::encode_vector_version(plan, &commit.scope, vector, change)
         }
         RuntimeMutation::Event { event } => {
-            let reference = keyspaces::runtime_event_reference(event, change.cursor)?;
+            let reference = keyspaces::runtime_event_reference(event, change.cursor);
             plan.put_json(
                 keyspaces::RUNTIME_EVENT_VERSIONS,
                 &keyspaces::runtime_version_key(

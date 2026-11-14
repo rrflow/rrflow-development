@@ -78,9 +78,9 @@ macro_rules! string_id {
         impl $name {
             pub fn new(value: impl Into<String>) -> Result<Self> {
                 let value = value.into();
-                if value.is_empty() || value.len() > 128 || value.as_bytes().contains(&0) {
+                if let Some(problem) = rrd_core::ident::canonical_id_problem(&value) {
                     return Err(ClusterError::Invalid(format!(
-                        "{} must contain 1..=128 non-NUL bytes",
+                        "{} {value:?} is invalid: {problem}",
                         $label
                     )));
                 }

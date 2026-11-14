@@ -245,9 +245,7 @@ pub(in crate::engine) fn public_runtime_mutation(
 fn runtime_data_target(target: &DataTarget) -> Result<RuntimeRef> {
     match target {
         DataTarget::Reference { reference } => runtime_ref(reference),
-        DataTarget::Event { kind, cursor } => {
-            RuntimeRef::new(kind.as_str(), format!("cursor:{cursor}")).map_err(core_contract)
-        }
+        DataTarget::Event { kind, cursor } => Ok(RuntimeRef::event(runtime_id(kind)?, *cursor)),
     }
 }
 
