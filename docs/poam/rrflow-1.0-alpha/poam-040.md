@@ -10,6 +10,12 @@ it cannot close a roadmap gate independently.
 
 ## Observed deficiency
 
+The [draft replan receipt readback](../../evidence/change-journals/gate-d/d-02-replan-receipt-readback.md)
+adds principal-scoped embedded inspection of a committed successor receipt
+without replaying acceptance, and validates its lineage on both read and replay.
+It does not expose a public operation or close job-journal, memory-receipt,
+source-snapshot or candidate-CI gaps. This POA&M remains open.
+
 The [embedded attunement receipt readback candidate](../../evidence/change-journals/gate-d/d-02-attunement-receipt-readback.md)
 adds an authenticated, principal-scoped read of existing control receipts
 without replaying a mutation. This is not a public HTTP/SDK operation, source
