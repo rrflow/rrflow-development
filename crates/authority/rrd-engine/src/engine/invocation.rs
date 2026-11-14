@@ -19,6 +19,7 @@ pub enum RrdOperation {
     EstateRead,
     EstateAdmin,
     EndpointConfigurationPreview,
+    AttunementReplanPreview,
     QueryExecute,
     QueryLivePoll,
     QueryIndexEnsure,
@@ -102,7 +103,9 @@ impl RrdOperation {
             Self::TransactionCommit => SecurityAction::TransactionCommit,
             Self::TransactionAbort => SecurityAction::TransactionAbort,
             Self::EstateRead => SecurityAction::EstateRead,
-            Self::EstateAdmin | Self::EndpointConfigurationPreview => SecurityAction::EstateAdmin,
+            Self::EstateAdmin
+            | Self::EndpointConfigurationPreview
+            | Self::AttunementReplanPreview => SecurityAction::EstateAdmin,
             Self::QueryExecute => SecurityAction::QueryExecute,
             Self::QueryLivePoll => SecurityAction::QueryLivePoll,
             Self::QueryIndexEnsure => SecurityAction::QueryIndexEnsure,
