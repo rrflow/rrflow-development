@@ -13,6 +13,7 @@ members = [
     "crates/compute/rrd-vector",
     "crates/operations/rrd-operator-knowledge",
     "crates/compute/rrd-inference",
+    "crates/compute/rrd-attunement",
     "crates/adapters/rrflow-edge",
     "crates/operations/rrd-cluster",
     "crates/operations/rrd-kubernetes",

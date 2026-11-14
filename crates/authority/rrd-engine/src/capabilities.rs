@@ -15,6 +15,8 @@ pub fn product_capability_catalogue() -> ProductCapabilityCatalogue {
             let id = endpoint.operation.as_str().to_owned();
             let engine_binding = if id == "endpoint-configuration-preview" {
                 "rrd-engine:RrdOperation::EndpointConfigurationPreview".to_owned()
+            } else if id == "attunement-replan-preview" {
+                "rrd-engine:RrdOperation::AttunementReplanPreview".to_owned()
             } else {
                 match endpoint.action {
                     EndpointAction::Fixed { action } => {
