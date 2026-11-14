@@ -605,12 +605,10 @@ fn pre_canonical_startup_authorities_are_absent_from_product_tree() {
         "Kubernetes startup must use one canonical install apply handoff"
     );
 
-    let estate_control = fs::read_to_string(
-        metadata
-            .root
-            .join("crates/authority/rrd-engine/src/engine/estate_control.rs"),
-    )
-    .expect("estate control source must be readable");
+    let estate_control = module_source(
+        &metadata.root,
+        "crates/authority/rrd-engine/src/engine/estate_control.rs",
+    );
     assert!(
         !estate_control.contains("RrdEngine::open(")
             && !estate_control.contains("RrdEngine::open_existing(")
@@ -721,37 +719,18 @@ fn alpha_storage_closure_has_one_required_physical_dependency_and_current_reader
         "Zstd must remain gated behind rrd-lsm's physical-policy lab"
     );
 
-    let batch = fs::read_to_string(
-        metadata
-            .root
-            .join("crates/persistence/rrd-lsm/src/batch.rs"),
-    )
-    .expect("batch codec source must be readable");
-    let manifest = fs::read_to_string(
-        metadata
-            .root
-            .join("crates/persistence/rrd-lsm/src/manifest.rs"),
-    )
-    .expect("manifest source must be readable");
-    let segment_module = fs::read_to_string(
-        metadata
-            .root
-            .join("crates/persistence/rrd-lsm/src/segment/mod.rs"),
-    )
-    .expect("segment module source must be readable");
-    let segment_format = fs::read_to_string(
-        metadata
-            .root
-            .join("crates/persistence/rrd-lsm/src/segment/format.rs"),
-    )
-    .expect("segment format source must be readable");
+    let batch = module_source(&metadata.root, "crates/persistence/rrd-lsm/src/batch.rs");
+    let manifest = module_source(&metadata.root, "crates/persistence/rrd-lsm/src/manifest.rs");
+    let segment_module = module_source(
+        &metadata.root,
+        "crates/persistence/rrd-lsm/src/segment/mod.rs",
+    );
+    let segment_format = module_source(
+        &metadata.root,
+        "crates/persistence/rrd-lsm/src/segment/format.rs",
+    );
     let segment = format!("{segment_module}\n{segment_format}");
-    let vector_catalog = fs::read_to_string(
-        metadata
-            .root
-            .join("crates/compute/rrd-vector/src/catalog.rs"),
-    )
-    .expect("vector artifact catalog source must be readable");
+    let vector_catalog = module_source(&metadata.root, "crates/compute/rrd-vector/src/catalog.rs");
     assert!(batch.contains("pub const BATCH_FORMAT_VERSION: u16 = 2;"));
     assert!(manifest.contains("pub const MANIFEST_FORMAT_VERSION: u16 = 3;"));
     assert!(segment.contains("pub const SEGMENT_FORMAT_VERSION: u16 = 6;"));
@@ -784,12 +763,8 @@ fn alpha_storage_closure_has_one_required_physical_dependency_and_current_reader
 #[test]
 fn schema_catalogue_has_one_explicit_logical_model_authority() {
     let metadata = workspace_metadata();
-    let core_schema =
-        fs::read_to_string(metadata.root.join("crates/kernel/rrd-core/src/schema.rs"))
-            .expect("runtime schema source must be readable");
-    let core_runtime =
-        fs::read_to_string(metadata.root.join("crates/kernel/rrd-core/src/runtime.rs"))
-            .expect("runtime snapshot source must be readable");
+    let core_schema = module_source(&metadata.root, "crates/kernel/rrd-core/src/schema.rs");
+    let core_runtime = module_source(&metadata.root, "crates/kernel/rrd-core/src/runtime.rs");
     let public_contract = module_source(&metadata.root, "crates/transport/rrd-contract/src/lib.rs");
 
     let optional_table_field =
@@ -908,8 +883,7 @@ fn vector_writes_require_one_canonical_collection_address() {
         "public PutVector regained an optional address component"
     );
 
-    let runtime = fs::read_to_string(metadata.root.join("crates/kernel/rrd-core/src/runtime.rs"))
-        .expect("runtime commit source must be readable");
+    let runtime = module_source(&metadata.root, "crates/kernel/rrd-core/src/runtime.rs");
     for required in [
         "text(out, &vector.collection.collection_id);",
         "text(out, &vector.collection.vector_name);",
@@ -920,12 +894,10 @@ fn vector_writes_require_one_canonical_collection_address() {
         );
     }
 
-    let keyspaces = fs::read_to_string(
-        metadata
-            .root
-            .join("crates/persistence/rrd-store/src/keyspaces.rs"),
-    )
-    .expect("rrflowKV keyspace source must be readable");
+    let keyspaces = module_source(
+        &metadata.root,
+        "crates/persistence/rrd-store/src/keyspaces.rs",
+    );
     assert!(
         keyspaces.contains("validate_vector_source_key_parts(collection_id, vector_name, field)?;"),
         "vector source keys must fail closed before encoding an address"
@@ -935,31 +907,20 @@ fn vector_writes_require_one_canonical_collection_address() {
 #[test]
 fn vector_projection_lifecycle_has_no_duplicate_turboquant_authority() {
     let metadata = workspace_metadata();
-    let vector_runtime = fs::read_to_string(
-        metadata
-            .root
-            .join("crates/compute/rrd-vector/src/runtime.rs"),
-    )
-    .expect("vector runtime source must be readable");
-    let engine_runtime = fs::read_to_string(
-        metadata
-            .root
-            .join("crates/authority/rrd-engine/src/runtime/vector_catalog.rs"),
-    )
-    .expect("engine vector reconstruction source must be readable");
-    let quantization = fs::read_to_string(
-        metadata
-            .root
-            .join("crates/authority/rrd-engine/src/engine/vector/quantization.rs"),
-    )
-    .expect("engine quantization source must be readable");
+    let vector_runtime = module_source(&metadata.root, "crates/compute/rrd-vector/src/runtime.rs");
+    let engine_runtime = module_source(
+        &metadata.root,
+        "crates/authority/rrd-engine/src/runtime/vector_catalog.rs",
+    );
+    let quantization = module_source(
+        &metadata.root,
+        "crates/authority/rrd-engine/src/engine/vector/quantization.rs",
+    );
     let contract = module_source(&metadata.root, "crates/transport/rrd-contract/src/lib.rs");
-    let collection = fs::read_to_string(
-        metadata
-            .root
-            .join("crates/authority/rrd-engine/src/engine/vector/collection.rs"),
-    )
-    .expect("engine vector collection source must be readable");
+    let collection = module_source(
+        &metadata.root,
+        "crates/authority/rrd-engine/src/engine/vector/collection.rs",
+    );
 
     let suppression = ["suppress_legacy_", "turboquant"].concat();
     let ensure_adapter = ["ensure_", "turboquant_index_authorized"].concat();
