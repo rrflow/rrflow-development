@@ -335,6 +335,7 @@ fn run(mode: &str) {
             .await
             .unwrap();
         let mut work = Workload {
+            native_worker: Default::default(),
             client,
             session,
             valid_at: estate.at,

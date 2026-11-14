@@ -1,0 +1,11 @@
+# C-07 native failure policy and upstream research
+
+**Status:** active draft verification; original native failure unresolved
+**Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/gate-c/c-07-native-failure-policy-and-research`
+**Owner:** OBJ-02 / C-07 / POAM-035 / [PR204](https://github.com/rrflow/rrflow-development/pull/204)
+
+Starting revision `ed3a30f258de31d3d64d15db15193d3ef342cc48`. The PR brief requires the isolated failure artifact to remain available on failure and policy tests to reject lost wiring. Inspection found that a substring check for `if: always()` would also accept `if: always() && false`. Changed `scripts/ci/check_workflow.py` to require the exact condition line for each artifact step, and `scripts/ci/test_native_capacity.py` to reject the false condition. `python scripts/ci/test_native_capacity.py` passed 30 tests, `python scripts/ci/test_macos_native_failure_preflight.py` passed 3 and `python scripts/ci/check_workflow.py` passed. This checks repository policy, not GitHub expression semantics in isolation; the [actual injected artifact run](c-07-checked-in-native-failure-outcome.md) independently passed.
+
+The GitHub runner-images project's [macOS hdiutil failure report](https://github.com/actions/runner-images/issues/7522) documents the same generic `hdiutil create` Resource busy message in other workloads. One contributor's verbose trace reports failure ejecting a disk-image helper's temporary device during creation; other comments give differing hypotheses and mitigations. PR194's original log lacks comparable internal detail, so this is a possible failure mode, not attribution or proof of a runner defect. No retry, host process termination, filesystem policy change or qualification waiver was adopted. Retaining bounded verbose native output improves future diagnosis without claiming the old failure resolved.
+
+Reviewed the manual workflow and its artifact-specific policy/test, the linked native experiment and upstream report; no upstream code adapted. Regenerate navigation and inventory and run documentation/staged-diff checks before commit. PR194's failed candidate, exact failure cause, PR204 candidate and merge-group CI, full native matrix and 24-hour soak remain open. No objective, roadmap or POAM status changed.
