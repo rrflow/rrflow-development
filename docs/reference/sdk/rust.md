@@ -43,34 +43,22 @@ merely compare JSON shapes.
 
 ## Audited current surface
 
-The executable `endpoint_catalogue()` contains 55 HTTP operations and one
-generic authenticated `/v1/ws` descriptor. `RrdClient` currently supplies
-typed HTTP methods for 50 of those 55 operations, while `RrdWebSocket`
-implements the bounded B-04 multiplexed protocol. The current boundary is:
+The executable `endpoint_catalogue()` owns the available HTTP operations and
+generic authenticated WebSocket descriptor. The Rust client now derives a
+typed request/response marker for each HTTP descriptor at build time; the
+compiled projection is checked against the live catalogue. A marker proves a
+type association, not that an idiomatic public method or full semantic
+conformance exists for every operation. H-04's complete method coverage,
+single compiler, transport validation and cross-language corpus remain open.
 
-| Family | Catalogued HTTP operations | Rust methods now | Missing now |
-|---|---:|---:|---|
-| Service health | 2 | 0 | `health-live`, `health-ready` |
-| Capability and schema discovery | 3 | 3 | none |
-| Sessions | 3 | 3 | none |
-| Transactions | 4 | 4 | none |
-| Native schema discovery | 1 | 1 | none |
-| rrflowQL query and Parquet export | 2 | 2 | none |
-| Query indexes and live polling | 3 | 0 | `query-index-ensure`, `query-index-list`, `query-live-poll` |
-| Vector collections, points, and search | 5 | 5 | none |
-| Changefeeds | 2 | 2 | none |
-| Durable-subscription administration | 2 | 2 | none |
-| Backup and restore | 3 | 3 | none |
-| Estate | 1 | 1 | none |
-| Audit | 2 | 2 | none |
-| Diagnostics | 3 | 3 | none |
-| Prompt flights | 3 | 3 | none |
-| Tasks | 4 | 4 | none |
-| Task effort and explicit reference inference | 6 | 6 | none |
-| Context | 1 | 1 | none |
-| Endpoint configuration | 3 | 3 | none |
-| Knowledge-tree configuration | 2 | 2 | none |
-| **Total** | **55** | **50** | **5** |
+The attunement bindings expose read, cancel, control-receipt read, start,
+step, pause, resume, expired-lease recovery, replan preview, replan acceptance,
+and replan-receipt read. Control responses are checked against the supplied
+engine-owned plan and job; replan responses and receipts also validate their
+source-bound proposal, successor lineage and principal/instance identity.
+Resume replay uses the original typed request and idempotency key without
+requiring an obsolete local job snapshot. Source observation is still not the
+atomic project snapshot required by D-03.
 
 The [task effort flow](../inference/lfg-swag.md#public-task-effort-flow) uses
 `configure_task_budget`, `activate_builtin_embedding`,
