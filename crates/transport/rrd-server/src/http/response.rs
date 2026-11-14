@@ -124,6 +124,22 @@ pub(in crate::http) fn api_error(error: ServiceError) -> ApiError {
     if let ServiceError::TransactionSnapshotStale { expected, actual } = error {
         return stale_transaction_error(expected, actual);
     }
+    if matches!(error, ServiceError::AttunementSourceChanged) {
+        let mut response = ApiError::new(
+            ErrorCode::FailedPrecondition,
+            "The project source changed after the plan was observed. Preview a replan or reconcile the job before continuing; acceptance is explicit.",
+            false,
+        );
+        response.body.details.insert(
+            CanonicalId::new("reason").expect("constant detail key"),
+            "attunement-source-changed".into(),
+        );
+        response.body.details.insert(
+            CanonicalId::new("next-action").expect("constant detail key"),
+            "preview-attunement-replan".into(),
+        );
+        return response;
+    }
     let message = error.to_string();
     let retryable = error.retryable();
     let code = match error.kind() {
@@ -195,6 +211,50 @@ pub(in crate::http) fn status_for(code: ErrorCode) -> StatusCode {
 #[cfg(test)]
 mod stale_transaction_tests {
     use super::*;
+
+    #[test]
+    fn source_change_and_stale_transaction_keep_distinct_recovery_actions() {
+        let source = api_error(ServiceError::AttunementSourceChanged);
+        let transaction = api_error(ServiceError::TransactionSnapshotStale {
+            expected: 7,
+            actual: 9,
+        });
+        let detail = |body: &ErrorBody, key: &str| {
+            body.details.get(&CanonicalId::new(key).unwrap()).cloned()
+        };
+        assert_eq!(source.status, StatusCode::PRECONDITION_FAILED);
+        assert_eq!(source.body.code, ErrorCode::FailedPrecondition);
+        assert!(!source.body.retryable);
+        assert_eq!(
+            detail(&source.body, "reason").as_deref(),
+            Some("attunement-source-changed")
+        );
+        assert_eq!(
+            detail(&source.body, "next-action").as_deref(),
+            Some("preview-attunement-replan")
+        );
+        assert_eq!(transaction.status, StatusCode::CONFLICT);
+        assert_eq!(transaction.body.code, ErrorCode::Conflict);
+        assert!(!transaction.body.retryable);
+        assert_eq!(
+            detail(&transaction.body, "reason").as_deref(),
+            Some("transaction-snapshot-stale")
+        );
+        assert_eq!(
+            detail(&transaction.body, "next-action").as_deref(),
+            Some("abort-and-reexecute-transaction")
+        );
+        assert_eq!(
+            detail(&transaction.body, "expected-cursor").as_deref(),
+            Some("7")
+        );
+        assert_eq!(
+            detail(&transaction.body, "actual-cursor").as_deref(),
+            Some("9")
+        );
+        assert!(source.body.validate().is_ok());
+        assert!(transaction.body.validate().is_ok());
+    }
 
     #[test]
     fn http_and_websocket_preserve_the_same_nonretryable_recovery_details() {
