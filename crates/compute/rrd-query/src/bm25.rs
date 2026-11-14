@@ -7,139 +7,17 @@
 
 use crate::{Error, Result};
 use rrd_core::digest;
+pub use rrd_store::lexical::{
+    analyze, analyze_with_offsets, bm25_contribution, Bm25Analyzer, Bm25Config, Bm25Identifiers,
+    Bm25Offset, Bm25Stemmer, Bm25Tokenizer, MAX_TOKEN_CHARS,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
-use unicode_normalization::{char::is_combining_mark, UnicodeNormalization};
 
 pub const BM25_ARTIFACT_CONTRACT_VERSION: u16 = 2;
-const MAX_TOKEN_CHARS: usize = 40;
-const MAX_STOP_WORDS: usize = 10_000;
 const MAX_DOCUMENTS: usize = 1_000_000;
 const MAX_TERMS: usize = 10_000_000;
 const MAX_POSITIONS: usize = 100_000_000;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum Bm25Analyzer {
-    /// Split on non-alphanumeric characters and apply Unicode lowercase.
-    UnicodeLowercase,
-    /// Preserve the source case after tokenization.
-    UnicodeCaseSensitive,
-}
-
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum Bm25Tokenizer {
-    /// Split at every non-alphanumeric Unicode scalar.
-    #[default]
-    UnicodeAlphanumeric,
-    /// Split only at Unicode whitespace.
-    Whitespace,
-}
-
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum Bm25Stemmer {
-    #[default]
-    None,
-    /// A deterministic, bounded English suffix stemmer.
-    English,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct Bm25Config {
-    pub analyzer: Bm25Analyzer,
-    #[serde(default, skip_serializing_if = "is_default_tokenizer")]
-    pub tokenizer: Bm25Tokenizer,
-    #[serde(default, skip_serializing_if = "is_false")]
-    pub ascii_folding: bool,
-    #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
-    pub stop_words: BTreeSet<String>,
-    #[serde(
-        default = "default_min_token_chars",
-        skip_serializing_if = "is_default_min_token_chars"
-    )]
-    pub min_token_chars: u16,
-    #[serde(
-        default = "default_max_token_chars",
-        skip_serializing_if = "is_default_max_token_chars"
-    )]
-    pub max_token_chars: u16,
-    #[serde(default, skip_serializing_if = "is_default_stemmer")]
-    pub stemmer: Bm25Stemmer,
-    /// BM25 term-frequency saturation parameter in millionths.
-    pub k1_micros: u32,
-    /// BM25 document-length normalization parameter in millionths.
-    pub b_micros: u32,
-}
-
-impl Default for Bm25Config {
-    fn default() -> Self {
-        Self {
-            analyzer: Bm25Analyzer::UnicodeLowercase,
-            tokenizer: Bm25Tokenizer::UnicodeAlphanumeric,
-            ascii_folding: false,
-            stop_words: BTreeSet::new(),
-            min_token_chars: 1,
-            max_token_chars: MAX_TOKEN_CHARS as u16,
-            stemmer: Bm25Stemmer::None,
-            k1_micros: 1_200_000,
-            b_micros: 750_000,
-        }
-    }
-}
-
-impl Bm25Config {
-    pub fn validate(&self) -> Result<()> {
-        if self.k1_micros == 0 || self.k1_micros > 10_000_000 {
-            return Err(Error::Catalog("BM25 k1 must be in (0, 10]".into()));
-        }
-        if self.b_micros > 1_000_000 {
-            return Err(Error::Catalog("BM25 b must be in [0, 1]".into()));
-        }
-        if self.min_token_chars == 0
-            || self.min_token_chars > self.max_token_chars
-            || usize::from(self.max_token_chars) > MAX_TOKEN_CHARS
-        {
-            return Err(Error::Catalog(format!(
-                "BM25 token length must satisfy 1 <= min <= max <= {MAX_TOKEN_CHARS}"
-            )));
-        }
-        if self.stop_words.len() > MAX_STOP_WORDS
-            || self.stop_words.iter().any(|word| word.is_empty())
-        {
-            return Err(Error::Catalog(
-                "BM25 stop-word configuration is invalid".into(),
-            ));
-        }
-        let mut normalization_config = self.clone();
-        normalization_config.stop_words.clear();
-        if self
-            .stop_words
-            .iter()
-            .any(|word| analyze(&normalization_config, word).as_slice() != [word.as_str()])
-        {
-            return Err(Error::Catalog(
-                "BM25 stop words must already be unique normalized single tokens".into(),
-            ));
-        }
-        Ok(())
-    }
-
-    fn k1(&self) -> f64 {
-        f64::from(self.k1_micros) / 1_000_000.0
-    }
-
-    fn b(&self) -> f64 {
-        f64::from(self.b_micros) / 1_000_000.0
-    }
-
-    pub fn digest(&self) -> Result<String> {
-        self.validate()?;
-        Ok(digest::sha256_hex(&serde_json::to_vec(self)?))
-    }
-}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -154,14 +32,6 @@ pub struct Bm25Posting {
     pub document_ordinal: u32,
     pub term_frequency: u32,
     pub positions: Vec<Bm25Offset>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct Bm25Offset {
-    pub token_ordinal: u32,
-    pub byte_start: u32,
-    pub byte_end: u32,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -400,29 +270,25 @@ impl Bm25Artifact {
         }
         let document_count = self.documents.len() as f64;
         let average_length = self.average_document_length;
-        let k1 = self.config.k1();
-        let b = self.config.b();
         let mut scores = BTreeMap::<u32, (f64, Vec<String>, Vec<Bm25Offset>)>::new();
         for term in query_terms {
             let Some(postings) = self.postings.get(&term) else {
                 continue;
             };
             let document_frequency = postings.len() as f64;
-            let idf = ((document_count - document_frequency + 0.5) / (document_frequency + 0.5)
-                + 1.0)
-                .ln();
             for posting in postings {
                 let ordinal = usize::try_from(posting.document_ordinal)
                     .map_err(|_| Error::Integrity("BM25 document ordinal exceeds usize".into()))?;
                 let document_length = f64::from(self.documents[ordinal].length);
                 let frequency = f64::from(posting.term_frequency);
-                let normalization = if average_length == 0.0 {
-                    1.0
-                } else {
-                    1.0 - b + b * document_length / average_length
-                };
-                let contribution =
-                    idf * (frequency * (k1 + 1.0)) / (frequency + k1 * normalization);
+                let contribution = bm25_contribution(
+                    &self.config,
+                    document_count,
+                    document_frequency,
+                    frequency,
+                    document_length,
+                    average_length,
+                );
                 let score = scores.entry(posting.document_ordinal).or_default();
                 score.0 += contribution;
                 score.1.push(term.clone());
@@ -464,103 +330,6 @@ pub struct Bm25Hit {
     pub offsets: Vec<Bm25Offset>,
 }
 
-#[derive(Debug)]
-struct AnalyzedToken {
-    term: String,
-    offset: Bm25Offset,
-}
-
-fn analyze(config: &Bm25Config, text: &str) -> Vec<String> {
-    analyze_with_offsets(config, text)
-        .unwrap_or_default()
-        .into_iter()
-        .map(|token| token.term)
-        .collect()
-}
-
-fn analyze_with_offsets(config: &Bm25Config, text: &str) -> Result<Vec<AnalyzedToken>> {
-    let spans = token_spans(config.tokenizer, text);
-    let mut tokens = Vec::new();
-    for (byte_start, byte_end) in spans {
-        let raw = &text[byte_start..byte_end];
-        let mut term = match config.analyzer {
-            Bm25Analyzer::UnicodeLowercase => raw.chars().flat_map(char::to_lowercase).collect(),
-            Bm25Analyzer::UnicodeCaseSensitive => raw.to_owned(),
-        };
-        if config.ascii_folding {
-            term = term
-                .nfkd()
-                .filter(|character| !is_combining_mark(*character))
-                .collect();
-        }
-        if config.stemmer == Bm25Stemmer::English {
-            term = stem_english(&term);
-        }
-        let chars = term.chars().count();
-        if chars < usize::from(config.min_token_chars)
-            || chars > usize::from(config.max_token_chars)
-            || config.stop_words.contains(&term)
-        {
-            continue;
-        }
-        let token_ordinal = u32::try_from(tokens.len())
-            .map_err(|_| Error::Budget("BM25 token ordinal exceeds u32".into()))?;
-        tokens.push(AnalyzedToken {
-            term,
-            offset: Bm25Offset {
-                token_ordinal,
-                byte_start: u32::try_from(byte_start)
-                    .map_err(|_| Error::Budget("BM25 text byte offset exceeds u32".into()))?,
-                byte_end: u32::try_from(byte_end)
-                    .map_err(|_| Error::Budget("BM25 text byte offset exceeds u32".into()))?,
-            },
-        });
-    }
-    Ok(tokens)
-}
-
-fn token_spans(tokenizer: Bm25Tokenizer, text: &str) -> Vec<(usize, usize)> {
-    let accepted = |character: char| match tokenizer {
-        Bm25Tokenizer::UnicodeAlphanumeric => character.is_alphanumeric(),
-        Bm25Tokenizer::Whitespace => !character.is_whitespace(),
-    };
-    let mut spans = Vec::new();
-    let mut start = None;
-    for (offset, character) in text.char_indices() {
-        if accepted(character) {
-            start.get_or_insert(offset);
-        } else if let Some(begin) = start.take() {
-            spans.push((begin, offset));
-        }
-    }
-    if let Some(begin) = start {
-        spans.push((begin, text.len()));
-    }
-    spans
-}
-
-fn stem_english(term: &str) -> String {
-    if term.len() > 4 && term.ends_with("ies") {
-        return format!("{}y", &term[..term.len() - 3]);
-    }
-    for suffix in ["ingly", "edly", "ing", "ed"] {
-        if term.len() > suffix.len() + 2 && term.ends_with(suffix) {
-            return term[..term.len() - suffix.len()].to_owned();
-        }
-    }
-    if term.len() > 4
-        && ["sses", "ches", "shes", "xes", "zes", "ses"]
-            .iter()
-            .any(|suffix| term.ends_with(suffix))
-    {
-        return term[..term.len() - 2].to_owned();
-    }
-    if term.len() > 3 && term.ends_with('s') {
-        return term[..term.len() - 1].to_owned();
-    }
-    term.to_owned()
-}
-
 pub fn highlight_offsets(
     text: &str,
     offsets: &[Bm25Offset],
@@ -593,28 +362,6 @@ pub fn highlight_offsets(
     }
     output.push_str(&text[cursor..]);
     Ok(output)
-}
-
-fn default_min_token_chars() -> u16 {
-    1
-}
-fn default_max_token_chars() -> u16 {
-    MAX_TOKEN_CHARS as u16
-}
-fn is_default_min_token_chars(value: &u16) -> bool {
-    *value == default_min_token_chars()
-}
-fn is_default_max_token_chars(value: &u16) -> bool {
-    *value == default_max_token_chars()
-}
-fn is_default_tokenizer(value: &Bm25Tokenizer) -> bool {
-    *value == Bm25Tokenizer::default()
-}
-fn is_default_stemmer(value: &Bm25Stemmer) -> bool {
-    *value == Bm25Stemmer::default()
-}
-fn is_false(value: &bool) -> bool {
-    !*value
 }
 
 #[cfg(test)]

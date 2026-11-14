@@ -618,6 +618,12 @@ fn query_index_definition(request: &EnsureQueryIndex) -> Result<(rrd_query::Inde
                             QueryTextStemmer::None => rrd_query::Bm25Stemmer::None,
                             QueryTextStemmer::English => rrd_query::Bm25Stemmer::English,
                         },
+                        identifiers: match full_text.identifiers {
+                            QueryTextIdentifiers::Pieces => rrd_query::Bm25Identifiers::Pieces,
+                            QueryTextIdentifiers::WholeAndParts => {
+                                rrd_query::Bm25Identifiers::WholeAndParts
+                            }
+                        },
                         k1_micros: full_text.k1_micros,
                         b_micros: full_text.b_micros,
                     },
@@ -666,6 +672,10 @@ pub(in crate::engine) fn public_query_index(
             stemmer: match config.stemmer {
                 rrd_query::Bm25Stemmer::None => QueryTextStemmer::None,
                 rrd_query::Bm25Stemmer::English => QueryTextStemmer::English,
+            },
+            identifiers: match config.identifiers {
+                rrd_query::Bm25Identifiers::Pieces => QueryTextIdentifiers::Pieces,
+                rrd_query::Bm25Identifiers::WholeAndParts => QueryTextIdentifiers::WholeAndParts,
             },
             k1_micros: config.k1_micros,
             b_micros: config.b_micros,

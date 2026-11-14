@@ -525,3 +525,54 @@ fn conflict_validation_reads_only_version_spines_and_skips_shadowed_segments() {
         }
     }
 }
+
+#[test]
+fn a_measuring_transaction_reports_a_batch_past_the_payload_ceiling_and_cannot_commit() {
+    let parent = tempfile::tempdir().unwrap();
+    let mut database = create_database(&parent, "measuring");
+    let value = vec![7_u8; 512 * 1024];
+    let keys = (0..40_u8)
+        .map(|index| vec![b'k', index])
+        .collect::<Vec<_>>();
+
+    // The same writes size identically in either mode below the ceiling.
+    let mut ordinary = database.begin_transaction().unwrap();
+    let mut measuring = database.begin_transaction().unwrap();
+    measuring.measure_only().unwrap();
+    for key in &keys[..4] {
+        ordinary.put(key.clone(), value.clone()).unwrap();
+        measuring.put(key.clone(), value.clone()).unwrap();
+    }
+    assert_eq!(ordinary.encoded_len(), measuring.encoded_len());
+    ordinary.delete(keys[0].clone()).unwrap();
+    measuring.delete(keys[0].clone()).unwrap();
+    assert_eq!(ordinary.encoded_len(), measuring.encoded_len());
+
+    // Past the ceiling the ordinary transaction refuses the write that crosses
+    // it and keeps its state; the measuring one stages every write.
+    let crossing = keys[4..]
+        .iter()
+        .position(|key| ordinary.put(key.clone(), value.clone()).is_err())
+        .expect("the ordinary transaction reaches the payload ceiling");
+    assert!(ordinary.encoded_len() <= rrd_lsm::WAL_MAX_PAYLOAD_BYTES);
+    for key in &keys[4..] {
+        measuring.put(key.clone(), value.clone()).unwrap();
+    }
+    assert!(measuring.encoded_len() > rrd_lsm::WAL_MAX_PAYLOAD_BYTES);
+    assert!(crossing < keys.len() - 4);
+    assert!(matches!(
+        measuring.put(keys[1].clone(), value.clone()),
+        Ok(())
+    ));
+
+    // A measuring transaction never commits, and one that has staged a write
+    // cannot become measuring.
+    assert!(matches!(
+        database.commit_transaction(measuring, Durability::Authoritative),
+        Err(Error::InvalidTransaction(_))
+    ));
+    assert!(ordinary.measure_only().is_err());
+    ordinary.rollback().unwrap();
+    assert_eq!(database.transaction_ownership().unwrap(), (0, 0));
+    assert_eq!(database.get(&keys[1], database.snapshot()).unwrap(), None);
+}

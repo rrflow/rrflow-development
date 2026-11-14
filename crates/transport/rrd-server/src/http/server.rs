@@ -261,6 +261,59 @@ impl RrdHttpServer {
                 tracing::warn!(target: "rrd_server::maintenance", "bounded storage maintenance quantum failed");
             }
         })?;
+        // Under a sealed follow policy the served engine keeps its project
+        // attuned on a thread of its own, so a long Parse never delays the
+        // storage maintenance above. Dropping the sender stops it.
+        let (follow_stop, follow_stopped) = std::sync::mpsc::channel::<()>();
+        let follower = state
+            .service
+            .estate_configuration()
+            .attunement_follow
+            .map(|policy| {
+                let follow_state = Arc::clone(&state);
+                std::thread::Builder::new()
+                    .name("rrflow-attunement-follow".into())
+                    .spawn(move || {
+                        let interval = std::time::Duration::from_millis(policy.interval_ms);
+                        let mut fingerprint: Option<String> = None;
+                        loop {
+                            match follow_state
+                                .service
+                                .follow_attunement(fingerprint.as_deref())
+                            {
+                                Ok(tick) => {
+                                    if !matches!(tick.outcome, rrd_engine::FollowOutcome::Unchanged)
+                                    {
+                                        tracing::info!(
+                                            target: "rrd_server::attunement_follow",
+                                            outcome = ?tick.outcome,
+                                            "followed the project's attunement"
+                                        );
+                                    }
+                                    fingerprint = tick.fingerprint;
+                                }
+                                Err(error) => {
+                                    // The next interval observes again from scratch.
+                                    fingerprint = None;
+                                    tracing::warn!(
+                                        target: "rrd_server::attunement_follow",
+                                        error = %error,
+                                        "attunement follow pass failed"
+                                    );
+                                }
+                            }
+                            match follow_stopped.recv_timeout(interval) {
+                                Err(std::sync::mpsc::RecvTimeoutError::Timeout) => continue,
+                                _ => return,
+                            }
+                        }
+                    })
+            })
+            .transpose()?;
+        let _follow_guard = FollowGuard {
+            stop: Some(follow_stop),
+            thread: follower,
+        };
         let serve = async move {
             if let Some(acceptor) = self.tls {
                 return serve_mtls(listener, self.app, acceptor, shutdown).await;
@@ -290,6 +343,21 @@ impl RrdHttpServer {
                     maintenance.offer(super::maintenance::MaintenanceWork::ColdHistory)?;
                 }
             }
+        }
+    }
+}
+
+/// Stops the attunement follower when serving ends, after its current pass.
+struct FollowGuard {
+    stop: Option<std::sync::mpsc::Sender<()>>,
+    thread: Option<std::thread::JoinHandle<()>>,
+}
+
+impl Drop for FollowGuard {
+    fn drop(&mut self) {
+        drop(self.stop.take());
+        if let Some(thread) = self.thread.take() {
+            let _ = thread.join();
         }
     }
 }

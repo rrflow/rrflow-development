@@ -203,6 +203,10 @@ pub enum ContextPlanStageStatus {
 pub enum ContextAccessPath {
     RequestSeed,
     SnapshotBm25,
+    /// BM25 over postings the store maintains in the commit that writes the
+    /// records, read at the request's stamp; record kinds without such an
+    /// index are still ranked from the snapshot and fused.
+    CommitBm25,
     SnapshotVectorExact,
     SnapshotGraphBidirectionalBfs,
     ReciprocalRankFusion,

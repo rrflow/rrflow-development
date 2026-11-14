@@ -128,7 +128,7 @@ const ALLOWED_USES: &[AllowedUse] = &[
         operation: "explicit diagnostic graph comparison",
     },
     AllowedUse {
-        path: "crates/persistence/rrd-store/src/access/semantic_commit.rs",
+        path: "crates/persistence/rrd-store/src/access/semantic_commit/plan.rs",
         kind: SensitiveReadUse::DataSnapshotReducer,
         count: 1,
         operation: "retirement validation over directly selected versions",
@@ -136,11 +136,17 @@ const ALLOWED_USES: &[AllowedUse] = &[
     AllowedUse {
         path: "crates/persistence/rrd-store/src/repository/runtime.rs",
         kind: SensitiveReadUse::DataSnapshotReducer,
-        count: 2,
-        operation: "data snapshot and preview over directly selected versions",
+        count: 1,
+        operation: "data snapshot over directly selected versions",
     },
     AllowedUse {
-        path: "crates/persistence/rrd-store/src/repository/runtime.rs",
+        path: "crates/persistence/rrd-store/src/repository/runtime/commits.rs",
+        kind: SensitiveReadUse::DataSnapshotReducer,
+        count: 1,
+        operation: "transaction data preview over directly selected versions",
+    },
+    AllowedUse {
+        path: "crates/persistence/rrd-store/src/repository/runtime/commits.rs",
         kind: SensitiveReadUse::GraphSnapshotReducer,
         count: 1,
         operation: "transaction graph preview over directly selected versions",

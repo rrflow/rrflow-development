@@ -92,6 +92,8 @@ fn binding(id: &str, field: &str, kind: IndexCommitBindingKind) -> IndexCommitBi
         fields: vec![field.into()],
         kind,
         configuration_sha256: digest::sha256_hex(format!("{id}:{field}:{kind:?}").as_bytes()),
+        lexical: matches!(kind, IndexCommitBindingKind::Bm25)
+            .then(rrd_store::lexical::Bm25Config::default),
     }
 }
 

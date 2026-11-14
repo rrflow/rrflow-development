@@ -762,12 +762,7 @@ fn schema_catalogue_has_one_explicit_logical_model_authority() {
     let metadata = workspace_metadata();
     let core_schema = module_source(&metadata.root, "crates/kernel/rrd-core/src/schema.rs");
     let core_runtime = module_source(&metadata.root, "crates/kernel/rrd-core/src/runtime.rs");
-    let public_contract = fs::read_to_string(
-        metadata
-            .root
-            .join("crates/transport/rrd-contract/src/lib.rs"),
-    )
-    .expect("public contract source must be readable");
+    let public_contract = module_source(&metadata.root, "crates/transport/rrd-contract/src/lib.rs");
 
     let optional_table_field =
         "#[serde(default, skip_serializing_if = \"BTreeMap::is_empty\")]\n    pub tables:";
@@ -865,12 +860,7 @@ fn vector_writes_require_one_canonical_collection_address() {
         );
     }
 
-    let contract = fs::read_to_string(
-        metadata
-            .root
-            .join("crates/transport/rrd-contract/src/lib.rs"),
-    )
-    .expect("public contract source must be readable");
+    let contract = module_source(&metadata.root, "crates/transport/rrd-contract/src/lib.rs");
     let put_vector = contract
         .split_once("    PutVector {")
         .expect("public PutVector mutation must exist")
@@ -922,12 +912,7 @@ fn vector_projection_lifecycle_has_no_duplicate_turboquant_authority() {
         &metadata.root,
         "crates/authority/rrd-engine/src/engine/vector/quantization.rs",
     );
-    let contract = fs::read_to_string(
-        metadata
-            .root
-            .join("crates/transport/rrd-contract/src/lib.rs"),
-    )
-    .expect("public contract source must be readable");
+    let contract = module_source(&metadata.root, "crates/transport/rrd-contract/src/lib.rs");
     let collection = module_source(
         &metadata.root,
         "crates/authority/rrd-engine/src/engine/vector/collection.rs",

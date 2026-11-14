@@ -34,6 +34,15 @@ impl StorageTransaction for CountedRead<'_> {
     fn delete(&mut self, key: Vec<u8>) -> Result<()> {
         self.inner.delete(key)
     }
+    fn measure_only(&mut self) -> Result<()> {
+        self.inner.measure_only()
+    }
+    fn staged_encoded_bytes(&self) -> usize {
+        self.inner.staged_encoded_bytes()
+    }
+    fn is_measuring(&self) -> bool {
+        self.inner.is_measuring()
+    }
     fn commit(self: Box<Self>, durability: Durability) -> Result<TransactionCommit> {
         self.inner.commit(durability)
     }

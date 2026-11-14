@@ -261,6 +261,7 @@ fn install(action: &InstallAction, json: bool) -> Result<Execution, BoxError> {
             configuration,
             attunement_proposal,
             allow_project_source_read,
+            follow_interval_ms,
             test_distribution_executable,
         } => {
             let started = Instant::now();
@@ -278,6 +279,8 @@ fn install(action: &InstallAction, json: bool) -> Result<Execution, BoxError> {
                 rrd_engine::InstallationPlanningOptions {
                     attunement_proposal: proposal,
                     allow_project_source_read: *allow_project_source_read,
+                    attunement_follow: follow_interval_ms
+                        .map(|interval_ms| rrd_contract::AttunementFollowPolicy { interval_ms }),
                 },
                 &executable,
             )?;

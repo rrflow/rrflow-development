@@ -136,6 +136,17 @@ The first job, `changes`, diffs the candidate against its base and runs
 | `sdk` | `sdks/**`, `fixtures/**`, `crates/transport/**` | `sdk-conformance`; transport crate edits also run `engine-fast` |
 | `full` | `.github/**` except templates, `scripts/ci/**`, `.cargo/**`, `.devcontainer/**`, `.gitmodules`, `rust-toolchain.toml`, `Cargo.toml`, `Cargo.lock`, `VERSION`, `deploy/**`, the Connectome gitlink, `crates/kernel/**`, `crates/persistence/**`, `crates/adapters/rrflow-cli/**`, `rrd-maintenance`, and the engine's transaction, installation, estate layout, token key, maintenance, attunement supervisor, backup, control, configuration, estate-control, flight, function, knowledge, observation, reasoning-budget persistence, restore, session, subscription, task, query, and tail-repair effect modules; also engine test modules, `.gitignore`, `.gitattributes`, any path the classifier does not recognize, a manual dispatch, a `scope: full` call, or an event without a base revision | every partition below, exactly as before |
 
+The code-shape ratchet (`scripts/ci/check_code_shape.py`, owned by the code
+structure and conventions standard) runs in `verify` on the full matrix and in
+`repository-invariants` otherwise. It holds non-test Rust files to 800 lines,
+`lib.rs` and `main.rs` to 200 and test files to 1,500. It also counts `mod.rs`
+files, `#[path]` attributes, string and boxed errors, allowed
+`too_many_arguments`, and direct use of the `sha2` crate outside the digest owner. Every file or site that broke a
+rule on 2026-11-13 is recorded in `scripts/ci/code_shape_baseline.json` with its
+size or count. A recorded entry may only shrink, a new violation fails, and an
+improvement must be locked in with `--tighten`, which never admits a
+violation.
+
 Alongside whichever light lanes a change selects, `repository-invariants` runs
 the engine's repository-wide architecture tests
 (`cargo test -p rrd-engine --test workspace_architecture`) on every candidate

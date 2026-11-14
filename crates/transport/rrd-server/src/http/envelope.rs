@@ -292,8 +292,20 @@ pub(in crate::http) fn parse_envelope<T: DeserializeOwned>(
         )));
     }
     let envelope: RequestEnvelope<T> = serde_json::from_slice(bytes).map_err(|error| {
+        // A payload that does not decode is still answered under the caller's
+        // own request identity when the envelope carries a valid one, so the
+        // client sees this typed error instead of an identity mismatch.
+        #[derive(serde::Deserialize)]
+        struct CallerContext {
+            context: RequestContext,
+        }
+        let context = serde_json::from_slice::<CallerContext>(bytes)
+            .ok()
+            .map(|caller| caller.context)
+            .filter(|context| context.validate(false).is_ok())
+            .unwrap_or_else(|| fallback.clone());
         Box::new((
-            fallback.clone(),
+            context,
             ApiError::new(ErrorCode::InvalidArgument, error.to_string(), false),
         ))
     })?;
@@ -345,4 +357,53 @@ pub(super) fn required_idempotency(
             false,
         )
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[derive(Debug, serde::Deserialize)]
+    #[allow(dead_code)]
+    struct Payload {
+        required: u64,
+    }
+
+    /// A payload that does not decode is answered under the caller's request
+    /// identity, so the client sees the typed error. The 2026-11-12 real run
+    /// saw "identity differs" in the SDK where the server had answered a
+    /// missing `max_storage_keys` under an identity it generated itself.
+    #[test]
+    fn an_undecodable_payload_keeps_the_callers_identity() {
+        let instance = CanonicalId::new("instance-envelope").unwrap();
+        let mut headers = HeaderMap::new();
+        headers.insert("Content-Type", "application/json".parse().unwrap());
+        let context = RequestContext {
+            request_id: CorrelationId::new("request-caller").unwrap(),
+            operation_id: CorrelationId::new("operation-caller").unwrap(),
+            idempotency_key: None,
+            deadline_unix_ms: None,
+        };
+        let body = serde_json::to_vec(&serde_json::json!({
+            "protocol": PROTOCOL,
+            "protocol_version": PROTOCOL_VERSION,
+            "context": context,
+            "resource": instance_resource(&instance),
+            "payload": {"other": 1},
+        }))
+        .unwrap();
+        let (answered, error) =
+            *parse_envelope::<Payload>(&headers, &body, 1_000, false, &instance)
+                .expect_err("the payload lacks its required field");
+        assert_eq!(answered.request_id, context.request_id);
+        assert_eq!(answered.operation_id, context.operation_id);
+        assert!(format!("{error:?}").contains("required"), "{error:?}");
+
+        // Without a readable context the server still answers, under an
+        // identity it generates.
+        let (generated, _) =
+            *parse_envelope::<Payload>(&headers, b"{\"payload\":1}", 1_000, false, &instance)
+                .expect_err("not an envelope");
+        assert_ne!(generated.request_id, context.request_id);
+    }
 }

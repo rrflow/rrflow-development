@@ -235,6 +235,8 @@ Focused and interruption/reopen checks pass; full candidate and real-repository
 qualification remain pending. This does not establish zero-content-read
 freshness, reduced RSS, safe upgrades or completed D-03 acceptance.
 
+On 2026-11-12 an installed estate made by one build of `rrflow` refused to serve under a rebuilt binary from the same source (`ProjectBindingMismatch`), because the installation binds `executable_sha256`; the [code-knowledge real run](../../evidence/change-journals/gate-d/d-02-code-knowledge-slice-20261112.md) reinstalled for every build. Upgrading an installed engine in place remains unsupported.
+
 The [installed incremental trial](../../evidence/change-journals/gate-d/d-03-incremental-installed-trial.md)
 records an initial fresh-estate `ProjectBindingMismatch` before server readiness.
 Offline inspection and a separate restart subsequently passed without modifying
