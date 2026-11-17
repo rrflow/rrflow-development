@@ -68,7 +68,7 @@ Sessions share the owner's machine with other projects. A session removes only w
 |---|---|
 | Clean tree, no stash or archive ref, every branch pushed with an open pull request, none merged and left behind | `scripts/ci/check_session_end.py`, tested by `scripts/ci/test_session_end.py` in the scripts lane |
 | Red candidate or red main repaired first | The `merge-alarm` workflow opens `merge-blocked` and `Main is red` issues |
-| Pull request, `pipeline / ci-gate` and the merge queue required on `main`; force push and deletion denied | The `main` ruleset on `rrflow/rrflow-development` (applied 2026-11-16) |
+| Pull request, `pipeline / ci-gate` and the merge queue required on `main`; force push and deletion denied | The `main` ruleset on `rrflow/rrflow-development` (applied 2026-11-17) |
 | Code shape does not regress | `scripts/ci/check_code_shape.py` |
 | Records link, classify and name their owner | `scripts/ci/check_documentation.py` |
 
