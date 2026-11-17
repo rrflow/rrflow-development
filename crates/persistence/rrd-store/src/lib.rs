@@ -18,6 +18,8 @@ mod control;
 mod ds;
 mod engine;
 mod error;
+#[cfg(feature = "fjall-baseline")]
+mod fjall_baseline;
 mod footprint;
 mod gc;
 mod invocation;
@@ -74,6 +76,8 @@ pub use engine::{
     RRFLOW_KV_COUNTER_EVIDENCE,
 };
 pub use error::{Error, Result};
+#[cfg(feature = "fjall-baseline")]
+pub use fjall_baseline::FjallBaselineStore;
 pub use footprint::{measure_storage_footprint, FootprintBytes, StorageFootprint};
 pub use gc::{PairStatus, RemovalReport, Verdict};
 pub use invocation::{Invocation, InvocationInput, Outcome, Trigger};
