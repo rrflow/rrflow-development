@@ -135,3 +135,9 @@ order lives in [`docs/roadmap/rrflow-1.0.md`](../roadmap/rrflow-1.0.md).
 - Recheck time-sensitive implementation guidance when its owning execution
   gate begins; the current researched implementation map is linked from the
   [RRFlow 1.0 roadmap](../roadmap/rrflow-1.0.md).
+
+## Surveys
+
+- [Bi-temporal memory, lexicons and behavioural state](bitemporal-lexicon-and-behavioral-state-survey-20261116.md):
+  a 2026-11-16 first-pass survey requested by the repository owner; not an
+  inventory, so it authorizes no adaptation.
