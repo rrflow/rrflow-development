@@ -19,6 +19,7 @@ them; they are not a compatibility requirement or a current acceptance oracle.
 | Physical-policy integration evidence | [`rrflowkv_physical_policy.rs`](../../../crates/persistence/rrd-lsm/examples/rrflowkv_physical_policy.rs) | Compares real segment-v6 none/adaptive-LZ4 output, independently measures laboratory Zstandard over the same logical pages, verifies production persisted row-group Bloom filters and normal reopen I/O, retains exact-byte cache trace simulation as screening history, and compares production exact versus scope-aware scan-resistant caches on the same persisted eight-family corpus. Filters, adaptive LZ4, and cache admission are integrated; Zstandard and value placement remain non-production. |
 | Persistent model oracle | [`rrflow_kv_model_soak.rs`](../../../crates/persistence/rrd-store/tests/rrflow_kv_model_soak.rs) | Compares randomized rrflowKV mutations, snapshots, compaction, and reopen behavior with an independent in-memory model. |
 | Retained historical storage provenance | [`benchmark_evidence.rs`](../../../crates/persistence/rrd-store/tests/benchmark_evidence.rs) | Parses the 35 retained rrflowKV/Fjall-era storage artifacts, requires both passing and failing recorded verdicts, and executes no current performance workload. |
+| Cross-engine comparison | [`storage_comparison.rs`](../../../crates/persistence/rrd-store/examples/storage_comparison.rs) over [`fjall_baseline.rs`](../../../crates/persistence/rrd-store/src/fjall_baseline.rs) | Runs the semantic workload through the `StorageEngine` port on rrflowKV and on the Fjall baseline, in isolated child processes, and reports both and their ratios; needs the `fjall-baseline` feature |
 | Scheduled diagnostics | [`rrd-lsm-benchmark.yml`](../../../.github/workflows/rrd-lsm-benchmark.yml) | Runs the semantic and AI-access matrices on `ubuntu-latest`, enables native write-phase capture for every semantic profile, and uploads raw per-run artifacts. |
 
 These programs cover physical and semantic storage only. They do not exercise
@@ -52,7 +53,7 @@ p99.9 as well as p50/p95/p99 and extrema. Native phase summaries in the
 aggregate pool the exact raw records retained under `trials`; the aggregate's
 `raw_samples_location: trials` prevents a second multi-megabyte copy. A
 correctness or attribution-invariant failure terminates the program; there is
-no external-engine ratio or promotion verdict.
+no external-engine ratio or promotion verdict; this program measures rrflowKV alone, and the cross-engine ratios come from the comparison below.
 
 ### Native batch-write attribution
 
@@ -303,3 +304,47 @@ cargo test -p rrd-store --example engine_benchmark --locked
 
 These checks keep useful workload and provenance coverage alive. None alone
 closes a roadmap performance or end-to-end context-flow gate.
+
+## Fjall comparison baseline
+
+Fjall `=3.1.8` is kept as a comparison engine so rrflowKV's results can be stated
+against an independent log-structured engine. It is a feature-gated backend of
+`rrd-store`, not a product dependency: `fjall-baseline` is off by default, no
+other package enables it, `StorageProfile` cannot select it, and the workspace
+architecture test enforces each of those facts.
+
+The baseline implements the same profile-neutral byte transaction as rrflowMX and
+rrflowKV and stores every logical key and value unchanged in one Fjall keyspace,
+so both engines see identical bytes. Two small keyspaces carry what the contract
+needs and Fjall does not offer directly: the last write sequence of each key
+(write-write conflicts) and the global sequence.
+`tests/fjall_baseline.rs` proves it is the same contract: one transcript of
+snapshot isolation, own-write visibility, bounded scans that merge the
+transaction's writes, a write-write conflict and a read-only commit is produced by
+rrflowMX, rrflowKV and Fjall and must match line for line, the claim corpus and
+its grounding digest must agree across all three, and committed data and the
+sequence must survive a reopen.
+
+```text
+cargo test -p rrd-store --features fjall-baseline --test fjall_baseline
+cargo run --release -p rrd-store --features fjall-baseline   --example storage_comparison -- --trials 5 --operations 16384 --output out.json
+```
+
+The comparison runs the semantic workload above: authoritative batches, a clean
+reopen, full verification in bounded pages, bounded range reads, maintenance, and a
+second verification and read pass. Each trial of each engine runs in its own
+child process, the reopened reads in a further child, and the engines alternate
+within each round so machine drift reaches both. The document records each
+engine's raw trials and median aggregate and the ratios rrflowKV over Fjall for
+write and read throughput, write and read p95, recovery, peak resident memory and
+reopened and maintained allocated bytes. A measurement that does not exist on the
+host is `null`, never zero. Both engines commit each batch at authoritative
+durability: rrflowKV with `sync_data` and Fjall with `PersistMode::SyncAll`.
+
+The output states no verdict. One machine and one run do not decide whether an
+engine is acceptable; that is a release-gate decision.
+
+Not covered, and open: the AI-access matrix (hot, cold, missing, historical and
+metadata fan-out reads over the payload profiles) is not yet run against Fjall,
+and the 35 retained historical artifacts predate this harness and remain
+evidence about the code that produced them.
