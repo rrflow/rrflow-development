@@ -161,7 +161,11 @@ pub(super) fn retired_function_authority_vocabulary_is_absent() {
 /// Records that preserve the earlier product name as history: the lineage of
 /// the engine and of rrflowLSM (owner, 2026-11-15 and 2026-11-17). The name stays
 /// forbidden in every other tracked file and path.
-const LINEAGE_RECORDS: &[&str] = &["docs/architecture/rrflowlsm-lineage.md"];
+const LINEAGE_RECORDS: &[&str] = &[
+    "docs/architecture/rrflowlsm-lineage.md",
+    "docs/evidence/change-journals/repository/official-remote-branch-absorption-20261117.md",
+    "docs/roadmap/consolidation-contract.md",
+];
 
 #[test]
 pub(super) fn lineage_records_exist_and_name_the_earlier_product() {
