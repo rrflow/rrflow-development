@@ -194,7 +194,11 @@ pub(super) fn retired_pre_release_identity_is_absent_from_the_active_repository(
     // preserve it as history.
     let mut brand = Vec::new();
     collect_identity_violations(&metadata.root, &mut brand, &[retired_brand.as_bytes()]);
-    brand.retain(|path| !LINEAGE_RECORDS.iter().any(|record| path == Path::new(record)));
+    brand.retain(|path| {
+        !LINEAGE_RECORDS
+            .iter()
+            .any(|record| path == Path::new(record))
+    });
     violations.extend(brand);
     violations.sort();
     violations.dedup();
