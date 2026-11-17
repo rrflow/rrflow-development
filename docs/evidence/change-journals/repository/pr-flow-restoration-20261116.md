@@ -31,4 +31,4 @@ Finding: while this package ran, another session wrote `joined-checkout-baseline
 
 - The Connectome development build (`scripts/dev/connectome_dev.py`) was not run.
 - The assignee on a live alarm issue: the unit test and the `assignees` API call passed, but no real alarm was raised.
-- The ruleset change on GitHub is a separate step after this pull request merges, and is not part of this commit.
+- The ruleset change on GitHub is not part of this commit. It was applied on 2026-11-17 through `gh api` (ruleset 25439032 on `rrflow/rrflow-development`: pull request, `pipeline / ci-gate`, merge queue, no deletion, no force push) before this pull request merged, so this pull request is the first to go through the queue. Whether the queue merges it is not yet proven; if the queue strands it, the ruleset is reverted.
