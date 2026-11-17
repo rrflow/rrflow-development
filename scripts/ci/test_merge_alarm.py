@@ -72,6 +72,7 @@ class MergeAlarmTests(unittest.TestCase):
         self.assertIn("https://example.test/run/1", body)
         self.assertIn("gh pr merge 7 --auto --merge", body)
         self.assertEqual(len(github.wrote("pr", "comment")), 1)
+        self.assertEqual(created[0][created[0].index("--assignee") + 1], "EonsofStupid")
 
     def test_a_second_failure_adds_to_the_open_issue(self):
         github = FakeGitHub(issues=[{"number": 3, "title": "Merge blocked: PR #7"}])

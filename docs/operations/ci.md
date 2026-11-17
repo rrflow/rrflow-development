@@ -128,12 +128,13 @@ gate, and release qualification runs apart from it ("dev build, normal build
 later"). This replaces the 2026-11-09 proportional-lanes decision, under which
 most engine changes still selected the full matrix.
 
-**One branch.** Owner's rule, 2026-11-14 (`AGENTS.md`): pre-release work is
-committed and pushed directly to `main`. The `ci` workflow therefore also runs
-on every push to `main`, selecting lanes from that push's own changes. The
-ruleset on `main` forbids only deletion and force pushes; the pull-request
-requirement, the required check and the merge queue were removed that day. A
-failed push run opens `Main is red: ci`.
+**Pull request per package.** Owner direction, 2026-11-16 (`AGENTS.md`), replacing
+the one-branch rule of 2026-11-14: every bounded package is one short-lived
+branch and one pull request. The `ci` workflow runs on the pull request and on
+the merge-queue candidate. The ruleset on `main` requires a pull request, the
+stable `pipeline / ci-gate` check and the merge queue, and denies deletion and
+force pushes. `ci` still runs on a push to `main` as a backstop; a failed push
+run opens `Main is red: ci`.
 
 **Development gate (every push and every candidate).** The first job, `changes`, diffs the
 candidate against its base and runs `scripts/ci/select_ci_lanes.py`, which maps
@@ -239,13 +240,16 @@ Sources: [DORA, trunk-based development](https://dora.dev/capabilities/trunk-bas
 [Wessel et al., AI policies in popular open source projects](https://arxiv.org/html/2609.07542);
 [AgenticFlict, merge conflicts in AI-generated contributions](https://arxiv.org/pdf/2601.20109).
 
-`scripts/ci/check_session_end.py` is the agent-side guard for the one-branch
-rule: it fails while any local branch, extra worktree, stash, archive ref or
-remote branch besides `main` exists, or while the worktree holds uncommitted or
-unpushed work. A session cannot end with work that only a side ref carries, as
-five worktrees did on 2026-11-09 and 35 worktrees, 172 branches, 8 stashes and
-81 archived refs did by 2026-11-14. `test_session_end.py` runs in the scripts
-lane and checks each rule against a throwaway repository.
+`scripts/ci/check_session_end.py` is the agent-side guard for the
+pull-request-per-package process: it fails while the worktree holds uncommitted
+work, while any extra worktree, stash or archive ref exists, while a local
+branch is unpushed or already merged into `main`, while `main` carries a commit
+its upstream lacks, and, when the GitHub CLI can read pull requests, while a
+local or remote branch has no open pull request. A session cannot end with work
+that only a side ref or this machine carries, as five worktrees did on
+2026-11-09 and 35 worktrees, 172 branches, 8 stashes and 81 archived refs did
+by 2026-11-14. `test_session_end.py` runs in the scripts lane and checks each
+rule against a throwaway repository.
 
 Rust cache steps still restore compatible entries on every candidate, but do
 not save new entries from `merge_group` runs. Queue-ref entries are scoped to
