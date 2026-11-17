@@ -158,6 +158,26 @@ pub(super) fn retired_function_authority_vocabulary_is_absent() {
     );
 }
 
+/// Records that preserve the earlier product name as history: the lineage of
+/// the engine and of rrflowLSM (owner, 2026-11-15 and 2026-11-17). The name stays
+/// forbidden in every other tracked file and path.
+const LINEAGE_RECORDS: &[&str] = &["docs/architecture/rrflowlsm-lineage.md"];
+
+#[test]
+pub(super) fn lineage_records_exist_and_name_the_earlier_product() {
+    let metadata = workspace_metadata();
+    let brand = ["vy", "rm"].concat();
+    for record in LINEAGE_RECORDS {
+        let text = std::fs::read_to_string(metadata.root.join(record))
+            .unwrap_or_else(|error| panic!("lineage record {record} must exist: {error}"))
+            .to_ascii_lowercase();
+        assert!(
+            text.contains(&brand),
+            "{record} is listed as a lineage record but does not name the earlier product"
+        );
+    }
+}
+
 #[test]
 pub(super) fn retired_pre_release_identity_is_absent_from_the_active_repository() {
     let metadata = workspace_metadata();
@@ -168,12 +188,18 @@ pub(super) fn retired_pre_release_identity_is_absent_from_the_active_repository(
     collect_identity_violations(
         &metadata.root,
         &mut violations,
-        &[
-            retired_brand.as_bytes(),
-            stale_composition.as_bytes(),
-            stale_runtime.as_bytes(),
-        ],
+        &[stale_composition.as_bytes(), stale_runtime.as_bytes()],
     );
+    // The earlier product name is forbidden everywhere except the records that
+    // preserve it as history.
+    let mut brand = Vec::new();
+    collect_identity_violations(&metadata.root, &mut brand, &[retired_brand.as_bytes()]);
+    brand.retain(|path| {
+        !LINEAGE_RECORDS
+            .iter()
+            .any(|record| path == Path::new(record))
+    });
+    violations.extend(brand);
     violations.sort();
     violations.dedup();
     assert!(
