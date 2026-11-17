@@ -218,10 +218,42 @@ pub(super) fn alpha_storage_closure_has_one_required_physical_dependency_and_cur
         "the alpha engine composition must not activate the post-alpha OpenRaft adapter"
     );
 
-    for package in metadata.packages.values() {
+    // Fjall is a comparison baseline and nothing else: one optional dependency
+    // of rrd-store, reachable only through rrd-store's own `fjall-baseline`
+    // feature, which no other package enables. No production build links it.
+    let fjall_declarations = metadata
+        .dependency_inputs
+        .iter()
+        .filter(|dependency| dependency.name == "fjall")
+        .collect::<Vec<_>>();
+    assert_eq!(
+        fjall_declarations
+            .iter()
+            .map(|dependency| dependency.owner.as_str())
+            .collect::<Vec<_>>(),
+        ["rrd-store"],
+        "Fjall may be declared only by rrd-store"
+    );
+    let fjall = fjall_declarations[0];
+    assert_eq!(fjall.kind, "normal");
+    assert!(
+        fjall.optional,
+        "the Fjall baseline dependency must be optional"
+    );
+    assert_exact(
+        &metadata.packages["rrd-store"].features["fjall-baseline"],
+        names(&["dep:fjall"]),
+        "the fjall-baseline feature enables only the Fjall dependency",
+    );
+    for dependency in metadata
+        .dependency_inputs
+        .iter()
+        .filter(|dependency| dependency.name == "rrd-store")
+    {
         assert!(
-            !package.all.contains("fjall"),
-            "Fjall must remain absent from workspace dependency metadata"
+            !dependency.features.contains("fjall-baseline"),
+            "{} enables the Fjall comparison baseline; only rrd-store's own tests and examples may",
+            dependency.owner
         );
     }
 
