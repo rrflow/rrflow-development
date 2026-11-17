@@ -23,6 +23,10 @@ STATE_CHECK_SECONDS = 15
 
 Gh = Callable[..., str]
 
+# The repository owner, assigned to every alarm so a failure reaches them
+# without relying on their watch settings (owner direction, 2026-11-16).
+OWNER = "EonsofStupid"
+
 
 def gh(*args: str) -> str:
     done = subprocess.run(["gh", *args], capture_output=True, text=True)
@@ -53,7 +57,7 @@ def sound(run: Gh, title: str, what: str, follow_up: str, pull: int | None = Non
         run("issue", "comment", str(existing), "--body", f"Still blocked. {what}")
         return
     body = f"{mention}{what}\n\n**Follow-up, for a person or an AI session:**\n\n{follow_up}\n"
-    run("issue", "create", "--title", title, "--label", LABEL, "--body", body)
+    run("issue", "create", "--title", title, "--label", LABEL, "--assignee", OWNER, "--body", body)
     if pull is not None:
         run("pr", "comment", str(pull), "--body", f":rotating_light: **{title}.** {mention}{what}")
 
