@@ -57,10 +57,11 @@ value is identical.
 
 ## Not carried
 
-- The native-versus-Fjall comparison harness and the Fjall dependency were
-  removed. Raw results survive as `eval/results/*rrd-lsm-ai*.json`, but the
-  comparison cannot be re-run from this repository. Whether to restore a
-  repeatable comparison is open.
+- The earlier native-versus-Fjall harness was removed with its dependency; its
+  old store could not be ported, because semantics and Fjall were interleaved.
+  The comparison is restored on the current boundary as the optional
+  `fjall-baseline` feature of `rrd-store`; see
+  [fjall-baseline-20261117](../evidence/change-journals/repository/fjall-baseline-20261117.md).
 - Vyrm-era documents with no counterpart by name (33 were found absent) were
   not each read. The database pillar is not fully verified.
 
@@ -71,5 +72,3 @@ value is identical.
    structure (the snapshot bundle file) and is not its successor.
 2. Read the six crates marked "mapped by role" and the four with no identified
    counterpart.
-3. Decide whether a repeatable native-versus-external storage comparison is
-   restored.
