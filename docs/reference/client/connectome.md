@@ -526,8 +526,9 @@ identity. Every metric says whether it is measured, estimated, unsupported or
 unknown. Changing projects isolates caches, sessions and in-flight results;
 concurrent engines never imply context sharing.
 
-The pinned workbench binds engine/SDK `91b6c6789e2e7d217e0873cff532bd53aa937581`
-([Inventory neighborhood pin receipt](../../evidence/change-journals/gate-h/h-06-connectome-inventory-pin-20261107.md)).
+The pinned workbench binds engine/SDK `cc5ebe0fd17bd9cb1a72a0d40811ba381869d202`, the
+first revision it has bound since the engine renamed estate to engram
+([pin record](../../evidence/change-journals/gate-h/connectome-repin-engram-20261118.md)).
 H-06 must keep engine assets, SDK, installation adapter and public-control
 consumers updated together and qualify the resulting exact pair. An existing UI
 data lens does not prove this new user journey or compatibility with a later
