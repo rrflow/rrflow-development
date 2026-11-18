@@ -94,4 +94,5 @@
 - [POAM-082 — the TypeScript SDK silently rounds 64-bit integers](poam-082.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-082`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-082) — active parent-owned POA&M detail
 - [POAM-083 — SDK conformance tests can pass without running](poam-083.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-083`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-083) — active parent-owned POA&M detail
 - [POAM-084 — the Windows offline qualification sometimes cannot create its disposable account](poam-084.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-084`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-084) — active parent-owned POA&M detail
+- [POAM-085 — Parse cannot run on macOS](poam-085.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-085`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-085) — active parent-owned POA&M detail
 <!-- rrflow:generated-index:end -->

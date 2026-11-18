@@ -213,7 +213,7 @@ pub(super) fn installed_locator_relocates_but_never_walks_ancestors_or_pairs_for
 
 /// A leftover `.rrflow` folder from earlier tools or runs, created with the
 /// platform's ordinary inherited permissions and holding no locator.
-#[cfg(any(windows, target_os = "linux"))]
+#[cfg(any(windows, target_os = "linux", target_os = "macos"))]
 pub(super) fn leftover_rrflow(project: &Path) -> BTreeMap<PathBuf, Vec<u8>> {
     std::fs::create_dir_all(project.join(".rrflow/dev/old")).unwrap();
     std::fs::create_dir_all(project.join(".rrflow/rrd")).unwrap();
@@ -224,7 +224,7 @@ pub(super) fn leftover_rrflow(project: &Path) -> BTreeMap<PathBuf, Vec<u8>> {
     inventory(&project.join(".rrflow"))
 }
 
-#[cfg(any(windows, target_os = "linux"))]
+#[cfg(any(windows, target_os = "linux", target_os = "macos"))]
 #[test]
 pub(super) fn a_leftover_rrflow_folder_is_retained_untouched_and_the_engram_installs_beside_it() {
     let project = tempfile::tempdir().unwrap();
@@ -279,7 +279,7 @@ pub(super) fn a_leftover_rrflow_folder_is_retained_untouched_and_the_engram_inst
     assert!(replay.idempotent_replay);
 }
 
-#[cfg(any(windows, target_os = "linux"))]
+#[cfg(any(windows, target_os = "linux", target_os = "macos"))]
 #[test]
 pub(super) fn a_changed_leftover_rrflow_folder_refuses_the_stale_plan_without_effects() {
     let project = tempfile::tempdir().unwrap();
@@ -306,7 +306,7 @@ pub(super) fn a_changed_leftover_rrflow_folder_refuses_the_stale_plan_without_ef
 /// Where the platform cannot read a directory's owner, group and access list,
 /// an existing `.rrflow` cannot be bound by the plan, so the preview refuses
 /// by name and changes nothing.
-#[cfg(not(any(windows, target_os = "linux")))]
+#[cfg(not(any(windows, target_os = "linux", target_os = "macos")))]
 #[test]
 pub(super) fn a_leftover_rrflow_folder_is_refused_where_its_security_cannot_be_read() {
     let project = tempfile::tempdir().unwrap();

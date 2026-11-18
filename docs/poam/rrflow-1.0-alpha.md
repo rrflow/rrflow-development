@@ -98,3 +98,4 @@
 | POAM-082 | High | Open | [the TypeScript SDK silently rounds 64-bit integers](rrflow-1.0-alpha/poam-082.md) |
 | POAM-083 | High | Open | [SDK conformance tests can pass without running](rrflow-1.0-alpha/poam-083.md) |
 | POAM-084 | High | Open | [the Windows offline qualification sometimes cannot create its disposable account](rrflow-1.0-alpha/poam-084.md) |
+| POAM-085 | High | Open | [Parse cannot run on macOS](rrflow-1.0-alpha/poam-085.md) |

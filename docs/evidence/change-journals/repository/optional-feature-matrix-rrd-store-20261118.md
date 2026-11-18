@@ -1,6 +1,7 @@
 # Route the rrd-store optional feature through the nightly matrix
 
-**Status:** package journal, 2026-11-18
+**Status:** active package evidence, 2026-11-18; landed as pull request 407
+**Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/repository/optional-feature-matrix-rrd-store-20261118`
 **Owner:** repository
 
 ## Change brief
