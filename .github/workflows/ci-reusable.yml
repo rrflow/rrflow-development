@@ -610,6 +610,7 @@ jobs:
           - rrd-engine
           - rrd-inference
           - rrd-lsm
+          - rrd-store
           - rrd-vector
     env:
       CARGO_BUILD_JOBS: "2"
