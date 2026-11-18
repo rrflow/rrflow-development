@@ -19,7 +19,7 @@ Failover is the property the cluster tier exists for. Until the cause is known, 
 
 ## Owning gates
 
-The OpenRaft implementation is optional and post-alpha; [Gate C evidence](../../roadmap/rrflow-1.0/gate-c-evidence.md) records it.
+C records the optional, post-alpha consensus implementation in [its evidence record](../../roadmap/rrflow-1.0/gate-c-evidence.md).
 
 Roadmap owner: [Gate C](../../roadmap/rrflow-1.0/gate-c.md).
 
