@@ -1,6 +1,6 @@
 # Read a retained directory's security on macOS
 
-**Status:** active implementation evidence; macOS proof is the qualification run named below
+**Status:** active implementation evidence; macOS proved by run 44398147981
 **Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/gate-d/macos-retained-directory-security-20261118`
 **Owner:** Gate D, [POAM-006](../../../poam/rrflow-1.0-alpha/poam-006.md)
 
@@ -41,4 +41,10 @@ Parse, the code-indexing phase, cannot run on macOS: its worker supervisor exist
 
 ## Qualification run
 
-Pending: a manual `ci` dispatch on this branch, which runs the full matrix including macOS.
+Run 44398147981, a manual `ci` dispatch on this branch at `5afaf3f3d` (full matrix).
+
+- macOS, job 135133823071 `engram process (macos-latest)`, image macOS 26 ARM64: `directory_security_digest_is_stable_and_follows_native_permissions`, `a_leftover_rrflow_folder_is_retained_untouched_and_the_engram_installs_beside_it` and `a_changed_leftover_rrflow_folder_refuses_the_stale_plan_without_effects` each report `ok`. The lane concluded success, as did `installed domain crash (macos-latest)` and `installed 100-cycle reopen (macos-latest)`.
+- Windows and Linux x86_64: the same digest test reports `ok` (jobs 135133823022 and 135133823416).
+- Not covered: macOS on Intel has no lane, and the ARM64 Linux lane does not run `rrd-engine` tests.
+
+The run as a whole concluded failure on one job this change does not touch: `optional feature (rrd-cluster)`, where `real_consensus_elects_fails_over_installs_snapshot_and_changes_membership` timed out waiting for a leader. Recorded as [POAM-086](../../../poam/rrflow-1.0-alpha/poam-086.md); it was not re-run.
