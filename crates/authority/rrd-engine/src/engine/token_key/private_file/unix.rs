@@ -123,7 +123,98 @@ pub(super) fn directory_security_sha256(file: &File) -> io::Result<String> {
     Ok(rrd_core::digest::sha256_hex(&bytes))
 }
 
-#[cfg(not(target_os = "linux"))]
+/// The four `acl(3)` calls the retained-directory digest needs on macOS. The
+/// `libc` crate does not bind them for Apple targets; libSystem provides them.
+#[cfg(target_os = "macos")]
+mod macos_acl {
+    use std::ffi::{c_int, c_void};
+
+    /// `ACL_TYPE_EXTENDED` from `<sys/acl.h>`: the one ACL type macOS stores.
+    /// Its entries carry their own inheritance flags, so there is no separate
+    /// default ACL to read as there is on Linux.
+    pub(super) const ACL_TYPE_EXTENDED: c_int = 0x0000_0100;
+
+    unsafe extern "C" {
+        /// Returns an `acl_t` the caller frees, or null with `ENOENT` when the
+        /// object has no ACL.
+        pub(super) fn acl_get_fd_np(fd: c_int, kind: c_int) -> *mut c_void;
+        /// Bytes `acl_copy_ext` needs for this ACL.
+        pub(super) fn acl_size(acl: *mut c_void) -> libc::ssize_t;
+        /// Writes the ACL's portable external form: entries, flags and
+        /// principal identifiers, with no names and no directory lookup.
+        pub(super) fn acl_copy_ext(
+            buffer: *mut c_void,
+            acl: *mut c_void,
+            size: libc::ssize_t,
+        ) -> libc::ssize_t;
+        pub(super) fn acl_free(object: *mut c_void) -> c_int;
+    }
+}
+
+/// Hash the owner, group, mode, file flags and extended ACL read from this
+/// exact descriptor. Nothing is resolved by path and no principal is named.
+#[cfg(target_os = "macos")]
+pub(super) fn directory_security_sha256(file: &File) -> io::Result<String> {
+    use std::os::fd::AsRawFd;
+    use std::os::macos::fs::MetadataExt as _;
+
+    /// Frees the native ACL on every path out of the read.
+    struct NativeAcl(*mut std::ffi::c_void);
+    impl Drop for NativeAcl {
+        fn drop(&mut self) {
+            // SAFETY: the pointer came from acl_get_fd_np and is freed once.
+            unsafe { macos_acl::acl_free(self.0) };
+        }
+    }
+
+    fn extended_acl(file: &File) -> io::Result<Option<Vec<u8>>> {
+        // SAFETY: the descriptor is live for this borrow; the call takes no pointers.
+        let native =
+            unsafe { macos_acl::acl_get_fd_np(file.as_raw_fd(), macos_acl::ACL_TYPE_EXTENDED) };
+        if native.is_null() {
+            let error = io::Error::last_os_error();
+            if error.raw_os_error() == Some(libc::ENOENT) {
+                return Ok(None);
+            }
+            return Err(error);
+        }
+        let native = NativeAcl(native);
+        // SAFETY: native.0 is a live acl_t.
+        let size = unsafe { macos_acl::acl_size(native.0) };
+        if size < 0 {
+            return Err(io::Error::last_os_error());
+        }
+        let length = usize::try_from(size).map_err(io::Error::other)?;
+        // The kernel bounds an ACL to 128 entries; this is the same bound the
+        // Linux read applies to its attribute value.
+        if length > 65_536 {
+            return Err(denied("directory ACL exceeds native bound"));
+        }
+        let mut bytes = vec![0u8; length];
+        // SAFETY: bytes owns `size` writable bytes and native.0 is a live acl_t.
+        let written = unsafe { macos_acl::acl_copy_ext(bytes.as_mut_ptr().cast(), native.0, size) };
+        if written < 0 {
+            return Err(io::Error::last_os_error());
+        }
+        bytes.truncate(usize::try_from(written).map_err(io::Error::other)?);
+        Ok(Some(bytes))
+    }
+
+    let metadata = file.metadata()?;
+    let acl = extended_acl(file)?;
+    let bytes = serde_json::to_vec(&(
+        "rrflow-macos-directory-security-v1",
+        metadata.uid(),
+        metadata.gid(),
+        metadata.mode(),
+        metadata.st_flags(),
+        acl,
+    ))
+    .map_err(io::Error::other)?;
+    Ok(rrd_core::digest::sha256_hex(&bytes))
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
 pub(super) fn directory_security_sha256(_: &File) -> io::Result<String> {
     Err(io::Error::new(
         io::ErrorKind::Unsupported,

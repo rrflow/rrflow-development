@@ -340,7 +340,7 @@ mod tests {
         bytes
     }
 
-    #[cfg(any(windows, target_os = "linux"))]
+    #[cfg(any(windows, target_os = "linux", target_os = "macos"))]
     #[test]
     fn directory_security_digest_is_stable_and_follows_native_permissions() {
         let fixture = tempfile::tempdir().unwrap();
