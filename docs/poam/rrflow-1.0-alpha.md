@@ -100,3 +100,4 @@
 | POAM-084 | High | Open | [the Windows offline qualification sometimes cannot create its disposable account](rrflow-1.0-alpha/poam-084.md) |
 | POAM-085 | High | Open | [Parse cannot run on macOS](rrflow-1.0-alpha/poam-085.md) |
 | POAM-086 | High | Open | [the Raft failover test sometimes elects no leader in time](rrflow-1.0-alpha/poam-086.md) |
+| POAM-087 | High | Open | [storage maintenance stalls every search, and searches cause it](rrflow-1.0-alpha/poam-087.md) |

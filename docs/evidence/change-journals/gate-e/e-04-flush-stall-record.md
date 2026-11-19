@@ -2,7 +2,7 @@
 
 **Status:** active immutable change-journal evidence; E-04 and OBJ-13 remain open
 **Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/gate-e/e-04-flush-stall-record`
-**Owner:** evidence for recording POAM-056
+**Owner:** evidence for recording the flush-stall deficiency, written as POAM-056 and on `main` as [POAM-087](../../../poam/rrflow-1.0-alpha/poam-087.md). Wherever the record below says POAM-056 it means that entry: the pull request holding it never merged, the number went to another deficiency, and the entry was restored as POAM-087 on 2026-11-19.
 
 ## Evidence record
 
@@ -27,5 +27,5 @@ pull request, CI run, and merge evidence: recorded on the pull request holding t
 
 ## Links
 
-- [POAM-056](../../../poam/rrflow-1.0-alpha/poam-056.md)
+- [POAM-087](../../../poam/rrflow-1.0-alpha/poam-087.md)
 - [Gate E](../../../roadmap/rrflow-1.0/gate-e.md)
