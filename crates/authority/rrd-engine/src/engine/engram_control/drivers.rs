@@ -38,9 +38,12 @@ impl rrd_engram::ServingStop for EngineServingStop {
     fn request(
         &self,
         instance_root: &Path,
-    ) -> std::result::Result<Option<Box<dyn rrd_engram::PendingServingStop>>, String> {
-        let request =
-            RrdEngine::request_serving_stop(instance_root).map_err(|error| error.to_string())?;
+    ) -> std::result::Result<
+        Option<Box<dyn rrd_engram::PendingServingStop>>,
+        rrd_engram::ServingStopError,
+    > {
+        let request = RrdEngine::request_serving_stop(instance_root)
+            .map_err(|error| rrd_engram::ServingStopError(error.to_string()))?;
         Ok(request.map(|request| {
             Box::new(PendingEngineServingStop(request)) as Box<dyn rrd_engram::PendingServingStop>
         }))
@@ -50,14 +53,14 @@ impl rrd_engram::ServingStop for EngineServingStop {
 struct PendingEngineServingStop(super::serving::ServingStopRequest);
 
 impl rrd_engram::PendingServingStop for PendingEngineServingStop {
-    fn withdrawn(&self) -> std::result::Result<bool, String> {
+    fn withdrawn(&self) -> std::result::Result<bool, rrd_engram::ServingStopError> {
         // Only a withdrawn record is a finished shutdown. The driver is the
         // one starter of a managed instance, so a replaced record is not
         // something it can have caused by stopping.
         self.0
             .observe()
             .map(|state| state == super::serving::ServingStopState::Stopped)
-            .map_err(|error| error.to_string())
+            .map_err(|error| rrd_engram::ServingStopError(error.to_string()))
     }
 }
 

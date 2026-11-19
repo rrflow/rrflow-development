@@ -2,7 +2,31 @@
 
 use super::*;
 
-pub(super) fn parse_args(arguments: impl Iterator<Item = String>) -> Result<Args, String> {
+/// An argument the server cannot use, with the usage text where that helps.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct ArgumentError(String);
+
+impl std::fmt::Display for ArgumentError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(&self.0)
+    }
+}
+
+impl std::error::Error for ArgumentError {}
+
+impl From<String> for ArgumentError {
+    fn from(message: String) -> Self {
+        Self(message)
+    }
+}
+
+impl From<&str> for ArgumentError {
+    fn from(message: &str) -> Self {
+        Self(message.to_owned())
+    }
+}
+
+pub(super) fn parse_args(arguments: impl Iterator<Item = String>) -> Result<Args, ArgumentError> {
     let mut project = None;
     let mut distribution_executable = None;
     let mut bind = "127.0.0.1:9477".parse().expect("static bind address");
@@ -77,7 +101,7 @@ pub(super) fn parse_args(arguments: impl Iterator<Item = String>) -> Result<Args
                 )?));
             }
             "--help" | "-h" => return Err(usage().into()),
-            value => return Err(format!("unknown argument {value:?}\n{}", usage())),
+            value => return Err(format!("unknown argument {value:?}\n{}", usage()).into()),
         }
     }
     let tls_file_count = [
@@ -92,7 +116,8 @@ pub(super) fn parse_args(arguments: impl Iterator<Item = String>) -> Result<Args
         return Err(format!(
             "--tls-cert, --tls-key, and --tls-client-ca must be provided together\n{}",
             usage()
-        ));
+        )
+        .into());
     }
     if ready_file
         .as_ref()
@@ -182,17 +207,20 @@ pub(super) fn load_jwt_key(
 pub(super) fn required_value(
     arguments: &mut impl Iterator<Item = String>,
     option: &str,
-) -> Result<String, String> {
+) -> Result<String, ArgumentError> {
     arguments
         .next()
-        .ok_or_else(|| format!("{option} requires a value"))
+        .ok_or_else(|| format!("{option} requires a value").into())
 }
 
-fn milliseconds(arguments: &mut impl Iterator<Item = String>, option: &str) -> Result<u64, String> {
+fn milliseconds(
+    arguments: &mut impl Iterator<Item = String>,
+    option: &str,
+) -> Result<u64, ArgumentError> {
     let value = required_value(arguments, option)?;
     value
         .parse()
-        .map_err(|error| format!("invalid {option} {value:?}: {error}"))
+        .map_err(|error| format!("invalid {option} {value:?}: {error}").into())
 }
 
 pub(super) fn usage() -> &'static str {

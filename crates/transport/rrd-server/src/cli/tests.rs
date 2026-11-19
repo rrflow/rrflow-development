@@ -22,7 +22,7 @@ fn arguments_require_one_installed_project_and_distribution_executable() {
     assert_eq!(args.distribution_executable, PathBuf::from("rrflow"));
 }
 
-fn installed(extra: &[&str]) -> Result<Args, String> {
+fn installed(extra: &[&str]) -> Result<Args, ArgumentError> {
     parse_args(
         [
             "--project",
@@ -65,7 +65,7 @@ fn the_engine_stop_request_is_the_only_way_to_ask_the_server_to_stop() {
         ],
     ] {
         let error = installed(&retired).err().expect("a retired stop file flag");
-        assert!(error.contains("unknown argument"), "{error}");
+        assert!(error.to_string().contains("unknown argument"), "{error}");
     }
 }
 

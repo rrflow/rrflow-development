@@ -33,6 +33,19 @@ pub enum LocalShutdown {
     StopRequest { timeout_ms: u64 },
 }
 
+/// Why the engine could not make a stop request or read what became of it,
+/// in the engine's own words. The driver decides whether to retry.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ServingStopError(pub String);
+
+impl std::fmt::Display for ServingStopError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(&self.0)
+    }
+}
+
+impl std::error::Error for ServingStopError {}
+
 /// How the driver asks a managed engine to stop. The engine owns the stop
 /// request, its authorization and what counts as a finished shutdown; the
 /// driver decides only when to ask and how long to wait.
@@ -42,7 +55,7 @@ pub trait ServingStop {
     fn request(
         &self,
         instance_root: &Path,
-    ) -> std::result::Result<Option<Box<dyn PendingServingStop>>, String>;
+    ) -> std::result::Result<Option<Box<dyn PendingServingStop>>, ServingStopError>;
 }
 
 /// A stop request the driver made and is waiting on. A request is never taken
@@ -51,7 +64,7 @@ pub trait ServingStop {
 pub trait PendingServingStop {
     /// True once the engine has withdrawn the serving record the request
     /// addressed, which it does only after it has closed.
-    fn withdrawn(&self) -> std::result::Result<bool, String>;
+    fn withdrawn(&self) -> std::result::Result<bool, ServingStopError>;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]

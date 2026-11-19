@@ -536,31 +536,65 @@ fn read_entries(
         }
         match read_entry(&path, &name) {
             Ok(entry) => entries.push(entry),
-            Err(reason) => unreadable.push(UnreadableInstanceEntry { file: name, reason }),
+            Err(problem) => unreadable.push(UnreadableInstanceEntry {
+                file: name,
+                reason: problem.to_string(),
+            }),
         }
     }
     Ok((entries, unreadable))
 }
 
+/// Why a file in the registry directory is not a usable entry. The listing
+/// reports it beside the file's name and carries on with the rest.
+#[derive(Debug)]
+enum EntryProblem {
+    NotAnEntry,
+    NotPrivate(std::io::Error),
+    Malformed(serde_json::Error),
+    UnsupportedFormat,
+    NamesAnotherEntry,
+    Incomplete,
+}
+
+impl std::fmt::Display for EntryProblem {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::NotAnEntry => formatter.write_str("is not an instance registry entry"),
+            Self::NotPrivate(error) => {
+                write!(formatter, "cannot be read as a private entry: {error}")
+            }
+            Self::Malformed(error) => write!(formatter, "is malformed: {error}"),
+            Self::UnsupportedFormat => formatter.write_str("has an unsupported format version"),
+            Self::NamesAnotherEntry => {
+                formatter.write_str("names another instance or project root than its file")
+            }
+            Self::Incomplete => {
+                formatter.write_str("does not name a product version and an absolute project root")
+            }
+        }
+    }
+}
+
 fn read_entry(
     path: &AnchoredPath,
     name: &str,
-) -> std::result::Result<InstanceRegistryEntry, String> {
+) -> std::result::Result<InstanceRegistryEntry, EntryProblem> {
     if !name.ends_with(ENTRY_SUFFIX) {
-        return Err("is not an instance registry entry".into());
+        return Err(EntryProblem::NotAnEntry);
     }
-    let bytes = read_private_anchored(path, MAX_INSTANCE_ENTRY_BYTES)
-        .map_err(|error| format!("cannot be read as a private entry: {error}"))?;
+    let bytes =
+        read_private_anchored(path, MAX_INSTANCE_ENTRY_BYTES).map_err(EntryProblem::NotPrivate)?;
     let entry: InstanceRegistryEntry =
-        serde_json::from_slice(&bytes).map_err(|error| format!("is malformed: {error}"))?;
+        serde_json::from_slice(&bytes).map_err(EntryProblem::Malformed)?;
     if entry.format_version != INSTANCE_ENTRY_FORMAT {
-        return Err("has an unsupported format version".into());
+        return Err(EntryProblem::UnsupportedFormat);
     }
     if entry_file_name(&entry) != name {
-        return Err("names another instance or project root than its file".into());
+        return Err(EntryProblem::NamesAnotherEntry);
     }
     if entry.product_version.is_empty() || !Path::new(&entry.project_root).is_absolute() {
-        return Err("does not name a product version and an absolute project root".into());
+        return Err(EntryProblem::Incomplete);
     }
     Ok(entry)
 }

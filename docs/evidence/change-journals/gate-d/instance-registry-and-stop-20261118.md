@@ -116,6 +116,13 @@ Run on 2026-11-19 on Windows 11 (x86_64), on this branch after `main` `f6de9515d
 
 One run of each. The review findings above were fixed before these runs; nothing was changed between a failing and a passing run here.
 
+**The candidate run then failed `repository invariants`** (run 44607581398), and the failure reproduced locally with `python scripts/ci/check_code_shape.py`. Two defects of this package, both fixed in the code:
+
+- `crates/adapters/rrflow-cli/src/installed.rs` had grown to 1,076 lines against the 800-line limit. The instance commands (`rrflow stop`, `rrflow instances`, the registry update) are now `installed/instances.rs` and `rrflow serve` is `installed/serving.rs`; `installed.rs` is 665 lines.
+- The package added string-typed errors where that pattern may only be removed. The stop trait now returns `rrd_engram::ServingStopError`, a registry entry's refusal is the `EntryProblem` enum, and `rrd-server`'s arguments fail with `ArgumentError`, which also removed the server's two earlier string errors (baseline tightened from 2 to 0).
+
+After those changes, one run each: `check_code_shape.py` OK; `cargo clippy` on the four crates with warnings denied, exit 0; registry 11, serving 18, `cargo test -p rrflow-cli` 79, `cargo test -p rrd-server` 39 and `cargo test -p rrd-engram` all passed; `scripts/ci/test_code_shape.py` passed.
+
 ## Files read
 
 In full: `crates/authority/rrd-engine/src/engine/serving.rs`, `engine/instance_registry.rs`, `engine/tests/serving.rs`, `engine/tests/instance_registry.rs`, `engine/installation/lease.rs`, `engine/engram_control/drivers.rs` (to the backup driver); `crates/adapters/rrflow-cli/src/command.rs`, `installed.rs` and `main.rs`; `crates/adapters/rrflow-cli/tests/installed_lifecycle/main.rs` and `instances.rs`, `tests/support/running_engine.rs`; `crates/transport/rrd-server/src/process.rs`, `cli.rs`, `cli/tests.rs`, `main.rs` and `lib.rs`; `crates/authority/rrd-engram/src/local_process.rs`, `local_process/deployment.rs`, `lifecycle.rs`, `preparation.rs` and `driver.rs`; `docs/poam/rrflow-1.0-alpha/poam-088.md`.

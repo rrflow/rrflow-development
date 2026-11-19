@@ -86,7 +86,7 @@ pub(super) async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>
 
 /// The registry is a candidate list with no authority, so a registry that
 /// cannot be found or written is reported and never stops the server.
-fn report_registry(outcome: Result<&Path, String>) {
+fn report_registry<E: std::fmt::Display>(outcome: Result<&Path, E>) {
     match outcome {
         Ok(root) => eprintln!("rrd-server: instance registry: {}", root.display()),
         Err(reason) => eprintln!("rrd-server: instance registry: not updated ({reason})"),
