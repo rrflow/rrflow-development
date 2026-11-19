@@ -99,7 +99,22 @@ Two further defects surfaced while fixing these:
 
 ## Evidence
 
-<<EVIDENCE>>
+Run on 2026-11-19 on Windows 11 (x86_64), on this branch after `main` `f6de9515d` was merged into it (merge `22ddf0548`). Each command's exit code was read directly.
+
+| Command | Result |
+|---|---|
+| `cargo test -p rrd-engine --lib instance_registry` | 11 passed, 0 failed |
+| `cargo test -p rrd-engine --lib serving` | 18 passed, 0 failed |
+| `cargo build -p rrflow-cli -p rrd-server` | exit 0 |
+| `cargo test -p rrflow-cli --test installed_lifecycle` | 15 passed, 0 failed, in 28.8 s; the four `instances::` tests are among them |
+| `cargo test -p rrd-engram` | 23 passed, 0 failed |
+| `cargo test -p rrd-server` | 39 passed, 0 failed (9 and 5 unit, 21 `http_process`, 4 `local_engram_driver`) |
+| `cargo fmt --all --check` | exit 0 |
+| `cargo clippy -p rrd-engine -p rrd-server -p rrd-engram -p rrflow-cli --all-targets -- -D warnings` | exit 0 |
+| `python scripts/ci/check_selected_tests.py` | OK: 24 owned selectors, 16 workflow filters and 5 test-path literals resolve |
+| `python scripts/knowledge/render_navigation.py`, `python scripts/ci/check_documentation.py` | exit 0 |
+
+One run of each. The review findings above were fixed before these runs; nothing was changed between a failing and a passing run here.
 
 ## Files read
 
@@ -116,8 +131,8 @@ In part: `engine/installation/storage.rs` (`publish_new_file`, `read_regular_bou
 - **A stop request is authorized by the directory, not by its writer.** For a retained `.rrflow` that may be wider than the user who serves the instance. The reference states it; the request is not written or read as an owner-only file.
 - **Tools that run the real binary with the developer's environment** (for example `scripts/dev/connectome_dev.py` and `scripts/inference/installed_controller_proof.py`) write the developer's real registry. That is what the registry is for, but nothing prunes those entries.
 - **Connectome is not changed.** It does not yet call `rrflow instances` or `rrflow stop`, and it has not been run against the `install apply --json` answer with its new member.
-- **Not run:** the workspace-wide `cargo test` and `cargo clippy --workspace`; the offline lifecycle qualification (`run_offline_lifecycle.py`), which runs the four process tests under isolation; `scripts/ci/run_rrflowdb_standalone.py` after its one-line change.
-- **No pull request exists yet**, so this brief is not on one. Nothing is committed or pushed.
+- **Not run locally:** the workspace-wide `cargo test` and `cargo clippy --workspace` (the candidate gate runs them); the offline lifecycle qualification (`run_offline_lifecycle.py`), which runs the four process tests under isolation; `scripts/ci/run_rrflowdb_standalone.py` after its one-line change.
+- **Pull request:** rrflow/rrflow-development#412. Merging `main` into the branch moved this package's POA&M entries from 087 and 088 to 088 and 089, because `main` took 087 for the storage flush stall.
 
 ## Roadmap and POA&M
 
