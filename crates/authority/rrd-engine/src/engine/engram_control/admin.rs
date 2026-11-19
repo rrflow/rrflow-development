@@ -255,8 +255,12 @@ impl RrdEngine {
             || {
                 let catalog = rrd_engram::LocalDeploymentCatalog::load_json(catalog_path)
                     .map_err(ServiceError::Contract)?;
-                let driver = rrd_engram::LocalProcessDriver::new(state_root, catalog)
-                    .map_err(ServiceError::Contract)?;
+                let driver = rrd_engram::LocalProcessDriver::new(
+                    state_root,
+                    catalog,
+                    Box::new(EngineServingStop),
+                )
+                .map_err(ServiceError::Contract)?;
                 let mut reconciler = rrd_engram::Reconciler::new(
                     &engine.storage,
                     engram_id,

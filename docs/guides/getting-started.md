@@ -127,8 +127,9 @@ model and the queries.
 
 ## 7. Check that it kept your data
 
-Stop `serve` with Ctrl+C in its terminal. On Windows, if Ctrl+C in Git Bash does
-not stop it within a few seconds, close that terminal window instead. Then:
+Stop `serve` with Ctrl+C in its terminal, or from the second terminal with
+`"$rrflow" stop --project "$project"`, which waits until the server has shut
+down cleanly. Then:
 
 ```bash
 "$rrflow" verify --project "$project" --level quick

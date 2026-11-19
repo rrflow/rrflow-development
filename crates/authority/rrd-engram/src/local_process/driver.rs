@@ -22,12 +22,17 @@ pub(super) struct ProcessRecord {
 pub struct LocalProcessDriver {
     state_root: PathBuf,
     catalog: LocalDeploymentCatalog,
+    serving_stop: Box<dyn ServingStop>,
 }
 
 impl LocalProcessDriver {
+    /// `serving_stop` is the engine's stop request. This crate sits below the
+    /// engine, so the composition root supplies it; the driver holds no stop
+    /// mechanism of its own.
     pub fn new(
         state_root: impl Into<PathBuf>,
         catalog: LocalDeploymentCatalog,
+        serving_stop: Box<dyn ServingStop>,
     ) -> std::result::Result<Self, String> {
         catalog.validate()?;
         let state_root = state_root.into();
@@ -41,6 +46,7 @@ impl LocalProcessDriver {
         Ok(Self {
             state_root,
             catalog,
+            serving_stop,
         })
     }
 
@@ -182,12 +188,6 @@ impl LocalProcessDriver {
             &stderr,
             &stderr_path,
         )?;
-        prepare_shutdown_artifacts(&instance_root, &deployment.shutdown).map_err(|error| {
-            retryable(
-                request,
-                format!("cannot prepare graceful shutdown artifacts: {error}"),
-            )
-        })?;
         prepare_readiness_artifact(&instance_root, &deployment.readiness).map_err(|error| {
             retryable(
                 request,
@@ -332,31 +332,36 @@ impl LocalProcessDriver {
                 ));
             }
             ProcessIdentity::Owned => {
-                if let LocalShutdown::RequestFile {
-                    request: request_path,
-                    complete,
-                    timeout_ms,
-                } = &record.shutdown
-                {
+                if let LocalShutdown::StopRequest { timeout_ms } = &record.shutdown {
                     let instance_root = self
                         .state_root
                         .join("instances")
                         .join(request.instance_id.as_str());
-                    write_shutdown_request(&instance_root.join(request_path), request, record)
-                        .map_err(|error| {
-                            retryable(
-                                request,
-                                format!("cannot persist graceful shutdown request: {error}"),
-                            )
-                        })?;
-                    if wait_for_owned_exit(record, Duration::from_millis(*timeout_ms), request)? {
-                        if !instance_root.join(complete).is_file() {
-                            return Err(permanent(
-                                request,
-                                "managed process exited without graceful shutdown confirmation",
-                            ));
+                    let pending = self.serving_stop.request(&instance_root).map_err(|error| {
+                        retryable(
+                            request,
+                            format!("cannot request a graceful shutdown: {error}"),
+                        )
+                    })?;
+                    // No published serving record means the engine cannot be
+                    // asked; the authenticated kill below is what remains.
+                    if let Some(pending) = pending {
+                        if wait_for_owned_exit(record, Duration::from_millis(*timeout_ms), request)?
+                        {
+                            let withdrawn = pending.withdrawn().map_err(|error| {
+                                retryable(
+                                    request,
+                                    format!("cannot confirm the graceful shutdown: {error}"),
+                                )
+                            })?;
+                            if !withdrawn {
+                                return Err(permanent(
+                                    request,
+                                    "managed process exited without graceful shutdown confirmation",
+                                ));
+                            }
+                            return self.remove_record(request);
                         }
-                        return self.remove_record(request);
                     }
                 }
                 kill_owned_process(record, request)?;

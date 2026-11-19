@@ -61,7 +61,9 @@ rrflow install plan   --project <root> --identity <256-bit-hex> --mode fresh|exi
 rrflow install apply  --project <root> --plan <file> --expect <sha256>
 rrflow install status --project <root>
 rrflow attune status|resume|cancel ...
-rrflow serve          --project <root> [endpoint options]
+rrflow serve          --project <root> [endpoint options] [--stop-poll-interval-ms <ms>]
+rrflow stop           --project <root> [--wait-ms <ms>] [--poll-interval-ms <ms>]
+rrflow instances
 rrflow ready          --project <root> [endpoint options]
 rrflow verify         --project <root> --level quick|full
 rrflow repair plan    --project <root> --output <file>
@@ -75,6 +77,16 @@ rrflow query ...
 rrflow context ...
 rrflow mcp ...
 ```
+
+Every command also accepts `--json`, `--instance-registry <dir>` and
+`--instance-registry-lock-wait-ms <ms>`, which name this user's
+[instance registry](#instance-registry) and how long to wait for its lock.
+
+An error is one `error: <text>` line on stderr with exit code 1. A
+`warning: <text>` line on stderr reports something a command could not do
+without failing; the only one is a closing `rrflow serve` that could not
+update the instance registry, because a closing server has no answer on
+stdout to carry it.
 
 Names may change only through the roadmap owner before implementation. The
 semantics may not be weakened by aliases. `dev up`, `dev doctor`,
@@ -813,7 +825,9 @@ never readiness.
   single writer lock, so a record that exists when it publishes was left by a
   process that no longer runs. The engine removes it first.
 - **Removal.** A clean shutdown removes the record if it is still the one this
-  process wrote. A killed process leaves it in place until the next serve.
+  process wrote. So does every other return of the serving process after
+  publication, such as an announcement it could not write. Only a killed
+  process leaves the record in place, until the next serve.
 - **Resolution.** `rrflow ready --project <root>` without `--address` reads the
   record and runs the same authenticated challenge against its URL. A missing
   record, an unreachable URL, or a server that cannot prove the installed
@@ -826,6 +840,153 @@ never readiness.
   names the recorded URL when one exists.
 - **The locator is unchanged.** `.rrflow/config.toml` still contains no
   endpoint.
+
+### Stop request
+
+A served engine ends in one of two ways: the operator interrupts it (Ctrl+C), or
+`rrflow stop --project <root>` asks it to stop. Both run the same clean
+shutdown: the server drains, the engine closes, and the serving record is
+withdrawn. There is one stop mechanism. `rrflow serve` and the internal
+`rrd-server` that the [local process driver](local-process-driver.md) starts
+both serve through `rrd_server::serve_published`, and the driver stops a
+managed instance with the same request `rrflow stop` makes.
+
+- **Authorization.** A stop request is a file in the project's `.rrflow`
+  directory. The principals who may stop an instance are therefore exactly
+  those who may write that directory. No credential is sent and no network
+  operation is involved. Someone who cannot write `.rrflow` cannot stop the
+  instance, and a request reaches only a process serving that project.
+  - A `.rrflow` directory that RRFlow created is private to its owner, so only
+    that user, and an administrator of the host, can stop the instance.
+  - A `.rrflow` directory the project already owned is
+    [retained as it is](#retained-filesystem-authority) and never made
+    private. Its existing permissions then decide who may stop the instance,
+    and that may be wider than the user who serves it. The serving process
+    does not check who wrote a request.
+- **Request.** `rrflow stop` reads the serving record and writes
+  `.rrflow/stop-request.json` beside its final name, then moves it into place.
+  The request holds its format, the instance ID, and the URL and process ID
+  from the serving record, and no credential. Naming the record keeps a request
+  left for a process that has gone from stopping the next one: a serving
+  process removes any request it finds when it publishes its record, and it
+  ignores a request that names another record. A `stop-request.json` or
+  `.stop-request.pending` that is not a regular file of at most 4 KiB is
+  refused by name when `serve` starts, and never replaced.
+- **Notice.** The repository has no filesystem-notification dependency, so the
+  serving process looks for the request on an interval. The default is 200 ms
+  (`DEFAULT_STOP_POLL_INTERVAL_MS` in `rrd-engine`), and
+  `--stop-poll-interval-ms <ms>` on `rrflow serve` and on `rrd-server`
+  overrides it.
+- **Completion.** After the engine has closed, the serving process withdraws
+  its serving record and then removes the request. The withdrawn record is what
+  tells a requester that the shutdown has finished. The request file is not:
+  every requester of one record shares it. A request is never taken back, so
+  one requester giving up never ends or undoes another's stop. It stays until
+  its server has read it, and the next server to serve the engram discards a
+  request left for the one before it.
+- **Looking again.** The serving process removes these files while requesters
+  read them, and a file that is being removed can refuse to be opened for a
+  moment. A look that fails is repeated at the next interval, and only a
+  failure that is still there when the wait ends is an error.
+- **Waiting.** `rrflow stop` waits up to `--wait-ms` (default 60 000 ms,
+  `DEFAULT_STOP_WAIT_MS`) and reads the project's serving record every
+  `--poll-interval-ms` (default 200 ms). It answers with JSON under `--json`:
+  `status`, `project_root`, `instance_id`, `url`, `process_id`, `waited_ms`,
+  `wait_limit_ms`, and for `replaced` also `replaced_by_url` and
+  `replaced_by_process_id`.
+
+| `status` | Meaning | Exit code |
+|---|---|---|
+| `stopped` | The serving record is withdrawn: the process that published it closed its engine. This includes a server that was interrupted just as the stop was asked. | 0 |
+| `not_serving` | No serving record was published, so nothing was asked to stop. | 0 |
+| `replaced` | The process that was asked no longer holds the engram, but another one has published a serving record since. The project is being served; the new server was not asked to stop. | 1 |
+| `timed_out` | The addressed record was still published at the limit. The request stays in place: a live server stops when it reads it. | 1 |
+
+A killed server leaves its serving record behind and can never withdraw it, so
+stopping it times out. `rrflow ready --project <root>` proves whether a
+recorded process is live.
+
+`rrd-server` publishes a serving record only for a plain loopback HTTP
+listener, the one endpoint a local client can prove with the installed
+credential. With mutual TLS or a non-loopback bind it publishes none, says so
+on stderr, and ends only on an interrupt.
+
+### Instance registry
+
+A project's `.rrflow` directory describes one instance, but nothing in a
+project says which other projects hold one. The instance registry is this
+user's list of the projects they installed or served, so that a client such as
+Connectome can find them.
+
+- **A candidate list, not authority.** An entry holds its format, the instance
+  ID, the canonical project root, the product version, and whether a serving
+  record was published when the entry was last written. It holds no credential,
+  no secret and no endpoint. Proof that an instance is live remains the
+  authenticated readiness challenge.
+- **Location.** The first of these that is set:
+  1. `--instance-registry <dir>`, resolved against the working directory like
+     any path argument;
+  2. the `RRFLOW_INSTANCE_REGISTRY` environment variable, which must name an
+     absolute directory. A relative value is refused, because it would name a
+     different registry in every folder a command runs in;
+  3. this user's state directory:
+     `%LOCALAPPDATA%\rrflow\instances` on Windows,
+     `~/Library/Application Support/rrflow/instances` on macOS, and
+     `$XDG_STATE_HOME/rrflow/instances` or `~/.local/state/rrflow/instances`
+     elsewhere. A relative base is ignored. When none of these names a
+     directory there is no registry, and the command says to name one.
+- **Writes.** `rrflow install apply` records the instance. `rrflow serve` and
+  `rrd-server` record it again when they publish a serving record and after
+  they close it. Each entry is one private file named for its instance ID and
+  the SHA-256 of its project root, `<instance-id>.<sha256>.json`, so no writer
+  rewrites another entry. A writer holds the directory's retained `.lock`
+  file, writes the entry beside its final name and moves it into place, so
+  several engines writing at once never leave a partial or mixed entry.
+  Whether a serving record is published is read from the project once the
+  writer holds the lock, so a writer that waited writes what is true then.
+  RRFlow creates the directory private. A directory that already exists is
+  used as it is.
+- **Two folders, one identity.** A copied project folder keeps its original's
+  instance ID. Both folders keep an entry. The writer is told
+  (`other_project_roots` in the registry outcome, and a second
+  `instance registry:` line), and the listing reports each as a problem naming
+  the other.
+- **Bounded waiting.** A writer or lister waits for the lock for at most the
+  lock wait: `--instance-registry-lock-wait-ms <ms>`, else the
+  `RRFLOW_INSTANCE_REGISTRY_LOCK_WAIT_MS` environment variable, else 5 000 ms
+  (`DEFAULT_INSTANCE_REGISTRY_LOCK_WAIT_MS` in `rrd-engine`). Zero means one
+  attempt. No retry interval exists: a held lock is awaited once, with that
+  bound. A writer that does not get the lock reports the registry as busy. A
+  lister reads the entries without the lock and says so.
+- **Never a reason to fail or to wait.** The registry has no authority, so
+  install and serve succeed when it is missing, unreadable, unwritable or
+  locked, and say why it was not updated: in the `instance registry:` line of
+  their text output, and in the `instance_registry` member of the `serve`
+  announcement and of the `install apply --json` answer (`status`,
+  `registry_root`, `reason`, `other_project_roots`). That answer is the
+  engine's installation result with this one member beside it;
+  `result_sha256` binds the result's own members. A closing `serve` updates
+  the registry only after its serving record is closed, so the registry never
+  delays what a stop is waiting for, and reports a failure as a `warning:`
+  line on stderr.
+- **Listing.** `rrflow instances` reads the registry and then each registered
+  project. It changes nothing, and it creates no file. For every entry it
+  reports the entry itself plus `project_present`, `locator_present`,
+  `serving_record_present`, the recorded `endpoint` and `process_id` when a
+  usable serving record exists, and `problems` in plain words. It prints no
+  credential. An entry whose project folder no longer exists is listed with
+  `project_present: false`. A registry file that is not a usable entry is
+  listed under `unreadable` with the reason. Neither is dropped. A registry
+  nothing has written yet lists no instances. A registry this user can only
+  read, or one whose lock is held or absent, is still listed;
+  `read_without_lock` then gives the reason. A registry directory that cannot
+  be read at all is an error with exit code 1.
+- **Not yet covered.** Nothing removes an entry. `rrflow uninstall`
+  ([D-11](../../roadmap/rrflow-1.0/gate-d.md)) owns removing the entry with
+  the rest of an installation. An instance the local process driver starts is
+  registered only when its deployment names a registry, because the driver
+  starts it with an empty environment
+  ([POAM-088](../../poam/rrflow-1.0-alpha/poam-088.md)).
 
 ## Verification levels
 

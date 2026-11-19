@@ -13,19 +13,26 @@ use rrd_contract::{
     SessionLimits, PROTOCOL, PROTOCOL_VERSION,
 };
 use rrd_engine::{
-    digest, InstallationPreview, InstallationVerificationStatus, RrdEngine, ServiceError,
+    digest, InstallationPreview, InstallationVerificationStatus, InstanceRegistration,
+    InstanceRegistry, InstanceRegistryListing, RrdEngine, ServiceError, ServingStopState,
 };
 use rrd_server::RrdHttpServer;
 use serde::Serialize;
 use std::error::Error;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
-use std::time::{Instant, SystemTime, UNIX_EPOCH};
+use std::sync::Arc;
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 const MAX_INSTALLATION_PLAN_BYTES: u64 = 8 * 1024 * 1024;
 
 type BoxError = Box<dyn Error>;
 mod endpoint_credentials;
+mod instances;
+mod serving;
+
+use instances::{instances, stop, update_registry, RegistryUpdate};
+use serving::serve;
 
 #[derive(Debug, Serialize)]
 struct VersionReport {
@@ -38,18 +45,23 @@ struct VersionReport {
     build: crate::build_identity::BuildReport,
 }
 
+/// Where this user's instance registry is and how long to wait for its lock,
+/// as the command line named them. What is not named comes from the
+/// environment or the engine's defaults.
+#[derive(Debug, Clone, Copy)]
+pub struct RegistryOptions<'a> {
+    pub root: Option<&'a Path>,
+    pub lock_wait_ms: Option<u64>,
+}
+
+/// The `install apply` answer: the engine's installation result, whose own
+/// members `result_sha256` binds, and beside them what this adapter did with
+/// the instance registry.
 #[derive(Debug, Serialize)]
-struct ServeAnnouncement {
-    status: &'static str,
-    url: String,
-    project_root: String,
-    instance_id: String,
-    product_version: String,
-    build: crate::build_identity::BuildReport,
-    readiness_path: &'static str,
-    capability_path: &'static str,
-    endpoint_catalogue_path: &'static str,
-    openapi_path: &'static str,
+struct InstallApplyReport<'a> {
+    #[serde(flatten)]
+    installation: &'a rrd_contract::InstallationResult,
+    instance_registry: &'a RegistryUpdate,
 }
 
 #[derive(Debug, Serialize)]
@@ -72,22 +84,40 @@ struct AuthenticatedReady {
     session_closed: bool,
 }
 
-pub fn execute(command: &Command, json: bool) -> Result<Execution, BoxError> {
+pub fn execute(
+    command: &Command,
+    json: bool,
+    instance_registry: RegistryOptions<'_>,
+) -> Result<Execution, BoxError> {
     match command {
         Command::Version => version(json),
-        Command::Install { action } => install(action, json),
+        Command::Install { action } => install(action, json, instance_registry),
         Command::Serve {
             project,
             bind,
             endpoint_credentials,
+            stop_poll_interval_ms,
             test_distribution_executable,
         } => serve(
             project,
             *bind,
             endpoint_credentials.as_deref(),
+            Duration::from_millis(*stop_poll_interval_ms),
             test_distribution_executable.as_deref(),
             json,
+            instance_registry,
         ),
+        Command::Stop {
+            project,
+            wait_ms,
+            poll_interval_ms,
+        } => stop(
+            project,
+            Duration::from_millis(*wait_ms),
+            Duration::from_millis(*poll_interval_ms),
+            json,
+        ),
+        Command::Instances => instances(json, instance_registry),
         Command::Ready { project, address } => ready(project, *address, json),
         Command::Verify {
             project,
@@ -240,7 +270,11 @@ fn version(json: bool) -> Result<Execution, BoxError> {
     .into())
 }
 
-fn install(action: &InstallAction, json: bool) -> Result<Execution, BoxError> {
+fn install(
+    action: &InstallAction,
+    json: bool,
+    instance_registry: RegistryOptions<'_>,
+) -> Result<Execution, BoxError> {
     match action {
         InstallAction::Identity => Ok(serde_json::to_string_pretty(&serde_json::json!({
             "installation_identity": RrdEngine::generate_installation_identity()?,
@@ -327,16 +361,23 @@ fn install(action: &InstallAction, json: bool) -> Result<Execution, BoxError> {
                 "installed lifecycle operation completed"
             );
             let map = project_map_line(project);
+            let registry = update_registry(instance_registry, "install.apply", |registry| {
+                registry.record_installed(project)
+            });
             let text = render(
-                &result,
+                &InstallApplyReport {
+                    installation: &result,
+                    instance_registry: &registry,
+                },
                 json,
                 format!(
-                    "RRFlow installed: {}\ninstance: {}\nruntime cursor: {}\ncontrol journal: {}\nidempotent replay: {}\n{map}",
+                    "RRFlow installed: {}\ninstance: {}\nruntime cursor: {}\ncontrol journal: {}\nidempotent replay: {}\n{map}\n{}",
                     result.plan_sha256,
                     preview.installation.target.instance_id,
                     result.runtime_cursor,
                     result.control_journal_sequence,
                     result.idempotent_replay,
+                    registry.line(),
                 ),
             )?;
             Ok(Execution {
@@ -366,107 +407,6 @@ fn project_map_line(project: &Path) -> String {
             );
             format!("project map: not refreshed ({error})")
         }
-    }
-}
-
-fn serve(
-    project: &Path,
-    bind: std::net::SocketAddr,
-    endpoint_credentials: Option<&Path>,
-    test_distribution_executable: Option<&Path>,
-    json: bool,
-) -> Result<Execution, BoxError> {
-    let started = Instant::now();
-    let executable = distribution_executable_path(test_distribution_executable)?;
-    let locator = RrdEngine::read_project_locator(project)?;
-    let project_root = std::fs::canonicalize(project)?.display().to_string();
-    #[cfg(feature = "crash-test")]
-    rrd_engine::crash_test::configure_from_stdin(&project.join(&locator.storage_root))?;
-    let mut engine = RrdEngine::open_installed(project, &executable)
-        .map_err(|error| engram_open_elsewhere(project, error))?;
-    if let Some(path) = endpoint_credentials {
-        engine.install_endpoint_credentials(endpoint_credentials::load(path)?)?;
-    }
-    // Refreshed while this engine holds the writer lock; the map is a
-    // replaceable view, so its outcome is reported and never stops serving.
-    let map = project_map_line(project);
-    // Issued while this engine holds the engram's writer lock, so a record
-    // found at publication belongs to a process that no longer runs.
-    let publisher = engine.serving_publisher()?;
-    let server = RrdHttpServer::bind(engine, bind)?;
-    let address = server.local_addr();
-    let registration = publisher.publish(address)?;
-    let announcement = ServeAnnouncement {
-        status: "listening",
-        url: format!("http://{address}"),
-        project_root,
-        instance_id: locator.identity.instance_id.to_string(),
-        product_version: locator.product_version,
-        build: crate::build_identity::report()?,
-        readiness_path: "/v1/health/ready",
-        capability_path: "/v1/capabilities",
-        endpoint_catalogue_path: "/v1/schema/endpoints",
-        openapi_path: "/v1/schema/openapi",
-    };
-    let text = if json {
-        // One line is a deliberate process-supervision contract: callers can
-        // parse readiness without guessing where a pretty document ends.
-        serde_json::to_string(&announcement)?
-    } else {
-        format!(
-            "RRFlow listening at {}\ninstance: {}\nUI discovery: {}/v1/schema/openapi\n{map}",
-            announcement.url, announcement.instance_id, announcement.url
-        )
-    };
-    println!("{text}");
-    std::io::stdout().flush()?;
-    tracing::info!(
-        target: "rrflow::installed",
-        operation = "serve.listening",
-        instance_id = %announcement.instance_id,
-        address = %address,
-        serving_record = %registration.record().url,
-        elapsed_ms = started.elapsed().as_millis() as u64,
-        "installed lifecycle operation completed"
-    );
-
-    let served = (|| -> Result<(), BoxError> {
-        runtime()?.block_on(server.serve_until(async {
-            let _ = tokio::signal::ctrl_c().await;
-        }))?;
-        Ok(())
-    })();
-    let withdrawn = registration.withdraw();
-    tracing::info!(
-        target: "rrflow::installed",
-        operation = "serve.closed",
-        instance_id = %announcement.instance_id,
-        address = %address,
-        serving_record_withdrawn = withdrawn.is_ok(),
-        elapsed_ms = started.elapsed().as_millis() as u64,
-        "installed lifecycle operation completed"
-    );
-    served?;
-    withdrawn?;
-    Ok(Execution {
-        text: String::new(),
-        success: true,
-    })
-}
-
-/// Another process holds the engram, so this one fails before binding. Name
-/// the endpoint it recorded, if any; only `rrflow ready` can prove it.
-fn engram_open_elsewhere(project: &Path, error: ServiceError) -> BoxError {
-    if !matches!(error, ServiceError::EngramInUse(_)) {
-        return error.into();
-    }
-    match RrdEngine::read_serving_record(project) {
-        Ok(Some(record)) => format!(
-            "this project's RRFlow engram is already open in another process; its served endpoint is recorded at {}. Run `rrflow ready --project` to prove it.",
-            record.url
-        )
-        .into(),
-        _ => "this project's RRFlow engram is already open in another process".into(),
     }
 }
 

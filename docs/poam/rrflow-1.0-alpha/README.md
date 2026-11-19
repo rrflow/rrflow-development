@@ -97,4 +97,6 @@
 - [POAM-085 — Parse cannot run on macOS](poam-085.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-085`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-085) — active parent-owned POA&M detail
 - [POAM-086 — the Raft failover test sometimes elects no leader in time](poam-086.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-086`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-086) — active parent-owned POA&M detail
 - [POAM-087 — storage maintenance stalls every search, and searches cause it](poam-087.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-087`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-087) — active parent-owned POA&M detail
+- [POAM-088 — managed instances have fixed driver timings and are not registered or stoppable in every form](poam-088.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-088`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-088) — active parent-owned POA&M detail
+- [POAM-089 — installed process suites sometimes fail on a busy Windows host](poam-089.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-089`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-089) — active parent-owned POA&M detail
 <!-- rrflow:generated-index:end -->

@@ -61,8 +61,7 @@
    "crates/evaluation/rrflow-evaluation-core": 1,
    "crates/operations/rrd-cluster": 4,
    "crates/operations/rrd-kubernetes": 9,
-   "crates/transport/rrd-client": 3,
-   "crates/transport/rrd-server": 2
+   "crates/transport/rrd-client": 3
   },
   "too_many_arguments_allow": {
    "crates/authority/rrd-engine": 108,

@@ -35,7 +35,7 @@ pub use local_authorization::{
 };
 pub use local_process::{
     LocalArgument, LocalDeployment, LocalDeploymentCatalog, LocalProcessDriver, LocalReadiness,
-    LocalShutdown, LOCAL_DEPLOYMENT_FORMAT,
+    LocalShutdown, PendingServingStop, ServingStop, ServingStopError, LOCAL_DEPLOYMENT_FORMAT,
 };
 pub use reconcile::{
     DriverEffect, DriverError, DriverErrorKind, DriverObservation, DriverRequest, EngramDriver,

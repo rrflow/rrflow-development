@@ -55,10 +55,7 @@ fn generator_authenticates_an_explicit_executable_and_refuses_overwrite() {
     ));
     assert!(matches!(
         deployment.shutdown,
-        LocalShutdown::RequestFile {
-            timeout_ms: 5_000,
-            ..
-        }
+        LocalShutdown::StopRequest { timeout_ms: 5_000 }
     ));
 
     let second = Command::new(generator)

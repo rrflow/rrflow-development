@@ -2,7 +2,8 @@
 //!
 //! The binary owns no raw database or provider-specific lifecycle. It plans
 //! and applies the engine-owned installation contract, opens that installed
-//! engram for service, authenticates live readiness, and verifies it read-only.
+//! engram for service, authenticates live readiness, verifies it read-only,
+//! lists the instances this user registered, and asks a served one to stop.
 
 mod build_identity;
 mod build_metadata;
@@ -43,7 +44,14 @@ fn main() -> std::process::ExitCode {
     }
     install_tracing();
     let cli = Cli::parse();
-    finish(installed::execute(&cli.command, cli.json))
+    finish(installed::execute(
+        &cli.command,
+        cli.json,
+        installed::RegistryOptions {
+            root: cli.instance_registry.as_deref(),
+            lock_wait_ms: cli.instance_registry_lock_wait_ms,
+        },
+    ))
 }
 
 fn finish(

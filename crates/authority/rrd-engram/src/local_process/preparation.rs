@@ -224,27 +224,6 @@ pub(super) fn system_for(pid: u32) -> System {
     system
 }
 
-pub(super) fn prepare_shutdown_artifacts(
-    instance_root: &Path,
-    shutdown: &LocalShutdown,
-) -> std::io::Result<()> {
-    let LocalShutdown::RequestFile {
-        request, complete, ..
-    } = shutdown
-    else {
-        return Ok(());
-    };
-    for relative in [request, complete] {
-        let path = instance_root.join(relative);
-        match std::fs::remove_file(&path) {
-            Ok(()) => sync_parent(&path)?,
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-            Err(error) => return Err(error),
-        }
-    }
-    Ok(())
-}
-
 pub(super) fn prepare_readiness_artifact(
     instance_root: &Path,
     readiness: &LocalReadiness,
