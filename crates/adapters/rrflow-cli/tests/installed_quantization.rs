@@ -199,6 +199,12 @@ impl RunningEngine {
         assert_success(&output, "rrflow serve shutdown");
         capture_output(&output, captured);
         self.finished = true;
+        // The same on every platform, whichever way the stop was asked for.
+        assert_eq!(
+            RrdEngine::read_serving_record(&self.project).unwrap(),
+            None,
+            "a cleanly stopped server withdraws its serving record"
+        );
     }
 }
 
