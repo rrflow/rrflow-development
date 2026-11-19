@@ -140,6 +140,7 @@ mod source_language;
 mod storage_cursor;
 mod tail_repair;
 pub use tail_repair::{InstalledTailRepairPlan, InstalledTailRepairReceipt};
+mod instance_registry;
 mod retrieval;
 mod retrieval_query;
 mod rollback;
@@ -165,6 +166,7 @@ use data::public_data_snapshot;
 pub use distributed::{
     DistributedAuthorityRead, DistributedReadRoute, PreparedDistributedAuthority,
 };
+pub use engram_control::drivers::EngineServingStop;
 pub use engram_control::{
     EngramAdminAction, EngramAdminResult, EngramBackupReconcileOutcome, EngramReconcileOutcome,
 };
@@ -177,13 +179,21 @@ pub use installation::{
     NestedRepositoryDiscovery, ProjectLocator, ATTUNEMENT_PROPOSAL_FORMAT_VERSION,
     INSTALLATION_PREVIEW_FORMAT_VERSION,
 };
+pub use instance_registry::{
+    InstanceRegistration, InstanceRegistry, InstanceRegistryEntry, InstanceRegistryListing,
+    InstanceStatus, UnreadableInstanceEntry, DEFAULT_INSTANCE_REGISTRY_LOCK_WAIT_MS,
+    INSTANCE_REGISTRY_ENVIRONMENT, INSTANCE_REGISTRY_LOCK_WAIT_ENVIRONMENT,
+};
 pub use invocation::{
     AuthorizedInvocation, Invocation, InvocationCompletion, InvocationCredential, RrdOperation,
 };
 use model::*;
 pub use project_map::{ProjectMapSummary, PROJECT_MAP_RELATIVE_PATH};
 pub use security::{MAX_AUDIT_PAGE_RECORDS, MAX_JWT_CREDENTIAL_BYTES};
-pub use serving::{ServingPublisher, ServingRecord, ServingRegistration};
+pub use serving::{
+    ServingPublisher, ServingRecord, ServingRegistration, ServingStopRequest, ServingStopState,
+    DEFAULT_STOP_POLL_INTERVAL_MS, DEFAULT_STOP_WAIT_MS,
+};
 use session::*;
 use token_key::load_or_create_token_key;
 pub use token_key::TOKEN_KEY_BYTES;

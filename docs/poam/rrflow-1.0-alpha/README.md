@@ -96,4 +96,5 @@
 - [POAM-084 — the Windows offline qualification sometimes cannot create its disposable account](poam-084.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-084`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-084) — active parent-owned POA&M detail
 - [POAM-085 — Parse cannot run on macOS](poam-085.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-085`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-085) — active parent-owned POA&M detail
 - [POAM-086 — the Raft failover test sometimes elects no leader in time](poam-086.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-086`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-086) — active parent-owned POA&M detail
+- [POAM-087 — the internal server keeps a second stop mechanism with a fixed poll interval](poam-087.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-087`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-087) — active parent-owned POA&M detail
 <!-- rrflow:generated-index:end -->

@@ -96,6 +96,7 @@ mod installation;
 mod installation_bootstrap;
 mod installation_concurrency;
 mod installation_recovery;
+mod instance_registry;
 mod knowledge;
 mod lifecycle;
 mod memory_engram;

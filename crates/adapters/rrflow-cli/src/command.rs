@@ -31,6 +31,20 @@ pub struct Cli {
     #[arg(long, global = true)]
     pub json: bool,
 
+    /// Directory of this user's instance registry, resolved against the
+    /// working directory. Without it the absolute directory
+    /// RRFLOW_INSTANCE_REGISTRY names is used, or else this user's state
+    /// directory.
+    #[arg(long, global = true, value_name = "DIR")]
+    pub instance_registry: Option<std::path::PathBuf>,
+
+    /// How long to wait for the instance registry's lock. Without it the
+    /// milliseconds RRFLOW_INSTANCE_REGISTRY_LOCK_WAIT_MS names are used, or
+    /// else 5000. A registry still locked after the wait is reported and
+    /// never fails `install` or `serve`.
+    #[arg(long, global = true, value_name = "MS")]
+    pub instance_registry_lock_wait_ms: Option<u64>,
+
     #[command(subcommand)]
     pub command: Command,
 }
@@ -53,10 +67,36 @@ pub enum Command {
         /// JSON mapping of endpoint credential references to explicit environment names.
         #[arg(long)]
         endpoint_credentials: Option<std::path::PathBuf>,
+        /// How often to look for a stop request from `rrflow stop`.
+        #[arg(
+            long,
+            value_name = "MS",
+            default_value_t = rrd_engine::DEFAULT_STOP_POLL_INTERVAL_MS,
+            value_parser = clap::value_parser!(u64).range(1..)
+        )]
+        stop_poll_interval_ms: u64,
         /// Debug-test surrogate for the distribution executable.
         #[arg(long = "test-distribution-executable", hide = true)]
         test_distribution_executable: Option<std::path::PathBuf>,
     },
+    /// Ask the instance serving a project to stop, and wait until it has.
+    Stop {
+        #[arg(long, default_value = ".")]
+        project: std::path::PathBuf,
+        /// How long to wait for the serving process to withdraw its record.
+        #[arg(long, value_name = "MS", default_value_t = rrd_engine::DEFAULT_STOP_WAIT_MS)]
+        wait_ms: u64,
+        /// How often to look at the project's serving record while waiting.
+        #[arg(
+            long,
+            value_name = "MS",
+            default_value_t = rrd_engine::DEFAULT_STOP_POLL_INTERVAL_MS,
+            value_parser = clap::value_parser!(u64).range(1..)
+        )]
+        poll_interval_ms: u64,
+    },
+    /// List the projects this user installed or served, with what each project records now.
+    Instances,
     /// Authenticate against a running engram and return UI discovery documents.
     Ready {
         #[arg(long, default_value = ".")]

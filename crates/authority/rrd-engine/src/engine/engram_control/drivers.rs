@@ -27,6 +27,40 @@ impl EngramDriver for EffectHoldDriver {
     }
 }
 
+/// The local-process driver's way to stop a managed engine: the engine's one
+/// stop request, the same one `rrflow stop` makes. A managed instance is the
+/// installed project at its instance root, so the request goes into that
+/// project's `.rrflow` directory and its serving record says when it is done.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct EngineServingStop;
+
+impl rrd_engram::ServingStop for EngineServingStop {
+    fn request(
+        &self,
+        instance_root: &Path,
+    ) -> std::result::Result<Option<Box<dyn rrd_engram::PendingServingStop>>, String> {
+        let request =
+            RrdEngine::request_serving_stop(instance_root).map_err(|error| error.to_string())?;
+        Ok(request.map(|request| {
+            Box::new(PendingEngineServingStop(request)) as Box<dyn rrd_engram::PendingServingStop>
+        }))
+    }
+}
+
+struct PendingEngineServingStop(super::serving::ServingStopRequest);
+
+impl rrd_engram::PendingServingStop for PendingEngineServingStop {
+    fn withdrawn(&self) -> std::result::Result<bool, String> {
+        // Only a withdrawn record is a finished shutdown. The driver is the
+        // one starter of a managed instance, so a replaced record is not
+        // something it can have caused by stopping.
+        self.0
+            .observe()
+            .map(|state| state == super::serving::ServingStopState::Stopped)
+            .map_err(|error| error.to_string())
+    }
+}
+
 pub(super) struct BackupEffectHoldDriver {
     pub(super) inner: EngineLocalBackupDriver,
     pub(super) marker: Option<PathBuf>,

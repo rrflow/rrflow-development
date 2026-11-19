@@ -92,7 +92,15 @@ impl Engram {
                 command.env(name, value);
             }
         }
-        for name in ["HOME", "USERPROFILE", "TMP", "TEMP", "TMPDIR", "PATH"] {
+        for name in [
+            "HOME",
+            "USERPROFILE",
+            "LOCALAPPDATA",
+            "TMP",
+            "TEMP",
+            "TMPDIR",
+            "PATH",
+        ] {
             command.env(name, &self.working);
         }
         command

@@ -2,8 +2,8 @@
 
 use super::*;
 
-pub const LOCAL_DEPLOYMENT_FORMAT: u16 = 2;
-pub(super) const PROCESS_RECORD_FORMAT: u16 = 1;
+pub const LOCAL_DEPLOYMENT_FORMAT: u16 = 3;
+pub(super) const PROCESS_RECORD_FORMAT: u16 = 2;
 pub(super) const PROCESS_DISCOVERY_TIMEOUT: Duration = Duration::from_secs(3);
 pub(super) const PROCESS_START_STABILITY: Duration = Duration::from_millis(250);
 pub(super) const PROCESS_PREPARATION_TIMEOUT: Duration = Duration::from_secs(10);
@@ -27,11 +27,31 @@ pub enum LocalArgument {
 pub enum LocalShutdown {
     #[default]
     Immediate,
-    RequestFile {
-        request: PathBuf,
-        complete: PathBuf,
-        timeout_ms: u64,
-    },
+    /// Ask the engine serving the instance root to stop through its one stop
+    /// request, and wait this long for the process to exit before the
+    /// authenticated kill.
+    StopRequest { timeout_ms: u64 },
+}
+
+/// How the driver asks a managed engine to stop. The engine owns the stop
+/// request, its authorization and what counts as a finished shutdown; the
+/// driver decides only when to ask and how long to wait.
+pub trait ServingStop {
+    /// Asks the engine serving `instance_root` to stop. `None` means no
+    /// serving record is published there, so there is nothing to ask.
+    fn request(
+        &self,
+        instance_root: &Path,
+    ) -> std::result::Result<Option<Box<dyn PendingServingStop>>, String>;
+}
+
+/// A stop request the driver made and is waiting on. A request is never taken
+/// back: it names the serving record it addresses, so one left for a process
+/// the driver had to kill cannot stop the next process, which discards it.
+pub trait PendingServingStop {
+    /// True once the engine has withdrawn the serving record the request
+    /// addressed, which it does only after it has closed.
+    fn withdrawn(&self) -> std::result::Result<bool, String>;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -207,15 +227,8 @@ impl LocalDeploymentCatalog {
                     return Err(format!("deployment {key} environment is invalid"));
                 }
             }
-            if let LocalShutdown::RequestFile {
-                request,
-                complete,
-                timeout_ms,
-            } = &deployment.shutdown
-            {
-                validate_control_filename(request)?;
-                validate_control_filename(complete)?;
-                if request == complete || !(100..=30_000).contains(timeout_ms) {
+            if let LocalShutdown::StopRequest { timeout_ms } = &deployment.shutdown {
+                if !(100..=30_000).contains(timeout_ms) {
                     return Err(format!(
                         "deployment {key} graceful shutdown contract is invalid"
                     ));
@@ -225,16 +238,6 @@ impl LocalDeploymentCatalog {
                 validate_control_filename(path)?;
                 if !(100..=120_000).contains(timeout_ms) {
                     return Err(format!("deployment {key} readiness contract is invalid"));
-                }
-                if let LocalShutdown::RequestFile {
-                    request, complete, ..
-                } = &deployment.shutdown
-                {
-                    if path == request || path == complete {
-                        return Err(format!(
-                            "deployment {key} readiness and shutdown files must be distinct"
-                        ));
-                    }
                 }
             }
         }

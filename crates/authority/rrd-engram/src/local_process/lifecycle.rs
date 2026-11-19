@@ -61,37 +61,6 @@ pub(super) fn wait_for_readiness(
     }
 }
 
-pub(super) fn write_shutdown_request(
-    path: &Path,
-    request: &DriverRequest,
-    record: &ProcessRecord,
-) -> std::io::Result<()> {
-    let bytes = serde_json::to_vec(&serde_json::json!({
-        "format": 1,
-        "instance_id": request.instance_id,
-        "operation_id": request.operation_id,
-        "pid": record.pid,
-        "process_start_time_unix_s": record.process_start_time_unix_s,
-    }))
-    .map_err(std::io::Error::other)?;
-    let mut options = OpenOptions::new();
-    options.write(true).create_new(true);
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::OpenOptionsExt;
-        options.mode(0o600);
-    }
-    match options.open(path) {
-        Ok(mut file) => {
-            file.write_all(&bytes)?;
-            file.sync_all()?;
-            sync_parent(path)
-        }
-        Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => Ok(()),
-        Err(error) => Err(error),
-    }
-}
-
 pub(super) fn wait_for_owned_exit(
     record: &ProcessRecord,
     timeout: Duration,
@@ -115,9 +84,9 @@ pub(super) fn wait_for_owned_exit(
                 if process.start_time() != record.process_start_time_unix_s {
                     // The recorded process has exited and its PID has already
                     // been reused. Never inspect or signal the replacement.
-                    // Request-file shutdown still verifies the original
-                    // process's completion marker in `stop` before accepting
-                    // this as a graceful exit.
+                    // A stop request still verifies in `stop` that the
+                    // original process withdrew its serving record before
+                    // accepting this as a graceful exit.
                     return Ok(true);
                 }
                 match process

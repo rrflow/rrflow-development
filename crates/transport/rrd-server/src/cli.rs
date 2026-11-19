@@ -8,8 +8,9 @@ pub(super) fn parse_args(arguments: impl Iterator<Item = String>) -> Result<Args
     let mut bind = "127.0.0.1:9477".parse().expect("static bind address");
     let mut jwt_key_file = None;
     let mut ready_file = None;
-    let mut shutdown_request_file = None;
-    let mut shutdown_complete_file = None;
+    let mut stop_poll_interval_ms = rrd_engine::DEFAULT_STOP_POLL_INTERVAL_MS;
+    let mut instance_registry = None;
+    let mut instance_registry_lock_wait_ms = None;
     let mut tls_certificate_file = None;
     let mut tls_private_key_file = None;
     let mut tls_client_ca_file = None;
@@ -43,17 +44,23 @@ pub(super) fn parse_args(arguments: impl Iterator<Item = String>) -> Result<Args
                     "--ready-file",
                 )?));
             }
-            "--shutdown-request-file" => {
-                shutdown_request_file = Some(PathBuf::from(required_value(
+            "--stop-poll-interval-ms" => {
+                stop_poll_interval_ms = milliseconds(&mut arguments, "--stop-poll-interval-ms")?;
+                if stop_poll_interval_ms == 0 {
+                    return Err("--stop-poll-interval-ms must be at least 1".into());
+                }
+            }
+            "--instance-registry" => {
+                instance_registry = Some(PathBuf::from(required_value(
                     &mut arguments,
-                    "--shutdown-request-file",
+                    "--instance-registry",
                 )?));
             }
-            "--shutdown-complete-file" => {
-                shutdown_complete_file = Some(PathBuf::from(required_value(
+            "--instance-registry-lock-wait-ms" => {
+                instance_registry_lock_wait_ms = Some(milliseconds(
                     &mut arguments,
-                    "--shutdown-complete-file",
-                )?));
+                    "--instance-registry-lock-wait-ms",
+                )?);
             }
             "--tls-cert" => {
                 tls_certificate_file =
@@ -73,12 +80,6 @@ pub(super) fn parse_args(arguments: impl Iterator<Item = String>) -> Result<Args
             value => return Err(format!("unknown argument {value:?}\n{}", usage())),
         }
     }
-    if shutdown_request_file.is_some() != shutdown_complete_file.is_some() {
-        return Err(format!(
-            "--shutdown-request-file and --shutdown-complete-file must be provided together\n{}",
-            usage()
-        ));
-    }
     let tls_file_count = [
         tls_certificate_file.is_some(),
         tls_private_key_file.is_some(),
@@ -93,20 +94,11 @@ pub(super) fn parse_args(arguments: impl Iterator<Item = String>) -> Result<Args
             usage()
         ));
     }
-    if let (Some(request), Some(complete)) = (&shutdown_request_file, &shutdown_complete_file) {
-        if !request.is_absolute() || !complete.is_absolute() || request == complete {
-            return Err("shutdown control files must be distinct absolute paths".into());
-        }
-    }
-    if let Some(ready) = &ready_file {
-        if !ready.is_absolute()
-            || shutdown_request_file.as_ref() == Some(ready)
-            || shutdown_complete_file.as_ref() == Some(ready)
-        {
-            return Err(
-                "readiness file must be absolute and distinct from shutdown control files".into(),
-            );
-        }
+    if ready_file
+        .as_ref()
+        .is_some_and(|ready| !ready.is_absolute())
+    {
+        return Err("readiness file must be absolute".into());
     }
     Ok(Args {
         project: project.ok_or_else(|| format!("--project is required\n{}", usage()))?,
@@ -115,8 +107,9 @@ pub(super) fn parse_args(arguments: impl Iterator<Item = String>) -> Result<Args
         bind,
         jwt_key_file,
         ready_file,
-        shutdown_request_file,
-        shutdown_complete_file,
+        stop_poll_interval: Duration::from_millis(stop_poll_interval_ms),
+        instance_registry,
+        instance_registry_lock_wait_ms,
         tls_certificate_file,
         tls_private_key_file,
         tls_client_ca_file,
@@ -195,8 +188,15 @@ pub(super) fn required_value(
         .ok_or_else(|| format!("{option} requires a value"))
 }
 
+fn milliseconds(arguments: &mut impl Iterator<Item = String>, option: &str) -> Result<u64, String> {
+    let value = required_value(arguments, option)?;
+    value
+        .parse()
+        .map_err(|error| format!("invalid {option} {value:?}: {error}"))
+}
+
 pub(super) fn usage() -> &'static str {
-    "usage: rrd-server --project PROJECT --distribution-executable RRFLOW [--bind 127.0.0.1:9477] [--jwt-key-file PATH] [--ready-file PATH] [--tls-cert PATH --tls-key PATH --tls-client-ca PATH] [--shutdown-request-file PATH --shutdown-complete-file PATH]"
+    "usage: rrd-server --project PROJECT --distribution-executable RRFLOW [--bind 127.0.0.1:9477] [--jwt-key-file PATH] [--ready-file PATH] [--tls-cert PATH --tls-key PATH --tls-client-ca PATH] [--stop-poll-interval-ms MS] [--instance-registry DIR] [--instance-registry-lock-wait-ms MS]"
 }
 
 #[cfg(test)]

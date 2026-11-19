@@ -42,17 +42,9 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
             LocalArgument::Literal("127.0.0.1:0".into()),
             LocalArgument::Literal("--ready-file".into()),
             LocalArgument::InstancePath(PathBuf::from("RRD.READY")),
-            LocalArgument::Literal("--shutdown-request-file".into()),
-            LocalArgument::InstancePath(PathBuf::from("SHUTDOWN.REQUEST")),
-            LocalArgument::Literal("--shutdown-complete-file".into()),
-            LocalArgument::InstancePath(PathBuf::from("SHUTDOWN.COMPLETE")),
         ],
         BTreeMap::new(),
-        LocalShutdown::RequestFile {
-            request: PathBuf::from("SHUTDOWN.REQUEST"),
-            complete: PathBuf::from("SHUTDOWN.COMPLETE"),
-            timeout_ms: 5_000,
-        },
+        LocalShutdown::StopRequest { timeout_ms: 5_000 },
     )?
     .with_readiness(LocalReadiness::File {
         path: PathBuf::from("RRD.READY"),

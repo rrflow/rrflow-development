@@ -7,15 +7,29 @@ use super::*;
 pub(super) struct RunningEngine {
     pub(super) child: process::Process,
     pub(super) finished: bool,
+    project: PathBuf,
+    /// The one-line JSON document `serve` printed once it was listening.
+    pub(super) announcement: serde_json::Value,
 }
 
 impl RunningEngine {
     pub(super) fn start(project: &Path, captured: &mut Vec<u8>) -> (Self, String) {
+        Self::start_with(project, captured, |_| {})
+    }
+
+    /// Starts `serve` after `configure` has adjusted its command, for a test
+    /// that names an environment variable or another option.
+    pub(super) fn start_with(
+        project: &Path,
+        captured: &mut Vec<u8>,
+        configure: impl FnOnce(&mut Command),
+    ) -> (Self, String) {
         let mut command = product_command();
         command
             .args(["--json", "serve", "--project"])
             .arg(project)
             .args(["--bind", "127.0.0.1:0"]);
+        configure(&mut command);
         let (send, receive) = std::sync::mpsc::sync_channel(1);
         let mut process = Self {
             child: process::Process::start(
@@ -26,6 +40,8 @@ impl RunningEngine {
             )
             .expect("start bounded installed rrflow service"),
             finished: false,
+            project: project.to_owned(),
+            announcement: serde_json::Value::Null,
         };
         assert!(process.child.id() > 0);
         let announcement = receive
@@ -59,7 +75,21 @@ impl RunningEngine {
             .strip_prefix("http://")
             .unwrap()
             .to_owned();
+        process.announcement = announcement;
         (process, address)
+    }
+
+    /// Reaps a server that `rrflow stop` asked to stop. A stop request is a
+    /// clean shutdown on every platform, so the process must exit successfully.
+    pub(super) fn finish_stopped(&mut self, captured: &mut Vec<u8>) {
+        let output = self.child.finish().expect("capture stopped rrflow service");
+        assert!(
+            output.status.success(),
+            "rrflow serve failed after a stop request: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        capture_output(&output, captured);
+        self.finished = true;
     }
 
     pub(super) fn terminate(&mut self, captured: &mut Vec<u8>) {
@@ -69,6 +99,10 @@ impl RunningEngine {
         self.finished = true;
     }
 
+    /// Ends the server cleanly and requires a successful exit on every
+    /// platform. Unix sends the interrupt, so that path stays proven; a
+    /// platform on which the harness cannot interrupt one child asks through
+    /// `rrflow stop`. Both run the same shutdown in `rrflow serve`.
     pub(super) fn stop(&mut self, captured: &mut Vec<u8>) {
         if self.finished {
             return;
@@ -77,16 +111,36 @@ impl RunningEngine {
             #[cfg(unix)]
             stop_gracefully(&self.child);
             #[cfg(not(unix))]
-            self.child.terminate();
+            self.request_stop(captured);
         }
         let output = self.child.finish().expect("capture bounded rrflow service");
-        #[cfg(unix)]
         assert!(
             output.status.success(),
-            "rrflow serve failed during shutdown"
+            "rrflow serve failed during shutdown: {}",
+            String::from_utf8_lossy(&output.stderr)
         );
         capture_output(&output, captured);
         self.finished = true;
+        assert_eq!(
+            RrdEngine::read_serving_record(&self.project).unwrap(),
+            None,
+            "a cleanly stopped server withdraws its serving record"
+        );
+    }
+
+    #[cfg(not(unix))]
+    fn request_stop(&self, captured: &mut Vec<u8>) {
+        let output = invoke(&[
+            "--json",
+            "stop",
+            "--project",
+            self.project.to_str().unwrap(),
+        ]);
+        capture_output(&output, captured);
+        assert_success(&output, "stop the served project");
+        let report: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        assert_eq!(report["status"], "stopped");
+        assert_eq!(report["process_id"], self.child.id());
     }
 }
 

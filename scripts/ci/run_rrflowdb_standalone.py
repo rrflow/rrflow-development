@@ -159,6 +159,9 @@ def run(primary, example):
             raise RuntimeError("temporary fixture escaped its owned root")
         project = root / "project"
         project.mkdir()
+        # The product records what it installs or serves in a per-user
+        # registry. This fixture is not the user's work, so it names its own.
+        os.environ["RRFLOW_INSTANCE_REGISTRY"] = str(root / "instance-registry")
         binary = root / ("rrflow.exe" if os.name == "nt" else "rrflow")
         app = root / ("rrflowdb.exe" if os.name == "nt" else "rrflowdb")
         stage(primary, binary)

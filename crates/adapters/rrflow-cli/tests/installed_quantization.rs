@@ -60,7 +60,7 @@ impl StandaloneDistribution {
                 command.env(name, value);
             }
         }
-        for name in ["HOME", "USERPROFILE"] {
+        for name in ["HOME", "USERPROFILE", "LOCALAPPDATA"] {
             command.env(name, self.root.path().join("home"));
         }
         for name in ["TMP", "TEMP", "TMPDIR"] {
@@ -132,6 +132,7 @@ fn stop_gracefully(child: &process::Process) {
 struct RunningEngine {
     child: process::Process,
     finished: bool,
+    project: PathBuf,
 }
 
 impl RunningEngine {
@@ -151,6 +152,7 @@ impl RunningEngine {
             )
             .expect("start bounded installed rrflow service"),
             finished: false,
+            project: project.to_owned(),
         };
         assert!(process.child.id() > 0);
         let announcement = receive
@@ -177,12 +179,24 @@ impl RunningEngine {
             return;
         }
         if self.child.running() {
+            // An interrupt on Unix; `rrflow stop` where the harness cannot
+            // interrupt one child. Both run the same shutdown in `serve`.
             #[cfg(unix)]
             stop_gracefully(&self.child);
             #[cfg(not(unix))]
-            self.child.terminate();
+            {
+                let output = invoke(&[
+                    "--json",
+                    "stop",
+                    "--project",
+                    self.project.to_str().unwrap(),
+                ]);
+                capture_output(&output, captured);
+                assert_success(&output, "stop the served project");
+            }
         }
         let output = self.child.finish().expect("capture bounded rrflow service");
+        assert_success(&output, "rrflow serve shutdown");
         capture_output(&output, captured);
         self.finished = true;
     }

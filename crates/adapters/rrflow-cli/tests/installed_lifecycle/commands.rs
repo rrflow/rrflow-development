@@ -223,7 +223,15 @@ fn primary_help_exposes_only_the_installed_product_lifecycle() {
     assert_success(&output, "primary help");
     let help = String::from_utf8(output.stdout).unwrap();
     for command in [
-        "version", "install", "serve", "ready", "verify", "restore", "repair",
+        "version",
+        "install",
+        "serve",
+        "stop",
+        "instances",
+        "ready",
+        "verify",
+        "restore",
+        "repair",
     ] {
         assert!(
             help.contains(command),

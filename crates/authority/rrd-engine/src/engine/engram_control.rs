@@ -1,5 +1,5 @@
 mod admin;
-mod drivers;
+pub(super) mod drivers;
 mod local_recovery;
 mod recovery;
 

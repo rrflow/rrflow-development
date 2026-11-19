@@ -17,8 +17,11 @@ deployment-catalogue generator, static direct-store reconciliation plus
 command and start the internal server with an installed project plus explicit distribution
 executable. The remaining controller path still creates private JSON process/catalogue
 state, accepts arbitrary physical roots and caller time/configuration, treats file
-existence as readiness/shutdown completion, and does not bind the authenticated digest to
-the exact executed image. Plaintext environment values and unbounded diagnostic logs/tails
+existence as readiness, and does not bind the authenticated digest to
+the exact executed image. Since 2026-11-19 it stops a managed engine through the engine's
+one [stop request](../../reference/deployment/installed-lifecycle.md#stop-request) and
+accepts a graceful exit only when the serving record is withdrawn; that request is
+authorized by write access to the instance directory, not by a control operation. Plaintext environment values and unbounded diagnostic logs/tails
 also cross this boundary.
 
 ## Impact

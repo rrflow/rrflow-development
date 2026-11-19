@@ -3,8 +3,10 @@
 //! This is one bounded child lifecycle, not a generic process-kill matrix: the
 //! exact primary executable publishes its address, serves generated discovery,
 //! accepts its generated credential, survives restart, and passes the read-only
-//! verifier. The initial process is terminated after acknowledged writes; subsequent
-//! Unix shutdowns use graceful SIGINT. Only test-owned children are affected.
+//! verifier. The initial process is terminated after acknowledged writes; every
+//! later shutdown is graceful and must exit successfully on every platform: an
+//! interrupt on Unix, `rrflow stop` elsewhere. Only test-owned children are
+//! affected.
 
 #[path = "../support/loopback_worker.rs"]
 mod loopback_worker;
@@ -107,7 +109,9 @@ impl StandaloneDistribution {
                 command.env(name, value);
             }
         }
-        for name in ["HOME", "USERPROFILE"] {
+        // LOCALAPPDATA is where Windows keeps per-user state, so the instance
+        // registry lands in this fixture's home on every platform.
+        for name in ["HOME", "USERPROFILE", "LOCALAPPDATA"] {
             command.env(name, self.root.path().join("home"));
         }
         for name in ["TMP", "TEMP", "TMPDIR"] {
@@ -131,6 +135,7 @@ fn binary() -> PathBuf {
 
 mod commands;
 mod engrams_and_history;
+mod instances;
 mod lifecycle;
 mod plans;
 mod replan;

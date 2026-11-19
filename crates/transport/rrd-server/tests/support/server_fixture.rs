@@ -50,13 +50,22 @@ pub(super) struct RunningServer {
 pub(super) struct RunningServerProcess {
     pub(super) address: SocketAddr,
     pub(super) child: Option<Child>,
-    pub(super) shutdown_request: PathBuf,
-    pub(super) shutdown_complete: PathBuf,
+    pub(super) project: PathBuf,
+    pub(super) registry: PathBuf,
 }
 
 impl RunningServerProcess {
+    /// Stops the child through the engine's one stop request, the way
+    /// `rrflow stop` and the local-process driver do, and requires the clean
+    /// shutdown: a successful exit with the serving record withdrawn.
     pub(super) fn stop(mut self) {
-        std::fs::write(&self.shutdown_request, b"stop\n").unwrap();
+        let request = RrdEngine::request_serving_stop(&self.project)
+            .unwrap()
+            .expect("a running rrd-server child publishes a serving record");
+        assert_eq!(
+            request.record().process_id,
+            self.child.as_ref().unwrap().id()
+        );
         let deadline = Instant::now() + INTEGRATION_IO_TIMEOUT;
         let status = loop {
             if let Some(status) = self.child.as_mut().unwrap().try_wait().unwrap() {
@@ -66,7 +75,19 @@ impl RunningServerProcess {
             std::thread::sleep(Duration::from_millis(10));
         };
         assert!(status.success());
-        assert!(self.shutdown_complete.is_file());
+        assert_eq!(
+            request.observe().unwrap(),
+            rrd_engine::ServingStopState::Stopped
+        );
+        assert_eq!(RrdEngine::read_serving_record(&self.project).unwrap(), None);
+        assert!(!self.project.join(".rrflow/stop-request.json").exists());
+        let listing = rrd_engine::InstanceRegistry::at(&self.registry)
+            .list()
+            .unwrap();
+        assert!(
+            !listing.instances[0].entry.serving_published,
+            "a closed server brings its registry entry in line"
+        );
         self.child = None;
     }
 }
@@ -76,7 +97,7 @@ impl Drop for RunningServerProcess {
         let Some(mut child) = self.child.take() else {
             return;
         };
-        let _ = std::fs::write(&self.shutdown_request, b"stop\n");
+        let _ = RrdEngine::request_serving_stop(&self.project);
         let deadline = Instant::now() + Duration::from_secs(2);
         while Instant::now() < deadline {
             if child.try_wait().ok().flatten().is_some() {
@@ -97,10 +118,13 @@ pub(super) fn start_installed_process(
     name: &str,
 ) -> RunningServerProcess {
     let ready = temporary.join(format!("{name}.READY"));
-    let shutdown_request = temporary.join(format!("{name}.SHUTDOWN.REQUEST"));
-    let shutdown_complete = temporary.join(format!("{name}.SHUTDOWN.COMPLETE"));
+    // The fixture names its own instance registry: a test must never write
+    // the registry of the user who runs it.
+    let registry = temporary.join("instance-registry");
     let mut child = Command::new(server_binary)
         .args([
+            "--instance-registry",
+            registry.to_str().unwrap(),
             "--project",
             project.to_str().unwrap(),
             "--distribution-executable",
@@ -109,10 +133,6 @@ pub(super) fn start_installed_process(
             "127.0.0.1:0",
             "--ready-file",
             ready.to_str().unwrap(),
-            "--shutdown-request-file",
-            shutdown_request.to_str().unwrap(),
-            "--shutdown-complete-file",
-            shutdown_complete.to_str().unwrap(),
         ])
         .spawn()
         .unwrap();
@@ -136,11 +156,26 @@ pub(super) fn start_installed_process(
         .unwrap()
         .parse()
         .unwrap();
+    // Readiness is written after the serving record, so the record is there.
+    let record = RrdEngine::read_serving_record(project)
+        .unwrap()
+        .expect("a ready rrd-server child has published its serving record");
+    assert_eq!(record.address().unwrap(), address);
+    assert_eq!(record.process_id, child.id());
+    // A served instance is registered for this user, whoever serves it.
+    let listing = rrd_engine::InstanceRegistry::at(&registry).list().unwrap();
+    assert_eq!(listing.instances.len(), 1, "{listing:?}");
+    assert_eq!(listing.instances[0].entry.instance_id, record.instance_id);
+    assert!(listing.instances[0].entry.serving_published);
+    assert_eq!(
+        listing.instances[0].endpoint.as_deref(),
+        Some(record.url.as_str())
+    );
     RunningServerProcess {
         address,
         child: Some(child),
-        shutdown_request,
-        shutdown_complete,
+        project: project.to_owned(),
+        registry,
     }
 }
 

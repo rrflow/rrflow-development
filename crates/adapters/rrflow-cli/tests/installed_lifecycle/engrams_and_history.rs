@@ -94,7 +94,6 @@ fn a_served_engram_is_found_proved_and_not_served_twice() {
         "ready after the stale record is replaced",
     );
     restarted.stop(&mut captured);
-    #[cfg(unix)]
     assert!(
         !record_path.exists(),
         "a clean shutdown withdraws the record"

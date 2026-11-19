@@ -1,5 +1,5 @@
 use rrd_contract::{CanonicalId, InstallationTargetKind};
-use rrd_engine::RrdEngine;
+use rrd_engine::{EngineServingStop, RrdEngine};
 use rrd_engram::{
     DesiredInstance, DesiredPhase, DesiredTarget, DriverErrorKind, DriverRequest, EngramDriver,
     EngramRepository, LocalArgument, LocalDeployment, LocalDeploymentCatalog, LocalProcessDriver,
@@ -116,21 +116,13 @@ fn catalog_fixture() -> &'static TestCatalog {
                         LocalArgument::Literal("127.0.0.1:0".into()),
                         LocalArgument::Literal("--ready-file".into()),
                         LocalArgument::InstancePath(PathBuf::from("RRD.READY")),
-                        LocalArgument::Literal("--shutdown-request-file".into()),
-                        LocalArgument::InstancePath(PathBuf::from("SHUTDOWN.REQUEST")),
-                        LocalArgument::Literal("--shutdown-complete-file".into()),
-                        LocalArgument::InstancePath(PathBuf::from("SHUTDOWN.COMPLETE")),
                     ],
                     environment: BTreeMap::new(),
                     readiness: LocalReadiness::File {
                         path: PathBuf::from("RRD.READY"),
                         timeout_ms: 90_000,
                     },
-                    shutdown: LocalShutdown::RequestFile {
-                        request: PathBuf::from("SHUTDOWN.REQUEST"),
-                        complete: PathBuf::from("SHUTDOWN.COMPLETE"),
-                        timeout_ms: 5_000,
-                    },
+                    shutdown: LocalShutdown::StopRequest { timeout_ms: 5_000 },
                 },
             )]),
         };
@@ -170,9 +162,31 @@ fn install_instance(state_root: &Path, instance_id: &str) {
     assert!(!result.idempotent_replay);
 }
 
+/// The driver as the engine composes it: the engine's one stop request is its
+/// only way to ask a managed engine to stop.
+fn driver(state_root: &Path, catalog: LocalDeploymentCatalog) -> LocalProcessDriver {
+    LocalProcessDriver::new(state_root, catalog, Box::new(EngineServingStop)).unwrap()
+}
+
+/// A clean stop leaves neither a serving record nor a stop request in the
+/// managed instance. A killed server leaves its record behind, so this is
+/// what tells a graceful shutdown from a kill.
+fn assert_stopped_gracefully(state_root: &Path, context: &str) {
+    let instance = state_root.join("instances/project-a");
+    assert_eq!(
+        RrdEngine::read_serving_record(&instance).unwrap(),
+        None,
+        "{context}: the managed engine withdrew its serving record"
+    );
+    assert!(
+        !instance.join(".rrflow/stop-request.json").exists(),
+        "{context}: the stop request was removed"
+    );
+}
+
 fn step(database: &Path, state_root: &Path, at: u64) -> ReconcileOutcome {
     let engine = RrflowKvStore::open(database).unwrap();
-    let driver = LocalProcessDriver::new(state_root, catalog()).unwrap();
+    let driver = driver(state_root, catalog());
     let mut reconciler =
         Reconciler::new(&engine, id("engram-a"), id("worker-one"), 30_000, driver).unwrap();
     reconciler.step(at).unwrap()
@@ -376,7 +390,7 @@ fn real_rrd_child_survives_controller_reopen_and_stops_without_data_deletion() {
     let started_pid = process_pid(&state_root).expect("driver persisted process identity");
     assert!(process_exists(started_pid));
 
-    let replay_driver = LocalProcessDriver::new(&state_root, catalog()).unwrap();
+    let replay_driver = driver(&state_root, catalog());
     let request = rrd_engram::DriverRequest {
         engram_id: id("engram-a"),
         instance_id: id("project-a"),
@@ -445,12 +459,7 @@ fn real_rrd_child_survives_controller_reopen_and_stops_without_data_deletion() {
         ReconcileBoundary::Applied,
     );
     assert!(!process_exists(started_pid));
-    assert!(
-        state_root
-            .join("instances/project-a/SHUTDOWN.COMPLETE")
-            .is_file(),
-        "managed RRD child must confirm graceful shutdown"
-    );
+    assert_stopped_gracefully(&state_root, "managed RRD child must stop gracefully");
     assert!(state_root.join("instances/project-a/.rrflow/rrd").is_dir());
     assert_boundary(
         step(&database, &state_root, 120),
@@ -469,7 +478,7 @@ fn local_driver_refuses_to_signal_a_reused_or_forged_pid_identity() {
     let state_root = temporary.path().join("local-processes");
     std::fs::create_dir(&state_root).unwrap();
     let state_root = std::fs::canonicalize(state_root).unwrap();
-    let driver = LocalProcessDriver::new(&state_root, catalog()).unwrap();
+    let driver = driver(&state_root, catalog());
     let record_path = driver.process_record_path(&id("project-a"));
     std::fs::create_dir_all(record_path.parent().unwrap()).unwrap();
     let current_pid = std::process::id();
@@ -487,7 +496,7 @@ fn local_driver_refuses_to_signal_a_reused_or_forged_pid_identity() {
     std::fs::write(
         &record_path,
         serde_json::to_vec(&serde_json::json!({
-            "format": 1,
+            "format": 2,
             "instance_id": "project-a",
             "operation_id": "old-operation",
             "deployment_ref": "rrd-server",
@@ -535,23 +544,14 @@ fn graceful_timeout_reauthenticates_then_uses_the_bounded_kill_fallback() {
     install_instance(&state_root, "project-a");
     let mut fallback_catalog = catalog();
     let deployment = fallback_catalog.deployments.get_mut("rrd-server").unwrap();
-    deployment.shutdown = LocalShutdown::RequestFile {
-        request: PathBuf::from("SHUTDOWN.REQUEST"),
-        complete: PathBuf::from("SHUTDOWN.COMPLETE"),
-        timeout_ms: 100,
-    };
-    let watched_request = deployment
-        .arguments
-        .iter_mut()
-        .find(|argument| {
-            matches!(
-                argument,
-                LocalArgument::InstancePath(path) if path == Path::new("SHUTDOWN.REQUEST")
-            )
-        })
-        .unwrap();
-    *watched_request = LocalArgument::InstancePath(PathBuf::from("IGNORED.REQUEST"));
-    let mut driver = LocalProcessDriver::new(&state_root, fallback_catalog).unwrap();
+    deployment.shutdown = LocalShutdown::StopRequest { timeout_ms: 100 };
+    // The server looks for a stop request once as it starts and then not for
+    // an hour, so it cannot see the request inside the driver's wait.
+    deployment.arguments.extend([
+        LocalArgument::Literal("--stop-poll-interval-ms".into()),
+        LocalArgument::Literal("3600000".into()),
+    ]);
+    let mut driver = driver(&state_root, fallback_catalog);
     let start = DriverRequest {
         engram_id: id("engram-a"),
         instance_id: id("project-a"),
@@ -580,11 +580,14 @@ fn graceful_timeout_reauthenticates_then_uses_the_bounded_kill_fallback() {
 
     assert!(!process_exists(started_pid));
     assert_eq!(process_pid(&state_root), None);
+    let instance = state_root.join("instances/project-a");
     assert!(
-        !state_root
-            .join("instances/project-a/SHUTDOWN.COMPLETE")
-            .exists(),
-        "a forced fallback must not fabricate graceful completion"
+        RrdEngine::read_serving_record(&instance).unwrap().is_some(),
+        "a forced fallback must not fabricate graceful completion: a killed server never withdraws its serving record"
+    );
+    assert!(
+        instance.join(".rrflow/stop-request.json").exists(),
+        "a request is never taken back; it names the killed server's record, and the next server discards it"
     );
     assert!(state_root.join("instances/project-a/.rrflow/rrd").is_dir());
 }
@@ -687,11 +690,9 @@ fn controller_process_kill_matrix_converges_across_start_and_stop_effect_gaps() 
     );
     assert!(!process_exists(started_pid));
     assert_eq!(process_pid(&state_root), None);
-    assert!(
-        state_root
-            .join("instances/project-a/SHUTDOWN.COMPLETE")
-            .is_file(),
-        "effect-gap stop must complete through the graceful protocol"
+    assert_stopped_gracefully(
+        &state_root,
+        "effect-gap stop must complete through the graceful protocol",
     );
     assert!(state_root.join("instances/project-a/.rrflow/rrd").is_dir());
     run_controller_and_kill(&database, &state_root, &catalog_path, &marker, 130, false);
