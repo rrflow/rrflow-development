@@ -1,4 +1,4 @@
-# POAM-088 — installed process suites sometimes fail on a busy Windows host
+# POAM-088 — managed instances have fixed driver timings and are not registered or stoppable in every form
 
 **Status:** active parent-owned POA&M detail
 **Coordinate:** `rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-088`
@@ -9,50 +9,54 @@ priority or closure status.
 
 ## Observed deficiency
 
-Observed on 2026-11-19 on one Windows 11 host that other work was using at the
-same time, while running the gates of
-[the instance registry and stop package](../../evidence/change-journals/gate-d/instance-registry-and-stop-20261118.md).
-The causes are not known.
+Read on 2026-11-19 in the working tree of
+[the instance registry and stop package](../../evidence/change-journals/gate-d/instance-registry-and-stop-20261118.md),
+which gave `rrflow serve` and the internal `rrd-server` one
+[stop request](../../reference/deployment/installed-lifecycle.md#stop-request)
+and removed `rrd-server`'s own shutdown files and its literal 10 ms poll. What
+that package left:
 
-- **`installed_crash` loses the first request to a server it just started.**
-  `cargo test -p rrflow-cli --features crash-test --test installed_crash`
-  failed in 3 of 65 runs, each time in a different test
-  (`fresh_installed_publication_and_reclamation`,
-  `capacity::cases::installed_capacity_wal_payload_is_observed_before_domain_commit`,
-  `existing_installed_domain_boundaries`) and each time with
-  `Transport("client error (SendRequest)")` on a request made right after
-  `serve` announced or resumed. Each failing run took 36 to 59 seconds; a
-  passing run takes about 23. Forty-eight of those runs compared the suite
-  with and without that package's additions to a starting server (the
-  registry write and the stop-request look): 24 of 24 passed either way, so
-  the comparison does not say whether the additions matter.
-- **`rrflow ready` allows five seconds a request.** `ClientConfig::default`
-  sets `request_timeout` to 5 s with two attempts, and `rrflow ready` uses it
-  for a discovery that returns a 9.6 MB OpenAPI document. In
-  `installed_lifecycle` runs that took 43 to 61 seconds instead of 28, `ready`
-  failed with `RRD request timed out` in tests that had passed minutes before.
-- **One engine test failed once.**
-  `engine::tests::reasoning_budget::worker::source_bound::assessment::dispatch_guards::selected_source_change_during_assessment_dispatch_withholds_output_without_retry`
-  failed in 1 of 4 full `cargo test -p rrd-engine --lib` runs (it expected
-  `TaskAttemptInvalidated(InputsChanged)`) and passed 10 of 10 times alone.
+- **Fixed timings in the local process driver.**
+  `crates/authority/rrd-engram/src/local_process` waits on four literal 10 ms
+  sleeps (`driver.rs` identity discovery, `lifecycle.rs` readiness and owned
+  exit, `preparation.rs`) and four fixed bounds in `deployment.rs`
+  (`PROCESS_DISCOVERY_TIMEOUT` 3 s, `PROCESS_START_STABILITY` 250 ms,
+  `PROCESS_PREPARATION_TIMEOUT` 10 s, `PROCESS_STOP_TIMEOUT` 5 s). None has a
+  stated reason or an override. Only the readiness and graceful-stop timeouts
+  come from the deployment catalogue.
+- **A managed instance is registered only when told where.** The driver starts
+  `rrd-server` with an empty environment, so the server finds no per-user
+  state directory and reports the
+  [instance registry](../../reference/deployment/installed-lifecycle.md#instance-registry)
+  as not updated. `rrd-deployment-catalog` passes no `--instance-registry`.
+  An instance the driver starts is therefore not listed by `rrflow instances`
+  unless the catalogue author adds the flag by hand.
+- **A listener that is not plain loopback HTTP cannot be asked to stop.**
+  A serving record names only `http://` on a loopback address. `rrd-server`
+  with mutual TLS or a non-loopback bind publishes none, so no stop request
+  reaches it; the driver's authenticated kill is what remains.
+- **Nothing removes a registry entry.** An entry whose project folder is gone
+  is reported as missing for ever.
 
 ## Impact
 
-A gate run on a shared host can fail for a change that is correct, and a
-passing run does not show that a just-started server always answers its first
-request. If the first item is a real window between the announcement and the
-first accepted request, a client that connects as soon as `serve` announces
-can lose a request.
+A managed instance can be slower to start or stop than its host needs with no
+way to tune it. A client that finds instances through the registry does not
+see one the driver started. A TLS-served managed instance is always killed,
+never stopped cleanly. A user's registry grows with every project they remove.
 
 ## Owning gates
 
-D-01 owns the served lifecycle and its readiness proof.
+D-01 owns the one primary command tree and its lifecycle. D-11 owns removing a
+registry entry with the rest of an installation.
 
 Roadmap owner: [Gate D](../../roadmap/rrflow-1.0/gate-d.md).
 
 ## Closure evidence
 
-Closed when the cause of each of the three is recorded with a test that fails
-on it, and either fixed or shown to be a bound the test should not assume on a
-busy host; and `rrflow ready` takes its request timeout from a named default
-with a documented override.
+Closed when every wait in the local process driver is a named default with a
+documented override or a stated protocol invariant; the generated deployment
+catalogue registers a managed instance and a test lists it through
+`rrflow instances`; a managed instance served with mutual TLS stops cleanly
+through a request its supervisor is authorized to make; and uninstall removes
+the registry entry.

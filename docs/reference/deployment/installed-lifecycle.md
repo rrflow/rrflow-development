@@ -986,7 +986,7 @@ Connectome can find them.
   the rest of an installation. An instance the local process driver starts is
   registered only when its deployment names a registry, because the driver
   starts it with an empty environment
-  ([POAM-087](../../poam/rrflow-1.0-alpha/poam-087.md)).
+  ([POAM-088](../../poam/rrflow-1.0-alpha/poam-088.md)).
 
 ## Verification levels
 

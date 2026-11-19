@@ -1,62 +1,66 @@
-# POAM-087 — managed instances have fixed driver timings and are not registered or stoppable in every form
+# POAM-087 — storage maintenance stalls every search, and searches cause it
 
 **Status:** active parent-owned POA&M detail
 **Coordinate:** `rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-087`
 **Owner:** [RRFlow 1.0 alpha POA&M](../rrflow-1.0-alpha.md)
 
-This detail is governed by the parent ledger; it cannot independently change
-priority or closure status.
+This detail record is part of the canonical RRFlow 1.0 alpha POA&M. The parent
+ledger owns priority and lifecycle status; this file cannot change either
+independently.
 
 ## Observed deficiency
 
-Read on 2026-11-19 in the working tree of
-[the instance registry and stop package](../../evidence/change-journals/gate-d/instance-registry-and-stop-20261118.md),
-which gave `rrflow serve` and the internal `rrd-server` one
-[stop request](../../reference/deployment/installed-lifecycle.md#stop-request)
-and removed `rrd-server`'s own shutdown files and its literal 10 ms poll. What
-that package left:
+Found by the [comparison lab](../../../eval/lab/README.md) on `clyffy-01`, on an
+engine built from `d0e6c7f26e4d`, a tree holding unlanded search packages, on
+default limits with an HNSW index.
 
-- **Fixed timings in the local process driver.**
-  `crates/authority/rrd-engram/src/local_process` waits on four literal 10 ms
-  sleeps (`driver.rs` identity discovery, `lifecycle.rs` readiness and owned
-  exit, `preparation.rs`) and four fixed bounds in `deployment.rs`
-  (`PROCESS_DISCOVERY_TIMEOUT` 3 s, `PROCESS_START_STABILITY` 250 ms,
-  `PROCESS_PREPARATION_TIMEOUT` 10 s, `PROCESS_STOP_TIMEOUT` 5 s). None has a
-  stated reason or an override. Only the readiness and graceful-stop timeouts
-  come from the deployment catalogue.
-- **A managed instance is registered only when told where.** The driver starts
-  `rrd-server` with an empty environment, so the server finds no per-user
-  state directory and reports the
-  [instance registry](../../reference/deployment/installed-lifecycle.md#instance-registry)
-  as not updated. `rrd-deployment-catalog` passes no `--instance-registry`.
-  An instance the driver starts is therefore not listed by `rrflow instances`
-  unless the catalogue author adds the flag by hand.
-- **A listener that is not plain loopback HTTP cannot be asked to stop.**
-  A serving record names only `http://` on a loopback address. `rrd-server`
-  with mutual TLS or a non-loopback bind publishes none, so no stop request
-  reaches it; the driver's authenticated kill is what remains.
-- **Nothing removes a registry entry.** An entry whose project folder is gone
-  is reported as missing for ever.
+Searches that take under 12 ms are stalled for 400 to 960 ms, several times in ten
+seconds, on a run that only searches. On COCO at ef-64 with one client, the median
+is 7.87 ms, which implies about 127 searches per second, and the run achieved 92.5.
+The maximum was 711 ms where p99 was 11.36 ms, so the lab's reported percentiles do
+not show it.
+
+`RrflowKvStore` holds its database lock exclusively across a storage flush and a
+compaction step, in `try_maintenance_step` and in a soft write-triggered flush, so
+no read proceeds during either.
+
+Searches cause the work. Each search commits two audit records, and the engine's
+`write_bytes` grew by about 21 KB per search on a run that only searches. That
+figure counts whole pages, so it overstates the logical bytes.
+
+Moving the flush moved the stall. On `vector-small`, raising `wal_flush_target_bytes`
+from 64 MiB to 4 GiB took plain ef-64 with one client from 115.8 to 164.1 searches
+per second and its maximum from 623.6 ms to 9.9 ms. The stall then arrived later, at
+ef-128, with a matching burst of writes. That is one run of each.
+
+## Provenance
+
+Written on 2026-11-08 as POAM-056 in pull request 286, which was closed without
+merging. Its journal reached `main` and its entry did not, and the number went to
+another deficiency. Restored on 2026-11-19 with the text unchanged above. The
+measurements are the 2026-11-08 ones and were not repeated. The cause was read
+again on `main` `3fb03316a`: `try_maintenance_step` in
+`crates/persistence/rrd-store/src/rrflow_kv/store.rs` still takes the database's
+write lock for the whole maintenance step.
 
 ## Impact
 
-A managed instance can be slower to start or stop than its host needs with no
-way to tune it. A client that finds instances through the registry does not
-see one the driver started. A TLS-served managed instance is always killed,
-never stopped cleanly. A user's registry grows with every project they remove.
+Every caller of an engine under read load waits up to about a second, several times
+a minute, with nothing else running. A workload that writes would stall its readers
+the same way. It also makes single runs hard to compare: a stall that lands in one
+run's case and not another's reads as a throughput difference, which was once
+misread here as the cost of a smaller page cache.
 
 ## Owning gates
 
-D-01 owns the one primary command tree and its lifecycle. D-11 owns removing a
-registry entry with the rest of an installation.
+E-04 and OBJ-13 (vector search within bounded resources) and OBJ-10 (reproducible
+competitive evidence).
 
-Roadmap owner: [Gate D](../../roadmap/rrflow-1.0/gate-d.md).
+Roadmap owner: [Gate E](../../roadmap/rrflow-1.0/gate-e.md).
 
 ## Closure evidence
 
-Closed when every wait in the local process driver is a named default with a
-documented override or a stated protocol invariant; the generated deployment
-catalogue registers a managed instance and a test lists it through
-`rrflow instances`; a managed instance served with mutual TLS stops cleanly
-through a request its supervisor is authorized to make; and uninstall removes
-the registry entry.
+A test shows that a read proceeds while a flush and a compaction step run, and that
+a crash at each new boundary recovers as today's flush does. On `clyffy-01`, a run
+of the same test shows its maximum within a stated multiple of its p99 across a
+flush, and the lab reports a case's maximum beside its percentiles.
