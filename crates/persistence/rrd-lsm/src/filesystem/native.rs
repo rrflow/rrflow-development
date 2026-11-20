@@ -246,34 +246,67 @@ fn rename_windows(
     to_name: &Path,
     replace: bool,
 ) -> io::Result<()> {
+    use cap::OpenOptionsExt;
+    use cap_fs_ext::OpenOptionsFollowExt;
+    use std::mem::{offset_of, size_of};
     use std::os::windows::ffi::OsStrExt;
+    use std::os::windows::io::AsRawHandle;
     use windows_sys::Win32::Storage::FileSystem::{
-        MoveFileExW, MOVEFILE_REPLACE_EXISTING, MOVEFILE_WRITE_THROUGH,
+        FileRenameInfoEx, SetFileInformationByHandle, DELETE, FILE_FLAG_BACKUP_SEMANTICS,
+        FILE_FLAG_OPEN_REPARSE_POINT, FILE_FLAG_WRITE_THROUGH, FILE_RENAME_INFO,
     };
-    // cap-primitives' directory handles omit FILE_SHARE_DELETE, retaining both
-    // parents against replacement while preserving write-through publication.
-    let from: Vec<_> = final_path(from)?
-        .join(from_name)
-        .as_os_str()
-        .encode_wide()
-        .chain(Some(0))
-        .collect();
-    let to: Vec<_> = final_path(to)?
+    // Both parent handles and their ancestors remain pinned by the caller.
+    // Open the source without following a reparse point; rename that same object
+    // to a name derived from the retained target directory.
+    let mut options = cap::OpenOptions::new();
+    options
+        .access_mode(DELETE)
+        .follow(cap::FollowSymlinks::No)
+        .custom_flags(
+            FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_WRITE_THROUGH,
+        );
+    let source = cap::open(from, from_name, &options)?;
+    validate_object(&source)?;
+    let name: Vec<_> = final_path(to)?
         .join(to_name)
         .as_os_str()
         .encode_wide()
-        .chain(Some(0))
         .collect();
+    let name_bytes = name
+        .len()
+        .checked_mul(2)
+        .ok_or_else(|| denied("rename name too long"))?;
+    let size = size_of::<FILE_RENAME_INFO>()
+        .checked_add(name_bytes)
+        .ok_or_else(|| denied("rename buffer too large"))?;
+    let size_u32 = u32::try_from(size).map_err(|_| denied("rename buffer too large"))?;
+    // usize storage supplies the native structure's alignment and enough space
+    // for its trailing UTF-16 name. The extra zeroed tail also terminates it.
+    let mut storage = vec![0usize; size.div_ceil(size_of::<usize>())];
+    let information = storage.as_mut_ptr().cast::<FILE_RENAME_INFO>();
+    // FILE_RENAME_REPLACE_IF_EXISTS | FILE_RENAME_POSIX_SEMANTICS. POSIX
+    // replacement preserves open old readers and makes new opens see the new
+    // object. Unsupported filesystems fail here; there is no delete/retry path.
+    unsafe {
+        (*information).Anonymous.Flags = if replace { 0x1 | 0x2 } else { 0 };
+        (*information).RootDirectory = std::ptr::null_mut();
+        (*information).FileNameLength = name_bytes as u32;
+        std::ptr::copy_nonoverlapping(
+            name.as_ptr(),
+            storage
+                .as_mut_ptr()
+                .cast::<u8>()
+                .add(offset_of!(FILE_RENAME_INFO, FileName))
+                .cast::<u16>(),
+            name.len(),
+        );
+    }
     if unsafe {
-        MoveFileExW(
-            from.as_ptr(),
-            to.as_ptr(),
-            MOVEFILE_WRITE_THROUGH
-                | if replace {
-                    MOVEFILE_REPLACE_EXISTING
-                } else {
-                    0
-                },
+        SetFileInformationByHandle(
+            source.as_raw_handle(),
+            FileRenameInfoEx,
+            information.cast(),
+            size_u32,
         )
     } == 0
     {

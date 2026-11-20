@@ -1,6 +1,6 @@
 # Windows atomic publication under concurrent readers
 
-**Status:** active package evidence; reproduced engine failure, native repair pending
+**Status:** active package evidence; native repair and local acceptance passed, candidate gate pending
 
 **Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/gate-d/windows-atomic-publication-20261120`
 
@@ -52,3 +52,70 @@ integration, run full engine suite and installed source-read controller driver
 on #440. CI and cross-platform qualification are pending. Use four Cargo jobs
 and the same checkout target `D:/.usr/Temp/rrflow-selective-recall-audit-20261120/target`.
 No new resource process or container is needed. No roadmap completion change.
+
+## Native cause and replacement evidence
+
+Repair PR: [#442](https://github.com/rrflow/rrflow-development/pull/442).
+The new held-reader test failed deterministically before production edits:
+`cargo test --locked -p rrd-lsm --test filesystem replacement_keeps_open_readers_valid_and_publishes_new_bytes`
+returned error 5 at `pending.rename_to(&published)`. This isolates the replacing
+MoveFileEx operation; an ordinary anchored reader is enough to reproduce it.
+
+The canonical Windows rename now opens the source object with DELETE access,
+rejects reparse/nondisk objects, retains the caller's pinned parent/ancestor
+handles, and calls `SetFileInformationByHandle(FileRenameInfoEx)` once.
+Replacing operations set REPLACE_IF_EXISTS and POSIX_SEMANTICS; exclusive
+operations set neither. No legacy retry or delete-first implementation remains.
+The source uses WRITE_THROUGH; existing caller file sync and directory-sync
+boundaries remain in place. This is not a new physical-power-loss claim.
+The variable-length UTF-16 buffer uses native pointer alignment, checked sizes
+and a zeroed terminator. The target path derives from its held directory handle.
+
+Primary references: Microsoft
+[FILE_RENAME_INFORMATION](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_rename_information),
+[FILE_RENAME_INFO](https://learn.microsoft.com/en-us/windows/win32/api/winbase/ns-winbase-file_rename_info)
+and [SetFileInformationByHandle](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-setfileinformationbyhandle).
+No upstream source is copied. Native unsupported semantics remain an error.
+
+Intermediate failures: compilation required the existing cap-fs-ext follow
+trait import. A relative-name/non-null RootDirectory request returned error 87
+on this Windows host. The implemented Win32 form uses a null RootDirectory
+and the full name resolved from the retained target directory, preserving the
+existing pinned-parent guarantee; it passes without a retry or fallback.
+The first filesystem target after repair passed 13 tests, including the new
+held-reader oracle and existing containment checks. Added directory-publication
+and held exclusive-winner tests will verify the shared primitive's other users.
+
+Production changed only `crates/persistence/rrd-lsm/src/filesystem/native.rs`;
+regressions live in `tests/filesystem.rs`. The linked journal and gate index
+are the only evidence changes. Engine serving code and its oracle are untouched.
+
+## Local acceptance and review
+
+- `cargo test --locked -p rrd-lsm`: 273 passed, 0 failed, 3 existing ignored,
+  across 37 targets; log `publication-lsm-tests.log` in the session scratchpad.
+  This run includes the first held-reader regression; the two additional
+  publication tests were run in the final target below.
+- Final `cargo test --locked -p rrd-lsm --test filesystem`: 15 passed, 0 failed,
+  including retained old readers, directory publication, an exclusive winner
+  held without delete sharing, ancestor/junction containment and cleanup.
+- `cargo test --locked -p rrd-engine --lib engine::tests::serving::`: 15 passed,
+  0 failed, 519 filtered, in 1.70 s. The original concurrent serving test passed
+  unchanged. Log `publication-engine-tests.log`.
+- Documentation, code-shape and generated execution inventory checks passed.
+  Formatting and whitespace checks passed. Full engine and installed driver
+  will run on the integrated controller candidate; no pass is claimed here.
+
+Complete changed-function and regression diff reviewed after tests. Review
+covers the unsafe buffer's alignment, size arithmetic, UTF-16 copy and Win32
+class/flags; held-directory lifetime; exclusive publication failure semantics;
+and all three added tests. Existing callers were searched and identified,
+including backup directory publication, which motivated its regression.
+No foreign process, container, worktree, stash or archive was created or removed.
+Checklist: bound D-01 prerequisite, traceability, primary research, native failure
+oracle, replacement evidence, preserved denials, scoped review, and actual local
+results recorded. CI/merge evidence remains pending; no roadmap status changed.
+Next: required candidate gate/queue, then integrate into #440 and rerun its
+full engine and installed journey checks. Alarm #441 stays open until integration.
+
+`cargo clippy --locked -p rrd-lsm --all-targets -- -D warnings` passed.
