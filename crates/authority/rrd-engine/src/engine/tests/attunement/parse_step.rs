@@ -180,6 +180,37 @@ fn a_file_limit_spreads_parse_over_steps_without_a_checkpoint_until_done() {
     assert!(symbols(&engine, &session, BASE + 5_500).is_superset(&expected()));
 }
 
+/// The same Step asked again under the same key is answered from its receipt:
+/// it returns what the first answer said and parses, commits and advances
+/// nothing, so a caller that lost the answer can ask again safely.
+#[test]
+fn a_parse_step_replay_returns_its_receipt_and_commits_nothing() {
+    let (_installed, engine, session, job) = at_parse(1);
+    let command = step(&job);
+    let first = call(&engine, &session, &command, "parse-first", BASE + 4_000).unwrap();
+    assert_eq!(first.status.job.current_phase, Some(Phase::Parse));
+    let parsed = symbols(&engine, &session, BASE + 4_500);
+    let states = parse_states(&engine, &session, BASE + 4_500);
+    assert_eq!(parsed.len(), 1, "one file was parsed and one is waiting");
+
+    let replayed = call(&engine, &session, &command, "parse-first", BASE + 4_600).unwrap();
+    assert_eq!(replayed.status.job, first.status.job);
+    assert_eq!(symbols(&engine, &session, BASE + 4_700), parsed);
+    assert_eq!(parse_states(&engine, &session, BASE + 4_700), states);
+
+    // The waiting file is still parsed by the next Step, exactly once.
+    let second = call(
+        &engine,
+        &session,
+        &step(&first.status.job),
+        "parse-second",
+        BASE + 5_000,
+    )
+    .unwrap();
+    assert_eq!(second.status.job.current_phase, Some(Phase::Verify));
+    assert!(symbols(&engine, &session, BASE + 5_500).is_superset(&expected()));
+}
+
 /// Every `source-parse` state's `(path, status)` known now.
 fn parse_states(engine: &RrdEngine, session: &SessionLease, at: u64) -> BTreeSet<(String, String)> {
     let result = engine
