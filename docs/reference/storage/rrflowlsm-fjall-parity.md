@@ -165,7 +165,7 @@ Causes of the read loss. The first two were confirmed by a test and fixed; that 
 Each line is one package with its own test, and each is measured with the comparison before and after.
 
 1. The read path (no format change). Done: seek within the group and stop at the range end. Done: a constant-time cache hit. Open: the read and memory losses at one million claims, to be profiled; and one lock taken once per page lookup, which matters once readers run concurrently.
-2. The small read and write operations. Done on 2026-11-20 ([journal](../../evidence/change-journals/gate-c/rrflowlsm-small-operations-20261120.md)): rows 22, 26, 27 and 29, the first key of 33 and is-empty of 34, in `rrd-lsm`. Open: rows 9, 77 and 81, and offering the new operations through the `rrd-store` transaction port.
+2. The small read and write operations. Done on 2026-11-20 ([journal](../../evidence/change-journals/gate-c/rrflowlsm-small-operations-20261120.md)): rows 22, 26, 27 and 29, the first key of 33 and is-empty of 34, in `rrd-lsm`. Open: rows 9, 77 and 81. Contains, size-of, reverse scan and take are offered through the `rrd-store` transaction port and compared with Fjall line for line since 2026-11-20 ([journal](../../evidence/change-journals/gate-c/store-port-fjall-operations-20261120.md)).
 3. Row 31 reverse iteration: done on 2026-11-20 ([journal](../../evidence/change-journals/gate-c/rrflowlsm-reverse-iteration-20261120.md)), with the last key of row 33. Open: rows 32 and 35 and a length for row 34.
 4. Rows 41, 42 and 43: deletes.
 5. One segment-format revision: rows 57, 59, 61, 62, 63, 66 and 67.

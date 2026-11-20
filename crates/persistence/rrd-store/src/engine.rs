@@ -319,6 +319,27 @@ impl StorageTransaction for RrflowMxTransaction<'_> {
         Ok(visible.into_iter().take(limit).collect())
     }
 
+    fn contains_key(&self, key: &[u8]) -> Result<bool> {
+        Ok(self.get(key)?.is_some())
+    }
+
+    fn size_of(&self, key: &[u8]) -> Result<Option<u64>> {
+        Ok(self.get(key)?.map(|value| value.len() as u64))
+    }
+
+    fn scan_reverse(
+        &self,
+        start: &[u8],
+        end: &[u8],
+        limit: usize,
+    ) -> Result<Vec<(Vec<u8>, Vec<u8>)>> {
+        // The reference answer: every visible row of the range, read backward.
+        let mut rows = self.scan(start, end, usize::MAX)?;
+        rows.reverse();
+        rows.truncate(limit);
+        Ok(rows)
+    }
+
     fn put(&mut self, key: Vec<u8>, value: Vec<u8>) -> Result<()> {
         self.writes.put(key, value)
     }

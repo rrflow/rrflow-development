@@ -19,6 +19,33 @@ impl StorageTransaction for RrflowKvTransaction<'_> {
             .map_err(Error::from)
     }
 
+    fn contains_key(&self, key: &[u8]) -> Result<bool> {
+        let database = self.store.read_lock()?;
+        self.transaction
+            .contains_key(&database, key)
+            .map_err(Error::from)
+    }
+
+    fn size_of(&self, key: &[u8]) -> Result<Option<u64>> {
+        let database = self.store.read_lock()?;
+        self.transaction
+            .size_of(&database, key)
+            .map_err(Error::from)
+    }
+
+    fn scan_reverse(
+        &self,
+        start: &[u8],
+        end: &[u8],
+        limit: usize,
+    ) -> Result<Vec<(Vec<u8>, Vec<u8>)>> {
+        crate::transaction::validate_range(start, end, limit)?;
+        let database = self.store.read_lock()?;
+        self.transaction
+            .scan_reverse(&database, start, end, limit)
+            .map_err(Error::from)
+    }
+
     fn put(&mut self, key: Vec<u8>, value: Vec<u8>) -> Result<()> {
         self.transaction.put(key, value).map_err(Error::from)
     }
