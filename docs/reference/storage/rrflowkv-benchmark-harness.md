@@ -20,7 +20,7 @@ them; they are not a compatibility requirement or a current acceptance oracle.
 | Persistent model oracle | [`rrflow_kv_model_soak.rs`](../../../crates/persistence/rrd-store/tests/rrflow_kv_model_soak.rs) | Compares randomized rrflowKV mutations, snapshots, compaction, and reopen behavior with an independent in-memory model. |
 | Retained historical storage provenance | [`benchmark_evidence.rs`](../../../crates/persistence/rrd-store/tests/benchmark_evidence.rs) | Parses the 35 retained rrflowKV/Fjall-era storage artifacts, requires both passing and failing recorded verdicts, and executes no current performance workload. |
 | Cross-engine comparison | [`storage_comparison.rs`](../../../crates/persistence/rrd-store/examples/storage_comparison.rs) over [`fjall_baseline.rs`](../../../crates/persistence/rrd-store/src/fjall_baseline.rs) | Runs the semantic workload through the `StorageEngine` port on rrflowKV and on the Fjall baseline, in isolated child processes, and reports both and their ratios; needs the `fjall-baseline` feature |
-| Scheduled diagnostics | [`rrd-lsm-benchmark.yml`](../../../.github/workflows/rrd-lsm-benchmark.yml) | Runs the semantic and AI-access matrices on `ubuntu-latest`, enables native write-phase capture for every semantic profile, and uploads raw per-run artifacts. |
+| Scheduled diagnostics | [`rrd-lsm-benchmark.yml`](../../../.github/workflows/rrd-lsm-benchmark.yml) | Runs the semantic and AI-access matrices and the rrflowKV-against-Fjall comparison on `ubuntu-latest`, enables native write-phase capture for every semantic profile, writes every comparison ratio to the job summary, and uploads raw per-run artifacts. |
 
 These programs cover physical and semantic storage only. They do not exercise
 the complete `RrdEngine` authorization, rrflowQL, graph, BM25, vector, RRF,
@@ -336,10 +336,21 @@ second verification and read pass. Each trial of each engine runs in its own
 child process, the reopened reads in a further child, and the engines alternate
 within each round so machine drift reaches both. The document records each
 engine's raw trials and median aggregate and the ratios rrflowKV over Fjall for
-write and read throughput, write and read p95, recovery, peak resident memory and
-reopened and maintained allocated bytes. A measurement that does not exist on the
+write and read throughput, write and read p95, the same read throughput and p95
+after maintenance, recovery, peak resident memory and reopened and maintained
+allocated bytes. The reads after maintenance are the ones served from flushed
+and compacted data; format 1 measured them and left them out of the ratios. A measurement that does not exist on the
 host is `null`, never zero. Both engines commit each batch at authoritative
 durability: rrflowKV with `sync_data` and Fjall with `PersistMode::SyncAll`.
+
+The data directory is the system temporary directory. On a memory-backed one
+the per-batch sync costs nothing and the write figures mean nothing, so set
+`TMPDIR` to a directory on a disk; the workflow job refuses `tmpfs`.
+
+The weekly workflow runs six profiles: the five semantic profiles at seven
+trials and one of 1,000,000 claims at three. The
+[parity work list](rrflowlsm-fjall-parity.md) owns what rrflowLSM still lacks
+against Fjall.
 
 The output states no verdict. One machine and one run do not decide whether an
 engine is acceptable; that is a release-gate decision.

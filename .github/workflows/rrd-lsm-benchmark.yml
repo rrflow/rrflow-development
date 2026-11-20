@@ -109,3 +109,93 @@ jobs:
           name: rrflow-kv-ai-${{ matrix.workload }}-${{ matrix.payload }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: target/rrflow-kv-ai-${{ matrix.workload }}-${{ matrix.payload }}.json
           if-no-files-found: error
+
+  rrflow-kv-vs-fjall:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - profile: small-batch
+            trials: 7
+            operations: 2048
+            batch_size: 16
+            reads: 1024
+            read_width: 16
+          - profile: standard
+            trials: 7
+            operations: 2048
+            batch_size: 64
+            reads: 1024
+            read_width: 32
+          - profile: read-heavy
+            trials: 7
+            operations: 4096
+            batch_size: 64
+            reads: 4096
+            read_width: 64
+          - profile: sustained
+            trials: 7
+            operations: 16384
+            batch_size: 128
+            reads: 2048
+            read_width: 64
+          - profile: extended
+            trials: 7
+            operations: 70000
+            batch_size: 128
+            reads: 2048
+            read_width: 64
+          - profile: large
+            trials: 3
+            operations: 1000000
+            batch_size: 256
+            reads: 8192
+            read_width: 64
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          submodules: recursive
+      - uses: dtolnay/rust-toolchain@d124f86f28ff42855784ff3319f48ac182c248f8 # 1.99.1
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - name: Refuse a memory-backed data directory
+        run: |
+          mkdir -p "$RUNNER_TEMP/comparison"
+          kind="$(stat -f -c %T "$RUNNER_TEMP/comparison")"
+          echo "data directory filesystem: $kind"
+          if [ "$kind" = tmpfs ] || [ "$kind" = ramfs ]; then
+            echo "the comparison needs a disk: sync costs nothing on $kind" >&2
+            exit 1
+          fi
+      - name: Run rrflowKV against the Fjall baseline
+        env:
+          TMPDIR: ${{ runner.temp }}/comparison
+        run: >-
+          cargo run --release --locked -p rrd-store --features fjall-baseline
+          --example storage_comparison --
+          --trials ${{ matrix.trials }} --operations ${{ matrix.operations }}
+          --batch-size ${{ matrix.batch_size }} --reads ${{ matrix.reads }}
+          --read-width ${{ matrix.read_width }}
+          --output target/rrflow-kv-vs-fjall-${{ matrix.profile }}.json > /dev/null
+      - name: Report every ratio, rrflowKV over Fjall
+        if: always()
+        run: |
+          {
+            echo "### ${{ matrix.profile }}: rrflowKV over Fjall"
+            echo
+            echo "Throughput above 1 favours rrflowKV; latency, recovery, memory and bytes below 1 favour it."
+            echo
+            echo "| Measure | Ratio |"
+            echo "|---|---|"
+            jq -r '.ratios | to_entries[] | "| \(.key) | \(if .value == null then "not measured" else (.value * 100 | round / 100 | tostring) end) |"' \
+              target/rrflow-kv-vs-fjall-${{ matrix.profile }}.json
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Retain raw comparison evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: rrflow-kv-vs-fjall-${{ matrix.profile }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: target/rrflow-kv-vs-fjall-${{ matrix.profile }}.json
+          if-no-files-found: error

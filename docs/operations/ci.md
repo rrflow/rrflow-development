@@ -811,8 +811,10 @@ external GitHub setting cannot be proven by this checkout.
 
 `.github/workflows/rrd-lsm-benchmark.yml` is separate from candidate CI. It
 runs manually and weekly on `ubuntu-latest`, uses the same immutable checkout,
-toolchain, and cache action revisions, and uploads raw semantic-storage and
-AI-access results with a pinned artifact action. It is intentionally not a
+toolchain, and cache action revisions, and uploads raw semantic-storage,
+AI-access and rrflowKV-against-Fjall comparison results with a pinned artifact
+action. The comparison job refuses a memory-backed data directory and writes
+every ratio, including the reads after maintenance, to its job summary. It is intentionally not a
 required `ci-gate` dependency.
 
 The [rrflowKV benchmark reference](../reference/storage/rrflowkv-benchmark-harness.md)

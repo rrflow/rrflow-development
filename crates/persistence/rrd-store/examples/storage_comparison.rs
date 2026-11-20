@@ -11,6 +11,10 @@
 //! marks do not leak between trials or engines. One document is emitted: each
 //! backend's raw trials and median aggregate, and the ratios between them.
 //!
+//! The reads are measured twice: after a clean reopen, and again after each
+//! engine's own maintenance. The second pass is the one served from flushed
+//! and compacted data, so its ratios are reported beside the first.
+//!
 //! This is a diagnostic from one machine. It states no verdict: whether either
 //! engine is acceptable is a release-gate decision, not a program output.
 //!
@@ -30,7 +34,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-const FORMAT_VERSION: u16 = 1;
+const FORMAT_VERSION: u16 = 2;
 const BACKENDS: [Backend; 2] = [Backend::RrflowKv, Backend::Fjall];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -140,6 +144,7 @@ struct Trial {
     read_operations_per_second: f64,
     read_latency: Latency,
     maintained_read_operations_per_second: f64,
+    maintained_read_latency: Latency,
     recovery_ns: u64,
     maintained_recovery_ns: u64,
     maintenance_ns: u64,
@@ -178,6 +183,9 @@ struct Ratios {
     read_throughput: Option<f64>,
     write_p95: Option<f64>,
     read_p95: Option<f64>,
+    /// The same reads after each engine's own flush and compaction.
+    maintained_read_throughput: Option<f64>,
+    maintained_read_p95: Option<f64>,
     recovery: Option<f64>,
     peak_rss: Option<f64>,
     reopened_allocated: Option<f64>,
@@ -239,6 +247,14 @@ fn run() -> Result<(), String> {
             read_throughput: ratio(rrflow_kv.read_operations_per_second, fjall.read_operations_per_second),
             write_p95: ratio(rrflow_kv.write_batch_latency.p95_ns as f64, fjall.write_batch_latency.p95_ns as f64),
             read_p95: ratio(rrflow_kv.read_latency.p95_ns as f64, fjall.read_latency.p95_ns as f64),
+            maintained_read_throughput: ratio(
+                rrflow_kv.maintained_read_operations_per_second,
+                fjall.maintained_read_operations_per_second,
+            ),
+            maintained_read_p95: ratio(
+                rrflow_kv.maintained_read_latency.p95_ns as f64,
+                fjall.maintained_read_latency.p95_ns as f64,
+            ),
             recovery: ratio(rrflow_kv.recovery_ns as f64, fjall.recovery_ns as f64),
             peak_rss: ratio_option(rrflow_kv.peak_rss_kib, fjall.peak_rss_kib),
             reopened_allocated: ratio_option(rrflow_kv.reopened.allocated_bytes, fjall.reopened.allocated_bytes),
@@ -420,6 +436,7 @@ fn run_trial(backend: Backend, path: &Path, config: &Config) -> Result<Trial, St
         read_operations_per_second: probe.read_operations_per_second,
         read_latency: probe.read_latency,
         maintained_read_operations_per_second: maintained_probe.read_operations_per_second,
+        maintained_read_latency: maintained_probe.read_latency,
         recovery_ns: probe.recovery_ns,
         maintained_recovery_ns: maintained_probe.recovery_ns,
         maintenance_ns,
@@ -567,6 +584,7 @@ fn aggregate(trials: &[Trial]) -> Trial {
         read_operations_per_second: f64s(|t| t.read_operations_per_second),
         read_latency: latency(|t| &t.read_latency),
         maintained_read_operations_per_second: f64s(|t| t.maintained_read_operations_per_second),
+        maintained_read_latency: latency(|t| &t.maintained_read_latency),
         recovery_ns: u64s(|t| t.recovery_ns),
         maintained_recovery_ns: u64s(|t| t.maintained_recovery_ns),
         maintenance_ns: u64s(|t| t.maintenance_ns),
