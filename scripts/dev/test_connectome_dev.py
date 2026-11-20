@@ -52,6 +52,24 @@ class PathTests(unittest.TestCase):
                 dev.report(built, {"PATH": ""})
 
 
+class LaunchEnvironmentTests(unittest.TestCase):
+    def test_ui_build_cannot_shadow_the_staged_engine_with_a_sidecar(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            engine = fake_engine(Path(temporary) / "engine-target" / "dev-loop")
+            ui_target = Path(temporary) / "connectome-target"
+            environment = dev.connectome_environment(engine, ui_target)
+            self.assertEqual(Path(environment["CARGO_TARGET_DIR"]), ui_target.resolve())
+            self.assertEqual(Path(environment["RRFLOW_DEV_ENGINE"]), engine.resolve())
+            self.assertEqual(dev.engine_on_path(environment), engine.resolve())
+            self.assertNotEqual(ui_target / "debug", engine.parent.parent / "debug")
+
+    def test_shared_build_target_is_rejected_before_launch(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            engine = fake_engine(Path(temporary) / "target" / "dev-loop")
+            with self.assertRaisesRegex(dev.DevLoopError, "must differ"):
+                dev.connectome_environment(engine, engine.parent.parent / ".")
+
+
 class StagingTests(unittest.TestCase):
     def test_staging_gives_a_single_link_copy_of_a_hard_linked_build(self):
         with tempfile.TemporaryDirectory() as temporary:

@@ -6,13 +6,15 @@
 
 The Connectome desktop app owns the lifecycle from there: it installs, serves and
 stops one engine process per project from its Project engines panel, through the
-`rrflow` it finds on PATH. This script only makes that `rrflow` the one built from
+explicit RRFLOW_DEV_ENGINE binding. This script selects the engine built from
 this checkout and says exactly which binary that is. It installs nothing, serves
 nothing and writes nothing into a project.
 
 Cargo hard-links its output into `target/debug/deps`, and the engine refuses to
 install from an executable with more than one link. The launcher therefore
-stages a private copy under `target/dev-loop/` and runs that.
+stages a private copy under `target/dev-loop/` and runs that. Connectome uses a
+separate Cargo target so that the engine build is not mistaken for its sidecar.
+Use `--connectome-target-dir` to reuse an existing application build cache.
 
 A debug rebuild changes the executable's SHA-256. An installation records the
 executable it was applied with, so a project installed by an earlier build refuses
@@ -89,6 +91,15 @@ def path_with_engine_first(engine: Path, current: str) -> str:
     return os.pathsep.join([directory, *rest])
 
 
+def connectome_environment(engine: Path, target: Path) -> dict[str, str]:
+    """Keep the UI executable away from Cargo's engine binary/sidecar name."""
+    target = target.resolve()
+    require(target != engine.parent.parent.resolve(),
+            "Connectome's Cargo target must differ from the engine target")
+    return dict(os.environ, PATH=path_with_engine_first(engine, os.environ.get("PATH", "")),
+                CARGO_TARGET_DIR=str(target), RRFLOW_DEV_ENGINE=str(engine.resolve()))
+
+
 def engine_on_path(environment: dict[str, str]) -> Path | None:
     found = shutil.which("rrflow", path=environment.get("PATH", ""))
     return Path(found).resolve() if found else None
@@ -119,6 +130,7 @@ def report(engine: Path, environment: dict[str, str]) -> dict[str, str]:
         "engine_revision": revision(ROOT),
         "connectome_revision": revision(CONNECTOME),
         "profile": "debug",
+        "connectome_target_directory": environment["CARGO_TARGET_DIR"],
     }
 
 
@@ -126,11 +138,14 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--check", action="store_true", help="build and report; do not open Connectome")
     parser.add_argument("--jobs", type=int, help="cargo build jobs")
+    parser.add_argument("--connectome-target-dir", type=Path,
+                        help="separate UI Cargo target (default: engine target/connectome)")
     args = parser.parse_args(argv)
     try:
         connectome_ready()
         engine = build_engine(jobs=args.jobs)
-        environment = dict(os.environ, PATH=path_with_engine_first(engine, os.environ.get("PATH", "")))
+        ui_target = args.connectome_target_dir or engine.parent.parent / "connectome"
+        environment = connectome_environment(engine, ui_target)
         print(json.dumps(report(engine, environment), indent=2), flush=True)
         if args.check:
             return 0

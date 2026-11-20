@@ -106,3 +106,4 @@
 | POAM-090 | High | Open | [the product writes Parquet, and rrflowCLD has no format of its own](rrflow-1.0-alpha/poam-090.md) |
 | POAM-091 | High | Open | [attunement tests give fixed times that a slow machine overtakes](rrflow-1.0-alpha/poam-091.md) |
 | POAM-092 | High | Closed | [Windows serving-record replacement fails during concurrent reads](rrflow-1.0-alpha/poam-092.md) |
+| POAM-093 | High | Open | [development launcher selects a different engine](rrflow-1.0-alpha/poam-093.md) |
