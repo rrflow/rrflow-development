@@ -59,7 +59,7 @@ Done later the same day. 135 commits from deleted refs were still readable local
 |---|---|---|
 | `retained_estate_*`, `prior_source_cannot_cross_estate_project_or_root`, `inherited_estate_preview_reports_retained_ownership` | 11 | present under the engram name; the preview test is `inherited_engram_preview_retains_the_folder_without_effects` |
 | Three endpoint contract tests (`*_projected_*`, `captured_model_choice_*`) | 3 | present with their later names in `rrd-contract/tests/endpoint_{worker,policy,selection}.rs` |
-| Four Parse executor tests | 4 | three in later form in `engine/tests/attunement/parse_step.rs`; that a Step replay commits nothing has no Parse-specific test, only the general replay path's |
+| Four Parse executor tests | 4 | three in later form in `engine/tests/attunement/parse_step.rs`; that a Step replay commits nothing had no Parse-specific test and has one now, `a_parse_step_replay_returns_its_receipt_and_commits_nothing` ([record](../gate-d/parse-step-replay-test-20261119.md)) |
 | `gitignored_folders_are_neither_walked_counted_nor_hashed` | 1 | `installation/inventory/tests.rs` (`git_ignored_locked_file_is_never_opened` and its neighbours) |
 | Seven macOS capacity tests | 7 | later form in `scripts/ci/test_native_capacity.py`: the template busy-create pair, the exhausted-retry test, and the device ownership tests |
 | `adopted_estate_entries_are_bound_only_when_present` | 1 | removed on purpose with the relocation it tested (see the archive record) |
