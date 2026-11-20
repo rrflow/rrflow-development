@@ -1,6 +1,6 @@
 # rrflowLSM against Fjall, capability by capability
 
-**Status:** active parity work list; 41 present, 22 partial, 21 absent on 2026-11-20. It claims no parity
+**Status:** active parity work list; 43 present, 22 partial, 19 absent on 2026-11-20. It claims no parity
 **Coordinate:** `rrflow://rrflow-instance/data/reference/storage/rrflowlsm-fjall-parity`
 **Owner:** which Fjall capabilities rrflowLSM has, and the order the missing ones are built in; the [roadmap](../../roadmap/rrflow-1.0.md) and [POA&M](../../poam/rrflow-1.0-alpha.md) keep status authority
 
@@ -79,9 +79,9 @@ Paths under "Where" are relative to `crates/persistence/rrd-lsm/src/` unless the
 | # | Fjall capability | State | Where, or what is missing |
 |---|---|---|---|
 | 40 | Tombstones, dropped when nothing is shadowed | has | `database/compaction.rs` |
-| 41 | Weak (single) delete | absent | |
-| 42 | Range delete | absent | In Fjall's tree crate only |
-| 43 | Clear a keyspace | absent | |
+| 41 | Weak (single) delete | absent | Needs a third value state in the memtable and the segment format. In Fjall `3.1.8` the keyspace's hidden `remove_weak` logs a weak tombstone and applies an ordinary one to its tree, so `delete` already reads the same; the missing part is dropping the tombstone with its one put in compaction |
+| 42 | Range delete | has | As Fjall's tree does it: `Database::drop_range` drops the segments wholly inside a range (`database/drop.rs`). It is a physical drop, not a versioned delete; `tests/clear_and_drop_range.rs` |
+| 43 | Clear a keyspace | has | `Database::clear` (`database/drop.rs`), for the one tree; clearing one keyspace waits for physical keyspaces (1) |
 
 ## Compaction and flush
 
@@ -167,7 +167,7 @@ Each line is one package with its own test, and each is measured with the compar
 1. The read path (no format change). Done: seek within the group and stop at the range end. Done: a constant-time cache hit. Open: the read and memory losses at one million claims, to be profiled; and one lock taken once per page lookup, which matters once readers run concurrently.
 2. The small read and write operations. Done on 2026-11-20 ([journal](../../evidence/change-journals/gate-c/rrflowlsm-small-operations-20261120.md)): rows 22, 26, 27 and 29, the first key of 33 and is-empty of 34, in `rrd-lsm`. Open: rows 9, 77 and 81. Contains, size-of, reverse scan and take are offered through the `rrd-store` transaction port and compared with Fjall line for line since 2026-11-20 ([journal](../../evidence/change-journals/gate-c/store-port-fjall-operations-20261120.md)).
 3. Row 31 reverse iteration: done on 2026-11-20 ([journal](../../evidence/change-journals/gate-c/rrflowlsm-reverse-iteration-20261120.md)), with the last key of row 33. Open: rows 32 and 35 and a length for row 34.
-4. Rows 41, 42 and 43: deletes.
+4. Deletes. Done on 2026-11-20 ([journal](../../evidence/change-journals/gate-c/rrflowlsm-clear-and-drop-range-20261120.md)): rows 42 and 43, as manifest operations with no format change. Open: row 41, with the segment-format revision.
 5. One segment-format revision: rows 57, 59, 61, 62, 63, 66 and 67.
 6. Row 48, then rows 45, 47, 49, 50 and 51: compaction.
 7. Row 20 serializable optimistic transactions, and row 37.
