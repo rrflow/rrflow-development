@@ -408,6 +408,29 @@ impl Memtable {
             .collect()
     }
 
+    /// The greatest key in `[start, before)` that has a version visible at
+    /// `read_sequence`, with that version. Tombstones are returned, so a caller
+    /// merging layers cannot resurrect an older value. `before` of `None` is
+    /// unbounded above.
+    pub(crate) fn seek_visible_before(
+        &self,
+        start: &[u8],
+        before: Option<&[u8]>,
+        read_sequence: u64,
+    ) -> Option<(&[u8], &VersionedValue)> {
+        let bounds = (Included(start), before.map_or(Unbounded, Excluded));
+        self.versions
+            .range::<[u8], _>(bounds)
+            .rev()
+            .find_map(|(key, versions)| {
+                versions
+                    .iter()
+                    .rev()
+                    .find(|version| version.sequence <= read_sequence)
+                    .map(|version| (key.as_ref(), version))
+            })
+    }
+
     /// Seeks to the first key after `after` in the requested disjoint ranges
     /// and returns only its greatest version visible at `read_sequence`.
     /// Repeated calls make monotonic B-tree progress without materializing the

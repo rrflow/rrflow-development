@@ -20,6 +20,7 @@ mod open;
 mod page;
 mod page_cache;
 mod read;
+mod reverse;
 mod write;
 
 use decode::*;
@@ -88,6 +89,7 @@ pub use self::physical_policy_lab::{
 };
 
 pub(crate) use self::reader::{ActiveReadViews, ReadView};
+pub(crate) use self::reverse::SegmentReverseCursor;
 
 pub use self::reader::{
     ProjectedReadBatch, ProjectedReadBudget, ProjectedReadEvidence, ProjectedReadOutcome,

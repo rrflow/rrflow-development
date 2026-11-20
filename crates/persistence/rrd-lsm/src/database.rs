@@ -25,7 +25,7 @@ use crate::mutable::MutableCharge;
 
 use crate::segment::{
     new_page_cache_with_limits, next_projected_cache_access, page_cache_stats, ActiveReadViews,
-    ReadView, SelectedVersion, SharedPageCache,
+    ReadView, SegmentReverseCursor, SelectedVersion, SharedPageCache,
 };
 
 use crate::write_diagnostics::{PendingWriteDiagnostics, PhaseClock, WritePathCollector};
