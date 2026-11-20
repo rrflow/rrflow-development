@@ -51,6 +51,23 @@ The journal reached `main` (`gate-e/e-04-flush-stall-record.md`). The POA&M entr
 
 Restored as [POAM-087](../../../poam/rrflow-1.0-alpha/poam-087.md), text unchanged, with a provenance note. The cause was read again on `main`: `try_maintenance_step` in `crates/persistence/rrd-store/src/rrflow_kv/store.rs` still takes the write lock for the whole step. The journal's link and the archive record's row are corrected.
 
+## Deleted refs, read by the tests they added
+
+Done later the same day. 135 commits from deleted refs were still readable locally and are not ancestors of `main`. Every Rust, TypeScript and Python test each one added (against its merge base with `main`) was looked up on `main` by name: 2,156 tests added, 29 distinct names absent. Each of the 29 was then read for what it demands.
+
+| Tests | Count | On `main` |
+|---|---|---|
+| `retained_estate_*`, `prior_source_cannot_cross_estate_project_or_root`, `inherited_estate_preview_reports_retained_ownership` | 11 | present under the engram name; the preview test is `inherited_engram_preview_retains_the_folder_without_effects` |
+| Three endpoint contract tests (`*_projected_*`, `captured_model_choice_*`) | 3 | present with their later names in `rrd-contract/tests/endpoint_{worker,policy,selection}.rs` |
+| Four Parse executor tests | 4 | three in later form in `engine/tests/attunement/parse_step.rs`; that a Step replay commits nothing has no Parse-specific test, only the general replay path's |
+| `gitignored_folders_are_neither_walked_counted_nor_hashed` | 1 | `installation/inventory/tests.rs` (`git_ignored_locked_file_is_never_opened` and its neighbours) |
+| Seven macOS capacity tests | 7 | later form in `scripts/ci/test_native_capacity.py`: the template busy-create pair, the exhausted-retry test, and the device ownership tests |
+| `adopted_estate_entries_are_bound_only_when_present` | 1 | removed on purpose with the relocation it tested (see the archive record) |
+| `zz_kernel_timing` | 1 | a measurement helper, not a behaviour |
+| **Two lab tests of explicit native HNSW parameters** | **2** | **were not met.** `main`'s lab built every RRFlow graph with two constants. Restored in [the lab's native HNSW record](../gate-j/lab-explicit-native-hnsw-20261119.md) |
+
+The first pass of the script over-reported 226 absent names because it mis-matched Python tests; a direct `git grep` of every reported name gave the 29.
+
 ## Changed paths
 
 - `docs/poam/rrflow-1.0-alpha/poam-087.md` (new), `docs/poam/rrflow-1.0-alpha.md` and the generated indexes.
