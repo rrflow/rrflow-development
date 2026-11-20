@@ -1,4 +1,5 @@
 mod compaction;
+mod drop;
 mod failpoints;
 mod flush;
 mod gc;
