@@ -150,21 +150,21 @@ Named checkpoints; snapshot-bundle export and atomic install; multi-get and mult
 
 ## Measured against Fjall
 
-The [comparison](rrflowkv-benchmark-harness.md#fjall-comparison-baseline) on 2026-11-20 is recorded in [its journal](../../evidence/change-journals/gate-c/rrflowkv-vs-fjall-comparison-20261120.md). rrflowKV wrote faster, recovered faster and used fewer bytes. It read slower after maintenance on every profile, and used more peak memory at one million claims.
+The [comparison](rrflowkv-benchmark-harness.md#fjall-comparison-baseline) on 2026-11-20 is recorded in [its journal](../../evidence/change-journals/gate-c/rrflowkv-vs-fjall-comparison-20261120.md). rrflowKV wrote faster, recovered faster and used fewer bytes. It read slower after maintenance on every profile, and used more peak memory at one million claims. After the two read-path changes below, reads after maintenance are level with Fjall up to 70,000 claims (0.98 to 1.03) and 23 percent behind at one million; the memory loss is unchanged.
 
-Causes of the read loss. The first two were confirmed by a test and fixed; that raised reads after maintenance by 3 to 16 percent and left rrflowKV 15 to 30 percent behind Fjall. The rest are read from the code and not confirmed by a profile:
+Causes of the read loss. The first two were confirmed by a test and fixed; that raised reads after maintenance by 3 to 16 percent. A profile then put about 18 percent of the read workload in page-cache work on hits, and the fourth was fixed in part. The rest are read from the code:
 
 1. Fixed on 2026-11-20 ([journal](../../evidence/change-journals/gate-c/rrflowlsm-range-scan-seek-20261120.md)): a range read started at row 0 of the first overlapping row group and walked forward. A 16-row read examined 1,519 versions and now examines 17.
 2. Fixed with it: the scan did not stop at the end of the range.
 3. A row group is 2,048 rows or 64 KiB, against Fjall's 4 KiB blocks.
-4. Each returned row takes three page-cache lookups under one global lock, and each point get about seven (`segment/read.rs`, `segment/page_cache.rs`).
+4. Each returned row takes three page-cache lookups under one global lock, and each point get about seven (`segment/read.rs`, `segment/page_cache.rs`). Fixed in part on 2026-11-20 ([journal](../../evidence/change-journals/gate-c/rrflowlsm-page-cache-hit-20261120.md)): a hit no longer pushes onto a heap or hashes with a keyed hasher. The lookups per row and the one lock remain.
 5. Several heap allocations and two value copies happen per row (`segment/reader/stream.rs`).
 
 ## Order
 
 Each line is one package with its own test, and each is measured with the comparison before and after.
 
-1. The read path (no format change). Done: seek within the group and stop at the range end. Open: hold the pages for the scan and the point gets instead of one cache lookup under the global lock per row; profile first.
+1. The read path (no format change). Done: seek within the group and stop at the range end. Done: a constant-time cache hit. Open: the read and memory losses at one million claims, to be profiled; and one lock taken once per page lookup, which matters once readers run concurrently.
 2. Rows 26, 27, 33, 34, 29, 22, 9, 77 and 81: the small read and write operations.
 3. Row 31 reverse iteration, then rows 32 and 35.
 4. Rows 41, 42 and 43: deletes.
