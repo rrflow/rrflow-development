@@ -123,6 +123,15 @@ code must be integrated at its actual canonical boundary, not replaced with a
 new scaffold. The Windows development bundle does not close these gaps or
 J-04's competitive parity requirement.
 
+The [2026-11-20 branch recovery checks](../../evidence/change-journals/repository/branch-reconciliation-20261120.md)
+prove bounded native two-project data/session separation and deterministic secured
+Kubernetes rendering. They do not prove live pod enforcement or the sharing UI.
+The retained authority catalogue mutation has only test callers in the inspected
+Rust tree; Connectome reads and displays it but does not provision its resources.
+Existing native parser-worker containment is narrower than project-wide resource
+isolation. Preserve those useful behaviors at their canonical owners; H-07/H-10
+still require the governed placement, consent, revocation and stamped-read journey.
+
 ## Current-detail owners
 
 The [knowledge connector contract](../../reference/data/knowledge-connectors.md)
