@@ -46,8 +46,10 @@ pub(super) fn configured() -> EndpointConfiguration {
         limits: allowance.limits,
         candidates: allowance.candidates,
         system_prompt: request["messages"][0]["content"].as_str().unwrap().into(),
-        maximum_output_tokens: request["max_tokens"].as_u64().unwrap().try_into().unwrap(),
-        temperature_milli: (request["temperature"].as_f64().unwrap() * 1000.0) as u16,
+        controller_protocol: rrd_contract::EndpointControllerProtocol::ChatCompletions {
+            maximum_output_tokens: request["max_tokens"].as_u64().unwrap().try_into().unwrap(),
+            temperature_milli: (request["temperature"].as_f64().unwrap() * 1000.0) as u16,
+        },
         lfg: None,
     });
     profile.profile_sha256 = endpoint_profile_sha256(profile).unwrap();

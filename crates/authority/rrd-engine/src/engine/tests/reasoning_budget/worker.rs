@@ -23,6 +23,18 @@ fn admitted_fixture(
     SessionLease,
     EndpointSelectionRequest,
 ) {
+    admitted_fixture_for_protocol(url, false)
+}
+
+fn admitted_fixture_for_protocol(
+    url: &str,
+    system_one: bool,
+) -> (
+    tempfile::TempDir,
+    RrdEngine,
+    SessionLease,
+    EndpointSelectionRequest,
+) {
     let (root, mut engine, lease, task_id, _) = actual_request_fixture();
     configure(&mut engine, 8);
     engine.installed_engram = Some(InstalledEngramIdentity {
@@ -77,9 +89,34 @@ fn admitted_fixture(
         )
         .unwrap();
     let profile = proposal::configured().profile.unwrap();
-    let selector = profile.selection_policy.unwrap();
-    let candidate = &selector.candidates[0];
+    let mut selector = profile.selection_policy.unwrap();
+    if system_one {
+        selector.controller_protocol = rrd_contract::EndpointControllerProtocol::SystemOne {};
+        selector.system_prompt = "Select the endpoint and effort for this task, or abstain.".into();
+        selector.candidates[0].effort = rrd_contract::EndpointEffortSupport::Observed {
+            evidence_sha256: digest::sha256_hex(
+                b"controlled effort support, not provider qualification",
+            ),
+            allow_default: true,
+            values: vec!["high".into()],
+        };
+    }
+    let candidate = selector.candidates[0].clone();
     let mut bindings = profile.bindings;
+    if system_one {
+        let mut excluded = candidate.clone();
+        excluded.binding_id =
+            CanonicalId::new(format!("{}-excluded", candidate.binding_id)).unwrap();
+        let mut binding = bindings
+            .iter()
+            .find(|b| b.id == candidate.binding_id)
+            .unwrap()
+            .clone();
+        binding.id = excluded.binding_id.clone();
+        bindings.push(binding);
+        selector.candidates.push(excluded);
+        selector.limits.maximum_candidates = selector.limits.maximum_candidates.max(2);
+    }
     for binding in &mut bindings {
         binding.endpoint = EndpointLocator::Url { url: url.into() };
         binding.credential = None;
@@ -113,7 +150,11 @@ fn admitted_fixture(
                     response_format: EndpointResponseFormat::Text,
                 },
                 maximum_response_bytes: 16_384,
-                effort_values: Default::default(),
+                effort_values: if system_one {
+                    [("high".into(), "high".into())].into_iter().collect()
+                } else {
+                    Default::default()
+                },
                 allow_default_effort: true,
             }],
         }),
@@ -168,7 +209,31 @@ fn admitted_fixture(
             .task_sha256,
         expected_configuration_sha256: configuration.sha256().unwrap(),
         flight: None,
-        routing: None,
+        routing: system_one.then(|| rrd_contract::EndpointSelectionRoutingInput {
+            context_extraction: rrd_contract::EndpointSelectionContextExtraction {
+                modality: rrd_contract::EndpointSelectionExtractionModality::Text,
+                signals: vec![rrd_contract::EndpointSelectionContextSignal {
+                    name: "test-intent".into(),
+                    value: "exercise narrowed worker selection".into(),
+                    confidence_milli: None,
+                }],
+            },
+            semantic_router: rrd_contract::EndpointSelectionSemanticRouterInput {
+                policy_id: CanonicalId::new("controlled-router").unwrap(),
+                ranked_candidates: selector
+                    .candidates
+                    .iter()
+                    .enumerate()
+                    .map(
+                        |(index, c)| rrd_contract::EndpointSelectionRankedCandidate {
+                            binding_id: c.binding_id.clone(),
+                            score_milli: if index == 0 { 900 } else { 100 },
+                        },
+                    )
+                    .collect(),
+                narrowed_candidate_count: 1,
+            },
+        }),
     };
     (root, engine, lease, request)
 }
@@ -245,11 +310,22 @@ fn budget(engine: &RrdEngine, lease: &SessionLease, task: &CanonicalId) -> TaskR
 
 #[test]
 fn worker_consumes_retained_selection_reserves_before_http_and_reopens_without_replay() {
+    controller_worker_reopens(false);
+}
+
+#[test]
+fn system_one_controls_worker_effort_and_reopens_without_replay() {
+    controller_worker_reopens(true);
+}
+
+fn controller_worker_reopens(system_one: bool) {
     // Two controlled wire exchanges with real engine admission and persistence.
     // These outputs are not from an LLM and must never enter learning records.
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
-    let (root, engine, lease, selection_request) =
-        admitted_fixture(&format!("http://{}/v1", listener.local_addr().unwrap()));
+    let (root, engine, lease, selection_request) = admitted_fixture_for_protocol(
+        &format!("http://{}/v1", listener.local_addr().unwrap()),
+        system_one,
+    );
     let configuration: EndpointConfiguration = engine
         .read_endpoint_configuration(&lease.session_id, &lease.token, 180, "read", "read")
         .unwrap();
@@ -266,12 +342,30 @@ fn worker_consumes_retained_selection_reserves_before_http_and_reopens_without_r
         let server = scope.spawn(|| {
             let mut wires = Vec::new();
             for ordinal in 1..=2 {
-                let (mut socket, body) = read_wire(&listener);
+                let path = if system_one && ordinal == 1 { "/v1/systemone" } else { "/v1/chat/completions" };
+                let (mut socket, body) = read_wire_for(&listener, path);
                 let observed_budget = budget(&engine, &lease, &selection_request.task_id);
                 assert_eq!(observed_budget.reserved_steps, ordinal);
                 assert!(observed_budget.active_attempt.is_some());
                 assert!(observed_budget.execution_may_continue);
                 let wire: serde_json::Value = serde_json::from_slice(&body).unwrap();
+                if system_one && ordinal == 1 {
+                    let options = wire["questions"]["endpoint"]["criteria"].as_object().unwrap();
+                    assert!(options.values().filter(|v| v["kind"] == "select").all(|v| v["binding_id"] == candidate.binding_id.as_str()));
+                    let packet: serde_json::Value = serde_json::from_str(wire["state"].as_str().unwrap()).unwrap();
+                    assert_eq!(packet["allowance"]["candidates"].as_array().unwrap().len(), 1);
+                    assert_eq!(packet["routing"]["semantic_router"]["ranked_candidates"].as_array().unwrap().len(), 2);
+                    let selected = options.iter().find(|(_, v)| v["binding_id"] == candidate.binding_id.as_str() && v["effort"] == "high").unwrap().0;
+                    let probabilities: serde_json::Map<String, serde_json::Value> = options.keys().map(|key| (key.clone(), serde_json::json!(if key == selected { 1.0 } else { 0.0 }))).collect();
+                    let response = serde_json::to_vec(&serde_json::json!({"model":wire["model"],"answers":{"endpoint":{
+                        "type":"choice", "choice":selected, "confidence":1.0, "probabilities":probabilities}},
+                        "usage":{"input_tokens":120,"output_tokens":12}})).unwrap();
+                    write!(socket, "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n", response.len()).unwrap();
+                    socket.write_all(&response).unwrap();
+                    wires.push((body, response));
+                    continue;
+                }
+                if system_one { assert_eq!(wire["reasoning_effort"], "high"); }
                 let content = if ordinal == 1 {
                     serde_json::to_string(&EndpointSelectionChoice::Select {
                         binding_id: candidate.binding_id.clone(),
@@ -296,6 +390,15 @@ fn worker_consumes_retained_selection_reserves_before_http_and_reopens_without_r
                 &FixedClock::at(1_000),
             )
             .unwrap();
+        if system_one {
+            assert_eq!(
+                selection.choice,
+                EndpointSelectionChoice::Select {
+                    binding_id: candidate.binding_id.clone(),
+                    effort: Some("high".into())
+                }
+            );
+        }
         let request = TaskWorkerRequest {
             scope: SCOPE.into(),
             task_id: selection_request.task_id.clone(),
@@ -366,6 +469,21 @@ fn worker_consumes_retained_selection_reserves_before_http_and_reopens_without_r
         })
     ));
     assert_eq!(budget(&engine, &lease, &request.task_id), after);
+    let selection_read = ReadTaskAttempt {
+        scope: SCOPE.into(),
+        task_id: selection_request.task_id.clone(),
+        attempt_id: selection_request.attempt_id.clone(),
+    };
+    let retained_selection = engine
+        .read_task_attempt(
+            &lease.session_id,
+            &lease.token,
+            &selection_read,
+            1_200,
+            "selection-read",
+            "selection-read",
+        )
+        .unwrap();
     drop(engine);
     let mut engine = RrdEngine::open_existing(root.path(), instance(), TOKEN_KEY).unwrap();
     engine.installed_engram = Some(configuration.identity.clone());
@@ -384,6 +502,19 @@ fn worker_consumes_retained_selection_reserves_before_http_and_reopens_without_r
         retained
     );
     assert_eq!(budget(&engine, &lease, &request.task_id), after);
+    assert_eq!(
+        engine
+            .read_task_attempt(
+                &lease.session_id,
+                &lease.token,
+                &selection_read,
+                1_300,
+                "selection-reopen",
+                "selection-reopen"
+            )
+            .unwrap(),
+        retained_selection
+    );
 }
 
 #[test]

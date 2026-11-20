@@ -6,7 +6,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         MAX_ENDPOINT_CONFIGURATION_BYTES, MAX_ROUTE_REQUEST_BYTES,
     };
     use rrd_inference::{
-        endpoint_chat::{EndpointChatRequest, PreparedEndpointChat},
+        endpoint_chat::{EndpointChatRequest, PreparedEndpointController},
         EmbeddingCancellation, EmbeddingExecutionControl, NetworkPolicy,
     };
     use std::{
@@ -36,7 +36,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let allowance: EndpointSelectionAllowance = read(&args[1], MAX_ROUTE_REQUEST_BYTES)?;
     let binding = CanonicalId::new(&args[2])?;
     let request: EndpointChatRequest = read(&args[3], MAX_ROUTE_REQUEST_BYTES)?;
-    let prepared = PreparedEndpointChat::new(&configuration, &binding, &allowance, &request)?;
+    let prepared =
+        PreparedEndpointController::chat(&configuration, &binding, &allowance, &request)?;
     let duration = args[6].parse::<u64>()?;
     if duration == 0 || duration > 3_600_000 {
         return Err("invalid probe timeout".into());

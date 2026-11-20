@@ -8,6 +8,17 @@ use crate::{
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+/// Wire protocol is explicitly selected, never inferred or retried as another.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+pub enum EndpointControllerProtocol {
+    ChatCompletions {
+        maximum_output_tokens: u32,
+        temperature_milli: u16,
+    },
+    SystemOne {},
+}
+
 /// Explicit opt-in for the local LFG advisory protocol. A loopback address is
 /// a transport restriction, not evidence of the analyzer's identity.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -64,9 +75,7 @@ pub struct EndpointSelectionPolicy {
     pub limits: EndpointSelectionLimits,
     pub candidates: Vec<EndpointSelectionCandidate>,
     pub system_prompt: String,
-    pub maximum_output_tokens: u32,
-    /// Exact thousandths avoid floating-point configuration digest ambiguity.
-    pub temperature_milli: u16,
+    pub controller_protocol: EndpointControllerProtocol,
     /// Absent means no analyzer dispatch and preserves prior configuration bytes.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub lfg: Option<LfgAnalysisPolicy>,
@@ -101,9 +110,9 @@ impl EndpointSelectionPolicy {
             controller.class,
             WorkloadClass::LargeModelServing | WorkloadClass::AlwaysWarmSmallModels
         ) || self.system_prompt.trim().is_empty()
-            || self.maximum_output_tokens == 0
-            || self.maximum_output_tokens > 65_536
-            || self.temperature_milli > 2000
+            || matches!(self.controller_protocol,
+                EndpointControllerProtocol::ChatCompletions { maximum_output_tokens, temperature_milli }
+                if maximum_output_tokens == 0 || maximum_output_tokens > 65_536 || temperature_milli > 2000)
         {
             return invalid("invalid selector controller or generation settings");
         }

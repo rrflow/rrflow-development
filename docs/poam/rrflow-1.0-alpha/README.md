@@ -101,4 +101,6 @@
 - [POAM-089 — installed process suites sometimes fail on a busy Windows host](poam-089.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-089`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-089) — active parent-owned POA&M detail
 - [POAM-090 — the product writes Parquet, and rrflowCLD has no format of its own](poam-090.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-090`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-090) — active parent-owned POA&M detail
 - [POAM-091 — attunement tests give fixed times that a slow machine overtakes](poam-091.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-091`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-091) — active parent-owned POA&M detail
+- [POAM-092 — Windows serving-record replacement fails during concurrent reads](poam-092.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-092`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-092) — active parent-owned POA&M detail
+- [POAM-093 — development launcher selects a different engine](poam-093.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-093`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-093) — active parent-owned POA&M detail
 <!-- rrflow:generated-index:end -->

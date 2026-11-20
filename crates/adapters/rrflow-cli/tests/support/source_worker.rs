@@ -307,6 +307,16 @@ pub(super) fn exercise_installed_source_worker(
         rrd_contract::ErrorCode::FailedPrecondition,
     );
     std::fs::remove_file(project.join(".gitignore")).unwrap();
+    // The accepted installed journey now uses the typed controller protocol;
+    // preceding denial probes retain independent chat-controller coverage.
+    let mut profile = loopback_worker_profile(&listener, true, true);
+    profile
+        .selection_policy
+        .as_mut()
+        .unwrap()
+        .controller_protocol = rrd_contract::EndpointControllerProtocol::SystemOne {};
+    let ready_profile =
+        apply_loopback_profile(&runtime, &client, &session, "system-one-ready", profile);
     let ready_selection = endpoint_selection_request(
         &scope,
         &task.task_id,

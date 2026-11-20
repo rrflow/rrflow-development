@@ -208,16 +208,28 @@ with Connectome as the UI for the engine's live state.
 ```text
 python scripts/dev/connectome_dev.py            # build the engine in debug, then open Connectome
 python scripts/dev/connectome_dev.py --check    # build and report; open nothing
+python scripts/dev/connectome_dev.py --connectome-target-dir /absolute/ui-target  # reuse a separate UI build cache
 ```
+
+The launcher gives Connectome a separate Cargo target directory (by default,
+`connectome/` under the engine's target directory) and reports it alongside the
+staged engine path and digest. `--connectome-target-dir` selects an existing UI
+cache. Reusing the engine target is refused: otherwise its `debug/rrflow`
+executable sits beside Connectome and is mistaken for a bundled sidecar. Native
+sidecar digest verification remains enforced; this is not a bypass.
+
 
 The launcher builds `rrflow` from this checkout and stages a private copy under
 `target/dev-loop/`: Cargo hard-links its output, and the engine refuses to
 install from an executable with more than one link. It puts that directory
-first on `PATH`, verifies that `PATH` now resolves to exactly that file, prints the
+first on `PATH` and binds `RRFLOW_DEV_ENGINE` to its absolute path. Cargo may
+prepend its own test-output directory to `PATH`; the debug desktop therefore
+resolves the explicit binding and rejects a conflicting saved executable.
+The launcher verifies its initial `PATH`, prints the
 engine's path, SHA-256, version and both revisions, and starts the desktop app
 (`pnpm tauri:dev`). It installs nothing and serves nothing. Connectome's Project
 engines panel installs, serves and stops one engine process per project through
-that `rrflow`, which the app reports as found on `PATH`.
+that `rrflow`, which the app reports as an explicit executable selection.
 
 Two limits are stated rather than hidden:
 
@@ -226,8 +238,8 @@ Two limits are stated rather than hidden:
   rebuild therefore needs the project installed again. Binding an installation
   to a signer identity instead of one binary's bytes, so that trust survives an
   update, is separate engine work.
-- A sidecar staged beside the application takes precedence over `PATH`. The
-  development loop expects none.
+- Outside the development launcher, a verified sidecar takes precedence over
+  `PATH`. Release builds do not read `RRFLOW_DEV_ENGINE`.
 
 ## Connection and session sequence
 

@@ -28,7 +28,7 @@ mod endpoint_policy;
 mod endpoint_proposal;
 mod endpoint_selection;
 mod task_assessment;
-pub use endpoint_policy::{EndpointSelectionPolicy, LfgAnalysisPolicy};
+pub use endpoint_policy::{EndpointControllerProtocol, EndpointSelectionPolicy, LfgAnalysisPolicy};
 pub use endpoint_proposal::*;
 pub use endpoint_selection::{
     EndpointAbstentionReason, EndpointEffortSupport, EndpointSelectionAllowance,

@@ -158,8 +158,10 @@ fn configuration_policy_reopens(include_worker: bool, include_observation: bool)
         limits: allowance.limits,
         candidates: allowance.candidates,
         system_prompt: request["messages"][0]["content"].as_str().unwrap().into(),
-        maximum_output_tokens: request["max_tokens"].as_u64().unwrap().try_into().unwrap(),
-        temperature_milli: (request["temperature"].as_f64().unwrap() * 1000.0) as u16,
+        controller_protocol: rrd_contract::EndpointControllerProtocol::ChatCompletions {
+            maximum_output_tokens: request["max_tokens"].as_u64().unwrap().try_into().unwrap(),
+            temperature_milli: (request["temperature"].as_f64().unwrap() * 1000.0) as u16,
+        },
         lfg: None,
     };
     let worker_policy = include_worker.then(|| {
@@ -269,7 +271,7 @@ fn configuration_policy_reopens(include_worker: bool, include_observation: bool)
         .selection_policy
         .as_mut()
         .unwrap()
-        .maximum_output_tokens += 1;
+        .controller_protocol = rrd_contract::EndpointControllerProtocol::SystemOne {};
     assert!(apply(&engine, &lease, &tampered).is_err());
     assert_eq!(read(&engine, &lease), before);
     if include_worker {
