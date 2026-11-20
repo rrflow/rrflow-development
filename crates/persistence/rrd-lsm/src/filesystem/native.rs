@@ -253,7 +253,8 @@ fn rename_windows(
     use std::os::windows::io::AsRawHandle;
     use windows_sys::Win32::Storage::FileSystem::{
         FileRenameInfoEx, SetFileInformationByHandle, DELETE, FILE_FLAG_BACKUP_SEMANTICS,
-        FILE_FLAG_OPEN_REPARSE_POINT, FILE_FLAG_WRITE_THROUGH, FILE_RENAME_INFO,
+        FILE_FLAG_OPEN_REPARSE_POINT, FILE_FLAG_WRITE_THROUGH, FILE_RENAME_INFO, FILE_SHARE_READ,
+        FILE_SHARE_WRITE,
     };
     // Both parent handles and their ancestors remain pinned by the caller.
     // Open the source without following a reparse point; rename that same object
@@ -261,6 +262,9 @@ fn rename_windows(
     let mut options = cap::OpenOptions::new();
     options
         .access_mode(DELETE)
+        // Pin this source name against another rename between open and effect.
+        // This handle itself owns DELETE; other handles cannot acquire it.
+        .share_mode(FILE_SHARE_READ | FILE_SHARE_WRITE)
         .follow(cap::FollowSymlinks::No)
         .custom_flags(
             FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_WRITE_THROUGH,

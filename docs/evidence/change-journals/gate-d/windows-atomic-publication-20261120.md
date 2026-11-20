@@ -119,3 +119,29 @@ Next: required candidate gate/queue, then integrate into #440 and rerun its
 full engine and installed journey checks. Alarm #441 stays open until integration.
 
 `cargo clippy --locked -p rrd-lsm --all-targets -- -D warnings` passed.
+
+## Final source-handle containment review
+
+Before landing, review tightened the source open to READ/WRITE sharing only:
+its DELETE access performs the rename while denying another DELETE-capable
+open that could move that same source between validation and the native effect.
+This preserves the name under its pinned parent through the operation.
+The 15 filesystem tests and strict LSM clippy passed again. Full LSM and serving
+checks are rerun for this final revision rather than inheriting the earlier run.
+The first ready event raced the push and named the journal-only SHA; that CI run
+was cancelled and the event corrected. The later pre-containment candidate run
+was also cancelled when the review changed code. Neither cancellation is a pass
+or an erased failing test. Required CI will run on the final pushed revision.
+
+Final source-pinning LSM rerun: 275 passed, 0 failed, 3 existing ignored across
+37 targets (`publication-lsm-final-tests.log`). The broader engine run completed
+590 passed, 0 failed, 12 ignored across 13 targets on pre-pinning revision
+`5de5d09f0fa9f1e284ca82d4f74ba1a60d16e87c`
+(`publication-full-engine-tests.log`); it is not represented as the final
+source-pinning revision's full-suite result. The concurrent final serving build
+hit LNK1104 because that earlier engine test executable was still running.
+After the earlier run exited, the final serving check was rerun sequentially;
+this is an owned build-artifact lock, not a claimed runtime test failure repair.
+The original linker log remains `publication-engine-final-tests.log`.
+
+Final sequential engine serving check: 15 passed, 0 failed, 519 filtered in 1.68 s (`publication-engine-final-recheck.log`). No production changes followed these results.
