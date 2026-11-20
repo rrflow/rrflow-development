@@ -2,6 +2,77 @@ use rrd_lsm::filesystem::{AnchoredPath, OpenOptions, SourceLeaf};
 use std::io::{Read, Write};
 
 #[test]
+fn replacement_keeps_open_readers_valid_and_publishes_new_bytes() {
+    let fixture = tempfile::tempdir().unwrap();
+    let anchor = AnchoredPath::open_root(fixture.path()).unwrap();
+    let published = anchor.join("published");
+    let pending = anchor.join("pending");
+    std::fs::write(fixture.path().join("published"), b"first").unwrap();
+    let mut first_reader = published.open_read().unwrap();
+    std::fs::write(fixture.path().join("pending"), b"second").unwrap();
+    pending.rename_to(&published).unwrap();
+    assert_eq!(published.read().unwrap(), b"second");
+    let mut second_reader = published.open_read().unwrap();
+    std::fs::write(fixture.path().join("pending"), b"third").unwrap();
+    pending.rename_to(&published).unwrap();
+    assert_eq!(published.read().unwrap(), b"third");
+    let mut first = Vec::new();
+    first_reader.read_to_end(&mut first).unwrap();
+    assert_eq!(first, b"first");
+    let mut second = Vec::new();
+    second_reader.read_to_end(&mut second).unwrap();
+    assert_eq!(second, b"second");
+    assert!(!pending.try_exists().unwrap());
+}
+
+#[test]
+fn directory_publication_retains_contents_and_exclusive_winner() {
+    let fixture = tempfile::tempdir().unwrap();
+    let anchor = AnchoredPath::open_root(fixture.path()).unwrap();
+    let pending = anchor.join("pending");
+    pending.create_dir().unwrap();
+    std::fs::write(fixture.path().join("pending/value"), b"retained").unwrap();
+    let published = anchor.join("published");
+    pending.rename_to(&published).unwrap();
+    assert_eq!(published.join("value").read().unwrap(), b"retained");
+    pending.create_dir().unwrap();
+    assert_eq!(
+        pending.rename_new_to(&published).unwrap_err().kind(),
+        std::io::ErrorKind::AlreadyExists
+    );
+    assert!(pending.metadata().unwrap().is_dir());
+    assert_eq!(published.join("value").read().unwrap(), b"retained");
+}
+
+#[cfg(windows)]
+#[test]
+fn exclusive_publication_preserves_a_winner_without_delete_sharing() {
+    use std::os::windows::fs::OpenOptionsExt;
+    use windows_sys::Win32::Storage::FileSystem::{FILE_SHARE_READ, FILE_SHARE_WRITE};
+    let fixture = tempfile::tempdir().unwrap();
+    let anchor = AnchoredPath::open_root(fixture.path()).unwrap();
+    std::fs::write(fixture.path().join("winner"), b"winner").unwrap();
+    std::fs::write(fixture.path().join("pending"), b"candidate").unwrap();
+    let mut held = std::fs::File::options()
+        .read(true)
+        .share_mode(FILE_SHARE_READ | FILE_SHARE_WRITE)
+        .open(fixture.path().join("winner"))
+        .unwrap();
+    assert_eq!(
+        anchor
+            .join("pending")
+            .rename_new_to(&anchor.join("winner"))
+            .unwrap_err()
+            .kind(),
+        std::io::ErrorKind::AlreadyExists
+    );
+    let mut bytes = Vec::new();
+    held.read_to_end(&mut bytes).unwrap();
+    assert_eq!(bytes, b"winner");
+    assert_eq!(anchor.join("pending").read().unwrap(), b"candidate");
+}
+
+#[test]
 fn source_observation_binds_native_object_without_moving_the_read_cursor() {
     use rrd_lsm::filesystem::SourceKind;
     use std::io::Seek;
