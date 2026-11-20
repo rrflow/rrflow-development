@@ -149,6 +149,43 @@ fn worker_binding_settings_and_effort_cannot_invent_selector_support() {
 }
 
 #[test]
+fn worker_adapter_profiles_are_typed_and_extensible() {
+    let (configuration, policy) = proposed();
+    let profile = configuration.profile.unwrap();
+    for adapter in [
+        EndpointWorkerAdapter::SwagChatCompletionsV1,
+        EndpointWorkerAdapter::LfgChatCompletionsV1,
+    ] {
+        let mut named = policy.clone();
+        named.bindings[0].adapter = adapter;
+        named
+            .validate_for(&profile.bindings, profile.selection_policy.as_ref())
+            .unwrap();
+        assert!(named.bindings[0].adapter.is_native_chat_adapter());
+    }
+
+    // An adapter this build does not name is still a valid policy, bound by its two schema
+    // digests; the engine, not the contract, refuses to execute it.
+    let other = |request_schema_sha256: String| EndpointWorkerAdapter::Other {
+        adapter_id: CanonicalId::new("future-adapter").unwrap(),
+        request_schema_sha256,
+        response_schema_sha256: "2".repeat(64),
+    };
+    let mut future = policy.clone();
+    future.bindings[0].adapter = other("1".repeat(64));
+    future
+        .validate_for(&profile.bindings, profile.selection_policy.as_ref())
+        .unwrap();
+    assert!(!future.bindings[0].adapter.is_native_chat_adapter());
+
+    let mut unbound = policy;
+    unbound.bindings[0].adapter = other("not-a-digest".into());
+    assert!(unbound
+        .validate_for(&profile.bindings, profile.selection_policy.as_ref())
+        .is_err());
+}
+
+#[test]
 fn configured_effort_mapping_is_exact_and_default_is_never_inferred() {
     let (_, policy) = proposed();
     let mut binding = policy.bindings[0].clone();
