@@ -199,11 +199,14 @@ pub fn validate_response(request: &WorkerRequest, response: &WorkerResponse) -> 
 pub fn run_worker<R: Read, W: Write>(reader: &mut R, writer: &mut W) -> io::Result<()> {
     loop {
         let mut prefix = [0; 4];
-        match reader.read_exact(&mut prefix) {
+        // EOF is a clean batch shutdown only before the first header byte.
+        // Once a frame has begun, a short prefix is malformed input.
+        match reader.read_exact(&mut prefix[..1]) {
             Ok(()) => {}
             Err(error) if error.kind() == io::ErrorKind::UnexpectedEof => return Ok(()),
             Err(error) => return Err(error),
         }
+        reader.read_exact(&mut prefix[1..])?;
         let header = frame_body(reader, prefix, u64::from(MAX_HEADER_BYTES))?;
         let request: WorkerRequest =
             serde_json::from_slice(&header).map_err(|_| invalid("invalid worker header"))?;

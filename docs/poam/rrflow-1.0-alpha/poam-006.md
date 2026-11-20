@@ -10,6 +10,14 @@ independently.
 
 ## Observed deficiency
 
+The 2026-11-20 historical-stash comparison found a parser framing regression:
+the current batch worker accepted EOF after one to three header bytes as clean
+shutdown. The actual primary executable reproduced exit 0 for those truncated
+inputs. The [bounded repair](../../evidence/change-journals/gate-d/parser-frame-eof-20261120.md)
+distinguishes EOF before a frame from truncation inside it, with protocol and
+actual-process tests. This does not qualify the broader D-04 source workflow or
+change this entry's open status.
+
 At main `2cadd3a9045e3c1a2d9f873fe4215343680ab18b`, both bundled install
 profiles supply the same fixed eleven-phase attunement sequence when no
 proposal is provided. Callers may propose a different ordered sequence, but

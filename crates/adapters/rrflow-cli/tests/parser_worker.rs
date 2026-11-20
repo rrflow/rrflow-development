@@ -81,3 +81,40 @@ fn primary_executable_refuses_bad_digest_and_truncated_input() {
     assert!(output.stdout.is_empty());
     assert!(output.stderr.is_empty());
 }
+
+#[test]
+fn primary_executable_rejects_partial_headers_without_an_extra_response() {
+    let source = b"fn complete() {}";
+    let complete = input(source, &sha256_hex(source));
+    let accepted = run(&complete);
+    assert!(accepted.status.success());
+    assert!(!accepted.stdout.is_empty());
+    for prior_response in [false, true] {
+        for length in 1..4 {
+            let mut bytes = if prior_response {
+                complete.clone()
+            } else {
+                Vec::new()
+            };
+            bytes.extend(vec![0; length]);
+            let output = run(&bytes);
+            assert!(
+                !output.status.success(),
+                "accepted {length}-byte partial header"
+            );
+            assert_eq!(
+                output.stdout,
+                if prior_response {
+                    accepted.stdout.clone()
+                } else {
+                    Vec::new()
+                }
+            );
+            assert!(output.stderr.is_empty());
+        }
+    }
+    let empty = run(&[]);
+    assert!(empty.status.success());
+    assert!(empty.stdout.is_empty());
+    assert!(empty.stderr.is_empty());
+}

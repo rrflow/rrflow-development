@@ -195,3 +195,73 @@ fn one_worker_serves_a_batch_and_exits_cleanly_at_a_frame_boundary() {
     }
     assert!(read_response(&mut responses, &requests[0]).is_err());
 }
+
+#[test]
+fn worker_rejects_partial_headers_at_startup_and_after_a_response() {
+    let source = b"fn complete() {}";
+    let request = request(source);
+    let mut complete = Vec::new();
+    write_request(&mut complete, &request, source).unwrap();
+    let mut accepted = Vec::new();
+    run_worker(&mut Cursor::new(&complete), &mut accepted).unwrap();
+    assert!(!accepted.is_empty());
+    for prior_response in [false, true] {
+        for length in 1..4 {
+            let mut input = if prior_response {
+                complete.clone()
+            } else {
+                Vec::new()
+            };
+            input.extend(vec![0; length]);
+            let mut output = Vec::new();
+            let error = run_worker(&mut Cursor::new(input), &mut output).unwrap_err();
+            assert_eq!(error.kind(), std::io::ErrorKind::UnexpectedEof);
+            assert_eq!(
+                output,
+                if prior_response {
+                    accepted.clone()
+                } else {
+                    Vec::new()
+                }
+            );
+        }
+    }
+}
+
+#[test]
+fn worker_accepts_fragmented_interrupted_input_and_empty_boundary_shutdown() {
+    struct Fragmented {
+        input: Cursor<Vec<u8>>,
+        interrupt: bool,
+    }
+    impl std::io::Read for Fragmented {
+        fn read(&mut self, bytes: &mut [u8]) -> std::io::Result<usize> {
+            self.interrupt = !self.interrupt;
+            if self.interrupt {
+                return Err(std::io::ErrorKind::Interrupted.into());
+            }
+            let length = bytes.len().min(1);
+            std::io::Read::read(&mut self.input, &mut bytes[..length])
+        }
+    }
+    let source = b"fn fragmented() {}";
+    let request = request(source);
+    let mut input = Vec::new();
+    write_request(&mut input, &request, source).unwrap();
+    let mut output = Vec::new();
+    run_worker(
+        &mut Fragmented {
+            input: Cursor::new(input),
+            interrupt: false,
+        },
+        &mut output,
+    )
+    .unwrap();
+    assert!(matches!(
+        read_response(&mut Cursor::new(output), &request).unwrap(),
+        WorkerResponse::Parsed { .. }
+    ));
+    let mut output = Vec::new();
+    run_worker(&mut Cursor::new(Vec::new()), &mut output).unwrap();
+    assert!(output.is_empty());
+}
