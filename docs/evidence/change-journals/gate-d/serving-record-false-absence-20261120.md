@@ -145,5 +145,24 @@ navigation now contains 4,510 edges after the POAM journal link. Log:
 native failure and before/after oracle, existing canonical owner, primary-source
 research, bounded resource decision, preserved refusal/concurrency tests, full
 changed-file/diff review, journal/index and local package checks complete.
-Candidate/merge-queue checks and refresh onto latest main are pending. No
+Candidate/merge-queue checks are pending. No
 broader release, parity, power-loss or hardware qualification advances.
+
+
+## Integration onto current main
+
+An ordinary merge of PR447 main produced
+`9b21fba9aa329b492df1dafaa4a54b744ec9acf5`. Both recorded native/test blobs
+are unchanged. On that combined revision, `cargo test --locked -p rrd-engine
+--lib engine::tests::installation` passed 62 tests, zero failed, one ignored
+in 3.04 seconds; the prefix selects these tests rather than all tests with an
+installation-related name. `cargo test --locked -p rrd-engine --lib
+engine::tests::serving::` passed all 15 in 1.92 seconds. Logs:
+`serving-target-integrated-installation.log` and
+`serving-target-integrated-serving.log`.
+
+The real installed driver `cargo test --locked -p rrflow-cli --test
+installed_lifecycle installed_engine_plans_applies_serves_discovers_authenticates_and_reopens`
+passed one test in 17.84 seconds (`serving-target-integrated-cli.log`). This
+checks installed plan/apply/serve/discover/authenticate/reopen behavior on
+Windows. It does not qualify Connectome's UI or hosted synchronization.
