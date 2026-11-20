@@ -43,3 +43,23 @@ Identify the failing native operation and cause, retain a reproduction, preserve
 atomic old-or-new visibility and containment, then pass the concurrent serving
 test and the owning filesystem/engine suites on Windows. Do not weaken the
 reader assertion or hide the failure with an unbounded retry.
+
+
+## Verified repair
+
+[PR442](https://github.com/rrflow/rrflow-development/pull/442) merged through
+its green candidate and merge-group gates at
+`2aa15d6000b93be383a7fcff0752837e510fb66d` on 2026-11-20.
+The [repair journal](../../evidence/change-journals/gate-d/windows-atomic-publication-20261120.md)
+records a deterministic held-reader reproduction at the replacing native
+operation, the one FileRenameInfoEx implementation, source/ancestor pinning,
+exclusive-winner preservation and directory publication checks.
+Final repair revision `0bf5a213998fce1a40691c1649f581d8aa24a2f5` passed 275 LSM
+tests (3 existing ignored), all 15 serving tests, and subsequently the full
+engine suite: 590 passed, zero failed, 12 existing ignored across 13 targets.
+The final full-suite log is `publication-final-full-engine-tests.log` under
+`D:/.usr/Temp/rrflow-selective-recall-audit-20261120`.
+Candidate [44797439370](https://github.com/rrflow/rrflow-development/actions/runs/44797439370)
+and merge-group [44798441599](https://github.com/rrflow/rrflow-development/actions/runs/44798441599)
+both passed. The original engine oracle and containment assertions were not
+weakened. Parent ledger status: Closed; no broader storage qualification claimed.

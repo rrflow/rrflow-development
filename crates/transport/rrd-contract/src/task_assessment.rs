@@ -54,6 +54,14 @@ impl EndpointAssessmentPolicy {
         let selector = selection.ok_or_else(|| {
             crate::ContractError("assessment requires the configured selector controller".into())
         })?;
+        if !matches!(
+            &selector.controller_protocol,
+            crate::EndpointControllerProtocol::ChatCompletions { .. }
+        ) {
+            return invalid(
+                "source-bound assessments require a chat controller that returns evidence references",
+            );
+        }
         let controller = bindings
             .iter()
             .find(|binding| binding.id == selector.controller_binding_id)

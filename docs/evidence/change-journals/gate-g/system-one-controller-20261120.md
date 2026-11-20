@@ -1,6 +1,6 @@
 # Typed System One controller through engine selection
 
-**Status:** active package evidence; controller and installed driver passed, draft held for a Windows baseline failure
+**Status:** active package evidence; integrated engine and installed driver passed, desktop integration pending
 
 **Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/gate-g/system-one-controller-20261120`
 
@@ -169,3 +169,67 @@ No roadmap completion-status change; POAM-092 is added as Open. Live-provider pe
 native Noul/Score and reasoning-step consumers remain unverified. The immediate
 next action is to repair the serving-record failure, integrate it and finish the candidate gate on this branch;
 the existing Gate G owner retains the broader reasoning integration work.
+
+
+## Dependency integration and remaining-consumer review
+
+The Windows repair [PR442](https://github.com/rrflow/rrflow-development/pull/442)
+merged at `2aa15d6000b93be383a7fcff0752837e510fb66d` after green candidate and
+merge-group CI. The final repair passed 275 LSM tests (3 existing ignored),
+15 serving tests and 590 full engine tests (12 existing ignored); no failures.
+It is integrated into this branch by ordinary merge `84a1305f7`.
+POAM-092 is Closed with its repair and exact native evidence linked.
+
+The final consumer audit read `task_assessment.rs` preparation and reply
+validation and `endpoint_configuration.rs::load_endpoint_configuration`.
+Assessments reuse the selector binding but require chat JSON with cited byte
+ranges. Their policy now rejects a native controller before publication or
+use; configuration is validated again when loaded. The new endpoint-policy
+regression confirms the chat configuration is accepted and the same policy
+with native System One is rejected. Its focused run passed. No citations are
+invented and no alternate protocol is selected. Native assessment and generic
+recipe/branch/context decision consumers remain outside this package.
+
+Additional changed files: `rrd-contract/src/task_assessment.rs` and
+`tests/endpoint_policy.rs`; the inference reference explains that admission
+limit. The original caller/read authority and assessment reply checks remain.
+Full integrated contract, inference, engine, installed-driver and strict lint
+checks are running; their final results will be recorded below.
+
+The Connectome audit found its SDK pins still name `cc5ebe0fd17bd9cb1a72a0d40811ba381869d202`;
+its typed process fixture constructs the old selector shape. A separate
+Connectome PR must refresh those pins and fixture before claiming a live
+native desktop/controller journey. No Connectome files changed here.
+
+
+## Integrated local acceptance
+
+With the merged Windows repair and assessment protocol guard, the final source
+checks passed: contract 204 tests; inference 49 tests with its one existing
+live-service test ignored; full engine 591 tests with 12 existing ignored;
+installed `installed_source_read_choice_is_explicit_and_reopens` passed in
+6.45 s. The installed driver uses the actual engine/public client and a
+controlled native controller, then verifies accepted worker readback after
+restart. It does not call a live model. Logs are `controller-final-contract.log`,
+`controller-final-inference.log`, `controller-final-engine.log` and
+`controller-final-installed.log` in the same session scratch directory.
+Generated surfaces and documentation checks pass. Strict affected-crate all-target lint with `-D warnings` passed in 20.72 s (`controller-final-clippy.log`).
+
+The user clarified the wider acceptance target during verification: a live
+Connectome prompt journey that exposes constraint/schema, lexicon and behavioral
+state; modular SWAG/classification; concurrent ephemeral work and measured
+physical writes; complete capability comparisons with SurrealDB, HydraDB and
+Qdrant; optional hosted synchronization/free tier; and rroflow as SDK/signal
+manager. These remain owning-record implementation requirements, not completion
+claims for this controller package. The code audit identified the existing
+SurrealDB/Qdrant inventories and kernel-contract K0-K16 owners; no duplicate
+capability or planning authority is created here.
+
+Read-only SWAG inspection at public revision
+`ec1f0c2eb40b48b973ee3ab98535a3d0c4e9bca5` found its separate raw `answers`
+and final `swag.decisions` envelope in README/decision-contract. Its tool status
+reported unavailable engine/model endpoint, no verified loaded weights, and no
+inference performed. A SWAG adapter must consume its final rule/preference
+outcome and preserve provenance, not ignore it and consume only raw answers.
+That module adapter is not implemented or claimed by this TypeSafe-compatible
+Choice package. The controller wire research is not a SWAG integration test.

@@ -153,6 +153,11 @@ counts become the existing usage fields; the receipt retains wire digests and
 elapsed time. Its content digest binds the canonical mapped choice, while its
 response digest binds the original native response bytes.
 
+Source-bound task assessments require chat JSON with cited source/practice byte
+ranges. A native controller combined with that assessment policy is rejected
+at configuration admission; the engine does not switch protocols or invent
+citations.
+
 This adds native **endpoint and effort selection**. It does not implement native
 Noul/Score assessment, recipe/branch/context routing, or qualify a real provider.
 The [package evidence](../../evidence/change-journals/gate-g/system-one-controller-20261120.md)

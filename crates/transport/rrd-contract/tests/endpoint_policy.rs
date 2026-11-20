@@ -10,6 +10,33 @@ use serde_json::Value;
 use std::path::PathBuf;
 
 #[test]
+fn native_controller_cannot_silently_receive_chat_assessments() {
+    let (configuration, mut selection) = proposed();
+    let bindings = &configuration.profile.as_ref().unwrap().bindings;
+    let assessment = rrd_contract::EndpointAssessmentPolicy {
+        contract_version: rrd_contract::TASK_ASSESSMENT_VERSION,
+        allow_network: true,
+        allow_source_export: true,
+        allow_context_export: true,
+        system_prompt: "Assess the supplied practice and cite its source evidence.".into(),
+        generation: rrd_contract::EndpointGenerationSettings {
+            maximum_output_tokens: 64,
+            token_parameter: rrd_contract::EndpointTokenParameter::MaxTokens,
+            temperature_milli: None,
+            response_format: rrd_contract::EndpointResponseFormat::JsonObject,
+        },
+        maximum_input_bytes: 4096,
+        maximum_response_bytes: 4096,
+    };
+    assessment.validate_for(bindings, Some(&selection)).unwrap();
+    selection.controller_protocol = rrd_contract::EndpointControllerProtocol::SystemOne {};
+    let error = assessment
+        .validate_for(bindings, Some(&selection))
+        .unwrap_err();
+    assert!(error.to_string().contains("require a chat controller"));
+}
+
+#[test]
 fn lfg_policy_requires_explicit_bounded_loopback_and_pinned_inputs() {
     let policy = rrd_contract::LfgAnalysisPolicy {
         base_url: "http://127.0.0.1:9090".into(),
