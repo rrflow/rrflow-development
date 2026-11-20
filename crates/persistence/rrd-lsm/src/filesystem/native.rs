@@ -253,8 +253,8 @@ fn rename_windows(
     use std::os::windows::io::AsRawHandle;
     use windows_sys::Win32::Storage::FileSystem::{
         FileRenameInfoEx, SetFileInformationByHandle, DELETE, FILE_FLAG_BACKUP_SEMANTICS,
-        FILE_FLAG_OPEN_REPARSE_POINT, FILE_FLAG_WRITE_THROUGH, FILE_RENAME_INFO, FILE_SHARE_READ,
-        FILE_SHARE_WRITE,
+        FILE_FLAG_OPEN_REPARSE_POINT, FILE_FLAG_WRITE_THROUGH, FILE_READ_ATTRIBUTES,
+        FILE_RENAME_INFO, FILE_SHARE_READ, FILE_SHARE_WRITE,
     };
     // Both parent handles and their ancestors remain pinned by the caller.
     // Open the source without following a reparse point; rename that same object
@@ -271,6 +271,25 @@ fn rename_windows(
         );
     let source = cap::open(from, from_name, &options)?;
     validate_object(&source)?;
+    // Keep the replaced object alive through the namespace operation, including
+    // when a concurrent reader closes its last handle during replacement.
+    let _target = if replace {
+        let mut options = cap::OpenOptions::new();
+        options
+            .access_mode(FILE_READ_ATTRIBUTES)
+            .follow(cap::FollowSymlinks::No);
+        metadata_options(&mut options);
+        match cap::open(to, to_name, &options) {
+            Ok(file) => {
+                validate_object(&file)?;
+                Some(file)
+            }
+            Err(error) if error.kind() == io::ErrorKind::NotFound => None,
+            Err(error) => return Err(error),
+        }
+    } else {
+        None
+    };
     let name: Vec<_> = final_path(to)?
         .join(to_name)
         .as_os_str()
