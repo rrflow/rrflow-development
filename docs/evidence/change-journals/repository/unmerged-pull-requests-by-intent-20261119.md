@@ -68,6 +68,27 @@ Done later the same day. 135 commits from deleted refs were still readable local
 
 The first pass of the script over-reported 226 absent names because it mis-matched Python tests; a direct `git grep` of every reported name gave the 29.
 
+## Every merged pull request, by the tests it added
+
+Done the same day, after the unmerged work. Each of the 263 merges on `main`'s first-parent history was taken in turn. A pull request's own change is its merge commit against that commit's first parent; every Rust, TypeScript and Python test it added was looked up on `main` by exact name with `git grep`. A test that is on `main` runs in the gate.
+
+**263 pull requests, 2,460 tests added, 47 not on `main` by name (41 distinct), in 22 pull requests.** 21 of the 41 differ only by the engram name. The other 20 were each traced to the commit that removed them and read:
+
+| Pull request | Tests | What became of them |
+|---|---|---|
+| 4 | `a_record_limit_met_inside_the_final_partial_journal_page_fails_the_audit_read` | it pinned a defect and said it would invert; `8dd19d1b9` fixed the defect and the test is `a_record_limit_inside_the_final_partial_page_returns_a_valid_prefix` |
+| 9 | `a_restored_root_lacks_the_installed_record_and_security_state` | the same: it pinned POAM-031, since closed; now `a_restored_root_carries_the_installed_control_state` |
+| 10 | `empty_scope_archives_nothing_and_authenticates` | renamed `..._and_verifies` |
+| 40 | `project_inventory_preserves_the_version_one_digest_grammar` | removed by `de29d92eb` with the unversioned grammar it pinned; the inventory policy is versioned now, and pre-release keeps no earlier form |
+| 55 | `existing_retained_provider_evidence_still_verifies` | removed by `b32a85e5a`; it re-verified one August result file |
+| 107 | `idle_maintenance_skips_busy_offers_and_joins_inflight_work` | reworked by `81d6ae1e5`; now `idle_maintenance_coalesces_offers_and_joins_inflight_work` |
+| 210 | `test_macos_volume_requests_verbose_creation_once_and_propagates_busy` | later form in `scripts/ci/test_native_capacity.py` (the exhausted-retry test) |
+| 303 | seven lane-selection tests that required the full matrix | replaced when the owner chose a light gate on pull requests and the full matrix nightly; the later forms are in `scripts/ci/test_select_ci_lanes.py` |
+| 314 | three adoption tests and `test_size_limit_applies_unless_the_owner_labels_an_integration` | adoption by relocation was replaced by retaining the folder in place (archive record); the size limit became a warning |
+| 384 | two `rrd-server` shutdown-file tests | the server's own shutdown files were removed for the engine's one stop request (pull request 412) |
+
+No behaviour was found lost in a merged pull request. What this does not prove: a behaviour a pull request shipped without a test.
+
 ## Changed paths
 
 - `docs/poam/rrflow-1.0-alpha/poam-087.md` (new), `docs/poam/rrflow-1.0-alpha.md` and the generated indexes.
