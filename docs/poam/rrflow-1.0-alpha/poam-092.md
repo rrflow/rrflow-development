@@ -24,11 +24,15 @@ calls `MoveFileExW` with replacement and write-through flags. The failing log
 does not identify which filesystem operation returned access denied. A passing
 rerun alone cannot establish the cause or repair this defect.
 
-## Impact and owning gate
+## Impact
 
 A new serving process can fail to publish over a stale endpoint record under
 concurrent inspection. Removing the old record first is not a valid repair:
-a stop requester interprets absence as completion. D-01 owns served lifecycle;
+a stop requester interprets absence as completion.
+
+## Owning gates
+
+D-01 owns served lifecycle;
 the anchored filesystem owns any native replacement repair.
 
 Roadmap owner: [Gate D](../../roadmap/rrflow-1.0/gate-d.md).
