@@ -332,3 +332,22 @@ with that owner's explicitly missing project-link record. H-07e owns the
 friendly separate controls for context sharing, sync and physical placement.
 Those controls are not implemented by startup navigation. No inference about
 BEAM equivalence or a performance comparison is made.
+
+
+## Paired startup package landed
+
+Connectome PR108 merged as `e780304b39afe8becee4beca63c1f8566d0ba5fd`.
+Candidate run 44814689370 and merge-group run 44815373768 both passed every
+required job, including frontend smoke, native Windows/Linux/macOS and the full
+installed-process suite. The merge has the same complete tree as its source
+`e13ed1d73f7063e53453b442694f41eae6e944a2` (empty `git diff --exit-code`).
+Its verified `connectome-merged-108.bundle` remains in session scratch. The
+local package branch was deleted after updating main; GitHub had already
+removed the remote branch. This parent now pins the merged revision.
+
+The final launcher `--check --jobs 4 --connectome-target-dir` command passed
+and reported the same debug binary SHA-256 above. Navigation/documentation,
+code-shape and generated execution-inventory checks passed. The initial draft
+child CI run 44811786229 failed its identity check on a vendor name in the
+journal; corrected content passed both final gates without changing that check.
+No final manual visual qualification or live external controller was run.
