@@ -41,7 +41,7 @@ fn retained_search_uses_its_artifact_generation_after_publication_and_reopen() {
         ef_search: 3,
     });
     let before = engine
-        .search_vectors_at(&request, retained.clone())
+        .search_vectors_at(&request, retained.clone(), 1_000)
         .unwrap();
     let mut rebuild = index_request();
     let VectorIndexConfiguration::Hnsw { seed, .. } = &mut rebuild.configuration;
@@ -61,7 +61,7 @@ fn retained_search_uses_its_artifact_generation_after_publication_and_reopen() {
         .unwrap();
     assert_eq!(second.index.generation, 2);
     let after = engine
-        .search_vectors_at(&request, retained.clone())
+        .search_vectors_at(&request, retained.clone(), 1_000)
         .unwrap();
     assert_eq!(after.resources.selected_generation, Some(1));
     assert_eq!(after.plan_sha256, before.plan_sha256);
@@ -69,7 +69,7 @@ fn retained_search_uses_its_artifact_generation_after_publication_and_reopen() {
     let current = engine.storage.runtime().read_stamp(&scope).unwrap();
     assert_eq!(
         engine
-            .search_vectors_at(&request, current.clone())
+            .search_vectors_at(&request, current.clone(), 1_000)
             .unwrap()
             .resources
             .selected_generation,
@@ -77,13 +77,15 @@ fn retained_search_uses_its_artifact_generation_after_publication_and_reopen() {
     );
     drop(engine);
     let reopened = RrdEngine::open(root.path(), instance(), TOKEN_KEY).unwrap();
-    let historical = reopened.search_vectors_at(&request, retained).unwrap();
+    let historical = reopened
+        .search_vectors_at(&request, retained, 1_000)
+        .unwrap();
     assert_eq!(historical.resources.selected_generation, Some(1));
     assert_eq!(historical.plan_sha256, before.plan_sha256);
     assert_eq!(historical.hits, before.hits);
     assert_eq!(
         reopened
-            .search_vectors_at(&request, current)
+            .search_vectors_at(&request, current, 1_000)
             .unwrap()
             .resources
             .selected_generation,
@@ -112,7 +114,7 @@ fn catalogue_search_work_excludes_unrelated_history_and_shares_the_request_budge
         ef_search: 3,
     });
     let before = engine
-        .search_vectors_at(&request, retained.clone())
+        .search_vectors_at(&request, retained.clone(), 1_000)
         .unwrap();
     assert_direct_read_evidence(
         before.selected_versions,
@@ -137,7 +139,7 @@ fn catalogue_search_work_excludes_unrelated_history_and_shares_the_request_budge
     restricted.max_storage_keys = vectors.evidence.keys_examined;
     assert!(restricted.max_storage_keys < before.read_evidence.keys_examined);
     let error = engine
-        .search_vectors_at(&restricted, retained.clone())
+        .search_vectors_at(&restricted, retained.clone(), 1_000)
         .unwrap_err();
     assert!(error.to_string().contains("budget"), "{error}");
     assert_eq!(error.kind(), crate::ServiceErrorKind::ResourceExhausted);
@@ -148,14 +150,14 @@ fn catalogue_search_work_excludes_unrelated_history_and_shares_the_request_budge
     restricted.max_storage_keys = before.read_evidence.keys_examined;
     assert_eq!(
         engine
-            .search_vectors_at(&restricted, retained.clone())
+            .search_vectors_at(&restricted, retained.clone(), 1_000)
             .unwrap()
             .hits,
         before.hits
     );
     restricted.max_storage_keys -= 1;
     assert!(engine
-        .search_vectors_at(&restricted, retained.clone())
+        .search_vectors_at(&restricted, retained.clone(), 1_000)
         .unwrap_err()
         .to_string()
         .contains("budget"));
@@ -173,9 +175,11 @@ fn catalogue_search_work_excludes_unrelated_history_and_shares_the_request_budge
         );
     }
     let current = engine.storage.runtime().read_stamp(&scope).unwrap();
-    let grown = engine.search_vectors_at(&request, current.clone()).unwrap();
+    let grown = engine
+        .search_vectors_at(&request, current.clone(), 1_000)
+        .unwrap();
     let historical = engine
-        .search_vectors_at(&request, retained.clone())
+        .search_vectors_at(&request, retained.clone(), 1_000)
         .unwrap();
     for result in [&grown, &historical] {
         assert_eq!(result.hits, before.hits);
@@ -199,7 +203,7 @@ fn catalogue_search_work_excludes_unrelated_history_and_shares_the_request_budge
     drop(engine);
     let reopened = RrdEngine::open(root.path(), instance(), TOKEN_KEY).unwrap();
     for read in [retained, current] {
-        let result = reopened.search_vectors_at(&request, read).unwrap();
+        let result = reopened.search_vectors_at(&request, read, 1_000).unwrap();
         assert_eq!(result.hits, before.hits);
         assert_eq!(
             semantic_counts(&result.read_evidence),
@@ -256,13 +260,15 @@ fn retained_quantization_state_survives_activation_retirement_and_reopen() {
     });
     assert_eq!(
         engine
-            .search_vectors_at(&request, active.clone())
+            .search_vectors_at(&request, active.clone(), 1_000)
             .unwrap()
             .access_path
             .as_str(),
         "exact_scan"
     );
-    let before = engine.search_vectors_at(&required, active.clone()).unwrap();
+    let before = engine
+        .search_vectors_at(&required, active.clone(), 1_000)
+        .unwrap();
     assert_eq!(before.access_path.as_str(), "scalar_quantized");
     engine
         .retire_vector_quantization_artifact(
@@ -285,7 +291,7 @@ fn retained_quantization_state_survives_activation_retirement_and_reopen() {
     for read in [ready.clone(), retired.clone()] {
         assert_eq!(
             engine
-                .search_vectors_at(&request, read)
+                .search_vectors_at(&request, read, 1_000)
                 .unwrap()
                 .access_path
                 .as_str(),
@@ -293,24 +299,26 @@ fn retained_quantization_state_survives_activation_retirement_and_reopen() {
         );
     }
     for read in [ready.clone(), retired.clone()] {
-        assert!(engine.search_vectors_at(&required, read).is_err());
+        assert!(engine.search_vectors_at(&required, read, 1_000).is_err());
     }
     assert_eq!(
         engine
-            .search_vectors_at(&required, active.clone())
+            .search_vectors_at(&required, active.clone(), 1_000)
             .unwrap()
             .plan_sha256,
         before.plan_sha256
     );
     drop(engine);
     let reopened = RrdEngine::open(root.path(), instance(), TOKEN_KEY).unwrap();
-    let recovered = reopened.search_vectors_at(&required, active).unwrap();
+    let recovered = reopened
+        .search_vectors_at(&required, active, 1_000)
+        .unwrap();
     assert_eq!(recovered.plan_sha256, before.plan_sha256);
     assert_eq!(recovered.hits, before.hits);
     for read in [ready, retired] {
         assert_eq!(
             reopened
-                .search_vectors_at(&request, read)
+                .search_vectors_at(&request, read, 1_000)
                 .unwrap()
                 .access_path
                 .as_str(),

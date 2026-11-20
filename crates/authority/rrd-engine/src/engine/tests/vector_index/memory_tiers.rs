@@ -76,6 +76,12 @@ pub(super) fn engine_vector_memory_tiers_are_physical_bounded_and_restart_safe()
         )
         .unwrap();
     assert_eq!(cached.access_path.as_str(), "hnsw");
+    assert_eq!(cached.resources.cold_source_hits, 0);
+    assert!(!cached.resources.rrflowcld_triggered);
+    assert_eq!(
+        engine.rrflow_cld_snapshot().unwrap(),
+        crate::RrflowCldSnapshot::default()
+    );
     let snapshot = engine.vector_residency_snapshot().unwrap();
     assert_eq!(snapshot.cached_entries, 1);
     assert_eq!(snapshot.pinned_entries, 0);
@@ -136,6 +142,54 @@ pub(super) fn engine_vector_memory_tiers_are_physical_bounded_and_restart_safe()
     assert_eq!(snapshot.cached_entries, 0);
     assert_eq!(snapshot.tier_transitions, 2);
     assert_eq!(snapshot.cold_owned_loads, 1);
+    assert_eq!(cold.resources.cold_source_hits, 1);
+    assert!(cold.resources.rrflowcld_triggered);
+    let storage = engine
+        .read_storage_diagnostics(
+            &lease.session_id,
+            &lease.token,
+            &rrd_contract::ReadStorageDiagnostics {
+                scope: require_approximate.scope.clone(),
+            },
+            702,
+            "request-residency-observation",
+            "operation-residency-observation",
+        )
+        .unwrap();
+    storage.validate().unwrap();
+    assert_eq!(
+        storage
+            .rrflow_kv
+            .unwrap()
+            .rrflow_cld
+            .unwrap()
+            .last_trigger_at_unix_ms,
+        Some(701),
+        "cold-load observation time must not be the query's historical valid time"
+    );
+    // AllowApproximate uses the general path, while RequireApproximate above
+    // uses the active-generation path. Neither may use valid time as a clock.
+    let mut general_request = search_request(VectorSearchMode::AllowApproximate {
+        exact_rerank: 2,
+        ef_search: 4,
+    });
+    general_request.valid_at = 2;
+    let general = engine
+        .search_vectors(
+            &lease.session_id,
+            &lease.token,
+            &general_request,
+            703,
+            "request-residency-cold-general",
+            "operation-residency-cold-general",
+        )
+        .unwrap();
+    assert_eq!(general.hits, cold.hits);
+    assert_eq!(general.resources.cold_source_hits, 1);
+    assert!(general.resources.rrflowcld_triggered);
+    let observation = engine.rrflow_cld_snapshot().unwrap();
+    assert_eq!(observation.trigger_count, 2);
+    assert_eq!(observation.last_trigger_at_unix_ms, Some(703));
     drop(engine);
 
     let reopened =
@@ -143,6 +197,10 @@ pub(super) fn engine_vector_memory_tiers_are_physical_bounded_and_restart_safe()
     let empty = reopened.vector_residency_snapshot().unwrap();
     assert_eq!(empty.pinned_entries, 0);
     assert_eq!(empty.cached_entries, 0);
+    assert_eq!(
+        reopened.rrflow_cld_snapshot().unwrap(),
+        crate::RrflowCldSnapshot::default()
+    );
     let recovered = reopened
         .search_vectors(
             &lease.session_id,
@@ -155,6 +213,11 @@ pub(super) fn engine_vector_memory_tiers_are_physical_bounded_and_restart_safe()
         .unwrap();
     assert_eq!(recovered.access_path, cold.access_path);
     assert_eq!(recovered.hits, cold.hits);
+    assert_eq!(recovered.resources.cold_source_hits, 1);
+    assert!(recovered.resources.rrflowcld_triggered);
+    let observation = reopened.rrflow_cld_snapshot().unwrap();
+    assert_eq!(observation.trigger_count, 1);
+    assert_eq!(observation.last_trigger_at_unix_ms, Some(800));
     assert_eq!(
         reopened
             .vector_residency_snapshot()

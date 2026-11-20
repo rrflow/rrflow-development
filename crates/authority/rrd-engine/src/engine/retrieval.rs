@@ -138,7 +138,7 @@ impl RrdEngine {
             mode: request.vector_mode,
             max_storage_keys: request.max_storage_keys,
         };
-        let vector = self.search_vectors_at(&vector_request, read.clone())?;
+        let vector = self.search_vectors_at(&vector_request, read.clone(), now)?;
         if vector.read_manifest_sha256 != read.manifest_id
             || vector.known_at_cursor != read.commit_cursor
             || text_execution.read_manifest != read.manifest_id

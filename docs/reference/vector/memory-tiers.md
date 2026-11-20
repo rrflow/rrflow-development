@@ -111,6 +111,10 @@ an RRFlowCLD trigger observation. The public search response includes
 `resources.cold_source_hits` and `resources.rrflowcld_triggered`, and storage
 diagnostics include `rrflow_kv.rrflow_cld` counters. These observations are
 process-local lifecycle signals; they do not change canonical vector authority.
+`last_trigger_at_unix_ms` uses the operation's observation time, separately
+from the query's historical `valid_at`. Direct, hybrid, embedding and recursive
+retrieval searches carry that time through the same stamped search boundary.
+Restart clears the observations; reacquiring a cold artifact records a new one.
 
 Current executable evidence is:
 

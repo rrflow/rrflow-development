@@ -165,6 +165,7 @@ impl RrdEngine {
                 max_storage_keys: request.max_storage_keys,
             },
             read,
+            now,
         )?;
         let result = EmbedAndSearchVectorsResult {
             backend: generated.backend,
