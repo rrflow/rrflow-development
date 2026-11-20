@@ -5,6 +5,21 @@
 use super::*;
 use std::collections::{BTreeMap, BTreeSet};
 
+/// The test's time `offset` milliseconds after its base, on a clock that also
+/// moves forward with real time.
+///
+/// The engine stamps a transition with the time its caller gave plus the real
+/// time the step took, and refuses a transition that is not later than the
+/// one before. A real caller's clock already includes the time that has
+/// passed. A fixed time does not: a step that took longer than the gap to the
+/// next fixed time would be recorded after it. Parse steps run a worker
+/// process, so on a loaded machine that happened.
+fn tick(offset: u64) -> u64 {
+    static STARTED: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+    let elapsed = STARTED.get_or_init(std::time::Instant::now).elapsed();
+    BASE + offset + elapsed.as_millis() as u64
+}
+
 fn policy(max_files: u64) -> rrd_contract::SourceParsePolicy {
     rrd_contract::SourceParsePolicy {
         format_version: 1,
@@ -77,7 +92,7 @@ fn at_parse_configured(
         &session,
         &installed.start(60_000),
         "parse-start",
-        BASE + 1_000,
+        tick(1_000),
     )
     .unwrap();
     let connected = call(
@@ -85,7 +100,7 @@ fn at_parse_configured(
         &session,
         &step(&started.status.job),
         "parse-connect",
-        BASE + 2_000,
+        tick(2_000),
     )
     .unwrap();
     let inventoried = call(
@@ -93,7 +108,7 @@ fn at_parse_configured(
         &session,
         &step(&connected.status.job),
         "parse-inventory",
-        BASE + 3_000,
+        tick(3_000),
     )
     .unwrap();
     assert_eq!(inventoried.status.job.current_phase, Some(Phase::Parse));
@@ -146,24 +161,24 @@ fn expected() -> BTreeSet<(String, String)> {
 #[test]
 fn parse_commits_facts_with_its_checkpoint_and_they_survive_a_restart() {
     let (installed, engine, session, job) = at_parse(64);
-    let parsed = call(&engine, &session, &step(&job), "parse-step", BASE + 4_000).unwrap();
+    let parsed = call(&engine, &session, &step(&job), "parse-step", tick(4_000)).unwrap();
     let job = parsed.status.job;
     let checkpoint = job.checkpoints.last().unwrap();
     assert_eq!(checkpoint.phase, Phase::Parse);
     assert_eq!(job.current_phase, Some(Phase::Verify));
     assert_eq!(job.state, State::Running);
-    assert!(symbols(&engine, &session, BASE + 5_000).is_superset(&expected()));
+    assert!(symbols(&engine, &session, tick(5_000)).is_superset(&expected()));
 
     drop(engine);
-    let engine = installed.reopen(BASE + 6_000);
-    let session = installed.session(&engine, "parse-reopened", BASE + 6_100);
-    assert!(symbols(&engine, &session, BASE + 6_200).is_superset(&expected()));
+    let engine = installed.reopen(tick(6_000));
+    let session = installed.session(&engine, "parse-reopened", tick(6_100));
+    assert!(symbols(&engine, &session, tick(6_200)).is_superset(&expected()));
 }
 
 #[test]
 fn a_file_limit_spreads_parse_over_steps_without_a_checkpoint_until_done() {
     let (_installed, engine, session, job) = at_parse(1);
-    let first = call(&engine, &session, &step(&job), "parse-first", BASE + 4_000).unwrap();
+    let first = call(&engine, &session, &step(&job), "parse-first", tick(4_000)).unwrap();
     let job = first.status.job;
     assert_eq!(
         job.current_phase,
@@ -171,13 +186,13 @@ fn a_file_limit_spreads_parse_over_steps_without_a_checkpoint_until_done() {
         "one file is still waiting"
     );
     assert_eq!(job.checkpoints.last().unwrap().phase, Phase::Inventory);
-    assert_eq!(symbols(&engine, &session, BASE + 4_500).len(), 1);
+    assert_eq!(symbols(&engine, &session, tick(4_500)).len(), 1);
 
-    let second = call(&engine, &session, &step(&job), "parse-second", BASE + 5_000).unwrap();
+    let second = call(&engine, &session, &step(&job), "parse-second", tick(5_000)).unwrap();
     let job = second.status.job;
     assert_eq!(job.checkpoints.last().unwrap().phase, Phase::Parse);
     assert_eq!(job.current_phase, Some(Phase::Verify));
-    assert!(symbols(&engine, &session, BASE + 5_500).is_superset(&expected()));
+    assert!(symbols(&engine, &session, tick(5_500)).is_superset(&expected()));
 }
 
 /// The same Step asked again under the same key is answered from its receipt:
@@ -187,16 +202,16 @@ fn a_file_limit_spreads_parse_over_steps_without_a_checkpoint_until_done() {
 fn a_parse_step_replay_returns_its_receipt_and_commits_nothing() {
     let (_installed, engine, session, job) = at_parse(1);
     let command = step(&job);
-    let first = call(&engine, &session, &command, "parse-first", BASE + 4_000).unwrap();
+    let first = call(&engine, &session, &command, "parse-first", tick(4_000)).unwrap();
     assert_eq!(first.status.job.current_phase, Some(Phase::Parse));
-    let parsed = symbols(&engine, &session, BASE + 4_500);
-    let states = parse_states(&engine, &session, BASE + 4_500);
+    let parsed = symbols(&engine, &session, tick(4_500));
+    let states = parse_states(&engine, &session, tick(4_500));
     assert_eq!(parsed.len(), 1, "one file was parsed and one is waiting");
 
-    let replayed = call(&engine, &session, &command, "parse-first", BASE + 4_600).unwrap();
+    let replayed = call(&engine, &session, &command, "parse-first", tick(4_600)).unwrap();
     assert_eq!(replayed.status.job, first.status.job);
-    assert_eq!(symbols(&engine, &session, BASE + 4_700), parsed);
-    assert_eq!(parse_states(&engine, &session, BASE + 4_700), states);
+    assert_eq!(symbols(&engine, &session, tick(4_700)), parsed);
+    assert_eq!(parse_states(&engine, &session, tick(4_700)), states);
 
     // The waiting file is still parsed by the next Step, exactly once.
     let second = call(
@@ -204,11 +219,11 @@ fn a_parse_step_replay_returns_its_receipt_and_commits_nothing() {
         &session,
         &step(&first.status.job),
         "parse-second",
-        BASE + 5_000,
+        tick(5_000),
     )
     .unwrap();
     assert_eq!(second.status.job.current_phase, Some(Phase::Verify));
-    assert!(symbols(&engine, &session, BASE + 5_500).is_superset(&expected()));
+    assert!(symbols(&engine, &session, tick(5_500)).is_superset(&expected()));
 }
 
 /// Every `source-parse` state's `(path, status)` known now.
@@ -578,7 +593,7 @@ fn query(
 #[test]
 fn parsed_facts_are_read_through_their_commit_indexes() {
     let (installed, engine, session, job) = at_parse(64);
-    call(&engine, &session, &step(&job), "parse-step", BASE + 4_000).unwrap();
+    call(&engine, &session, &step(&job), "parse-step", tick(4_000)).unwrap();
     let check = |engine: &RrdEngine, session: &SessionLease, at: u64| {
         let (selected, rows) = query(
             engine,
@@ -620,11 +635,11 @@ fn parsed_facts_are_read_through_their_commit_indexes() {
             Some(&rrd_contract::QueryValue::String("beta.rs".into()))
         );
     };
-    check(&engine, &session, BASE + 5_000);
+    check(&engine, &session, tick(5_000));
     drop(engine);
-    let engine = installed.reopen(BASE + 6_000);
-    let session = installed.session(&engine, "parse-indexes-reopened", BASE + 6_100);
-    check(&engine, &session, BASE + 6_200);
+    let engine = installed.reopen(tick(6_000));
+    let session = installed.session(&engine, "parse-indexes-reopened", tick(6_100));
+    check(&engine, &session, tick(6_200));
 }
 
 /// A question is answered from parsed code through the chunk postings, at one
@@ -632,7 +647,7 @@ fn parsed_facts_are_read_through_their_commit_indexes() {
 #[test]
 fn context_answers_from_parsed_code_through_commit_postings() {
     let (_installed, engine, session, job) = at_parse(64);
-    let parsed = call(&engine, &session, &step(&job), "parse-step", BASE + 4_000).unwrap();
+    let parsed = call(&engine, &session, &step(&job), "parse-step", tick(4_000)).unwrap();
     let at = parsed.status.job.updated_at_unix_ms + 1;
     let packet = engine
         .assemble_context(
