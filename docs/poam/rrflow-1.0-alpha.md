@@ -103,3 +103,4 @@
 | POAM-087 | High | Open | [storage maintenance stalls every search, and searches cause it](rrflow-1.0-alpha/poam-087.md) |
 | POAM-088 | High | Open | [managed instances have fixed driver timings and are not registered or stoppable in every form](rrflow-1.0-alpha/poam-088.md) |
 | POAM-089 | High | Open | [installed process suites sometimes fail on a busy Windows host](rrflow-1.0-alpha/poam-089.md) |
+| POAM-090 | High | Open | [the product writes Parquet, and rrflowCLD has no format of its own](rrflow-1.0-alpha/poam-090.md) |

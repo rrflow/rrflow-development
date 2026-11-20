@@ -99,4 +99,5 @@
 - [POAM-087 — storage maintenance stalls every search, and searches cause it](poam-087.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-087`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-087) — active parent-owned POA&M detail
 - [POAM-088 — managed instances have fixed driver timings and are not registered or stoppable in every form](poam-088.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-088`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-088) — active parent-owned POA&M detail
 - [POAM-089 — installed process suites sometimes fail on a busy Windows host](poam-089.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-089`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-089) — active parent-owned POA&M detail
+- [POAM-090 — the product writes Parquet, and rrflowCLD has no format of its own](poam-090.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-090`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-090) — active parent-owned POA&M detail
 <!-- rrflow:generated-index:end -->
