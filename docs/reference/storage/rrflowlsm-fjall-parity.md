@@ -1,6 +1,6 @@
 # rrflowLSM against Fjall, capability by capability
 
-**Status:** active parity work list; 35 present, 22 partial, 27 absent as read on 2026-11-20. It claims no parity
+**Status:** active parity work list; 39 present, 23 partial, 22 absent on 2026-11-20. It claims no parity
 **Coordinate:** `rrflow://rrflow-instance/data/reference/storage/rrflowlsm-fjall-parity`
 **Owner:** which Fjall capabilities rrflowLSM has, and the order the missing ones are built in; the [roadmap](../../roadmap/rrflow-1.0.md) and [POA&M](../../poam/rrflow-1.0-alpha.md) keep status authority
 
@@ -45,7 +45,7 @@ Paths under "Where" are relative to `crates/persistence/rrd-lsm/src/` unless the
 | 19 | Single-writer transactions | has | `database/transactions.rs` |
 | 20 | Optimistic multi-writer, serializable | partial | Only written keys are conflict-checked; write skew is allowed (`transaction.rs`) |
 | 21 | Read your own writes | has | `transaction.rs`, `transaction/scan.rs` |
-| 22 | Take, fetch-and-update, update-and-fetch | absent | |
+| 22 | Take, fetch-and-update, update-and-fetch | has | `Transaction::take`, `fetch_update`, `update_fetch` (`transaction.rs`); `tests/small_operations.rs` |
 | 23 | Rollback | has | `transaction.rs` |
 | 24 | Read-only snapshot transaction | has | `database/transactions.rs` |
 
@@ -54,15 +54,15 @@ Paths under "Where" are relative to `crates/persistence/rrd-lsm/src/` unless the
 | # | Fjall capability | State | Where, or what is missing |
 |---|---|---|---|
 | 25 | Point get | has | `database/reads.rs` |
-| 26 | Contains key | absent | |
-| 27 | Size of a value without reading it | absent | |
+| 26 | Contains key | has | `Database::contains_key`, `Transaction::contains_key`; reads no value data |
+| 27 | Size of a value without reading it | has | `Database::size_of`, `Transaction::size_of`; reads offsets, not data |
 | 28 | Range scan | has | Half-open ranges only |
-| 29 | Prefix scan | partial | The helper is in `rrd-store/src/rrflow_kv/codec.rs` |
+| 29 | Prefix scan | has | `Database::scan_prefix` (`database/reads.rs`) |
 | 30 | Full iteration | has | `database/reads.rs` |
 | 31 | Reverse iteration | absent | Cursors are forward-only (`segment/reader/cursors.rs`) |
 | 32 | Lazy iterator that reads key, size or value on demand | partial | Projected batches exist; no row-level iterator |
-| 33 | First and last key | absent | |
-| 34 | Length and is-empty | absent | |
+| 33 | First and last key | partial | `Database::first_key_value`; the last key waits for reverse iteration (31) |
+| 34 | Length and is-empty | partial | `Database::is_empty`; no length |
 | 35 | Approximate length | absent | |
 
 ## Snapshots and old versions
@@ -156,7 +156,7 @@ Causes of the read loss. The first two were confirmed by a test and fixed; that 
 
 1. Fixed on 2026-11-20 ([journal](../../evidence/change-journals/gate-c/rrflowlsm-range-scan-seek-20261120.md)): a range read started at row 0 of the first overlapping row group and walked forward. A 16-row read examined 1,519 versions and now examines 17.
 2. Fixed with it: the scan did not stop at the end of the range.
-3. A row group is 2,048 rows or 64 KiB, against Fjall's 4 KiB blocks.
+3. A row group is 2,048 rows or 64 KiB, against Fjall's 4 KiB blocks. Making the groups smaller is not the fix: an experiment on 2026-11-20 with the default target at 8 KiB and at 4 KiB read slower at one million claims (3,373 and 2,350 reads a second after maintenance, against 4,354 at 64 KiB), used more memory (2.0 and 2.4 times Fjall's) and more bytes. Each group carries six pages, each with its own descriptor and checksum. A profile at one million claims puts the loss in cache misses: page decompression 7.6 percent of samples and SHA-256 3 percent. The cost of a miss belongs to the segment-format revision.
 4. Each returned row takes three page-cache lookups under one global lock, and each point get about seven (`segment/read.rs`, `segment/page_cache.rs`). Fixed in part on 2026-11-20 ([journal](../../evidence/change-journals/gate-c/rrflowlsm-page-cache-hit-20261120.md)): a hit no longer pushes onto a heap or hashes with a keyed hasher. The lookups per row and the one lock remain.
 5. Several heap allocations and two value copies happen per row (`segment/reader/stream.rs`).
 
@@ -165,7 +165,7 @@ Causes of the read loss. The first two were confirmed by a test and fixed; that 
 Each line is one package with its own test, and each is measured with the comparison before and after.
 
 1. The read path (no format change). Done: seek within the group and stop at the range end. Done: a constant-time cache hit. Open: the read and memory losses at one million claims, to be profiled; and one lock taken once per page lookup, which matters once readers run concurrently.
-2. Rows 26, 27, 33, 34, 29, 22, 9, 77 and 81: the small read and write operations.
+2. The small read and write operations. Done on 2026-11-20 ([journal](../../evidence/change-journals/gate-c/rrflowlsm-small-operations-20261120.md)): rows 22, 26, 27 and 29, the first key of 33 and is-empty of 34, in `rrd-lsm`. Open: rows 9, 77 and 81, and offering the new operations through the `rrd-store` transaction port.
 3. Row 31 reverse iteration, then rows 32 and 35.
 4. Rows 41, 42 and 43: deletes.
 5. One segment-format revision: rows 57, 59, 61, 62, 63, 66 and 67.

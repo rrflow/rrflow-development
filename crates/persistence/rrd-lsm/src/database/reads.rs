@@ -1,6 +1,9 @@
 //! Point, batch and range reads.
 
 use super::*;
+use crate::{
+    ProjectedReadBudget, ProjectedReadProjection, ProjectedReadRange, ProjectedReadRequest,
+};
 
 impl Database {
     pub fn get(&self, key: &[u8], snapshot: Snapshot) -> Result<Option<Vec<u8>>> {
@@ -11,6 +14,91 @@ impl Database {
         if let Some(version) = self.memtable.get_version(key, snapshot.sequence) {
             return Ok(version.value.as_deref().map(<[u8]>::to_vec));
         }
+        // Selection loads authenticated key/sequence spines, not value pages.
+        // Materialize only the winner, including a winning tombstone.
+        match self.select_segment_version(key, snapshot)? {
+            Some(version) => version.value(),
+            None => Ok(None),
+        }
+    }
+
+    /// Whether `key` holds a value at `snapshot`. Reads no value data: a flushed
+    /// key costs its key spine and one validity page.
+    pub fn contains_key(&self, key: &[u8], snapshot: Snapshot) -> Result<bool> {
+        if let Some(version) = self.memtable.get_version(key, snapshot.sequence) {
+            return Ok(version.value.is_some());
+        }
+        match self.select_segment_version(key, snapshot)? {
+            Some(version) => version.is_present(),
+            None => Ok(false),
+        }
+    }
+
+    /// The length in bytes of the value `key` holds at `snapshot`, or `None`
+    /// when it holds none. Reads the value's offsets, never its data.
+    pub fn size_of(&self, key: &[u8], snapshot: Snapshot) -> Result<Option<u64>> {
+        if let Some(version) = self.memtable.get_version(key, snapshot.sequence) {
+            return Ok(version.value.as_ref().map(|value| value.len() as u64));
+        }
+        match self.select_segment_version(key, snapshot)? {
+            Some(version) => version.value_len(),
+            None => Ok(None),
+        }
+    }
+
+    /// Every visible row whose key starts with `prefix`, in key order.
+    pub fn scan_prefix(
+        &self,
+        prefix: &[u8],
+        snapshot: Snapshot,
+    ) -> Result<Vec<(Vec<u8>, Vec<u8>)>> {
+        self.scan(prefix, prefix_end(prefix).as_deref(), snapshot)
+    }
+
+    /// The visible row with the smallest key, or `None` when nothing is visible.
+    /// Reads forward from the first key and stops at the first visible row.
+    pub fn first_key_value(&self, snapshot: Snapshot) -> Result<Option<(Vec<u8>, Vec<u8>)>> {
+        let mut stream = self.begin_projected_read(ProjectedReadRequest {
+            ranges: vec![ProjectedReadRange::all()],
+            projection: ProjectedReadProjection::KeyValue,
+            snapshot,
+            budget: ProjectedReadBudget {
+                max_batch_rows: 1,
+                ..ProjectedReadBudget::default()
+            },
+        })?;
+        let Some(batch) = stream.next_batch()? else {
+            return Ok(None);
+        };
+        let key = batch.key(0).ok_or_else(|| {
+            Error::InvalidProjectedRead("a non-empty batch has no first row".into())
+        })?;
+        let value = batch.value(0).ok_or_else(|| {
+            Error::InvalidProjectedRead("a key-value batch row has no value".into())
+        })?;
+        Ok(Some((key.to_vec(), value.to_vec())))
+    }
+
+    /// Whether no row is visible at `snapshot`.
+    pub fn is_empty(&self, snapshot: Snapshot) -> Result<bool> {
+        let mut stream = self.begin_projected_read(ProjectedReadRequest {
+            ranges: vec![ProjectedReadRange::all()],
+            projection: ProjectedReadProjection::Key,
+            snapshot,
+            budget: ProjectedReadBudget {
+                max_batch_rows: 1,
+                ..ProjectedReadBudget::default()
+            },
+        })?;
+        Ok(stream.next_batch()?.is_none())
+    }
+
+    /// The newest version of `key` visible at `snapshot` among the flushed segments.
+    fn select_segment_version(
+        &self,
+        key: &[u8],
+        snapshot: Snapshot,
+    ) -> Result<Option<SelectedVersion<'_>>> {
         let mut best_sequence = 0;
         let mut best_ordinal = usize::MAX;
         let mut selected = None;
@@ -34,12 +122,7 @@ impl Database {
                 Ok(())
             },
         )?;
-        // Selection loads authenticated key/sequence spines, not value pages.
-        // Materialize only the winner, including a winning tombstone.
-        match selected {
-            Some(version) => version.value(),
-            None => Ok(None),
-        }
+        Ok(selected)
     }
 
     pub fn get_many(&self, keys: &[Vec<u8>], snapshot: Snapshot) -> Result<Vec<Option<Vec<u8>>>> {
@@ -198,4 +281,17 @@ impl Database {
         }
         Ok(())
     }
+}
+
+/// The smallest key greater than every key that starts with `prefix`, or `None`
+/// when no such key exists (an empty prefix, or one of only `0xff` bytes).
+pub(crate) fn prefix_end(prefix: &[u8]) -> Option<Vec<u8>> {
+    let mut end = prefix.to_vec();
+    while let Some(last) = end.pop() {
+        if last < u8::MAX {
+            end.push(last + 1);
+            return Some(end);
+        }
+    }
+    None
 }

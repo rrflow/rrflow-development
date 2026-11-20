@@ -308,6 +308,24 @@ impl Segment {
         ))
     }
 
+    pub(super) fn present_at(&self, row_group: usize, row: usize) -> Result<bool> {
+        let validity = self.load_page(row_group, PageKind::ValueValidity)?;
+        valid_at(validity.buffer.as_slice(), row)
+    }
+
+    pub(super) fn value_len_at(&self, row_group: usize, row: usize) -> Result<Option<u64>> {
+        if !self.present_at(row_group, row)? {
+            return Ok(None);
+        }
+        let offsets = self.load_page(row_group, PageKind::ValueOffsets)?;
+        let start = offset_at(offsets.buffer.as_slice(), row)?;
+        let end = offset_at(offsets.buffer.as_slice(), row + 1)?;
+        let length = end.checked_sub(start).ok_or_else(|| {
+            Error::InvalidSegment("v6 Arrow binary offsets are not monotonic".into())
+        })?;
+        Ok(Some(length as u64))
+    }
+
     pub(super) fn load_page(&self, row_group: usize, kind: PageKind) -> Result<Arc<LoadedPage>> {
         self.load_page_with_evidence(row_group, kind)
             .map(|(page, _)| page)
