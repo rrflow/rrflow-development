@@ -20,8 +20,8 @@
     "versions"
   ],
   "identity": {
-    "instance": "instance-922939270975bf0f27804017",
-    "engram": "engram-922939270975bf0f27804017",
+    "instance": "instance-e8214b3855212424cf77586f",
+    "engram": "engram-e8214b3855212424cf77586f",
     "principal": "sdk-conformance",
     "api_key": "sdk-conformance-key"
   },
@@ -135,7 +135,7 @@
     }
   },
   "query": {
-    "scope": "instance:instance-922939270975bf0f27804017",
+    "scope": "instance:instance-e8214b3855212424cf77586f",
     "query": "FROM record:document AT VALID 100 KNOWN HEAD WHERE id = \"sdk-conformance\" PROJECT id, title EXPLAIN CONTRACT",
     "parameters": {},
     "budget": {
@@ -150,7 +150,7 @@
   },
   "vector": {
     "ensure": {
-      "scope": "instance:instance-922939270975bf0f27804017",
+      "scope": "instance:instance-e8214b3855212424cf77586f",
       "collection_id": "documents",
       "vectors": [
         {
@@ -172,7 +172,7 @@
       ]
     },
     "search": {
-      "scope": "instance:instance-922939270975bf0f27804017",
+      "scope": "instance:instance-e8214b3855212424cf77586f",
       "valid_at": 100,
       "collection_id": "documents",
       "vector_name": "title",
@@ -191,7 +191,7 @@
     },
     "quantization": {
       "build": {
-        "scope": "instance:instance-922939270975bf0f27804017",
+        "scope": "instance:instance-e8214b3855212424cf77586f",
         "collection_id": "documents",
         "vector_name": "title",
         "method": {
@@ -202,12 +202,12 @@
         "max_storage_keys": 1000
       },
       "activate": {
-        "scope": "instance:instance-922939270975bf0f27804017",
+        "scope": "instance:instance-e8214b3855212424cf77586f",
         "artifact_id": "quant-turboquant-documents-title",
         "generation": 1
       },
       "search": {
-        "scope": "instance:instance-922939270975bf0f27804017",
+        "scope": "instance:instance-e8214b3855212424cf77586f",
         "valid_at": 100,
         "collection_id": "documents",
         "vector_name": "title",
@@ -231,7 +231,7 @@
       "delete_payload_index": {
         "collection_id": "documents",
         "field": "spare",
-        "scope": "instance:instance-922939270975bf0f27804017"
+        "scope": "instance:instance-e8214b3855212424cf77586f"
       },
       "ensure": {
         "build_policy": {
@@ -249,14 +249,14 @@
           "seed": 7
         },
         "max_storage_keys": 1000,
-        "scope": "instance:instance-922939270975bf0f27804017",
+        "scope": "instance:instance-e8214b3855212424cf77586f",
         "vector_name": "body"
       },
       "payload_index": {
         "collection_id": "documents",
         "field": "bucket",
         "kind": "unsigned",
-        "scope": "instance:instance-922939270975bf0f27804017"
+        "scope": "instance:instance-e8214b3855212424cf77586f"
       },
       "search": {
         "collection_id": "documents",
@@ -286,7 +286,7 @@
             0.0
           ]
         },
-        "scope": "instance:instance-922939270975bf0f27804017",
+        "scope": "instance:instance-e8214b3855212424cf77586f",
         "top_k": 1,
         "valid_at": 100,
         "vector_name": "body"
@@ -295,13 +295,13 @@
         "collection_id": "documents",
         "field": "spare",
         "kind": "unsigned",
-        "scope": "instance:instance-922939270975bf0f27804017"
+        "scope": "instance:instance-e8214b3855212424cf77586f"
       }
     }
   },
   "changefeed": {
     "read": {
-      "scope": "instance:instance-922939270975bf0f27804017",
+      "scope": "instance:instance-e8214b3855212424cf77586f",
       "after_cursor": 0,
       "limit": 128
     },
@@ -311,7 +311,7 @@
   },
   "cold_history": {
     "read": {
-      "scope": "instance:instance-922939270975bf0f27804017",
+      "scope": "instance:instance-e8214b3855212424cf77586f",
       "generation": 1,
       "max_artifact_bytes": 1048576
     },
