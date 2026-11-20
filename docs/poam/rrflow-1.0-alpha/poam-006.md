@@ -10,6 +10,14 @@ independently.
 
 ## Observed deficiency
 
+The same recovery review found that `engram_configuration_sha256` omitted
+`attunement_follow`: enabling or changing automatic attunement left the
+configuration digest unchanged, and unsealed policy edits passed configuration
+validation. The [policy identity repair](../../evidence/change-journals/gate-d/attunement-policy-digest-20261120.md)
+binds that field at the existing owner and records the failing regression and
+affected projections. This does not establish a bypass of the separate
+installation-plan digest or close the broader lifecycle gap.
+
 The 2026-11-20 historical-stash comparison found a parser framing regression:
 the current batch worker accepted EOF after one to three header bytes as clean
 shutdown. The actual primary executable reproduced exit 0 for those truncated
