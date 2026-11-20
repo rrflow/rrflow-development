@@ -31,10 +31,7 @@ fn flushed_database(root: &std::path::Path) -> Database {
     database
 }
 
-fn read(
-    database: &Database,
-    ranges: Vec<(usize, usize)>,
-) -> (Vec<Vec<u8>>, ProjectedReadEvidence) {
+fn read(database: &Database, ranges: Vec<(usize, usize)>) -> (Vec<Vec<u8>>, ProjectedReadEvidence) {
     let ranges = ranges
         .into_iter()
         .map(|(start, end)| ProjectedReadRange::new(key(start), Some(key(end))).unwrap())

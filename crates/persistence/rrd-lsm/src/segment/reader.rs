@@ -1,6 +1,7 @@
 use super::format::PageKind;
 use super::{
-    key_at, offset_at, sequence_at, valid_at, KeySpine, PageCacheAccess, PageLoadEvidence, Segment,
+    key_at, lower_bound, offset_at, sequence_at, valid_at, KeySpine, PageCacheAccess,
+    PageLoadEvidence, Segment,
 };
 use crate::{Error, Manifest, ProjectedOutputMemory, Result, Snapshot};
 use arrow_buffer::{Buffer, MutableBuffer};

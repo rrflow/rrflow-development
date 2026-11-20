@@ -49,10 +49,6 @@ impl ProjectedReadRange {
         Ok(())
     }
 
-    pub(crate) fn contains(&self, key: &[u8]) -> bool {
-        key >= self.start.as_slice() && self.end.as_ref().is_none_or(|end| key < end.as_slice())
-    }
-
     pub(crate) fn overlaps(&self, first: &[u8], last: &[u8]) -> bool {
         last >= self.start.as_slice() && self.end.as_ref().is_none_or(|end| first < end.as_slice())
     }
