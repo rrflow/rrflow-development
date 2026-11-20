@@ -166,6 +166,20 @@ target at the scratch root's `target` directory.
   statuses, 1,278 coordinates); navigation passed (21 indexes, 1,279 nodes,
   4,495 edges); execution inventory regenerated 3,688 records. A green empty
   opening commit is not repair proof.
+- `python -m unittest discover -s scripts/dev -p test_connectome_dev.py`:
+  ten development-launcher checks passed. Final documentation/navigation and
+  `git diff --check` passed after the merged child pin was selected.
+
+Connectome PR109 merged as `26d1f83cf9fb10118f6e93dee70750f30ca7db3c`.
+Merge-group run `44827483107` passed all six jobs, including native Ubuntu,
+macOS and Windows, browser smoke, real RRD process integration and `ci-gate`.
+The source tip `ba0e0d05b3b9438a96f4a35d3bb99adc4b98d083` has the identical
+tree. Its verified `connectome-merged-109.bundle` precedes local branch deletion;
+fetch/prune confirms the server removed the remote branch. PR444 pins the merge
+revision. The separate candidate run `44827444215` still had one Ubuntu job
+running at this observation; its final conclusion is not asserted here.
+Parser framing repair is opened separately as
+[PR445](https://github.com/rrflow/rrflow-development/pull/445), from main.
 
 The before-edit brief binds current/target behavior, exact scope, owner, oracle,
 research/resource decisions and stop conditions. The source map and explicit
