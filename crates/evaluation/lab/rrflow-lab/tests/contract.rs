@@ -44,6 +44,7 @@ fn binding(name: &str) -> SystemBinding {
         storage_profile: "memory".into(),
         availability: Availability::Available,
         index: IndexSpec::Exact,
+        rrflow_hnsw: None,
         search_ladder: vec![SearchSetting {
             id: id("default"),
             ef: None,
@@ -786,6 +787,17 @@ fn manifests_refuse_what_would_make_a_result_misleading_or_unsafe() {
         ef_construction: 100,
     };
     graph.systems[0].search_ladder[0].ef = Some(32);
+    // A graph RRFlow builds states its own build parameters; nothing stands in for them.
+    assert!(graph
+        .validate()
+        .unwrap_err()
+        .contains("native HNSW parameters are required"));
+    let native = rrflow_lab_systems::binding::RrflowHnswParameters {
+        max_level: 6,
+        seed: 7,
+        build_policy: Default::default(),
+    };
+    graph.systems[0].rrflow_hnsw = Some(native.clone());
     graph.validate().unwrap();
     assert!(refused(|m| {
         m.systems[0].kind = SystemKind::Rrflow;
@@ -793,6 +805,7 @@ fn manifests_refuse_what_would_make_a_result_misleading_or_unsafe() {
             m: 16,
             ef_construction: 100,
         };
+        m.systems[0].rrflow_hnsw = Some(native.clone());
     })
     .contains("needs ef"));
     assert!(refused(|m| {

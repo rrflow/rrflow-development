@@ -16,6 +16,13 @@
       "m": 16,
       "ef_construction": 100
     },
+    "rrflow_hnsw": {
+      "max_level": 6,
+      "seed": 7,
+      "build_policy": {
+        "kind": "cpu"
+      }
+    },
     "search_ladder": [
       {
         "id": "ef-16",

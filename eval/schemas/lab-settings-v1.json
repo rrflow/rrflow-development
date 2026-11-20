@@ -53,6 +53,16 @@
             "null"
           ]
         },
+        "max_level": {
+          "description": "The highest layer of an RRFlow graph.",
+          "format": "uint8",
+          "maximum": 255,
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
         "nprobes": {
           "description": "The search ladder's rungs, for an index searched by partitions.",
           "items": {
@@ -74,6 +84,7 @@
           ]
         },
         "seed": {
+          "description": "The seed of a TurboQuant index, or of an RRFlow graph's layer assignment.",
           "format": "uint64",
           "minimum": 0,
           "type": [

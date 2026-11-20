@@ -102,6 +102,13 @@ fn workload() -> ConnectionLimits {
 }
 
 fn binding(endpoint: &str, kind: SystemKind, credentials: CredentialReferences) -> SystemBinding {
+    // Only RRFlow's own graph build takes these, and it must be told them.
+    let rrflow_hnsw =
+        (kind == SystemKind::Rrflow).then_some(rrflow_lab_systems::binding::RrflowHnswParameters {
+            max_level: 6,
+            seed: 7,
+            build_policy: Default::default(),
+        });
     SystemBinding {
         id: Id::try_from("subject".to_string()).unwrap(),
         label: "Subject".into(),
@@ -115,6 +122,7 @@ fn binding(endpoint: &str, kind: SystemKind, credentials: CredentialReferences) 
             m: 16,
             ef_construction: 100,
         },
+        rrflow_hnsw,
         search_ladder: Vec::new(),
         engine_settings: Default::default(),
         limits: Vec::new(),

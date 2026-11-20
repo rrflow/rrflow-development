@@ -6,7 +6,7 @@ use crate::adapter::{
     PointBatch, SearchRequest, SystemAdapter,
 };
 
-use crate::binding::{IndexSpec, SystemBinding};
+use crate::binding::{IndexSpec, RrflowHnswParameters, SystemBinding};
 
 use rrd_client::{ClientConfig, RequestOptions, RrdClient, Session};
 
@@ -37,10 +37,6 @@ use tokio::runtime::Runtime;
 const VECTOR_NAME: &str = "lab";
 
 const FILTER_PROPERTY: &str = "category";
-
-const HNSW_MAX_LEVEL: u8 = 6;
-
-const HNSW_SEED: u64 = 7;
 
 const VECTOR_FIELD: &str = "lab-embedding";
 
@@ -86,6 +82,8 @@ pub struct RrflowAdapter {
     counter: AtomicU64,
     prepared: OnceLock<Prepared>,
     access_paths: Mutex<BTreeSet<String>>,
+    /// The graph parameters the binding states; none when it builds no graph.
+    hnsw: Option<RrflowHnswParameters>,
 }
 
 fn decode<T: DeserializeOwned>(value: Value) -> Result<T> {
@@ -194,12 +192,30 @@ pub(crate) fn payload_index_request(scope: &str, collection: &str) -> Value {
     })
 }
 
+/// Whether the engine's contract accepts a graph built with these parameters, asked of the
+/// same public request the adapter sends.
+pub(crate) fn check_hnsw_parameters(
+    m: u32,
+    ef_construction: u32,
+    native: &RrflowHnswParameters,
+) -> Result<()> {
+    let request: rrd_contract::EnsureVectorIndex = decode(hnsw_index_request(
+        "instance:lab",
+        "lab",
+        m,
+        ef_construction,
+        native,
+    ))?;
+    request.validate().map_err(|error| error.to_string())
+}
+
 /// The public request that builds a graph over a collection's vector.
 pub(crate) fn hnsw_index_request(
     scope: &str,
     collection: &str,
     m: u32,
     ef_construction: u32,
+    native: &RrflowHnswParameters,
 ) -> Value {
     json!({
         "scope": scope,
@@ -209,10 +225,11 @@ pub(crate) fn hnsw_index_request(
             "kind": "hnsw",
             "m": m,
             "ef_construction": ef_construction,
-            "max_level": HNSW_MAX_LEVEL,
-            "seed": HNSW_SEED,
+            "max_level": native.max_level,
+            "seed": native.seed,
             "filter_properties": [FILTER_PROPERTY]
         },
+        "build_policy": native.build_policy,
         "max_storage_keys": MAX_VECTOR_STORAGE_KEYS
     })
 }
@@ -276,6 +293,7 @@ impl RrflowAdapter {
             counter: AtomicU64::new(0),
             prepared: OnceLock::new(),
             access_paths: Mutex::new(BTreeSet::new()),
+            hnsw: binding.rrflow_hnsw.clone(),
         })
     }
 
@@ -341,6 +359,7 @@ impl RrflowAdapter {
             counter: AtomicU64::new(0),
             prepared: OnceLock::new(),
             access_paths: Mutex::new(BTreeSet::new()),
+            hnsw: None,
         })
     }
 
@@ -587,6 +606,10 @@ impl SystemAdapter for RrflowAdapter {
     fn finish_ingest(&self, _deadline: Instant) -> Result<()> {
         let prepared = self.prepared()?;
         if let IndexSpec::Hnsw { m, ef_construction } = &prepared.index {
+            let native = self
+                .hnsw
+                .as_ref()
+                .ok_or("an RRFlow graph needs the binding's native HNSW parameters")?;
             let session = self.session()?;
             let built: EnsureVectorIndexResult = self
                 .runtime
@@ -597,6 +620,7 @@ impl SystemAdapter for RrflowAdapter {
                         &prepared.collection,
                         *m,
                         *ef_construction,
+                        native,
                     ))?,
                     self.mutation_options("graph")?,
                 ))
