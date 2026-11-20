@@ -128,6 +128,9 @@ pub(super) struct SegmentProjectedCursor {
     pub(super) cache_access: PageCacheAccess,
     pub(super) row_group: usize,
     pub(super) row: usize,
+    /// The first range not yet passed. Ranges are sorted and disjoint and a
+    /// segment's rows are in key order, so a range left behind is never needed again.
+    pub(super) range: usize,
     pub(super) loaded_spine: Option<KeySpine>,
     // The row group each value page was last charged for. Rows reach each kind in
     // row-group order, so a row group's rows pay for its page's bytes once, as the
@@ -155,6 +158,7 @@ impl SegmentProjectedCursor {
             cache_access,
             row_group,
             row: 0,
+            range: 0,
             loaded_spine: None,
             charged_validity: None,
             charged_offsets: None,
@@ -214,6 +218,11 @@ impl SegmentProjectedCursor {
                 return Ok(None);
             }
             let descriptor = &self.segment.row_groups[self.row_group];
+            // Row groups are in key order: one that starts at or after the end of
+            // the last range ends the scan without being loaded.
+            if self.past_every_range(&descriptor.first_key) {
+                return Ok(self.finish());
+            }
             let selected = self
                 .ranges
                 .iter()
@@ -233,10 +242,16 @@ impl SegmentProjectedCursor {
                     self.cache_access,
                 )?);
                 meter.record_selected_row_group()?;
-                self.row = 0;
+                // Open the row group at the start of the next range, not at row 0.
+                let spine = self.loaded_spine.as_ref().expect("spine was loaded");
+                let rows = self.segment.row_groups[self.row_group].row_count as usize;
+                self.row = match self.ranges.get(self.range) {
+                    Some(range) => lower_bound(spine, rows, &range.start)?,
+                    None => rows,
+                };
             }
-            let descriptor = &self.segment.row_groups[self.row_group];
-            if self.row >= descriptor.row_count as usize {
+            let row_count = self.segment.row_groups[self.row_group].row_count as usize;
+            if self.row >= row_count {
                 self.row_group += 1;
                 self.row = 0;
                 self.loaded_spine = None;
@@ -244,12 +259,26 @@ impl SegmentProjectedCursor {
             }
             meter.record_versions(1)?;
             let row = self.row;
-            self.row += 1;
             let spine = self.loaded_spine.as_ref().expect("spine was loaded");
             let key = key_at(spine, row)?;
-            if !self.ranges.iter().any(|range| range.contains(key)) {
+            while self
+                .ranges
+                .get(self.range)
+                .and_then(|range| range.end.as_deref())
+                .is_some_and(|end| key >= end)
+            {
+                self.range += 1;
+            }
+            let Some(range) = self.ranges.get(self.range) else {
+                return Ok(self.finish());
+            };
+            if key < range.start.as_slice() {
+                // Before the next range: seek to its start inside this row group.
+                // The seek lands past `row`, because this row's key is below it.
+                self.row = lower_bound(spine, row_count, &range.start)?;
                 continue;
             }
+            self.row += 1;
             return Ok(Some(RawSegmentRow {
                 key: key.to_vec(),
                 sequence: sequence_at(spine, row)?,
@@ -257,6 +286,21 @@ impl SegmentProjectedCursor {
                 row,
             }));
         }
+    }
+
+    /// Whether `key` is at or after the end of the last range.
+    fn past_every_range(&self, key: &[u8]) -> bool {
+        self.ranges
+            .last()
+            .and_then(|range| range.end.as_deref())
+            .is_some_and(|end| key >= end)
+    }
+
+    /// Ends the scan: no later row of this segment is in any range.
+    fn finish(&mut self) -> Option<RawSegmentRow> {
+        self.row_group = self.segment.row_groups.len();
+        self.loaded_spine = None;
+        None
     }
 
     fn prepare_value(
