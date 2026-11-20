@@ -383,8 +383,9 @@ fn visible_ranges_match_memtable_oracle_for_mixed_families() {
 fn repeated_hits_keep_one_order_entry_per_page_and_evict_the_least_recent() {
     for policy in [
         PageCachePolicy::ExactLru,
+        // Room for both hot pages in the protected region, so a hit is only a hit.
         PageCachePolicy::ScanResistantLru {
-            protected_capacity_basis_points: 5_000,
+            protected_capacity_basis_points: 8_000,
         },
     ] {
         let page_bytes = cache_page(64, 0).resident_bytes();

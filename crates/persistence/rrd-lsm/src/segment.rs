@@ -49,6 +49,7 @@ use serde::{Deserialize, Serialize};
 use std::cmp::Reverse;
 
 use std::collections::{BTreeMap, BTreeSet, BinaryHeap, HashMap};
+use std::hash::{BuildHasherDefault, Hasher};
 
 use std::fmt;
 
