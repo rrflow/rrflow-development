@@ -13,6 +13,13 @@ use std::io::{Read, Write};
 use std::net::IpAddr;
 use std::time::{Duration, Instant};
 
+mod system_one;
+
+enum ResponseDecoder {
+    Chat(EndpointResponseFormat),
+    SystemOne(system_one::SelectionQuestion),
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ChatMessage {
@@ -182,7 +189,7 @@ pub struct ModelChatObservation {
 pub struct PreparedModelChat<'a> {
     configuration_sha256: String,
     maximum_response_bytes: u64,
-    response_format: EndpointResponseFormat,
+    decoder: ResponseDecoder,
     credential: Option<&'a CredentialReference>,
     service_id: &'a CanonicalId,
     url: String,
@@ -197,6 +204,9 @@ impl<'a> PreparedModelChat<'a> {
         request: &ModelChatRequest,
         maximum_response_bytes: u64,
     ) -> Result<Self> {
+        if request.messages.is_empty() || request.messages.len() > 128 {
+            return Err(failure("invalid chat generation bounds", false));
+        }
         request
             .settings
             .validate()
@@ -228,10 +238,9 @@ impl<'a> PreparedModelChat<'a> {
             configuration,
             binding_id,
             &request.model,
-            &request.messages,
             &wire,
             maximum_response_bytes,
-            settings.response_format,
+            ResponseDecoder::Chat(settings.response_format),
         )
     }
 
@@ -239,10 +248,9 @@ impl<'a> PreparedModelChat<'a> {
         configuration: &'a EndpointConfiguration,
         binding_id: &CanonicalId,
         model: &CanonicalId,
-        messages: &[ChatMessage],
         wire: &impl Serialize,
         maximum_response_bytes: u64,
-        response_format: EndpointResponseFormat,
+        decoder: ResponseDecoder,
     ) -> Result<Self> {
         let configuration_sha256 = configuration
             .sha256()
@@ -264,9 +272,6 @@ impl<'a> PreparedModelChat<'a> {
                 "request differs from configured model binding",
                 false,
             ));
-        }
-        if messages.is_empty() || messages.len() > 128 {
-            return Err(failure("invalid chat generation bounds", false));
         }
         let EndpointLocator::Url { url } = &binding.endpoint else {
             return Err(failure("chat transport requires a URL binding", false));
@@ -294,13 +299,17 @@ impl<'a> PreparedModelChat<'a> {
         }
         let limit = binding.limits.max_input_bytes.min(MAX_ROUTE_REQUEST_BYTES);
         let request = encode_bounded(wire, limit)?;
+        let path = match &decoder {
+            ResponseDecoder::Chat(_) => "chat/completions",
+            ResponseDecoder::SystemOne(_) => "systemone",
+        };
         Ok(Self {
             configuration_sha256,
             maximum_response_bytes,
-            response_format,
+            decoder,
             credential: binding.credential.as_ref(),
             service_id: &binding.service_id,
-            url: format!("{}/chat/completions", url.trim_end_matches('/')),
+            url: format!("{}/{path}", url.trim_end_matches('/')),
             request,
             timeout: Duration::from_millis(binding.limits.timeout_ms),
         })
@@ -407,6 +416,21 @@ impl<'a> PreparedModelChat<'a> {
         if bytes.len() as u64 > self.maximum_response_bytes {
             return Err(failure("chat response exceeds byte limit", true));
         }
+        if let ResponseDecoder::SystemOne(question) = &self.decoder {
+            let (content, usage) = question.decode(&bytes, self.service_id)?;
+            return Ok(ModelChatObservation {
+                content_sha256: sha256_hex(content.as_bytes()),
+                content,
+                service_id: self.service_id.to_string(),
+                configuration_sha256: self.configuration_sha256.clone(),
+                request_sha256: sha256_hex(&self.request),
+                response_sha256: sha256_hex(&bytes),
+                usage: Some(usage),
+                elapsed_ms: None,
+                http_status: None,
+                response_bytes: bytes,
+            });
+        }
         let response: WireResponse = serde_json::from_slice(&bytes)
             .map_err(|_| failure("invalid chat response JSON", true))?;
         if response.model != self.service_id.as_str() || response.choices.len() != 1 {
@@ -444,9 +468,11 @@ impl<'a> PreparedModelChat<'a> {
             .content
             .as_ref()
             .ok_or_else(|| completed_failure("chat response has no content"))?;
-        if self.response_format == EndpointResponseFormat::JsonObject
-            && !serde_json::from_str::<serde_json::Value>(content)
-                .is_ok_and(|value| value.is_object())
+        if matches!(
+            self.decoder,
+            ResponseDecoder::Chat(EndpointResponseFormat::JsonObject)
+        ) && !serde_json::from_str::<serde_json::Value>(content)
+            .is_ok_and(|value| value.is_object())
         {
             return Err(completed_failure(
                 "chat content is not the requested JSON object",
@@ -475,14 +501,14 @@ impl<'a> PreparedModelChat<'a> {
 
 /// Strict selector decoder over the same transport. Generation text never
 /// bypasses the configured allowance or becomes an eligible selection by itself.
-pub struct PreparedEndpointChat<'a> {
+pub struct PreparedEndpointController<'a> {
     configuration: &'a EndpointConfiguration,
     allowance: &'a EndpointSelectionAllowance,
     transport: PreparedModelChat<'a>,
 }
 
-impl<'a> PreparedEndpointChat<'a> {
-    pub fn new(
+impl<'a> PreparedEndpointController<'a> {
+    pub fn chat(
         configuration: &'a EndpointConfiguration,
         controller_binding: &CanonicalId,
         allowance: &'a EndpointSelectionAllowance,
@@ -495,18 +521,55 @@ impl<'a> PreparedEndpointChat<'a> {
             || request.max_tokens > 65_536
             || !request.temperature.is_finite()
             || !(0.0..=2.0).contains(&request.temperature)
+            || request.messages.is_empty()
+            || request.messages.len() > 128
         {
             return Err(failure("invalid chat generation bounds", false));
         }
-        // Serialize the existing selector wire unchanged, including field order.
+        // The chat protocol retains its exact wire encoding for evidence replay.
         let transport = PreparedModelChat::prepare(
             configuration,
             controller_binding,
             &request.model,
-            &request.messages,
             request,
             allowance.limits.maximum_response_bytes,
-            EndpointResponseFormat::JsonObject,
+            ResponseDecoder::Chat(EndpointResponseFormat::JsonObject),
+        )?;
+        Ok(Self {
+            configuration,
+            allowance,
+            transport,
+        })
+    }
+
+    pub fn system_one(
+        configuration: &'a EndpointConfiguration,
+        controller_binding: &CanonicalId,
+        allowance: &'a EndpointSelectionAllowance,
+        instructions: &str,
+        state: &str,
+    ) -> Result<Self> {
+        if instructions.trim().is_empty() || state.is_empty() {
+            return Err(failure("System One requires instructions and state", false));
+        }
+        allowance
+            .validate_for(configuration)
+            .map_err(|_| failure("invalid selection configuration or allowance", false))?;
+        let model = &configuration
+            .profile
+            .as_ref()
+            .and_then(|p| p.bindings.iter().find(|b| &b.id == controller_binding))
+            .ok_or_else(|| failure("model binding is not configured", false))?
+            .service_id;
+        let question = system_one::SelectionQuestion::new(allowance)?;
+        let wire = question.request(model, instructions, state);
+        let transport = PreparedModelChat::prepare(
+            configuration,
+            controller_binding,
+            model,
+            &wire,
+            allowance.limits.maximum_response_bytes,
+            ResponseDecoder::SystemOne(question.clone()),
         )?;
         Ok(Self {
             configuration,

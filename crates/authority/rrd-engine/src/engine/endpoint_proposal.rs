@@ -12,7 +12,7 @@ use rrd_contract::{
 };
 use rrd_inference::endpoint_chat::{
     ChatMessage, ChatResponseFormat, ChatRole, EndpointChatFailure, EndpointChatRequest,
-    PreparedEndpointChat,
+    PreparedEndpointController,
 };
 use rrd_inference::lfg_transport::{LfgTransportConfig, PreparedLfgObservation};
 use rrd_inference::{EmbeddingCancellation, NetworkPolicy};
@@ -651,7 +651,24 @@ fn prepare_controller<'a>(
     binding: &rrd_contract::EndpointBinding,
     policy: &rrd_contract::EndpointSelectionPolicy,
     packet: &'a EndpointSelectionPacket,
-) -> Result<PreparedEndpointChat<'a>> {
+) -> Result<PreparedEndpointController<'a>> {
+    let state = serde_json::to_string(packet).map_err(contract_json)?;
+    let (maximum_output_tokens, temperature_milli) = match policy.controller_protocol {
+        rrd_contract::EndpointControllerProtocol::ChatCompletions {
+            maximum_output_tokens,
+            temperature_milli,
+        } => (maximum_output_tokens, temperature_milli),
+        rrd_contract::EndpointControllerProtocol::SystemOne {} => {
+            return PreparedEndpointController::system_one(
+                configuration,
+                &binding.id,
+                &packet.allowance,
+                &policy.system_prompt,
+                &state,
+            )
+            .map_err(endpoint_failure)
+        }
+    };
     let chat = EndpointChatRequest {
         model: binding.service_id.clone(),
         messages: vec![
@@ -661,14 +678,14 @@ fn prepare_controller<'a>(
             },
             ChatMessage {
                 role: ChatRole::User,
-                content: serde_json::to_string(packet).map_err(contract_json)?,
+                content: state,
             },
         ],
-        max_tokens: policy.maximum_output_tokens,
-        temperature: f64::from(policy.temperature_milli) / 1000.0,
+        max_tokens: maximum_output_tokens,
+        temperature: f64::from(temperature_milli) / 1000.0,
         response_format: ChatResponseFormat::JsonObject,
     };
-    PreparedEndpointChat::new(configuration, &binding.id, &packet.allowance, &chat)
+    PreparedEndpointController::chat(configuration, &binding.id, &packet.allowance, &chat)
         .map_err(endpoint_failure)
 }
 fn validate_flight_identity(

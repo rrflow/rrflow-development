@@ -80,8 +80,10 @@ fn proposed() -> (EndpointConfiguration, EndpointSelectionPolicy) {
         limits: allowance.limits,
         candidates: allowance.candidates,
         system_prompt: request["messages"][0]["content"].as_str().unwrap().into(),
-        maximum_output_tokens: request["max_tokens"].as_u64().unwrap().try_into().unwrap(),
-        temperature_milli: (request["temperature"].as_f64().unwrap() * 1000.0) as u16,
+        controller_protocol: rrd_contract::EndpointControllerProtocol::ChatCompletions {
+            maximum_output_tokens: request["max_tokens"].as_u64().unwrap().try_into().unwrap(),
+            temperature_milli: (request["temperature"].as_f64().unwrap() * 1000.0) as u16,
+        },
         lfg: None,
     };
     (configuration, policy)
@@ -122,7 +124,7 @@ fn proposed_policy_changes_digest_and_only_its_exact_configuration_can_project_i
     assert_ne!(previous, allowance.configuration_sha256);
     assert_eq!(allowance.configuration_sha256, proposal.sha256().unwrap());
     let mut output_change = policy.clone();
-    output_change.maximum_output_tokens += 1;
+    output_change.controller_protocol = rrd_contract::EndpointControllerProtocol::SystemOne {};
     let mut prompt_change = policy.clone();
     prompt_change.system_prompt.push('\n');
     let mut candidate_change = policy.clone();
@@ -152,7 +154,10 @@ fn unknown_bindings_mismatched_facts_and_invalid_bounds_are_rejected() {
     changed.candidates[0].service_id = bindings[0].id.clone();
     assert!(changed.validate_for(bindings).is_err());
     let mut changed = policy.clone();
-    changed.maximum_output_tokens = 0;
+    changed.controller_protocol = rrd_contract::EndpointControllerProtocol::ChatCompletions {
+        maximum_output_tokens: 0,
+        temperature_milli: 0,
+    };
     assert!(changed.validate_for(bindings).is_err());
     for limit in [0, u32::MAX] {
         let mut changed = policy.clone();
@@ -160,7 +165,10 @@ fn unknown_bindings_mismatched_facts_and_invalid_bounds_are_rejected() {
         assert!(changed.validate_for(bindings).is_err());
     }
     let mut changed = policy.clone();
-    changed.temperature_milli = u16::MAX;
+    changed.controller_protocol = rrd_contract::EndpointControllerProtocol::ChatCompletions {
+        maximum_output_tokens: 64,
+        temperature_milli: u16::MAX,
+    };
     assert!(changed.validate_for(bindings).is_err());
     let mut changed = policy.clone();
     changed.system_prompt = policy
@@ -182,4 +190,22 @@ fn policy_decoding_is_closed_and_empty_candidates_remain_explicit() {
     policy
         .validate_for(&configuration.profile.unwrap().bindings)
         .unwrap();
+}
+
+#[test]
+fn controller_protocol_is_required_and_generation_settings_belong_to_chat() {
+    let (configuration, mut policy) = proposed();
+    let mut encoded = serde_json::to_value(&policy).unwrap();
+    encoded
+        .as_object_mut()
+        .unwrap()
+        .remove("controller_protocol");
+    assert!(serde_json::from_value::<EndpointSelectionPolicy>(encoded).is_err());
+    policy.controller_protocol = rrd_contract::EndpointControllerProtocol::SystemOne {};
+    policy
+        .validate_for(&configuration.profile.unwrap().bindings)
+        .unwrap();
+    let mut encoded = serde_json::to_value(&policy).unwrap();
+    encoded["controller_protocol"]["maximum_output_tokens"] = serde_json::json!(64);
+    assert!(serde_json::from_value::<EndpointSelectionPolicy>(encoded).is_err());
 }

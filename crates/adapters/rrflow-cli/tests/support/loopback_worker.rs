@@ -69,8 +69,10 @@ pub(super) fn loopback_worker_profile(
         candidates,
         system_prompt: "Select the single explicitly allowed controlled loopback test binding."
             .into(),
-        maximum_output_tokens: 64,
-        temperature_milli: 0,
+        controller_protocol: rrd_contract::EndpointControllerProtocol::ChatCompletions {
+            maximum_output_tokens: 64,
+            temperature_milli: 0,
+        },
         lfg: None,
     };
     let worker_binding = selection_policy.candidates[0].binding_id.clone();
@@ -110,6 +112,10 @@ pub(super) fn loopback_worker_profile(
 }
 
 pub(super) fn accept_loopback_chat(listener: &TcpListener) -> (TcpStream, serde_json::Value) {
+    accept_loopback_request(listener, "/v1/chat/completions")
+}
+
+fn accept_loopback_request(listener: &TcpListener, path: &str) -> (TcpStream, serde_json::Value) {
     listener.set_nonblocking(true).unwrap();
     let deadline = std::time::Instant::now() + Duration::from_secs(15);
     let (mut socket, _) = loop {
@@ -136,7 +142,7 @@ pub(super) fn accept_loopback_chat(listener: &TcpListener) -> (TcpStream, serde_
         assert!(header.len() < 8_192);
     }
     let header = String::from_utf8(header).unwrap();
-    assert!(header.starts_with("POST /v1/chat/completions HTTP/1.1"));
+    assert!(header.starts_with(&format!("POST {path} HTTP/1.1")));
     let length: usize = header
         .lines()
         .find_map(|line| {
@@ -620,18 +626,21 @@ impl InstalledWorker<'_> {
     ) -> (rrd_contract::TaskWorkerOutput, Option<String>) {
         std::thread::scope(|scope_thread| {
             let server = scope_thread.spawn(|| {
-                let (mut selection_socket, selection_wire) = accept_loopback_chat(self.listener);
+                let (mut selection_socket, selection_wire) = accept_loopback_request(self.listener, "/v1/systemone");
                 let choice = rrd_contract::EndpointSelectionChoice::Select {
                     binding_id: rrd_contract::CanonicalId::new("controlled-loopback-binding")
                         .unwrap(),
                     effort: None,
                 };
                 let model = selection_wire["model"].as_str().unwrap();
-                reply_loopback_chat(
-                    &mut selection_socket,
-                    model,
-                    &serde_json::to_string(&choice).unwrap(),
-                );
+                let options = selection_wire["questions"]["endpoint"]["criteria"].as_object().unwrap();
+                let selected = options.iter().find(|(_, value)| **value == serde_json::to_value(&choice).unwrap()).unwrap().0;
+                let probabilities: serde_json::Map<String, serde_json::Value> = options.keys().map(|key| (key.clone(), serde_json::json!(if key == selected { 1.0 } else { 0.0 }))).collect();
+                let response = serde_json::to_vec(&serde_json::json!({"model":model,"answers":{"endpoint":{
+                    "type":"choice", "choice":selected,"confidence":1.0,"probabilities":probabilities}},
+                    "usage":{"input_tokens":120,"output_tokens":12}})).unwrap();
+                write!(selection_socket, "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n", response.len()).unwrap();
+                selection_socket.write_all(&response).unwrap();
                 let (mut worker_socket, worker_wire) = accept_loopback_chat(self.listener);
                 let packet: serde_json::Value =
                     serde_json::from_str(worker_wire["messages"][1]["content"].as_str().unwrap())

@@ -2,10 +2,12 @@
 //! Actual retained HTTP records; denial mutations are in-memory probes only.
 #[path = "support/observed_configuration.rs"]
 mod observed_configuration;
+#[path = "endpoint_chat/system_one.rs"]
+mod system_one;
 
 use rrd_contract::{endpoint_profile_sha256, EndpointConfiguration, EndpointSelectionAllowance};
 use rrd_inference::{
-    endpoint_chat::{EndpointChatRequest, PreparedEndpointChat},
+    endpoint_chat::{EndpointChatRequest, PreparedEndpointController},
     EmbeddingCancellation, EmbeddingExecutionControl, NetworkPolicy,
 };
 use serde_json::Value;
@@ -51,7 +53,8 @@ fn actual_responses_decode_without_invented_transport_measurements() {
         let (configuration, allowance, request) = inputs(name);
         let binding = &configuration.profile.as_ref().unwrap().bindings[0].id;
         let prepared =
-            PreparedEndpointChat::new(&configuration, binding, &allowance, &request).unwrap();
+            PreparedEndpointController::chat(&configuration, binding, &allowance, &request)
+                .unwrap();
         let observed = prepared
             .decode_response(read(name, "choice-response.json"))
             .unwrap();
@@ -82,10 +85,14 @@ fn stale_config_and_foreign_request_never_prepare() {
     let (configuration, mut allowance, mut request) = inputs("available");
     let binding = &configuration.profile.as_ref().unwrap().bindings[0].id;
     request.model = binding.clone();
-    assert!(PreparedEndpointChat::new(&configuration, binding, &allowance, &request).is_err());
+    assert!(
+        PreparedEndpointController::chat(&configuration, binding, &allowance, &request).is_err()
+    );
     let (_, _, request) = inputs("available");
     allowance.configuration_sha256 = allowance.candidates[0].manifest_sha256.clone().unwrap();
-    assert!(PreparedEndpointChat::new(&configuration, binding, &allowance, &request).is_err());
+    assert!(
+        PreparedEndpointController::chat(&configuration, binding, &allowance, &request).is_err()
+    );
 }
 
 #[test]
@@ -93,7 +100,7 @@ fn network_denial_expiry_and_cancellation_precede_credentials_and_io() {
     let (configuration, allowance, request) = inputs("available");
     let binding = &configuration.profile.as_ref().unwrap().bindings[0].id;
     let prepared =
-        PreparedEndpointChat::new(&configuration, binding, &allowance, &request).unwrap();
+        PreparedEndpointController::chat(&configuration, binding, &allowance, &request).unwrap();
     let denied = prepared
         .execute(NetworkPolicy::Deny, &control(), |_, _| {
             panic!("credential resolution after denial")
@@ -139,14 +146,18 @@ fn unencrypted_nonloopback_and_oversized_requests_do_not_prepare() {
     profile.profile_sha256 = endpoint_profile_sha256(profile).unwrap();
     allowance.configuration_sha256 = configuration.sha256().unwrap();
     let binding = &configuration.profile.as_ref().unwrap().bindings[0].id;
-    assert!(PreparedEndpointChat::new(&configuration, binding, &allowance, &request).is_err());
+    assert!(
+        PreparedEndpointController::chat(&configuration, binding, &allowance, &request).is_err()
+    );
     let (mut configuration, mut allowance, request) = inputs("available");
     let profile = configuration.profile.as_mut().unwrap();
     profile.bindings[0].limits.max_input_bytes = 1;
     profile.profile_sha256 = endpoint_profile_sha256(profile).unwrap();
     allowance.configuration_sha256 = configuration.sha256().unwrap();
     let binding = &configuration.profile.as_ref().unwrap().bindings[0].id;
-    assert!(PreparedEndpointChat::new(&configuration, binding, &allowance, &request).is_err());
+    assert!(
+        PreparedEndpointController::chat(&configuration, binding, &allowance, &request).is_err()
+    );
 }
 
 #[test]
@@ -154,7 +165,7 @@ fn altered_model_truncation_unsupported_effects_and_bad_usage_fail() {
     let (configuration, allowance, request) = inputs("available");
     let binding = &configuration.profile.as_ref().unwrap().bindings[0].id;
     let prepared =
-        PreparedEndpointChat::new(&configuration, binding, &allowance, &request).unwrap();
+        PreparedEndpointController::chat(&configuration, binding, &allowance, &request).unwrap();
     let original = response("available");
     let mut changed = original.clone();
     changed["model"] = Value::String(binding.to_string());
@@ -190,7 +201,7 @@ fn missing_usage_is_unknown_and_outer_response_is_bounded() {
     let (configuration, mut allowance, request) = inputs("available");
     let binding = &configuration.profile.as_ref().unwrap().bindings[0].id;
     let prepared =
-        PreparedEndpointChat::new(&configuration, binding, &allowance, &request).unwrap();
+        PreparedEndpointController::chat(&configuration, binding, &allowance, &request).unwrap();
     let mut output = response("available");
     output.as_object_mut().unwrap().remove("usage");
     assert!(prepared
@@ -202,7 +213,7 @@ fn missing_usage_is_unknown_and_outer_response_is_bounded() {
     allowance.limits.maximum_response_bytes = bytes.len() as u64 - 1;
     allowance.limits.maximum_effort_bytes = allowance.limits.maximum_response_bytes as u32;
     let prepared =
-        PreparedEndpointChat::new(&configuration, binding, &allowance, &request).unwrap();
+        PreparedEndpointController::chat(&configuration, binding, &allowance, &request).unwrap();
     assert_eq!(
         prepared.decode_response(bytes).unwrap_err().reason,
         "chat response exceeds byte limit"
@@ -214,7 +225,7 @@ fn rejected_selection_after_completed_generation_does_not_retain_unknown_executi
     let (configuration, allowance, request) = inputs("available");
     let binding = &configuration.profile.as_ref().unwrap().bindings[0].id;
     let prepared =
-        PreparedEndpointChat::new(&configuration, binding, &allowance, &request).unwrap();
+        PreparedEndpointController::chat(&configuration, binding, &allowance, &request).unwrap();
     let mut output = response("available");
     output["choices"][0]["message"]["content"] = serde_json::json!("{}");
     let error = prepared
@@ -271,13 +282,18 @@ fn native_live_calls_retain_actual_bytes_and_uncertain_failures() {
         let request: EndpointChatRequest =
             serde_json::from_slice(&std::fs::read(root.join(name).join("request.json")).unwrap())
                 .unwrap();
-        let prepared =
-            PreparedEndpointChat::new(&configuration, &request.model.clone(), &allowance, &request);
+        let prepared = PreparedEndpointController::chat(
+            &configuration,
+            &request.model.clone(),
+            &allowance,
+            &request,
+        );
         // A service alias is not a binding id. Use the actual installed binding.
         assert!(prepared.is_err());
         let binding = &configuration.profile.as_ref().unwrap().bindings[0].id;
         let prepared =
-            PreparedEndpointChat::new(&configuration, binding, &allowance, &request).unwrap();
+            PreparedEndpointController::chat(&configuration, binding, &allowance, &request)
+                .unwrap();
         let observed = prepared
             .decode_response(std::fs::read(root.join(name).join("response.json")).unwrap())
             .unwrap();
@@ -303,7 +319,7 @@ fn partial_reported_usage_preserves_unknowns_and_rejects_impossible_totals() {
     let (configuration, allowance, request) = inputs("available");
     let binding = &configuration.profile.as_ref().unwrap().bindings[0].id;
     let prepared =
-        PreparedEndpointChat::new(&configuration, binding, &allowance, &request).unwrap();
+        PreparedEndpointController::chat(&configuration, binding, &allowance, &request).unwrap();
     let original = response("available");
     let mut partial = original.clone();
     partial["usage"]

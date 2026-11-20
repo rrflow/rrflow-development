@@ -113,7 +113,54 @@ Generating the proposal itself may invoke the configured controller, so it
 requires model-call authorization, egress admission and budget reservation;
 it must never masquerade as a free configuration read.
 
-### Executable validation prerequisite
+### Configured controller wire protocol
+
+`EndpointSelectionPolicy.controller_protocol` is required. It selects one wire
+protocol under the existing configuration preview/apply digest:
+
+```json
+{"kind":"chat_completions","maximum_output_tokens":256,"temperature_milli":0}
+```
+
+or:
+
+```json
+{"kind":"system_one"}
+```
+
+Chat uses the binding's base URL plus `/chat/completions`. System One uses the
+base URL plus `/systemone`, following the
+[typed System One API](https://docs.typesafe.ai/api/system-one). Bind an exact
+model identifier: a response naming a different resolved alias is rejected.
+Credentials use the existing configured bearer reference. There is no protocol
+detection, retry into another protocol, or implicit activation. Chat generation
+settings belong only to the chat variant; the native API does not accept those
+settings. Both paths enforce the configured request/response byte and elapsed
+time bounds, authorization, task budget and shared capacity.
+
+The engine supplies the task packet, including admitted semantic-router narrowing
+and any checkpointed LFG observation. Native selection asks one Choice question
+over the allowed endpoint/effort pairs and explicit abstentions. Each option's
+name hashes its canonical meaning, so narrowing cannot reinterpret a positional
+answer. More than 255 options fails before dispatch. Unknown effort support is
+never turned into a selectable default.
+
+The adapter checks the complete probability distribution and maps the selected
+option into `EndpointSelectionChoice`. Confidence is checked for range; it does
+not establish answer quality or grant permission. The same proposal receipt
+and separately admitted worker consume the result. Reported input/output token
+counts become the existing usage fields; the receipt retains wire digests and
+elapsed time. Its content digest binds the canonical mapped choice, while its
+response digest binds the original native response bytes.
+
+This adds native **endpoint and effort selection**. It does not implement native
+Noul/Score assessment, recipe/branch/context routing, or qualify a real provider.
+The [package evidence](../../evidence/change-journals/gate-g/system-one-controller-20261120.md)
+separates controlled engine/installed tests from live-provider evidence. One
+joint decision avoids a dependent second call; no latency or token-saving claim
+follows without comparative measurements.
+
+### Endpoint allowance validation
 
 `rrd-contract` now exports `EndpointSelectionAllowance`,
 `EndpointSelectionCandidate`, `EndpointEffortSupport`, explicit

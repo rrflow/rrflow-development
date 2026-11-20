@@ -1,4 +1,4 @@
-// OpenAPI SHA-256: 80cc50ab077aa773e47d53135dcd12095240af88129fd84bf0ccbe81ca4ed4cb
+// OpenAPI SHA-256: ecfce11ae9a7102165c116a6c73837fe0dd3940ce3f72120ee67acfa224cbc83
 export interface paths {
     "/v1/attunement/cancel": {
         parameters: {
@@ -15381,6 +15381,18 @@ export interface operations {
                                      *     labels are separate data and may use arbitrary Unicode.
                                      */
                                     controller_binding_id: string;
+                                    /** @description Wire protocol is explicitly selected, never inferred or retried as another. */
+                                    controller_protocol: {
+                                        /** @constant */
+                                        kind: "chat_completions";
+                                        /** Format: uint32 */
+                                        maximum_output_tokens: number;
+                                        /** Format: uint16 */
+                                        temperature_milli: number;
+                                    } | {
+                                        /** @constant */
+                                        kind: "system_one";
+                                    };
                                     /** @description Absent means no analyzer dispatch and preserves prior configuration bytes. */
                                     lfg?: {
                                         assessment_sha256: string;
@@ -15416,8 +15428,6 @@ export interface operations {
                                      * @description Aggregate outstanding controller calls, including unresolved remote work.
                                      */
                                     maximum_concurrent_proposals: number;
-                                    /** Format: uint32 */
-                                    maximum_output_tokens: number;
                                     /**
                                      * @description A proposal can describe a choice without qualifying that choice for execution.
                                      *     Adding another purpose requires its own admission semantics and evidence.
@@ -15425,11 +15435,6 @@ export interface operations {
                                      */
                                     purpose: "experimental_proposal";
                                     system_prompt: string;
-                                    /**
-                                     * Format: uint16
-                                     * @description Exact thousandths avoid floating-point configuration digest ambiguity.
-                                     */
-                                    temperature_milli: number;
                                     /**
                                      * @description The eight workload classes. Code depends on a class contract; a profile
                                      *     decides which endpoint serves it.
@@ -15815,6 +15820,18 @@ export interface operations {
                                          *     labels are separate data and may use arbitrary Unicode.
                                          */
                                         controller_binding_id: string;
+                                        /** @description Wire protocol is explicitly selected, never inferred or retried as another. */
+                                        controller_protocol: {
+                                            /** @constant */
+                                            kind: "chat_completions";
+                                            /** Format: uint32 */
+                                            maximum_output_tokens: number;
+                                            /** Format: uint16 */
+                                            temperature_milli: number;
+                                        } | {
+                                            /** @constant */
+                                            kind: "system_one";
+                                        };
                                         /** @description Absent means no analyzer dispatch and preserves prior configuration bytes. */
                                         lfg?: {
                                             assessment_sha256: string;
@@ -15850,8 +15867,6 @@ export interface operations {
                                          * @description Aggregate outstanding controller calls, including unresolved remote work.
                                          */
                                         maximum_concurrent_proposals: number;
-                                        /** Format: uint32 */
-                                        maximum_output_tokens: number;
                                         /**
                                          * @description A proposal can describe a choice without qualifying that choice for execution.
                                          *     Adding another purpose requires its own admission semantics and evidence.
@@ -15859,11 +15874,6 @@ export interface operations {
                                          */
                                         purpose: "experimental_proposal";
                                         system_prompt: string;
-                                        /**
-                                         * Format: uint16
-                                         * @description Exact thousandths avoid floating-point configuration digest ambiguity.
-                                         */
-                                        temperature_milli: number;
                                         /**
                                          * @description The eight workload classes. Code depends on a class contract; a profile
                                          *     decides which endpoint serves it.
@@ -16251,6 +16261,18 @@ export interface operations {
                                          *     labels are separate data and may use arbitrary Unicode.
                                          */
                                         controller_binding_id: string;
+                                        /** @description Wire protocol is explicitly selected, never inferred or retried as another. */
+                                        controller_protocol: {
+                                            /** @constant */
+                                            kind: "chat_completions";
+                                            /** Format: uint32 */
+                                            maximum_output_tokens: number;
+                                            /** Format: uint16 */
+                                            temperature_milli: number;
+                                        } | {
+                                            /** @constant */
+                                            kind: "system_one";
+                                        };
                                         /** @description Absent means no analyzer dispatch and preserves prior configuration bytes. */
                                         lfg?: {
                                             assessment_sha256: string;
@@ -16286,8 +16308,6 @@ export interface operations {
                                          * @description Aggregate outstanding controller calls, including unresolved remote work.
                                          */
                                         maximum_concurrent_proposals: number;
-                                        /** Format: uint32 */
-                                        maximum_output_tokens: number;
                                         /**
                                          * @description A proposal can describe a choice without qualifying that choice for execution.
                                          *     Adding another purpose requires its own admission semantics and evidence.
@@ -16295,11 +16315,6 @@ export interface operations {
                                          */
                                         purpose: "experimental_proposal";
                                         system_prompt: string;
-                                        /**
-                                         * Format: uint16
-                                         * @description Exact thousandths avoid floating-point configuration digest ambiguity.
-                                         */
-                                        temperature_milli: number;
                                         /**
                                          * @description The eight workload classes. Code depends on a class contract; a profile
                                          *     decides which endpoint serves it.
@@ -16662,6 +16677,18 @@ export interface operations {
                                  *     labels are separate data and may use arbitrary Unicode.
                                  */
                                 controller_binding_id: string;
+                                /** @description Wire protocol is explicitly selected, never inferred or retried as another. */
+                                controller_protocol: {
+                                    /** @constant */
+                                    kind: "chat_completions";
+                                    /** Format: uint32 */
+                                    maximum_output_tokens: number;
+                                    /** Format: uint16 */
+                                    temperature_milli: number;
+                                } | {
+                                    /** @constant */
+                                    kind: "system_one";
+                                };
                                 /** @description Absent means no analyzer dispatch and preserves prior configuration bytes. */
                                 lfg?: {
                                     assessment_sha256: string;
@@ -16697,8 +16724,6 @@ export interface operations {
                                  * @description Aggregate outstanding controller calls, including unresolved remote work.
                                  */
                                 maximum_concurrent_proposals: number;
-                                /** Format: uint32 */
-                                maximum_output_tokens: number;
                                 /**
                                  * @description A proposal can describe a choice without qualifying that choice for execution.
                                  *     Adding another purpose requires its own admission semantics and evidence.
@@ -16706,11 +16731,6 @@ export interface operations {
                                  */
                                 purpose: "experimental_proposal";
                                 system_prompt: string;
-                                /**
-                                 * Format: uint16
-                                 * @description Exact thousandths avoid floating-point configuration digest ambiguity.
-                                 */
-                                temperature_milli: number;
                                 /**
                                  * @description The eight workload classes. Code depends on a class contract; a profile
                                  *     decides which endpoint serves it.
@@ -17102,6 +17122,18 @@ export interface operations {
                                          *     labels are separate data and may use arbitrary Unicode.
                                          */
                                         controller_binding_id: string;
+                                        /** @description Wire protocol is explicitly selected, never inferred or retried as another. */
+                                        controller_protocol: {
+                                            /** @constant */
+                                            kind: "chat_completions";
+                                            /** Format: uint32 */
+                                            maximum_output_tokens: number;
+                                            /** Format: uint16 */
+                                            temperature_milli: number;
+                                        } | {
+                                            /** @constant */
+                                            kind: "system_one";
+                                        };
                                         /** @description Absent means no analyzer dispatch and preserves prior configuration bytes. */
                                         lfg?: {
                                             assessment_sha256: string;
@@ -17137,8 +17169,6 @@ export interface operations {
                                          * @description Aggregate outstanding controller calls, including unresolved remote work.
                                          */
                                         maximum_concurrent_proposals: number;
-                                        /** Format: uint32 */
-                                        maximum_output_tokens: number;
                                         /**
                                          * @description A proposal can describe a choice without qualifying that choice for execution.
                                          *     Adding another purpose requires its own admission semantics and evidence.
@@ -17146,11 +17176,6 @@ export interface operations {
                                          */
                                         purpose: "experimental_proposal";
                                         system_prompt: string;
-                                        /**
-                                         * Format: uint16
-                                         * @description Exact thousandths avoid floating-point configuration digest ambiguity.
-                                         */
-                                        temperature_milli: number;
                                         /**
                                          * @description The eight workload classes. Code depends on a class contract; a profile
                                          *     decides which endpoint serves it.
@@ -17540,6 +17565,18 @@ export interface operations {
                                          *     labels are separate data and may use arbitrary Unicode.
                                          */
                                         controller_binding_id: string;
+                                        /** @description Wire protocol is explicitly selected, never inferred or retried as another. */
+                                        controller_protocol: {
+                                            /** @constant */
+                                            kind: "chat_completions";
+                                            /** Format: uint32 */
+                                            maximum_output_tokens: number;
+                                            /** Format: uint16 */
+                                            temperature_milli: number;
+                                        } | {
+                                            /** @constant */
+                                            kind: "system_one";
+                                        };
                                         /** @description Absent means no analyzer dispatch and preserves prior configuration bytes. */
                                         lfg?: {
                                             assessment_sha256: string;
@@ -17575,8 +17612,6 @@ export interface operations {
                                          * @description Aggregate outstanding controller calls, including unresolved remote work.
                                          */
                                         maximum_concurrent_proposals: number;
-                                        /** Format: uint32 */
-                                        maximum_output_tokens: number;
                                         /**
                                          * @description A proposal can describe a choice without qualifying that choice for execution.
                                          *     Adding another purpose requires its own admission semantics and evidence.
@@ -17584,11 +17619,6 @@ export interface operations {
                                          */
                                         purpose: "experimental_proposal";
                                         system_prompt: string;
-                                        /**
-                                         * Format: uint16
-                                         * @description Exact thousandths avoid floating-point configuration digest ambiguity.
-                                         */
-                                        temperature_milli: number;
                                         /**
                                          * @description The eight workload classes. Code depends on a class contract; a profile
                                          *     decides which endpoint serves it.
@@ -18017,6 +18047,18 @@ export interface operations {
                                          *     labels are separate data and may use arbitrary Unicode.
                                          */
                                         controller_binding_id: string;
+                                        /** @description Wire protocol is explicitly selected, never inferred or retried as another. */
+                                        controller_protocol: {
+                                            /** @constant */
+                                            kind: "chat_completions";
+                                            /** Format: uint32 */
+                                            maximum_output_tokens: number;
+                                            /** Format: uint16 */
+                                            temperature_milli: number;
+                                        } | {
+                                            /** @constant */
+                                            kind: "system_one";
+                                        };
                                         /** @description Absent means no analyzer dispatch and preserves prior configuration bytes. */
                                         lfg?: {
                                             assessment_sha256: string;
@@ -18052,8 +18094,6 @@ export interface operations {
                                          * @description Aggregate outstanding controller calls, including unresolved remote work.
                                          */
                                         maximum_concurrent_proposals: number;
-                                        /** Format: uint32 */
-                                        maximum_output_tokens: number;
                                         /**
                                          * @description A proposal can describe a choice without qualifying that choice for execution.
                                          *     Adding another purpose requires its own admission semantics and evidence.
@@ -18061,11 +18101,6 @@ export interface operations {
                                          */
                                         purpose: "experimental_proposal";
                                         system_prompt: string;
-                                        /**
-                                         * Format: uint16
-                                         * @description Exact thousandths avoid floating-point configuration digest ambiguity.
-                                         */
-                                        temperature_milli: number;
                                         /**
                                          * @description The eight workload classes. Code depends on a class contract; a profile
                                          *     decides which endpoint serves it.
@@ -18453,6 +18488,18 @@ export interface operations {
                                          *     labels are separate data and may use arbitrary Unicode.
                                          */
                                         controller_binding_id: string;
+                                        /** @description Wire protocol is explicitly selected, never inferred or retried as another. */
+                                        controller_protocol: {
+                                            /** @constant */
+                                            kind: "chat_completions";
+                                            /** Format: uint32 */
+                                            maximum_output_tokens: number;
+                                            /** Format: uint16 */
+                                            temperature_milli: number;
+                                        } | {
+                                            /** @constant */
+                                            kind: "system_one";
+                                        };
                                         /** @description Absent means no analyzer dispatch and preserves prior configuration bytes. */
                                         lfg?: {
                                             assessment_sha256: string;
@@ -18488,8 +18535,6 @@ export interface operations {
                                          * @description Aggregate outstanding controller calls, including unresolved remote work.
                                          */
                                         maximum_concurrent_proposals: number;
-                                        /** Format: uint32 */
-                                        maximum_output_tokens: number;
                                         /**
                                          * @description A proposal can describe a choice without qualifying that choice for execution.
                                          *     Adding another purpose requires its own admission semantics and evidence.
@@ -18497,11 +18542,6 @@ export interface operations {
                                          */
                                         purpose: "experimental_proposal";
                                         system_prompt: string;
-                                        /**
-                                         * Format: uint16
-                                         * @description Exact thousandths avoid floating-point configuration digest ambiguity.
-                                         */
-                                        temperature_milli: number;
                                         /**
                                          * @description The eight workload classes. Code depends on a class contract; a profile
                                          *     decides which endpoint serves it.
