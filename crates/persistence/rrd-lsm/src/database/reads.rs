@@ -79,6 +79,95 @@ impl Database {
         Ok(Some((key.to_vec(), value.to_vec())))
     }
 
+    /// The visible row with the greatest key, or `None` when nothing is visible.
+    pub fn last_key_value(&self, snapshot: Snapshot) -> Result<Option<(Vec<u8>, Vec<u8>)>> {
+        Ok(self.scan_reverse(&[], None, snapshot, 1)?.pop())
+    }
+
+    /// At most `limit` visible rows of `[start, end)` from the greatest key
+    /// down. Each layer is walked downward from the end of the range, so the
+    /// work follows the rows returned, not the size of the range. Only the
+    /// winning version of a key has its value read.
+    pub fn scan_reverse(
+        &self,
+        start: &[u8],
+        end: Option<&[u8]>,
+        snapshot: Snapshot,
+        limit: usize,
+    ) -> Result<Vec<(Vec<u8>, Vec<u8>)>> {
+        let mut rows = Vec::new();
+        if limit == 0 || end.is_some_and(|end| start >= end) {
+            return Ok(rows);
+        }
+        let mut cursors = self
+            .segments
+            .iter()
+            .map(|segment| SegmentReverseCursor::new(segment, start, end, snapshot.sequence))
+            .collect::<Vec<_>>();
+        let mut heads = Vec::with_capacity(cursors.len());
+        for cursor in &mut cursors {
+            heads.push(cursor.next()?);
+        }
+        // The memtable is walked by moving its upper bound down past each key.
+        let mut memtable_before = end.map(<[u8]>::to_vec);
+        let mut memtable_head = self
+            .memtable
+            .seek_visible_before(start, memtable_before.as_deref(), snapshot.sequence)
+            .map(|(key, version)| (key.to_vec(), version.value.as_deref().map(<[u8]>::to_vec)));
+
+        while rows.len() < limit {
+            let greatest = heads
+                .iter()
+                .flatten()
+                .map(|(key, _)| key.as_slice())
+                .chain(memtable_head.as_ref().map(|(key, _)| key.as_slice()))
+                .max()
+                .map(<[u8]>::to_vec);
+            let Some(key) = greatest else {
+                break;
+            };
+            // The active memtable holds sequences newer than every published
+            // segment, so its version of a key wins. Among segments the highest
+            // sequence wins, and the first segment wins an equal one, as in `get`.
+            let mut winner: Option<SelectedVersion<'_>> = None;
+            for (head, cursor) in heads.iter_mut().zip(&mut cursors) {
+                if head
+                    .as_ref()
+                    .is_some_and(|(candidate, _)| *candidate == key)
+                {
+                    let (_, version) = head.take().expect("head was checked");
+                    if winner
+                        .as_ref()
+                        .is_none_or(|current| version.sequence() > current.sequence())
+                    {
+                        winner = Some(version);
+                    }
+                    *head = cursor.next()?;
+                }
+            }
+            let value = match memtable_head.take_if(|(candidate, _)| *candidate == key) {
+                Some((_, value)) => {
+                    memtable_before = Some(key.clone());
+                    memtable_head = self
+                        .memtable
+                        .seek_visible_before(start, memtable_before.as_deref(), snapshot.sequence)
+                        .map(|(key, version)| {
+                            (key.to_vec(), version.value.as_deref().map(<[u8]>::to_vec))
+                        });
+                    value
+                }
+                None => match winner {
+                    Some(version) => version.value()?,
+                    None => None,
+                },
+            };
+            if let Some(value) = value {
+                rows.push((key, value));
+            }
+        }
+        Ok(rows)
+    }
+
     /// Whether no row is visible at `snapshot`.
     pub fn is_empty(&self, snapshot: Snapshot) -> Result<bool> {
         let mut stream = self.begin_projected_read(ProjectedReadRequest {

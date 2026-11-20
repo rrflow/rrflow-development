@@ -381,6 +381,73 @@ impl Transaction {
         scan::bounded(self, database, start, end, limit)
     }
 
+    /// At most `limit` visible rows of `[start, end)` from the greatest key
+    /// down, with pending puts and deletes overlaid on the captured snapshot.
+    pub fn scan_reverse(
+        &self,
+        database: &Database,
+        start: &[u8],
+        end: &[u8],
+        limit: usize,
+    ) -> Result<Vec<(Vec<u8>, Vec<u8>)>> {
+        validate_key(start)?;
+        validate_key(end)?;
+        database.validate_transaction_owner(self)?;
+        if limit == 0 || start >= end {
+            return Ok(Vec::new());
+        }
+        let mut pending = self
+            .writes
+            .range::<[u8], _>((
+                std::ops::Bound::Included(start),
+                std::ops::Bound::Excluded(end),
+            ))
+            .rev()
+            .peekable();
+        // Each pending key hides at most one stored row, so this many stored
+        // rows always leave `limit` after the overlay.
+        let hidden = self
+            .writes
+            .range::<[u8], _>((
+                std::ops::Bound::Included(start),
+                std::ops::Bound::Excluded(end),
+            ))
+            .count();
+        let stored = database.scan_reverse(
+            start,
+            Some(end),
+            self.snapshot,
+            limit.saturating_add(hidden),
+        )?;
+        let mut stored = stored.into_iter().peekable();
+        let mut rows = Vec::new();
+        while rows.len() < limit {
+            let take_pending = match (pending.peek(), stored.peek()) {
+                (Some((pending_key, _)), Some((stored_key, _))) => {
+                    pending_key.as_slice() >= stored_key.as_slice()
+                }
+                (Some(_), None) => true,
+                (None, Some(_)) => false,
+                (None, None) => break,
+            };
+            if take_pending {
+                let (key, value) = pending.next().expect("pending was peeked");
+                if stored
+                    .peek()
+                    .is_some_and(|(stored_key, _)| stored_key == key)
+                {
+                    stored.next();
+                }
+                if let Some(value) = value {
+                    rows.push((key.clone(), value.clone()));
+                }
+            } else {
+                rows.push(stored.next().expect("stored was peeked"));
+            }
+        }
+        Ok(rows)
+    }
+
     /// Buffers a value. Repeated mutations of the same key collapse to the
     /// final transaction-local value before conflict validation and WAL write.
     pub fn put(&mut self, key: Vec<u8>, value: Vec<u8>) -> Result<()> {

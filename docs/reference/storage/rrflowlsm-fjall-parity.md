@@ -1,6 +1,6 @@
 # rrflowLSM against Fjall, capability by capability
 
-**Status:** active parity work list; 39 present, 23 partial, 22 absent on 2026-11-20. It claims no parity
+**Status:** active parity work list; 41 present, 22 partial, 21 absent on 2026-11-20. It claims no parity
 **Coordinate:** `rrflow://rrflow-instance/data/reference/storage/rrflowlsm-fjall-parity`
 **Owner:** which Fjall capabilities rrflowLSM has, and the order the missing ones are built in; the [roadmap](../../roadmap/rrflow-1.0.md) and [POA&M](../../poam/rrflow-1.0-alpha.md) keep status authority
 
@@ -59,9 +59,9 @@ Paths under "Where" are relative to `crates/persistence/rrd-lsm/src/` unless the
 | 28 | Range scan | has | Half-open ranges only |
 | 29 | Prefix scan | has | `Database::scan_prefix` (`database/reads.rs`) |
 | 30 | Full iteration | has | `database/reads.rs` |
-| 31 | Reverse iteration | absent | Cursors are forward-only (`segment/reader/cursors.rs`) |
+| 31 | Reverse iteration | has | `Database::scan_reverse`, `Transaction::scan_reverse` (`segment/reverse.rs`, `database/reads.rs`); `tests/reverse_iteration.rs` |
 | 32 | Lazy iterator that reads key, size or value on demand | partial | Projected batches exist; no row-level iterator |
-| 33 | First and last key | partial | `Database::first_key_value`; the last key waits for reverse iteration (31) |
+| 33 | First and last key | has | `Database::first_key_value`, `Database::last_key_value` |
 | 34 | Length and is-empty | partial | `Database::is_empty`; no length |
 | 35 | Approximate length | absent | |
 
@@ -166,7 +166,7 @@ Each line is one package with its own test, and each is measured with the compar
 
 1. The read path (no format change). Done: seek within the group and stop at the range end. Done: a constant-time cache hit. Open: the read and memory losses at one million claims, to be profiled; and one lock taken once per page lookup, which matters once readers run concurrently.
 2. The small read and write operations. Done on 2026-11-20 ([journal](../../evidence/change-journals/gate-c/rrflowlsm-small-operations-20261120.md)): rows 22, 26, 27 and 29, the first key of 33 and is-empty of 34, in `rrd-lsm`. Open: rows 9, 77 and 81, and offering the new operations through the `rrd-store` transaction port.
-3. Row 31 reverse iteration, then rows 32 and 35.
+3. Row 31 reverse iteration: done on 2026-11-20 ([journal](../../evidence/change-journals/gate-c/rrflowlsm-reverse-iteration-20261120.md)), with the last key of row 33. Open: rows 32 and 35 and a length for row 34.
 4. Rows 41, 42 and 43: deletes.
 5. One segment-format revision: rows 57, 59, 61, 62, 63, 66 and 67.
 6. Row 48, then rows 45, 47, 49, 50 and 51: compaction.
