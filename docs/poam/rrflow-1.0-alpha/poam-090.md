@@ -17,6 +17,8 @@ Read on 2026-11-20 at `33159f8e2`. The owner's direction of 2026-11-19 and 2026-
 - rrflowCLD has no storage-tier home and no format of its own, so there is nothing native to compare Parquet or Vortex against.
 - Vortex is named nowhere.
 
+Since 2026-11-20 a columnar port exists in `rrd-store` with Parquet and Vortex as optional reference modules behind it. The cold tier does not use the port yet, and no native format is behind it.
+
 ## Impact
 
 The cold tier cannot be compared with a reference, because it is the reference. Every product build carries the Parquet and Arrow writer stack. What rrflowCLD is meant to be for reasoning, columnar history read cold at one stamp, has no implementation to tune.
