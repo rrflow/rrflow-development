@@ -222,6 +222,7 @@ pub fn engram_configuration_sha256(configuration: &EngramConfiguration) -> Resul
         &configuration.reasoning,
         &configuration.recall,
         &configuration.query,
+        &configuration.attunement_follow,
     ))
     .map_err(|error| {
         crate::ContractError(format!("configuration digest encoding failed: {error}"))
