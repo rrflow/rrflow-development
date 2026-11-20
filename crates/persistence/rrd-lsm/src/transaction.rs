@@ -207,6 +207,12 @@ pub struct Transaction {
     measuring: bool,
 }
 
+/// The value a key held before an update and the value it holds after.
+struct Replaced {
+    previous: Option<Vec<u8>>,
+    updated: Option<Vec<u8>>,
+}
+
 impl Transaction {
     pub(crate) fn begin(snapshot: Snapshot, owner: Arc<TransactionSnapshots>) -> Result<Self> {
         owner.acquire(snapshot.sequence)?;
@@ -284,6 +290,80 @@ impl Transaction {
             Some(value) => Ok(value.clone()),
             None => database.get(key, self.snapshot),
         }
+    }
+
+    /// Whether `key` holds a value in the local write set or the snapshot.
+    pub fn contains_key(&self, database: &Database, key: &[u8]) -> Result<bool> {
+        validate_key(key)?;
+        database.validate_transaction_owner(self)?;
+        match self.writes.get(key) {
+            Some(value) => Ok(value.is_some()),
+            None => database.contains_key(key, self.snapshot),
+        }
+    }
+
+    /// The length in bytes of the value `key` holds, without reading it from disk.
+    pub fn size_of(&self, database: &Database, key: &[u8]) -> Result<Option<u64>> {
+        validate_key(key)?;
+        database.validate_transaction_owner(self)?;
+        match self.writes.get(key) {
+            Some(value) => Ok(value.as_ref().map(|value| value.len() as u64)),
+            None => database.size_of(key, self.snapshot),
+        }
+    }
+
+    /// Removes `key` and returns the value it held. A key with no value is
+    /// left untouched and writes nothing.
+    pub fn take(&mut self, database: &Database, key: &[u8]) -> Result<Option<Vec<u8>>> {
+        let previous = self.get(database, key)?;
+        if previous.is_some() {
+            self.delete(key.to_vec())?;
+        }
+        Ok(previous)
+    }
+
+    /// Replaces the value of `key` with `update(previous)` and returns the
+    /// previous value. `None` from `update` removes the key; when the key held
+    /// nothing and `update` returns `None`, nothing is written.
+    pub fn fetch_update<F>(
+        &mut self,
+        database: &Database,
+        key: &[u8],
+        update: F,
+    ) -> Result<Option<Vec<u8>>>
+    where
+        F: FnOnce(Option<&[u8]>) -> Option<Vec<u8>>,
+    {
+        self.replace_with(database, key, update)
+            .map(|replaced| replaced.previous)
+    }
+
+    /// As [`Self::fetch_update`], returning the new value.
+    pub fn update_fetch<F>(
+        &mut self,
+        database: &Database,
+        key: &[u8],
+        update: F,
+    ) -> Result<Option<Vec<u8>>>
+    where
+        F: FnOnce(Option<&[u8]>) -> Option<Vec<u8>>,
+    {
+        self.replace_with(database, key, update)
+            .map(|replaced| replaced.updated)
+    }
+
+    fn replace_with<F>(&mut self, database: &Database, key: &[u8], update: F) -> Result<Replaced>
+    where
+        F: FnOnce(Option<&[u8]>) -> Option<Vec<u8>>,
+    {
+        let previous = self.get(database, key)?;
+        let updated = update(previous.as_deref());
+        match &updated {
+            Some(value) => self.put(key.to_vec(), value.clone())?,
+            None if previous.is_some() => self.delete(key.to_vec())?,
+            None => {}
+        }
+        Ok(Replaced { previous, updated })
     }
 
     /// Reads at most `limit` visible rows from `[start, end)` in byte order,

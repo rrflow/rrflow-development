@@ -165,6 +165,17 @@ impl SelectedVersion<'_> {
     pub(crate) fn value(self) -> Result<Option<Vec<u8>>> {
         self.segment.value_at(self.row_group, self.row)
     }
+
+    /// Whether this version holds a value, read from the validity page alone.
+    pub(crate) fn is_present(&self) -> Result<bool> {
+        self.segment.present_at(self.row_group, self.row)
+    }
+
+    /// The value's length in bytes, read from the validity and offset pages
+    /// without the value data. `None` for a tombstone.
+    pub(crate) fn value_len(&self) -> Result<Option<u64>> {
+        self.segment.value_len_at(self.row_group, self.row)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
