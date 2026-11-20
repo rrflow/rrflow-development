@@ -1,0 +1,817 @@
+{
+  "format_version": 2,
+  "kind": "rrflow-kv-vs-fjall-baseline",
+  "measured_at_unix_ms": 1795155668691,
+  "architecture": "x86_64",
+  "operating_system": "linux",
+  "logical_cpus": 24,
+  "config": {
+    "trials": 7,
+    "operations": 16384,
+    "batch_size": 128,
+    "reads": 2048,
+    "read_width": 64
+  },
+  "aggregation": "each top-level metric is the median of that metric across the isolated trials",
+  "caveat": "one machine, one run; both engines commit every batch at authoritative durability, rrflowKV with sync_data and Fjall with PersistMode::SyncAll; peak RSS exists only on Linux",
+  "rrflow_kv_trials": [
+    {
+      "backend": "rrflow_kv",
+      "correctness_verified": true,
+      "write_operations_per_second": 127276.61243538959,
+      "write_batch_latency": {
+        "samples": 128,
+        "p50_ns": 963918,
+        "p95_ns": 1264953,
+        "p99_ns": 1756107,
+        "maximum_ns": 1980810
+      },
+      "read_operations_per_second": 12373.77443519112,
+      "read_latency": {
+        "samples": 2048,
+        "p50_ns": 77340,
+        "p95_ns": 94972,
+        "p99_ns": 148719,
+        "maximum_ns": 399598
+      },
+      "maintained_read_operations_per_second": 10524.080612360896,
+      "maintained_read_latency": {
+        "samples": 2048,
+        "p50_ns": 88579,
+        "p95_ns": 111163,
+        "p99_ns": 235767,
+        "maximum_ns": 1083377
+      },
+      "recovery_ns": 8991037,
+      "maintained_recovery_ns": 1721788,
+      "maintenance_ns": 70378504,
+      "write_peak_rss_kib": 24424,
+      "peak_rss_kib": 15272,
+      "active": {
+        "apparent_bytes": 7393701,
+        "allocated_bytes": 7401472,
+        "files": 4
+      },
+      "reopened": {
+        "apparent_bytes": 7393701,
+        "allocated_bytes": 7401472,
+        "files": 4
+      },
+      "maintained": {
+        "apparent_bytes": 1501210,
+        "allocated_bytes": 1515520,
+        "files": 5
+      },
+      "semantic_sequence": 16384
+    },
+    {
+      "backend": "rrflow_kv",
+      "correctness_verified": true,
+      "write_operations_per_second": 98705.76642412986,
+      "write_batch_latency": {
+        "samples": 128,
+        "p50_ns": 1095028,
+        "p95_ns": 2451764,
+        "p99_ns": 4986456,
+        "maximum_ns": 5230412
+      },
+      "read_operations_per_second": 12324.04699943816,
+      "read_latency": {
+        "samples": 2048,
+        "p50_ns": 77611,
+        "p95_ns": 99311,
+        "p99_ns": 144581,
+        "maximum_ns": 277779
+      },
+      "maintained_read_operations_per_second": 10761.186200510576,
+      "maintained_read_latency": {
+        "samples": 2048,
+        "p50_ns": 88124,
+        "p95_ns": 108305,
+        "p99_ns": 199546,
+        "maximum_ns": 391306
+      },
+      "recovery_ns": 11751786,
+      "maintained_recovery_ns": 1679142,
+      "maintenance_ns": 73821994,
+      "write_peak_rss_kib": 24840,
+      "peak_rss_kib": 15276,
+      "active": {
+        "apparent_bytes": 7393701,
+        "allocated_bytes": 7401472,
+        "files": 4
+      },
+      "reopened": {
+        "apparent_bytes": 7393701,
+        "allocated_bytes": 7401472,
+        "files": 4
+      },
+      "maintained": {
+        "apparent_bytes": 1501210,
+        "allocated_bytes": 1515520,
+        "files": 5
+      },
+      "semantic_sequence": 16384
+    },
+    {
+      "backend": "rrflow_kv",
+      "correctness_verified": true,
+      "write_operations_per_second": 121770.12618488785,
+      "write_batch_latency": {
+        "samples": 128,
+        "p50_ns": 1003561,
+        "p95_ns": 1437042,
+        "p99_ns": 1791430,
+        "maximum_ns": 2735052
+      },
+      "read_operations_per_second": 12126.398998908919,
+      "read_latency": {
+        "samples": 2048,
+        "p50_ns": 78332,
+        "p95_ns": 101453,
+        "p99_ns": 147886,
+        "maximum_ns": 446448
+      },
+      "maintained_read_operations_per_second": 10320.398848342258,
+      "maintained_read_latency": {
+        "samples": 2048,
+        "p50_ns": 89424,
+        "p95_ns": 119853,
+        "p99_ns": 222630,
+        "maximum_ns": 1235945
+      },
+      "recovery_ns": 9325111,
+      "maintained_recovery_ns": 1577144,
+      "maintenance_ns": 70944992,
+      "write_peak_rss_kib": 25012,
+      "peak_rss_kib": 15296,
+      "active": {
+        "apparent_bytes": 7393701,
+        "allocated_bytes": 7401472,
+        "files": 4
+      },
+      "reopened": {
+        "apparent_bytes": 7393701,
+        "allocated_bytes": 7401472,
+        "files": 4
+      },
+      "maintained": {
+        "apparent_bytes": 1501210,
+        "allocated_bytes": 1515520,
+        "files": 5
+      },
+      "semantic_sequence": 16384
+    },
+    {
+      "backend": "rrflow_kv",
+      "correctness_verified": true,
+      "write_operations_per_second": 112458.1315850194,
+      "write_batch_latency": {
+        "samples": 128,
+        "p50_ns": 1115876,
+        "p95_ns": 1365799,
+        "p99_ns": 1559598,
+        "maximum_ns": 1562838
+      },
+      "read_operations_per_second": 12277.00039694036,
+      "read_latency": {
+        "samples": 2048,
+        "p50_ns": 77907,
+        "p95_ns": 95033,
+        "p99_ns": 148564,
+        "maximum_ns": 418121
+      },
+      "maintained_read_operations_per_second": 10762.957974700983,
+      "maintained_read_latency": {
+        "samples": 2048,
+        "p50_ns": 88201,
+        "p95_ns": 109731,
+        "p99_ns": 185007,
+        "maximum_ns": 364184
+      },
+      "recovery_ns": 10269963,
+      "maintained_recovery_ns": 1612689,
+      "maintenance_ns": 71654900,
+      "write_peak_rss_kib": 24892,
+      "peak_rss_kib": 15376,
+      "active": {
+        "apparent_bytes": 7393701,
+        "allocated_bytes": 7401472,
+        "files": 4
+      },
+      "reopened": {
+        "apparent_bytes": 7393701,
+        "allocated_bytes": 7401472,
+        "files": 4
+      },
+      "maintained": {
+        "apparent_bytes": 1501210,
+        "allocated_bytes": 1515520,
+        "files": 5
+      },
+      "semantic_sequence": 16384
+    },
+    {
+      "backend": "rrflow_kv",
+      "correctness_verified": true,
+      "write_operations_per_second": 123899.24943174719,
+      "write_batch_latency": {
+        "samples": 128,
+        "p50_ns": 974732,
+        "p95_ns": 1357615,
+        "p99_ns": 1683628,
+        "maximum_ns": 2001091
+      },
+      "read_operations_per_second": 12332.282018334516,
+      "read_latency": {
+        "samples": 2048,
+        "p50_ns": 77707,
+        "p95_ns": 95430,
+        "p99_ns": 153028,
+        "maximum_ns": 486564
+      },
+      "maintained_read_operations_per_second": 10811.190263957269,
+      "maintained_read_latency": {
+        "samples": 2048,
+        "p50_ns": 88089,
+        "p95_ns": 107572,
+        "p99_ns": 181103,
+        "maximum_ns": 357761
+      },
+      "recovery_ns": 9590306,
+      "maintained_recovery_ns": 1817381,
+      "maintenance_ns": 72222192,
+      "write_peak_rss_kib": 24692,
+      "peak_rss_kib": 15236,
+      "active": {
+        "apparent_bytes": 7393701,
+        "allocated_bytes": 7401472,
+        "files": 4
+      },
+      "reopened": {
+        "apparent_bytes": 7393701,
+        "allocated_bytes": 7401472,
+        "files": 4
+      },
+      "maintained": {
+        "apparent_bytes": 1501210,
+        "allocated_bytes": 1515520,
+        "files": 5
+      },
+      "semantic_sequence": 16384
+    },
+    {
+      "backend": "rrflow_kv",
+      "correctness_verified": true,
+      "write_operations_per_second": 107366.23879630283,
+      "write_batch_latency": {
+        "samples": 128,
+        "p50_ns": 1043805,
+        "p95_ns": 1807842,
+        "p99_ns": 3540071,
+        "maximum_ns": 5633131
+      },
+      "read_operations_per_second": 12531.163697767006,
+      "read_latency": {
+        "samples": 2048,
+        "p50_ns": 76901,
+        "p95_ns": 95104,
+        "p99_ns": 144666,
+        "maximum_ns": 305564
+      },
+      "maintained_read_operations_per_second": 10709.773953068348,
+      "maintained_read_latency": {
+        "samples": 2048,
+        "p50_ns": 88552,
+        "p95_ns": 108959,
+        "p99_ns": 183372,
+        "maximum_ns": 582443
+      },
+      "recovery_ns": 9280391,
+      "maintained_recovery_ns": 1792571,
+      "maintenance_ns": 80404976,
+      "write_peak_rss_kib": 24400,
+      "peak_rss_kib": 15368,
+      "active": {
+        "apparent_bytes": 7393701,
+        "allocated_bytes": 7401472,
+        "files": 4
+      },
+      "reopened": {
+        "apparent_bytes": 7393701,
+        "allocated_bytes": 7401472,
+        "files": 4
+      },
+      "maintained": {
+        "apparent_bytes": 1501210,
+        "allocated_bytes": 1515520,
+        "files": 5
+      },
+      "semantic_sequence": 16384
+    },
+    {
+      "backend": "rrflow_kv",
+      "correctness_verified": true,
+      "write_operations_per_second": 127516.4030075908,
+      "write_batch_latency": {
+        "samples": 128,
+        "p50_ns": 981224,
+        "p95_ns": 1282147,
+        "p99_ns": 1493876,
+        "maximum_ns": 1648388
+      },
+      "read_operations_per_second": 12333.906900153628,
+      "read_latency": {
+        "samples": 2048,
+        "p50_ns": 77911,
+        "p95_ns": 95454,
+        "p99_ns": 145415,
+        "maximum_ns": 380115
+      },
+      "maintained_read_operations_per_second": 10453.572496916182,
+      "maintained_read_latency": {
+        "samples": 2048,
+        "p50_ns": 89493,
+        "p95_ns": 120430,
+        "p99_ns": 192384,
+        "maximum_ns": 559255
+      },
+      "recovery_ns": 9418348,
+      "maintained_recovery_ns": 1588026,
+      "maintenance_ns": 71619431,
+      "write_peak_rss_kib": 24792,
+      "peak_rss_kib": 15348,
+      "active": {
+        "apparent_bytes": 7393701,
+        "allocated_bytes": 7401472,
+        "files": 4
+      },
+      "reopened": {
+        "apparent_bytes": 7393701,
+        "allocated_bytes": 7401472,
+        "files": 4
+      },
+      "maintained": {
+        "apparent_bytes": 1501210,
+        "allocated_bytes": 1515520,
+        "files": 5
+      },
+      "semantic_sequence": 16384
+    }
+  ],
+  "fjall_trials": [
+    {
+      "backend": "fjall",
+      "correctness_verified": true,
+      "write_operations_per_second": 88776.53445896893,
+      "write_batch_latency": {
+        "samples": 128,
+        "p50_ns": 1415423,
+        "p95_ns": 1818965,
+        "p99_ns": 2127345,
+        "maximum_ns": 2247265
+      },
+      "read_operations_per_second": 11600.136081830758,
+      "read_latency": {
+        "samples": 2048,
+        "p50_ns": 79486,
+        "p95_ns": 107547,
+        "p99_ns": 216708,
+        "maximum_ns": 622735
+      },
+      "maintained_read_operations_per_second": 10600.17003335244,
+      "maintained_read_latency": {
+        "samples": 2048,
+        "p50_ns": 89056,
+        "p95_ns": 115336,
+        "p99_ns": 197931,
+        "maximum_ns": 399485
+      },
+      "recovery_ns": 63657215,
+      "maintained_recovery_ns": 61608904,
+      "maintenance_ns": 128723482,
+      "write_peak_rss_kib": 29240,
+      "peak_rss_kib": 22352,
+      "active": {
+        "apparent_bytes": 67122922,
+        "allocated_bytes": 10416128,
+        "files": 20
+      },
+      "reopened": {
+        "apparent_bytes": 10341137,
+        "allocated_bytes": 10383360,
+        "files": 12
+      },
+      "maintained": {
+        "apparent_bytes": 12383156,
+        "allocated_bytes": 12431360,
+        "files": 15
+      },
+      "semantic_sequence": 16384
+    },
+    {
+      "backend": "fjall",
+      "correctness_verified": true,
+      "write_operations_per_second": 92961.87378455642,
+      "write_batch_latency": {
+        "samples": 128,
+        "p50_ns": 1320389,
+        "p95_ns": 1680385,
+        "p99_ns": 2397071,
+        "maximum_ns": 3724822
+      },
+      "read_operations_per_second": 11558.447289436597,
+      "read_latency": {
+        "samples": 2048,
+        "p50_ns": 80847,
+        "p95_ns": 105553,
+        "p99_ns": 204741,
+        "maximum_ns": 626403
+      },
+      "maintained_read_operations_per_second": 10460.871414391388,
+      "maintained_read_latency": {
+        "samples": 2048,
+        "p50_ns": 90265,
+        "p95_ns": 113880,
+        "p99_ns": 210776,
+        "maximum_ns": 549940
+      },
+      "recovery_ns": 63609088,
+      "maintained_recovery_ns": 61917739,
+      "maintenance_ns": 123683707,
+      "write_peak_rss_kib": 29032,
+      "peak_rss_kib": 22288,
+      "active": {
+        "apparent_bytes": 67122922,
+        "allocated_bytes": 10416128,
+        "files": 20
+      },
+      "reopened": {
+        "apparent_bytes": 10341137,
+        "allocated_bytes": 10383360,
+        "files": 12
+      },
+      "maintained": {
+        "apparent_bytes": 12383156,
+        "allocated_bytes": 12431360,
+        "files": 15
+      },
+      "semantic_sequence": 16384
+    },
+    {
+      "backend": "fjall",
+      "correctness_verified": true,
+      "write_operations_per_second": 58423.46435239761,
+      "write_batch_latency": {
+        "samples": 128,
+        "p50_ns": 1983410,
+        "p95_ns": 3565431,
+        "p99_ns": 4471778,
+        "maximum_ns": 5348603
+      },
+      "read_operations_per_second": 12059.42278220576,
+      "read_latency": {
+        "samples": 2048,
+        "p50_ns": 78660,
+        "p95_ns": 96382,
+        "p99_ns": 158753,
+        "maximum_ns": 565129
+      },
+      "maintained_read_operations_per_second": 10606.550396293971,
+      "maintained_read_latency": {
+        "samples": 2048,
+        "p50_ns": 89511,
+        "p95_ns": 110463,
+        "p99_ns": 188624,
+        "maximum_ns": 582302
+      },
+      "recovery_ns": 72831164,
+      "maintained_recovery_ns": 62362195,
+      "maintenance_ns": 127697471,
+      "write_peak_rss_kib": 27872,
+      "peak_rss_kib": 22336,
+      "active": {
+        "apparent_bytes": 67122922,
+        "allocated_bytes": 10416128,
+        "files": 20
+      },
+      "reopened": {
+        "apparent_bytes": 10341137,
+        "allocated_bytes": 10383360,
+        "files": 12
+      },
+      "maintained": {
+        "apparent_bytes": 12383156,
+        "allocated_bytes": 12431360,
+        "files": 15
+      },
+      "semantic_sequence": 16384
+    },
+    {
+      "backend": "fjall",
+      "correctness_verified": true,
+      "write_operations_per_second": 89496.17471860119,
+      "write_batch_latency": {
+        "samples": 128,
+        "p50_ns": 1413192,
+        "p95_ns": 1716688,
+        "p99_ns": 1903722,
+        "maximum_ns": 2038903
+      },
+      "read_operations_per_second": 11986.394552567615,
+      "read_latency": {
+        "samples": 2048,
+        "p50_ns": 79290,
+        "p95_ns": 98240,
+        "p99_ns": 164069,
+        "maximum_ns": 489841
+      },
+      "maintained_read_operations_per_second": 10357.08052935059,
+      "maintained_read_latency": {
+        "samples": 2048,
+        "p50_ns": 90500,
+        "p95_ns": 119583,
+        "p99_ns": 210800,
+        "maximum_ns": 690393
+      },
+      "recovery_ns": 62449252,
+      "maintained_recovery_ns": 66139606,
+      "maintenance_ns": 125902722,
+      "write_peak_rss_kib": 29284,
+      "peak_rss_kib": 22332,
+      "active": {
+        "apparent_bytes": 67122922,
+        "allocated_bytes": 10416128,
+        "files": 20
+      },
+      "reopened": {
+        "apparent_bytes": 10341137,
+        "allocated_bytes": 10383360,
+        "files": 12
+      },
+      "maintained": {
+        "apparent_bytes": 12383156,
+        "allocated_bytes": 12431360,
+        "files": 15
+      },
+      "semantic_sequence": 16384
+    },
+    {
+      "backend": "fjall",
+      "correctness_verified": true,
+      "write_operations_per_second": 87907.8559125856,
+      "write_batch_latency": {
+        "samples": 128,
+        "p50_ns": 1403515,
+        "p95_ns": 1892689,
+        "p99_ns": 2085670,
+        "maximum_ns": 2186264
+      },
+      "read_operations_per_second": 11930.61357869852,
+      "read_latency": {
+        "samples": 2048,
+        "p50_ns": 79226,
+        "p95_ns": 97940,
+        "p99_ns": 163407,
+        "maximum_ns": 572327
+      },
+      "maintained_read_operations_per_second": 10132.340588239267,
+      "maintained_read_latency": {
+        "samples": 2048,
+        "p50_ns": 90498,
+        "p95_ns": 137490,
+        "p99_ns": 218785,
+        "maximum_ns": 847283
+      },
+      "recovery_ns": 62320877,
+      "maintained_recovery_ns": 65996265,
+      "maintenance_ns": 127622058,
+      "write_peak_rss_kib": 29088,
+      "peak_rss_kib": 22308,
+      "active": {
+        "apparent_bytes": 67122922,
+        "allocated_bytes": 10416128,
+        "files": 20
+      },
+      "reopened": {
+        "apparent_bytes": 10341137,
+        "allocated_bytes": 10383360,
+        "files": 12
+      },
+      "maintained": {
+        "apparent_bytes": 12383156,
+        "allocated_bytes": 12431360,
+        "files": 15
+      },
+      "semantic_sequence": 16384
+    },
+    {
+      "backend": "fjall",
+      "correctness_verified": true,
+      "write_operations_per_second": 80008.43565503467,
+      "write_batch_latency": {
+        "samples": 128,
+        "p50_ns": 1549091,
+        "p95_ns": 2022114,
+        "p99_ns": 3124960,
+        "maximum_ns": 3862701
+      },
+      "read_operations_per_second": 11766.774869094486,
+      "read_latency": {
+        "samples": 2048,
+        "p50_ns": 79819,
+        "p95_ns": 104299,
+        "p99_ns": 170339,
+        "maximum_ns": 550419
+      },
+      "maintained_read_operations_per_second": 10374.168603845097,
+      "maintained_read_latency": {
+        "samples": 2048,
+        "p50_ns": 89123,
+        "p95_ns": 120364,
+        "p99_ns": 244817,
+        "maximum_ns": 545498
+      },
+      "recovery_ns": 62427957,
+      "maintained_recovery_ns": 61220796,
+      "maintenance_ns": 122625670,
+      "write_peak_rss_kib": 28860,
+      "peak_rss_kib": 22204,
+      "active": {
+        "apparent_bytes": 67122922,
+        "allocated_bytes": 10416128,
+        "files": 20
+      },
+      "reopened": {
+        "apparent_bytes": 10341137,
+        "allocated_bytes": 10383360,
+        "files": 12
+      },
+      "maintained": {
+        "apparent_bytes": 12383156,
+        "allocated_bytes": 12431360,
+        "files": 15
+      },
+      "semantic_sequence": 16384
+    },
+    {
+      "backend": "fjall",
+      "correctness_verified": true,
+      "write_operations_per_second": 89521.00275062898,
+      "write_batch_latency": {
+        "samples": 128,
+        "p50_ns": 1406388,
+        "p95_ns": 1723802,
+        "p99_ns": 1835425,
+        "maximum_ns": 1904546
+      },
+      "read_operations_per_second": 11595.884052279749,
+      "read_latency": {
+        "samples": 2048,
+        "p50_ns": 79399,
+        "p95_ns": 107856,
+        "p99_ns": 196925,
+        "maximum_ns": 577657
+      },
+      "maintained_read_operations_per_second": 10149.904474431753,
+      "maintained_read_latency": {
+        "samples": 2048,
+        "p50_ns": 90041,
+        "p95_ns": 111473,
+        "p99_ns": 182287,
+        "maximum_ns": 8088051
+      },
+      "recovery_ns": 63980227,
+      "maintained_recovery_ns": 60946332,
+      "maintenance_ns": 126169372,
+      "write_peak_rss_kib": 29272,
+      "peak_rss_kib": 22324,
+      "active": {
+        "apparent_bytes": 67122922,
+        "allocated_bytes": 10416128,
+        "files": 20
+      },
+      "reopened": {
+        "apparent_bytes": 10341137,
+        "allocated_bytes": 10383360,
+        "files": 12
+      },
+      "maintained": {
+        "apparent_bytes": 12383156,
+        "allocated_bytes": 12431360,
+        "files": 15
+      },
+      "semantic_sequence": 16384
+    }
+  ],
+  "rrflow_kv": {
+    "backend": "rrflow_kv",
+    "correctness_verified": true,
+    "write_operations_per_second": 121770.12618488785,
+    "write_batch_latency": {
+      "samples": 128,
+      "p50_ns": 1003561,
+      "p95_ns": 1365799,
+      "p99_ns": 1756107,
+      "maximum_ns": 2001091
+    },
+    "read_operations_per_second": 12332.282018334516,
+    "read_latency": {
+      "samples": 2048,
+      "p50_ns": 77707,
+      "p95_ns": 95430,
+      "p99_ns": 147886,
+      "maximum_ns": 399598
+    },
+    "maintained_read_operations_per_second": 10709.773953068348,
+    "maintained_read_latency": {
+      "samples": 2048,
+      "p50_ns": 88552,
+      "p95_ns": 109731,
+      "p99_ns": 192384,
+      "maximum_ns": 559255
+    },
+    "recovery_ns": 9418348,
+    "maintained_recovery_ns": 1679142,
+    "maintenance_ns": 71654900,
+    "write_peak_rss_kib": 24792,
+    "peak_rss_kib": 15296,
+    "active": {
+      "apparent_bytes": 7393701,
+      "allocated_bytes": 7401472,
+      "files": 4
+    },
+    "reopened": {
+      "apparent_bytes": 7393701,
+      "allocated_bytes": 7401472,
+      "files": 4
+    },
+    "maintained": {
+      "apparent_bytes": 1501210,
+      "allocated_bytes": 1515520,
+      "files": 5
+    },
+    "semantic_sequence": 16384
+  },
+  "fjall": {
+    "backend": "fjall",
+    "correctness_verified": true,
+    "write_operations_per_second": 88776.53445896893,
+    "write_batch_latency": {
+      "samples": 128,
+      "p50_ns": 1413192,
+      "p95_ns": 1818965,
+      "p99_ns": 2127345,
+      "maximum_ns": 2247265
+    },
+    "read_operations_per_second": 11766.774869094486,
+    "read_latency": {
+      "samples": 2048,
+      "p50_ns": 79399,
+      "p95_ns": 104299,
+      "p99_ns": 170339,
+      "maximum_ns": 572327
+    },
+    "maintained_read_operations_per_second": 10374.168603845097,
+    "maintained_read_latency": {
+      "samples": 2048,
+      "p50_ns": 90041,
+      "p95_ns": 115336,
+      "p99_ns": 210776,
+      "maximum_ns": 582302
+    },
+    "recovery_ns": 63609088,
+    "maintained_recovery_ns": 61917739,
+    "maintenance_ns": 126169372,
+    "write_peak_rss_kib": 29088,
+    "peak_rss_kib": 22324,
+    "active": {
+      "apparent_bytes": 67122922,
+      "allocated_bytes": 10416128,
+      "files": 20
+    },
+    "reopened": {
+      "apparent_bytes": 10341137,
+      "allocated_bytes": 10383360,
+      "files": 12
+    },
+    "maintained": {
+      "apparent_bytes": 12383156,
+      "allocated_bytes": 12431360,
+      "files": 15
+    },
+    "semantic_sequence": 16384
+  },
+  "ratios": {
+    "write_throughput": 1.371647664858646,
+    "read_throughput": 1.0480596557282096,
+    "write_p95": 0.7508660144642695,
+    "read_p95": 0.9149656276666124,
+    "maintained_read_throughput": 1.0323500959005874,
+    "maintained_read_p95": 0.9514028577373933,
+    "recovery": 0.14806607508662914,
+    "peak_rss": 0.6851818670489159,
+    "reopened_allocated": 0.7128205128205128,
+    "maintained_allocated": 0.12191103789126853
+  }
+}

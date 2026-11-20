@@ -107,7 +107,7 @@ pub(crate) struct PageCache {
     pub(super) resident_bytes: usize,
     pub(super) probationary_resident_bytes: usize,
     pub(super) protected_resident_bytes: usize,
-    pub(super) values: HashMap<(u64, usize), CacheEntry>,
+    pub(super) values: HashMap<(u64, usize), CacheEntry, BuildHasherDefault<PageKeyHasher>>,
     pub(super) exact_order: BinaryHeap<Reverse<(u64, (u64, usize))>>,
     pub(super) probationary_order: BinaryHeap<Reverse<(u64, (u64, usize))>>,
     pub(super) protected_order: BinaryHeap<Reverse<(u64, (u64, usize))>>,
@@ -130,6 +130,40 @@ pub(crate) struct PageCache {
     pub(super) bytes_decompressed: u64,
     pub(super) filter_checks: u64,
     pub(super) filter_negatives: u64,
+}
+
+/// Hashes a page key, `(cache id, page ordinal)`. Both parts are assigned by
+/// this process, never by a caller, so the keyed hash of the default hasher
+/// buys nothing here and costs a measurable share of every cache hit.
+#[derive(Debug, Default, Clone, Copy)]
+pub(crate) struct PageKeyHasher(u64);
+
+impl PageKeyHasher {
+    fn mix(&mut self, value: u64) {
+        self.0 = (self.0.rotate_left(5) ^ value).wrapping_mul(0x517c_c1b7_2722_0a95);
+    }
+}
+
+impl Hasher for PageKeyHasher {
+    fn finish(&self) -> u64 {
+        self.0
+    }
+
+    fn write(&mut self, bytes: &[u8]) {
+        for chunk in bytes.chunks(8) {
+            let mut word = [0u8; 8];
+            word[..chunk.len()].copy_from_slice(chunk);
+            self.mix(u64::from_le_bytes(word));
+        }
+    }
+
+    fn write_u64(&mut self, value: u64) {
+        self.mix(value);
+    }
+
+    fn write_usize(&mut self, value: usize) {
+        self.mix(value as u64);
+    }
 }
 
 #[derive(Debug)]
@@ -202,7 +236,7 @@ pub(crate) fn new_page_cache_with_limits(
         resident_bytes: 0,
         probationary_resident_bytes: 0,
         protected_resident_bytes: 0,
-        values: HashMap::new(),
+        values: HashMap::default(),
         exact_order: BinaryHeap::new(),
         probationary_order: BinaryHeap::new(),
         protected_order: BinaryHeap::new(),
@@ -409,7 +443,9 @@ impl PageCache {
         debug_assert_eq!(entry.region, region);
         entry.last_used = stamp;
         entry.last_access = access;
-        self.push_order(region, stamp, key);
+        // The page keeps the order entry it already has. That entry now carries
+        // an older stamp; `pop_oldest_valid` moves it to the page's real place
+        // when it surfaces, so a hit costs no heap work.
     }
 
     fn promote(&mut self, key: (u64, usize), access: PageCacheAccess) -> Result<()> {
@@ -484,12 +520,19 @@ impl PageCache {
                 CacheRegion::Protected => self.protected_order.pop(),
             };
             let Reverse((stamp, key)) = candidate?;
-            if self
-                .values
-                .get(&key)
-                .is_some_and(|entry| entry.region == region && entry.last_used == stamp)
-            {
-                return Some((key, stamp));
+            // An entry for a page that left this region is dropped. An entry
+            // whose page was read since goes back in at the page's real stamp.
+            // Every stamp in the heap is at or below its page's real one, so the
+            // first entry that matches is the least recently used page.
+            match self.values.get(&key) {
+                Some(entry) if entry.region == region && entry.last_used == stamp => {
+                    return Some((key, stamp));
+                }
+                Some(entry) if entry.region == region => {
+                    let last_used = entry.last_used;
+                    self.push_order(region, last_used, key);
+                }
+                _ => {}
             }
         }
     }

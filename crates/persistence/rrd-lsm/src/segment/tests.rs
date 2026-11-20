@@ -378,3 +378,62 @@ fn visible_ranges_match_memtable_oracle_for_mixed_families() {
         assert_eq!(actual, expected, "sequence {read_sequence}");
     }
 }
+
+#[test]
+fn repeated_hits_keep_one_order_entry_per_page_and_evict_the_least_recent() {
+    for policy in [
+        PageCachePolicy::ExactLru,
+        // Room for both hot pages in the protected region, so a hit is only a hit.
+        PageCachePolicy::ScanResistantLru {
+            protected_capacity_basis_points: 8_000,
+        },
+    ] {
+        let page_bytes = cache_page(64, 0).resident_bytes();
+        let shared = new_page_cache_with_policy(page_bytes * 3, policy).unwrap();
+        let mut cache = shared.lock().unwrap();
+        for ordinal in 1..=3 {
+            let page = cache_page(64, ordinal as u8);
+            cache
+                .complete_load(
+                    (1, ordinal),
+                    Arc::clone(&page),
+                    page.resident_bytes(),
+                    PageCacheAccess::OrdinaryOperation,
+                )
+                .unwrap();
+        }
+        // Pages 1 and 3 are read many times; page 2 becomes the least recent.
+        for _ in 0..500 {
+            for ordinal in [1, 3] {
+                assert!(cache
+                    .lookup((1, ordinal), PageCacheAccess::OrdinaryOperation)
+                    .unwrap()
+                    .is_some());
+            }
+        }
+        let order_entries =
+            cache.exact_order.len() + cache.probationary_order.len() + cache.protected_order.len();
+        assert!(
+            order_entries <= cache.values.len() * 2,
+            "{policy:?}: {order_entries} order entries for {} pages after 1,000 hits",
+            cache.values.len()
+        );
+
+        let fourth = cache_page(64, 4);
+        cache
+            .complete_load(
+                (1, 4),
+                Arc::clone(&fourth),
+                fourth.resident_bytes(),
+                PageCacheAccess::OrdinaryOperation,
+            )
+            .unwrap();
+        assert!(
+            !cache.values.contains_key(&(1, 2)),
+            "{policy:?}: the least recently used page was not the one evicted"
+        );
+        assert!(cache.values.contains_key(&(1, 1)), "{policy:?}");
+        assert!(cache.values.contains_key(&(1, 3)), "{policy:?}");
+        cache.validate_residency().unwrap();
+    }
+}
