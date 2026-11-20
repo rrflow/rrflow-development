@@ -60,6 +60,13 @@ pub(super) fn serve(
     let registry_recorded = registry.recorded();
     let mut end = None;
     let served = (|| -> Result<(), BoxError> {
+        // Listened for before the announcement is written, so an interrupt
+        // sent the moment a supervisor reads it is already caught and ends
+        // this server through the one shutdown below.
+        let interrupt = {
+            let _runtime = runtime.enter();
+            rrd_server::Interrupt::listen()?
+        };
         let registry_line = registry.line();
         let announcement = ServeAnnouncement {
             status: "listening",
@@ -103,6 +110,7 @@ pub(super) fn serve(
             server,
             Arc::clone(&registration),
             stop_poll_interval,
+            interrupt,
         ));
         let result = served.served;
         end = Some((served.stop_requested, served.closed));
