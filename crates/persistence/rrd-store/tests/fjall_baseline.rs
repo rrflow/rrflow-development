@@ -146,6 +146,46 @@ fn transaction_transcript(engine: &dyn StorageEngine) -> Vec<String> {
         "scan from b: {:?}",
         late.scan(&key("b"), b"contract0", 1).unwrap()
     ));
+    // Presence and length follow the same snapshot and overlay as a read:
+    // `a` is stored, `b` is deleted here, `z` is written here, `nope` never was.
+    for name in ["a", "b", "z", "nope"] {
+        log.push(format!(
+            "{name}: contains {:?}, size {:?}",
+            late.contains_key(&key(name)).unwrap(),
+            late.size_of(&key(name)).unwrap()
+        ));
+    }
+    // A reverse scan is the forward scan read backward, limit applied after the merge.
+    log.push(format!(
+        "reverse all: {:?}",
+        late.scan_reverse(b"contract/", b"contract0", 10).unwrap()
+    ));
+    log.push(format!(
+        "reverse limit 2: {:?}",
+        late.scan_reverse(b"contract/", b"contract0", 2).unwrap()
+    ));
+    log.push(format!(
+        "reverse below d: {:?}",
+        late.scan_reverse(b"contract/", &key("d"), 1).unwrap()
+    ));
+    log.push(format!(
+        "reverse of an empty range refused: {}",
+        late.scan_reverse(&key("d"), &key("d"), 1).is_err()
+    ));
+    // take returns the value once and stages nothing for a key that holds none.
+    let staged = late.staged_encoded_bytes();
+    log.push(format!("take nope: {:?}", late.take(&key("nope")).unwrap()));
+    log.push(format!(
+        "take of an absent key staged nothing: {}",
+        late.staged_encoded_bytes() == staged
+    ));
+    log.push(format!("take a: {:?}", late.take(&key("a")).unwrap()));
+    log.push(format!("take a again: {:?}", late.take(&key("a")).unwrap()));
+    log.push(format!(
+        "after take: contains {:?}, reverse {:?}",
+        late.contains_key(&key("a")).unwrap(),
+        late.scan_reverse(b"contract/", b"contract0", 10).unwrap()
+    ));
     log.push(format!("rollback: {:?}", late.rollback().unwrap()));
 
     // Two transactions from one snapshot that write one key: the second loses.
@@ -229,4 +269,77 @@ fn committed_data_and_the_sequence_survive_a_reopen_of_fjall() {
         .append_batch(&[claim("wp9", "status", "new", 400)])
         .unwrap();
     assert_eq!(reopened.claims().sequence().unwrap(), last + 1);
+}
+
+/// Presence, length and reverse reads of data each engine has flushed and
+/// compacted by its own means, as text, so the engines compare line for line.
+fn maintained_read_transcript(engine: &dyn StorageEngine) -> Vec<String> {
+    let key = |index: usize| format!("maintained/{index:04}").into_bytes();
+    let read = engine.begin_transaction().unwrap();
+    let mut log = Vec::new();
+    for index in [0, 1, 7, 250, 499, 500] {
+        log.push(format!(
+            "{index}: contains {:?}, size {:?}",
+            read.contains_key(&key(index)).unwrap(),
+            read.size_of(&key(index)).unwrap()
+        ));
+    }
+    for (start, end, limit) in [(0, 500, 3), (100, 110, 20), (240, 260, 5), (498, 600, 4)] {
+        log.push(format!(
+            "reverse [{start}, {end}) limit {limit}: {:?}",
+            read.scan_reverse(&key(start), &key(end), limit).unwrap()
+        ));
+    }
+    log
+}
+
+#[test]
+fn maintained_data_reads_identically_in_rrflow_kv_and_fjall() {
+    let kv_dir = tempfile::tempdir().unwrap();
+    let fjall_dir = tempfile::tempdir().unwrap();
+    let kv = RrflowKvStore::open(kv_dir.path()).unwrap();
+    let fjall = FjallBaselineStore::open(fjall_dir.path()).unwrap();
+    let memory = RrflowMxStore::new();
+    let key = |index: usize| format!("maintained/{index:04}").into_bytes();
+
+    // Five hundred keys, every seventh then deleted and every eleventh rewritten
+    // longer, so the maintained data holds tombstones and several versions.
+    for engine in [&kv as &dyn StorageEngine, &fjall, &memory] {
+        let mut write = engine.begin_transaction().unwrap();
+        for index in 0..500 {
+            write
+                .put(key(index), format!("value-{index}").into_bytes())
+                .unwrap();
+        }
+        write.commit(Durability::Authoritative).unwrap();
+        let mut rewrite = engine.begin_transaction().unwrap();
+        for index in (0..500).step_by(7) {
+            rewrite.delete(key(index)).unwrap();
+        }
+        for index in (1..500).step_by(11) {
+            rewrite
+                .put(key(index), format!("rewritten-value-{index}").into_bytes())
+                .unwrap();
+        }
+        rewrite.commit(Durability::Authoritative).unwrap();
+    }
+    kv.flush(1).unwrap();
+    kv.compact(1, 1).unwrap();
+    fjall.maintain().unwrap();
+
+    let reference = maintained_read_transcript(&memory);
+    assert_eq!(
+        maintained_read_transcript(&kv),
+        reference,
+        "rrflowKV departs from the reference on maintained data"
+    );
+    assert_eq!(
+        maintained_read_transcript(&fjall),
+        reference,
+        "the Fjall baseline departs from the reference on maintained data"
+    );
+    assert!(
+        reference.iter().any(|line| line.contains("contains false")),
+        "the transcript must read a deleted key: {reference:#?}"
+    );
 }

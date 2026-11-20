@@ -352,6 +352,8 @@ trials and one of 1,000,000 claims at three. The
 [parity work list](rrflowlsm-fjall-parity.md) owns what rrflowLSM still lacks
 against Fjall.
 
+`tests/fjall_baseline.rs` also compares what each engine answers. One transcript covers presence, value length, reverse scans and take through a transaction's own writes, and must match line for line in rrflowMX, rrflowKV and Fjall. A second reads the same after each engine has flushed and compacted by its own means.
+
 The output states no verdict. One machine and one run do not decide whether an
 engine is acceptable; that is a release-gate decision.
 

@@ -43,8 +43,35 @@ pub trait StorageTransaction: Send {
     /// Reads at most `limit` visible rows from `[start, end)` in byte order.
     fn scan(&self, start: &[u8], end: &[u8], limit: usize) -> Result<Vec<(Vec<u8>, Vec<u8>)>>;
 
+    /// Whether `key` holds a value in the snapshot or the local write
+    /// overlay. An engine answers without reading the value where it can.
+    fn contains_key(&self, key: &[u8]) -> Result<bool>;
+
+    /// The length in bytes of the value `key` holds, or `None` when it holds
+    /// none. An engine answers without reading the value where it can.
+    fn size_of(&self, key: &[u8]) -> Result<Option<u64>>;
+
+    /// Reads at most `limit` visible rows from `[start, end)` from the
+    /// greatest key down.
+    fn scan_reverse(
+        &self,
+        start: &[u8],
+        end: &[u8],
+        limit: usize,
+    ) -> Result<Vec<(Vec<u8>, Vec<u8>)>>;
+
     /// Buffers or replaces the transaction-local value for one key.
     fn put(&mut self, key: Vec<u8>, value: Vec<u8>) -> Result<()>;
+
+    /// Removes `key` and returns the value it held. A key that holds no value
+    /// is left untouched and stages nothing.
+    fn take(&mut self, key: &[u8]) -> Result<Option<Vec<u8>>> {
+        let previous = self.get(key)?;
+        if previous.is_some() {
+            self.delete(key.to_vec())?;
+        }
+        Ok(previous)
+    }
 
     /// Buffers a transaction-local tombstone for one key.
     fn delete(&mut self, key: Vec<u8>) -> Result<()>;

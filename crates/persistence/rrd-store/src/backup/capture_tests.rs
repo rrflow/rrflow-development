@@ -28,6 +28,20 @@ impl StorageTransaction for CountedRead<'_> {
         );
         Ok(rows)
     }
+    fn contains_key(&self, key: &[u8]) -> Result<bool> {
+        self.inner.contains_key(key)
+    }
+    fn size_of(&self, key: &[u8]) -> Result<Option<u64>> {
+        self.inner.size_of(key)
+    }
+    fn scan_reverse(
+        &self,
+        start: &[u8],
+        end: &[u8],
+        limit: usize,
+    ) -> Result<Vec<(Vec<u8>, Vec<u8>)>> {
+        self.inner.scan_reverse(start, end, limit)
+    }
     fn put(&mut self, key: Vec<u8>, value: Vec<u8>) -> Result<()> {
         self.inner.put(key, value)
     }

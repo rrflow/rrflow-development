@@ -173,6 +173,65 @@ impl StorageTransaction for FjallBaselineTransaction<'_> {
         Ok(visible.into_iter().take(limit).collect())
     }
 
+    fn contains_key(&self, key: &[u8]) -> Result<bool> {
+        validate_read_key(key)?;
+        if let Some(value) = self.writes.get(key) {
+            return Ok(value.is_some());
+        }
+        self.snapshot
+            .contains_key(&self.store.data, key)
+            .map_err(fjall_error)
+    }
+
+    fn size_of(&self, key: &[u8]) -> Result<Option<u64>> {
+        validate_read_key(key)?;
+        if let Some(value) = self.writes.get(key) {
+            return Ok(value.map(|value| value.len() as u64));
+        }
+        Ok(self
+            .snapshot
+            .size_of(&self.store.data, key)
+            .map_err(fjall_error)?
+            .map(u64::from))
+    }
+
+    fn scan_reverse(
+        &self,
+        start: &[u8],
+        end: &[u8],
+        limit: usize,
+    ) -> Result<Vec<(Vec<u8>, Vec<u8>)>> {
+        validate_range(start, end, limit)?;
+        let overlay = self
+            .writes
+            .mutations()
+            .range::<[u8], _>((Included(start), Excluded(end)))
+            .collect::<Vec<_>>();
+        // As in `scan`: the overlay hides at most `overlay.len()` stored rows.
+        let wanted = limit.saturating_add(overlay.len());
+        let mut visible = BTreeMap::new();
+        for guard in self
+            .snapshot
+            .range(&self.store.data, start.to_vec()..end.to_vec())
+            .rev()
+            .take(wanted)
+        {
+            let (key, value) = guard.into_inner().map_err(fjall_error)?;
+            visible.insert(key.to_vec(), value.to_vec());
+        }
+        for (key, value) in overlay {
+            match value {
+                Some(value) => {
+                    visible.insert(key.clone(), value.clone());
+                }
+                None => {
+                    visible.remove(key.as_slice());
+                }
+            }
+        }
+        Ok(visible.into_iter().rev().take(limit).collect())
+    }
+
     fn put(&mut self, key: Vec<u8>, value: Vec<u8>) -> Result<()> {
         self.writes.put(key, value)
     }

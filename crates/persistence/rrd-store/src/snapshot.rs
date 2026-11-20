@@ -48,6 +48,32 @@ impl StorageTransaction for SnapshotRead<'_, '_> {
             .map_err(|_| Error::Archive("backup snapshot lock poisoned".into()))?
             .scan(start, end, limit)
     }
+    fn contains_key(&self, key: &[u8]) -> Result<bool> {
+        self.view
+            .transaction
+            .lock()
+            .map_err(|_| Error::Archive("backup snapshot lock poisoned".into()))?
+            .contains_key(key)
+    }
+    fn size_of(&self, key: &[u8]) -> Result<Option<u64>> {
+        self.view
+            .transaction
+            .lock()
+            .map_err(|_| Error::Archive("backup snapshot lock poisoned".into()))?
+            .size_of(key)
+    }
+    fn scan_reverse(
+        &self,
+        start: &[u8],
+        end: &[u8],
+        limit: usize,
+    ) -> Result<Vec<(Vec<u8>, Vec<u8>)>> {
+        self.view
+            .transaction
+            .lock()
+            .map_err(|_| Error::Archive("backup snapshot lock poisoned".into()))?
+            .scan_reverse(start, end, limit)
+    }
     fn put(&mut self, _key: Vec<u8>, _value: Vec<u8>) -> Result<()> {
         Err(read_only())
     }
