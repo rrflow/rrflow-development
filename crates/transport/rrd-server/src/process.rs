@@ -11,6 +11,9 @@ pub(super) async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>
     }
     let args = parse_args(std::env::args().skip(1))
         .map_err(|error| io::Error::new(io::ErrorKind::InvalidInput, error))?;
+    // Listened for before the address or readiness is announced, so an
+    // interrupt sent the moment either is read is already caught.
+    let mut interrupt = rrd_server::Interrupt::listen()?;
     let engine = RrdEngine::open_installed(&args.project, &args.distribution_executable)?;
     // Issued while this engine holds the engram's writer lock, so a record
     // found at publication belongs to a process that no longer runs.
@@ -41,9 +44,7 @@ pub(super) async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>
             write_readiness(path, scheme, address)?;
         }
         server
-            .serve_until(async {
-                let _ = tokio::signal::ctrl_c().await;
-            })
+            .serve_until(async move { interrupt.received().await })
             .await?;
         return Ok(());
     }
@@ -70,7 +71,7 @@ pub(super) async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>
     if let Some(path) = &args.ready_file {
         write_readiness(path, scheme, address)?;
     }
-    let end = serve_published(server, registration, args.stop_poll_interval).await;
+    let end = serve_published(server, registration, args.stop_poll_interval, interrupt).await;
     // The registry is a candidate list: an entry this process wrote is brought
     // in line with what the project now holds, after the record is closed so
     // that the registry never delays what a stop request is waiting for.

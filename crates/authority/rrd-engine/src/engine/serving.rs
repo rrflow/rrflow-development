@@ -233,14 +233,23 @@ impl ServingPublisher {
         let temporary = safe_join(&self.project, SERVING_RECORD_PENDING)?;
         let stop_path = safe_join(&self.project, STOP_REQUEST_RELATIVE_PATH)?;
         remove_stale(&temporary, Managed::ServingRecord)?;
-        remove_stale(&path, Managed::ServingRecord)?;
+        // A record found now belongs to a process that no longer runs. It is
+        // admitted as a managed file here and replaced below in one step,
+        // never removed first: a requester waiting on it must see it give way
+        // to this record, not to an instant with no record, which is how a
+        // finished stop looks.
+        let stale = read_if_present(&path, Managed::ServingRecord)?.is_some();
         // A request found now addresses a record this publication replaces.
         remove_stale(
             &safe_join(&self.project, STOP_REQUEST_PENDING)?,
             Managed::StopRequestPending,
         )?;
         remove_stale(&stop_path, Managed::StopRequest)?;
-        publish_new_file(&path, &temporary, &bytes)?;
+        if stale {
+            replace_file(&path, &temporary, &bytes)?;
+        } else {
+            publish_new_file(&path, &temporary, &bytes)?;
+        }
         Ok(ServingRegistration {
             path,
             stop_path,
@@ -445,6 +454,31 @@ fn remove_unless(path: &AnchoredPath, bytes: &[u8], managed: Managed) -> Result<
 /// Removes a record or request left by a process that no longer holds the
 /// engram. Only a bounded regular file is removed; anything else is refused,
 /// not replaced.
+/// Writes `bytes` to `temporary` and renames it over `path` in one step, so
+/// every reader of `path` sees the earlier content or this content.
+fn replace_file(path: &AnchoredPath, temporary: &AnchoredPath, bytes: &[u8]) -> Result<()> {
+    use std::io::Write;
+
+    let storage = |error: std::io::Error| ServiceError::Storage(error.to_string());
+    let written = (|| -> std::io::Result<()> {
+        let mut options = rrd_store::filesystem::OpenOptions::new();
+        options.write(true).create_new(true);
+        let mut file = options.open(temporary)?;
+        file.write_all(bytes)?;
+        file.sync_all()?;
+        drop(file);
+        temporary.rename_to(path)
+    })();
+    if let Err(error) = written {
+        let _ = temporary.remove_file();
+        return Err(storage(error));
+    }
+    path.parent()
+        .ok_or(ServiceError::ProjectBindingMismatch)?
+        .sync_directory()
+        .map_err(storage)
+}
+
 fn remove_stale(path: &AnchoredPath, managed: Managed) -> Result<()> {
     match read_if_present(path, managed)? {
         Some(_) => remove_if_present(path).map(|_| ()),

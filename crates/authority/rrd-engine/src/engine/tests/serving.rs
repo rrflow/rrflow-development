@@ -122,6 +122,51 @@ fn a_stale_record_is_replaced_and_withdrawal_leaves_a_newer_one() {
 }
 
 #[test]
+fn a_requester_waiting_on_a_stale_record_never_sees_the_project_unserved() {
+    // `rrflow stop` waits on a killed server's record. When the next server
+    // publishes, the record must give way to the new one in one step: an
+    // instant with no record is how a finished stop looks, and the requester
+    // would report success while the project is served again.
+    let (project, executable) = installed_project();
+    let engine = open(project.path(), &executable).unwrap();
+    let publisher = engine.serving_publisher().unwrap();
+    // Never withdrawn, as a killed process leaves it.
+    std::mem::forget(
+        publisher
+            .publish("127.0.0.1:41200".parse().unwrap())
+            .unwrap(),
+    );
+
+    let finished = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let reader = {
+        let finished = std::sync::Arc::clone(&finished);
+        let project = project.path().to_path_buf();
+        std::thread::spawn(move || {
+            let mut looks = 0u64;
+            while !finished.load(std::sync::atomic::Ordering::Relaxed) {
+                // A look that fails outright is not counted as an absence.
+                if let Ok(record) = RrdEngine::read_serving_record(&project) {
+                    assert!(
+                        record.is_some(),
+                        "a look found no serving record during replacement"
+                    );
+                    looks += 1;
+                }
+            }
+            looks
+        })
+    };
+    for round in 0..300u16 {
+        let address: SocketAddr = format!("127.0.0.1:{}", 41_201 + round).parse().unwrap();
+        std::mem::forget(publisher.publish(address).unwrap());
+    }
+    finished.store(true, std::sync::atomic::Ordering::Relaxed);
+    let looks = reader.join().expect("the reader saw the project unserved");
+    assert!(looks > 0, "the reader never looked");
+    assert_eq!(recorded_url(project.path()), "http://127.0.0.1:41500");
+}
+
+#[test]
 fn publication_refuses_an_object_it_cannot_remove() {
     let (project, executable) = installed_project();
     let engine = open(project.path(), &executable).unwrap();
