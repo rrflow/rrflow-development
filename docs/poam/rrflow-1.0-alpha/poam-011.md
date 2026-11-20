@@ -229,6 +229,7 @@ all-operation semantic validation or installed cross-surface conformance gaps.
 
 ## Evidence history
 
+- [Recovered scheduling and UI stash reconciliation](../../evidence/change-journals/repository/recovered-scheduling-and-ui-20261120.md): backup scheduling passes the real Windows process smoke; PR220 and two child stash behaviors have explicit comparisons. Historical recovery and capability parity remain incomplete.
 - [D-02 draft public-operation review](../../evidence/change-journals/gate-h/h-04-attunement-rust-client-gap.md): the eight draft start, step, pause, resume, expired-lease recovery and replan operations have no typed Rust-client bindings. Generated endpoint maps and HTTP tests do not establish Rust-client support. Catalogue-owned Rust binding generation and installed-engine conformance remain open.
 - Structural SDK evidence:
   [Rust](../../evidence/change-journals/gate-a/a-07-1b-evidence-journal.md),
