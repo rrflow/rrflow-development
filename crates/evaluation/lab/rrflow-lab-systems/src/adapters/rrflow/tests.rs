@@ -89,18 +89,31 @@ fn an_hnsw_build_and_its_payload_index_decode_as_public_requests() {
     assert_eq!(declared.field.as_str(), "category");
     assert_eq!(declared.kind, VectorPayloadIndexKind::Unsigned);
 
-    let built: EnsureVectorIndex =
-        decode(hnsw_index_request("instance:lab", "lab", 16, 100)).unwrap();
+    let built: EnsureVectorIndex = decode(hnsw_index_request(
+        "instance:lab",
+        "lab",
+        16,
+        100,
+        &RrflowHnswParameters {
+            max_level: 9,
+            seed: 123,
+            build_policy: Default::default(),
+        },
+    ))
+    .unwrap();
     built.validate().unwrap();
     assert_eq!(built.vector_name.as_str(), VECTOR_NAME);
     assert_eq!(built.max_storage_keys, MAX_VECTOR_STORAGE_KEYS);
     let VectorIndexConfiguration::Hnsw {
         m,
         ef_construction,
+        max_level,
+        seed,
         filter_properties,
-        ..
     } = built.configuration;
     assert_eq!((m, ef_construction), (16, 100));
+    // The graph is built with what the binding states, not with a value of the adapter's.
+    assert_eq!((max_level, seed), (9, 123));
     assert_eq!(
         filter_properties
             .iter()

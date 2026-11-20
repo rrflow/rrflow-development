@@ -36,8 +36,12 @@ pub struct SystemTuning {
     pub ef_construction: Option<u32>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bits: Option<String>,
+    /// The seed of a TurboQuant index, or of an RRFlow graph's layer assignment.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub seed: Option<u64>,
+    /// The highest layer of an RRFlow graph.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_level: Option<u8>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub partitions: Option<u32>,
     /// The search ladder's rungs, for an index searched by `ef`.
@@ -79,6 +83,7 @@ impl SystemTuning {
             "m" => self.m = Some(whole_number(name, value)?),
             "ef_construction" => self.ef_construction = Some(whole_number(name, value)?),
             "seed" => self.seed = Some(whole_number(name, value)?),
+            "max_level" => self.max_level = Some(whole_number(name, value)?),
             "partitions" => self.partitions = Some(whole_number(name, value)?),
             "bits" if !value.is_empty() => self.bits = Some(value.to_owned()),
             "ef" => self.ef = Some(rungs(name, value)?),
@@ -92,7 +97,7 @@ impl SystemTuning {
                 }) else {
                     return Err(format!(
                         "there is no setting named {name:?}. These can be tuned: m, \
-                         ef_construction, ef, bits, seed, partitions, nprobes, engine.NAME"
+                         ef_construction, max_level, ef, bits, seed, partitions, nprobes,                          engine.NAME"
                     ));
                 };
                 self.engine_settings
@@ -116,6 +121,9 @@ impl SystemTuning {
         }
         if let Some(seed) = self.seed {
             said.push(format!("seed={seed}"));
+        }
+        if let Some(max_level) = self.max_level {
+            said.push(format!("max_level={max_level}"));
         }
         if let Some(partitions) = self.partitions {
             said.push(format!("partitions={partitions}"));
@@ -150,17 +158,33 @@ impl SystemTuning {
             _ if self.ef_construction.is_some() => return refuse("ef_construction"),
             _ => {}
         }
-        match &mut binding.index {
-            IndexSpec::TurboQuant { bits, seed } => {
+        match (&mut binding.index, &mut binding.rrflow_hnsw) {
+            (IndexSpec::TurboQuant { bits, seed }, _) => {
                 if let Some(value) = &self.bits {
                     bits.clone_from(value);
                 }
                 if let Some(value) = self.seed {
                     *seed = value;
                 }
+                if self.max_level.is_some() {
+                    return refuse("max_level");
+                }
+            }
+            // An RRFlow graph states its own seed and highest layer.
+            (_, Some(native)) => {
+                if self.bits.is_some() {
+                    return refuse("bits");
+                }
+                if let Some(value) = self.seed {
+                    native.seed = value;
+                }
+                if let Some(value) = self.max_level {
+                    native.max_level = value;
+                }
             }
             _ if self.bits.is_some() => return refuse("bits"),
             _ if self.seed.is_some() => return refuse("seed"),
+            _ if self.max_level.is_some() => return refuse("max_level"),
             _ => {}
         }
         match &mut binding.index {

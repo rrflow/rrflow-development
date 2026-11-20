@@ -69,6 +69,10 @@
         }
       ]
     },
+    "CanonicalId": {
+      "description": "A canonical public identifier component.\n\nIDs are lowercase ASCII and intentionally URL/path safe. Human-facing\nlabels are separate data and may use arbitrary Unicode.",
+      "type": "string"
+    },
     "CredentialReferences": {
       "additionalProperties": false,
       "description": "Environment variable names only. The values never enter a file.",
@@ -377,6 +381,37 @@
       ],
       "type": "object"
     },
+    "RrflowHnswParameters": {
+      "additionalProperties": false,
+      "description": "What RRFlow's own graph build takes beyond `m` and `ef_construction`. The pack states\nthem, so a run says how its graph was built and a person can tune them; the adapter\nholds no value of its own.",
+      "properties": {
+        "build_policy": {
+          "$ref": "#/$defs/VectorIndexBuildPolicy",
+          "default": {
+            "kind": "cpu"
+          },
+          "description": "Where the engine may build the graph. The engine's default is the processor."
+        },
+        "max_level": {
+          "description": "The highest layer a point may be placed on.",
+          "format": "uint8",
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "seed": {
+          "description": "The seed of the layer assignment, so a build can be repeated.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "max_level",
+        "seed"
+      ],
+      "type": "object"
+    },
     "SearchSetting": {
       "additionalProperties": false,
       "properties": {
@@ -481,6 +516,17 @@
             "null"
           ]
         },
+        "rrflow_hnsw": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RrflowHnswParameters"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "RRFlow's own graph parameters, required when RRFlow builds an HNSW index."
+        },
         "search_ladder": {
           "items": {
             "$ref": "#/$defs/SearchSetting"
@@ -523,6 +569,61 @@
         "lan"
       ],
       "type": "string"
+    },
+    "VectorIndexBuildPolicy": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "cpu",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "allow_cpu_fallback": {
+              "type": "boolean"
+            },
+            "backend_id": {
+              "$ref": "#/$defs/CanonicalId"
+            },
+            "kind": {
+              "const": "prefer_gpu",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "backend_id",
+            "allow_cpu_fallback"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "backend_id": {
+              "$ref": "#/$defs/CanonicalId"
+            },
+            "kind": {
+              "const": "require_gpu",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "backend_id"
+          ],
+          "type": "object"
+        }
+      ]
     },
     "VolumeMount": {
       "additionalProperties": false,

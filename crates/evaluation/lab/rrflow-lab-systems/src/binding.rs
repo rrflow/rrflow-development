@@ -35,6 +35,21 @@ pub enum IndexSpec {
     IvfRq { partitions: u32 },
 }
 
+/// What RRFlow's own graph build takes beyond `m` and `ef_construction`. The pack states
+/// them, so a run says how its graph was built and a person can tune them; the adapter
+/// holds no value of its own.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct RrflowHnswParameters {
+    /// The highest layer a point may be placed on.
+    pub max_level: u8,
+    /// The seed of the layer assignment, so a build can be repeated.
+    pub seed: u64,
+    /// Where the engine may build the graph. The engine's default is the processor.
+    #[serde(default)]
+    pub build_policy: rrd_contract::VectorIndexBuildPolicy,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct SearchSetting {
@@ -74,6 +89,9 @@ pub struct SystemBinding {
     pub storage_profile: String,
     pub availability: Availability,
     pub index: IndexSpec,
+    /// RRFlow's own graph parameters, required when RRFlow builds an HNSW index.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rrflow_hnsw: Option<RrflowHnswParameters>,
     pub search_ladder: Vec<SearchSetting>,
     #[serde(default)]
     pub credentials: CredentialReferences,
@@ -125,6 +143,32 @@ fn validate_endpoint(binding: &SystemBinding) -> Result<()> {
 }
 
 impl SystemBinding {
+    /// RRFlow's graph parameters belong to an RRFlow HNSW index and to nothing else, must
+    /// be stated when that index runs, and are bounded by the engine's own contract.
+    fn validate_native_hnsw(&self) -> Result<()> {
+        let id = self.id.as_str();
+        let native_index = match (&self.kind, &self.index) {
+            (SystemKind::Rrflow, IndexSpec::Hnsw { m, ef_construction }) => {
+                Some((*m, *ef_construction))
+            }
+            _ => None,
+        };
+        match (native_index, &self.rrflow_hnsw) {
+            (None, Some(_)) => Err(format!("{id}: native HNSW parameters require RRFlow HNSW")),
+            (Some(_), None) if self.availability == Availability::Available => {
+                Err(format!("{id}: native HNSW parameters are required"))
+            }
+            (Some((m, ef_construction)), Some(native)) => {
+                crate::adapters::rrflow::check_hnsw_parameters(m, ef_construction, native).map_err(
+                    |error| {
+                        format!("{id}: native HNSW parameters are outside engine bounds: {error}")
+                    },
+                )
+            }
+            _ => Ok(()),
+        }
+    }
+
     /// Checks the binding for a test that asks for the top `k` results.
     pub fn validate(&self, k: u32) -> Result<()> {
         require(
@@ -153,6 +197,7 @@ impl SystemBinding {
             &format!("{id} must declare its artifact and storage profile"),
         )?;
         validate_endpoint(self)?;
+        self.validate_native_hnsw()?;
         for name in [
             &self.credentials.principal_env,
             &self.credentials.secret_env,

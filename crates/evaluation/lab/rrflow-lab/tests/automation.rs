@@ -770,6 +770,56 @@ fn a_tuned_ladder_keeps_the_shape_its_index_needs() {
 }
 
 #[test]
+fn an_rrflow_graph_is_built_with_what_this_machine_tunes() {
+    let definitions = real_definitions();
+    let baseline = build_plan(&definitions, &approved(&definitions)).unwrap();
+    let published = manifest_of(&baseline, "vector-small")
+        .binding("rrflow-hnsw")
+        .unwrap();
+    let stated = published.rrflow_hnsw.clone().unwrap();
+    assert_eq!((stated.max_level, stated.seed), (6, 7));
+
+    let mut settings = approved(&definitions);
+    settings.tuning.insert(
+        id("rrflow-hnsw"),
+        tuned(&[("max_level", "12"), ("seed", "99")]),
+    );
+    let plan = build_plan(&definitions, &settings).unwrap();
+    let tuned_binding = manifest_of(&plan, "vector-small")
+        .binding("rrflow-hnsw")
+        .unwrap();
+    let native = tuned_binding.rrflow_hnsw.clone().unwrap();
+    assert_eq!((native.max_level, native.seed), (12, 99));
+    assert_ne!(binding_sha256(tuned_binding), binding_sha256(published));
+    assert!(tuned_binding
+        .limits
+        .last()
+        .unwrap()
+        .contains("seed=99, max_level=12"));
+
+    // A highest layer the engine would refuse is that test's problem, so nothing starts.
+    let mut settings = approved(&definitions);
+    settings
+        .tuning
+        .insert(id("rrflow-hnsw"), tuned(&[("max_level", "0")]));
+    let plan = build_plan(&definitions, &settings).unwrap();
+    let problem = test_named(&plan, "vector-small").problem.clone().unwrap();
+    assert!(problem.contains("outside engine bounds"), "{problem}");
+
+    // A system with no graph of RRFlow's has no highest layer to tune.
+    let mut settings = approved(&definitions);
+    settings
+        .tuning
+        .insert(id("qdrant"), tuned(&[("max_level", "12")]));
+    let plan = build_plan(&definitions, &settings).unwrap();
+    let problem = test_named(&plan, "vector-small").problem.clone().unwrap();
+    assert!(
+        problem.contains("has no setting named max_level"),
+        "{problem}"
+    );
+}
+
+#[test]
 fn engine_settings_are_added_for_rrflow_and_refused_elsewhere() {
     let definitions = real_definitions();
     let mut settings = approved(&definitions);

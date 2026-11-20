@@ -263,9 +263,13 @@ another. Add `--json` to `status`, `plan` or `settings` to give the same facts t
 | Allow a system's launch on this machine | `rrflow-lab settings approve qdrant`, or `--all` |
 | Go back to what was published | `rrflow-lab settings reset`, or `reset qdrant` |
 
-Tuning accepts `m`, `ef_construction`, `ef`, `bits`, `seed`, `partitions`, `nprobes` and
-`engine.NAME`, where the system's index has that setting. Settings stay on this machine,
-and a new pack keeps them. None of them can flatter a result:
+RRFlow's own graph also takes a highest layer and a seed. A system that has RRFlow build
+an HNSW index states them in its `rrflow_hnsw` block, the adapter has no value of its own,
+and the engine's contract says which values it accepts. `max_level` and `seed` tune them.
+
+Tuning accepts `m`, `ef_construction`, `max_level`, `ef`, `bits`, `seed`, `partitions`,
+`nprobes` and `engine.NAME`, where the system's index has that setting. Settings stay on
+this machine, and a new pack keeps them. None of them can flatter a result:
 
 - **A system turned off stays visible.** The report lists it as unavailable, with why.
 - **A tuned run cannot pass as the baseline.** Its binding digest differs, so it cannot
