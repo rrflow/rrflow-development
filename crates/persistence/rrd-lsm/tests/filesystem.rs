@@ -2,6 +2,68 @@ use rrd_lsm::filesystem::{AnchoredPath, OpenOptions, SourceLeaf};
 use std::io::{Read, Write};
 
 #[test]
+fn metadata_never_reports_absence_during_atomic_replacement() {
+    use std::sync::{
+        atomic::{AtomicBool, Ordering},
+        Barrier,
+    };
+    let fixture = tempfile::tempdir().unwrap();
+    let anchor = AnchoredPath::open_root(fixture.path()).unwrap();
+    let published = anchor.join("published");
+    let pending = anchor.join("pending");
+    std::fs::write(fixture.path().join("published"), b"first").unwrap();
+    let finished = AtomicBool::new(false);
+    let ready = Barrier::new(5);
+    std::thread::scope(|scope| {
+        let mut readers = Vec::new();
+        for _ in 0..4 {
+            readers.push(scope.spawn(|| {
+                ready.wait();
+                let mut looks = 0;
+                let mut absent = None;
+                while !finished.load(Ordering::Acquire) {
+                    match published.metadata() {
+                        Ok(metadata) => {
+                            assert!(metadata.is_file());
+                            looks += 1;
+                        }
+                        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                            absent = Some(error);
+                            break;
+                        }
+                        Err(_) => {}
+                    }
+                }
+                (looks, absent)
+            }));
+        }
+        ready.wait();
+        let written = (|| -> std::io::Result<()> {
+            for _ in 0..5_000 {
+                let mut file = OpenOptions::new()
+                    .write(true)
+                    .create_new(true)
+                    .open(&pending)?;
+                file.write_all(b"next")?;
+                drop(file);
+                pending.rename_to(&published)?;
+            }
+            Ok(())
+        })();
+        finished.store(true, Ordering::Release);
+        written.unwrap();
+        for reader in readers {
+            let (looks, absent) = reader.join().unwrap();
+            assert!(
+                absent.is_none(),
+                "published metadata falsely absent: {absent:?}"
+            );
+            assert!(looks > 0);
+        }
+    });
+}
+
+#[test]
 fn replacement_keeps_open_readers_valid_and_publishes_new_bytes() {
     let fixture = tempfile::tempdir().unwrap();
     let anchor = AnchoredPath::open_root(fixture.path()).unwrap();
@@ -12,6 +74,7 @@ fn replacement_keeps_open_readers_valid_and_publishes_new_bytes() {
     std::fs::write(fixture.path().join("pending"), b"second").unwrap();
     pending.rename_to(&published).unwrap();
     assert_eq!(published.read().unwrap(), b"second");
+    assert!(first_reader.metadata().unwrap().is_file());
     let mut second_reader = published.open_read().unwrap();
     std::fs::write(fixture.path().join("pending"), b"third").unwrap();
     pending.rename_to(&published).unwrap();
