@@ -1,0 +1,494 @@
+{
+  "observed_on": "2026-11-20",
+  "root_baseline": "e708980de22028d09fcd12c7410bf560c79d3596",
+  "connectome_baseline": "e780304b39afe8becee4beca63c1f8566d0ba5fd",
+  "meaning": "GitHub closure and Git object inventory only; ancestry does not prove behavioral absorption.",
+  "repositories": {
+    "rrflow-development": {
+      "closed": 413,
+      "merged": 364,
+      "closed_without_merge": 49,
+      "heads_on_main": 30,
+      "pull_requests": [
+        {
+          "number": 365,
+          "sha": "854ffd4ff86db6b5bf9c335db0787ff17b596305",
+          "ancestor_of_main": false,
+          "url": "https://github.com/rrflow/rrflow-development/pull/365",
+          "title": "Move the lab's data, scripts and schemas under eval/workbench/lab"
+        },
+        {
+          "number": 364,
+          "sha": "12722a07b7978c814e383e5cd6c6e7d2a6a3528e",
+          "ancestor_of_main": false,
+          "url": "https://github.com/rrflow/rrflow-development/pull/364",
+          "title": "Give the comparison lab's shared vocabulary its own crate under workbench/lab (lab split, step 1)"
+        },
+        {
+          "number": 344,
+          "sha": "81059c9df60c64567414d14d0ed70f6dd10dc1a7",
+          "ancestor_of_main": false,
+          "url": "https://github.com/rrflow/rrflow-development/pull/344",
+          "title": "C-07: wait for macOS image teardown, and retry a busy create once its helper lets go"
+        },
+        {
+          "number": 316,
+          "sha": "5741a7660e244e8bd71425c029d93a41f0420a35",
+          "ancestor_of_main": false,
+          "url": "https://github.com/rrflow/rrflow-development/pull/316",
+          "title": "Absorb the eight leftover branches without a pull request; restore one dropped journal"
+        },
+        {
+          "number": 315,
+          "sha": "d26ad75bed82fe529f804b5b0fee3c19f50b6c73",
+          "ancestor_of_main": false,
+          "url": "https://github.com/rrflow/rrflow-development/pull/315",
+          "title": "Lift the RRFlowCLD trigger observations from the editor's unsynced commits"
+        },
+        {
+          "number": 300,
+          "sha": "d26a1322dd5d87ec19b417420a5074c077e09de1",
+          "ancestor_of_main": false,
+          "url": "https://github.com/rrflow/rrflow-development/pull/300",
+          "title": "Stabilize macOS installed-domain crash job by retrying transient APFS image-create busy failures"
+        },
+        {
+          "number": 286,
+          "sha": "6795422b7b9ed1187af60f707576473f99866084",
+          "ancestor_of_main": false,
+          "url": "https://github.com/rrflow/rrflow-development/pull/286",
+          "title": "Record that storage maintenance stalls every search"
+        },
+        {
+          "number": 277,
+          "sha": "d9f34f33e365eabc40a5b31a62b05343dfafdd01",
+          "ancestor_of_main": true,
+          "url": "https://github.com/rrflow/rrflow-development/pull/277",
+          "title": "Show seek time and answer quality beside published results"
+        },
+        {
+          "number": 274,
+          "sha": "c870dd77732683f0e0aea16f0a6d6899ead3fa40",
+          "ancestor_of_main": false,
+          "url": "https://github.com/rrflow/rrflow-development/pull/274",
+          "title": "Run the lab from installed definitions with one command"
+        },
+        {
+          "number": 272,
+          "sha": "653aab9a314a8f9aba74a132ab370f2358995db3",
+          "ancestor_of_main": true,
+          "url": "https://github.com/rrflow/rrflow-development/pull/272",
+          "title": "Ship lab definitions as signed, patchable packs"
+        },
+        {
+          "number": 268,
+          "sha": "92f18c232d1744b3b16abee9e7b1858a539b84f4",
+          "ancestor_of_main": true,
+          "url": "https://github.com/rrflow/rrflow-development/pull/268",
+          "title": "One file per system and per test, so new ones take no code"
+        },
+        {
+          "number": 267,
+          "sha": "3dc198111bda847165f33ff0ec3330dd05e2c7f9",
+          "ancestor_of_main": true,
+          "url": "https://github.com/rrflow/rrflow-development/pull/267",
+          "title": "Configure studies from a schema, and prove their data was captured"
+        },
+        {
+          "number": 262,
+          "sha": "a7587fed7d7cf4f279bee90ffe06f0cfacfae8b4",
+          "ancestor_of_main": true,
+          "url": "https://github.com/rrflow/rrflow-development/pull/262",
+          "title": "Test whether RRFlow helps an agent plan"
+        },
+        {
+          "number": 260,
+          "sha": "e095ce39a5943d327d1f21517afdaa0ac345042b",
+          "ancestor_of_main": true,
+          "url": "https://github.com/rrflow/rrflow-development/pull/260",
+          "title": "Bring outside systems, data and results into the comparison lab"
+        },
+        {
+          "number": 234,
+          "sha": "f0223d3e160817d6e82f2952d19b77fbc7a5c30f",
+          "ancestor_of_main": false,
+          "url": "https://github.com/rrflow/rrflow-development/pull/234",
+          "title": "Record real Connectome source-graph persistence evidence"
+        },
+        {
+          "number": 231,
+          "sha": "8d47500869329f1a5604821138f1a6c8efc349a5",
+          "ancestor_of_main": false,
+          "url": "https://github.com/rrflow/rrflow-development/pull/231",
+          "title": "Discover installed attunement jobs through the public engine"
+        },
+        {
+          "number": 225,
+          "sha": "f256c8e1337d85fa01f2a0c61e895a4d213163fa",
+          "ancestor_of_main": true,
+          "url": "https://github.com/rrflow/rrflow-development/pull/225",
+          "title": "Retain readable steps in engine-owned attunement plans"
+        },
+        {
+          "number": 220,
+          "sha": "5697b208b5269f76817d437cb219f79b2434c500",
+          "ancestor_of_main": false,
+          "url": "https://github.com/rrflow/rrflow-development/pull/220",
+          "title": "Reduce recurring PR conflict churn"
+        },
+        {
+          "number": 219,
+          "sha": "e93e9870ca8885d6dfc42f2667f013972566fc55",
+          "ancestor_of_main": true,
+          "url": "https://github.com/rrflow/rrflow-development/pull/219",
+          "title": "Fix concurrent immutable object publication"
+        },
+        {
+          "number": 203,
+          "sha": "241509b33941d0e4851e161230a705d04158d44f",
+          "ancestor_of_main": true,
+          "url": "https://github.com/rrflow/rrflow-development/pull/203",
+          "title": "Share task-attempt admission at the existing budget owner"
+        },
+        {
+          "number": 201,
+          "sha": "2c3f6bff9db9c87731899ebe4640bd3008324799",
+          "ancestor_of_main": true,
+          "url": "https://github.com/rrflow/rrflow-development/pull/201",
+          "title": "Govern selector policy through endpoint configuration"
+        },
+        {
+          "number": 199,
+          "sha": "5ee39f39942f610e4414fec287ce21dbe88b2d8b",
+          "ancestor_of_main": true,
+          "url": "https://github.com/rrflow/rrflow-development/pull/199",
+          "title": "Add bounded native controller chat transport"
+        },
+        {
+          "number": 198,
+          "sha": "63375dd42c77986ea8bd64a9c6034c07af2d3c9a",
+          "ancestor_of_main": true,
+          "url": "https://github.com/rrflow/rrflow-development/pull/198",
+          "title": "Validate bounded controller endpoint choices"
+        },
+        {
+          "number": 197,
+          "sha": "e3eaa78b3272bd19b58f93cfd6c8a6365ac4a01d",
+          "ancestor_of_main": false,
+          "url": "https://github.com/rrflow/rrflow-development/pull/197",
+          "title": "D-02: preserve receipt replay across plan successors"
+        },
+        {
+          "number": 192,
+          "sha": "a754de83acd20912a4d4dcc701c6fecb6e331e34",
+          "ancestor_of_main": false,
+          "url": "https://github.com/rrflow/rrflow-development/pull/192",
+          "title": "Run full native CI on integrated merge candidates"
+        },
+        {
+          "number": 189,
+          "sha": "c15ed0b923dfb56ff947be0e14c04b10d8c650a1",
+          "ancestor_of_main": false,
+          "url": "https://github.com/rrflow/rrflow-development/pull/189",
+          "title": "Prepare trusted macOS reopen cache warming"
+        },
+        {
+          "number": 151,
+          "sha": "9aea9987b21e4437c5f6d96a5c5832da9e00939f",
+          "ancestor_of_main": false,
+          "url": "https://github.com/rrflow/rrflow-development/pull/151",
+          "title": "Record C-07 native Windows characterization"
+        },
+        {
+          "number": 148,
+          "sha": "326957e9716225b9e18246dc0298c1cfde9dca1d",
+          "ancestor_of_main": false,
+          "url": "https://github.com/rrflow/rrflow-development/pull/148",
+          "title": "Design engine-owned source-bound plans and explicit replanning"
+        },
+        {
+          "number": 141,
+          "sha": "3b28e5b75db461e4bddb8ee88fb0d5da4a56d66f",
+          "ancestor_of_main": true,
+          "url": "https://github.com/rrflow/rrflow-development/pull/141",
+          "title": "perf(storage): index immutable point-read candidates"
+        },
+        {
+          "number": 139,
+          "sha": "0592829ce1f57eb99513e5f05d5068545389e5c1",
+          "ancestor_of_main": true,
+          "url": "https://github.com/rrflow/rrflow-development/pull/139",
+          "title": "Consolidate C-07 proof reads, segment indexing and bounded native readback"
+        },
+        {
+          "number": 137,
+          "sha": "24814c6d5e64660c6b0c6ef05267f6f6c3af33ea",
+          "ancestor_of_main": true,
+          "url": "https://github.com/rrflow/rrflow-development/pull/137",
+          "title": "Ground engine build plans in code and explicit acceptance evidence"
+        },
+        {
+          "number": 136,
+          "sha": "cc91c18cf824d3c43466465eb5092374e775b792",
+          "ancestor_of_main": true,
+          "url": "https://github.com/rrflow/rrflow-development/pull/136",
+          "title": "Prioritize real project execution and staged qualification"
+        },
+        {
+          "number": 135,
+          "sha": "bec6e0d8685d37ae8848f5624d370433af48976b",
+          "ancestor_of_main": false,
+          "url": "https://github.com/rrflow/rrflow-development/pull/135",
+          "title": "C-07: retain timed corpus progress and compare sealed runs"
+        },
+        {
+          "number": 134,
+          "sha": "4e2dbaffad29039d742f6b151f7636378ce3e7fe",
+          "ancestor_of_main": true,
+          "url": "https://github.com/rrflow/rrflow-development/pull/134",
+          "title": "fix(store): bound and reuse transaction-local proof nodes"
+        },
+        {
+          "number": 133,
+          "sha": "f5109dbb853b0c688c0f651a92f7193cd34e2697",
+          "ancestor_of_main": true,
+          "url": "https://github.com/rrflow/rrflow-development/pull/133",
+          "title": "docs(roadmap): ground engine alpha work in scaling and diagnostic gaps"
+        },
+        {
+          "number": 132,
+          "sha": "3ed0d67ea4810c4ecc19905d365357359765b1d1",
+          "ancestor_of_main": true,
+          "url": "https://github.com/rrflow/rrflow-development/pull/132",
+          "title": "docs(contract): bind first-run comparisons and optional free-tier admission"
+        },
+        {
+          "number": 125,
+          "sha": "ae93174f0dda83609935dea7bdf78a7e139f26fa",
+          "ancestor_of_main": true,
+          "url": "https://github.com/rrflow/rrflow-development/pull/125",
+          "title": "Schedule full candidate CI when a package is ready and standardize team handoff"
+        },
+        {
+          "number": 124,
+          "sha": "018e2ce12b19b97e7cfeb6fa300e2252d4e02b7a",
+          "ancestor_of_main": true,
+          "url": "https://github.com/rrflow/rrflow-development/pull/124",
+          "title": "C-07: identify native capacity recovery command failures"
+        },
+        {
+          "number": 123,
+          "sha": "1880734887b1624247f623bc8966be8946912fb7",
+          "ancestor_of_main": true,
+          "url": "https://github.com/rrflow/rrflow-development/pull/123",
+          "title": "Integrate C-07 storage growth and native failure qualification repairs"
+        },
+        {
+          "number": 122,
+          "sha": "94a0786710519c7e389098041c6c84cff7cde478",
+          "ancestor_of_main": true,
+          "url": "https://github.com/rrflow/rrflow-development/pull/122",
+          "title": "C-07f: maintain bounded APFS metadata pressure"
+        },
+        {
+          "number": 121,
+          "sha": "316569a3abe2060c324581f838e250ed4aead47b",
+          "ancestor_of_main": true,
+          "url": "https://github.com/rrflow/rrflow-development/pull/121",
+          "title": "Preserve failed startup state and identify native file admission"
+        },
+        {
+          "number": 120,
+          "sha": "037635afbf202fe8379ebec647f51bd57b410a79",
+          "ancestor_of_main": true,
+          "url": "https://github.com/rrflow/rrflow-development/pull/120",
+          "title": "Keep sustained offers running across bounded backup work"
+        },
+        {
+          "number": 119,
+          "sha": "eb4d7091644d2a0a3efc8417da56778a32de6e58",
+          "ancestor_of_main": true,
+          "url": "https://github.com/rrflow/rrflow-development/pull/119",
+          "title": "Select immutable point-read winners before loading payloads"
+        },
+        {
+          "number": 117,
+          "sha": "155b400ae827822b4e6d38d542c172d7514d172d",
+          "ancestor_of_main": true,
+          "url": "https://github.com/rrflow/rrflow-development/pull/117",
+          "title": "Reduce canonical hashing and backup checkpoint costs without changing durable identities"
+        },
+        {
+          "number": 68,
+          "sha": "02951068179220d61ea5041dc95cff7b88c865b3",
+          "ancestor_of_main": true,
+          "url": "https://github.com/rrflow/rrflow-development/pull/68",
+          "title": "Preserve configured native admission throughout backup restore and resume"
+        },
+        {
+          "number": 67,
+          "sha": "fb4f1e880fbede3a097ea58f6464c2dd82012094",
+          "ancestor_of_main": true,
+          "url": "https://github.com/rrflow/rrflow-development/pull/67",
+          "title": "Preserve mutable storage admission through engine transactions and inspection"
+        },
+        {
+          "number": 66,
+          "sha": "c5888e2373ba03155774361e8105639dcf709363",
+          "ancestor_of_main": true,
+          "url": "https://github.com/rrflow/rrflow-development/pull/66",
+          "title": "Bound native projected output allocations through retained Arrow owners"
+        },
+        {
+          "number": 25,
+          "sha": "d134734bd765545475d5d6020b22749feae8045e",
+          "ancestor_of_main": false,
+          "url": "https://github.com/rrflow/rrflow-development/pull/25",
+          "title": "Define rrflowDB PostgreSQL compatibility and independent release plan"
+        },
+        {
+          "number": 24,
+          "sha": "f661cc965093f9ed4b3ae7a222da35c65599b43e",
+          "ancestor_of_main": false,
+          "url": "https://github.com/rrflow/rrflow-development/pull/24",
+          "title": "Clarify rrflowDB as the Rust AI database with PostgreSQL compatibility"
+        }
+      ]
+    },
+    "connectome-development": {
+      "closed": 94,
+      "merged": 91,
+      "closed_without_merge": 3,
+      "heads_on_main": 0,
+      "pull_requests": [
+        {
+          "number": 48,
+          "sha": "edd9b45af52c0f76e530f5c68c76554436949eea",
+          "ancestor_of_main": false,
+          "url": "https://github.com/rrflow/connectome-development/pull/48",
+          "title": "Do not merge: live test of the merge alarm"
+        },
+        {
+          "number": 42,
+          "sha": "52c3a5eb1d6ada8ae928578dc11bda32d82ef798",
+          "ancestor_of_main": false,
+          "url": "https://github.com/rrflow/connectome-development/pull/42",
+          "title": "Add explicit source-bound assessments to Tasks"
+        },
+        {
+          "number": 10,
+          "sha": "8a9eb5e52b8df91b888b75f6c98edabeb8d3199d",
+          "ancestor_of_main": false,
+          "url": "https://github.com/rrflow/connectome-development/pull/10",
+          "title": "Preserve authored Connectome with native RRFlow management and knowledge trees"
+        }
+      ]
+    }
+  },
+  "recovered_root_stashes": [
+    {
+      "sha": "a105804f84e80858b86050009dfbcbd606f34894",
+      "subject": "On agent/d04-source-spans: D04 work before reviewed PR242 integration",
+      "parents": [
+        "08d2c30dde0973acc4c5ae522692398dbf3fe0a6",
+        "b187bf3d3f544d85e2c6ed281cfaf1b06a961611",
+        "2e6572bdae754e74331b17a88e215a6dfbb75164"
+      ],
+      "untracked_paths": []
+    },
+    {
+      "sha": "c5491c0613d419439ad21ca91856fdb9c1f1337e",
+      "subject": "On agent/d04-source-spans: D04 work before merged PR214 integration",
+      "parents": [
+        "618409814c9d08f1b9bcf732501f87641167c462",
+        "bfd6257bf98520f3976c1dfe65c107f72c232737",
+        "5000d4b51202edbe1f04eb237100da7ca7322de0"
+      ],
+      "untracked_paths": []
+    },
+    {
+      "sha": "c53cf21040ec500c280b5d0e476311ec6da31117",
+      "subject": "On agent/d04-source-spans: d04 before main 3622 synchronization",
+      "parents": [
+        "342052837c8683af4a230b475d954ae54b3d0c34",
+        "74fdea55a3bc3e470b2495195c2b5b9dee2032ca",
+        "9aa899a75f89e226745a52e9844ec51572fb28e2"
+      ],
+      "untracked_paths": [
+        "crates/adapters/rrflow-cli/tests/parser_worker.rs",
+        "crates/compute/rrd-attunement/src/worker.rs",
+        "crates/compute/rrd-attunement/tests/worker.rs"
+      ]
+    },
+    {
+      "sha": "a2004fd90840c8fd7061420e8b33f4b8bfed1a40",
+      "subject": "On agent/c07-read-view-manifest-sharing: c07-manifest-sharing-before-integrated-baseline",
+      "parents": [
+        "989fb87557e6c237f920e49a3e1e5d1971489f03",
+        "326319781daac52480ee8a8aec729604c564125f"
+      ],
+      "untracked_paths": []
+    },
+    {
+      "sha": "a7f8457c7f790e0d0431c2f75488983c864a9903",
+      "subject": "On agent/c07-backup-scheduling: C07 backup scheduling authored package before prerequisite integration",
+      "parents": [
+        "cb9249a36bbd7ccbcd1760e94946ccefb8bb2588",
+        "f965bd1b898d5e87ad9a12bc97a8113efb6fae1f",
+        "5888eb031df3cd577440ea89cf8aa470664d4964"
+      ],
+      "untracked_paths": [
+        "crates/adapters/rrflow-cli/tests/support/sustained/management.rs",
+        "crates/evaluation/rrflow-eval/src/storage/sustained_backup.rs",
+        "crates/evaluation/rrflow-eval/src/storage/sustained_backup_tests.rs",
+        "docs/evidence/change-journals/gate-c/c-07g-backup-scheduling.md"
+      ]
+    },
+    {
+      "sha": "04182088ee3f3f6faee00bd2b976e57e321ab6bf",
+      "subject": "On agent/connectome-temporal-runtime-visualizer: codex-clock-final-plan-command-correction",
+      "parents": [
+        "e28c16d1ad3231ee785b54359226a78a39c997d4",
+        "e1258058e8871fc129c45021c771a3e5b92a3bb3",
+        "592ca5ef5775ca2ed041fc7269010d6b2e091e8a"
+      ],
+      "untracked_paths": []
+    },
+    {
+      "sha": "c0fcd87de0ad08d8344a4142ecae934b93acd8f4",
+      "subject": "On agent/connectome-temporal-runtime-visualizer: codex-clock-dotnet-runner-plan-correction",
+      "parents": [
+        "95db006cc6e26f0252c7bbfad47c47f26818fc90",
+        "44166b6df3d62da5a58808e3ea68ca0fa5d13392",
+        "9e34b04a9ab277c9dfbc422b6e62394bf30a9d08"
+      ],
+      "untracked_paths": []
+    },
+    {
+      "sha": "5a3e0f4aa0a69affb92509219d5f4a28be68875a",
+      "subject": "On agent/connectome-temporal-runtime-visualizer: codex-clock-plan-correction",
+      "parents": [
+        "fdf013dc3341070bd10d4bec0af1611dd7c66d72",
+        "e377b7e54e5c5532ed2f38f1f2c61ed58b5c8da3",
+        "df0720cf816f96810e528424094660f6543a9d15"
+      ],
+      "untracked_paths": []
+    }
+  ],
+  "bundles": [
+    {
+      "path": "D:\\.usr\\Temp\\rrflow-selective-recall-audit-20261120\\rrflow-recovered-objects-20261120.bundle",
+      "bytes": 113143419,
+      "sha256": "7e23b1cc9d9c902c0809e763e3e96a2c6db92395eb5c279c101fd97494cbbaf9",
+      "unreachable_commit_tips": 266,
+      "verified": "git bundle verify; isolated git index-pack --stdin --strict; every listed tip readable in the isolated object directory"
+    },
+    {
+      "path": "D:\\.usr\\Temp\\rrflow-selective-recall-audit-20261120\\connectome-recovered-objects-20261120.bundle",
+      "bytes": 174078029,
+      "sha256": "fb9b239df56cd9752ed6b1898151d934b996f15367e2120812412b888e3e3b6a",
+      "unreachable_commit_tips": 34,
+      "verified": "git bundle verify; isolated git index-pack --stdin --strict; every listed tip readable in the isolated object directory"
+    }
+  ]
+}

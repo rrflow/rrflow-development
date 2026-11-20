@@ -132,6 +132,16 @@ Existing native parser-worker containment is narrower than project-wide resource
 isolation. Preserve those useful behaviors at their canonical owners; H-07/H-10
 still require the governed placement, consent, revocation and stamped-read journey.
 
+The [historical PR and stash recovery](../../evidence/change-journals/repository/historical-pr-recovery-20261120.md)
+also establishes that current branch hygiene is not complete behavioral
+absorption: 49 root and three child PRs were closed without merging, although
+30 of those root heads are already ancestors of main. All 52 heads and the
+eight named root stash commits remain recoverable. The prior audit explicitly
+left source lines unread. A recovered template assertion demonstrates actual
+content loss in Connectome; PR109 repairs that canonical import boundary with
+browser readback. The linked inventory distinguishes reviewed replacements,
+recoverable objects and the remaining unreviewed work. No parity status changes.
+
 ## Current-detail owners
 
 The [knowledge connector contract](../../reference/data/knowledge-connectors.md)
