@@ -257,6 +257,80 @@ pub(super) fn alpha_storage_closure_has_one_required_physical_dependency_and_cur
         );
     }
 
+    // Parquet and Vortex are reference modules behind rrd-store's columnar
+    // port, each reachable only through its own feature, which no other package
+    // enables. Vortex is declared nowhere else. Parquet is still declared by
+    // rrd-query, which writes the cold tier with it (POAM-090); the rule here
+    // is that the reference module itself never enters another package's build.
+    let vortex_declarations = metadata
+        .dependency_inputs
+        .iter()
+        .filter(|dependency| dependency.name == "vortex")
+        .collect::<Vec<_>>();
+    assert_eq!(
+        vortex_declarations
+            .iter()
+            .map(|dependency| dependency.owner.as_str())
+            .collect::<Vec<_>>(),
+        ["rrd-store"],
+        "Vortex may be declared only by rrd-store"
+    );
+    assert_eq!(vortex_declarations[0].kind, "normal");
+    assert!(
+        vortex_declarations[0].optional,
+        "the Vortex reference dependency must be optional"
+    );
+    let store_parquet = metadata
+        .dependency_inputs
+        .iter()
+        .find(|dependency| dependency.name == "parquet" && dependency.owner == "rrd-store")
+        .expect("rrd-store declares the Parquet reference dependency");
+    assert!(
+        store_parquet.optional,
+        "the Parquet reference dependency must be optional"
+    );
+    assert_exact(
+        &metadata.packages["rrd-store"].features["vortex-reference"],
+        names(&[
+            "dep:arrow-array",
+            "dep:arrow-cast",
+            "dep:arrow-schema",
+            "dep:vortex",
+        ]),
+        "the vortex-reference feature enables only the module's own dependencies",
+    );
+    assert_exact(
+        &metadata.packages["rrd-store"].features["parquet-reference"],
+        names(&[
+            "dep:arrow-array",
+            "dep:arrow-cast",
+            "dep:arrow-schema",
+            "dep:bytes",
+            "dep:parquet",
+        ]),
+        "the parquet-reference feature enables only the module's own dependencies",
+    );
+    assert!(
+        !metadata.packages["rrd-store"]
+            .features
+            .contains_key("default")
+            || metadata.packages["rrd-store"].features["default"].is_empty(),
+        "rrd-store enables no reference module by default"
+    );
+    for dependency in metadata
+        .dependency_inputs
+        .iter()
+        .filter(|dependency| dependency.name == "rrd-store")
+    {
+        for module in ["parquet-reference", "vortex-reference"] {
+            assert!(
+                !dependency.features.contains(module),
+                "{} enables the {module} module; only rrd-store's own tests and examples may",
+                dependency.owner
+            );
+        }
+    }
+
     let lsm_lz4 = metadata
         .dependency_inputs
         .iter()

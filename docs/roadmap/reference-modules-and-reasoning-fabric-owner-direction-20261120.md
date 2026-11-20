@@ -30,8 +30,8 @@ A reference module is a proven outside implementation that can be plugged in bes
 | Module | For | On `main` |
 |---|---|---|
 | Fjall | rrflowLSM | Meets all five: `rrd-store` feature `fjall-baseline`, the `StorageEngine` port, `tests/fjall_baseline.rs`, `examples/storage_comparison.rs` weekly on Linux, and the Fjall rule in `workspace_architecture/storage.rs` |
-| Parquet | rrflowCLD | Meets none. It is a dependency of the product: `rrd-query` writes the cold tier and the query export with it, on by default ([POAM-090](../poam/rrflow-1.0-alpha/poam-090.md)) |
-| Vortex | rrflowCLD | Absent. Nothing names it. The crate is `vortex` `0.93.0`, Apache-2.0, Rust 1.95; whether it meets the pinned-dependency and all-platform rules is not checked |
+| Parquet | rrflowCLD | As a module it meets all five since 2026-11-20: `rrd-store` feature `parquet-reference` behind the columnar port ([journal](../evidence/change-journals/gate-f/columnar-port-reference-modules-20261120.md)). Separately, it is still a dependency of the product: `rrd-query` writes the cold tier and the query export with it, on by default ([POAM-090](../poam/rrflow-1.0-alpha/poam-090.md)) |
+| Vortex | rrflowCLD | Meets all five since 2026-11-20: `rrd-store` feature `vortex-reference` behind the columnar port, `vortex` `=0.93.0`, Apache-2.0. Built and tested on Windows; Linux and macOS are for the candidate gate |
 
 rrflowCLD has no native format to compare either against: the cold tier is the Parquet writer.
 
@@ -49,7 +49,7 @@ rrflowCLD has no native format to compare either against: the cold tier is the P
 ## Order
 
 1. This record, and the deficiency it verifies.
-2. One columnar port in the storage tier, with Parquet and Vortex as reference modules behind it and a comparison run. This makes all three modules plug-and-play.
+2. One columnar port in the storage tier, with Parquet and Vortex as reference modules behind it and a comparison run. Done on 2026-11-20; all three modules are plug-and-play.
 3. A native rrflowCLD format behind that port, so the product stops writing Parquet and POAM-090 can close.
 4. The remaining Fjall capabilities ([parity work list](../reference/storage/rrflowlsm-fjall-parity.md)).
 

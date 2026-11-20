@@ -14,6 +14,9 @@ mod access;
 pub use rrd_lsm::crash_test;
 mod archive;
 mod backup;
+pub mod columnar;
+#[cfg(any(feature = "parquet-reference", feature = "vortex-reference"))]
+pub mod columnar_reference;
 mod control;
 mod ds;
 mod engine;

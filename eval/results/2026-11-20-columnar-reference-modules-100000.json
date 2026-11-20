@@ -1,0 +1,34 @@
+{
+  "format_version": 1,
+  "kind": "columnar-reference-modules",
+  "architecture": "x86_64",
+  "operating_system": "windows",
+  "rows": 100000,
+  "columns": 10,
+  "raw_value_bytes": 23859257,
+  "trials": 7,
+  "projection": [
+    "cursor",
+    "subject"
+  ],
+  "aggregation": "each time is the median across the trials",
+  "caveat": "one machine, in memory, no file I/O; times include conversion between the port's table and Arrow, which every module pays alike; there is no native rrflowCLD arm",
+  "arms": [
+    {
+      "module": "parquet",
+      "encoded_bytes": 2145399,
+      "encoded_over_raw": 0.08991893586627614,
+      "encode_ns": 89747200,
+      "decode_all_ns": 66039400,
+      "decode_two_columns_ns": 14578100
+    },
+    {
+      "module": "vortex",
+      "encoded_bytes": 3773084,
+      "encoded_over_raw": 0.15813920777164184,
+      "encode_ns": 248061900,
+      "decode_all_ns": 49712100,
+      "decode_two_columns_ns": 8118600
+    }
+  ]
+}
