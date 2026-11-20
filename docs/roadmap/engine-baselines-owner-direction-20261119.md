@@ -21,7 +21,7 @@ The owner then gave four pillars, each with a minimal requirement. They are reco
 
 | Subject | Before | Now |
 |---|---|---|
-| rrflowCLD format | "started from Parquet", "the Parquet generation first" (2026-11-11) | Vortex is the baseline. Parquet is a comparison arm in the Lab and nothing else |
+| rrflowCLD format | "started from Parquet", "the Parquet generation first" (2026-11-11) | Vortex is the baseline rrflowCLD is measured against, not its format. Parquet is a comparison arm and nothing else |
 | rrflowLSM | "started from Fjall" | Fjall is the baseline it must capture and beat; it is "still to be truly proven" |
 | Prompt and handoff structure | The owner's working name was COSTAR; no record or code held it | The four pillars, as minimums that grow |
 | Schemas | ADR-0002 and S8 already say no fixed schema of thought | Restated: minimum requirements and minimum parameters, never rigid |
@@ -49,7 +49,7 @@ The owner returned this list on 2026-11-19. Each is one package and one pull req
 
 1. Correct the records (this package).
 2. Prove rrflowLSM against Fjall: the restored comparison at benchmark scale on Linux, and in CI.
-3. rrflowCLD behind one reader boundary in a storage crate, with Vortex as the product format and Parquet moved to the Lab.
+3. rrflowCLD behind one reader boundary in a storage crate, with Vortex as the product format and Parquet moved to the Lab. Corrected on 2026-11-20: Vortex is a reference module like Parquet and Fjall, not the product format; rrflowCLD is native ([direction](reference-modules-and-reasoning-fabric-owner-direction-20261120.md)).
 4. The four pillars as the first default schema, as minimums with open extension, wired to `context-assemble` and `flight-launch`.
 5. TurboQuant by default, with the measured cost model loaded.
 
