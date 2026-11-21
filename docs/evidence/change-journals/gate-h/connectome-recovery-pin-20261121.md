@@ -27,3 +27,5 @@ adaptation, new research, trace or resource experiment is needed for this pin.
 No new desktop trial, whole-platform parity or completed engine learning journey
 is claimed. The child journal records the original local tests and limits.
 Other recovered work remains outstanding. Roadmap status is unchanged.
+
+Local validation: declared child remote main resolves to ed53cfdbd216db73b72a523311fdebadfd458c26; documentation-policy and git diff --check passed. Parent hosted candidate and queue remain pending in PR462.
