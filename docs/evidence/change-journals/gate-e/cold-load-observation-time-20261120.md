@@ -127,3 +127,49 @@ a Connectome desktop comparison, native cross-platform qualification,
 competitor benchmark, full cold-history implementation or proof that every
 historical branch is reconciled. Continue the historical recovery after this
 bounded diagnostic repair lands.
+
+
+## Repair prerequisite and current-main integration
+
+PR450 repaired the reproduced native-open false absence at the existing
+filesystem boundary and merged as `fe3217570e46a03a8277de6e2376bdba65acb148`.
+Candidate 44840099007 and merge-group 44840639640 passed. All six changed paths
+match repair source `906d68422f859b89d5547851d90e84912eed7b7a` exactly;
+`root-merged-450.bundle` verifies complete history. Its remote branch was
+automatically deleted; its local branch was deleted after that comparison.
+Alarm449 is closed. POAM-092's detail/ledger now record this renewed repair
+without removing the original failure or PR442's earlier evidence.
+
+PR448 ordinarily merged current main, including PR447 and PR450, producing
+`1ab971781a32ed857ec242cef96e392309bc65b6`. The cold-memory focused oracle and
+full engine package are being rerun on this combined revision; their results
+are required before readiness. No passing rerun on unrepaired production is
+being substituted for the failed run above.
+
+
+## Combined revision results
+
+On `1ab971781a32ed857ec242cef96e392309bc65b6`, with the same isolated
+Cargo target and four build jobs, the focused cold-memory test passed one
+case. `cargo test --locked -p rrd-engine` then exited zero: 591 passed,
+zero failed and 12 existing ignored across 13 targets, including the full
+523-test library result. Logs are `cold-load-integrated-focused.log` and
+`cold-load-integrated-engine.log` in the session scratchpad. This passing
+combined run follows the causal filesystem repair; it does not erase the
+original failure. Documentation checks passed 1,287 statuses and 1,283
+coordinates (`cold-load-integrated-docs.log`). Navigation regeneration made
+no further index changes.
+
+The same revision built the real CLI and Rust database example with
+`cargo build --locked -p rrflow-cli --bin rrflow -p rrd-client --example rrflowdb`.
+`python scripts/ci/run_rrflowdb_standalone.py` with those two scratch-target
+executables exited zero: fresh installation, authenticated task/document and
+relationship reads and writes, abort, independent wrong-state denial, offline
+verification and reopened cursor 9. Primary SHA-256:
+`769e0af7991e63a2e311ce6d2e5329828fb35bec78e0eee35e4ae5d483d0eea6`;
+example SHA-256:
+`629f6bfb7bae1aa2c273fb2f748e204fbbb844f76899abb52fe0556af6898e2a`.
+Logs: `pr189-standalone-build.log` and `pr189-standalone-real.log`.
+This is a small native Windows process corpus, not capacity, desktop UI,
+cloud sync or full historical absorption evidence. Exact ready-candidate and
+merge-group CI remain required before this package lands.

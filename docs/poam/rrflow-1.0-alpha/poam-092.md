@@ -82,3 +82,25 @@ not explain the observed false absence. The earlier native repair remains;
 its passing checks do not qualify this newly observed failure. Parent status
 is Open again. Preserve the atomic old-or-new oracle and identify the exact
 failing operation before claiming another repair.
+
+
+## Renewed repair and integration
+
+[PR450](https://github.com/rrflow/rrflow-development/pull/450) merged at
+`fe3217570e46a03a8277de6e2376bdba65acb148` after green
+[candidate 44840099007](https://github.com/rrflow/rrflow-development/actions/runs/44840099007)
+and [merge-group 44840639640](https://github.com/rrflow/rrflow-development/actions/runs/44840639640).
+The new repair journal above retains the native-open NotFound reproduction,
+target-handle lifetime change, unchanged serving oracle, containment tests,
+276 passing LSM tests and 591 passing engine tests (three and twelve existing
+ignored respectively). The final metadata-only repair passed 25 consecutive
+5,000-replacement probes. Its subsequent integration with PR447 passed 62
+installation tests (one ignored), all 15 serving tests and the real installed
+plan/apply/serve/discover/authenticate/reopen driver.
+
+Source `906d68422f859b89d5547851d90e84912eed7b7a` and merged main have identical
+contents at all six changed paths. The source/main recovery bundle was verified
+before branch deletion, and alarm449 was closed after the merge. Parent status
+is Closed on this bounded Windows repair evidence. This is not a universal
+NTFS/kernel diagnosis, power-loss qualification or whole-storage acceptance;
+any recurrence reopens the same failure owner.
