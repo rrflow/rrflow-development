@@ -1,0 +1,13 @@
+[package]
+name = "rrflow-lab-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "shared vocabulary and report format for RRFlow's comparison and reasoning harnesses"
+
+[dependencies]
+schemars = "1.2"
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = "0.11"
