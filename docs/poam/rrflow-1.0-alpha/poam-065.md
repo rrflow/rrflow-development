@@ -17,6 +17,15 @@ main `ab32ec16` on 2026-11-11. About 900 KB of mutations reached the 16 MiB phys
 
 The 2026-11-12 real run of Parse on this repository hit it again: the default parse policy gathered about 16 MiB of fact JSON, the store refused the batch at the 16 MiB write-batch ceiling, and every later Step retried the same batch. A batch's physical size is several times its JSON: 1.34 MiB of parse facts measured 10.5 MiB once the records, their versions, the change log, the per-index source deltas (each carrying the indexed text) and the BM25 postings were counted, a ratio of 7.8 ([journal](../../evidence/change-journals/gate-d/d-02-code-knowledge-slice-20261112.md)).
 
+The 2026-11-21 original parser stack recovery reproduced another admission
+regression: a first file exceeding the project's selected `max_commit_bytes`
+was published as parsed. The limit constrained gathering only; final measured
+admission used the 16 MiB physical ceiling without the smaller selected limit.
+The restored original oversized-file oracle fails before the repair. The
+[recovery journal](../../evidence/change-journals/repository/archived-parser-stacks-integration-20261121.md)
+records its bounded repair and acceptance; SDK bound discovery and the broader
+closure requirements below remain open.
+
 ## Impact
 
 Batch sizing by trial and error is not a product contract; a loader cannot plan its commits from the capabilities document.
