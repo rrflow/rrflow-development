@@ -43,6 +43,15 @@ into a quality claim. J-04 remains open regardless of screening-test results.
 
 ## Impact
 
+The recovered PowerShell workbench at main `134421476a` reported
+`comparable=true` for failed checks when comparison enforcement was disabled,
+and returned success after required checks failed. The
+[reporting repair](../../evidence/change-journals/repository/recovered-workbench-results-20261121.md)
+separates the measured result from enforcement and retains the report before
+terminating on required failure. This fixes reporting only: row-count checks
+are not retrieval-quality qualification, and this record does not establish
+competitive performance against SurrealDB or ArangoDB.
+
 Performance or competitive claims cannot be evaluated honestly.
 
 ## Owning gates

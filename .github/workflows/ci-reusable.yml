@@ -1013,6 +1013,9 @@ jobs:
           python3 scripts/ci/test_sustained_launch.py
           python3 scripts/ci/test_analyze_sustained_conflicts.py
           python3 scripts/dev/test_connectome_dev.py
+      - name: Verify recovered workbench report outcomes
+        shell: pwsh
+        run: ./scripts/evaluation/test-workbench-report.ps1
       - name: Enforce repository CI policy
         # Workflow and CI-script edits run this lane, not the full matrix.
         run: |
