@@ -10,6 +10,13 @@ independently.
 
 ## Observed deficiency
 
+The 2026-11-20 historical-PR review reproduced a cold-vector diagnostic error:
+a search at operation time 701 over valid time 1 reported its last cold load
+at time 1. The [observation-time repair](../../evidence/change-journals/gate-e/cold-load-observation-time-20261120.md)
+separates those coordinates through the existing stamped-search boundary and
+records public diagnostic readback plus restart evidence. It does not qualify
+the broader telemetry coverage, overhead or native UI requirements below.
+
 RRFlow has a closed durable trace vocabulary and metric-instrument catalogue,
 typed causal links, selected Rust `tracing` subscribers, rrflowKV physical
 counters, DataFusion operator metrics, and the bounded primary build-provenance

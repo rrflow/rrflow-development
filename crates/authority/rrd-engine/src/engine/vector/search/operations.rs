@@ -25,13 +25,14 @@ impl RrdEngine {
         )?;
         let scope = self.query_scope(&request.scope)?;
         let read = self.storage.runtime().read_stamp(&scope)?;
-        self.search_vectors_at(request, read)
+        self.search_vectors_at(request, read, now)
     }
 
     pub(in crate::engine) fn search_vectors_at(
         &self,
         request: &SearchVectors,
         read: ReadStamp,
+        observed_at_unix_ms: u64,
     ) -> Result<VectorSearchResult> {
         let scope = self.query_scope(&request.scope)?;
         if read.scope != scope {
@@ -137,6 +138,7 @@ impl RrdEngine {
                 memory_tier,
                 ef_search,
                 catalogue,
+                observed_at_unix_ms,
             )? {
                 return Ok(result);
             }
@@ -252,7 +254,7 @@ impl RrdEngine {
                         if acquisition.source.is_cold_source() {
                             self.record_rrflow_cld_vector_trigger(
                                 acquisition.source,
-                                request.valid_at,
+                                observed_at_unix_ms,
                             )?;
                             cold_source_hits = cold_source_hits.saturating_add(1);
                         }
@@ -324,6 +326,7 @@ impl RrdEngine {
         memory_tier: rrd_vector::VectorMemoryTier,
         ef_search: usize,
         catalogue: &rrd_store::RuntimeVersionedRead,
+        observed_at_unix_ms: u64,
     ) -> Result<Option<VectorSearchResult>> {
         let rrd_vector::SearchMode::RequireApproximate { exact_rerank } = search.mode else {
             return Ok(None);
@@ -380,7 +383,7 @@ impl RrdEngine {
             }
         };
         if acquisition.source.is_cold_source() {
-            self.record_rrflow_cld_vector_trigger(acquisition.source, request.valid_at)?;
+            self.record_rrflow_cld_vector_trigger(acquisition.source, observed_at_unix_ms)?;
         }
         let artifact = acquisition.artifact;
         let lifecycle =

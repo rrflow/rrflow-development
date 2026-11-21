@@ -526,7 +526,7 @@ fn unsupported_filter_is_rejected_before_vector_versions_are_read() {
             },
         };
         let request = search(1, 2, Some(unsupported), APPROXIMATE, budget);
-        let error = engine.search_vectors_at(&request, read).unwrap_err();
+        let error = engine.search_vectors_at(&request, read, 1_000).unwrap_err();
         assert!(
             matches!(error, ServiceError::Vector(ref reason)
                 if reason.contains("no vector access path satisfies the request contract")),

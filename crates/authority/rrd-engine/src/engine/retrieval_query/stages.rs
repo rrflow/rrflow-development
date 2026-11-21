@@ -24,9 +24,11 @@ impl RetrievalExecutionContext<'_> {
             mode,
             max_storage_keys: self.request.max_storage_keys,
         };
-        let search = self
-            .engine
-            .search_vectors_at(&vector_request, self.read.clone())?;
+        let search = self.engine.search_vectors_at(
+            &vector_request,
+            self.read.clone(),
+            self.observed_at_unix_ms,
+        )?;
         let visible = self.visible_named(using, filter)?;
         let by_version = visible
             .into_iter()
