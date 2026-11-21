@@ -181,6 +181,19 @@ class ConflictFreeInventoryTests(unittest.TestCase):
         self.assertNotIn("target/rrflow-1.0-file-plan.jsonl", inventory.git_files())
         self.assertEqual(self.git("check-ignore", "target/rrflow-1.0-file-plan.jsonl"), "target/rrflow-1.0-file-plan.jsonl")
 
+    def test_inventory_is_deterministic_sorted_and_ignores_build_state(self) -> None:
+        source = self.root / "src/z.rs"
+        source.parent.mkdir()
+        source.write_text("fn z() {}\n", encoding="utf-8")
+        (self.output.parent / "build-noise").write_bytes(b"not source")
+        first = inventory.records()
+        self.assertEqual(first, inventory.records())
+        paths = [record["path"] for record in first]
+        self.assertEqual(paths, sorted(paths))
+        self.assertIn("src/z.rs", paths)
+        self.assertIn("README.md", paths)
+        self.assertFalse(any(path.startswith("target/") for path in paths))
+
     def test_absent_stale_and_tampered_output_fail_then_regenerate(self) -> None:
         self.assertEqual(self.command("--check"), 1)
         self.assertEqual(self.command(), 0)
