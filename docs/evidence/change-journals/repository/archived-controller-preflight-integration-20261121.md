@@ -92,3 +92,5 @@ Architecture, documentation, workflow and navigation checks are recorded below
 before candidate readiness. The merge queue remains the landing authority.
 
 Final local checks: cargo test -p rrd-engine --locked --test workspace_architecture: 35 passed; python scripts/ci/check_documentation.py, python scripts/ci/check_workflow.py, python scripts/knowledge/render_navigation.py and git diff --check all passed. No new deficiency or roadmap completion was claimed.
+
+Queue follow-up: the first ready event evaluated the brief revision while the final push was still being processed; the final source revision had only a skipped draft job. Re-emitted ready_for_review for that exact head, without bypassing a failed check. After PR475 merged, regenerated the conflicting repository index from both records. No source or test changes were made.
