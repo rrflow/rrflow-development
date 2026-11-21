@@ -92,3 +92,18 @@ results as new capacity evidence or close any qualification gate.
 
 Cargo subprocess exits were 0, logs native-preflight-*.log under the session
 external evidence directory. No source behavior changed in this package.
+
+Final local checks: Windows native-sample membership, abrupt parent death and
+timeout cleanup each passed against the release harness; policy suite 7 passed;
+Windows harness image identity 6 passed; macOS failure-capture policy 3 passed;
+macOS preflight selection 5 passed. No APFS or Linux cgroup execution is claimed
+on this Windows host. The batched Linux command exited 2 for missing required
+--cgroup-parent before executing; it was not an applicable native check here.
+
+A controller-history merge was briefly opened while the first release harness
+was still compiling, then immediately aborted to restore stable source inputs.
+No controller source change was committed. The following Windows image check
+rebuilt the stable source and passed. Both release check commands exited 0;
+source remains identical to main, apart from this package's evidence. The
+ignored long-running capacity experiments were not enabled as qualification.
+Candidate and queue must still pass before merge.
