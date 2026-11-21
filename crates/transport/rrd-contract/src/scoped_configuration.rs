@@ -5,7 +5,9 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
+mod project;
 mod publication;
+pub use project::*;
 pub use publication::*;
 
 pub const SCOPED_CONFIGURATION_VERSION: u16 = 1;
@@ -19,6 +21,8 @@ pub struct ConfigurationAdmission {
     pub project_configuration_sha256: String,
     pub evaluated_at_unix_ms: u64,
     pub user: Option<UserConfigurationAdmission>,
+    pub project_policy: Option<ConfigurationRevisionAdmission>,
+    pub project_read_revision: u64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -41,6 +45,12 @@ impl ConfigurationAdmission {
                 return invalid("invalid configuration admission user revision");
             }
             crate::validate_sha256(&user.revision_sha256, "user configuration")?;
+        }
+        if let Some(policy) = &self.project_policy {
+            policy.validate()?;
+            if policy.read_revision != self.project_read_revision {
+                return invalid("project policy read revision mismatch");
+            }
         }
         Ok(())
     }
@@ -207,6 +217,7 @@ pub struct ReadEffectiveConfiguration {
     /// Diagnostic historical reads only; runtime admission always uses current time.
     pub valid_at_unix_ms: Option<u64>,
     pub recorded_revision: Option<u64>,
+    pub project_recorded_revision: Option<u64>,
     #[serde(default)]
     pub requested: BTreeMap<ConfigurationSetting, u64>,
 }
@@ -241,8 +252,10 @@ pub struct EffectiveConfiguration {
     pub project_revision: u64,
     pub project_configuration_sha256: String,
     pub valid_at_unix_ms: u64,
+    pub project_read_revision: u64,
+    pub project_policy: Option<ConfigurationRevision>,
     pub user_read_revision: Option<u64>,
-    pub user_revision: Option<UserConfigurationRevision>,
+    pub user_revision: Option<ConfigurationRevision>,
     pub values: BTreeMap<ConfigurationSetting, EffectiveConfigurationValue>,
 }
 
@@ -267,20 +280,39 @@ impl EffectiveConfiguration {
                 return invalid("invalid effective configuration temporal identity");
             }
         }
-        for (setting, value) in &self.values {
-            let (floor, ceiling) = setting.bounds();
-            if value.minimum < floor
-                || value.maximum > ceiling
-                || value.minimum > value.maximum
-                || value.maximum > value.installed_ceiling
-                || value.installed_ceiling > ceiling
-                || value.value < value.minimum
-                || value.value > value.maximum
-                || value.unit != setting.unit()
+        if let Some(policy) = &self.project_policy {
+            policy.validate()?;
+            if policy.source_id != self.identity.instance_id
+                || policy.revision > self.project_read_revision
+                || !policy.change.contains(self.valid_at_unix_ms)
             {
-                return invalid("invalid effective configuration value");
+                return invalid("invalid effective project policy identity");
             }
         }
+        validate_effective_values(&self.values)?;
         Ok(())
     }
+}
+
+fn validate_effective_values(
+    values: &BTreeMap<ConfigurationSetting, EffectiveConfigurationValue>,
+) -> Result<()> {
+    if values.len() != ConfigurationSetting::ALL.len() {
+        return invalid("incomplete configuration values");
+    }
+    for (setting, value) in values {
+        let (floor, ceiling) = setting.bounds();
+        if value.minimum < floor
+            || value.maximum > ceiling
+            || value.minimum > value.maximum
+            || value.maximum > value.installed_ceiling
+            || value.installed_ceiling > ceiling
+            || value.value < value.minimum
+            || value.value > value.maximum
+            || value.unit != setting.unit()
+        {
+            return invalid("invalid effective configuration value");
+        }
+    }
+    Ok(())
 }

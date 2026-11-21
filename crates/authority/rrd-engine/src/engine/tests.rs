@@ -92,6 +92,7 @@ mod flight;
 mod function;
 mod index_foundation;
 mod installation;
+mod project_configuration;
 
 mod installation_bootstrap;
 mod installation_concurrency;

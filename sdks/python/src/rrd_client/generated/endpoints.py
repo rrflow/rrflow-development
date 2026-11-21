@@ -1,9 +1,9 @@
 # Generated from rrd-contract; do not edit.
-# OpenAPI SHA-256: 604a580b61a3a69a7688f656a16d8928bd1402a67f3cb91cf8175e7c33b6a076
+# OpenAPI SHA-256: 45a1377eddcc481533db43c70756e40963a468e319126082a372358a9868c7bd
 from typing import Final, Literal, TypedDict
 
 ENDPOINT_OPENAPI_DOCUMENT_SHA256: Final[str] = (
-    "604a580b61a3a69a7688f656a16d8928bd1402a67f3cb91cf8175e7c33b6a076"
+    "45a1377eddcc481533db43c70756e40963a468e319126082a372358a9868c7bd"
 )
 
 OperationId = Literal[
@@ -50,6 +50,9 @@ OperationId = Literal[
     "observation-prepare",
     "observation-read",
     "openapi-read",
+    "project-configuration-apply",
+    "project-configuration-preview",
+    "project-configuration-read",
     "query-execute",
     "query-export",
     "query-index-ensure",
@@ -359,6 +362,24 @@ ENDPOINTS: Final[dict[OperationId, Endpoint]] = {
         "method": "GET",
         "mutation": False,
         "path": "/v1/schema/openapi",
+    },
+    "project-configuration-apply": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": True,
+        "path": "/v1/configuration/project/apply",
+    },
+    "project-configuration-preview": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": False,
+        "path": "/v1/configuration/project/preview",
+    },
+    "project-configuration-read": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": False,
+        "path": "/v1/configuration/project/read",
     },
     "query-execute": {
         "authentication": "session_bearer",

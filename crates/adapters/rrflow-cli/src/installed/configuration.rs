@@ -1,7 +1,7 @@
 //! The CLI translates arguments; publication and history remain engine-owned.
 use super::*;
 use crate::command::ConfigurationAction;
-use rrd_contract::{UserConfigurationBinding, UserConfigurationChange, UserConfigurationPlan};
+use rrd_contract::{ConfigurationChange, UserConfigurationBinding, UserConfigurationPlan};
 
 pub(super) fn execute(action: &ConfigurationAction) -> Result<Execution, BoxError> {
     let value = match action {
@@ -13,7 +13,7 @@ pub(super) fn execute(action: &ConfigurationAction) -> Result<Execution, BoxErro
             max_history_reads,
         } => {
             let binding = binding(root, source, *max_history_reads)?;
-            let change: UserConfigurationChange = read(input)?;
+            let change: ConfigurationChange = read(input)?;
             serde_json::to_value(RrdEngine::preview_user_configuration(
                 &binding,
                 *expected_revision,

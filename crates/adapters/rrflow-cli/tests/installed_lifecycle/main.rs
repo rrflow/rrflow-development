@@ -138,6 +138,7 @@ mod engrams_and_history;
 mod instances;
 mod lifecycle;
 mod plans;
+mod project_configuration;
 mod replan;
 mod scoped_configuration;
 

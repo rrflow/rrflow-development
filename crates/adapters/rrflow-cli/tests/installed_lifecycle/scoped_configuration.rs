@@ -1,12 +1,12 @@
 //! Primary-binary user publication and two authenticated, isolated project servers.
 use super::*;
 use rrd_contract::{
-    ConfigurationSetting as Setting, NumericConfiguration, ReadEffectiveConfiguration,
-    ScopedConfiguration, UserConfigurationBinding, UserConfigurationChange,
-    UserConfigurationRevision,
+    ConfigurationChange, ConfigurationRevision, ConfigurationSetting as Setting,
+    NumericConfiguration, ReadEffectiveConfiguration, ScopedConfiguration,
+    UserConfigurationBinding,
 };
 
-fn options() -> RequestOptions {
+pub(super) fn options() -> RequestOptions {
     static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
     let id = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     RequestOptions::read(
@@ -16,14 +16,14 @@ fn options() -> RequestOptions {
     .unwrap()
 }
 
-fn publish(
+pub(super) fn publish(
     root: &Path,
     source: &Path,
     expected: u64,
     rows: u64,
     items: u64,
-) -> UserConfigurationRevision {
-    let change = UserConfigurationChange {
+) -> ConfigurationRevision {
+    let change = ConfigurationChange {
         valid_from_unix_ms: 0,
         valid_to_unix_ms: None,
         settings: BTreeMap::from([
@@ -79,7 +79,7 @@ fn publish(
     serde_json::from_slice(&applied.stdout).unwrap()
 }
 
-fn install(root: &Path, source: &Path, name: &str, preference: Option<u64>) -> PathBuf {
+pub(super) fn install(root: &Path, source: &Path, name: &str, preference: Option<u64>) -> PathBuf {
     let project = root.join(name);
     std::fs::create_dir(&project).unwrap();
     std::fs::write(project.join("README.md"), name).unwrap();
@@ -145,7 +145,11 @@ fn install(root: &Path, source: &Path, name: &str, preference: Option<u64>) -> P
     project
 }
 
-async fn connect(project: &Path, address: &str, name: &str) -> (RrdClient, rrd_client::Session) {
+pub(super) async fn connect(
+    project: &Path,
+    address: &str,
+    name: &str,
+) -> (RrdClient, rrd_client::Session) {
     let locator = RrdEngine::read_project_locator(project).unwrap();
     let credential = RrdEngine::read_installed_api_key(project).unwrap();
     let client = RrdClient::connect_local(
@@ -175,7 +179,7 @@ async fn connect(project: &Path, address: &str, name: &str) -> (RrdClient, rrd_c
     (client, session)
 }
 
-async fn seed(client: &RrdClient, session: &rrd_client::Session, name: &str) {
+pub(super) async fn seed(client: &RrdClient, session: &rrd_client::Session, name: &str) {
     let transaction = client
         .begin_transaction(
             session,
@@ -221,7 +225,7 @@ async fn seed(client: &RrdClient, session: &rrd_client::Session, name: &str) {
         .unwrap();
 }
 
-fn query(client: &RrdClient, rows: u64) -> ExecuteQuery {
+pub(super) fn query(client: &RrdClient, rows: u64) -> ExecuteQuery {
     ExecuteQuery {
         scope: format!("instance:{}", client.instance_id()),
         query: "FROM claim:status AT VALID 1 KNOWN HEAD PROJECT subject, object EXPLAIN CONTRACT"
@@ -234,7 +238,7 @@ fn query(client: &RrdClient, rows: u64) -> ExecuteQuery {
     }
 }
 
-fn recall(client: &RrdClient, items: u64) -> rrd_contract::AssembleContext {
+pub(super) fn recall(client: &RrdClient, items: u64) -> rrd_contract::AssembleContext {
     rrd_contract::AssembleContext {
         scope: format!("instance:{}", client.instance_id()),
         query: "evidence".into(),
@@ -291,7 +295,7 @@ fn scoped_configuration_two_installed_projects_observe_corrections_without_resta
             assert_eq!(admitted.rows.len(), 1);
             assert_eq!(admitted.configuration.unwrap().user.unwrap().read_revision, 2);
             let historical = client.read_effective_configuration(session, ReadEffectiveConfiguration {
-                valid_at_unix_ms: Some(1), recorded_revision: Some(1), requested: BTreeMap::new(),
+                valid_at_unix_ms: Some(1), recorded_revision: Some(1), project_recorded_revision: None, requested: BTreeMap::new(),
             }, options()).await.unwrap();
             assert_eq!(historical.values[&Setting::QueryRows].maximum, 20);
             let current = client.read_effective_configuration(session, ReadEffectiveConfiguration::default(), options()).await.unwrap();

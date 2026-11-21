@@ -368,7 +368,10 @@ D-01/D-06 configuration also owns the global user binding and resolver in
 uses one private native rrflowKV control source, explicit installation bindings
 and local OS-owner publication independently of project shutdown. Its
 [installed evidence](../../evidence/change-journals/gate-d/scoped-configuration-foundation-20261121.md)
-does not close the broader configuration gate. The complete installed oracle must
+does not close the broader configuration gate. Governed numeric project policy
+read/preview/apply now uses the same temporal history semantics and native
+control CAS; the [operator reference](../../reference/deployment/scoped-configuration.md#edit-project-policies-while-running)
+defines its scope. The complete installed oracle must
 prove two isolated project instances use the same authorized user source,
 project preferences override defaults without weakening policies, conflicts
 and unavailable required sources refuse affected effects, and corrections

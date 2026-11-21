@@ -13,8 +13,11 @@ pub fn product_capability_catalogue() -> ProductCapabilityCatalogue {
         .into_iter()
         .map(|endpoint| {
             let id = endpoint.operation.as_str().to_owned();
-            let engine_binding = if id == "endpoint-configuration-preview" {
-                "rrd-engine:RrdOperation::EndpointConfigurationPreview".to_owned()
+            let engine_binding = if matches!(
+                id.as_str(),
+                "endpoint-configuration-preview" | "project-configuration-preview"
+            ) {
+                "rrd-engine:RrdOperation::ConfigurationPreview".to_owned()
             } else if id == "attunement-replan-preview" {
                 "rrd-engine:RrdOperation::AttunementReplanPreview".to_owned()
             } else {

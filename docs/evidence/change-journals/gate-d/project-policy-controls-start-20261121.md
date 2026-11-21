@@ -1,6 +1,6 @@
 # Governed project-policy controls: starting boundary
 
-**Status:** package characterization; implementation and acceptance pending
+**Status:** active starting-boundary evidence; implementation and acceptance pending
 **Coordinate:** `rrflow://rrflow-instance/data/evidence/project-policy-controls-start-20261121`
 **Owner:** D-01/D-06 and POAM-077; H-06 consumes the public contract
 

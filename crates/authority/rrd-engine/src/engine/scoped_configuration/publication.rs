@@ -6,7 +6,7 @@ impl RrdEngine {
     pub fn preview_user_configuration(
         binding: &UserConfigurationBinding,
         expected_revision: u64,
-        change: UserConfigurationChange,
+        change: ConfigurationChange,
     ) -> Result<UserConfigurationPlan> {
         checked(binding.validate())?;
         checked(change.validate())?;
@@ -42,7 +42,7 @@ impl RrdEngine {
             change,
             issued_at_unix_ms: now,
             expires_at_unix_ms: now
-                .checked_add(USER_CONFIGURATION_PLAN_TTL_MS)
+                .checked_add(CONFIGURATION_PLAN_TTL_MS)
                 .ok_or_else(|| unavailable("configuration preview clock overflow"))?,
             plan_sha256: String::new(),
         };
@@ -55,7 +55,7 @@ impl RrdEngine {
     pub fn apply_user_configuration(
         plan: &UserConfigurationPlan,
         approved_sha256: &str,
-    ) -> Result<UserConfigurationRevision> {
+    ) -> Result<ConfigurationRevision> {
         Self::apply_user_configuration_at(plan, approved_sha256, current_time()?)
     }
 
@@ -63,7 +63,7 @@ impl RrdEngine {
         plan: &UserConfigurationPlan,
         approved_sha256: &str,
         now: u64,
-    ) -> Result<UserConfigurationRevision> {
+    ) -> Result<ConfigurationRevision> {
         checked(plan.validate())?;
         if approved_sha256 != plan.plan_sha256 {
             return Err(ServiceError::PermissionDenied);
@@ -99,7 +99,7 @@ impl RrdEngine {
                 "user configuration changed; preview its current revision",
             ));
         }
-        let mut revision = UserConfigurationRevision {
+        let mut revision = ConfigurationRevision {
             format_version: SCOPED_CONFIGURATION_VERSION,
             source_id: plan.binding.source_id.clone(),
             revision: plan.expected_revision + 1,
@@ -118,7 +118,7 @@ impl RrdEngine {
         binding: &UserConfigurationBinding,
         valid_at_unix_ms: Option<u64>,
         recorded_revision: Option<u64>,
-    ) -> Result<UserConfigurationRevision> {
+    ) -> Result<ConfigurationRevision> {
         let now = current_time()?;
         let source = UserStore::open(binding, false)?;
         if source

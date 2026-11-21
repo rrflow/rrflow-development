@@ -81,7 +81,8 @@ workspace an engine authority. The initial
 [numeric implementation](../reference/deployment/scoped-configuration.md)
 uses an engine-owned private rrflowKV control source and explicit project
 bindings without a mandatory cloud service or additional daemon. Broader
-policies, live project editing and UI controls remain open. Engrams and RRD
+policies, full configuration editing and UI controls remain open; numeric project
+rules support governed live edits. Engrams and RRD
 instances retain the project cardinality above.
 
 ### User-selected repository boundaries

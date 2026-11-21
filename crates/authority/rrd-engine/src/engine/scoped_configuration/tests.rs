@@ -9,8 +9,8 @@ fn binding(root: &Path) -> UserConfigurationBinding {
     }
 }
 
-fn change(from: u64, to: Option<u64>, maximum: u64) -> UserConfigurationChange {
-    UserConfigurationChange {
+fn change(from: u64, to: Option<u64>, maximum: u64) -> ConfigurationChange {
+    ConfigurationChange {
         valid_from_unix_ms: from,
         valid_to_unix_ms: to,
         settings: BTreeMap::from([(
@@ -27,8 +27,8 @@ fn change(from: u64, to: Option<u64>, maximum: u64) -> UserConfigurationChange {
 fn publish(
     binding: &UserConfigurationBinding,
     expected: u64,
-    change: UserConfigurationChange,
-) -> UserConfigurationRevision {
+    change: ConfigurationChange,
+) -> ConfigurationRevision {
     let plan = RrdEngine::preview_user_configuration(binding, expected, change).unwrap();
     RrdEngine::apply_user_configuration(&plan, &plan.plan_sha256).unwrap()
 }
@@ -122,6 +122,7 @@ fn scoped_configuration_exact_resolution_keeps_all_policies_and_reports_preferen
         resolution::resolve(
             project,
             Some(&user),
+            &project.scoped.settings,
             requested,
             [ConfigurationSetting::QueryRows],
         )

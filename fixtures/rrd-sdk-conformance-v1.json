@@ -328,7 +328,7 @@
   },
   "engram": {},
   "expected": {
-    "endpoint_count": 84,
+    "endpoint_count": 87,
     "query_identity": "record:document:sdk-conformance",
     "vector_reference": "embedding:sdk-conformance-title",
     "quantized_access_path": "turboquant",

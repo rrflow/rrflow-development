@@ -1,6 +1,6 @@
 // Generated from rrd-contract; do not edit.
-// OpenAPI SHA-256: 604a580b61a3a69a7688f656a16d8928bd1402a67f3cb91cf8175e7c33b6a076
-export const ENDPOINT_OPENAPI_DOCUMENT_SHA256 = "604a580b61a3a69a7688f656a16d8928bd1402a67f3cb91cf8175e7c33b6a076" as const;
+// OpenAPI SHA-256: 45a1377eddcc481533db43c70756e40963a468e319126082a372358a9868c7bd
+export const ENDPOINT_OPENAPI_DOCUMENT_SHA256 = "45a1377eddcc481533db43c70756e40963a468e319126082a372358a9868c7bd" as const;
 
 export const endpoints = {
   "attunement-cancel": {
@@ -138,6 +138,24 @@ export const endpoints = {
   "endpoint-configuration-read": {
     "method": "POST",
     "path": "/v1/configuration/endpoints/read",
+    "authentication": "session_bearer",
+    "mutation": false
+  },
+  "project-configuration-apply": {
+    "method": "POST",
+    "path": "/v1/configuration/project/apply",
+    "authentication": "session_bearer",
+    "mutation": true
+  },
+  "project-configuration-preview": {
+    "method": "POST",
+    "path": "/v1/configuration/project/preview",
+    "authentication": "session_bearer",
+    "mutation": false
+  },
+  "project-configuration-read": {
+    "method": "POST",
+    "path": "/v1/configuration/project/read",
     "authentication": "session_bearer",
     "mutation": false
   },

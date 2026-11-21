@@ -61,7 +61,7 @@ impl AppState {
             headers,
             body,
             now,
-            RrdOperation::EndpointConfigurationPreview,
+            RrdOperation::ConfigurationPreview,
             None,
             |envelope, session, token| {
                 self.service

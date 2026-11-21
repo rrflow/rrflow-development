@@ -7,7 +7,7 @@ const HEAD: &str = "server/state/user-configuration/head";
 pub(super) struct UserStore {
     pub database: RrflowKvStore,
     pub head_bytes: Option<Vec<u8>>,
-    pub head: Option<UserConfigurationRevision>,
+    pub head: Option<ConfigurationRevision>,
 }
 
 impl UserStore {
@@ -33,7 +33,7 @@ impl UserStore {
             ))
         })?;
         let head_bytes = database.control().get(HEAD)?;
-        let head = head_bytes.as_deref().map(decode).transpose()?;
+        let head = head_bytes.as_deref().map(history::decode).transpose()?;
         if let Some(head) = &head {
             if head.source_id != binding.source_id {
                 return Err(ServiceError::ProjectBindingMismatch);
@@ -55,52 +55,25 @@ impl UserStore {
         binding: &UserConfigurationBinding,
         valid_at: u64,
         recorded_revision: Option<u64>,
-    ) -> Result<(u64, UserConfigurationRevision)> {
-        let mut revision = self
-            .head
-            .clone()
-            .ok_or_else(|| unavailable("user configuration has no published revision"))?;
-        let known = recorded_revision.unwrap_or(revision.revision);
-        if known == 0 || known > revision.revision {
-            return Err(unavailable(
-                "requested user configuration revision is unavailable",
-            ));
-        }
-        for read in 0..binding.max_history_reads {
-            if revision.revision <= known && revision.change.contains(valid_at) {
-                return Ok((known, revision));
-            }
-            if revision.revision == 1 {
-                return Err(unavailable(
-                    "no user configuration covers the requested valid time",
-                ));
-            }
-            if read + 1 == binding.max_history_reads {
-                break;
-            }
-            let bytes = self
-                .database
-                .control()
-                .get(&revision_key(revision.revision - 1))?
-                .ok_or_else(|| unavailable("user configuration history is incomplete"))?;
-            let previous = decode(&bytes)?;
-            if previous.source_id != binding.source_id
-                || previous.revision + 1 != revision.revision
-                || Some(&previous.revision_sha256) != revision.previous_sha256.as_ref()
-                || previous.recorded_at_unix_ms > revision.recorded_at_unix_ms
-            {
-                return Err(unavailable(
-                    "user configuration history identity is inconsistent",
-                ));
-            }
-            revision = previous;
-        }
-        Err(unavailable(
-            "user configuration history read budget exhausted",
-        ))
+    ) -> Result<(u64, ConfigurationRevision)> {
+        let (known, revision) = history::select(
+            self.head.clone(),
+            valid_at,
+            recorded_revision,
+            binding.max_history_reads,
+            |revision| {
+                self.database
+                    .control()
+                    .get(&revision_key(revision))
+                    .map_err(Into::into)
+            },
+        )?;
+        let revision = revision
+            .ok_or_else(|| unavailable("no user configuration covers the requested valid time"))?;
+        Ok((known, revision))
     }
 
-    pub fn publish(&self, revision: &UserConfigurationRevision) -> Result<()> {
+    pub fn publish(&self, revision: &ConfigurationRevision) -> Result<()> {
         checked(revision.validate())?;
         let bytes = serde_json::to_vec(revision).map_err(contract_json)?;
         let transition = |key, expected| ControlTransition {
@@ -123,16 +96,6 @@ impl UserStore {
 
 fn revision_key(revision: u64) -> String {
     format!("server/state/user-configuration/revision/{revision:020}")
-}
-
-fn decode(bytes: &[u8]) -> Result<UserConfigurationRevision> {
-    if bytes.len() > 64 * 1024 {
-        return Err(unavailable("oversized user configuration revision"));
-    }
-    let revision: UserConfigurationRevision =
-        serde_json::from_slice(bytes).map_err(contract_json)?;
-    checked(revision.validate())?;
-    Ok(revision)
 }
 
 fn io_error(error: std::io::Error) -> ServiceError {

@@ -1,16 +1,16 @@
 use super::*;
 
-pub const USER_CONFIGURATION_PLAN_TTL_MS: u64 = 300_000;
+pub const CONFIGURATION_PLAN_TTL_MS: u64 = 300_000;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct UserConfigurationChange {
+pub struct ConfigurationChange {
     pub valid_from_unix_ms: u64,
     pub valid_to_unix_ms: Option<u64>,
     pub settings: ConfigurationSettings,
 }
 
-impl UserConfigurationChange {
+impl ConfigurationChange {
     pub fn validate(&self) -> Result<()> {
         if self
             .valid_to_unix_ms
@@ -29,18 +29,18 @@ impl UserConfigurationChange {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct UserConfigurationRevision {
+pub struct ConfigurationRevision {
     pub format_version: u16,
     pub source_id: CanonicalId,
     pub revision: u64,
     pub recorded_at_unix_ms: u64,
     pub previous_sha256: Option<String>,
-    pub change: UserConfigurationChange,
+    pub change: ConfigurationChange,
     pub applied_plan_sha256: String,
     pub revision_sha256: String,
 }
 
-impl UserConfigurationRevision {
+impl ConfigurationRevision {
     pub fn sha256(&self) -> Result<String> {
         let mut value = self.clone();
         value.revision_sha256.clear();
@@ -60,7 +60,7 @@ impl UserConfigurationRevision {
                 .is_some_and(|digest| !is_digest(digest))
             || self.revision_sha256 != self.sha256()?
         {
-            return invalid("invalid user configuration revision");
+            return invalid("invalid configuration revision");
         }
         Ok(())
     }
@@ -73,7 +73,7 @@ pub struct UserConfigurationPlan {
     pub binding: UserConfigurationBinding,
     pub expected_revision: u64,
     pub expected_sha256: Option<String>,
-    pub change: UserConfigurationChange,
+    pub change: ConfigurationChange,
     pub issued_at_unix_ms: u64,
     pub expires_at_unix_ms: u64,
     pub plan_sha256: String,
@@ -99,7 +99,7 @@ impl UserConfigurationPlan {
             || self.issued_at_unix_ms == 0
             || self
                 .issued_at_unix_ms
-                .checked_add(USER_CONFIGURATION_PLAN_TTL_MS)
+                .checked_add(CONFIGURATION_PLAN_TTL_MS)
                 != Some(self.expires_at_unix_ms)
             || self.plan_sha256 != self.sha256()?
         {
