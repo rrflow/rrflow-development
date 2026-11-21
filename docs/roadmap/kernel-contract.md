@@ -220,6 +220,16 @@ Connectome:
 
 ### 3.9 S9 Memory tiers and consolidation
 
+The [memory freshness contract](../reference/data/knowledge-connectors.md#memory-freshness-and-vectorization)
+joins S1 scoped configuration, S8 context and S9 maintenance. Decay, access
+frequency and compression apply only where the admitted data policy permits;
+they cannot weaken mandatory user/project requirements or promote inferred
+preferences. Corrections invalidate dependent serving eligibility before
+asynchronous rebuilding. K2/K4/K5/K9/K16 and K12 must meet the same
+focus/pivot/correct/return oracle, with K3 measuring quality and update cost.
+Embedding and source revisions, not storage temperature, determine whether a
+projection is eligible. These are target requirements, not current proof.
+
 Owner, 2026-11-14: "LSM short term CLD long term memory", with idle processes "rebuilding neurons and improving hops". Every tier holds the same versioned records at one read stamp. Tiering changes where bytes live and which path is cheap, never what a read at a stamp returns.
 
 **Owner decision, 2026-11-14: CLD is a columnar copy first, not a demotion tier.** Every version stays in rrflowLSM. CLD holds a columnar copy of settled versions, kept up to date by a copy watermark, and the planner reads it only for scans, aggregates, history and bulk reads that the watermark covers. This is the HTAP pattern TiDB published (VLDB 2020): a row store for writes, plus an asynchronously built columnar replica that the planner selects per query at one timestamp. Removing versions from LSM to reclaim space is a later, separate setting, off by default. It is built only if K10's byte breakdown shows LSM space is a real cost.

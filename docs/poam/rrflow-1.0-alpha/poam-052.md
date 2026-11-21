@@ -44,3 +44,11 @@ requests keep today's ranking, proved by a test. A test through the real engine
 shows that the same query at the same read stamp under two controls returns
 results whose differences the evidence explains. A measured improvement is a
 separate claim that needs a labelled evaluation set.
+
+The [memory freshness acceptance](../../reference/data/knowledge-connectors.md#focus-pivot-correct-and-return-acceptance)
+adds a correction-aware baseline: compare exact/lexical, hybrid and eligible
+approximate vector retrieval at matching revisions and budgets, measuring
+stale context, citation support and downstream answers alongside retrieval
+scores. Context truncation must be visible and must never choose which
+mandatory policies apply. No ranking or anti-rot improvement is established
+by the 2026-11-21 documentation review; this item remains open.

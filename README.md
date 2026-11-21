@@ -23,6 +23,10 @@ preferences apply; a project preference cannot weaken a user policy.
 [Scoped policies and preferences](docs/decisions/0006-scoped-policies-and-preferences.md)
 owns the sourced terminology and resolution contract. The global binding and
 resolver remain unimplemented ([POAM-077](docs/poam/rrflow-1.0-alpha/poam-077.md)).
+The [memory freshness and vectorization contract](docs/reference/data/knowledge-connectors.md#memory-freshness-and-vectorization)
+joins this configuration to correction-aware recall and optional embeddings.
+Its focus/pivot/correct/return acceptance measures stale evidence and answer
+quality; vector similarity alone never establishes truth or policy authority.
 
 **rrflowDB is RRFlow's native Rust, AI-oriented multi-model database.** Its
 target includes relational tables, documents, durable and dynamically derived
