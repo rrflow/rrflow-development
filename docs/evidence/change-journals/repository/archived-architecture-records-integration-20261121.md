@@ -95,3 +95,15 @@ changed in this package, and the restored assertions exposed no product failure.
 
 Built primary SHA-256: 7beab46e97410657cc2bc82587e3fd39e9392f9def4d0f129fa439cb881af7c9.
 PR485 and PR486 still require protected landing before this draft is ready.
+
+## Queue ordering refinement
+
+The before-edit brief proposed waiting for PR485/486 and manually joining main
+before readiness. Final path inspection establishes that this package changes
+only the Python acceptance assertions and records; PR486 changes only its
+recovery journal/index, while PR485 owns Parse publication and its tests. There
+is no shared implementation interface to land first. Submit these independent
+packages to the existing queue in order 485, 486, 487; the queue binds each
+candidate to its integrated main base and requires its own green ci-gate. This
+replaces the unnecessary readiness wait, not any check or protected landing.
+Local Python results above remain attributed to their actual built tree.
