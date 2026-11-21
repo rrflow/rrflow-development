@@ -34,6 +34,7 @@ LIFECYCLE_CASES = frozenset({
     "plans::installed_source_read_choice_is_explicit_and_reopens",
     "engrams_and_history::configured_cold_history_publishes_and_reads_after_process_restart",
     "adaptive_installed::selected_inventory_completes_and_replans_across_primary_process_restarts",
+    "scoped_configuration::scoped_configuration_two_installed_projects_observe_corrections_without_restart",
 })
 NATIVE_CAPACITY_CASE = "capacity::cases::installed_native_capacity_recovers_acknowledged_history"
 SUSTAINED_CAPACITY_CASE = "sustained::campaign::installed_sustained_capacity"
