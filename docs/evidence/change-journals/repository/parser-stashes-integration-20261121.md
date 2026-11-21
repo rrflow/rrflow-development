@@ -38,3 +38,39 @@ No new provider, upstream adaptation, external research, benchmark or runtime
 trace is needed for source integration. This is not a claim of completed D-04,
 whole-project prompting or alpha readiness. Record source deltas and actual
 results below; other recovered packages remain outstanding.
+
+## Resolution evidence
+
+PR463 merges a105804f as a1b864b1, c5491c06 as 0883814a and c53cf210 as
+a7c93595. All three original commits and their index/untracked parents remain
+reachable. Their application behavior was already carried forward in main;
+after resolving the module splits no application-source delta remains. This
+adds the missing ordinary integration history, not a new parsing capability.
+
+| Recovered boundary | Canonical destination and retained behavior |
+|---|---|
+| parse_source and SyntaxNode proposals | parse.rs plus facts.rs: same locked Rust/Python/Go grammars, source digest, exact symbol ranges, error counts, cancellation and limits; current fact/chunk output retained |
+| Inline SourceParsePolicy | rrd-contract/src/attunement/source_parse.rs and phase plan: ordered bindings, safe wire integers, per-file/aggregate/commit bounds and policy-bound plan digest |
+| Inline install policy admission | installation/profile.rs, plan.rs and validate.rs: preview and sealed-preview admission retained |
+| Inline selected-source reader | installation/inventory/source.rs and tests.rs: authenticated inventory entry, anchored file identity, charged reads and disposable output retained |
+| Inline engine policy/reopen tests | engine/tests/attunement/parse_policy.rs: policy readback, invalid checkpoint/source rejection before reads, rrflowQL traversal and altered-source rejection retained |
+| installed_lifecycle.rs | tests/installed_lifecycle/replan.rs and main.rs: actual installed process must checkpoint Parse after restart |
+| workspace_architecture.rs | tests/workspace_architecture/dependencies.rs and main.rs: pure parser dependency boundary and pinned grammars retained |
+| attunement_contract.rs | tests/attunement_contract/operations.rs and main.rs: both recovered policy validation/schema tests retained |
+| Three formerly untracked worker files | Same paths: current v2 source-fact protocol, bounded response validation, batch processing and partial-header repair retained; original four library and two executable test behaviors retained |
+
+The three removed old inline test paths only existed in the incoming merge
+index; their current directory/main.rs targets remain. An automatically merged
+duplicate load_parse_inventory re-export was removed because the current
+attunement module already exports it. Retained current lockfile, catalogue,
+SDK projections and later documentation/POAM evidence rather than restoring
+old digests or claiming old draft results as current results.
+
+Read all three formerly untracked files, current worker and both worker tests,
+current facts implementation, selected-source reader, contract parse policy,
+engine parse-policy tests and parser tests. Read incoming changed source hunks,
+current profile admission and installed checkpoint call site. The complete
+recovered D-04 journal was read; unrelated source was not exhaustively reviewed.
+
+Focused tests and owning suites are in progress. No test assertion was removed
+or relaxed. Candidate CI and merge queue remain required.
