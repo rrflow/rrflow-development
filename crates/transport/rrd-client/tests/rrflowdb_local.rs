@@ -80,6 +80,34 @@ async fn schema(client: &RrdClient, session: &Session, key: &str) -> DataSchemaS
         .unwrap()
 }
 
+// Discovery rejects a page if concurrent control work changes its read stamp.
+// Honor that public fresh-read response; never retry a mutation or another error.
+async fn discover_jobs(
+    client: &RrdClient,
+    session: &Session,
+    request: rrd_contract::ListAttunementJobs,
+    key: &str,
+) -> rrd_client::Result<rrd_contract::AttunementJobPage> {
+    for attempt in 0..4 {
+        let result = client
+            .list_attunement_jobs(
+                session,
+                request.clone(),
+                read_options(&format!("{key}-{attempt}"))?,
+            )
+            .await;
+        let retry = matches!(&result, Err(rrd_client::Error::Api { status, error })
+            if status.as_u16() == 409
+                && error.code == rrd_contract::ErrorCode::Conflict
+                && error.retryable);
+        if !retry || attempt == 3 {
+            return result;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    }
+    unreachable!("the final attempt returns its result")
+}
+
 #[tokio::test]
 async fn installed_typed_attunement_controls_replan_and_reopen() {
     use rrd_contract::{
@@ -117,12 +145,7 @@ async fn installed_typed_attunement_controls_replan_and_reopen() {
         after_job_id: None,
         limit: 1,
     };
-    let initial = client
-        .list_attunement_jobs(
-            &session,
-            discovery.clone(),
-            read_options("typed-discover").unwrap(),
-        )
+    let initial = discover_jobs(&client, &session, discovery.clone(), "typed-discover")
         .await
         .unwrap();
     assert_eq!(initial.jobs.len(), 1);
@@ -354,27 +377,27 @@ async fn installed_typed_attunement_controls_replan_and_reopen() {
         .await
         .unwrap();
     assert!(!accepted.idempotent_replay);
-    let predecessor_page = client
-        .list_attunement_jobs(
-            &session,
-            discovery.clone(),
-            read_options("typed-discover-predecessor").unwrap(),
-        )
-        .await
-        .unwrap();
+    let predecessor_page = discover_jobs(
+        &client,
+        &session,
+        discovery.clone(),
+        "typed-discover-predecessor",
+    )
+    .await
+    .unwrap();
     assert_eq!(predecessor_page.next_after_job_id, Some(job_id.clone()));
     let continuation = rrd_contract::ListAttunementJobs {
         after_job_id: predecessor_page.next_after_job_id,
         ..discovery
     };
-    let successor_page = client
-        .list_attunement_jobs(
-            &session,
-            continuation.clone(),
-            read_options("typed-discover-successor").unwrap(),
-        )
-        .await
-        .unwrap();
+    let successor_page = discover_jobs(
+        &client,
+        &session,
+        continuation.clone(),
+        "typed-discover-successor",
+    )
+    .await
+    .unwrap();
     assert_eq!(successor_page.jobs[0].job_id, accepted.successor.job.id);
     assert_eq!(successor_page.jobs[0].generation, 1);
     assert_eq!(successor_page.next_after_job_id, None);
@@ -408,12 +431,7 @@ async fn installed_typed_attunement_controls_replan_and_reopen() {
     server.await.unwrap().unwrap();
     let (reopened, shutdown, server) = start(&project).await;
     let session = login(&reopened, &project, "typed-reopen-session").await;
-    let recovered_page = reopened
-        .list_attunement_jobs(
-            &session,
-            continuation,
-            read_options("typed-discover-reopen").unwrap(),
-        )
+    let recovered_page = discover_jobs(&reopened, &session, continuation, "typed-discover-reopen")
         .await
         .unwrap();
     assert_eq!(recovered_page.jobs, successor_page.jobs);
