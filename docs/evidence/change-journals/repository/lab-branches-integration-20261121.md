@@ -27,3 +27,35 @@ formatting checks; required candidate and merge queue. Stop on lost assertion,
 changed signing authority, unreviewed deletion or red checks. No new research,
 telemetry or performance run is needed for source integration. No release,
 competitor parity or source-wide review claim. Other history remains pending.
+
+## Resolution and source map
+
+PR465 ordinary merges: PR274 at d1450caf, PR364 at 94f54821, PR365 at
+0fb5b089. PR274's sole remaining commit changes its historical run record;
+that record is already present, so its merge is tree-identical. PR364's type
+extraction is already implemented under rrflow-evaluation-core. Retained Id,
+Digest, Availability, canonical_json, SHA-256 and the generic report there,
+including the two recovered core tests and later schema/LabMetric additions.
+Current consumers import that sole owner. Old rrflow-eval imports, inline
+workspace test, driver/tasks and duplicate workbench core are not reinstated.
+
+PR365 only relocated assets and adjusted paths; current eval/lab and eval/schemas
+remain the sole locations, with current split-crate CLI discovery, answer-corpus
+exclusion, container scripts and schema projection tests using those paths.
+Its old nesting is not restored over the subsequent evaluation separation.
+Recovered journal text is kept as historical source evidence; only its owning
+Markdown link targets today's lab. This integration does not claim the old
+folder layout is current or add new lab runtime functionality.
+
+Read the incoming core lib.rs and extraction/import hunks, current core lib.rs,
+report header and consumers, all conflicted test imports/path helpers, the
+execution inventory mapping, incoming asset-path/CLI/container changes and both
+recovered journals. The full application tree remains equal to the baseline;
+only source ancestry and recovered evidence change. Ordinary merge intermediate
+94f54821 temporarily included two unused core files after git rm refused their
+staged additions; the next merge removes both. No duplicate core remains in the
+candidate. No broad unrelated source-review claim.
+
+Local lab automation/definitions checks are running. Owning package checks,
+architecture and documentation follow. No new container comparisons, cloud
+services, model calls or measured performance claim are part of this recovery.
