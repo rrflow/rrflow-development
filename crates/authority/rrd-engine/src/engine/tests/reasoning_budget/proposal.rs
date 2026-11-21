@@ -19,7 +19,7 @@ fn captured(file: &str) -> Vec<u8> {
     // The recorded bytes must be the recorded observation; what the test then
     // uses is that observation projected to the current names.
     assert_eq!(digest::sha256_hex(&bytes), hashes[file]);
-    crate::engine::tests::observed_configuration::read(&root, file)
+    crate::engine::tests::observed_configuration::read_projected(&root, file)
 }
 
 pub(super) fn configured() -> EndpointConfiguration {

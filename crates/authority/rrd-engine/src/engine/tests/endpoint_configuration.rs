@@ -129,18 +129,17 @@ fn configuration_policy_reopens(include_worker: bool, include_observation: bool)
     let fixture = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../transport/rrd-contract/tests/fixtures/endpoint-selection-observed/available");
     let configuration: EndpointConfiguration = serde_json::from_slice(
-        &super::observed_configuration::read(&fixture, "configuration.json"),
+        &super::observed_configuration::read_projected(&fixture, "configuration.json"),
     )
     .unwrap();
     let captured = configuration.profile.unwrap();
     let allowance: rrd_contract::EndpointSelectionAllowance = serde_json::from_slice(
-        &super::observed_configuration::read(&fixture, "allowance.json"),
+        &super::observed_configuration::read_projected(&fixture, "allowance.json"),
     )
     .unwrap();
-    let request: serde_json::Value = serde_json::from_slice(&super::observed_configuration::read(
-        &fixture,
-        "choice-request.json",
-    ))
+    let request: serde_json::Value = serde_json::from_slice(
+        &super::observed_configuration::read_projected(&fixture, "choice-request.json"),
+    )
     .unwrap();
     let controller = captured
         .bindings

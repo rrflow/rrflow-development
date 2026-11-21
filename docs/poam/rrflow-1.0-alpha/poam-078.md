@@ -42,3 +42,15 @@ Roadmap owner: [Gate A](../../roadmap/rrflow-1.0/gate-a.md).
 ## Closure evidence
 
 Closed when each concept has one name in the code, contract, catalogue, SDKs and docs, recorded in the vocabulary, with no duplicate planner, unused variant or mixed-case identifier left.
+
+## Capture provenance correction, 2026-11-21
+
+Original-source integration found a test-evidence regression: the fixture helper
+rewrote the configuration digest in returned receipt bytes, allowing assertions
+to describe a derived configuration as the captured identity. The archived
+source's raw file/canonical hash checks are restored at one shared test helper;
+receipts stay byte-for-byte recorded, and an original allowance is proven unable
+to authorize the derived identity. The red/green oracle and affected installed
+checks are in the [integration snapshot journal](../../evidence/change-journals/repository/archived-integration-snapshots-20261121.md).
+This corrects test provenance, not live controller quality or this record's
+broader naming and cross-surface closure requirements.

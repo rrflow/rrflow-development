@@ -7,7 +7,7 @@ use serde_json::Value;
 use std::{collections::BTreeMap, path::PathBuf};
 
 fn fixture(name: &str) -> Vec<u8> {
-    observed_configuration::read(
+    observed_configuration::read_projected(
         &PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("tests/fixtures/endpoint-selection-observed/available"),
         name,
@@ -85,11 +85,11 @@ fn proposed() -> (EndpointConfiguration, EndpointWorkerPolicy) {
 }
 
 #[test]
-fn worker_absence_preserves_identity_and_present_settings_require_a_new_approval() {
+fn worker_derived_identity_and_new_settings_require_their_own_approval() {
     let original: EndpointConfiguration =
         serde_json::from_slice(&fixture("configuration.json")).unwrap();
     let receipt: Value = serde_json::from_slice(&fixture("receipt.json")).unwrap();
-    assert_eq!(original.sha256().unwrap(), receipt["configurationSha256"]);
+    assert_ne!(original.sha256().unwrap(), receipt["configurationSha256"]);
     assert!(original.profile.as_ref().unwrap().worker_policy.is_none());
     assert!(serde_json::to_value(original).unwrap()["profile"]
         .get("worker_policy")

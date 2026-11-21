@@ -1,4 +1,4 @@
-//! These inputs are retained actual endpoint calls and installed configuration.
+//! Retained endpoint observations feed explicitly derived current-contract test inputs.
 //! Denial probes mutate those inputs in memory; they are not training examples,
 //! model-produced results, authorization receipts or quality labels.
 #[path = "support/observed_configuration.rs"]
@@ -17,13 +17,30 @@ fn root(name: &str) -> PathBuf {
         .join(name)
 }
 fn json(name: &str, file: &str) -> Value {
-    serde_json::from_slice(&observed_configuration::read(&root(name), file)).unwrap()
+    serde_json::from_slice(&observed_configuration::read_projected(&root(name), file)).unwrap()
 }
 fn observation(name: &str) -> (EndpointConfiguration, EndpointSelectionAllowance, Vec<u8>) {
+    let directory = root(name);
+    let configuration: EndpointConfiguration =
+        serde_json::from_value(json(name, "configuration.json")).unwrap();
+    let mut allowance: EndpointSelectionAllowance = serde_json::from_slice(
+        &observed_configuration::read_recorded(&directory, "allowance.json"),
+    )
+    .unwrap();
+    let receipt = json(name, "receipt.json");
+    assert_eq!(
+        allowance.configuration_sha256,
+        receipt["configurationSha256"]
+    );
+    assert!(
+        allowance.validate_for(&configuration).is_err(),
+        "the recorded allowance cannot authorize a derived configuration"
+    );
+    allowance.configuration_sha256 = configuration.sha256().unwrap();
     (
-        serde_json::from_value(json(name, "configuration.json")).unwrap(),
-        serde_json::from_value(json(name, "allowance.json")).unwrap(),
-        observed_configuration::read(&root(name), "choice-content.json"),
+        configuration,
+        allowance,
+        observed_configuration::read_projected(&root(name), "choice-content.json"),
     )
 }
 fn sha(bytes: &[u8]) -> String {
@@ -82,7 +99,7 @@ fn retained_calls_bind_actual_bytes_and_no_learning_claim() {
             response
         );
         let receipt = json(name, "receipt.json");
-        assert_eq!(
+        assert_ne!(
             receipt["configurationSha256"],
             configuration.sha256().unwrap()
         );
@@ -138,7 +155,7 @@ fn retained_calls_bind_actual_bytes_and_no_learning_claim() {
 }
 
 #[test]
-fn actual_model_choice_and_withheld_candidate_abstention_validate() {
+fn recorded_choice_and_abstention_validate_against_explicitly_derived_inputs() {
     let (configuration, allowance, response) = observation("available");
     let choice = EndpointSelectionChoice::decode(&response, &allowance, &configuration).unwrap();
     assert!(
@@ -261,4 +278,45 @@ fn actual_empty_candidate_abstention_cannot_claim_nonempty_candidates_are_absent
     let (configuration, allowance, _) = observation("available");
     let (_, _, abstention) = observation("withheld");
     assert!(EndpointSelectionChoice::decode(&abstention, &allowance, &configuration).is_err());
+}
+
+#[test]
+fn captured_receipt_bytes_are_never_rebound_to_a_projected_configuration() {
+    let directory = root("available");
+    assert_eq!(
+        observed_configuration::read_projected(&directory, "receipt.json"),
+        std::fs::read(directory.join("receipt.json")).unwrap(),
+        "a derived configuration must not rewrite the captured authorization identity"
+    );
+}
+
+#[test]
+fn projection_rejects_changed_capture_bytes_and_changed_canonical_identity() {
+    let directory = root("available");
+    let bytes = std::fs::read(directory.join("configuration.json")).unwrap();
+    let files = json("available", "files.json");
+    let receipt = json("available", "receipt.json");
+    let file_digest = files["configuration.json"].as_str().unwrap();
+    let recorded_digest = receipt["configurationSha256"].as_str().unwrap();
+    let mut changed = bytes.clone();
+    changed.push(b' ');
+    assert!(
+        std::panic::catch_unwind(|| observed_configuration::project_verified(
+            &changed,
+            file_digest,
+            recorded_digest
+        ))
+        .is_err()
+    );
+    let mut changed: Value = serde_json::from_slice(&bytes).unwrap();
+    changed["revision"] = 999.into();
+    let changed = serde_json::to_vec(&changed).unwrap();
+    assert!(
+        std::panic::catch_unwind(|| observed_configuration::project_verified(
+            &changed,
+            &sha(&changed),
+            recorded_digest
+        ))
+        .is_err()
+    );
 }
