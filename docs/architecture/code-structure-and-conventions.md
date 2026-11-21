@@ -102,7 +102,7 @@ src-tauri/src/
 - `connections`;
 - `knowledge`: graph, schema, records, vectors;
 - `reasoning`: tasks, plans, traces, the reasoning graph;
-- `second-brain`;
+- `user-configuration`: User policies and preferences, with effective-value explanations from the engine ([ADR-0006](../decisions/0006-scoped-policies-and-preferences.md));
 - `lab`: systems, datasets, benchmarks, experiments, reports;
 - `settings`;
 - `guides`;

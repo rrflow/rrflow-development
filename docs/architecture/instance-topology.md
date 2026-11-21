@@ -71,6 +71,17 @@ operator can aggregate several independently authenticated RRD instances as a
 client. No local engram becomes a fleet database, and no instance silently
 opens another project's state.
 
+### Global user configuration and project isolation
+
+[Scoped policies and preferences](../decisions/0006-scoped-policies-and-preferences.md)
+defines global user requirements and defaults separately from each project's
+policies, preferences and knowledge. Binding that configuration does not create
+a personal or organization engram, grant access to other projects, or make a
+workspace an engine authority. The global persistence owner and cross-instance
+binding still require implementation at the canonical engine boundary; no
+mandatory cloud service or additional daemon is implied. Engrams and RRD
+instances retain the project cardinality above.
+
 ### User-selected repository boundaries
 
 A repository is a source boundary, not automatically an engram. When setup finds
@@ -114,8 +125,8 @@ engram. They do not introduce another database engine. Schema and policy decide
 which families exist and how they are authorized; topology never chooses an
 alternate graph, vector, search, or analytical authority.
 
-Every canonical fact and every derived projection is engram-scoped. The engine
-spells that scope as `instance:{instance_id}`, the identity of the one instance
+Within a project, every canonical fact and derived projection is engram-scoped.
+The engine spells that scope as `instance:{instance_id}`, the identity of the one instance
 serving the engram, so instance scope and engram scope are the same boundary. A
 derived index additionally binds its source cursor and relevant schema, model,
 and configuration revisions. Cross-engram reads are explicit client-side or

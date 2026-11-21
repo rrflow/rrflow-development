@@ -1,11 +1,17 @@
 # ADR-0005: The second brain lives in personal and org engrams
 
-**Status:** active accepted architecture decision
+**Status:** historical; superseded on 2026-11-20 by ADR-0006
+**Superseded by:** [Scoped policies and preferences](0006-scoped-policies-and-preferences.md)
 **Coordinate:** `rrflow://rrflow-instance/data/decision/0005-second-brain-personal-and-org-engrams`
 **Owner:** where global, user and org preferences and memories live, how they resolve against each other, and how they reach a project's reasoning
 **Decision date:** 2026-11-11
 
 ## Context
+
+This record preserves the 2026-11-11 decision and its evidence. Its personal
+and org engram topology and resolution rules are no longer current. ADR-0006
+reserves engrams and instances for projects and names global configuration
+**User policies and preferences**. Historical quotations below are unchanged.
 
 The repository owner described the second brain on 2026-11-11 as "global and user preferences that apply to all projects". In their words, reasoning is "graph reasoning driven with the second brain tuned for global/operato/org preferences depending on their account indie vs enterprise / team rbac based". They define an engram as "one instance per major project", replacing "engram". This record says engram; the documentation-wide rename is tracked as POAM-078 (pull request #357).
 
