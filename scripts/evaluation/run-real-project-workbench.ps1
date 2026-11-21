@@ -850,7 +850,7 @@ try {
             rrflow_p95_ratio = $ratioArango
         }
         require_comparable = $requireComparable
-        comparable = if ($requireComparable) { $overallComparable } else { $true }
+        comparable = $overallComparable
         reason = if ($overallComparable) { "All required workloads passed and comparator latency ratios are within plan thresholds." } else { "One or more required workloads or comparator thresholds failed." }
     }
     $comparison.external_artifact = $comparatorResolved
@@ -924,4 +924,7 @@ if ($DevMode -and -not $DryRun) {
 }
 
 Write-TextNoBom -Path $reportPath -Content ($report | ConvertTo-Json -Depth 100)
+if ($report.comparison.require_comparable -and -not $report.comparison.comparable) {
+    throw "Required workbench checks failed. Results retained at $reportPath"
+}
 Write-Host "Real-project workbench complete: $reportPath"
