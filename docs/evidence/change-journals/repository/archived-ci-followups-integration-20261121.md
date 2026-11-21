@@ -59,3 +59,5 @@ before resolution; canonical later cleanup retained; historical evidence
 identified; bounded tests run; no new research, tracing or resource mechanism;
 no roadmap completion or POAM closure. Documentation/navigation checks and
 candidate/queue remain the landing conditions. Remaining archives are open work.
+
+Documentation check first rejected the recovered historical record because its successor was linked only in prose. Added the required explicit Superseded by link to the current POAM owner before candidate readiness.

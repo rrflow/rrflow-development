@@ -4,6 +4,8 @@
 
 **Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/gate-c/c-07-macos-image-teardown-20261111`
 
+**Superseded by:** [POAM-074 current diagnosis and recovery](../../../poam/rrflow-1.0-alpha/poam-074.md)
+
 **Owner:** [POAM-074](../../../poam/rrflow-1.0-alpha/poam-074.md)
 
 **Starting revision:** `main` at `55d6c89f`.
