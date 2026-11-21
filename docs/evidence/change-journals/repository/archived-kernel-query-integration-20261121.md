@@ -75,3 +75,9 @@ including bitemporal query/reopen, index lifecycle, graph traversal and live-que
 checks. `cargo test -p rrd-engine --test workspace_architecture --locked`: 35 passed.
 Navigation, documentation policy and diff whitespace checks passed. No benchmark/comparison, full workspace lint, non-Windows runtime
 or installed UI acceptance is claimed. No roadmap/POA&M closure is declared.
+
+PR483 green main 35a9d6fe7cf714d2373415d0dcdf20c568d82c23 joined in
+5cd7e04eba62d4c808fe29ea735fbd47d9f30352. The join changes only evidence
+and navigation, so the tested code tree remains unchanged. PR483 remote and
+local branches were deleted after its merge. Remaining parser stack sources
+are the next recovery package; this is not whole-repository completion.
