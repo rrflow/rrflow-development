@@ -25,3 +25,28 @@ uncommitted child code, a failed child gate, unavailable target or pin mismatch.
 Do not launch the desktop, authorize the 13-file installation preview or claim
 an installed end-to-end workflow. No new research or trace path is needed.
 Remaining parent archives continue after this pin package.
+
+## Result and evidence
+
+The gitlink is now 36d388e919c27de7b72fbccb3d7e7af7bbb71030, verified against
+[child merge-group 44944484759](https://github.com/rrflow/connectome-development/actions/runs/44944484759).
+The child is clean on main. Its PR116 branch was deleted by GitHub after merge
+and removed locally; fetch --prune confirmed the remote deletion. The saved
+closed-PR source inventories contain no head missing from this target. Generated
+merge-queue simulation objects are not additional authored source branches.
+There is no live child stash or archive ref. This verifies the source landing,
+not completion of the native capability backlog.
+
+python scripts/dev/test_connectome_dev.py: 10 passed. With
+CARGO_TARGET_DIR=D:/.usr/Temp/rrflow-root-target and CARGO_BUILD_JOBS=4,
+cargo test -p rrd-engine --locked --test workspace_architecture: 35 passed.
+The latter includes declared/pinned HTTPS submodule and engine independence
+checks. No engine source changed. The actual development UI was not relaunched;
+no new installation was authorized or run. This pin carries child tests already
+passed on the exact merge-group; it does not establish real-project end-to-end
+acceptance or hosted sync.
+
+Change-authoring checklist: client owner and baseline read; PR478 brief before
+gitlink edit; exact child revision and green gate bound; source boundary and
+launcher oracles passed; unrelated processes untouched; research/tracing not
+needed; no roadmap completion claimed. Parent candidate and queue required.
