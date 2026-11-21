@@ -35,3 +35,41 @@ queue. Stop on missing behavior, relaxed tests, changed time authority or red CI
 No new time synchronization, trusted-clock, performance or alpha claim. No new
 research or trace is required; existing bounded clock traces remain. Record actual
 resolutions, tests and limits below; other recovered history remains unfinished.
+
+## Resolution evidence
+
+PR464 merges the three sources as 6e0792d1, 17f7a464 and 3ba8685a. Main's
+merged Connectome pin was refreshed first. The source merge leaves no
+application delta: current main already contains these clock behaviors and
+later fixes. All original stash/index/untracked parent objects are retained
+through the ordinary merges; this is not a newly implemented clock service.
+
+| Recovered source | Current owner retained |
+|---|---|
+| clock.rs observations, assessments and traces | Same file; retain later malformed-assessment errors instead of restoring expect panics |
+| Inline installation clock admission and recovery | installation/admission.rs, apply.rs, open.rs, recovery.rs, records.rs and storage.rs: immutable intent anchor, pre-open clock check, replay rejection and checkpoint anchor cross-check |
+| Clock configuration and v2 asset | deployment/profile.rs and configuration.rs plus sole default-engram-configuration-v3.toml/default-profile-v3.json; bounded clock policy remains part of configuration and digest |
+| CLI dispatch and failed verification | Current installed module split, main and verification rendering retain engine-owned time and failed-report exit status |
+| Old inline lifecycle/http tests | Current tests/installed_lifecycle/ and tests/http_process/ targets; no restored duplicate rs test file |
+| Rollback and recovery assertions | engine/tests/installation/apply_and_open.rs, configuration_and_adoption.rs and installation_recovery.rs; no-write unavailable/rollback cases, explicit tolerance and original recovery anchor retained |
+| SDK configuration fixtures and generated identities | Current v3 fixtures retain clock policy and current digests; old generated catalogue/digest values not restored |
+| Native lifecycle workflow placement | Current reusable jobs and workflow checker retain Linux, Windows and macOS lifecycle coverage; old job layout not restored |
+
+Incoming obsolete v2 configuration, v1 profile and inline test paths were
+removed from the merge index only after mapping their current destinations.
+Retired active-change history was not edited. Kept current README, roadmap,
+POAM, generated inventory and later clock journal evidence. The three stash
+generations differ in the plan corrections and strengthened open/anchor checks;
+current open/admission retain the final checks. Full original/current clock.rs,
+recovered clock journal and incoming install/recovery/contract/test hunks were
+read, together with current admission and open preflight, SDK fixture fields
+and workflow lifecycle call sites. This is not a full review of unrelated code.
+
+Local checks passed: `cargo test --locked -p rrd-engine --lib clock` (5),
+`cargo test --locked -p rrd-engine --lib installation` (84, 1 existing ignored),
+and `cargo test --locked -p rrd-contract --test deployment_configuration_contract`
+(10). Workflow and documentation checks and `git diff --check` passed. Full contract (270
+combined parser/contract tests) and installed lifecycle (17 tests) passed in
+PR463 on the identical engine/application tree earlier this session; only
+merge ancestry, evidence and optional child pin differ. Do not infer trusted
+UTC, runtime-wide time policy or native release qualification from these tests.
