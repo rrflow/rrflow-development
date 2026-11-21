@@ -56,6 +56,13 @@ only source ancestry and recovered evidence change. Ordinary merge intermediate
 staged additions; the next merge removes both. No duplicate core remains in the
 candidate. No broad unrelated source-review claim.
 
-Local lab automation/definitions checks are running. Owning package checks,
-architecture and documentation follow. No new container comparisons, cloud
+Local checks passed: lab automation 44 and definitions 23; all seven lab/core
+packages 211 tests across 26 suites; workspace architecture 35. Commands:
+`cargo test --locked -p rrflow-lab --test automation --test definitions`,
+`cargo test --locked -p rrflow-evaluation-core -p rrflow-lab
+-p rrflow-lab-definitions -p rrflow-lab-benchmarks -p rrflow-lab-evals
+-p rrflow-lab-systems -p rrflow-lab-datasets`, and `cargo test --locked
+-p rrd-engine --test workspace_architecture`. Navigation was regenerated after
+preserving the original journal title; the first documentation check correctly
+rejected its stale index. Documentation and diff checks then passed. No new container comparisons, cloud
 services, model calls or measured performance claim are part of this recovery.
