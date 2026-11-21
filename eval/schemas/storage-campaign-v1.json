@@ -172,6 +172,10 @@
       ],
       "type": "object"
     },
+    "CanonicalId": {
+      "description": "A canonical public identifier component.\n\nIDs are lowercase ASCII and intentionally URL/path safe. Human-facing\nlabels are separate data and may use arbitrary Unicode.",
+      "type": "string"
+    },
     "CapabilityStatus": {
       "enum": [
         "unavailable",
@@ -1143,6 +1147,13 @@
           "minimum": 0,
           "type": "integer"
         },
+        "scoped": {
+          "$ref": "#/$defs/ScopedConfiguration",
+          "default": {
+            "settings": {},
+            "user": null
+          }
+        },
         "storage": {
           "$ref": "#/$defs/StorageLimits"
         }
@@ -1275,6 +1286,36 @@
         "windows_ntfs"
       ],
       "type": "string"
+    },
+    "NumericConfiguration": {
+      "additionalProperties": false,
+      "properties": {
+        "maximum": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "minimum": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "preference": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
     },
     "OperatingPoint": {
       "additionalProperties": false,
@@ -1542,6 +1583,62 @@
         "seed",
         "expected_ledger_sha256"
       ],
+      "type": "object"
+    },
+    "ScopedConfiguration": {
+      "additionalProperties": false,
+      "properties": {
+        "settings": {
+          "additionalProperties": false,
+          "default": {},
+          "properties": {
+            "query_batch_rows": {
+              "$ref": "#/$defs/NumericConfiguration"
+            },
+            "query_elapsed_ms": {
+              "$ref": "#/$defs/NumericConfiguration"
+            },
+            "query_memory_bytes": {
+              "$ref": "#/$defs/NumericConfiguration"
+            },
+            "query_output_bytes": {
+              "$ref": "#/$defs/NumericConfiguration"
+            },
+            "query_rows": {
+              "$ref": "#/$defs/NumericConfiguration"
+            },
+            "query_spill_bytes": {
+              "$ref": "#/$defs/NumericConfiguration"
+            },
+            "query_storage_keys": {
+              "$ref": "#/$defs/NumericConfiguration"
+            },
+            "recall_graph_depth": {
+              "$ref": "#/$defs/NumericConfiguration"
+            },
+            "recall_items": {
+              "$ref": "#/$defs/NumericConfiguration"
+            },
+            "recall_output_bytes": {
+              "$ref": "#/$defs/NumericConfiguration"
+            },
+            "recall_storage_keys": {
+              "$ref": "#/$defs/NumericConfiguration"
+            }
+          },
+          "type": "object"
+        },
+        "user": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UserConfigurationBinding"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
       "type": "object"
     },
     "StorageLimits": {
@@ -1916,6 +2013,29 @@
         "sample_ms",
         "operation_deadline_ms",
         "forced_reopens"
+      ],
+      "type": "object"
+    },
+    "UserConfigurationBinding": {
+      "additionalProperties": false,
+      "description": "Explicit local-owner read binding, sealed in the project's installation.\nIt grants no global write or project-to-project knowledge access.",
+      "properties": {
+        "max_history_reads": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "root": {
+          "type": "string"
+        },
+        "source_id": {
+          "$ref": "#/$defs/CanonicalId"
+        }
+      },
+      "required": [
+        "source_id",
+        "root",
+        "max_history_reads"
       ],
       "type": "object"
     }

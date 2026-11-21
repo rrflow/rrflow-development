@@ -303,6 +303,8 @@ impl ContextPlanSnapshot {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct ContextPacket {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub configuration: Option<crate::ConfigurationAdmission>,
     pub scope: String,
     pub valid_at: u64,
     pub result_identity_version: u16,
@@ -319,6 +321,9 @@ pub struct ContextPacket {
 
 impl ContextPacket {
     pub fn validate(&self) -> Result<()> {
+        if let Some(configuration) = &self.configuration {
+            configuration.validate()?;
+        }
         if self.scope.is_empty() || self.scope.len() > 256 || self.scope.as_bytes().contains(&0) {
             return invalid("context packet scope is invalid");
         }
@@ -379,6 +384,7 @@ impl ContextPacket {
 
 pub fn context_packet_sha256(packet: &ContextPacket) -> Result<String> {
     let bytes = serde_json::to_vec(&(
+        &packet.configuration,
         &packet.scope,
         packet.valid_at,
         packet.result_identity_version,

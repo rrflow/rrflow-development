@@ -394,7 +394,7 @@ impl RrdEngine {
         &self,
         operation: &'static str,
         requested: &rrd_contract::QueryBudget,
-    ) -> Result<()> {
+    ) -> Result<Option<rrd_contract::ConfigurationAdmission>> {
         if let Err(error) = self.engram_configuration.validate_query_budget(requested) {
             let configured = &self.engram_configuration.query;
             tracing::debug!(
@@ -422,14 +422,14 @@ impl RrdEngine {
             );
             return Err(ServiceError::ConfigurationLimit(error.to_string()));
         }
-        Ok(())
+        self.enforce_scoped_query(requested)
     }
 
     pub(in crate::engine) fn enforce_recall_configuration(
         &self,
         operation: &'static str,
         requested: &rrd_contract::AssembleContext,
-    ) -> Result<()> {
+    ) -> Result<Option<rrd_contract::ConfigurationAdmission>> {
         if let Err(error) = self.engram_configuration.recall.validate_request(requested) {
             let configured = &self.engram_configuration.recall;
             tracing::debug!(
@@ -451,7 +451,7 @@ impl RrdEngine {
             );
             return Err(ServiceError::ConfigurationLimit(error.to_string()));
         }
-        Ok(())
+        self.enforce_scoped_recall(requested)
     }
 
     pub(in crate::engine) fn bind_installed_state(

@@ -289,7 +289,7 @@
       "clock": {
         "maximum_rollback_ms": 0
       },
-      "configuration_sha256": "578bf5cefcea5fa7812d3c090eadc9a80dc3d4f96757adab8338bf37330f035d",
+      "configuration_sha256": "b7cce7d3f7b8d3730633cb184f75388a713d75d7574be777508029a497fa6f3c",
       "format_version": 3,
       "query": {
         "max_batch_rows": 256,
@@ -312,6 +312,10 @@
         "max_storage_keys": 100000
       },
       "revision": 1,
+      "scoped": {
+        "settings": {},
+        "user": null
+      },
       "storage": {
         "active_read_views": 1024,
         "checkpoint_entries": 1024,
@@ -458,7 +462,7 @@
         "removal_rule": "remove_if_owned_digest_matches"
       }
     ],
-    "plan_sha256": "e810d373d9a81c6fab6dc3ea0bedae4a3604a5664e7a290bd72eb988c530eeb6",
+    "plan_sha256": "087bab9d0331f33f736d826dbd2b00e427bc1dda99196d209f196bc3f14b84d2",
     "product_version": "1.0.0",
     "profile_id": "default",
     "profile_sha256": "0000000000000000000000000000000000000000000000000000000000000029",
@@ -524,8 +528,8 @@
     "installed_record_sha256": "000000000000000000000000000000000000000000000000000000000000001f",
     "locator_sha256": "0000000000000000000000000000000000000000000000000000000000000021",
     "plan_id": "install-01",
-    "plan_sha256": "e810d373d9a81c6fab6dc3ea0bedae4a3604a5664e7a290bd72eb988c530eeb6",
-    "result_sha256": "fa5f967a248153a9a7f4da8a9cf88044aaee16a2485fde850777aacf2f825a75",
+    "plan_sha256": "087bab9d0331f33f736d826dbd2b00e427bc1dda99196d209f196bc3f14b84d2",
+    "result_sha256": "c949654e8d72a75c19db1e2906688dec4253ea8d718da43ba56900e22252c99b",
     "runtime_cursor": 1,
     "runtime_manifest_sha256": "000000000000000000000000000000000000000000000000000000000000001e"
   },

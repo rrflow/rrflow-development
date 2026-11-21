@@ -27,6 +27,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 const MAX_INSTALLATION_PLAN_BYTES: u64 = 8 * 1024 * 1024;
 
 type BoxError = Box<dyn Error>;
+mod configuration;
 mod endpoint_credentials;
 mod instances;
 mod serving;
@@ -90,6 +91,7 @@ pub fn execute(
     instance_registry: RegistryOptions<'_>,
 ) -> Result<Execution, BoxError> {
     match command {
+        Command::UserConfiguration { action } => configuration::execute(action),
         Command::Version => version(json),
         Command::Install { action } => install(action, json, instance_registry),
         Command::Serve {

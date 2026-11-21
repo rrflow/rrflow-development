@@ -35,9 +35,9 @@
   "candidate": {
     "clean": true,
     "commit": "1111111111111111111111111111111111111111",
-    "configuration_sha256": "578bf5cefcea5fa7812d3c090eadc9a80dc3d4f96757adab8338bf37330f035d",
+    "configuration_sha256": "b7cce7d3f7b8d3730633cb184f75388a713d75d7574be777508029a497fa6f3c",
     "executable_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
-    "public_catalogue_sha256": "f445114649aedaae1de77698fd1bacf6f9c1cf8997507764717b9e5f1cca316a",
+    "public_catalogue_sha256": "11d87159b5a2994af9f2233fb499e6c033f1c8bd1978605b706ceb853938c7c3",
     "tree": "2222222222222222222222222222222222222222"
   },
   "corpus_sha256": "4444444444444444444444444444444444444444444444444444444444444444",
@@ -59,7 +59,7 @@
     "clock": {
       "maximum_rollback_ms": 0
     },
-    "configuration_sha256": "578bf5cefcea5fa7812d3c090eadc9a80dc3d4f96757adab8338bf37330f035d",
+    "configuration_sha256": "b7cce7d3f7b8d3730633cb184f75388a713d75d7574be777508029a497fa6f3c",
     "format_version": 3,
     "query": {
       "max_batch_rows": 256,
@@ -82,6 +82,10 @@
       "max_storage_keys": 100000
     },
     "revision": 1,
+    "scoped": {
+      "settings": {},
+      "user": null
+    },
     "storage": {
       "active_read_views": 1024,
       "checkpoint_entries": 1024,

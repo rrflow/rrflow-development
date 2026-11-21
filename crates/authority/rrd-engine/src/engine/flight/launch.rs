@@ -30,7 +30,6 @@ impl RrdEngine {
         let assemble = request
             .context
             .assemble_context(&request.scope, &request.prompt);
-        self.enforce_recall_configuration("flight.launch", &assemble)?;
         let (_, _, authorization) = self.authorize_resource_without_data_policy(
             session_id,
             token,
@@ -41,6 +40,7 @@ impl RrdEngine {
             operation_id,
         )?;
         let scope = self.query_scope(&request.scope)?;
+        self.enforce_recall_configuration("flight.launch", &assemble)?;
         let operation_sha256 = operation_digest(request)?;
         let flight_id = flight_id(&self.instance, session_id, idempotency_key)?;
         let reference = flight_reference(&flight_id)?;

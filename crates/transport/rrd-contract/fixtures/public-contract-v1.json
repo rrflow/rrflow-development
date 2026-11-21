@@ -75,7 +75,7 @@
       "clock": {
         "maximum_rollback_ms": 0
       },
-      "configuration_sha256": "578bf5cefcea5fa7812d3c090eadc9a80dc3d4f96757adab8338bf37330f035d",
+      "configuration_sha256": "b7cce7d3f7b8d3730633cb184f75388a713d75d7574be777508029a497fa6f3c",
       "format_version": 3,
       "query": {
         "max_batch_rows": 256,
@@ -98,6 +98,10 @@
         "max_storage_keys": 100000
       },
       "revision": 1,
+      "scoped": {
+        "settings": {},
+        "user": null
+      },
       "storage": {
         "active_read_views": 1024,
         "checkpoint_entries": 1024,

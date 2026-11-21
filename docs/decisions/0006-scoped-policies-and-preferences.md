@@ -1,6 +1,6 @@
 # ADR-0006: Scoped policies and preferences
 
-**Status:** active accepted architecture decision; resolver and global persistence binding not implemented
+**Status:** active accepted architecture decision; bounded numeric resolution and local global-source binding implemented, broader policy acceptance remains open
 **Coordinate:** `rrflow://rrflow-instance/data/decision/0006-scoped-policies-and-preferences`
 **Owner:** global user configuration, project configuration, policy enforcement and effective-value provenance
 **Decision date:** 2026-11-20
@@ -57,12 +57,14 @@ plugins consume public operations. They cannot own a second editable copy or
 silently promote project records to global scope. A cache is a revision-bound
 projection, never a new authority.
 
-The physical persistence owner, installation lifecycle and authenticated
-cross-instance binding for that global source are **not implemented or fixed
-by this logical decision**. Before implementation, D-01/D-06 must bind them to
-one canonical RRFlow persistence boundary, including local operation without
-cloud dependency. This ADR does not authorize a client preference database,
-hidden service or install-time network requirement.
+The initial [scoped configuration implementation](../reference/deployment/scoped-configuration.md)
+binds the source to a private native rrflowKV control store, published through
+digest-approved local OS-owner operations. Project installations seal an
+explicit source identity, absolute root and history-read budget. Numeric query
+and recall admission resolves that source without a cloud dependency or extra
+daemon. Remote publication, organization policies and a complete global-source
+recovery lifecycle remain open; this bounded implementation does not satisfy
+all acceptance below. Clients cannot own an editable policy database.
 
 Binding a user configuration grants only the explicitly authorized settings
 read. It grants no project-to-project knowledge access. Such access still

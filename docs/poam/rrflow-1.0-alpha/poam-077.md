@@ -35,12 +35,23 @@ The 2026-11-20 documentation review also found a design contradiction:
 ADR-0005 prescribed personal/org engrams while the instance topology reserves
 engrams for projects. [ADR-0006](../../decisions/0006-scoped-policies-and-preferences.md)
 supersedes that design with global **User policies and preferences** and
-project-scoped configuration. The durable global source, authorized binding
-and temporal resolver are still unimplemented; correcting terminology does
-not close this gap. Users must be able to define enforced minimum requirements
-as well as overridable preferences.
+project-scoped configuration. The initial
+[numeric configuration implementation](../../reference/deployment/scoped-configuration.md)
+now provides a durable user source, explicit binding and temporal resolution
+for query and recall capacities. The
+[installed evidence](../../evidence/change-journals/gate-d/scoped-configuration-foundation-20261121.md)
+covers two project instances, corrections, restart and required-source refusal.
+Broader obligations, live project changes and Connectome controls remain open.
+Users must be able to define enforced minimum requirements as well as
+overridable preferences. Native source contention currently refuses admission;
+read concurrency and interrupted initialization recovery need qualification
+before claiming a complete global configuration lifecycle.
 
-No contributor can be tuned or measured on a real installation without reinstalling. The owner's requirement that every threshold be configurable and measured cannot be met. That requirement is decision 3 and package J9 of the [one-engine joins plan](../../roadmap/one-engine-joins-engineering-plan.md).
+Shared query and recall policy capacities can now change without restarting
+bound instances. The remaining sealed configuration and hardcoded contributors
+still prevent the owner's requirement that every threshold be configurable and
+measured. That requirement is decision 3 and package J9 of the
+[one-engine joins plan](../../roadmap/one-engine-joins-engineering-plan.md).
 
 ## Owning gates
 

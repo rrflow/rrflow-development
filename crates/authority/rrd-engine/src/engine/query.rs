@@ -36,7 +36,6 @@ impl RrdEngine {
         request
             .validate()
             .map_err(|error| ServiceError::Query(error.to_string()))?;
-        self.enforce_query_configuration("query.execute", &request.budget)?;
         let (_, _, authorization) = self.authorize_resource(
             session_id,
             token,
@@ -46,6 +45,7 @@ impl RrdEngine {
             request_id,
             operation_id,
         )?;
+        let configuration = self.enforce_query_configuration("query.execute", &request.budget)?;
         let (security_policy_revision, authorization_sha256, data_policy) = authorization
             .map_or_else(
                 || {
@@ -117,6 +117,7 @@ impl RrdEngine {
             .transpose()?;
         let read_evidence = crate::runtime::public_read_evidence(execution.read_evidence)?;
         Ok(QueryResult {
+            configuration,
             canonical_query: query.canonical(),
             scope: request.scope.clone(),
             read_manifest_sha256: execution.read_manifest.clone(),
@@ -169,7 +170,6 @@ impl RrdEngine {
         request
             .validate()
             .map_err(|error| ServiceError::Query(error.to_string()))?;
-        self.enforce_query_configuration("query.live.poll", &request.budget)?;
         self.authorize(
             session_id,
             token,
@@ -288,9 +288,9 @@ impl RrdEngine {
         request
             .validate()
             .map_err(|error| ServiceError::Query(error.to_string()))?;
-        self.enforce_query_configuration("query.index.ensure", &request.budget)?;
         let (session_bytes, mut session) = self.load_authenticated(session_id, token)?;
         self.authorize_session_policy(&session, SecurityAction::QueryIndexEnsure, now)?;
+        self.enforce_query_configuration("query.index.ensure", &request.budget)?;
         let scope = self.query_scope(&request.scope)?;
         let operation_digest = digest::sha256_hex(
             &serde_json::to_vec(request).map_err(|error| ServiceError::Query(error.to_string()))?,

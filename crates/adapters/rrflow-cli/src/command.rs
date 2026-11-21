@@ -5,6 +5,8 @@
 //! does not reopen a raw database or create a second lifecycle authority.
 
 use clap::{Parser, Subcommand, ValueEnum};
+mod configuration;
+pub use configuration::ConfigurationAction;
 
 pub struct Execution {
     pub text: String,
@@ -51,6 +53,11 @@ pub struct Cli {
 
 #[derive(Subcommand, Debug, Clone)]
 pub enum Command {
+    /// Author global user policies and preferences through an explicit local source.
+    UserConfiguration {
+        #[command(subcommand)]
+        action: ConfigurationAction,
+    },
     /// Print the immutable RRFlow product and protocol version.
     Version,
     /// Preview or apply one explicit, content-bound installation plan.

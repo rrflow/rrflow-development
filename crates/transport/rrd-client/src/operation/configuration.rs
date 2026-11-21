@@ -3,6 +3,36 @@
 use super::*;
 
 impl RrdClient {
+    pub async fn read_effective_configuration(
+        &self,
+        session: &Session,
+        request: rrd_contract::ReadEffectiveConfiguration,
+        options: RequestOptions,
+    ) -> Result<rrd_contract::EffectiveConfiguration> {
+        let catalogue = rrd_contract::endpoint_catalogue();
+        let endpoint = catalogue
+            .endpoints
+            .iter()
+            .find(|e| e.operation.as_str() == "configuration-effective-read")
+            .ok_or_else(|| {
+                Error::Contract("effective configuration operation is unavailable".into())
+            })?;
+        let result: rrd_contract::EffectiveConfiguration = self
+            .session_call(
+                Method::POST,
+                &endpoint.path,
+                session,
+                request,
+                options,
+                endpoint.mutation,
+            )
+            .await?;
+        result.validate().map_err(contract)?;
+        if result.identity.instance_id != self.instance {
+            return Err(Error::ResponseIdentityMismatch);
+        }
+        Ok(result)
+    }
     pub async fn read_endpoint_configuration(
         &self,
         session: &Session,

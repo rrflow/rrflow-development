@@ -77,6 +77,7 @@ http_dispatch_catalogue! {
     FlightRead => ("flight-read", RrdOperation::FlightRead),
     EndpointCatalogue => ("endpoint-catalogue", RrdOperation::ServiceInspect),
     EndpointConfigurationRead => ("endpoint-configuration-read", RrdOperation::EngramRead),
+    ConfigurationEffectiveRead => ("configuration-effective-read", RrdOperation::EngramRead),
     EndpointConfigurationPreview => ("endpoint-configuration-preview", RrdOperation::EndpointConfigurationPreview),
     EndpointConfigurationApply => ("endpoint-configuration-apply", RrdOperation::EngramAdmin),
     EngramRead => ("engram-read", RrdOperation::EngramRead),
@@ -305,6 +306,9 @@ impl AppState {
             Some(HttpDispatch::QueryExecute) => self.execute_query(&headers, &body, now),
             Some(HttpDispatch::EndpointConfigurationRead) => {
                 self.read_endpoint_configuration(&headers, &body, now)
+            }
+            Some(HttpDispatch::ConfigurationEffectiveRead) => {
+                self.read_effective_configuration(&headers, &body, now)
             }
             Some(HttpDispatch::EndpointConfigurationPreview) => {
                 self.preview_endpoint_configuration(&headers, &body, now)

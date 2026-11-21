@@ -2,9 +2,9 @@
 
 package rrd
 
-// OpenAPI SHA-256: ecfce11ae9a7102165c116a6c73837fe0dd3940ce3f72120ee67acfa224cbc83
+// OpenAPI SHA-256: 604a580b61a3a69a7688f656a16d8928bd1402a67f3cb91cf8175e7c33b6a076
 
-const EndpointOpenAPIDocumentSHA256 = "ecfce11ae9a7102165c116a6c73837fe0dd3940ce3f72120ee67acfa224cbc83"
+const EndpointOpenAPIDocumentSHA256 = "604a580b61a3a69a7688f656a16d8928bd1402a67f3cb91cf8175e7c33b6a076"
 
 type OperationID string
 
@@ -29,6 +29,7 @@ const (
 	OperationChangefeedFollow             OperationID = "changefeed-follow"
 	OperationChangefeedRead               OperationID = "changefeed-read"
 	OperationColdHistoryRead              OperationID = "cold-history-read"
+	OperationConfigurationEffectiveRead   OperationID = "configuration-effective-read"
 	OperationContextAssemble              OperationID = "context-assemble"
 	OperationDataSchemaRead               OperationID = "data-schema-read"
 	OperationDiagnosticsRead              OperationID = "diagnostics-read"
@@ -115,6 +116,7 @@ var endpoints = map[OperationID]Endpoint{
 	OperationChangefeedFollow:             {Method: "POST", Path: "/v1/changes/follow", Authentication: "session_bearer", Mutation: false},
 	OperationChangefeedRead:               {Method: "POST", Path: "/v1/changes/read", Authentication: "session_bearer", Mutation: false},
 	OperationColdHistoryRead:              {Method: "POST", Path: "/v1/storage/cold-history/read", Authentication: "session_bearer", Mutation: false},
+	OperationConfigurationEffectiveRead:   {Method: "POST", Path: "/v1/configuration/effective/read", Authentication: "session_bearer", Mutation: false},
 	OperationContextAssemble:              {Method: "POST", Path: "/v1/context/assemble", Authentication: "session_bearer", Mutation: false},
 	OperationDataSchemaRead:               {Method: "POST", Path: "/v1/data/schema", Authentication: "session_bearer", Mutation: false},
 	OperationDiagnosticsRead:              {Method: "POST", Path: "/v1/diagnostics/read", Authentication: "session_bearer", Mutation: false},
