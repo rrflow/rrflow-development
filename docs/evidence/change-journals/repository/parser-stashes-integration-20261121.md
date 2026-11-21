@@ -74,3 +74,23 @@ recovered D-04 journal was read; unrelated source was not exhaustively reviewed.
 
 Focused tests and owning suites are in progress. No test assertion was removed
 or relaxed. Candidate CI and merge queue remain required.
+
+## Validation
+
+Windows; CARGO_TARGET_DIR=D:/.usr/Temp/rrflow-root-target, CARGO_BUILD_JOBS=4.
+- cargo test --locked -p rrd-attunement --test worker --test parse: 16 passed.
+- cargo test --locked -p rrflow-cli --test parser_worker: 3 passed.
+- cargo test --locked -p rrd-attunement -p rrd-contract: 270 passed, zero failed.
+- cargo test --locked -p rrd-engine --lib attunement: 87 passed, zero failed,
+  eight existing helper tests ignored. The large multi-batch publication test
+  completed; the suite took 373.75 seconds.
+- cargo test --locked -p rrflow-cli --test installed_lifecycle: 17 passed,
+  including the real installation/serve/restart/Parse checkpoint journey.
+- Documentation policy, cargo fmt --all --check and git diff --check passed.
+
+Logs are parser-stashes-{focused,cli,suites,engine,lifecycle}.log under
+D:/.usr/Temp/rrflow-project-policy-20261121. Tests ran on the integrated source
+rooted at a7c93595; subsequent edits only changed evidence and the optional
+Connectome gitlink from merged PR462. No application-source delta was introduced.
+No signed distribution, performance qualification or full alpha journey is
+claimed. Hosted candidate and queue remain required; other recovery is open.
