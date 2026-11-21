@@ -3,6 +3,7 @@
 **Status:** historical review; original findings below are not current completion claims
 **Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/repository/independent-storage-review-20261026`
 **Owner:** [2026-11-21 recovery journal](archived-storage-review-integration-20261121.md)
+**Superseded by:** [Current recovery and finding disposition](archived-storage-review-integration-20261121.md)
 
 Preserved from REVIEW.md in source 1f1e30997f8f167c813435325099e9d0e34386f1.
 The original review text follows unchanged. Current findings belong to

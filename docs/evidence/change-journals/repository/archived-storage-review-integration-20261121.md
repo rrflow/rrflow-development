@@ -30,3 +30,33 @@ is unchanged. Then documentation, architecture and required candidate/queue.
 No new benchmark/research or instrumentation is required for history integration.
 Stop on lost lifetime assertion, changed admission, untracked finding or red CI.
 Other archived stashes remain; C-07 and native lifetime qualification stay open.
+
+
+## Resolutions and validation
+
+Source merges: 9539334d, df800ca2, 03e2494e and b3fa4b6a. The four saved
+copies name identical reviewed blobs for REVIEW.md and the three source/test
+paths; each object was merged separately. Current Database and split
+open/flush/snapshot/compaction/transactions modules retain Arc ownership and
+point-index publication. reader/views retains pointer-fast equality plus
+content validation, with newer per-segment and memtable pin accounting.
+reader_lifetime_tests retains both original oracles with the current admission
+arguments; no assertion or application path was removed.
+
+The [original review](independent-storage-review-20261026.md) is preserved below
+its historical status and current-owner note, rather than adding REVIEW.md as
+a root authority. POAM-029 owns audited diagnostic conflicts; POAM-030 contains
+later audit-tail correction evidence; POAM-081 owns task/flight pre-page scans.
+Current Parse execution supersedes the historical unavailable-worker finding;
+that does not establish the complete requested reasoning journey. Context
+planner convergence and C-07 qualification remain open in their existing owners.
+
+Exact local checks: shared manifest lifetime 1 passed; manifest admission
+1 passed; projected_lifetime 13 passed; workspace_architecture 35 passed.
+All Cargo subprocess exits were 0. Filtered package targets selecting zero
+additional tests are not counted. Same-tree full LSM evidence remains PR460's
+276 passed/3 ignored; it was not repeated because implementation is unchanged.
+Navigation and documentation checks passed after adding the required
+Superseded by link to the historical record; the first documentation run failed
+for that missing link. `git diff --check` passed. Candidate and queue remain
+required. No new benchmark, gate closure or product-completeness claim.
