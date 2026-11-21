@@ -52,3 +52,13 @@ navigation generation and whitespace. Commands are those in the brief; log
 read-path-recovery-tests.log is retained in the session scratch directory.
 No runtime/test source differs from baseline e163ad7db. Source recovery does
 not close the broader vector, storage or alpha qualification gates.
+
+## Queue admission correction
+
+Candidate bd847a36e388e384cf5a41ad54cf1379741a6cee passed ci-gate in
+run 44955025082, but GitHub rejected enqueuePullRequest with required check
+pipeline / ci-gate expected. Auto-merge was enabled, no queue entry existed,
+and synthetic merge 936d91b12ccff0553fda6d6b9371d5a5ece7f4ea had no checks.
+Issue #490 records this queue-admission failure. This evidence-only update
+refreshes the candidate through its normal CI; no synthetic success, ruleset
+change or bypass is used. It is not a storage/vector test failure.
