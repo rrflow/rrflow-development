@@ -1,4 +1,4 @@
-﻿# Governed project-policy controls: starting boundary
+# Governed project-policy controls: starting boundary
 
 **Status:** package characterization; implementation and acceptance pending
 **Coordinate:** `rrflow://rrflow-instance/data/evidence/project-policy-controls-start-20261121`
