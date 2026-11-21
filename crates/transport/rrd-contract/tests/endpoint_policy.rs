@@ -76,7 +76,7 @@ fn lfg_policy_requires_explicit_bounded_loopback_and_pinned_inputs() {
 }
 
 fn bytes(file: &str) -> Vec<u8> {
-    observed_configuration::read(
+    observed_configuration::read_projected(
         &PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("tests/fixtures/endpoint-selection-observed/available"),
         file,
@@ -117,7 +117,7 @@ fn proposed() -> (EndpointConfiguration, EndpointSelectionPolicy) {
 }
 
 #[test]
-fn policy_is_explicit_and_absence_preserves_actual_configuration_identity() {
+fn policy_is_explicit_and_derived_identity_does_not_inherit_the_captured_receipt() {
     let (configuration, policy) = proposed();
     let profile = configuration.profile.as_ref().unwrap();
     assert!(profile.selection_policy.is_none());
@@ -129,7 +129,7 @@ fn policy_is_explicit_and_absence_preserves_actual_configuration_identity() {
     policy.validate_for(&profile.bindings).unwrap();
     assert!(policy.allowance(&configuration).is_err());
     let receipt: Value = serde_json::from_slice(&bytes("receipt.json")).unwrap();
-    assert_eq!(
+    assert_ne!(
         configuration.sha256().unwrap(),
         receipt["configurationSha256"]
     );

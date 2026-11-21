@@ -494,12 +494,13 @@ fn run_flow(scenario: Scenario, real_lfg: Option<String>) {
     });
     let response_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../transport/rrd-contract/tests/fixtures/endpoint-selection-observed/available/choice-response.json");
-    let mut response: serde_json::Value =
-        serde_json::from_slice(&crate::engine::tests::observed_configuration::read(
+    let mut response: serde_json::Value = serde_json::from_slice(
+        &crate::engine::tests::observed_configuration::read_projected(
             response_path.parent().unwrap(),
             "choice-response.json",
-        ))
-        .unwrap();
+        ),
+    )
+    .unwrap();
     if reject_controller {
         response = serde_json::json!({"synthetic": "invalid controller response"});
     }

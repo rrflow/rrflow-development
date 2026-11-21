@@ -17,7 +17,7 @@ use std::{
 };
 
 fn read(name: &str, file: &str) -> Vec<u8> {
-    observed_configuration::read(
+    observed_configuration::read_projected(
         &PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../../transport/rrd-contract/tests/fixtures/endpoint-selection-observed")
             .join(name),
@@ -271,10 +271,12 @@ fn native_live_calls_retain_actual_bytes_and_uncertain_failures() {
             assert!(receipt.get("observation").is_none());
             continue;
         }
-        let configuration =
-            serde_json::from_slice(&observed_configuration::read(&root, "configuration.json"))
-                .unwrap();
-        let allowance = serde_json::from_slice(&observed_configuration::read(
+        let configuration = serde_json::from_slice(&observed_configuration::read_projected(
+            &root,
+            "configuration.json",
+        ))
+        .unwrap();
+        let allowance = serde_json::from_slice(&observed_configuration::read_projected(
             &root,
             &format!("{name}-allowance.json"),
         ))

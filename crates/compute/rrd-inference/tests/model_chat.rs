@@ -16,14 +16,18 @@ use std::time::{Duration, Instant};
 fn inputs() -> (EndpointConfiguration, ModelChatRequest, Value) {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../transport/rrd-contract/tests/fixtures/endpoint-selection-observed/available");
-    let configuration: EndpointConfiguration =
-        serde_json::from_slice(&observed_configuration::read(&root, "configuration.json")).unwrap();
+    let configuration: EndpointConfiguration = serde_json::from_slice(
+        &observed_configuration::read_projected(&root, "configuration.json"),
+    )
+    .unwrap();
     let model = configuration.profile.as_ref().unwrap().bindings[0]
         .service_id
         .clone();
-    let response =
-        serde_json::from_slice(&observed_configuration::read(&root, "choice-response.json"))
-            .unwrap();
+    let response = serde_json::from_slice(&observed_configuration::read_projected(
+        &root,
+        "choice-response.json",
+    ))
+    .unwrap();
     (
         configuration,
         ModelChatRequest {

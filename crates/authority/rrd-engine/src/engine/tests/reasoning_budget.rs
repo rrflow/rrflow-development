@@ -42,7 +42,7 @@ fn actual_request_fixture() -> (
         serde_json::from_slice(&std::fs::read(path.join("files.json")).unwrap()).unwrap();
     assert_eq!(digest::sha256_hex(&request), hashes["choice-request.json"]);
     assert_eq!(digest::sha256_hex(&task_bytes), hashes["task.json"]);
-    let request = super::observed_configuration::read(&path, "choice-request.json");
+    let request = super::observed_configuration::read_projected(&path, "choice-request.json");
     let (root, mut engine) = isolated_engine();
     configure(&mut engine, 3);
     let lease = engine
