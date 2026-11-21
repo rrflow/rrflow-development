@@ -31,3 +31,43 @@ research or new runtime architecture is needed. No release gate is closed.
 
 The stash, its untracked tree and the verified recovery bundle are readable.
 No source is deleted before integration; exact resolutions and results follow.
+
+## Integration and evidence
+
+[PR461](https://github.com/rrflow/rrflow-development/pull/461) retains the stash
+and its third parent through ordinary merge 3c62907c. The source tracked-tree
+merge and four formerly untracked files are accounted for at these boundaries:
+
+| Recovered source | Current destination |
+|---|---|
+| CLI management.rs | Same file; owned JoinSet, original deadline, nonblocking polling, abort-on-drop and three tests retained |
+| rrflow-eval storage/sustained_backup.rs | qualification/rrflow-qualification-storage/src/sustained_backup.rs; bounded tracker and deadline/overlap/completion checks retained |
+| rrflow-eval storage/sustained_backup_tests.rs | qualification-storage/src/sustained_backup_tests.rs; all five source test bodies and their assertions retained |
+| c-07g-backup-scheduling.md | Existing Gate C journal retained; no duplicate history record or qualification claim |
+
+Resolved the old inline scheduler into the existing campaign/engram/point_run
+modules. Kept the sample gate, reopened-corpus progress checks, separate progress
+test module and later failure records in the roadmap/POAM. The obsolete incoming
+rrflow-eval storage/sustained.rs was removed from the merge tree; its evidence,
+validation, writer and summary responsibilities remain in qualification-storage.
+The two generated schemas merge without change. No application-source delta
+remains against the baseline: this closes the recovered Git integration and
+checks the retained behavior. It does not add a newly working backup subsystem.
+
+Read in full: all four third-parent files, current management helper, backup
+tracker and backup test file. Read affected scheduler/progress conflict regions
+and mapped call sites; no exhaustive review of unrelated code is claimed.
+
+Windows, CARGO_TARGET_DIR=D:/.usr/Temp/rrflow-root-target, CARGO_BUILD_JOBS=4:
+
+- cargo test --locked -p rrflow-qualification-storage --lib backup: six passed.
+- cargo test --locked -p rrflow-cli --test installed_reopen management: three passed.
+- cargo test --locked -p rrflow-qualification-storage: 54 passed, zero failed.
+- cargo test --locked -p rrflow-cli --test installed_reopen: 39 passed, 14 existing opt-in tests ignored.
+
+Logs: D:/.usr/Temp/rrflow-project-policy-20261121/backup-stash-{focused,management,suite,reopen}.log.
+No failing assertion was removed or relaxed. Hosted candidate and queue checks
+remain required. No new capacity, endurance or performance run was performed;
+C-07 and POAM-035 remain open. Other historical work is not marked complete.
+
+Final local checks: documentation policy, cargo fmt --all --check and git diff --check passed.
