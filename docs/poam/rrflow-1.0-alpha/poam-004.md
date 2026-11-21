@@ -25,9 +25,12 @@ full analytical path.
 
 The current `rrd-query/src/parquet.rs::export_parquet` writes a bounded,
 uncompressed query-result artifact. It does not implement the requested
-background Parquet cold-storage lifecycle, including atomic generation
-publication, retention, hot/cold reads and recovery. F-06 tracks that missing
-work independently from exchange/import.
+background Parquet cold-storage lifecycle. A separate engine-owned path now
+publishes derived compressed runtime-history generations and authenticates
+bounded generation readback against their receipts. This does not reclaim the
+source or establish complete tiered reads, retention, all intended audit streams
+or recovery qualification. F-06 tracks that remaining work independently from
+exchange/import; its acceptance status is unchanged.
 
 The F-06 draft additionally exposed two constraints that remain open: a scoped
 page of the global runtime change chain cannot independently prove that no

@@ -49,10 +49,13 @@ data portability and qualification. [H-08](docs/roadmap/rrflow-1.0/gate-h.md#h-0
 owns its implementation packages; compatibility is not yet implemented.
 
 rrflowKV supplies the native write-optimized durable state and recovery path;
-prompt-local working state has a separate bounded lifetime. The requested
-background Parquet cold-storage lifecycle for history, audit and analytics is
-not implemented by the existing bounded query export. Its implementation and
-proof are owned by [Gate F](docs/roadmap/rrflow-1.0/gate-f.md).
+prompt-local working state has a separate bounded lifetime. The engine publishes
+bounded, compressed Parquet copies of runtime history and exposes authenticated
+generation readback. These artifacts are derived: source history remains
+authoritative. The complete cold-storage lifecycle, including retention,
+reclamation, all intended audit streams and recovery qualification, remains open
+under [Gate F](docs/roadmap/rrflow-1.0/gate-f.md). Bounded export or derived
+publication alone does not establish tiered persistence.
 
 This README is the bootstrap product entry point and knowledge map. It owns
 RRFlow's identity, non-negotiable architecture invariants, and current status;
