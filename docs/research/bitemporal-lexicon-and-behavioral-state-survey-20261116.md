@@ -52,3 +52,54 @@ These are inferences from the findings, not facts about the sources, and each ne
 1. Is a single sequencer that assigns system time at commit acceptable, with many parallel writers preparing work, or must every writer assign its own?
 2. Does a lexicon come from you and the project (supplied), from the corpus (emergent), or both with project terms winning?
 3. What finishes the sentence "State Machine driven by telemetry, metadata, ..."?
+
+## 2026-11-21 follow-up: memory freshness and vectorization
+
+This bounded follow-up read the primary sources below directly, through
+November 21, 2026. It does not retroactively qualify the search-summary claims
+or resolve the concurrency questions in the original survey. No exhaustive
+"latest everything" claim, source-code adaptation or RRFlow benchmark follows.
+The papers are research evidence; new November results need independent
+replication on RRFlow's workload before adoption or performance claims.
+
+| Primary source and date | Finding read | RRFlow implication and limit |
+|---|---|---|
+| [Chroma Context Rot](https://www.trychroma.com/research/context-rot), July 14, 2025; introduction and evaluation scope | Controlled evaluations show performance varies with input length and distractors. | Measure selective bounded context against larger context. This does not establish one universally optimal token budget or prove that every contemporary model behaves identically. |
+| [LongMemEval v2](https://arxiv.org/abs/2410.10813v2), March 4, 2025; abstract | Evaluates extraction, multi-session and temporal reasoning, updates and abstention, separating indexing, retrieval and reading. | Score those stages independently and include correction/abstention cases; benchmark results do not qualify RRFlow. |
+| [RECON v1](https://arxiv.org/abs/2607.16716v1), July 18, 2026; abstract | Tests multi-hop evidence, cascading invalidation, source conflict and temporal constraints, including conclusions that retain independent support. | Test dependency-aware correction beyond replacing one retrieved fact; its domains and corpus are not RRFlow project workloads. |
+| [StaleBench v1](https://arxiv.org/html/2611.19752v1), November 15, 2026; abstract, task/results and limitations | Similarity may retrieve obsolete versions; a correct top-ranked result does not rule out stale evidence elsewhere in the context. Entity linking on write and query affects freshness. | Measure stale-context contamination and reader correctness alongside recall. Supplied alias inventories and source validity labels limit transfer to automatic real-world entity resolution. |
+| [LEDGER v1](https://arxiv.org/html/2611.20927v1), November 16, 2026; abstract, mechanism and result limits | Separates proposed facts from explicit update/trust/delete rules and evaluates both emitted evidence and answers. | Preserve provenance and governed correction/forget. Its coding workload is synthetic; overlapping confidence intervals on LongMemEval and incomplete ablations prevent universal superiority claims. Do not import its trust hierarchy or runtime. |
+| [Qdrant hybrid queries](https://qdrant.tech/documentation/search/hybrid-queries/), current documentation checked November 21, 2026 | Supports dense and lexical/sparse result fusion and multistage scoring. | Use as a retrieval pattern reference, not evidence that hybrid always wins or that Qdrant supplies RRFlow policy/temporal semantics. |
+| [Qdrant incremental embedding updates](https://qdrant.tech/documentation/tutorials-operations/incremental-embedding-updates/), current documentation checked November 21, 2026 | Distinguishes unchanged input, changed content, reuse and removal; checks model/pipeline identity. | Adapt the principle of digest-bound incremental work. RRFlow retains bitemporal revisions rather than copying an overwrite-in-place example; a source inventory must be complete before absence can justify deletion. |
+
+### Design decisions carried into existing owners
+
+Temporal limits matter: StaleBench's retention setup assumes in-order arrival;
+LEDGER's A4 equates valid-time start with the reporting event. Neither proves
+RRFlow's independent valid/recorded-time behavior for late or backdated
+corrections. The joined oracle therefore adds those cases explicitly.
+
+- [ADR-0006](../decisions/0006-scoped-policies-and-preferences.md#freshness-and-semantic-retrieval)
+  requires complete exact policy resolution. ANN/top-k and summaries may assist
+  discovery, never decide whether a mandatory requirement is enforced.
+- [Knowledge construction](../reference/data/knowledge-connectors.md#memory-freshness-and-vectorization)
+  binds canonical corrections to eligibility, derivation dependencies,
+  embedding generations, source stamps and context evidence under one engine.
+- [Gate D](../roadmap/rrflow-1.0/gate-d.md#connector-and-knowledge-ingestion-packages)
+  and the existing E/H/J owners retain implementation and acceptance. A
+  focus/pivot/correct/return journey joins them; no new roadmap is created.
+
+### Keeping the guidance current
+
+For each adopted technique retain the dated primary source/version, the exact
+capability it supports, applicability, local baseline and candidate evidence,
+cost/quality limits, and its owning gate. Recheck mutable documentation when
+implementing, changing a model/schema/lexicon or investigating a regression.
+Propose changes through the same governed configuration/projection boundary;
+a newer publication is not permission to change defaults automatically.
+
+Research-derived heuristics remain candidates until held-out evaluation earns
+their activation. Source revision changes trigger affected checks and rebuilds;
+they do not justify embedding the entire corpus again. This is a maintenance
+requirement for the owning packages, not an implemented scheduler or guarantee
+that documentation, memories or model answers cannot become stale.

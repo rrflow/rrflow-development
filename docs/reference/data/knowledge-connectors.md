@@ -170,6 +170,116 @@ supported citations, answer quality, multi-hop recall, stale/denied leakage,
 indexing cost and update cost. Graph summaries must not amplify untrusted
 source instructions into permissions.
 
+## Memory freshness and vectorization
+
+This is a target lifecycle contract, not an implemented anti-rot service.
+[ADR-0006](../../decisions/0006-scoped-policies-and-preferences.md) owns exact
+user/project policy resolution; this section owns its connection to derived
+knowledge and retrieval. The [2026-11-21 research follow-up](../../research/bitemporal-lexicon-and-behavioral-state-survey-20261116.md#2026-11-21-follow-up-memory-freshness-and-vectorization)
+separates primary-source findings from RRFlow design choices.
+
+Keep three failures distinct in diagnostics: **context overload** (irrelevant
+or excessive supplied material), **stale knowledge** (superseded facts or
+outdated sources), and **stale projections** (an index, summary or cache no
+longer eligible for the requested source state). Vectorization creates a
+search representation; it does not resolve these failures by itself. Disputed
+and unverified evidence are separate states, not synonyms for stale evidence.
+
+1. **Commit meaning before indexing.** Resolve all applicable policies exactly.
+   Admit extracted facts, preference changes and lexicon edits through their
+   existing governed write boundary. Retain provenance, valid time, recorded
+   time, verification status and support relationships. Untrusted instructions
+   in source text remain data. Similarity proposes identity matches; it does
+   not merge entities or supersede facts automatically. Stable concept IDs,
+   scoped aliases and a vocabulary revision must be used on both ingestion and
+   query interpretation; ambiguous aliases remain explicit.
+2. **Invalidate eligibility with the correction.** An accepted correction,
+   deletion, policy/ACL revision or source change makes affected derived
+   material ineligible for incompatible current reads before it can be served.
+   Canonical mutation, dependency invalidation and durable work publication
+   must share the admitted transaction/publication protocol. Recompute affected
+   summaries, claims and relationships from their support sets; independent
+   surviving support may preserve a conclusion. Do not erase every graph
+   neighbor or assume a semantic match proves contradiction. Historical reads
+   preserve their revisions subject to current authorization and retention.
+3. **Vectorize incrementally through the configured embedding capability.**
+   Bind the exact authorized input digest, source revision, extraction/chunking
+   and vocabulary revisions, model artifact/tokenizer or declared remote model
+   identity, dimensions, normalization, metric and modality. Opaque mutable
+   remote models cannot claim byte-reproducible embeddings. Reuse vectors only
+   when input and embedding-space identities match inside an authorized reuse
+   scope; content equality never grants sharing. Metadata-only changes still
+   update eligibility. Repeated reads and unchanged source scans do not cause
+   embedding calls or canonical rewrites merely to record access.
+4. **Publish only complete bounded work.** Durable outbox/jobs drive embedding
+   work outside the canonical commit; admission bounds workers, batch bytes,
+   model cost, elapsed time and retry uncertainty. A late worker checks source,
+   configuration and authorization revisions before publishing. Deletion or
+   cancellation cannot be undone by a late result. Expose pending, ready,
+   stale, failed and unavailable states. An embedding-space change builds a
+   separate candidate generation for atomic activation after verification;
+   never mix incompatible vectors in one score space. These are generations
+   of one projection, not a second engine or compatibility implementation.
+5. **Retrieve and verify against canonical state.** Apply project, authorization
+   and temporal eligibility before bounded candidate selection and recheck at
+   evidence materialization. Combine exact identity/lexical lookup, optional
+   dense retrieval and relationship expansion through rrflowQL; expose selected
+   and skipped paths. Configure and evaluate fusion/reranking instead of treating
+   scores as truth probabilities. If post-filtering exhausts the candidate
+   budget, report incomplete recall. TurboQuant accelerates eligible candidate
+   retrieval; measure it against exact vectors at the same read and filter,
+   with exact reranking where required. It never chooses mandatory policies.
+6. **Assemble bounded, attributable context.** Carry relevant source spans,
+   temporal labels, corrections and unresolved conflicts, with clear separation
+   from trusted instructions. Summaries link to retained source/support records
+   and are invalidated with them. If context is insufficient, report that state
+   or admit further retrieval; silently truncating obligations is not success.
+   Model/provider output and citations are checked independently of retrieval.
+
+Idle maintenance uses existing governed jobs and operator budgets. Prioritize
+changed/invalidated dependencies and overdue source checks; coalesce duplicate
+work, yield to foreground tasks and retain restart-safe checkpoints. TTL or
+decay is not a universal truth rule. Query popularity cannot preserve a revoked
+record or erase an explicit user requirement. Retention/forget must cover
+derived vectors, summaries, caches and authorized copies, with physical
+reclamation and backup limits reported separately from immediate serving
+ineligibility. No promise of remote erasure follows from a local tombstone.
+
+Connectome's developer build must expose source and projection revisions,
+freshness reason, invalidation/rebuild backlog and age, current/historical mode,
+embedding calls and reuse, bytes read/written, write amplification, latency,
+tokens, and stale/denied evidence counts. Give plain-language status first and
+allow drill-down to the exact receipt; never label an index as current merely
+because its job finished. These diagnostics consume public engine contracts.
+
+### Focus, pivot, correct and return acceptance
+
+Run one installed two-project journey: bind global user requirements; focus on
+A and retain a decision with supporting sources; pivot to isolated B; correct
+A's fact, change a user requirement and revoke one source while A is idle;
+return to A. Current answers must use the correction and new requirement, retain
+unaffected supported decisions and exclude revoked or superseded evidence.
+An authorized historical query must still explain what was known then. Repeat
+after restart and with a late embedding worker, an alias/paraphrase query,
+conflicting evidence and embedding/controller off or unavailable.
+
+Include a backdated correction learned after the pivot, a future-effective
+requirement, and a value that changes A -> B -> A. Assert answers at separate
+valid-time and recorded-time coordinates before and after learning the update;
+neither latest arrival nor greatest valid time alone is the bitemporal oracle.
+An incomplete source scan cannot interpret an unseen record as deletion.
+
+Compare identity/lexical baseline, hybrid retrieval, optional reranking and
+eligible TurboQuant at the same source/configuration revisions and budgets.
+Measure current-fact recall, stale-evidence contamination, mandatory-policy
+coverage, citation support, correction propagation, downstream answer/task accuracy, abstention,
+tokens, latency and update/write cost, not recall alone. Deterministic fixtures
+must have zero unauthorized or superseded-current evidence and no omitted
+applicable mandatory policy; probabilistic quality thresholds and non-inferiority
+margins are declared before held-out evaluation. Report sample counts,
+uncertainty and failures by scenario. No rot-prevention or token-saving claim
+is established until this journey and its quality comparison actually run.
+
 ## Graph and retrieval baselines
 
 This is a target acceptance contract; no baseline-management operation is

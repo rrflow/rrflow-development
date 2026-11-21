@@ -64,3 +64,10 @@ Closed when all of the following hold:
 - Connectome explains effective values through the same public contracts,
   distinguishing user/project scope and enforced requirements from defaults;
   no client store becomes a second authority and no project sharing is implied.
+- All applicable mandatory policies resolve and enforce independently of
+  ANN/top-k, lossy summaries and embedding-provider availability, as required
+  by [ADR-0006](../../decisions/0006-scoped-policies-and-preferences.md#freshness-and-semantic-retrieval).
+  A policy update while a project is idle invalidates incompatible effective
+  configuration before its next governed effect; TTL/recency never silently
+  removes an explicit requirement. The joined focus/pivot/correct/return
+  evidence must distinguish this from ordinary optional memory retrieval.

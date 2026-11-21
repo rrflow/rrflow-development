@@ -372,6 +372,14 @@ and unavailable required sources refuse affected effects, and corrections
 preserve historical resolution after restart. This extends [POAM-077](../../poam/rrflow-1.0-alpha/poam-077.md)
 acceptance, not completed D-06 evidence; H-06 consumes generated explanations.
 
+The [focus/pivot/correct/return acceptance](../../reference/data/knowledge-connectors.md#focus-pivot-correct-and-return-acceptance)
+joins that configuration with D-05 provenance/invalidation and D-06 embedding
+bindings, E-04 vector generations, H-05/H-09 recall and H-06 diagnostics. Resolve
+mandatory policies independently of semantic retrieval; stale/late embedding
+work cannot restore a corrected, deleted or unauthorized record. H-05/J-04
+compare supported answers, stale-evidence contamination and token/update costs
+on fixed held-out inputs. No individual component test closes this journey.
+
 ## DuckDB interoperability packages
 
 **Withdrawn by the owner:** the earlier DuckDB interoperability and optional-worker

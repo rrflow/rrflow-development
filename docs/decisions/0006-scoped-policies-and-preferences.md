@@ -137,6 +137,34 @@ unavailable and conflicted states. Project instance start/stop and project
 knowledge sharing are separate controls; global defaults do not start an
 instance or connect projects implicitly.
 
+## Freshness and semantic retrieval
+
+The 2026-11-21 follow-up binds this decision to the existing
+[knowledge lifecycle](../reference/data/knowledge-connectors.md#memory-freshness-and-vectorization)
+and its [dated research review](../research/bitemporal-lexicon-and-behavioral-state-survey-20261116.md#2026-11-21-follow-up-memory-freshness-and-vectorization).
+Resolve all applicable mandatory policies by authenticated scope, identity,
+validity and declared applicability rules. Never select that set by vector
+similarity, top-k, an LLM summary or a token-budget truncation. If required
+resolution cannot fit its budget or a required source is unavailable, refuse
+the affected effect. A model may help propose an applicability rule; it cannot
+silently decide an enforced requirement is irrelevant.
+
+Optional embeddings may help discover related preferences, rationales,
+examples and project memories. They are revision-bound retrieval projections;
+the canonical records determine meaning and authority. A vector hit is neither
+a policy grant nor proof that a fact is current. Mandatory constraints remain
+enforced even when the embedding provider is disabled, fails or returns no hits.
+Lossy summaries cannot replace their authoritative representation. For behavior
+that cannot be checked mechanically, report the unverified obligation and its
+evidence requirement rather than claiming enforcement from prompt inclusion.
+
+Recency and use frequency may influence optional context ranking. They cannot
+expire, weaken or promote an explicit policy. Source freshness leases, semantic
+valid-time intervals and retention are separate: an old but still applicable
+user requirement remains binding until an authorized revision changes it.
+Maintenance can propose corrections and revalidation; it cannot refresh truth
+merely by updating an observation timestamp or re-embedding old text.
+
 ## Implementation and acceptance
 
 [POAM-077](../poam/rrflow-1.0-alpha/poam-077.md) remains open. D-01/D-06 own
