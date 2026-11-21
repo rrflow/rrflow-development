@@ -173,6 +173,7 @@ pub(super) fn query_contract_is_transport_neutral_bounded_and_strict() {
     assert!(serde_json::from_value::<ExecuteQuery>(unknown).is_err());
 
     let result = QueryResult {
+        configuration: None,
         canonical_query: request.query.clone(),
         scope: request.scope.clone(),
         read_manifest_sha256: "a".repeat(64),

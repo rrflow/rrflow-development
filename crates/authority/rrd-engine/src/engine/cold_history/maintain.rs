@@ -19,7 +19,6 @@ impl RrdEngine {
         request
             .validate()
             .map_err(|error| ServiceError::Contract(error.to_string()))?;
-        self.enforce_query_configuration("cold_history.read", &request.budget)?;
         self.authorize_resource_without_data_policy(
             session,
             token,
@@ -30,6 +29,7 @@ impl RrdEngine {
             operation_id,
         )?;
         let scope = self.query_scope(&request.scope)?;
+        self.enforce_query_configuration("cold_history.read", &request.budget)?;
         let deadline = Instant::now()
             .checked_add(Duration::from_millis(request.budget.max_elapsed_ms))
             .ok_or(ServiceError::DeadlineExceeded)?;

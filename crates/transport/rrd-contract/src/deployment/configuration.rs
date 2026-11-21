@@ -7,6 +7,8 @@ use super::*;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct EngramConfigurationInput {
+    #[serde(default)]
+    pub scoped: crate::ScopedConfiguration,
     pub format_version: u16,
     pub clock: ClockPolicy,
     pub storage: StorageLimits,
@@ -47,6 +49,7 @@ impl AttunementFollowPolicy {
 
 impl EngramConfigurationInput {
     pub fn validate(&self) -> Result<()> {
+        self.scoped.validate()?;
         if self.format_version != ENGRAM_CONFIGURATION_FORMAT_VERSION {
             return invalid(format!(
                 "engram configuration format version must be {ENGRAM_CONFIGURATION_FORMAT_VERSION}"
@@ -70,6 +73,8 @@ impl EngramConfigurationInput {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct EngramConfiguration {
+    #[serde(default)]
+    pub scoped: crate::ScopedConfiguration,
     pub format_version: u16,
     pub revision: u64,
     pub clock: ClockPolicy,
@@ -89,6 +94,7 @@ impl EngramConfiguration {
             return invalid("engram configuration revision must be greater than zero");
         }
         let mut configuration = Self {
+            scoped: input.scoped,
             format_version: input.format_version,
             revision,
             clock: input.clock,
@@ -105,6 +111,7 @@ impl EngramConfiguration {
 
     pub fn validate(&self) -> Result<()> {
         EngramConfigurationInput {
+            scoped: self.scoped.clone(),
             format_version: self.format_version,
             clock: self.clock.clone(),
             storage: self.storage.clone(),
@@ -189,6 +196,7 @@ impl Default for EngramConfiguration {
         Self::from_input(
             1,
             EngramConfigurationInput {
+                scoped: crate::ScopedConfiguration::default(),
                 format_version: ENGRAM_CONFIGURATION_FORMAT_VERSION,
                 clock: ClockPolicy {
                     maximum_rollback_ms: 0,
@@ -223,6 +231,7 @@ pub fn engram_configuration_sha256(configuration: &EngramConfiguration) -> Resul
         &configuration.recall,
         &configuration.query,
         &configuration.attunement_follow,
+        &configuration.scoped,
     ))
     .map_err(|error| {
         crate::ContractError(format!("configuration digest encoding failed: {error}"))

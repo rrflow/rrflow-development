@@ -1,5 +1,5 @@
 // Generated from rrd-contract; do not edit.
-// OpenAPI SHA-256: ecfce11ae9a7102165c116a6c73837fe0dd3940ce3f72120ee67acfa224cbc83
+// OpenAPI SHA-256: 604a580b61a3a69a7688f656a16d8928bd1402a67f3cb91cf8175e7c33b6a076
 namespace Rrflow.Rrd;
 
 public enum OperationId
@@ -24,6 +24,7 @@ public enum OperationId
     ChangefeedFollow,
     ChangefeedRead,
     ColdHistoryRead,
+    ConfigurationEffectiveRead,
     ContextAssemble,
     DataSchemaRead,
     DiagnosticsRead,
@@ -105,8 +106,8 @@ public sealed record Endpoint(
 
 public static class EndpointCatalog
 {
-    public const string OpenApiDocumentSha256 = "ecfce11ae9a7102165c116a6c73837fe0dd3940ce3f72120ee67acfa224cbc83";
-    public const int Count = 83;
+    public const string OpenApiDocumentSha256 = "604a580b61a3a69a7688f656a16d8928bd1402a67f3cb91cf8175e7c33b6a076";
+    public const int Count = 84;
 
     public static Endpoint Get(OperationId operation) => operation switch
     {
@@ -130,6 +131,7 @@ public static class EndpointCatalog
         OperationId.ChangefeedFollow => new("changefeed-follow", "POST", "/v1/changes/follow", Authentication.SessionBearer, false),
         OperationId.ChangefeedRead => new("changefeed-read", "POST", "/v1/changes/read", Authentication.SessionBearer, false),
         OperationId.ColdHistoryRead => new("cold-history-read", "POST", "/v1/storage/cold-history/read", Authentication.SessionBearer, false),
+        OperationId.ConfigurationEffectiveRead => new("configuration-effective-read", "POST", "/v1/configuration/effective/read", Authentication.SessionBearer, false),
         OperationId.ContextAssemble => new("context-assemble", "POST", "/v1/context/assemble", Authentication.SessionBearer, false),
         OperationId.DataSchemaRead => new("data-schema-read", "POST", "/v1/data/schema", Authentication.SessionBearer, false),
         OperationId.DiagnosticsRead => new("diagnostics-read", "POST", "/v1/diagnostics/read", Authentication.SessionBearer, false),

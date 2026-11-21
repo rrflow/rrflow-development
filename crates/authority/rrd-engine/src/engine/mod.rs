@@ -109,6 +109,7 @@ mod distributed;
 mod endpoint_configuration;
 mod endpoint_proposal;
 mod endpoint_worker;
+mod scoped_configuration;
 pub use endpoint_proposal::EndpointCredentials;
 mod engram;
 mod engram_control;

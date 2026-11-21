@@ -42,7 +42,8 @@ impl RrdEngine {
         request
             .validate()
             .map_err(|error| ServiceError::Contract(error.to_string()))?;
-        self.enforce_recall_configuration("memory.context.assemble", request)?;
+        let configuration =
+            self.enforce_recall_configuration("memory.context.assemble", request)?;
         let (security_policy_revision, authorization_sha256) = authorization.map_or_else(
             || {
                 Ok((
@@ -471,6 +472,7 @@ impl RrdEngine {
         plan.plan_sha256 = context_plan_sha256(&plan)
             .map_err(|error| ServiceError::Contract(error.to_string()))?;
         let mut packet = ContextPacket {
+            configuration,
             scope: request.scope.clone(),
             valid_at: request.valid_at,
             result_identity_version: rrd_core::result_identity::RESULT_IDENTITY_VERSION,

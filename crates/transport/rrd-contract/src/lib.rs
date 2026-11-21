@@ -9,6 +9,8 @@ mod attunement;
 mod capability_surface;
 mod cold_history;
 mod deployment;
+mod scoped_configuration;
+pub use scoped_configuration::*;
 mod diagnostic;
 mod storage_cursor;
 pub use storage_cursor::{InspectStorageCursor, StorageCursorAction, StorageCursorSnapshot};
@@ -101,14 +103,7 @@ pub use cold_history::{
     ColdHistoryFailure, ColdHistoryFailureCode, ColdHistoryGenerationSnapshot,
     ColdHistoryReadResult, ReadColdHistory,
 };
-pub use deployment::{
-    engram_configuration_sha256, AttunementFollowPolicy, ClockPolicy, ColdHistoryCompression,
-    ColdHistoryPolicy, DeploymentForm, DeploymentProfile, EndpointPresentation,
-    EngramConfiguration, EngramConfigurationInput, InstalledEngramIdentity, ReasoningLimits,
-    RecallLimits, StorageLimits, StorageProfileKind, DEPLOYMENT_PROFILE_CONTRACT_VERSION,
-    ENGRAM_CONFIGURATION_FORMAT_VERSION, MAX_CLOCK_ROLLBACK_MS, MAX_REASONING_RUN_ELAPSED_MS,
-    MAX_REASONING_STEPS, MAX_REASONING_STEP_ELAPSED_MS,
-};
+pub use deployment::*;
 pub use diagnostic::{
     DiagnosticAuthority, DiagnosticCoverage, DiagnosticGraphDifference,
     DiagnosticGraphRecordChange, DiagnosticGraphRecordSnapshot, DiagnosticGraphRelationChange,

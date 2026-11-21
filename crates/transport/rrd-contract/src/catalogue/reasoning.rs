@@ -3,6 +3,13 @@
 use crate::*;
 
 operations! {
+    ConfigurationEffectiveRead = "configuration-effective-read",
+        Post "/v1/configuration/effective/read",
+        SessionBearer,
+        false,
+        EngramRead,
+        ReadEffectiveConfiguration => EffectiveConfiguration,
+        Read;
     ContextAssemble = "context-assemble",
         Post "/v1/context/assemble",
         SessionBearer,

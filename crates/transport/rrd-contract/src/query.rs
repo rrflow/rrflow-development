@@ -286,6 +286,8 @@ pub struct QueryExecutionAnalysisSnapshot {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct QueryResult {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub configuration: Option<ConfigurationAdmission>,
     pub canonical_query: String,
     pub scope: String,
     pub read_manifest_sha256: String,

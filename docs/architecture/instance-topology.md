@@ -77,9 +77,11 @@ opens another project's state.
 defines global user requirements and defaults separately from each project's
 policies, preferences and knowledge. Binding that configuration does not create
 a personal or organization engram, grant access to other projects, or make a
-workspace an engine authority. The global persistence owner and cross-instance
-binding still require implementation at the canonical engine boundary; no
-mandatory cloud service or additional daemon is implied. Engrams and RRD
+workspace an engine authority. The initial
+[numeric implementation](../reference/deployment/scoped-configuration.md)
+uses an engine-owned private rrflowKV control source and explicit project
+bindings without a mandatory cloud service or additional daemon. Broader
+policies, live project editing and UI controls remain open. Engrams and RRD
 instances retain the project cardinality above.
 
 ### User-selected repository boundaries

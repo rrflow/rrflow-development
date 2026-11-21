@@ -15,6 +15,7 @@ fn identity() -> InstalledEngramIdentity {
 
 fn input() -> EngramConfigurationInput {
     EngramConfigurationInput {
+        scoped: rrd_contract::ScopedConfiguration::default(),
         format_version: ENGRAM_CONFIGURATION_FORMAT_VERSION,
         storage: rrd_contract::StorageLimits::default(),
         clock: ClockPolicy {

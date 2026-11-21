@@ -120,6 +120,7 @@ fn configured_cold_history_publishes_and_reads_after_process_restart() {
     std::fs::write(project.join("README.md"), "cold history project\n").unwrap();
     let default = rrd_contract::EngramConfiguration::default();
     let mut input = rrd_contract::EngramConfigurationInput {
+        scoped: rrd_contract::ScopedConfiguration::default(),
         format_version: default.format_version,
         clock: default.clock,
         storage: default.storage,

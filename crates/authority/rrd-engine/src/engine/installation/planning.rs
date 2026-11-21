@@ -91,6 +91,7 @@ impl RrdEngine {
         reject_existing_engram(&project)?;
         let (profile, profile_sha256) = DefaultInstallProfile::load(profile_id)?;
         let mut configuration = load_engram_configuration(configuration_path)?;
+        Self::validate_user_configuration_binding(&configuration)?;
         if let Some(follow) = options.attunement_follow {
             configuration = configuration
                 .with_attunement_follow(Some(follow))

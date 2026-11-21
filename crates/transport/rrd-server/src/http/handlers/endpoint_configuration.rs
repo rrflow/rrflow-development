@@ -1,6 +1,31 @@
 use super::super::*;
 
 impl AppState {
+    pub(in crate::http) fn read_effective_configuration(
+        &self,
+        headers: &HeaderMap,
+        body: &[u8],
+        now: u64,
+    ) -> HttpResponse {
+        self.with_authenticated_envelope::<rrd_contract::ReadEffectiveConfiguration, _, _>(
+            headers,
+            body,
+            now,
+            RrdOperation::EngramRead,
+            None,
+            |envelope, session, token| {
+                self.service
+                    .read_effective_configuration(
+                        session,
+                        token,
+                        &envelope.payload,
+                        &envelope.context,
+                        now,
+                    )
+                    .map_err(api_error)
+            },
+        )
+    }
     pub(in crate::http) fn read_endpoint_configuration(
         &self,
         headers: &HeaderMap,

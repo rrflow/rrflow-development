@@ -139,6 +139,7 @@ mod instances;
 mod lifecycle;
 mod plans;
 mod replan;
+mod scoped_configuration;
 
 use commands::*;
 use lifecycle::*;

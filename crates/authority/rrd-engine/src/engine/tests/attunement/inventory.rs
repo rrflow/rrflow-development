@@ -359,6 +359,7 @@ pub(super) fn inventory_larger_than_one_physical_batch_publishes_and_reopens() {
 pub(super) fn inventory_output_bound_preserves_runtime_checkpoint_and_head_after_reopen() {
     let defaults = rrd_contract::EngramConfiguration::default();
     let input = rrd_contract::EngramConfigurationInput {
+        scoped: rrd_contract::ScopedConfiguration::default(),
         format_version: defaults.format_version,
         clock: defaults.clock,
         storage: rrd_contract::StorageLimits {

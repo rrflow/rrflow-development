@@ -362,10 +362,13 @@ characterization tests and research provenance resolved from that candidate.
 H-09 consumes accepted source/projection output; project links remain H-10,
 and bidirectional synchronization remains H-07.
 
-D-01/D-06 configuration also owns the unimplemented global user binding and
-resolver in [ADR-0006](../../decisions/0006-scoped-policies-and-preferences.md).
-Before code, bind one RRFlow persistence owner and installed lifecycle for user
-configuration independently of project shutdown. The installed oracle must
+D-01/D-06 configuration also owns the global user binding and resolver in
+[ADR-0006](../../decisions/0006-scoped-policies-and-preferences.md). The initial
+[numeric implementation](../../reference/deployment/scoped-configuration.md)
+uses one private native rrflowKV control source, explicit installation bindings
+and local OS-owner publication independently of project shutdown. Its
+[installed evidence](../../evidence/change-journals/gate-d/scoped-configuration-foundation-20261121.md)
+does not close the broader configuration gate. The complete installed oracle must
 prove two isolated project instances use the same authorized user source,
 project preferences override defaults without weakening policies, conflicts
 and unavailable required sources refuse affected effects, and corrections

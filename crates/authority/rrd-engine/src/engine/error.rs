@@ -64,6 +64,8 @@ pub enum ServiceError {
     Function(String),
     FunctionLimit(String),
     ConfigurationLimit(String),
+    ConfigurationUnavailable(String),
+    ConfigurationConflict(String),
     FunctionNotFound,
     FunctionCatalogueRevisionNotFound,
     MemoryTargetNotFound,
@@ -122,7 +124,9 @@ impl ServiceError {
             | Self::TaskNotFound => ServiceErrorKind::NotFound,
             Self::Unauthenticated => ServiceErrorKind::Unauthenticated,
             Self::PermissionDenied => ServiceErrorKind::PermissionDenied,
-            Self::IdempotencyConflict | Self::InvocationInProgress => ServiceErrorKind::Conflict,
+            Self::IdempotencyConflict
+            | Self::InvocationInProgress
+            | Self::ConfigurationConflict(_) => ServiceErrorKind::Conflict,
             Self::SessionExpired
             | Self::TransactionExpired
             | Self::TransactionClosed
@@ -144,7 +148,8 @@ impl ServiceError {
             | Self::EndpointCallFailed { .. }
             | Self::ProjectBindingMismatch
             | Self::AttunementSourceChanged
-            | Self::EngramInUse(_) => ServiceErrorKind::FailedPrecondition,
+            | Self::EngramInUse(_)
+            | Self::ConfigurationUnavailable(_) => ServiceErrorKind::FailedPrecondition,
             Self::TransactionQuota
             | Self::StorageAdmission(_)
             | Self::InferenceBusy

@@ -337,6 +337,9 @@ pub(crate) fn request_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "CreateInstanceBackup" => schema_json::<RequestEnvelope<CreateInstanceBackup>>(),
         "CreateSession" => schema_json::<RequestEnvelope<CreateSession>>(),
         "ExecuteQuery" => schema_json::<RequestEnvelope<ExecuteQuery>>(),
+        "ReadEffectiveConfiguration" => {
+            schema_json::<RequestEnvelope<ReadEffectiveConfiguration>>()
+        }
         "ReadEndpointConfiguration" => schema_json::<RequestEnvelope<ReadEndpointConfiguration>>(),
         "PreviewEndpointConfiguration" => {
             schema_json::<RequestEnvelope<PreviewEndpointConfiguration>>()
@@ -472,6 +475,7 @@ pub(crate) fn response_envelope_schema(name: &str) -> Result<serde_json::Value> 
         "OpenApiDocument" => schema_json::<ResponseEnvelope<serde_json::Value>>(),
         "OpenSubscriptionResult" => schema_json::<ResponseEnvelope<OpenSubscriptionResult>>(),
         "QueryResult" => schema_json::<ResponseEnvelope<QueryResult>>(),
+        "EffectiveConfiguration" => schema_json::<ResponseEnvelope<EffectiveConfiguration>>(),
         "EndpointConfiguration" => schema_json::<ResponseEnvelope<EndpointConfiguration>>(),
         "EndpointConfigurationPlan" => schema_json::<ResponseEnvelope<EndpointConfigurationPlan>>(),
         "QueryExport" => schema_json::<ResponseEnvelope<QueryExport>>(),
