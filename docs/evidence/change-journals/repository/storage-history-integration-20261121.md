@@ -29,3 +29,60 @@ required candidate plus queue remain mandatory. No new research, benchmark,
 cloud operation or profiler needed for history integration. Stop on lost
 behavior/assertion, misleading diagnostics or red CI. No no-loss parity,
 performance, soak or alpha completion claim; other archives remain pending.
+
+## Resolutions and traceability
+
+Ordinary source merges: backup scheduling a21c1755, run-progress 8affe664,
+flush-stall record b424ff94, CLD/index decoder 940e8409, consolidation
+82b459a9. PR135 was already an ancestor after run-progress; no duplicate merge
+was created. All six source tips are ancestors of this candidate. There is no
+application delta against fec02e37 from these source merges.
+
+Read the incoming storage evidence, coldlight module, diagnostic projection,
+vector search calls, index decoder, contract/test additions, consolidation
+journal and conflict hunks. Read current coldlight, diagnostic/storage.rs,
+vector/search/operations.rs, execute/read_path.rs, contract diagnostic sections
+and validation, public_contract/vectors_and_audit.rs and HNSW read-path tests.
+The cold-source counters remain process-local observations; they do not replace
+rrflowCLD's current cold-history authority. Search keeps engine observation time
+rather than the earlier request valid-time coordinate. The bounded decoder
+retains strict envelope/version/source/maintenance validation and counts the
+whole array while only materializing the admitted result prefix.
+
+The current split modules already contain the recovered implementation. The
+old inline execute, diagnostic, vector-search and contract files are not
+reintroduced over them. The old public_contract.rs was removed from the merge;
+its added optional-counter fixture field remains in the current split test.
+Current generated contracts and SDK identities remain bound to today's owner.
+Current CLD journal correctly records the later split package; it is retained
+instead of restoring the earlier combined-package account.
+
+Both recovered HNSW oracles remain in hnsw_read_path.rs: distinct source
+addresses cannot collide, and an emptied generation cannot answer for another
+collection. Their only conflict was the old estate helper name; current engram
+is retained with all assertions. Source-bound design retains current immutable
+job identity and naming. The flush-stall record retains POAM-087, where the
+missing deficiency was actually restored; old POAM-056 now names another gap.
+Current native failure evidence and later gate results are not overwritten by
+older progress descriptions. Existing consolidation/parser/snapshot journals
+remain, without adopting their broad absorption wording as current proof.
+
+## Verification
+
+Focused and owning-suite results are being recorded below. Existing same-tree
+storage evidence from PR460/461 is reusable only for unchanged application
+behavior: LSM 276 passed/3 ignored, backup 6, management 3, qualification 54,
+installed reopen 39 passed/14 ignored. No new performance or parity conclusion
+follows from those tests or these source merges. Other archive work remains.
+
+The focused coldlight test passed (1), HNSW read-path suite passed (14), engine
+diagnostic suite passed (9), and the complete default-feature rrd-query suite
+passed (87 tests across 13 suites; doc tests empty). Initial PowerShell stream
+redirection reported wrapper exit 1 despite all test results being green; each
+command was rerun through Python subprocess with stdout/stderr captured and
+explicit Cargo exits, all 0. The repeated run resolves the wrapper ambiguity;
+it did not change tests or code. Optional feature matrices were not run locally.
+`python scripts/knowledge/render_navigation.py`,
+`python scripts/ci/check_documentation.py`, `cargo fmt --check` and
+`git diff --check` passed. Candidate and merge-queue gates remain required.
+No roadmap/POA&M status was advanced.
