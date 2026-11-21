@@ -7,6 +7,13 @@
 
 This record continues the [DevWorld owner direction](devworld-owner-direction-20261116.md) of the same day. It covers what the owner said afterwards, in a planning conversation with an AI session. That conversation is not in the repository; the passages below are the only copy.
 
+**Current terminology, 2026-11-20:** [ADR-0006](../decisions/0006-scoped-policies-and-preferences.md)
+supersedes ADR-0005's global personal/org engrams with **User policies and
+preferences**, distinct from each project's engram and instance. Quotations,
+questions and mappings below preserve the earlier conversation. Project
+preferences may override defaults; they cannot weaken applicable user or
+organization policies. The current configuration gap remains POAM-077.
+
 ## The owner's words
 
 Excerpts, in the order they were said. Typos are the owner's and are kept.

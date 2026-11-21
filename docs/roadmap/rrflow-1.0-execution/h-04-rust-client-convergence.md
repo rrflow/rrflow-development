@@ -70,7 +70,7 @@ Surveyed on `development/main` at `a4e32942`:
   - the client's single call path;
   - retry by class.
 
-  The owner put the prototype first on 2026-11-14 (Connectome reaches every operation through the TypeScript SDK), so these wait behind the development loop and the second brain.
+  The owner put the prototype first on 2026-11-14 (Connectome reaches every operation through the TypeScript SDK), so these wait behind the development loop and user policies and preferences ([ADR-0006](../../decisions/0006-scoped-policies-and-preferences.md)).
 
 ## Not in this package
 

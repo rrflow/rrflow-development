@@ -31,6 +31,15 @@ A code read at `de435238` on 2026-11-11 found these gaps.
 
 ## Impact
 
+The 2026-11-20 documentation review also found a design contradiction:
+ADR-0005 prescribed personal/org engrams while the instance topology reserves
+engrams for projects. [ADR-0006](../../decisions/0006-scoped-policies-and-preferences.md)
+supersedes that design with global **User policies and preferences** and
+project-scoped configuration. The durable global source, authorized binding
+and temporal resolver are still unimplemented; correcting terminology does
+not close this gap. Users must be able to define enforced minimum requirements
+as well as overridable preferences.
+
 No contributor can be tuned or measured on a real installation without reinstalling. The owner's requirement that every threshold be configurable and measured cannot be met. That requirement is decision 3 and package J9 of the [one-engine joins plan](../../roadmap/one-engine-joins-engineering-plan.md).
 
 ## Owning gates
@@ -47,3 +56,11 @@ Closed when all of the following hold:
 - The hardcoded values above are settings in it.
 - A read shows each effective value, its unit, its source and whether it applies now or after a restart.
 - An installed test changes one setting and observes the effect.
+- The ADR-0006 installed acceptance proves shared user configuration across
+  two isolated project instances, governed project overrides, required user
+  policies, explicit conflicts and unavailable-source behavior, temporal
+  correction/restart, concurrent revision checks and configuration survival
+  across project shutdown. The physical persistence owner is bound before code.
+- Connectome explains effective values through the same public contracts,
+  distinguishing user/project scope and enforced requirements from defaults;
+  no client store becomes a second authority and no project sharing is implied.

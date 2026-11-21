@@ -5,7 +5,12 @@
 **Owner:** records, verbatim, what the repository owner said DevWorld is on 2026-11-16, and maps each part to the record that owns it or to none; the [roadmap](rrflow-1.0.md) and [POA&M](../poam/rrflow-1.0-alpha.md) keep status authority
 **Verified against:** `main` at `acf8f6231` on 2026-11-16, by searching `docs/` and `README.md` for the terms named in each row
 
-DevWorld is the owner's name for what the repository calls the second brain ([ADR-0005](../decisions/0005-second-brain-personal-and-org-engrams.md)). The name appeared nowhere in the repository before this record.
+**Current terminology, 2026-11-20:** [ADR-0006](../decisions/0006-scoped-policies-and-preferences.md)
+replaces the names and personal/org engram design below with **User policies
+and preferences**, reserving engrams and instances for projects. The quotations
+and mapping below preserve the 2026-11-16 conversation, not current topology or
+implementation status. Naming question 1 is resolved by ADR-0006; sharing and
+import still need an authorized contract, not a personal-engram implementation.
 
 ## The owner's words
 

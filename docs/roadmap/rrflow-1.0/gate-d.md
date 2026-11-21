@@ -362,6 +362,16 @@ characterization tests and research provenance resolved from that candidate.
 H-09 consumes accepted source/projection output; project links remain H-10,
 and bidirectional synchronization remains H-07.
 
+D-01/D-06 configuration also owns the unimplemented global user binding and
+resolver in [ADR-0006](../../decisions/0006-scoped-policies-and-preferences.md).
+Before code, bind one RRFlow persistence owner and installed lifecycle for user
+configuration independently of project shutdown. The installed oracle must
+prove two isolated project instances use the same authorized user source,
+project preferences override defaults without weakening policies, conflicts
+and unavailable required sources refuse affected effects, and corrections
+preserve historical resolution after restart. This extends [POAM-077](../../poam/rrflow-1.0-alpha/poam-077.md)
+acceptance, not completed D-06 evidence; H-06 consumes generated explanations.
+
 ## DuckDB interoperability packages
 
 **Withdrawn by the owner:** the earlier DuckDB interoperability and optional-worker

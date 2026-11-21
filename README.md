@@ -15,6 +15,15 @@ and review understandable without hiding their limits. The existing roadmap's
 [project-to-learning journey](docs/roadmap/rrflow-1.0/executable-dependency-spine.md#project-to-learning-acceptance-journey)
 maps that experience to its implementation dependencies and real-world tests.
 
+The target configuration model distinguishes **User policies and preferences**
+(global user constraints, minimum requirements and overridable defaults) from
+**Project policies and preferences**. Each project retains its own engram and
+RRD instance. **Effective configuration** explains which requirements and
+preferences apply; a project preference cannot weaken a user policy.
+[Scoped policies and preferences](docs/decisions/0006-scoped-policies-and-preferences.md)
+owns the sourced terminology and resolution contract. The global binding and
+resolver remain unimplemented ([POAM-077](docs/poam/rrflow-1.0-alpha/poam-077.md)).
+
 **rrflowDB is RRFlow's native Rust, AI-oriented multi-model database.** Its
 target includes relational tables, documents, durable and dynamically derived
 relationships, graphs, vectors, memory, reasoning state and evidence under one
@@ -194,6 +203,7 @@ pre-alpha status remain authoritative.
 | Need | Single owning record |
 |---|---|
 | Understand the product, components, and boundaries | [RRFlow system overview](docs/architecture/system-overview.md) |
+| Distinguish global user requirements, project preferences and effective configuration | [Scoped policies and preferences](docs/decisions/0006-scoped-policies-and-preferences.md) |
 | Follow researched scale, bounded execution, input/schema and signal decisions into their owning implementation packages | [RRFlow scale and contract rationale](docs/architecture/engine-scale-and-contracts.md) |
 | Configure CPU analysis, System One model selection and scoped inference caches | [LFG and SWAG target contract](docs/reference/inference/lfg-swag.md) |
 | Prepare Spark experiments, qualify SWAG candidates and govern RROFLOW improvement | [Learning reference](docs/reference/inference/learning/README.md) |
