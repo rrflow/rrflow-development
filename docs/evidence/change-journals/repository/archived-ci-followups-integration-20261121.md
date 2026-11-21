@@ -27,3 +27,35 @@ No new native runtime qualification, external research, UI action or new tracing
 is needed for this source integration. Preserve newer selectors and qualification
 policy. Stop on unmapped source, lost assertions, oversized history or red gate.
 No roadmap status is promoted. Continue remaining archives after this package.
+
+## Integration and checks
+
+Ordinary merges: 78ffcec6 (lifecycle), 584296a1 (main alarms), 7729dca5
+(workspace package selection), 203c6a93 (native teardown history). No CI script
+or test delta remains against the baseline. The first two merged cleanly;
+package selection retained current nested-member and containing-member tests
+and newer unknown-package workspace compilation policy. Current workspace
+lookup reads explicit Cargo members at any depth and chooses the longest
+containing directory. The native trial's four DeviceRelease tests describe a
+superseded algorithm; current template/held-output recovery and tests remain.
+Its recovered journal is explicitly historical with a link to current POAM-074.
+
+Read original source diffs, current workspace_packages.py and the touched
+selector/alarm/lifecycle symbols, complete current POAM-074, source teardown
+algorithm/tests/journal and source/current conflict regions. No third-parent
+untracked tree exists on these three stash objects. No tests were removed from
+the current suite and no provider, UI or native campaign was activated.
+
+Acceptance commands: python scripts/ci/test_select_ci_lanes.py: 20 passed;
+test_ci_lanes_policy.py: 12 passed; test_merge_alarm.py: 10 passed;
+test_offline_lifecycle.py: 29 run, 7 skipped; test_native_capacity.py: 49 run,
+6 skipped. Each exited 0. python scripts/ci/check_workflow.py passed. Full log:
+D:/.usr/Temp/rrflow-project-policy-20261121/ci-followups-tests.log.
+Windows policy tests do not establish real macOS busy-image recovery.
+
+Change-authoring checklist: brief recorded in PR475 before source merges;
+source behaviors and failure semantics mapped to current owners; conflicts read
+before resolution; canonical later cleanup retained; historical evidence
+identified; bounded tests run; no new research, tracing or resource mechanism;
+no roadmap completion or POAM closure. Documentation/navigation checks and
+candidate/queue remain the landing conditions. Remaining archives are open work.
