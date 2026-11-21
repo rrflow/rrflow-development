@@ -226,6 +226,12 @@ def test_installed_python_stale_plan_replans_and_starts(
                     options("read", session=session),
                 )
                 assert before["status"]["job"]["revision"] == current_revision
+                if selected_progress:
+                    assert [step["description"] for step in before["plan"]["phases"]] == [
+                        "first",
+                        "second",
+                        "verify",
+                    ]
                 replan = client.call(
                     "attunement-replan-preview",
                     {
@@ -301,6 +307,18 @@ def test_installed_python_stale_plan_replans_and_starts(
             assert reopened["status"] == "listening"
             assert reopened["instance_id"] == announcement["instance_id"]
             with RrdClient(reopened["url"], reopened["instance_id"], max_attempts=1) as client:
+                if selected_progress:
+                    restored = client.call(
+                        "attunement-read",
+                        {"contract_version": plan["contract_version"], "job_id": successor["id"]},
+                        options("restored-plan", session=session),
+                    )
+                    assert restored["plan"]["plan_sha256"] == accepted["plan"]["plan_sha256"]
+                    assert [step["description"] for step in restored["plan"]["phases"]] == [
+                        "first",
+                        "second",
+                        "verify",
+                    ]
                 receipt = client.call(
                     "attunement-replan-receipt-read",
                     {
