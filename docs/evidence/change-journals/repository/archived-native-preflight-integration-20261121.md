@@ -34,3 +34,61 @@ trace is needed for this integration; native long-run capacity and real-world
 reasoning optimization remain unqualified. Stop on unmapped source, discarded
 assertion, new platform behavior or red CI. Driver: this session; PR472 is an
 independent history package. Continue remaining archives after this lands.
+
+## Source resolution
+
+Ordinary source merges 16d5038d and 31edd225, followed by green PR472 main
+in 0c11cfa8. Both source trees are identical; the second resolution used the
+same bounded map. No application/test/CI delta remains versus the joined main.
+Initial resolution stopped on a moved test entry point before committing;
+read the old restart-range assertion and confirmed its current owner in
+CLI support/running_engine.rs, then resumed the same merge. No archive or
+worktree was created and no current file was deleted.
+
+The cursor contract, engine and KV owners retain OpenRange/OpenRecordKind,
+ordered half-open key validation, finite page/lifetime budgets, scoped kind
+selection, session authorization, idempotent opening, expiry and release.
+The physical profile counters and clone-capacity recalculation remain in LSM
+memtable; its independent physical-traversal test remains. Store tests retain
+bounded pin admission and pages across maintenance. Public-contract tests now
+live in public_contract/storage_cursor.rs; the old monolithic test entry is
+removed because its assertions live in that existing test target.
+
+The source sustained.rs additions were read across sampling, correlation,
+point scheduling, held-sample progress, interruption, replay and shutdown.
+Current owners: sustained.rs composes campaign.rs, point_run.rs,
+capacity_workload.rs, workload/run.rs, sample_task.rs, sample_trace.rs and
+native_worker.rs. Current PointRun additionally uses start_sample_at and
+observed sample deadlines. The same held-helper ACK, interruption/reaping,
+readback and idempotent-replay assertions remain in capacity_workload.rs.
+ReaderSelection is owned by rrflow-qualification-storage; the old eval path
+is removed. Native worker image, process allocation and correlation owners
+remain. Contract catalogue/SDK output retains today's generated identity.
+
+Current CI selects the split test names, adds the later stale-snapshot conflict
+oracle, uses the selected-case macOS preflight, and preserves held-output
+metadata, bounded native-command capture and finished-busy retries. Those
+later fixes supersede the trial's earlier one-create expectation. Current
+process trace observers and redaction stay intact. Historical evidence and
+POAM-035 retain their later state; this integration does not reopen old run
+results as new capacity evidence or close any qualification gate.
+
+## Local validation
+
+- Engine storage_cursor: 5 passed; contract storage_cursor: 6 passed.
+- Store storage_inspection and direct_read_paths: 4 + 4 passed.
+- LSM memtable-filtered cases: 13 passed across selected targets; qualification
+  reader-selection identity: 1 passed. Zero-selected targets are not counted.
+- CLI installed_reopen: 39 passed, 14 explicitly ignored qualification/helpers.
+- Explicit installed sampler/server/store correlation and reopen: 1 passed
+  (`sustained::campaign::installed_sampler_trace_matches_server_and_store`,
+  --exact --ignored --nocapture). No full soak or loaded 4k claim.
+- workspace_architecture: 35 passed; workflow/documentation/navigation and
+  git diff --check passed. An initial mistyped check_docs.py command did not
+  run a check; corrected to scripts/ci/check_documentation.py, exit 0.
+- Python native-capacity suite: 49 run, 6 platform-specific skips, exit 0.
+  Native Windows membership/death/timeout and remaining script checks pending;
+  release harness compilation is still running. Candidate remains draft.
+
+Cargo subprocess exits were 0, logs native-preflight-*.log under the session
+external evidence directory. No source behavior changed in this package.
