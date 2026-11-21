@@ -118,3 +118,8 @@ tests passed. `cargo clippy -p rrd-engine --lib --locked -- -D warnings` passed.
 The complete logged acceptance run exited zero. Navigation, documentation,
 formatting and whitespace checks passed; no ignored qualification test was
 enabled or represented as passing.
+
+Joined green PR484 main db97d68c1ca9c432a186c4de159a5b8f634ec8b6 after acceptance.
+That join changes only its journal and index; tested runtime and test files are
+unchanged. PR484 remote branch was automatically deleted; its local branch was
+deleted normally after main advanced.
