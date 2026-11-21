@@ -20,7 +20,7 @@ two tests and README change before implementation. Map inventory/digests to
 current Git-based build_execution_inventory.py and governed engine inventory;
 map one engine and client separation to RrdEngine and the pinned submodule.
 ADR-0002 supersedes its mandatory shape-before-all-thinking sequence. Do not
-restore vyrm-node, .vyrm state, a duplicate filesystem crawler or a second
+restore the retired engine name/state directory, a duplicate crawler or a second
 planning authority. Preserve useful deterministic-inventory behavior and tests
 at the current owner if missing. No runtime rewrite or endpoint activation.
 
@@ -49,7 +49,7 @@ was removed; the original current paragraph remains unchanged.
 The consolidation branch's one-engine requirement maps to RrdEngine, client
 separation to connectome/ and its public contract, and deterministic repository
 shape to build_execution_inventory.py. ADR-0002 explicitly rejects requiring
-a complete shape before exploratory thought. The old vyrm-node contract and
+a complete shape before exploratory thought. The retired engine contract and
 crawler are not introduced as competing owners. Its useful repeatability,
 sorted-path and build-noise exclusion oracle is carried into
 ConflictFreeInventoryTests.test_inventory_is_deterministic_sorted_and_ignores_build_state.
@@ -66,3 +66,14 @@ Connectome native parity remain unfinished; no roadmap status is advanced.
 
 Navigation generation, documentation policy, workflow policy and diff whitespace
 checks passed. Candidate and merge-queue checks remain pending.
+
+
+Candidate 44938940719 failed workspace_architecture (34 passed, 1 failed): this
+journal quoted a retired product identity forbidden in active repository text.
+The journal now names it descriptively; the original remains identifiable by
+source commit. No architecture check or exclusion was weakened. Merge-blocked
+issue 470 stays open until the repaired candidate lands. Joined green main
+6119e22a before the repair. Revalidation and fresh candidate are required.
+
+Repair validation: `cargo test --locked -p rrd-engine --test workspace_architecture`
+passed all 35 tests with Cargo exit 0.
