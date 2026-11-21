@@ -1,0 +1,1360 @@
+{
+  "format_version": 1,
+  "baseline": "cebc33df1ac3ab0e54209a3544f4c882b7531653",
+  "current_candidate": "cbcaa8819700a66010fe343221216827af66942c",
+  "required_integration_candidate": "d1b66d407fd17dc150f58dcbee6f8a24f5b1bcc4",
+  "qualification": "Source provenance only; candidate ancestry is not a main/behavior/qualification claim. Journals own review and acceptance evidence.",
+  "checkpoint_versions": [
+    {
+      "path": "docs/reference/client/connectome.md",
+      "blob": "8c6be88a9e156dd8b776715e9b5ce1ef8a018646",
+      "refs": [
+        "refs/agents/64a3f85d-bf84-4fcc-bc18-643b9b09d8e4/checkpoints/turn/16",
+        "refs/agents/64a3f85d-bf84-4fcc-bc18-643b9b09d8e4/checkpoints/turn/17"
+      ],
+      "nearest_recovered_source_blob": "cad983c98961958175ac06725b8c34f005734fc6",
+      "delta_lines": 18,
+      "disposition": "Intermediate documentation wording; current reference/evaluation owner retains the later capabilities and explicit limits.",
+      "review": "Complete nearest-source delta reviewed."
+    },
+    {
+      "path": "docs/reference/client/connectome.md",
+      "blob": "214d5a6632126c74d4ce5b028e4bbc757f416495",
+      "refs": [
+        "refs/agents/64a3f85d-bf84-4fcc-bc18-643b9b09d8e4/checkpoints/turn/18"
+      ],
+      "nearest_recovered_source_blob": "cad983c98961958175ac06725b8c34f005734fc6",
+      "delta_lines": 17,
+      "disposition": "Intermediate documentation wording; current reference/evaluation owner retains the later capabilities and explicit limits.",
+      "review": "Complete nearest-source delta reviewed."
+    },
+    {
+      "path": "docs/reference/client/connectome.md",
+      "blob": "8175e38074217170ca4c7cb3cb127034cc1e2cfe",
+      "refs": [
+        "refs/agents/64a3f85d-bf84-4fcc-bc18-643b9b09d8e4/checkpoints/turn/19",
+        "refs/agents/64a3f85d-bf84-4fcc-bc18-643b9b09d8e4/checkpoints/turn/20"
+      ],
+      "nearest_recovered_source_blob": "cad983c98961958175ac06725b8c34f005734fc6",
+      "delta_lines": 12,
+      "disposition": "Intermediate documentation wording; current reference/evaluation owner retains the later capabilities and explicit limits.",
+      "review": "Complete nearest-source delta reviewed."
+    },
+    {
+      "path": "docs/reference/client/connectome.md",
+      "blob": "9ec8bc4e2979170f2ff394668eb306e3bca3d9f4",
+      "refs": [
+        "refs/agents/64a3f85d-bf84-4fcc-bc18-643b9b09d8e4/checkpoints/turn/21"
+      ],
+      "nearest_recovered_source_blob": "cad983c98961958175ac06725b8c34f005734fc6",
+      "delta_lines": 12,
+      "disposition": "Intermediate documentation wording; current reference/evaluation owner retains the later capabilities and explicit limits.",
+      "review": "Complete nearest-source delta reviewed."
+    },
+    {
+      "path": "crates/authority/rrd-engine/src/engine/diagnostic.rs",
+      "blob": "1d316abf3eb27a687ef9b40235237bd25a9fbfb2",
+      "refs": [
+        "refs/agents/bf5ade5d-85cf-4752-97e5-1a828c4de277/checkpoints/turn/18"
+      ],
+      "disposition": "CLD counters already wired through runtime/coldlight.rs, engine/diagnostic/storage.rs and contract/diagnostic/sections.rs; current observed-clock correction retained.",
+      "review": "Checkpoint turn 17 to 18 diagnostic delta and current destination reviewed."
+    },
+    {
+      "path": "crates/transport/rrd-contract/src/lib.rs",
+      "blob": "c21a5bf9ed20d550f81cd39806fa35f7f9bd0ab8",
+      "refs": [
+        "refs/agents/bf5ade5d-85cf-4752-97e5-1a828c4de277/checkpoints/turn/18"
+      ],
+      "disposition": "CLD counters already wired through runtime/coldlight.rs, engine/diagnostic/storage.rs and contract/diagnostic/sections.rs; current observed-clock correction retained.",
+      "review": "Checkpoint turn 17 to 18 diagnostic delta and current destination reviewed."
+    },
+    {
+      "path": "eval/README.md",
+      "blob": "04054b1e13268a2b880cd6f8bc3c4177c8857e2b",
+      "refs": [
+        "refs/agents/bf5ade5d-85cf-4752-97e5-1a828c4de277/checkpoints/turn/5"
+      ],
+      "nearest_recovered_source_blob": "83f2875364d121016fa3874ad19821cbfa30304b",
+      "delta_lines": 30,
+      "disposition": "Intermediate documentation wording; current reference/evaluation owner retains the later capabilities and explicit limits.",
+      "review": "Complete nearest-source delta reviewed."
+    },
+    {
+      "path": "scripts/evaluation/run-real-project-workbench.ps1",
+      "blob": "691c8e9c2781eaab3965f87f6397c7b43ceae5f9",
+      "refs": [
+        "refs/agents/bf5ade5d-85cf-4752-97e5-1a828c4de277/checkpoints/turn/5"
+      ],
+      "nearest_recovered_source_blob": "f0a480525a46c893970c7699a7eabbd8cf55e7d1",
+      "delta_lines": 100,
+      "disposition": "Current script is byte-identical to final e305e80 source; checkpoint versions precede required plan, prompt-set and dev-history support. No workload executed.",
+      "review": "Two complete nearest-source patches and all additions/hunks of the third reviewed."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-h/h-06-connectome-workbench-recovery-20261108.md",
+      "blob": "637a3e7d291cfc38b6f70f42a86bf2881c1dd882",
+      "refs": [
+        "refs/agents/bf5ade5d-85cf-4752-97e5-1a828c4de277/checkpoints/turn/57",
+        "refs/agents/bf5ade5d-85cf-4752-97e5-1a828c4de277/checkpoints/turn/58"
+      ],
+      "nearest_recovered_source_blob": "7a81fd3468292ddb99cf7b9114440588f1cb69cb",
+      "delta_lines": 437,
+      "disposition": "Intermediate journal drafts; final source record retained. Unique additions are pending-review wording superseded by later evidence, not missing implementation.",
+      "review": "All checkpoint-only added lines reviewed against nearest recovered final record; removed later sections retained."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-h/h-06-connectome-workbench-recovery-20261108.md",
+      "blob": "4c684efe46553d264f529f9c463c9d128f330219",
+      "refs": [
+        "refs/agents/bf5ade5d-85cf-4752-97e5-1a828c4de277/checkpoints/turn/59"
+      ],
+      "nearest_recovered_source_blob": "7a81fd3468292ddb99cf7b9114440588f1cb69cb",
+      "delta_lines": 369,
+      "disposition": "Intermediate journal drafts; final source record retained. Unique additions are pending-review wording superseded by later evidence, not missing implementation.",
+      "review": "All checkpoint-only added lines reviewed against nearest recovered final record; removed later sections retained."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-h/h-06-connectome-workbench-recovery-20261108.md",
+      "blob": "4f40fd2bd7a3c98e4b4efee0ba23c32d2706aa01",
+      "refs": [
+        "refs/agents/bf5ade5d-85cf-4752-97e5-1a828c4de277/checkpoints/turn/60"
+      ],
+      "nearest_recovered_source_blob": "7a81fd3468292ddb99cf7b9114440588f1cb69cb",
+      "delta_lines": 331,
+      "disposition": "Intermediate journal drafts; final source record retained. Unique additions are pending-review wording superseded by later evidence, not missing implementation.",
+      "review": "All checkpoint-only added lines reviewed against nearest recovered final record; removed later sections retained."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-h/h-06-connectome-workbench-recovery-20261108.md",
+      "blob": "beacf9314171631950a95288de68530556af641d",
+      "refs": [
+        "refs/agents/bf5ade5d-85cf-4752-97e5-1a828c4de277/checkpoints/turn/61",
+        "refs/agents/bf5ade5d-85cf-4752-97e5-1a828c4de277/checkpoints/turn/62"
+      ],
+      "nearest_recovered_source_blob": "7a81fd3468292ddb99cf7b9114440588f1cb69cb",
+      "delta_lines": 276,
+      "disposition": "Intermediate journal drafts; final source record retained. Unique additions are pending-review wording superseded by later evidence, not missing implementation.",
+      "review": "All checkpoint-only added lines reviewed against nearest recovered final record; removed later sections retained."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-h/h-06-connectome-workbench-recovery-20261108.md",
+      "blob": "7fbdd4d5a7b749e67b453cc212629ff27862376a",
+      "refs": [
+        "refs/agents/bf5ade5d-85cf-4752-97e5-1a828c4de277/checkpoints/turn/63",
+        "refs/agents/bf5ade5d-85cf-4752-97e5-1a828c4de277/checkpoints/turn/64"
+      ],
+      "nearest_recovered_source_blob": "7a81fd3468292ddb99cf7b9114440588f1cb69cb",
+      "delta_lines": 253,
+      "disposition": "Intermediate journal drafts; final source record retained. Unique additions are pending-review wording superseded by later evidence, not missing implementation.",
+      "review": "All checkpoint-only added lines reviewed against nearest recovered final record; removed later sections retained."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-h/h-06-connectome-workbench-recovery-20261108.md",
+      "blob": "793b81cea2bdc45a42ba04dcdb0fbc97c8438589",
+      "refs": [
+        "refs/agents/bf5ade5d-85cf-4752-97e5-1a828c4de277/checkpoints/turn/65"
+      ],
+      "nearest_recovered_source_blob": "7a81fd3468292ddb99cf7b9114440588f1cb69cb",
+      "delta_lines": 185,
+      "disposition": "Intermediate journal drafts; final source record retained. Unique additions are pending-review wording superseded by later evidence, not missing implementation.",
+      "review": "All checkpoint-only added lines reviewed against nearest recovered final record; removed later sections retained."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-h/h-06-connectome-workbench-recovery-20261108.md",
+      "blob": "7418b41878bd2ec58ebcc800bad272cd9e673260",
+      "refs": [
+        "refs/agents/bf5ade5d-85cf-4752-97e5-1a828c4de277/checkpoints/turn/66",
+        "refs/agents/bf5ade5d-85cf-4752-97e5-1a828c4de277/checkpoints/turn/67"
+      ],
+      "nearest_recovered_source_blob": "7a81fd3468292ddb99cf7b9114440588f1cb69cb",
+      "delta_lines": 139,
+      "disposition": "Intermediate journal drafts; final source record retained. Unique additions are pending-review wording superseded by later evidence, not missing implementation.",
+      "review": "All checkpoint-only added lines reviewed against nearest recovered final record; removed later sections retained."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-h/h-06-connectome-workbench-recovery-20261108.md",
+      "blob": "961f22bdfd68f82e771e578ecbac01453a994c5c",
+      "refs": [
+        "refs/agents/bf5ade5d-85cf-4752-97e5-1a828c4de277/checkpoints/turn/68",
+        "refs/agents/bf5ade5d-85cf-4752-97e5-1a828c4de277/checkpoints/turn/69",
+        "refs/agents/bf5ade5d-85cf-4752-97e5-1a828c4de277/checkpoints/turn/70",
+        "refs/agents/bf5ade5d-85cf-4752-97e5-1a828c4de277/checkpoints/turn/71",
+        "refs/agents/bf5ade5d-85cf-4752-97e5-1a828c4de277/checkpoints/turn/72",
+        "refs/agents/bf5ade5d-85cf-4752-97e5-1a828c4de277/checkpoints/turn/73",
+        "refs/agents/bf5ade5d-85cf-4752-97e5-1a828c4de277/checkpoints/turn/74",
+        "refs/agents/bf5ade5d-85cf-4752-97e5-1a828c4de277/checkpoints/turn/75",
+        "refs/agents/bf5ade5d-85cf-4752-97e5-1a828c4de277/checkpoints/turn/76",
+        "refs/agents/bf5ade5d-85cf-4752-97e5-1a828c4de277/checkpoints/turn/77"
+      ],
+      "nearest_recovered_source_blob": "7a81fd3468292ddb99cf7b9114440588f1cb69cb",
+      "delta_lines": 85,
+      "disposition": "Intermediate journal drafts; final source record retained. Unique additions are pending-review wording superseded by later evidence, not missing implementation.",
+      "review": "All checkpoint-only added lines reviewed against nearest recovered final record; removed later sections retained."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-h/h-06-connectome-workbench-recovery-20261108.md",
+      "blob": "45eecc3ab2d2f42a9521dcce37537293475f0225",
+      "refs": [
+        "refs/agents/bf5ade5d-85cf-4752-97e5-1a828c4de277/checkpoints/turn/78"
+      ],
+      "nearest_recovered_source_blob": "7a81fd3468292ddb99cf7b9114440588f1cb69cb",
+      "delta_lines": 45,
+      "disposition": "Intermediate journal drafts; final source record retained. Unique additions are pending-review wording superseded by later evidence, not missing implementation.",
+      "review": "All checkpoint-only added lines reviewed against nearest recovered final record; removed later sections retained."
+    },
+    {
+      "path": "eval/README.md",
+      "blob": "e472a1f49a3895a25654085005669ff3995aed26",
+      "refs": [
+        "refs/agents/bf5ade5d-85cf-4752-97e5-1a828c4de277/checkpoints/turn/8"
+      ],
+      "nearest_recovered_source_blob": "83f2875364d121016fa3874ad19821cbfa30304b",
+      "delta_lines": 25,
+      "disposition": "Intermediate documentation wording; current reference/evaluation owner retains the later capabilities and explicit limits.",
+      "review": "Complete nearest-source delta reviewed."
+    },
+    {
+      "path": "scripts/evaluation/run-real-project-workbench.ps1",
+      "blob": "d413009c48e992ab6fcc9334f83fc4544924e174",
+      "refs": [
+        "refs/agents/bf5ade5d-85cf-4752-97e5-1a828c4de277/checkpoints/turn/8"
+      ],
+      "nearest_recovered_source_blob": "8f61643404d211980b5724945e1bfd60c8f09508",
+      "delta_lines": 480,
+      "disposition": "Current script is byte-identical to final e305e80 source; checkpoint versions precede required plan, prompt-set and dev-history support. No workload executed.",
+      "review": "Two complete nearest-source patches and all additions/hunks of the third reviewed."
+    },
+    {
+      "path": "eval/README.md",
+      "blob": "5db01d0ea47e6444bb21e13915255823b592233a",
+      "refs": [
+        "refs/agents/bf5ade5d-85cf-4752-97e5-1a828c4de277/checkpoints/turn/9"
+      ],
+      "nearest_recovered_source_blob": "fd19526ac3ecabb290ed5d43b1aa82df61f696bb",
+      "delta_lines": 46,
+      "disposition": "Intermediate documentation wording; current reference/evaluation owner retains the later capabilities and explicit limits.",
+      "review": "Complete nearest-source delta reviewed."
+    },
+    {
+      "path": "scripts/evaluation/run-real-project-workbench.ps1",
+      "blob": "f222ff57df375ab322467091318e9c0c8a57d1e4",
+      "refs": [
+        "refs/agents/bf5ade5d-85cf-4752-97e5-1a828c4de277/checkpoints/turn/9"
+      ],
+      "nearest_recovered_source_blob": "8f61643404d211980b5724945e1bfd60c8f09508",
+      "delta_lines": 214,
+      "disposition": "Current script is byte-identical to final e305e80 source; checkpoint versions precede required plan, prompt-set and dev-history support. No workload executed.",
+      "review": "Two complete nearest-source patches and all additions/hunks of the third reviewed."
+    },
+    {
+      "path": "PLAN.md",
+      "blob": "c1d865ac5f96a466c838002dad63384ca30a26a0",
+      "refs": [
+        "refs/codex/turn-diffs/checkpoints/b4c383a96af6b1456df4bb44954f76a8f9d3448d04eadc9e91e7924e750bd59a/7b1d5fc0e8ec10a4bf821c4c82ec4dba1f9ac01e54457b70677e97956c69f7ec/1788025615205/e3ba621c-a26b-4b50-962a-d56f02a7c264"
+      ],
+      "disposition": "Historical planning authority, superseded by current README/objective/roadmap/POAM chain; preserved in original bundle, not installed as a parallel authority.",
+      "review": "Headers and ownership inspected; not a full historical body review."
+    },
+    {
+      "path": "STATUS.md",
+      "blob": "b8a9a3c09fb8150ae26f406396c826942692f4d5",
+      "refs": [
+        "refs/codex/turn-diffs/checkpoints/b4c383a96af6b1456df4bb44954f76a8f9d3448d04eadc9e91e7924e750bd59a/7b1d5fc0e8ec10a4bf821c4c82ec4dba1f9ac01e54457b70677e97956c69f7ec/1788025615205/e3ba621c-a26b-4b50-962a-d56f02a7c264"
+      ],
+      "disposition": "Historical planning authority, superseded by current README/objective/roadmap/POAM chain; preserved in original bundle, not installed as a parallel authority.",
+      "review": "Headers and ownership inspected; not a full historical body review."
+    },
+    {
+      "path": "crates/rrd-engine/src/engine/tests/vector_index.rs",
+      "blob": "4a475b24edb0fdfa9414d74260c4b65a0ca33159",
+      "refs": [
+        "refs/codex/turn-diffs/checkpoints/b4c383a96af6b1456df4bb44954f76a8f9d3448d04eadc9e91e7924e750bd59a/7b1d5fc0e8ec10a4bf821c4c82ec4dba1f9ac01e54457b70677e97956c69f7ec/1788025615205/e3ba621c-a26b-4b50-962a-d56f02a7c264"
+      ],
+      "nearest_recovered_source_blob": "efb822cf6310a56c68fd31bb288e7785caf90ea6",
+      "delta_lines": 87,
+      "disposition": "Existing quantization lifecycle, split runtime/artifact modules and vector tests retain reusable behavior; do not restore dual publication or revision-bumping restoration.",
+      "review": "Complete nearest-source delta reviewed; full historical file not claimed as reread."
+    },
+    {
+      "path": "crates/rrd-engine/src/engine/vector/index.rs",
+      "blob": "a47673220db15e4494d8dfc0bb2ab1280dbe48d7",
+      "refs": [
+        "refs/codex/turn-diffs/checkpoints/b4c383a96af6b1456df4bb44954f76a8f9d3448d04eadc9e91e7924e750bd59a/7b1d5fc0e8ec10a4bf821c4c82ec4dba1f9ac01e54457b70677e97956c69f7ec/1788025615205/e3ba621c-a26b-4b50-962a-d56f02a7c264"
+      ],
+      "nearest_recovered_source_blob": "54462dfd30520805528ebdc342b00803f667dcbe",
+      "delta_lines": 23,
+      "disposition": "Existing quantization lifecycle, split runtime/artifact modules and vector tests retain reusable behavior; do not restore dual publication or revision-bumping restoration.",
+      "review": "Complete nearest-source delta reviewed; full historical file not claimed as reread."
+    },
+    {
+      "path": "crates/rrd-engine/src/engine/vector/quantization.rs",
+      "blob": "162b14c0b5802adf5b0d6b603fe140f0ffb0163d",
+      "refs": [
+        "refs/codex/turn-diffs/checkpoints/b4c383a96af6b1456df4bb44954f76a8f9d3448d04eadc9e91e7924e750bd59a/7b1d5fc0e8ec10a4bf821c4c82ec4dba1f9ac01e54457b70677e97956c69f7ec/1788025615205/e3ba621c-a26b-4b50-962a-d56f02a7c264"
+      ],
+      "nearest_recovered_source_blob": "e547a04520189638c0d3d8905cd9ed21e35b4994",
+      "delta_lines": 223,
+      "disposition": "Existing quantization lifecycle, split runtime/artifact modules and vector tests retain reusable behavior; do not restore dual publication or revision-bumping restoration.",
+      "review": "Complete nearest-source delta reviewed; full historical file not claimed as reread."
+    },
+    {
+      "path": "crates/rrd-engine/src/runtime/mod.rs",
+      "blob": "689cef2dc81cd0ef1b8744902f5b49b04bf0ea8b",
+      "refs": [
+        "refs/codex/turn-diffs/checkpoints/b4c383a96af6b1456df4bb44954f76a8f9d3448d04eadc9e91e7924e750bd59a/7b1d5fc0e8ec10a4bf821c4c82ec4dba1f9ac01e54457b70677e97956c69f7ec/1788025615205/e3ba621c-a26b-4b50-962a-d56f02a7c264"
+      ],
+      "nearest_recovered_source_blob": "21559b683c112703d4a909de69d121b8644eefec",
+      "delta_lines": 11,
+      "disposition": "Existing quantization lifecycle, split runtime/artifact modules and vector tests retain reusable behavior; do not restore dual publication or revision-bumping restoration.",
+      "review": "Complete nearest-source delta reviewed; full historical file not claimed as reread."
+    },
+    {
+      "path": "crates/rrd-engine/src/runtime/vector_catalog.rs",
+      "blob": "c2737215eee65c17bb2aba251bb92f5743b7a30a",
+      "refs": [
+        "refs/codex/turn-diffs/checkpoints/b4c383a96af6b1456df4bb44954f76a8f9d3448d04eadc9e91e7924e750bd59a/7b1d5fc0e8ec10a4bf821c4c82ec4dba1f9ac01e54457b70677e97956c69f7ec/1788025615205/e3ba621c-a26b-4b50-962a-d56f02a7c264"
+      ],
+      "nearest_recovered_source_blob": "d19abcb69368d4758051a06542608c4a87d7cabf",
+      "delta_lines": 26,
+      "disposition": "Existing quantization lifecycle, split runtime/artifact modules and vector tests retain reusable behavior; do not restore dual publication or revision-bumping restoration.",
+      "review": "Complete nearest-source delta reviewed; full historical file not claimed as reread."
+    },
+    {
+      "path": "crates/rrd-vector/src/catalog.rs",
+      "blob": "fd397ced354118625fdfc6e4dbe9aa4e11ca3c1f",
+      "refs": [
+        "refs/codex/turn-diffs/checkpoints/b4c383a96af6b1456df4bb44954f76a8f9d3448d04eadc9e91e7924e750bd59a/7b1d5fc0e8ec10a4bf821c4c82ec4dba1f9ac01e54457b70677e97956c69f7ec/1788025615205/e3ba621c-a26b-4b50-962a-d56f02a7c264"
+      ],
+      "nearest_recovered_source_blob": "cd27e5629f7319c1e456f8de0153ad3c16509c10",
+      "delta_lines": 22,
+      "disposition": "Existing quantization lifecycle, split runtime/artifact modules and vector tests retain reusable behavior; do not restore dual publication or revision-bumping restoration.",
+      "review": "Complete nearest-source delta reviewed; full historical file not claimed as reread."
+    },
+    {
+      "path": "crates/rrd-vector/src/runtime.rs",
+      "blob": "92d2be084b78f6ef2b47de61ab1fe8ca041d74ec",
+      "refs": [
+        "refs/codex/turn-diffs/checkpoints/b4c383a96af6b1456df4bb44954f76a8f9d3448d04eadc9e91e7924e750bd59a/7b1d5fc0e8ec10a4bf821c4c82ec4dba1f9ac01e54457b70677e97956c69f7ec/1788025615205/e3ba621c-a26b-4b50-962a-d56f02a7c264"
+      ],
+      "nearest_recovered_source_blob": "e619697bed6d3a385b577292c39a178c17f4df57",
+      "delta_lines": 194,
+      "disposition": "Existing quantization lifecycle, split runtime/artifact modules and vector tests retain reusable behavior; do not restore dual publication or revision-bumping restoration.",
+      "review": "Complete nearest-source delta reviewed; full historical file not claimed as reread."
+    },
+    {
+      "path": "docs/implementation-journal.md",
+      "blob": "3d39d31bed285933f2b9318ad1d55ad71d2a461e",
+      "refs": [
+        "refs/codex/turn-diffs/checkpoints/b4c383a96af6b1456df4bb44954f76a8f9d3448d04eadc9e91e7924e750bd59a/7b1d5fc0e8ec10a4bf821c4c82ec4dba1f9ac01e54457b70677e97956c69f7ec/1788025615205/e3ba621c-a26b-4b50-962a-d56f02a7c264"
+      ],
+      "disposition": "Historical planning authority, superseded by current README/objective/roadmap/POAM chain; preserved in original bundle, not installed as a parallel authority.",
+      "review": "Headers and ownership inspected; not a full historical body review."
+    },
+    {
+      "path": "docs/rrd-quantization-lifecycle-v1.md",
+      "blob": "0c550555f5432d55dc30f40cf307005db4c0079e",
+      "refs": [
+        "refs/codex/turn-diffs/checkpoints/b4c383a96af6b1456df4bb44954f76a8f9d3448d04eadc9e91e7924e750bd59a/7b1d5fc0e8ec10a4bf821c4c82ec4dba1f9ac01e54457b70677e97956c69f7ec/1788025615205/e3ba621c-a26b-4b50-962a-d56f02a7c264"
+      ],
+      "disposition": "Current owner docs/reference/vector/quantization-lifecycle.md and current lifecycle code/tests; historical draft preserved in bundle.",
+      "review": "Ownership and implementation/test mapping, not a full historical body review."
+    }
+  ],
+  "remaining_original_objects": [
+    {
+      "commit": "e305e80f7d2af3b8d63f703f5e6d3b0a9208c12b",
+      "parents": [
+        "21924472eb13f0d170d6a144ecd8888f5a0508f3"
+      ],
+      "subject": "feat: add endpoint selection and worker functionality",
+      "disposition": "oversized_original_history_not_merged",
+      "source_disposition": "Source changes are pure file renames plus child gitlink. Current engram owner retained; current endpoint module organization retained. No separate endpoint implementation introduced by this commit. Final workbench script bytes retained."
+    },
+    {
+      "commit": "041b68a5c99b44d64d4e1b56983c77f20958c389",
+      "parents": [
+        "7a09ada2a445bc042e226883f44f0aa942a3be7c",
+        "9ea1576d2e68e19d2cf316cd5531bde8224b727a"
+      ],
+      "subject": "Merge pull request #376 from rrflow/agent/code-knowledge-20261112",
+      "disposition": "generated_merge_snapshot"
+    },
+    {
+      "commit": "b333aca9e313442909761987d54b6eeff5e5eb90",
+      "parents": [
+        "6c069e1462d2b9cbb0237e9c117c379d1482bbaa",
+        "70abe59d000910c5dc8cc62488b1793072edf5a3"
+      ],
+      "subject": "Merge pull request #190 from rrflow/agent/e04c-incremental-turboquant-generations",
+      "disposition": "generated_merge_snapshot"
+    },
+    {
+      "commit": "c54cbc4b2a19c7beede6a7fef743a9e77d724744",
+      "parents": [
+        "1926cfdf9dd19937f2e031edcf7d07f922b0dd0e",
+        "8fbbe74874675bc6872cf3d8d828dd6fd6ff938e"
+      ],
+      "subject": "g2",
+      "disposition": "generated_merge_snapshot"
+    },
+    {
+      "commit": "1e5f54bbf2ef0daef7abc4293b24c83f9ff2a5ee",
+      "parents": [
+        "876193742ef4298e38b0b2b337fc092efa297847",
+        "5f31d3c62852d64af137bcdb1bfe51f85565df76"
+      ],
+      "subject": "Merge pull request #211 from rrflow/agent/poam045-vector-move-visibility",
+      "disposition": "generated_merge_snapshot"
+    },
+    {
+      "commit": "cb6d589be522fd21d30fe620dad742de63b47985",
+      "parents": [
+        "a9f1b0fb8d948e113dca347e5eeac10dd224330a",
+        "f6d98d3e8e503e39c2c6f19fd686e91cf5fb5804"
+      ],
+      "subject": "Merge pull request #287 from rrflow/agent/alpha-tester-onboarding",
+      "disposition": "generated_merge_snapshot"
+    },
+    {
+      "commit": "21924472eb13f0d170d6a144ecd8888f5a0508f3",
+      "parents": [
+        "af19567b7150e318c0d9f846f6a4138ae3456901"
+      ],
+      "subject": "Refactor code structure for improved readability and maintainability",
+      "disposition": "oversized_original_history_not_merged",
+      "source_disposition": "Three generated prompt-input edits; no engine implementation. Raw prompt content not republished; original preserved in recovery bundle. No full content review claimed."
+    },
+    {
+      "commit": "4ab2781209071e9a0376f254b952e98660635ed0",
+      "parents": [
+        "6fe8b7590d913beda9b009551e5d2d2644e406d9",
+        "b83de7b6432ed73b5ece830555a95ea406d47816"
+      ],
+      "subject": "Merge pull request #208 from rrflow/codex/h04-generated-attunement",
+      "disposition": "generated_merge_snapshot"
+    },
+    {
+      "commit": "dbb334c8041fe4c6cfcb66a1b96ad40593f23e32",
+      "parents": [
+        "6448a4f6b2f293a95567df92016beaa24b2d54d1"
+      ],
+      "subject": "index on (no branch): 6448a4f6b feat(rrflow): persist lifecycle and enforce exact argv",
+      "disposition": "generated_runtime_capture_not_source"
+    },
+    {
+      "commit": "83cef0fef520e16efe2f270df94fa7a39162a017",
+      "parents": [
+        "2f232cb39dbac82e83371a5689f65ca501b72fb8",
+        "54fb845dffd702e1504c7f9a0cc2a3c5757d2bf2"
+      ],
+      "subject": "Merge pull request #206 from rrflow/codex/controller-task-proposal",
+      "disposition": "generated_merge_snapshot"
+    },
+    {
+      "commit": "78e4c45d18a33a198607cfeeb2def9bde6c27cd2",
+      "parents": [
+        "cc5ebe0fd17bd9cb1a72a0d40811ba381869d202",
+        "ff359edae9091407e2ee35e5871aa51ac9b02b55"
+      ],
+      "subject": "Merge pull request #408 from rrflow/fix/macos-retained-directory-security",
+      "disposition": "generated_merge_snapshot"
+    },
+    {
+      "commit": "0604a59aaa64d9c570f86041379f366f5bf586b3",
+      "parents": [
+        "9d937f6d9a9faa474c68915142d32f69c3991668",
+        "b3059b3872094f913d4fccc4e10104cf43cc2ea7"
+      ],
+      "subject": "Merge b3059b3872094f913d4fccc4e10104cf43cc2ea7 into 9d937f6d9a9faa474c68915142d32f69c3991668",
+      "disposition": "generated_merge_snapshot"
+    },
+    {
+      "commit": "ef206585d1e26f84eaa27cbf55ac1150ed1d80cc",
+      "parents": [
+        "0302a60aafede1a86091608fcbe600eeaf753a03",
+        "138b01da9613baed7b65e372c35626343eb42267"
+      ],
+      "subject": "Merge pull request #283 from rrflow/agent/vector-memory-defaults",
+      "disposition": "generated_merge_snapshot"
+    },
+    {
+      "commit": "d429b1ffb46616742cad8bbbf4e3ffa0f41c5bc1",
+      "parents": [
+        "94d0567fb865fb49a90aaeeef4b5861707c9f8a7",
+        "b39950000cf93d267f0725372a4af64733ed94ba"
+      ],
+      "subject": "Merge b39950000cf93d267f0725372a4af64733ed94ba into 94d0567fb865fb49a90aaeeef4b5861707c9f8a7",
+      "disposition": "generated_merge_snapshot"
+    },
+    {
+      "commit": "4d3c2d3873af5780aef434bf3d2b4b14d155ed5a",
+      "parents": [
+        "4aa7cf215cc6fa8930fe281b7021a81528db446e",
+        "f6d98d3e8e503e39c2c6f19fd686e91cf5fb5804"
+      ],
+      "subject": "Merge pull request #287 from rrflow/agent/alpha-tester-onboarding",
+      "disposition": "generated_merge_snapshot"
+    },
+    {
+      "commit": "5d48497863eec44bb51f0f26ab1e9ad8a1ae3bc7",
+      "parents": [
+        "95d38379898badbd9d8afe652c2f937747211215",
+        "d6c25718ea87f98ede1d4728055ad162baf843a0"
+      ],
+      "subject": "Merge pull request #156 from rrflow/agent/adr-estate-organisation",
+      "disposition": "generated_merge_snapshot"
+    },
+    {
+      "commit": "6548118dd7b3382ef81ecd5e7d9ea3cdbd0a72df",
+      "parents": [
+        "34f5ba22e580e8140ddfeb99890ac771cfce5f7c",
+        "81be36264e209aced8159403f275fedaa03b96aa"
+      ],
+      "subject": "sim 216",
+      "disposition": "generated_merge_snapshot"
+    },
+    {
+      "commit": "2e4eb9d14329d6c19000af6ec6982a11b49f0276",
+      "parents": [
+        "16c7318a76e04a4d219a40c741cbbe2504ec5144"
+      ],
+      "subject": "feat: update change journals for Gate H, KB-05, and repository",
+      "disposition": "oversized_original_history_not_merged",
+      "source_disposition": "H06 workbench journal retained at later source version; generated navigation rebuilt from current owners. Historical child pin superseded by green child main."
+    },
+    {
+      "commit": "9b60e959fa3e251b6da7d8593f9cf5d57f4d97e5",
+      "parents": [
+        "bf6dec69f1ca8c37d97dbd447af128ce33c390be"
+      ],
+      "subject": "Add real project workbench evaluation scripts and results",
+      "disposition": "oversized_original_history_not_merged",
+      "source_disposition": "Streaming query index decoding retained in query/index/read_path.rs (PR484); raw_value feature retained. Workbench script retained at final e305e80 tree. Intermediate estate dependency paths superseded by canonical engram paths. Generated executable/results not imported."
+    },
+    {
+      "commit": "696b65e3a600e8d8ee6abbfc1e8b04a871c84cd6",
+      "parents": [
+        "9fd9ad3f9eba696b444eb9ce30b925b4d8a83502",
+        "1e2feaf2e6aad28656681fed4b4dee1d99319096"
+      ],
+      "subject": "Merge pull request #382 from rrflow/agent/kernel-s8-reasoning-structures-20261113",
+      "disposition": "generated_merge_snapshot"
+    },
+    {
+      "commit": "9385a9b4ec6d16ad660371729488adfff5259fd4",
+      "parents": [
+        "cc1391641750585ca4bcf0232a9a9019224c9b99",
+        "e96e450463df264f8284dca3a027de22e6785ed0"
+      ],
+      "subject": "Merge pull request #250 from rrflow/agent/weight-space-edit-replication",
+      "disposition": "generated_merge_snapshot"
+    },
+    {
+      "commit": "0f87899f98c816822d0980ac0212ea6f3fb0503e",
+      "parents": [
+        "6316ab312d880120ab3013f5d05e8938149a98c8",
+        "2049de290bd4e8dc4f118af8a8d4cb77fbc7ac86"
+      ],
+      "subject": "sim 217",
+      "disposition": "generated_merge_snapshot"
+    },
+    {
+      "commit": "1f886502fb686cfa493c6d7d36a98eaabe5ac0ca",
+      "parents": [
+        "a5b05b119d36d491442d80c880153ea0b18beb8d",
+        "947521b7cdb984b54af158642c3c05b9fe65fe14"
+      ],
+      "subject": "Merge pull request #243 from rrflow/agent/adaptive-developer-build-design",
+      "disposition": "generated_merge_snapshot"
+    },
+    {
+      "commit": "f9b4957a132209ba5d1b7634f334f956c2df8e66",
+      "parents": [
+        "5f8a7e3679318d235356f4475e9cb8349423929d",
+        "23c3f16e776f2cd5dae49130acdb26a100926ff3"
+      ],
+      "subject": "Merge pull request #253 from rrflow/agent/comparison-lab",
+      "disposition": "generated_merge_snapshot"
+    },
+    {
+      "commit": "51bc05e3ba9e4fe6198bd7304681322668a590e6",
+      "parents": [
+        "7455b13c08667e15f68ce6f1e2b31918477a96b6",
+        "228f5f1ef957241e22b3d08e30b4e975352bc16b"
+      ],
+      "subject": "Merge pull request #174 from rrflow/agent/poam-043-044-engine-gaps",
+      "disposition": "generated_merge_snapshot"
+    },
+    {
+      "commit": "16c7318a76e04a4d219a40c741cbbe2504ec5144",
+      "parents": [
+        "94e685c51658cc654e38bff6adf51fe804e66cae"
+      ],
+      "subject": "update: change subproject commit reference to include dirty state",
+      "disposition": "oversized_original_history_not_merged",
+      "source_disposition": "Only historical child gitlink; current pinned green child main retained."
+    },
+    {
+      "commit": "37d7518833faf4ba4df632ab3435f80730570c67",
+      "parents": [
+        "4c4ef33c49ad3799276787a4d6bcec18c39793c9",
+        "89dff248c157dafe8bb6d00397e53c5ba8a752b5"
+      ],
+      "subject": "Merge pull request #154 from rrflow/agent/d05-project-directory-path",
+      "disposition": "generated_merge_snapshot"
+    },
+    {
+      "commit": "9fd9ad3f9eba696b444eb9ce30b925b4d8a83502",
+      "parents": [
+        "107c3e15b6a40880e861caa31f4b9be2d32aab2f",
+        "4ba23ddeeea1149c42c8202b037b05247a340d56"
+      ],
+      "subject": "Merge pull request #376 from rrflow/agent/code-knowledge-20261112",
+      "disposition": "generated_merge_snapshot"
+    },
+    {
+      "commit": "94e685c51658cc654e38bff6adf51fe804e66cae",
+      "parents": [
+        "9b60e959fa3e251b6da7d8593f9cf5d57f4d97e5"
+      ],
+      "subject": "Add new prompt sets and executables for real project workbench evaluations",
+      "disposition": "oversized_original_history_not_merged",
+      "source_disposition": "CLD cold-source counters retained in runtime/coldlight.rs and diagnostic/storage.rs with observed clock and current lifecycle type. Canonical engram rename retained; corrupt case-insensitive LifecycleState rename rejected. Generated inputs/results/executable not imported."
+    },
+    {
+      "commit": "d9f391b8c727271ce23296276a39f93ea75a5691",
+      "parents": [
+        "68c06059fbba600af5f06a6de30667c07e35ae6b",
+        "73c68033f50322ec649f5092a0e7cdbff25ac989"
+      ],
+      "subject": "Merge pull request #161 from rrflow/agent/rroflow-provider-observation",
+      "disposition": "generated_merge_snapshot"
+    },
+    {
+      "commit": "93f4990af78630af800298ca9ae597bc41345efe",
+      "parents": [
+        "ef206585d1e26f84eaa27cbf55ac1150ed1d80cc",
+        "deb9a4e3c9f216f946ff93635c1f05a11f05d3d3"
+      ],
+      "subject": "Merge pull request #303 from rrflow/agent/ci-proportional-lanes-20261109",
+      "disposition": "generated_merge_snapshot"
+    },
+    {
+      "commit": "0302a60aafede1a86091608fcbe600eeaf753a03",
+      "parents": [
+        "4d3c2d3873af5780aef434bf3d2b4b14d155ed5a",
+        "b5821ac885e71bfa7a833ce838ee3fbb399c801b"
+      ],
+      "subject": "Merge pull request #285 from rrflow/agent/hnsw-neon-kernel",
+      "disposition": "generated_merge_snapshot"
+    },
+    {
+      "commit": "c018f61700e3690e5efca170d700c51aee4dabb4",
+      "parents": [
+        "fdaac31289304274a743577d32742e04413ff7fa",
+        "0d3a5c7d1bfe12ee054e155d97257c82594d2136"
+      ],
+      "subject": "Merge pull request #367 from rrflow/agent/ci-package-lookup-20261112",
+      "disposition": "generated_merge_snapshot"
+    },
+    {
+      "commit": "af19567b7150e318c0d9f846f6a4138ae3456901",
+      "parents": [
+        "2e4eb9d14329d6c19000af6ec6982a11b49f0276"
+      ],
+      "subject": "Refactor connectome capabilities and ready JSON files to replace \"estate\" terminology with \"engram\"",
+      "disposition": "oversized_original_history_not_merged",
+      "source_disposition": "All source and manifest patches reviewed: canonical engram module/dependency/configuration-asset paths already retained. Corrupt RrflowCldLifecyclengram substitution rejected; current RrflowCldLifecycleState retained. Generated prompt/capability/ready captures not imported."
+    },
+    {
+      "commit": "531a62b7d187656ba3eea9494006d8ba0d6d847b",
+      "parents": [
+        "a9f1b0fb8d948e113dca347e5eeac10dd224330a",
+        "138b01da9613baed7b65e372c35626343eb42267"
+      ],
+      "subject": "Merge pull request #283 from rrflow/agent/vector-memory-defaults",
+      "disposition": "generated_merge_snapshot"
+    },
+    {
+      "commit": "de1a9a3614df344ed357f3ae7072fbd74addf9d8",
+      "parents": [
+        "37d7518833faf4ba4df632ab3435f80730570c67",
+        "77faffd03206e0a3c825ae1c18522308635224d6"
+      ],
+      "subject": "Merge pull request #157 from rrflow/agent/ci-windows-reopen-build-workers",
+      "disposition": "generated_merge_snapshot"
+    },
+    {
+      "commit": "c31ed202179cfd63bef1d13b61ff424bfb99b1fd",
+      "parents": [
+        "94d0567fb865fb49a90aaeeef4b5861707c9f8a7",
+        "d0dded5184d2508e6654f00ed0eb99d8e0200190"
+      ],
+      "subject": "Merge d0dded5184d2508e6654f00ed0eb99d8e0200190 into 94d0567fb865fb49a90aaeeef4b5861707c9f8a7",
+      "disposition": "generated_merge_snapshot"
+    },
+    {
+      "commit": "d83daa6ad4995413b802dc434591812ff816ea8d",
+      "parents": [
+        "694df411485eb2e14fbc830ffa327ae835301b28",
+        "ed3027b79e41dfcdf5b27e57f07346f11f6da347"
+      ],
+      "subject": "Merge remote-tracking branch 'development/main' into HEAD",
+      "disposition": "generated_merge_snapshot"
+    },
+    {
+      "commit": "3a6c42f31ee4df65eda6216a5b836dc7f09982bc",
+      "parents": [
+        "4e78481a5e3d6cbabdc9d5e33f3ebab87d2bf850",
+        "7613b826973ffa744989553b4a649b6c56ac73e6"
+      ],
+      "subject": "Merge pull request #270 from rrflow/agent/pin-connectome-teal",
+      "disposition": "generated_merge_snapshot"
+    },
+    {
+      "commit": "c3809a92d13abe7a1891778bbfce98ba9a25ddb0",
+      "parents": [
+        "cb6d589be522fd21d30fe620dad742de63b47985",
+        "b5821ac885e71bfa7a833ce838ee3fbb399c801b"
+      ],
+      "subject": "Merge pull request #285 from rrflow/agent/hnsw-neon-kernel",
+      "disposition": "generated_merge_snapshot"
+    },
+    {
+      "commit": "90c6da15d63ca37a01c8fc1741515a234f29faa5",
+      "parents": [
+        "4de5dc5ffc8bb434f61d2869a357b865275ee439",
+        "dac051d96924ddcc818c3dfd84d7e035e9f835e1"
+      ],
+      "subject": "Merge main into the estate organisation decision",
+      "disposition": "generated_merge_snapshot"
+    },
+    {
+      "commit": "70ce36809ae0865b87f8350e0bd14e41a4fb4ef0",
+      "parents": [
+        "20ab8aac9e91ef2a74f39e05288ddb29da4b3185",
+        "8b8de7575e1c58b089d9d0be86d05d7461d5a972"
+      ],
+      "subject": "sim 212",
+      "disposition": "generated_merge_snapshot"
+    },
+    {
+      "commit": "1dec52105db6163b4c152395900e6c37bf62c47c",
+      "parents": [
+        "7c95dd508fd6a1710200f4189f67ca6cc40ba112",
+        "e96e450463df264f8284dca3a027de22e6785ed0"
+      ],
+      "subject": "Merge pull request #250 from rrflow/agent/weight-space-edit-replication",
+      "disposition": "generated_merge_snapshot"
+    },
+    {
+      "commit": "34f5ba22e580e8140ddfeb99890ac771cfce5f7c",
+      "parents": [
+        "70ce36809ae0865b87f8350e0bd14e41a4fb4ef0",
+        "09a9776157f28b245eb78bd15cac191e5d30301b"
+      ],
+      "subject": "sim 169",
+      "disposition": "generated_merge_snapshot"
+    },
+    {
+      "commit": "600763f421711364bf202c55d8684c153c3cbabf",
+      "parents": [
+        "1f8fa02cf9df74ad5dab5b7481c49f68eeca96af",
+        "81025f79fb3ca3b3cdbfa4f0fe7fe341e1872518"
+      ],
+      "subject": "Merge 81025f79fb3ca3b3cdbfa4f0fe7fe341e1872518 into 1f8fa02cf9df74ad5dab5b7481c49f68eeca96af",
+      "disposition": "generated_merge_snapshot"
+    },
+    {
+      "commit": "6316ab312d880120ab3013f5d05e8938149a98c8",
+      "parents": [
+        "6548118dd7b3382ef81ecd5e7d9ea3cdbd0a72df",
+        "aaab2af4951d936f0d6695639b37ce7ecb7122db"
+      ],
+      "subject": "sim 214",
+      "disposition": "generated_merge_snapshot"
+    },
+    {
+      "commit": "1926cfdf9dd19937f2e031edcf7d07f922b0dd0e",
+      "parents": [
+        "6c069e1462d2b9cbb0237e9c117c379d1482bbaa",
+        "70abe59d000910c5dc8cc62488b1793072edf5a3"
+      ],
+      "subject": "g1",
+      "disposition": "generated_merge_snapshot"
+    },
+    {
+      "commit": "eb27cfa18a6e52b8ee0d24ab9c0829f47a9eb2f2",
+      "parents": [
+        "6448a4f6b2f293a95567df92016beaa24b2d54d1",
+        "dbb334c8041fe4c6cfcb66a1b96ad40593f23e32"
+      ],
+      "subject": "On (no branch): archive 2026-11-14: uncommitted work in rrflow-workbench-capture",
+      "disposition": "generated_runtime_capture_not_source"
+    },
+    {
+      "commit": "2b2d4f70ea42d7f3db81ac5c40cfccdc9d1a7642",
+      "parents": [
+        "6c069e1462d2b9cbb0237e9c117c379d1482bbaa",
+        "70abe59d000910c5dc8cc62488b1793072edf5a3"
+      ],
+      "subject": "Merge pull request #190 from rrflow/agent/e04c-incremental-turboquant-generations",
+      "disposition": "generated_merge_snapshot"
+    },
+    {
+      "commit": "e83a97cabc25028597d55fd5046288d4515c61e0",
+      "parents": [
+        "6c069e1462d2b9cbb0237e9c117c379d1482bbaa",
+        "70abe59d000910c5dc8cc62488b1793072edf5a3"
+      ],
+      "subject": "tmp",
+      "disposition": "generated_merge_snapshot"
+    },
+    {
+      "commit": "88480756b774c8f25bef0a0e676facd0ff5a6a87",
+      "parents": [
+        "be69a5532b52feee9079e2734dab057b6213c815",
+        "138b01da9613baed7b65e372c35626343eb42267"
+      ],
+      "subject": "Merge pull request #283 from rrflow/agent/vector-memory-defaults",
+      "disposition": "generated_merge_snapshot"
+    },
+    {
+      "commit": "b94fc325ef77f2b29ca938638376356f2d376cda",
+      "parents": [
+        "9d937f6d9a9faa474c68915142d32f69c3991668",
+        "70abe59d000910c5dc8cc62488b1793072edf5a3"
+      ],
+      "subject": "sim",
+      "disposition": "generated_merge_snapshot"
+    },
+    {
+      "commit": "815fa71ece608a1404677cf84798f6446409c0c7",
+      "parents": [
+        "e6f3632b32f1c9be33c1951886a9d9a2be648ddf",
+        "919ea4aad371ef20c3909707d145edc33d43a8db"
+      ],
+      "subject": "Merge pull request #246 from rrflow/codex/lfg-observation-extensions",
+      "disposition": "generated_merge_snapshot"
+    },
+    {
+      "commit": "0c67078b71f9d31cd0d0dd539da2e76b73b84e89",
+      "parents": [
+        "f256c8e1337d85fa01f2a0c61e895a4d213163fa",
+        "f6185c2c3ed4acae090349599f0d799e609fad3e"
+      ],
+      "subject": "Merge pull request #221 from rrflow/codex/authorized-attunement-selection",
+      "disposition": "generated_merge_snapshot"
+    },
+    {
+      "commit": "4aa7cf215cc6fa8930fe281b7021a81528db446e",
+      "parents": [
+        "a9f1b0fb8d948e113dca347e5eeac10dd224330a",
+        "0ef4d93588202030e4a7cffadb266f88cfe90df7"
+      ],
+      "subject": "Merge pull request #251 from rrflow/agent/evaluation-evidence-integrity",
+      "disposition": "generated_merge_snapshot"
+    },
+    {
+      "commit": "51b2dba4bb5e379dee5efa0a163103a03710d107",
+      "parents": [
+        "953fe774e1d02c67faf692a653e433c1b3510c94",
+        "138b01da9613baed7b65e372c35626343eb42267"
+      ],
+      "subject": "Merge pull request #283 from rrflow/agent/vector-memory-defaults",
+      "disposition": "generated_merge_snapshot"
+    },
+    {
+      "commit": "edd3c3e28283c85371e3988d2978c7aaab3fca09",
+      "parents": [
+        "0f87899f98c816822d0980ac0212ea6f3fb0503e",
+        "921f35d6f2210d1c917ab4ff34926ff9cdb81398"
+      ],
+      "subject": "sim 239",
+      "disposition": "generated_merge_snapshot"
+    },
+    {
+      "commit": "add8476073d67931370b65d2d38b704442396979",
+      "parents": [
+        "6df411972c4c771a258ca6a7c172ab135870bd53",
+        "162f4d4edd9e6f71232c40fe79aa0c773a268e52"
+      ],
+      "subject": "Merge pull request #349 from rrflow/agent/p3-parse-dispatch-20261111",
+      "disposition": "generated_merge_snapshot"
+    },
+    {
+      "commit": "58dd53b3f7546225bf6c03681b32ee04be8f5ef2",
+      "parents": [
+        "dd225072bcc639c89b0eef968625cc73303ea998",
+        "f5109dbb853b0c688c0f651a92f7193cd34e2697"
+      ],
+      "subject": "Merge pull request #133 from rrflow/agent/c07-engine-alpha-review",
+      "disposition": "generated_merge_snapshot"
+    },
+    {
+      "commit": "a6ecefacf6de177f612d38ed5312c55395a609aa",
+      "parents": [
+        "a9f1b0fb8d948e113dca347e5eeac10dd224330a",
+        "c4cc35f71b12eb80bf6af99ac56c3fcad03e5980"
+      ],
+      "subject": "Merge pull request #288 from rrflow/agent/one-project-instance-direction-20261106",
+      "disposition": "generated_merge_snapshot"
+    },
+    {
+      "commit": "d5f5cf228bb2b7270b171b421e06d38833cb3e7b",
+      "parents": [
+        "b555d22c891c511775b5e54a9f9d00c8a51da48e",
+        "7613b826973ffa744989553b4a649b6c56ac73e6"
+      ],
+      "subject": "Merge pull request #270 from rrflow/agent/pin-connectome-teal",
+      "disposition": "generated_merge_snapshot"
+    }
+  ],
+  "non_checkpoint_bundle_refs": [
+    {
+      "ref": "refs/heads/main",
+      "object": "e708980de22028d09fcd12c7410bf560c79d3596",
+      "in_integrated_candidate_history": true
+    },
+    {
+      "ref": "refs/pr/231",
+      "object": "8d47500869329f1a5604821138f1a6c8efc349a5",
+      "in_integrated_candidate_history": true
+    },
+    {
+      "ref": "refs/pr/253",
+      "object": "c986f3a48f409ef6de1a4448d09184ee5fead31c",
+      "in_integrated_candidate_history": true
+    },
+    {
+      "ref": "refs/pr/260",
+      "object": "e095ce39a5943d327d1f21517afdaa0ac345042b",
+      "in_integrated_candidate_history": true
+    },
+    {
+      "ref": "refs/pr/262",
+      "object": "a7587fed7d7cf4f279bee90ffe06f0cfacfae8b4",
+      "in_integrated_candidate_history": true
+    },
+    {
+      "ref": "refs/pr/267",
+      "object": "3dc198111bda847165f33ff0ec3330dd05e2c7f9",
+      "in_integrated_candidate_history": true
+    },
+    {
+      "ref": "refs/pr/268",
+      "object": "92f18c232d1744b3b16abee9e7b1858a539b84f4",
+      "in_integrated_candidate_history": true
+    },
+    {
+      "ref": "refs/pr/272",
+      "object": "653aab9a314a8f9aba74a132ab370f2358995db3",
+      "in_integrated_candidate_history": true
+    },
+    {
+      "ref": "refs/pr/274",
+      "object": "c870dd77732683f0e0aea16f0a6d6899ead3fa40",
+      "in_integrated_candidate_history": true
+    },
+    {
+      "ref": "refs/pr/277",
+      "object": "d9f34f33e365eabc40a5b31a62b05343dfafdd01",
+      "in_integrated_candidate_history": true
+    },
+    {
+      "ref": "refs/pr/300",
+      "object": "d26a1322dd5d87ec19b417420a5074c077e09de1",
+      "in_integrated_candidate_history": true
+    },
+    {
+      "ref": "refs/remotes/development/HEAD",
+      "object": "e708980de22028d09fcd12c7410bf560c79d3596",
+      "in_integrated_candidate_history": true
+    },
+    {
+      "ref": "refs/remotes/development/main",
+      "object": "e708980de22028d09fcd12c7410bf560c79d3596",
+      "in_integrated_candidate_history": true
+    },
+    {
+      "ref": "refs/remotes/origin/HEAD",
+      "object": "3edf6b18258318d3b17362e67342d83a117db36d",
+      "in_integrated_candidate_history": true
+    },
+    {
+      "ref": "refs/remotes/origin/agent/connectome-temporal-runtime-visualizer",
+      "object": "63bc2331fcbc5c71aaa123cd44aedeb65d5c7b65",
+      "in_integrated_candidate_history": true
+    },
+    {
+      "ref": "refs/remotes/origin/backup/agent/c07-backup-scheduling-20261029-1024",
+      "object": "2665f99110b0407eb3f38c573185de91e835ca61",
+      "in_integrated_candidate_history": true
+    },
+    {
+      "ref": "refs/remotes/origin/backup/agent/c07-run-progress-20261029-1024",
+      "object": "65385004d8f9d01401606a3918fe45025c1bfb74",
+      "in_integrated_candidate_history": true
+    },
+    {
+      "ref": "refs/remotes/origin/backup/agent/rrflowdb-postgres-identity-20261029-1024",
+      "object": "f661cc965093f9ed4b3ae7a222da35c65599b43e",
+      "in_integrated_candidate_history": true
+    },
+    {
+      "ref": "refs/remotes/origin/backup/agent/rrflowdb-postgres-plan-20261029-1024",
+      "object": "d134734bd765545475d5d6020b22749feae8045e",
+      "in_integrated_candidate_history": true
+    },
+    {
+      "ref": "refs/remotes/origin/codex/consolidate-project-structure-and-context",
+      "object": "73c75a852b0e576d135cda543103105cb5aa93ef",
+      "in_integrated_candidate_history": true
+    },
+    {
+      "ref": "refs/remotes/origin/main",
+      "object": "3edf6b18258318d3b17362e67342d83a117db36d",
+      "in_integrated_candidate_history": true
+    },
+    {
+      "ref": "refs/remotes/swag-delivery/attunement-selection",
+      "object": "f6185c2c3ed4acae090349599f0d799e609fad3e",
+      "in_integrated_candidate_history": true
+    },
+    {
+      "ref": "refs/remotes/swag-delivery/main",
+      "object": "f256c8e1337d85fa01f2a0c61e895a4d213163fa",
+      "in_integrated_candidate_history": true
+    },
+    {
+      "ref": "HEAD",
+      "object": "e708980de22028d09fcd12c7410bf560c79d3596",
+      "in_integrated_candidate_history": true
+    }
+  ],
+  "saved_closed_unmerged_pull_requests": [
+    {
+      "repository": "rrflow-development",
+      "heads": [
+        {
+          "number": 365,
+          "head": "agent/workbench-lab-data-20261112",
+          "sha": "854ffd4ff86db6b5bf9c335db0787ff17b596305",
+          "in_integrated_candidate_history": true
+        },
+        {
+          "number": 364,
+          "head": "agent/lab-core-crate-20261112",
+          "sha": "12722a07b7978c814e383e5cd6c6e7d2a6a3528e",
+          "in_integrated_candidate_history": true
+        },
+        {
+          "number": 344,
+          "head": "agent/hdiutil-held-helper-20261111",
+          "sha": "81059c9df60c64567414d14d0ed70f6dd10dc1a7",
+          "in_integrated_candidate_history": true
+        },
+        {
+          "number": 316,
+          "head": "agent/leftovers-20261110",
+          "sha": "5741a7660e244e8bd71425c029d93a41f0420a35",
+          "in_integrated_candidate_history": true
+        },
+        {
+          "number": 315,
+          "head": "agent/rrflow-cld-triggers-20261110",
+          "sha": "d26ad75bed82fe529f804b5b0fee3c19f50b6c73",
+          "in_integrated_candidate_history": true
+        },
+        {
+          "number": 300,
+          "head": "copilot/fix-installed-domain-crash",
+          "sha": "d26a1322dd5d87ec19b417420a5074c077e09de1",
+          "in_integrated_candidate_history": true
+        },
+        {
+          "number": 286,
+          "head": "agent/poam-flush-stalls",
+          "sha": "6795422b7b9ed1187af60f707576473f99866084",
+          "in_integrated_candidate_history": true
+        },
+        {
+          "number": 277,
+          "head": "agent/lab-reference-results",
+          "sha": "d9f34f33e365eabc40a5b31a62b05343dfafdd01",
+          "in_integrated_candidate_history": true
+        },
+        {
+          "number": 274,
+          "head": "agent/lab-definitions-automatic",
+          "sha": "c870dd77732683f0e0aea16f0a6d6899ead3fa40",
+          "in_integrated_candidate_history": true
+        },
+        {
+          "number": 272,
+          "head": "agent/lab-definitions",
+          "sha": "653aab9a314a8f9aba74a132ab370f2358995db3",
+          "in_integrated_candidate_history": true
+        },
+        {
+          "number": 268,
+          "head": "agent/lab-catalog",
+          "sha": "92f18c232d1744b3b16abee9e7b1858a539b84f4",
+          "in_integrated_candidate_history": true
+        },
+        {
+          "number": 267,
+          "head": "agent/lab-study-requirements",
+          "sha": "3dc198111bda847165f33ff0ec3330dd05e2c7f9",
+          "in_integrated_candidate_history": true
+        },
+        {
+          "number": 262,
+          "head": "agent/lab-reasoning-tests",
+          "sha": "a7587fed7d7cf4f279bee90ffe06f0cfacfae8b4",
+          "in_integrated_candidate_history": true
+        },
+        {
+          "number": 260,
+          "head": "agent/lab-imports",
+          "sha": "e095ce39a5943d327d1f21517afdaa0ac345042b",
+          "in_integrated_candidate_history": true
+        },
+        {
+          "number": 234,
+          "head": "codex/connectome-real-graph-evidence",
+          "sha": "f0223d3e160817d6e82f2952d19b77fbc7a5c30f",
+          "in_integrated_candidate_history": true
+        },
+        {
+          "number": 231,
+          "head": "codex/attunement-job-discovery",
+          "sha": "8d47500869329f1a5604821138f1a6c8efc349a5",
+          "in_integrated_candidate_history": true
+        },
+        {
+          "number": 225,
+          "head": "codex/readable-attunement-plan",
+          "sha": "f256c8e1337d85fa01f2a0c61e895a4d213163fa",
+          "in_integrated_candidate_history": true
+        },
+        {
+          "number": 220,
+          "head": "codex/ci-conflict-reconciliation",
+          "sha": "5697b208b5269f76817d437cb219f79b2434c500",
+          "in_integrated_candidate_history": true
+        },
+        {
+          "number": 219,
+          "head": "codex/object-publication-race",
+          "sha": "e93e9870ca8885d6dfc42f2667f013972566fc55",
+          "in_integrated_candidate_history": true
+        },
+        {
+          "number": 203,
+          "head": "codex/task-attempt-admission",
+          "sha": "241509b33941d0e4851e161230a705d04158d44f",
+          "in_integrated_candidate_history": true
+        },
+        {
+          "number": 201,
+          "head": "codex/controller-policy-configuration",
+          "sha": "2c3f6bff9db9c87731899ebe4640bd3008324799",
+          "in_integrated_candidate_history": true
+        },
+        {
+          "number": 199,
+          "head": "codex/controller-native-chat",
+          "sha": "5ee39f39942f610e4414fec287ce21dbe88b2d8b",
+          "in_integrated_candidate_history": true
+        },
+        {
+          "number": 198,
+          "head": "codex/controller-endpoint-choice",
+          "sha": "63375dd42c77986ea8bd64a9c6034c07af2d3c9a",
+          "in_integrated_candidate_history": true
+        },
+        {
+          "number": 197,
+          "head": "codex/d02-historical-plan-replay",
+          "sha": "e3eaa78b3272bd19b58f93cfd6c8a6365ac4a01d",
+          "in_integrated_candidate_history": true
+        },
+        {
+          "number": 192,
+          "head": "codex/ci-alpha-throughput",
+          "sha": "a754de83acd20912a4d4dcc701c6fecb6e331e34",
+          "in_integrated_candidate_history": true
+        },
+        {
+          "number": 189,
+          "head": "codex/ci-macos-cache-warm",
+          "sha": "c15ed0b923dfb56ff947be0e14c04b10d8c650a1",
+          "in_integrated_candidate_history": true
+        },
+        {
+          "number": 151,
+          "head": "agent/c07-windows-characterization-evidence",
+          "sha": "9aea9987b21e4437c5f6d96a5c5832da9e00939f",
+          "in_integrated_candidate_history": true
+        },
+        {
+          "number": 148,
+          "head": "agent/source-bound-replan-design",
+          "sha": "326957e9716225b9e18246dc0298c1cfde9dca1d",
+          "in_integrated_candidate_history": true
+        },
+        {
+          "number": 141,
+          "head": "agent/c07-point-range-index",
+          "sha": "3b28e5b75db461e4bddb8ee88fb0d5da4a56d66f",
+          "in_integrated_candidate_history": true
+        },
+        {
+          "number": 139,
+          "head": "agent/c07-bounded-corpus-readback",
+          "sha": "0592829ce1f57eb99513e5f05d5068545389e5c1",
+          "in_integrated_candidate_history": true
+        },
+        {
+          "number": 137,
+          "head": "agent/engine-build-plan-audit",
+          "sha": "24814c6d5e64660c6b0c6ef05267f6f6c3af33ea",
+          "in_integrated_candidate_history": true
+        },
+        {
+          "number": 136,
+          "head": "agent/project-workflow-roadmap",
+          "sha": "cc91c18cf824d3c43466465eb5092374e775b792",
+          "in_integrated_candidate_history": true
+        },
+        {
+          "number": 135,
+          "head": "agent/c07-run-progress",
+          "sha": "bec6e0d8685d37ae8848f5624d370433af48976b",
+          "in_integrated_candidate_history": true
+        },
+        {
+          "number": 134,
+          "head": "agent/c07-proof-node-reuse",
+          "sha": "4e2dbaffad29039d742f6b151f7636378ce3e7fe",
+          "in_integrated_candidate_history": true
+        },
+        {
+          "number": 133,
+          "head": "agent/c07-engine-alpha-review",
+          "sha": "f5109dbb853b0c688c0f651a92f7193cd34e2697",
+          "in_integrated_candidate_history": true
+        },
+        {
+          "number": 132,
+          "head": "agent/h07-first-run-service-contract",
+          "sha": "3ed0d67ea4810c4ecc19905d365357359765b1d1",
+          "in_integrated_candidate_history": true
+        },
+        {
+          "number": 125,
+          "head": "agent/team-delivery-readiness",
+          "sha": "ae93174f0dda83609935dea7bdf78a7e139f26fa",
+          "in_integrated_candidate_history": true
+        },
+        {
+          "number": 124,
+          "head": "agent/c07-capacity-command-attribution",
+          "sha": "018e2ce12b19b97e7cfeb6fa300e2252d4e02b7a",
+          "in_integrated_candidate_history": true
+        },
+        {
+          "number": 123,
+          "head": "agent/c07-integrated-candidate",
+          "sha": "1880734887b1624247f623bc8966be8946912fb7",
+          "in_integrated_candidate_history": true
+        },
+        {
+          "number": 122,
+          "head": "agent/c07-metadata-capacity",
+          "sha": "94a0786710519c7e389098041c6c84cff7cde478",
+          "in_integrated_candidate_history": true
+        },
+        {
+          "number": 121,
+          "head": "agent/c07-reopen-admission",
+          "sha": "316569a3abe2060c324581f838e250ed4aead47b",
+          "in_integrated_candidate_history": true
+        },
+        {
+          "number": 120,
+          "head": "agent/c07-backup-scheduling",
+          "sha": "037635afbf202fe8379ebec647f51bd57b410a79",
+          "in_integrated_candidate_history": true
+        },
+        {
+          "number": 119,
+          "head": "agent/c07-point-read-selection",
+          "sha": "eb4d7091644d2a0a3efc8417da56778a32de6e58",
+          "in_integrated_candidate_history": true
+        },
+        {
+          "number": 117,
+          "head": "agent/c07-digest-throughput",
+          "sha": "155b400ae827822b4e6d38d542c172d7514d172d",
+          "in_integrated_candidate_history": true
+        },
+        {
+          "number": 68,
+          "head": "agent/c07d-restore-limits",
+          "sha": "02951068179220d61ea5041dc95cff7b88c865b3",
+          "in_integrated_candidate_history": true
+        },
+        {
+          "number": 67,
+          "head": "agent/c07d-limit-propagation",
+          "sha": "fb4f1e880fbede3a097ea58f6464c2dd82012094",
+          "in_integrated_candidate_history": true
+        },
+        {
+          "number": 66,
+          "head": "agent/c07e-output-budget",
+          "sha": "c5888e2373ba03155774361e8105639dcf709363",
+          "in_integrated_candidate_history": true
+        },
+        {
+          "number": 25,
+          "head": "agent/rrflowdb-postgres-plan",
+          "sha": "d134734bd765545475d5d6020b22749feae8045e",
+          "in_integrated_candidate_history": true
+        },
+        {
+          "number": 24,
+          "head": "agent/rrflowdb-postgres-identity",
+          "sha": "f661cc965093f9ed4b3ae7a222da35c65599b43e",
+          "in_integrated_candidate_history": true
+        }
+      ]
+    },
+    {
+      "repository": "connectome-development",
+      "heads": [
+        {
+          "number": 48,
+          "head": "agent/alarm-livefire-20261110",
+          "sha": "edd9b45af52c0f76e530f5c68c76554436949eea",
+          "in_integrated_candidate_history": true
+        },
+        {
+          "number": 42,
+          "head": "codex/task-assessments",
+          "sha": "52c3a5eb1d6ada8ae928578dc11bda32d82ef798",
+          "in_integrated_candidate_history": true
+        },
+        {
+          "number": 10,
+          "head": "agent/rrflow-native-connectome",
+          "sha": "8a9eb5e52b8df91b888b75f6c98edabeb8d3199d",
+          "in_integrated_candidate_history": true
+        }
+      ]
+    }
+  ]
+}
