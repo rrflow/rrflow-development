@@ -1,4 +1,4 @@
-// OpenAPI SHA-256: 604a580b61a3a69a7688f656a16d8928bd1402a67f3cb91cf8175e7c33b6a076
+// OpenAPI SHA-256: 45a1377eddcc481533db43c70756e40963a468e319126082a372358a9868c7bd
 export interface paths {
     "/v1/attunement/cancel": {
         parameters: {
@@ -454,6 +454,66 @@ export interface paths {
          * @description Returns the project endpoint configuration: installed engram identity, revision, current endpoint profile, and the digest of the last applied plan. Revision 0 with no profile means never configured; revocation keeps a nonzero revision with no profile. Requires an installed project identity.
          */
         post: operations["endpoint-configuration-read"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/configuration/project/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Apply approved project policies
+         * @description Atomically append the approved numeric project policy revision after authorization, source, expiry and composition checks. No user binding or installation ceiling is changed.
+         */
+        post: operations["project-configuration-apply"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/configuration/project/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Preview project policies
+         * @description Preview a complete numeric project settings snapshot with valid time, expected project revision and current user-policy provenance. Preview performs no mutation.
+         */
+        post: operations["project-configuration-preview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/configuration/project/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Read project policy state
+         * @description Read the latest recorded project policy and installed baseline for editing. Use effective-configuration reads to select historical valid and known revisions.
+         */
+        post: operations["project-configuration-read"];
         delete?: never;
         options?: never;
         head?: never;
@@ -15368,6 +15428,8 @@ export interface operations {
                     };
                     payload: {
                         /** Format: uint64 */
+                        project_recorded_revision?: number | null;
+                        /** Format: uint64 */
                         recorded_revision?: number | null;
                         /** @default {} */
                         requested?: {
@@ -15464,6 +15526,122 @@ export interface operations {
                                     project_id: string;
                                 };
                                 project_configuration_sha256: string;
+                                project_policy?: {
+                                    applied_plan_sha256: string;
+                                    change: {
+                                        settings: {
+                                            query_batch_rows?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            query_elapsed_ms?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            query_memory_bytes?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            query_output_bytes?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            query_rows?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            query_spill_bytes?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            query_storage_keys?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            recall_graph_depth?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            recall_items?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            recall_output_bytes?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            recall_storage_keys?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                        };
+                                        /** Format: uint64 */
+                                        valid_from_unix_ms: number;
+                                        /** Format: uint64 */
+                                        valid_to_unix_ms?: number | null;
+                                    };
+                                    /** Format: uint16 */
+                                    format_version: number;
+                                    previous_sha256?: string | null;
+                                    /** Format: uint64 */
+                                    recorded_at_unix_ms: number;
+                                    /** Format: uint64 */
+                                    revision: number;
+                                    revision_sha256: string;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    source_id: string;
+                                } | null;
+                                /** Format: uint64 */
+                                project_read_revision: number;
                                 /** Format: uint64 */
                                 project_revision: number;
                                 /** Format: uint64 */
@@ -15968,6 +16146,122 @@ export interface operations {
                                     project_id: string;
                                 };
                                 project_configuration_sha256: string;
+                                project_policy?: {
+                                    applied_plan_sha256: string;
+                                    change: {
+                                        settings: {
+                                            query_batch_rows?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            query_elapsed_ms?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            query_memory_bytes?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            query_output_bytes?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            query_rows?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            query_spill_bytes?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            query_storage_keys?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            recall_graph_depth?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            recall_items?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            recall_output_bytes?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            recall_storage_keys?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                        };
+                                        /** Format: uint64 */
+                                        valid_from_unix_ms: number;
+                                        /** Format: uint64 */
+                                        valid_to_unix_ms?: number | null;
+                                    };
+                                    /** Format: uint16 */
+                                    format_version: number;
+                                    previous_sha256?: string | null;
+                                    /** Format: uint64 */
+                                    recorded_at_unix_ms: number;
+                                    /** Format: uint64 */
+                                    revision: number;
+                                    revision_sha256: string;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    source_id: string;
+                                } | null;
+                                /** Format: uint64 */
+                                project_read_revision: number;
                                 /** Format: uint64 */
                                 project_revision: number;
                                 /** Format: uint64 */
@@ -20003,6 +20297,3411 @@ export interface operations {
             };
         };
     };
+    "project-configuration-apply": {
+        parameters: {
+            query?: never;
+            header: {
+                "X-RRD-Session": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    context: {
+                        /** Format: uint64 */
+                        deadline_unix_ms?: number | null;
+                        idempotency_key?: string | null;
+                        operation_id: string;
+                        request_id: string;
+                    };
+                    payload: {
+                        approved_plan_sha256: string;
+                        plan: {
+                            change: {
+                                settings: {
+                                    query_batch_rows?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    query_elapsed_ms?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    query_memory_bytes?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    query_output_bytes?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    query_rows?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    query_spill_bytes?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    query_storage_keys?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    recall_graph_depth?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    recall_items?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    recall_output_bytes?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    recall_storage_keys?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                };
+                                /** Format: uint64 */
+                                valid_from_unix_ms: number;
+                                /** Format: uint64 */
+                                valid_to_unix_ms?: number | null;
+                            };
+                            current: {
+                                /** @description Latest recorded edit, including a future-dated edit. Effective reads select by valid time. */
+                                head?: {
+                                    applied_plan_sha256: string;
+                                    change: {
+                                        settings: {
+                                            query_batch_rows?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            query_elapsed_ms?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            query_memory_bytes?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            query_output_bytes?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            query_rows?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            query_spill_bytes?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            query_storage_keys?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            recall_graph_depth?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            recall_items?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            recall_output_bytes?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            recall_storage_keys?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                        };
+                                        /** Format: uint64 */
+                                        valid_from_unix_ms: number;
+                                        /** Format: uint64 */
+                                        valid_to_unix_ms?: number | null;
+                                    };
+                                    /** Format: uint16 */
+                                    format_version: number;
+                                    previous_sha256?: string | null;
+                                    /** Format: uint64 */
+                                    recorded_at_unix_ms: number;
+                                    /** Format: uint64 */
+                                    revision: number;
+                                    revision_sha256: string;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    source_id: string;
+                                } | null;
+                                /**
+                                 * @description Stable project-local identity. Organization is deliberately absent: a
+                                 *     local installation must not fabricate a tenant merely to address itself.
+                                 */
+                                identity: {
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    engram_id: string;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    instance_id: string;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    project_id: string;
+                                };
+                                installed_configuration_sha256: string;
+                                installed_settings: {
+                                    query_batch_rows?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    query_elapsed_ms?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    query_memory_bytes?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    query_output_bytes?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    query_rows?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    query_spill_bytes?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    query_storage_keys?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    recall_graph_depth?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    recall_items?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    recall_output_bytes?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    recall_storage_keys?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                };
+                            };
+                            /**
+                             * Format: uint64
+                             * @description Composition is checked at this valid-time coordinate, not all future policy states.
+                             */
+                            evaluated_at_unix_ms: number;
+                            /** Format: uint64 */
+                            expires_at_unix_ms: number;
+                            /** Format: uint16 */
+                            format_version: number;
+                            /** Format: uint64 */
+                            issued_at_unix_ms: number;
+                            plan_sha256: string;
+                            user?: {
+                                /** Format: uint64 */
+                                read_revision: number;
+                                revision_sha256: string;
+                                /** Format: uint64 */
+                                selected_revision: number;
+                                /**
+                                 * @description A canonical public identifier component.
+                                 *
+                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                 *     labels are separate data and may use arbitrary Unicode.
+                                 */
+                                source_id: string;
+                            } | null;
+                            values: {
+                                query_batch_rows?: {
+                                    /** Format: uint64 */
+                                    installed_ceiling: number;
+                                    /** Format: uint64 */
+                                    maximum: number;
+                                    /** Format: uint64 */
+                                    minimum: number;
+                                    project_rule?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    } | null;
+                                    /** @enum {string} */
+                                    source: "request" | "project_preference" | "user_preference" | "installed_default";
+                                    unit: string;
+                                    user_rule?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    } | null;
+                                    /** Format: uint64 */
+                                    value: number;
+                                };
+                                query_elapsed_ms?: {
+                                    /** Format: uint64 */
+                                    installed_ceiling: number;
+                                    /** Format: uint64 */
+                                    maximum: number;
+                                    /** Format: uint64 */
+                                    minimum: number;
+                                    project_rule?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    } | null;
+                                    /** @enum {string} */
+                                    source: "request" | "project_preference" | "user_preference" | "installed_default";
+                                    unit: string;
+                                    user_rule?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    } | null;
+                                    /** Format: uint64 */
+                                    value: number;
+                                };
+                                query_memory_bytes?: {
+                                    /** Format: uint64 */
+                                    installed_ceiling: number;
+                                    /** Format: uint64 */
+                                    maximum: number;
+                                    /** Format: uint64 */
+                                    minimum: number;
+                                    project_rule?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    } | null;
+                                    /** @enum {string} */
+                                    source: "request" | "project_preference" | "user_preference" | "installed_default";
+                                    unit: string;
+                                    user_rule?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    } | null;
+                                    /** Format: uint64 */
+                                    value: number;
+                                };
+                                query_output_bytes?: {
+                                    /** Format: uint64 */
+                                    installed_ceiling: number;
+                                    /** Format: uint64 */
+                                    maximum: number;
+                                    /** Format: uint64 */
+                                    minimum: number;
+                                    project_rule?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    } | null;
+                                    /** @enum {string} */
+                                    source: "request" | "project_preference" | "user_preference" | "installed_default";
+                                    unit: string;
+                                    user_rule?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    } | null;
+                                    /** Format: uint64 */
+                                    value: number;
+                                };
+                                query_rows?: {
+                                    /** Format: uint64 */
+                                    installed_ceiling: number;
+                                    /** Format: uint64 */
+                                    maximum: number;
+                                    /** Format: uint64 */
+                                    minimum: number;
+                                    project_rule?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    } | null;
+                                    /** @enum {string} */
+                                    source: "request" | "project_preference" | "user_preference" | "installed_default";
+                                    unit: string;
+                                    user_rule?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    } | null;
+                                    /** Format: uint64 */
+                                    value: number;
+                                };
+                                query_spill_bytes?: {
+                                    /** Format: uint64 */
+                                    installed_ceiling: number;
+                                    /** Format: uint64 */
+                                    maximum: number;
+                                    /** Format: uint64 */
+                                    minimum: number;
+                                    project_rule?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    } | null;
+                                    /** @enum {string} */
+                                    source: "request" | "project_preference" | "user_preference" | "installed_default";
+                                    unit: string;
+                                    user_rule?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    } | null;
+                                    /** Format: uint64 */
+                                    value: number;
+                                };
+                                query_storage_keys?: {
+                                    /** Format: uint64 */
+                                    installed_ceiling: number;
+                                    /** Format: uint64 */
+                                    maximum: number;
+                                    /** Format: uint64 */
+                                    minimum: number;
+                                    project_rule?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    } | null;
+                                    /** @enum {string} */
+                                    source: "request" | "project_preference" | "user_preference" | "installed_default";
+                                    unit: string;
+                                    user_rule?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    } | null;
+                                    /** Format: uint64 */
+                                    value: number;
+                                };
+                                recall_graph_depth?: {
+                                    /** Format: uint64 */
+                                    installed_ceiling: number;
+                                    /** Format: uint64 */
+                                    maximum: number;
+                                    /** Format: uint64 */
+                                    minimum: number;
+                                    project_rule?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    } | null;
+                                    /** @enum {string} */
+                                    source: "request" | "project_preference" | "user_preference" | "installed_default";
+                                    unit: string;
+                                    user_rule?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    } | null;
+                                    /** Format: uint64 */
+                                    value: number;
+                                };
+                                recall_items?: {
+                                    /** Format: uint64 */
+                                    installed_ceiling: number;
+                                    /** Format: uint64 */
+                                    maximum: number;
+                                    /** Format: uint64 */
+                                    minimum: number;
+                                    project_rule?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    } | null;
+                                    /** @enum {string} */
+                                    source: "request" | "project_preference" | "user_preference" | "installed_default";
+                                    unit: string;
+                                    user_rule?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    } | null;
+                                    /** Format: uint64 */
+                                    value: number;
+                                };
+                                recall_output_bytes?: {
+                                    /** Format: uint64 */
+                                    installed_ceiling: number;
+                                    /** Format: uint64 */
+                                    maximum: number;
+                                    /** Format: uint64 */
+                                    minimum: number;
+                                    project_rule?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    } | null;
+                                    /** @enum {string} */
+                                    source: "request" | "project_preference" | "user_preference" | "installed_default";
+                                    unit: string;
+                                    user_rule?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    } | null;
+                                    /** Format: uint64 */
+                                    value: number;
+                                };
+                                recall_storage_keys?: {
+                                    /** Format: uint64 */
+                                    installed_ceiling: number;
+                                    /** Format: uint64 */
+                                    maximum: number;
+                                    /** Format: uint64 */
+                                    minimum: number;
+                                    project_rule?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    } | null;
+                                    /** @enum {string} */
+                                    source: "request" | "project_preference" | "user_preference" | "installed_default";
+                                    unit: string;
+                                    user_rule?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    } | null;
+                                    /** Format: uint64 */
+                                    value: number;
+                                };
+                            };
+                        };
+                    };
+                    protocol: string;
+                    /** Format: uint16 */
+                    protocol_version: number;
+                    /**
+                     * @description A fully explicit hierarchical identity. No field is inferred from process
+                     *     cwd, connection state, or a human label.
+                     */
+                    resource: {
+                        segments: {
+                            /**
+                             * @description A canonical public identifier component.
+                             *
+                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                             *     labels are separate data and may use arbitrary Unicode.
+                             */
+                            id: string;
+                            /** @enum {string} */
+                            kind: "organization" | "engram" | "project" | "instance" | "tenant" | "namespace" | "database" | "table" | "collection" | "record" | "point" | "relation" | "alias" | "cluster" | "node" | "shard" | "replica" | "segment" | "transaction" | "snapshot" | "backup" | "operation";
+                        }[];
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description Typed RRD response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        operation_id: string;
+                        outcome: {
+                            payload: {
+                                /** @description Latest recorded edit, including a future-dated edit. Effective reads select by valid time. */
+                                head?: {
+                                    applied_plan_sha256: string;
+                                    change: {
+                                        settings: {
+                                            query_batch_rows?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            query_elapsed_ms?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            query_memory_bytes?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            query_output_bytes?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            query_rows?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            query_spill_bytes?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            query_storage_keys?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            recall_graph_depth?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            recall_items?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            recall_output_bytes?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            recall_storage_keys?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                        };
+                                        /** Format: uint64 */
+                                        valid_from_unix_ms: number;
+                                        /** Format: uint64 */
+                                        valid_to_unix_ms?: number | null;
+                                    };
+                                    /** Format: uint16 */
+                                    format_version: number;
+                                    previous_sha256?: string | null;
+                                    /** Format: uint64 */
+                                    recorded_at_unix_ms: number;
+                                    /** Format: uint64 */
+                                    revision: number;
+                                    revision_sha256: string;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    source_id: string;
+                                } | null;
+                                /**
+                                 * @description Stable project-local identity. Organization is deliberately absent: a
+                                 *     local installation must not fabricate a tenant merely to address itself.
+                                 */
+                                identity: {
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    engram_id: string;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    instance_id: string;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    project_id: string;
+                                };
+                                installed_configuration_sha256: string;
+                                installed_settings: {
+                                    query_batch_rows?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    query_elapsed_ms?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    query_memory_bytes?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    query_output_bytes?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    query_rows?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    query_spill_bytes?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    query_storage_keys?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    recall_graph_depth?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    recall_items?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    recall_output_bytes?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    recall_storage_keys?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                };
+                            };
+                            /** @constant */
+                            status: "ok";
+                        } | {
+                            error: {
+                                /** @enum {string} */
+                                code: "invalid_argument" | "not_found" | "already_exists" | "conflict" | "failed_precondition" | "unauthenticated" | "permission_denied" | "resource_exhausted" | "deadline_exceeded" | "cancelled" | "unavailable" | "corruption" | "unsupported_version" | "internal";
+                                details?: {
+                                    [key: string]: string;
+                                };
+                                message: string;
+                                retryable: boolean;
+                            };
+                            /** @constant */
+                            status: "error";
+                        };
+                        protocol: string;
+                        /** Format: uint16 */
+                        protocol_version: number;
+                        request_id: string;
+                    };
+                };
+            };
+            /** @description Typed RRD error response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        operation_id: string;
+                        outcome: {
+                            payload: {
+                                /** @description Latest recorded edit, including a future-dated edit. Effective reads select by valid time. */
+                                head?: {
+                                    applied_plan_sha256: string;
+                                    change: {
+                                        settings: {
+                                            query_batch_rows?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            query_elapsed_ms?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            query_memory_bytes?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            query_output_bytes?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            query_rows?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            query_spill_bytes?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            query_storage_keys?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            recall_graph_depth?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            recall_items?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            recall_output_bytes?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            recall_storage_keys?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                        };
+                                        /** Format: uint64 */
+                                        valid_from_unix_ms: number;
+                                        /** Format: uint64 */
+                                        valid_to_unix_ms?: number | null;
+                                    };
+                                    /** Format: uint16 */
+                                    format_version: number;
+                                    previous_sha256?: string | null;
+                                    /** Format: uint64 */
+                                    recorded_at_unix_ms: number;
+                                    /** Format: uint64 */
+                                    revision: number;
+                                    revision_sha256: string;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    source_id: string;
+                                } | null;
+                                /**
+                                 * @description Stable project-local identity. Organization is deliberately absent: a
+                                 *     local installation must not fabricate a tenant merely to address itself.
+                                 */
+                                identity: {
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    engram_id: string;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    instance_id: string;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    project_id: string;
+                                };
+                                installed_configuration_sha256: string;
+                                installed_settings: {
+                                    query_batch_rows?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    query_elapsed_ms?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    query_memory_bytes?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    query_output_bytes?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    query_rows?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    query_spill_bytes?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    query_storage_keys?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    recall_graph_depth?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    recall_items?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    recall_output_bytes?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    recall_storage_keys?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                };
+                            };
+                            /** @constant */
+                            status: "ok";
+                        } | {
+                            error: {
+                                /** @enum {string} */
+                                code: "invalid_argument" | "not_found" | "already_exists" | "conflict" | "failed_precondition" | "unauthenticated" | "permission_denied" | "resource_exhausted" | "deadline_exceeded" | "cancelled" | "unavailable" | "corruption" | "unsupported_version" | "internal";
+                                details?: {
+                                    [key: string]: string;
+                                };
+                                message: string;
+                                retryable: boolean;
+                            };
+                            /** @constant */
+                            status: "error";
+                        };
+                        protocol: string;
+                        /** Format: uint16 */
+                        protocol_version: number;
+                        request_id: string;
+                    };
+                };
+            };
+        };
+    };
+    "project-configuration-preview": {
+        parameters: {
+            query?: never;
+            header: {
+                "X-RRD-Session": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    context: {
+                        /** Format: uint64 */
+                        deadline_unix_ms?: number | null;
+                        idempotency_key?: string | null;
+                        operation_id: string;
+                        request_id: string;
+                    };
+                    payload: {
+                        change: {
+                            settings: {
+                                query_batch_rows?: {
+                                    /** Format: uint64 */
+                                    maximum?: number | null;
+                                    /** Format: uint64 */
+                                    minimum?: number | null;
+                                    /** Format: uint64 */
+                                    preference?: number | null;
+                                };
+                                query_elapsed_ms?: {
+                                    /** Format: uint64 */
+                                    maximum?: number | null;
+                                    /** Format: uint64 */
+                                    minimum?: number | null;
+                                    /** Format: uint64 */
+                                    preference?: number | null;
+                                };
+                                query_memory_bytes?: {
+                                    /** Format: uint64 */
+                                    maximum?: number | null;
+                                    /** Format: uint64 */
+                                    minimum?: number | null;
+                                    /** Format: uint64 */
+                                    preference?: number | null;
+                                };
+                                query_output_bytes?: {
+                                    /** Format: uint64 */
+                                    maximum?: number | null;
+                                    /** Format: uint64 */
+                                    minimum?: number | null;
+                                    /** Format: uint64 */
+                                    preference?: number | null;
+                                };
+                                query_rows?: {
+                                    /** Format: uint64 */
+                                    maximum?: number | null;
+                                    /** Format: uint64 */
+                                    minimum?: number | null;
+                                    /** Format: uint64 */
+                                    preference?: number | null;
+                                };
+                                query_spill_bytes?: {
+                                    /** Format: uint64 */
+                                    maximum?: number | null;
+                                    /** Format: uint64 */
+                                    minimum?: number | null;
+                                    /** Format: uint64 */
+                                    preference?: number | null;
+                                };
+                                query_storage_keys?: {
+                                    /** Format: uint64 */
+                                    maximum?: number | null;
+                                    /** Format: uint64 */
+                                    minimum?: number | null;
+                                    /** Format: uint64 */
+                                    preference?: number | null;
+                                };
+                                recall_graph_depth?: {
+                                    /** Format: uint64 */
+                                    maximum?: number | null;
+                                    /** Format: uint64 */
+                                    minimum?: number | null;
+                                    /** Format: uint64 */
+                                    preference?: number | null;
+                                };
+                                recall_items?: {
+                                    /** Format: uint64 */
+                                    maximum?: number | null;
+                                    /** Format: uint64 */
+                                    minimum?: number | null;
+                                    /** Format: uint64 */
+                                    preference?: number | null;
+                                };
+                                recall_output_bytes?: {
+                                    /** Format: uint64 */
+                                    maximum?: number | null;
+                                    /** Format: uint64 */
+                                    minimum?: number | null;
+                                    /** Format: uint64 */
+                                    preference?: number | null;
+                                };
+                                recall_storage_keys?: {
+                                    /** Format: uint64 */
+                                    maximum?: number | null;
+                                    /** Format: uint64 */
+                                    minimum?: number | null;
+                                    /** Format: uint64 */
+                                    preference?: number | null;
+                                };
+                            };
+                            /** Format: uint64 */
+                            valid_from_unix_ms: number;
+                            /** Format: uint64 */
+                            valid_to_unix_ms?: number | null;
+                        };
+                        /** Format: uint64 */
+                        expected_revision: number;
+                    };
+                    protocol: string;
+                    /** Format: uint16 */
+                    protocol_version: number;
+                    /**
+                     * @description A fully explicit hierarchical identity. No field is inferred from process
+                     *     cwd, connection state, or a human label.
+                     */
+                    resource: {
+                        segments: {
+                            /**
+                             * @description A canonical public identifier component.
+                             *
+                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                             *     labels are separate data and may use arbitrary Unicode.
+                             */
+                            id: string;
+                            /** @enum {string} */
+                            kind: "organization" | "engram" | "project" | "instance" | "tenant" | "namespace" | "database" | "table" | "collection" | "record" | "point" | "relation" | "alias" | "cluster" | "node" | "shard" | "replica" | "segment" | "transaction" | "snapshot" | "backup" | "operation";
+                        }[];
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description Typed RRD response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        operation_id: string;
+                        outcome: {
+                            payload: {
+                                change: {
+                                    settings: {
+                                        query_batch_rows?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        };
+                                        query_elapsed_ms?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        };
+                                        query_memory_bytes?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        };
+                                        query_output_bytes?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        };
+                                        query_rows?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        };
+                                        query_spill_bytes?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        };
+                                        query_storage_keys?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        };
+                                        recall_graph_depth?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        };
+                                        recall_items?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        };
+                                        recall_output_bytes?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        };
+                                        recall_storage_keys?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        };
+                                    };
+                                    /** Format: uint64 */
+                                    valid_from_unix_ms: number;
+                                    /** Format: uint64 */
+                                    valid_to_unix_ms?: number | null;
+                                };
+                                current: {
+                                    /** @description Latest recorded edit, including a future-dated edit. Effective reads select by valid time. */
+                                    head?: {
+                                        applied_plan_sha256: string;
+                                        change: {
+                                            settings: {
+                                                query_batch_rows?: {
+                                                    /** Format: uint64 */
+                                                    maximum?: number | null;
+                                                    /** Format: uint64 */
+                                                    minimum?: number | null;
+                                                    /** Format: uint64 */
+                                                    preference?: number | null;
+                                                };
+                                                query_elapsed_ms?: {
+                                                    /** Format: uint64 */
+                                                    maximum?: number | null;
+                                                    /** Format: uint64 */
+                                                    minimum?: number | null;
+                                                    /** Format: uint64 */
+                                                    preference?: number | null;
+                                                };
+                                                query_memory_bytes?: {
+                                                    /** Format: uint64 */
+                                                    maximum?: number | null;
+                                                    /** Format: uint64 */
+                                                    minimum?: number | null;
+                                                    /** Format: uint64 */
+                                                    preference?: number | null;
+                                                };
+                                                query_output_bytes?: {
+                                                    /** Format: uint64 */
+                                                    maximum?: number | null;
+                                                    /** Format: uint64 */
+                                                    minimum?: number | null;
+                                                    /** Format: uint64 */
+                                                    preference?: number | null;
+                                                };
+                                                query_rows?: {
+                                                    /** Format: uint64 */
+                                                    maximum?: number | null;
+                                                    /** Format: uint64 */
+                                                    minimum?: number | null;
+                                                    /** Format: uint64 */
+                                                    preference?: number | null;
+                                                };
+                                                query_spill_bytes?: {
+                                                    /** Format: uint64 */
+                                                    maximum?: number | null;
+                                                    /** Format: uint64 */
+                                                    minimum?: number | null;
+                                                    /** Format: uint64 */
+                                                    preference?: number | null;
+                                                };
+                                                query_storage_keys?: {
+                                                    /** Format: uint64 */
+                                                    maximum?: number | null;
+                                                    /** Format: uint64 */
+                                                    minimum?: number | null;
+                                                    /** Format: uint64 */
+                                                    preference?: number | null;
+                                                };
+                                                recall_graph_depth?: {
+                                                    /** Format: uint64 */
+                                                    maximum?: number | null;
+                                                    /** Format: uint64 */
+                                                    minimum?: number | null;
+                                                    /** Format: uint64 */
+                                                    preference?: number | null;
+                                                };
+                                                recall_items?: {
+                                                    /** Format: uint64 */
+                                                    maximum?: number | null;
+                                                    /** Format: uint64 */
+                                                    minimum?: number | null;
+                                                    /** Format: uint64 */
+                                                    preference?: number | null;
+                                                };
+                                                recall_output_bytes?: {
+                                                    /** Format: uint64 */
+                                                    maximum?: number | null;
+                                                    /** Format: uint64 */
+                                                    minimum?: number | null;
+                                                    /** Format: uint64 */
+                                                    preference?: number | null;
+                                                };
+                                                recall_storage_keys?: {
+                                                    /** Format: uint64 */
+                                                    maximum?: number | null;
+                                                    /** Format: uint64 */
+                                                    minimum?: number | null;
+                                                    /** Format: uint64 */
+                                                    preference?: number | null;
+                                                };
+                                            };
+                                            /** Format: uint64 */
+                                            valid_from_unix_ms: number;
+                                            /** Format: uint64 */
+                                            valid_to_unix_ms?: number | null;
+                                        };
+                                        /** Format: uint16 */
+                                        format_version: number;
+                                        previous_sha256?: string | null;
+                                        /** Format: uint64 */
+                                        recorded_at_unix_ms: number;
+                                        /** Format: uint64 */
+                                        revision: number;
+                                        revision_sha256: string;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        source_id: string;
+                                    } | null;
+                                    /**
+                                     * @description Stable project-local identity. Organization is deliberately absent: a
+                                     *     local installation must not fabricate a tenant merely to address itself.
+                                     */
+                                    identity: {
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        engram_id: string;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        instance_id: string;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        project_id: string;
+                                    };
+                                    installed_configuration_sha256: string;
+                                    installed_settings: {
+                                        query_batch_rows?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        };
+                                        query_elapsed_ms?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        };
+                                        query_memory_bytes?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        };
+                                        query_output_bytes?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        };
+                                        query_rows?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        };
+                                        query_spill_bytes?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        };
+                                        query_storage_keys?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        };
+                                        recall_graph_depth?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        };
+                                        recall_items?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        };
+                                        recall_output_bytes?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        };
+                                        recall_storage_keys?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        };
+                                    };
+                                };
+                                /**
+                                 * Format: uint64
+                                 * @description Composition is checked at this valid-time coordinate, not all future policy states.
+                                 */
+                                evaluated_at_unix_ms: number;
+                                /** Format: uint64 */
+                                expires_at_unix_ms: number;
+                                /** Format: uint16 */
+                                format_version: number;
+                                /** Format: uint64 */
+                                issued_at_unix_ms: number;
+                                plan_sha256: string;
+                                user?: {
+                                    /** Format: uint64 */
+                                    read_revision: number;
+                                    revision_sha256: string;
+                                    /** Format: uint64 */
+                                    selected_revision: number;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    source_id: string;
+                                } | null;
+                                values: {
+                                    query_batch_rows?: {
+                                        /** Format: uint64 */
+                                        installed_ceiling: number;
+                                        /** Format: uint64 */
+                                        maximum: number;
+                                        /** Format: uint64 */
+                                        minimum: number;
+                                        project_rule?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        } | null;
+                                        /** @enum {string} */
+                                        source: "request" | "project_preference" | "user_preference" | "installed_default";
+                                        unit: string;
+                                        user_rule?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        } | null;
+                                        /** Format: uint64 */
+                                        value: number;
+                                    };
+                                    query_elapsed_ms?: {
+                                        /** Format: uint64 */
+                                        installed_ceiling: number;
+                                        /** Format: uint64 */
+                                        maximum: number;
+                                        /** Format: uint64 */
+                                        minimum: number;
+                                        project_rule?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        } | null;
+                                        /** @enum {string} */
+                                        source: "request" | "project_preference" | "user_preference" | "installed_default";
+                                        unit: string;
+                                        user_rule?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        } | null;
+                                        /** Format: uint64 */
+                                        value: number;
+                                    };
+                                    query_memory_bytes?: {
+                                        /** Format: uint64 */
+                                        installed_ceiling: number;
+                                        /** Format: uint64 */
+                                        maximum: number;
+                                        /** Format: uint64 */
+                                        minimum: number;
+                                        project_rule?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        } | null;
+                                        /** @enum {string} */
+                                        source: "request" | "project_preference" | "user_preference" | "installed_default";
+                                        unit: string;
+                                        user_rule?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        } | null;
+                                        /** Format: uint64 */
+                                        value: number;
+                                    };
+                                    query_output_bytes?: {
+                                        /** Format: uint64 */
+                                        installed_ceiling: number;
+                                        /** Format: uint64 */
+                                        maximum: number;
+                                        /** Format: uint64 */
+                                        minimum: number;
+                                        project_rule?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        } | null;
+                                        /** @enum {string} */
+                                        source: "request" | "project_preference" | "user_preference" | "installed_default";
+                                        unit: string;
+                                        user_rule?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        } | null;
+                                        /** Format: uint64 */
+                                        value: number;
+                                    };
+                                    query_rows?: {
+                                        /** Format: uint64 */
+                                        installed_ceiling: number;
+                                        /** Format: uint64 */
+                                        maximum: number;
+                                        /** Format: uint64 */
+                                        minimum: number;
+                                        project_rule?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        } | null;
+                                        /** @enum {string} */
+                                        source: "request" | "project_preference" | "user_preference" | "installed_default";
+                                        unit: string;
+                                        user_rule?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        } | null;
+                                        /** Format: uint64 */
+                                        value: number;
+                                    };
+                                    query_spill_bytes?: {
+                                        /** Format: uint64 */
+                                        installed_ceiling: number;
+                                        /** Format: uint64 */
+                                        maximum: number;
+                                        /** Format: uint64 */
+                                        minimum: number;
+                                        project_rule?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        } | null;
+                                        /** @enum {string} */
+                                        source: "request" | "project_preference" | "user_preference" | "installed_default";
+                                        unit: string;
+                                        user_rule?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        } | null;
+                                        /** Format: uint64 */
+                                        value: number;
+                                    };
+                                    query_storage_keys?: {
+                                        /** Format: uint64 */
+                                        installed_ceiling: number;
+                                        /** Format: uint64 */
+                                        maximum: number;
+                                        /** Format: uint64 */
+                                        minimum: number;
+                                        project_rule?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        } | null;
+                                        /** @enum {string} */
+                                        source: "request" | "project_preference" | "user_preference" | "installed_default";
+                                        unit: string;
+                                        user_rule?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        } | null;
+                                        /** Format: uint64 */
+                                        value: number;
+                                    };
+                                    recall_graph_depth?: {
+                                        /** Format: uint64 */
+                                        installed_ceiling: number;
+                                        /** Format: uint64 */
+                                        maximum: number;
+                                        /** Format: uint64 */
+                                        minimum: number;
+                                        project_rule?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        } | null;
+                                        /** @enum {string} */
+                                        source: "request" | "project_preference" | "user_preference" | "installed_default";
+                                        unit: string;
+                                        user_rule?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        } | null;
+                                        /** Format: uint64 */
+                                        value: number;
+                                    };
+                                    recall_items?: {
+                                        /** Format: uint64 */
+                                        installed_ceiling: number;
+                                        /** Format: uint64 */
+                                        maximum: number;
+                                        /** Format: uint64 */
+                                        minimum: number;
+                                        project_rule?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        } | null;
+                                        /** @enum {string} */
+                                        source: "request" | "project_preference" | "user_preference" | "installed_default";
+                                        unit: string;
+                                        user_rule?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        } | null;
+                                        /** Format: uint64 */
+                                        value: number;
+                                    };
+                                    recall_output_bytes?: {
+                                        /** Format: uint64 */
+                                        installed_ceiling: number;
+                                        /** Format: uint64 */
+                                        maximum: number;
+                                        /** Format: uint64 */
+                                        minimum: number;
+                                        project_rule?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        } | null;
+                                        /** @enum {string} */
+                                        source: "request" | "project_preference" | "user_preference" | "installed_default";
+                                        unit: string;
+                                        user_rule?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        } | null;
+                                        /** Format: uint64 */
+                                        value: number;
+                                    };
+                                    recall_storage_keys?: {
+                                        /** Format: uint64 */
+                                        installed_ceiling: number;
+                                        /** Format: uint64 */
+                                        maximum: number;
+                                        /** Format: uint64 */
+                                        minimum: number;
+                                        project_rule?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        } | null;
+                                        /** @enum {string} */
+                                        source: "request" | "project_preference" | "user_preference" | "installed_default";
+                                        unit: string;
+                                        user_rule?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        } | null;
+                                        /** Format: uint64 */
+                                        value: number;
+                                    };
+                                };
+                            };
+                            /** @constant */
+                            status: "ok";
+                        } | {
+                            error: {
+                                /** @enum {string} */
+                                code: "invalid_argument" | "not_found" | "already_exists" | "conflict" | "failed_precondition" | "unauthenticated" | "permission_denied" | "resource_exhausted" | "deadline_exceeded" | "cancelled" | "unavailable" | "corruption" | "unsupported_version" | "internal";
+                                details?: {
+                                    [key: string]: string;
+                                };
+                                message: string;
+                                retryable: boolean;
+                            };
+                            /** @constant */
+                            status: "error";
+                        };
+                        protocol: string;
+                        /** Format: uint16 */
+                        protocol_version: number;
+                        request_id: string;
+                    };
+                };
+            };
+            /** @description Typed RRD error response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        operation_id: string;
+                        outcome: {
+                            payload: {
+                                change: {
+                                    settings: {
+                                        query_batch_rows?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        };
+                                        query_elapsed_ms?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        };
+                                        query_memory_bytes?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        };
+                                        query_output_bytes?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        };
+                                        query_rows?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        };
+                                        query_spill_bytes?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        };
+                                        query_storage_keys?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        };
+                                        recall_graph_depth?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        };
+                                        recall_items?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        };
+                                        recall_output_bytes?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        };
+                                        recall_storage_keys?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        };
+                                    };
+                                    /** Format: uint64 */
+                                    valid_from_unix_ms: number;
+                                    /** Format: uint64 */
+                                    valid_to_unix_ms?: number | null;
+                                };
+                                current: {
+                                    /** @description Latest recorded edit, including a future-dated edit. Effective reads select by valid time. */
+                                    head?: {
+                                        applied_plan_sha256: string;
+                                        change: {
+                                            settings: {
+                                                query_batch_rows?: {
+                                                    /** Format: uint64 */
+                                                    maximum?: number | null;
+                                                    /** Format: uint64 */
+                                                    minimum?: number | null;
+                                                    /** Format: uint64 */
+                                                    preference?: number | null;
+                                                };
+                                                query_elapsed_ms?: {
+                                                    /** Format: uint64 */
+                                                    maximum?: number | null;
+                                                    /** Format: uint64 */
+                                                    minimum?: number | null;
+                                                    /** Format: uint64 */
+                                                    preference?: number | null;
+                                                };
+                                                query_memory_bytes?: {
+                                                    /** Format: uint64 */
+                                                    maximum?: number | null;
+                                                    /** Format: uint64 */
+                                                    minimum?: number | null;
+                                                    /** Format: uint64 */
+                                                    preference?: number | null;
+                                                };
+                                                query_output_bytes?: {
+                                                    /** Format: uint64 */
+                                                    maximum?: number | null;
+                                                    /** Format: uint64 */
+                                                    minimum?: number | null;
+                                                    /** Format: uint64 */
+                                                    preference?: number | null;
+                                                };
+                                                query_rows?: {
+                                                    /** Format: uint64 */
+                                                    maximum?: number | null;
+                                                    /** Format: uint64 */
+                                                    minimum?: number | null;
+                                                    /** Format: uint64 */
+                                                    preference?: number | null;
+                                                };
+                                                query_spill_bytes?: {
+                                                    /** Format: uint64 */
+                                                    maximum?: number | null;
+                                                    /** Format: uint64 */
+                                                    minimum?: number | null;
+                                                    /** Format: uint64 */
+                                                    preference?: number | null;
+                                                };
+                                                query_storage_keys?: {
+                                                    /** Format: uint64 */
+                                                    maximum?: number | null;
+                                                    /** Format: uint64 */
+                                                    minimum?: number | null;
+                                                    /** Format: uint64 */
+                                                    preference?: number | null;
+                                                };
+                                                recall_graph_depth?: {
+                                                    /** Format: uint64 */
+                                                    maximum?: number | null;
+                                                    /** Format: uint64 */
+                                                    minimum?: number | null;
+                                                    /** Format: uint64 */
+                                                    preference?: number | null;
+                                                };
+                                                recall_items?: {
+                                                    /** Format: uint64 */
+                                                    maximum?: number | null;
+                                                    /** Format: uint64 */
+                                                    minimum?: number | null;
+                                                    /** Format: uint64 */
+                                                    preference?: number | null;
+                                                };
+                                                recall_output_bytes?: {
+                                                    /** Format: uint64 */
+                                                    maximum?: number | null;
+                                                    /** Format: uint64 */
+                                                    minimum?: number | null;
+                                                    /** Format: uint64 */
+                                                    preference?: number | null;
+                                                };
+                                                recall_storage_keys?: {
+                                                    /** Format: uint64 */
+                                                    maximum?: number | null;
+                                                    /** Format: uint64 */
+                                                    minimum?: number | null;
+                                                    /** Format: uint64 */
+                                                    preference?: number | null;
+                                                };
+                                            };
+                                            /** Format: uint64 */
+                                            valid_from_unix_ms: number;
+                                            /** Format: uint64 */
+                                            valid_to_unix_ms?: number | null;
+                                        };
+                                        /** Format: uint16 */
+                                        format_version: number;
+                                        previous_sha256?: string | null;
+                                        /** Format: uint64 */
+                                        recorded_at_unix_ms: number;
+                                        /** Format: uint64 */
+                                        revision: number;
+                                        revision_sha256: string;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        source_id: string;
+                                    } | null;
+                                    /**
+                                     * @description Stable project-local identity. Organization is deliberately absent: a
+                                     *     local installation must not fabricate a tenant merely to address itself.
+                                     */
+                                    identity: {
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        engram_id: string;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        instance_id: string;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        project_id: string;
+                                    };
+                                    installed_configuration_sha256: string;
+                                    installed_settings: {
+                                        query_batch_rows?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        };
+                                        query_elapsed_ms?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        };
+                                        query_memory_bytes?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        };
+                                        query_output_bytes?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        };
+                                        query_rows?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        };
+                                        query_spill_bytes?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        };
+                                        query_storage_keys?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        };
+                                        recall_graph_depth?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        };
+                                        recall_items?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        };
+                                        recall_output_bytes?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        };
+                                        recall_storage_keys?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        };
+                                    };
+                                };
+                                /**
+                                 * Format: uint64
+                                 * @description Composition is checked at this valid-time coordinate, not all future policy states.
+                                 */
+                                evaluated_at_unix_ms: number;
+                                /** Format: uint64 */
+                                expires_at_unix_ms: number;
+                                /** Format: uint16 */
+                                format_version: number;
+                                /** Format: uint64 */
+                                issued_at_unix_ms: number;
+                                plan_sha256: string;
+                                user?: {
+                                    /** Format: uint64 */
+                                    read_revision: number;
+                                    revision_sha256: string;
+                                    /** Format: uint64 */
+                                    selected_revision: number;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    source_id: string;
+                                } | null;
+                                values: {
+                                    query_batch_rows?: {
+                                        /** Format: uint64 */
+                                        installed_ceiling: number;
+                                        /** Format: uint64 */
+                                        maximum: number;
+                                        /** Format: uint64 */
+                                        minimum: number;
+                                        project_rule?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        } | null;
+                                        /** @enum {string} */
+                                        source: "request" | "project_preference" | "user_preference" | "installed_default";
+                                        unit: string;
+                                        user_rule?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        } | null;
+                                        /** Format: uint64 */
+                                        value: number;
+                                    };
+                                    query_elapsed_ms?: {
+                                        /** Format: uint64 */
+                                        installed_ceiling: number;
+                                        /** Format: uint64 */
+                                        maximum: number;
+                                        /** Format: uint64 */
+                                        minimum: number;
+                                        project_rule?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        } | null;
+                                        /** @enum {string} */
+                                        source: "request" | "project_preference" | "user_preference" | "installed_default";
+                                        unit: string;
+                                        user_rule?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        } | null;
+                                        /** Format: uint64 */
+                                        value: number;
+                                    };
+                                    query_memory_bytes?: {
+                                        /** Format: uint64 */
+                                        installed_ceiling: number;
+                                        /** Format: uint64 */
+                                        maximum: number;
+                                        /** Format: uint64 */
+                                        minimum: number;
+                                        project_rule?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        } | null;
+                                        /** @enum {string} */
+                                        source: "request" | "project_preference" | "user_preference" | "installed_default";
+                                        unit: string;
+                                        user_rule?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        } | null;
+                                        /** Format: uint64 */
+                                        value: number;
+                                    };
+                                    query_output_bytes?: {
+                                        /** Format: uint64 */
+                                        installed_ceiling: number;
+                                        /** Format: uint64 */
+                                        maximum: number;
+                                        /** Format: uint64 */
+                                        minimum: number;
+                                        project_rule?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        } | null;
+                                        /** @enum {string} */
+                                        source: "request" | "project_preference" | "user_preference" | "installed_default";
+                                        unit: string;
+                                        user_rule?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        } | null;
+                                        /** Format: uint64 */
+                                        value: number;
+                                    };
+                                    query_rows?: {
+                                        /** Format: uint64 */
+                                        installed_ceiling: number;
+                                        /** Format: uint64 */
+                                        maximum: number;
+                                        /** Format: uint64 */
+                                        minimum: number;
+                                        project_rule?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        } | null;
+                                        /** @enum {string} */
+                                        source: "request" | "project_preference" | "user_preference" | "installed_default";
+                                        unit: string;
+                                        user_rule?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        } | null;
+                                        /** Format: uint64 */
+                                        value: number;
+                                    };
+                                    query_spill_bytes?: {
+                                        /** Format: uint64 */
+                                        installed_ceiling: number;
+                                        /** Format: uint64 */
+                                        maximum: number;
+                                        /** Format: uint64 */
+                                        minimum: number;
+                                        project_rule?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        } | null;
+                                        /** @enum {string} */
+                                        source: "request" | "project_preference" | "user_preference" | "installed_default";
+                                        unit: string;
+                                        user_rule?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        } | null;
+                                        /** Format: uint64 */
+                                        value: number;
+                                    };
+                                    query_storage_keys?: {
+                                        /** Format: uint64 */
+                                        installed_ceiling: number;
+                                        /** Format: uint64 */
+                                        maximum: number;
+                                        /** Format: uint64 */
+                                        minimum: number;
+                                        project_rule?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        } | null;
+                                        /** @enum {string} */
+                                        source: "request" | "project_preference" | "user_preference" | "installed_default";
+                                        unit: string;
+                                        user_rule?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        } | null;
+                                        /** Format: uint64 */
+                                        value: number;
+                                    };
+                                    recall_graph_depth?: {
+                                        /** Format: uint64 */
+                                        installed_ceiling: number;
+                                        /** Format: uint64 */
+                                        maximum: number;
+                                        /** Format: uint64 */
+                                        minimum: number;
+                                        project_rule?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        } | null;
+                                        /** @enum {string} */
+                                        source: "request" | "project_preference" | "user_preference" | "installed_default";
+                                        unit: string;
+                                        user_rule?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        } | null;
+                                        /** Format: uint64 */
+                                        value: number;
+                                    };
+                                    recall_items?: {
+                                        /** Format: uint64 */
+                                        installed_ceiling: number;
+                                        /** Format: uint64 */
+                                        maximum: number;
+                                        /** Format: uint64 */
+                                        minimum: number;
+                                        project_rule?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        } | null;
+                                        /** @enum {string} */
+                                        source: "request" | "project_preference" | "user_preference" | "installed_default";
+                                        unit: string;
+                                        user_rule?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        } | null;
+                                        /** Format: uint64 */
+                                        value: number;
+                                    };
+                                    recall_output_bytes?: {
+                                        /** Format: uint64 */
+                                        installed_ceiling: number;
+                                        /** Format: uint64 */
+                                        maximum: number;
+                                        /** Format: uint64 */
+                                        minimum: number;
+                                        project_rule?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        } | null;
+                                        /** @enum {string} */
+                                        source: "request" | "project_preference" | "user_preference" | "installed_default";
+                                        unit: string;
+                                        user_rule?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        } | null;
+                                        /** Format: uint64 */
+                                        value: number;
+                                    };
+                                    recall_storage_keys?: {
+                                        /** Format: uint64 */
+                                        installed_ceiling: number;
+                                        /** Format: uint64 */
+                                        maximum: number;
+                                        /** Format: uint64 */
+                                        minimum: number;
+                                        project_rule?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        } | null;
+                                        /** @enum {string} */
+                                        source: "request" | "project_preference" | "user_preference" | "installed_default";
+                                        unit: string;
+                                        user_rule?: {
+                                            /** Format: uint64 */
+                                            maximum?: number | null;
+                                            /** Format: uint64 */
+                                            minimum?: number | null;
+                                            /** Format: uint64 */
+                                            preference?: number | null;
+                                        } | null;
+                                        /** Format: uint64 */
+                                        value: number;
+                                    };
+                                };
+                            };
+                            /** @constant */
+                            status: "ok";
+                        } | {
+                            error: {
+                                /** @enum {string} */
+                                code: "invalid_argument" | "not_found" | "already_exists" | "conflict" | "failed_precondition" | "unauthenticated" | "permission_denied" | "resource_exhausted" | "deadline_exceeded" | "cancelled" | "unavailable" | "corruption" | "unsupported_version" | "internal";
+                                details?: {
+                                    [key: string]: string;
+                                };
+                                message: string;
+                                retryable: boolean;
+                            };
+                            /** @constant */
+                            status: "error";
+                        };
+                        protocol: string;
+                        /** Format: uint16 */
+                        protocol_version: number;
+                        request_id: string;
+                    };
+                };
+            };
+        };
+    };
+    "project-configuration-read": {
+        parameters: {
+            query?: never;
+            header: {
+                "X-RRD-Session": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    context: {
+                        /** Format: uint64 */
+                        deadline_unix_ms?: number | null;
+                        idempotency_key?: string | null;
+                        operation_id: string;
+                        request_id: string;
+                    };
+                    payload: Record<string, never>;
+                    protocol: string;
+                    /** Format: uint16 */
+                    protocol_version: number;
+                    /**
+                     * @description A fully explicit hierarchical identity. No field is inferred from process
+                     *     cwd, connection state, or a human label.
+                     */
+                    resource: {
+                        segments: {
+                            /**
+                             * @description A canonical public identifier component.
+                             *
+                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                             *     labels are separate data and may use arbitrary Unicode.
+                             */
+                            id: string;
+                            /** @enum {string} */
+                            kind: "organization" | "engram" | "project" | "instance" | "tenant" | "namespace" | "database" | "table" | "collection" | "record" | "point" | "relation" | "alias" | "cluster" | "node" | "shard" | "replica" | "segment" | "transaction" | "snapshot" | "backup" | "operation";
+                        }[];
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description Typed RRD response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        operation_id: string;
+                        outcome: {
+                            payload: {
+                                /** @description Latest recorded edit, including a future-dated edit. Effective reads select by valid time. */
+                                head?: {
+                                    applied_plan_sha256: string;
+                                    change: {
+                                        settings: {
+                                            query_batch_rows?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            query_elapsed_ms?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            query_memory_bytes?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            query_output_bytes?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            query_rows?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            query_spill_bytes?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            query_storage_keys?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            recall_graph_depth?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            recall_items?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            recall_output_bytes?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            recall_storage_keys?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                        };
+                                        /** Format: uint64 */
+                                        valid_from_unix_ms: number;
+                                        /** Format: uint64 */
+                                        valid_to_unix_ms?: number | null;
+                                    };
+                                    /** Format: uint16 */
+                                    format_version: number;
+                                    previous_sha256?: string | null;
+                                    /** Format: uint64 */
+                                    recorded_at_unix_ms: number;
+                                    /** Format: uint64 */
+                                    revision: number;
+                                    revision_sha256: string;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    source_id: string;
+                                } | null;
+                                /**
+                                 * @description Stable project-local identity. Organization is deliberately absent: a
+                                 *     local installation must not fabricate a tenant merely to address itself.
+                                 */
+                                identity: {
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    engram_id: string;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    instance_id: string;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    project_id: string;
+                                };
+                                installed_configuration_sha256: string;
+                                installed_settings: {
+                                    query_batch_rows?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    query_elapsed_ms?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    query_memory_bytes?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    query_output_bytes?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    query_rows?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    query_spill_bytes?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    query_storage_keys?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    recall_graph_depth?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    recall_items?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    recall_output_bytes?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    recall_storage_keys?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                };
+                            };
+                            /** @constant */
+                            status: "ok";
+                        } | {
+                            error: {
+                                /** @enum {string} */
+                                code: "invalid_argument" | "not_found" | "already_exists" | "conflict" | "failed_precondition" | "unauthenticated" | "permission_denied" | "resource_exhausted" | "deadline_exceeded" | "cancelled" | "unavailable" | "corruption" | "unsupported_version" | "internal";
+                                details?: {
+                                    [key: string]: string;
+                                };
+                                message: string;
+                                retryable: boolean;
+                            };
+                            /** @constant */
+                            status: "error";
+                        };
+                        protocol: string;
+                        /** Format: uint16 */
+                        protocol_version: number;
+                        request_id: string;
+                    };
+                };
+            };
+            /** @description Typed RRD error response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        operation_id: string;
+                        outcome: {
+                            payload: {
+                                /** @description Latest recorded edit, including a future-dated edit. Effective reads select by valid time. */
+                                head?: {
+                                    applied_plan_sha256: string;
+                                    change: {
+                                        settings: {
+                                            query_batch_rows?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            query_elapsed_ms?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            query_memory_bytes?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            query_output_bytes?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            query_rows?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            query_spill_bytes?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            query_storage_keys?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            recall_graph_depth?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            recall_items?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            recall_output_bytes?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                            recall_storage_keys?: {
+                                                /** Format: uint64 */
+                                                maximum?: number | null;
+                                                /** Format: uint64 */
+                                                minimum?: number | null;
+                                                /** Format: uint64 */
+                                                preference?: number | null;
+                                            };
+                                        };
+                                        /** Format: uint64 */
+                                        valid_from_unix_ms: number;
+                                        /** Format: uint64 */
+                                        valid_to_unix_ms?: number | null;
+                                    };
+                                    /** Format: uint16 */
+                                    format_version: number;
+                                    previous_sha256?: string | null;
+                                    /** Format: uint64 */
+                                    recorded_at_unix_ms: number;
+                                    /** Format: uint64 */
+                                    revision: number;
+                                    revision_sha256: string;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    source_id: string;
+                                } | null;
+                                /**
+                                 * @description Stable project-local identity. Organization is deliberately absent: a
+                                 *     local installation must not fabricate a tenant merely to address itself.
+                                 */
+                                identity: {
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    engram_id: string;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    instance_id: string;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    project_id: string;
+                                };
+                                installed_configuration_sha256: string;
+                                installed_settings: {
+                                    query_batch_rows?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    query_elapsed_ms?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    query_memory_bytes?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    query_output_bytes?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    query_rows?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    query_spill_bytes?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    query_storage_keys?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    recall_graph_depth?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    recall_items?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    recall_output_bytes?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                    recall_storage_keys?: {
+                                        /** Format: uint64 */
+                                        maximum?: number | null;
+                                        /** Format: uint64 */
+                                        minimum?: number | null;
+                                        /** Format: uint64 */
+                                        preference?: number | null;
+                                    };
+                                };
+                            };
+                            /** @constant */
+                            status: "ok";
+                        } | {
+                            error: {
+                                /** @enum {string} */
+                                code: "invalid_argument" | "not_found" | "already_exists" | "conflict" | "failed_precondition" | "unauthenticated" | "permission_denied" | "resource_exhausted" | "deadline_exceeded" | "cancelled" | "unavailable" | "corruption" | "unsupported_version" | "internal";
+                                details?: {
+                                    [key: string]: string;
+                                };
+                                message: string;
+                                retryable: boolean;
+                            };
+                            /** @constant */
+                            status: "error";
+                        };
+                        protocol: string;
+                        /** Format: uint16 */
+                        protocol_version: number;
+                        request_id: string;
+                    };
+                };
+            };
+        };
+    };
     "context-assemble": {
         parameters: {
             query?: never;
@@ -20099,6 +23798,15 @@ export interface operations {
                                     /** Format: uint64 */
                                     evaluated_at_unix_ms: number;
                                     project_configuration_sha256: string;
+                                    project_policy?: {
+                                        /** Format: uint64 */
+                                        read_revision: number;
+                                        revision_sha256: string;
+                                        /** Format: uint64 */
+                                        selected_revision: number;
+                                    } | null;
+                                    /** Format: uint64 */
+                                    project_read_revision: number;
                                     /** Format: uint64 */
                                     project_revision: number;
                                     user?: {
@@ -20326,6 +24034,15 @@ export interface operations {
                                     /** Format: uint64 */
                                     evaluated_at_unix_ms: number;
                                     project_configuration_sha256: string;
+                                    project_policy?: {
+                                        /** Format: uint64 */
+                                        read_revision: number;
+                                        revision_sha256: string;
+                                        /** Format: uint64 */
+                                        selected_revision: number;
+                                    } | null;
+                                    /** Format: uint64 */
+                                    project_read_revision: number;
                                     /** Format: uint64 */
                                     project_revision: number;
                                     user?: {
@@ -32312,6 +36029,15 @@ export interface operations {
                                     /** Format: uint64 */
                                     evaluated_at_unix_ms: number;
                                     project_configuration_sha256: string;
+                                    project_policy?: {
+                                        /** Format: uint64 */
+                                        read_revision: number;
+                                        revision_sha256: string;
+                                        /** Format: uint64 */
+                                        selected_revision: number;
+                                    } | null;
+                                    /** Format: uint64 */
+                                    project_read_revision: number;
                                     /** Format: uint64 */
                                     project_revision: number;
                                     user?: {
@@ -32526,6 +36252,15 @@ export interface operations {
                                     /** Format: uint64 */
                                     evaluated_at_unix_ms: number;
                                     project_configuration_sha256: string;
+                                    project_policy?: {
+                                        /** Format: uint64 */
+                                        read_revision: number;
+                                        revision_sha256: string;
+                                        /** Format: uint64 */
+                                        selected_revision: number;
+                                    } | null;
+                                    /** Format: uint64 */
+                                    project_read_revision: number;
                                     /** Format: uint64 */
                                     project_revision: number;
                                     user?: {

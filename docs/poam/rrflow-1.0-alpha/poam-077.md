@@ -41,7 +41,9 @@ now provides a durable user source, explicit binding and temporal resolution
 for query and recall capacities. The
 [installed evidence](../../evidence/change-journals/gate-d/scoped-configuration-foundation-20261121.md)
 covers two project instances, corrections, restart and required-source refusal.
-Broader obligations, live project changes and Connectome controls remain open.
+Live numeric project policy edits now use authenticated preview/apply and
+revision checks; installation ceilings and source binding remain sealed. Broader
+obligations, full configuration edits and Connectome controls remain open.
 Users must be able to define enforced minimum requirements as well as
 overridable preferences. Native source contention currently refuses admission;
 read concurrency and interrupted initialization recovery need qualification

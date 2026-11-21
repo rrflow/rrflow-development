@@ -2,9 +2,9 @@
 
 package rrd
 
-// OpenAPI SHA-256: 604a580b61a3a69a7688f656a16d8928bd1402a67f3cb91cf8175e7c33b6a076
+// OpenAPI SHA-256: 45a1377eddcc481533db43c70756e40963a468e319126082a372358a9868c7bd
 
-const EndpointOpenAPIDocumentSHA256 = "604a580b61a3a69a7688f656a16d8928bd1402a67f3cb91cf8175e7c33b6a076"
+const EndpointOpenAPIDocumentSHA256 = "45a1377eddcc481533db43c70756e40963a468e319126082a372358a9868c7bd"
 
 type OperationID string
 
@@ -52,6 +52,9 @@ const (
 	OperationObservationPrepare           OperationID = "observation-prepare"
 	OperationObservationRead              OperationID = "observation-read"
 	OperationOpenapiRead                  OperationID = "openapi-read"
+	OperationProjectConfigurationApply    OperationID = "project-configuration-apply"
+	OperationProjectConfigurationPreview  OperationID = "project-configuration-preview"
+	OperationProjectConfigurationRead     OperationID = "project-configuration-read"
 	OperationQueryExecute                 OperationID = "query-execute"
 	OperationQueryExport                  OperationID = "query-export"
 	OperationQueryIndexEnsure             OperationID = "query-index-ensure"
@@ -139,6 +142,9 @@ var endpoints = map[OperationID]Endpoint{
 	OperationObservationPrepare:           {Method: "POST", Path: "/v1/observations/prepare", Authentication: "session_bearer", Mutation: true},
 	OperationObservationRead:              {Method: "POST", Path: "/v1/observations/read", Authentication: "session_bearer", Mutation: false},
 	OperationOpenapiRead:                  {Method: "GET", Path: "/v1/schema/openapi", Authentication: "public", Mutation: false},
+	OperationProjectConfigurationApply:    {Method: "POST", Path: "/v1/configuration/project/apply", Authentication: "session_bearer", Mutation: true},
+	OperationProjectConfigurationPreview:  {Method: "POST", Path: "/v1/configuration/project/preview", Authentication: "session_bearer", Mutation: false},
+	OperationProjectConfigurationRead:     {Method: "POST", Path: "/v1/configuration/project/read", Authentication: "session_bearer", Mutation: false},
 	OperationQueryExecute:                 {Method: "POST", Path: "/v1/query", Authentication: "session_bearer", Mutation: false},
 	OperationQueryExport:                  {Method: "POST", Path: "/v1/query/export", Authentication: "session_bearer", Mutation: false},
 	OperationQueryIndexEnsure:             {Method: "POST", Path: "/v1/query/indexes/ensure", Authentication: "session_bearer", Mutation: true},

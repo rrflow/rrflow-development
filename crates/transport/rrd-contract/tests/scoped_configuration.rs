@@ -43,7 +43,7 @@ fn scoped_configuration_rejects_unknown_effects_and_impossible_rules() {
 
 #[test]
 fn scoped_configuration_changes_bind_half_open_valid_intervals_and_tamper_evidence() {
-    let change = UserConfigurationChange {
+    let change = ConfigurationChange {
         valid_from_unix_ms: 20,
         valid_to_unix_ms: Some(40),
         settings: BTreeMap::new(),
@@ -52,7 +52,7 @@ fn scoped_configuration_changes_bind_half_open_valid_intervals_and_tamper_eviden
     assert!(change.contains(20));
     assert!(change.contains(39));
     assert!(!change.contains(40));
-    let mut revision = UserConfigurationRevision {
+    let mut revision = ConfigurationRevision {
         format_version: SCOPED_CONFIGURATION_VERSION,
         source_id: CanonicalId::new("user-source").unwrap(),
         revision: 1,

@@ -1,5 +1,5 @@
 // Generated from rrd-contract; do not edit.
-// OpenAPI SHA-256: 604a580b61a3a69a7688f656a16d8928bd1402a67f3cb91cf8175e7c33b6a076
+// OpenAPI SHA-256: 45a1377eddcc481533db43c70756e40963a468e319126082a372358a9868c7bd
 namespace Rrflow.Rrd;
 
 public enum OperationId
@@ -47,6 +47,9 @@ public enum OperationId
     ObservationPrepare,
     ObservationRead,
     OpenapiRead,
+    ProjectConfigurationApply,
+    ProjectConfigurationPreview,
+    ProjectConfigurationRead,
     QueryExecute,
     QueryExport,
     QueryIndexEnsure,
@@ -106,8 +109,8 @@ public sealed record Endpoint(
 
 public static class EndpointCatalog
 {
-    public const string OpenApiDocumentSha256 = "604a580b61a3a69a7688f656a16d8928bd1402a67f3cb91cf8175e7c33b6a076";
-    public const int Count = 84;
+    public const string OpenApiDocumentSha256 = "45a1377eddcc481533db43c70756e40963a468e319126082a372358a9868c7bd";
+    public const int Count = 87;
 
     public static Endpoint Get(OperationId operation) => operation switch
     {
@@ -154,6 +157,9 @@ public static class EndpointCatalog
         OperationId.ObservationPrepare => new("observation-prepare", "POST", "/v1/observations/prepare", Authentication.SessionBearer, true),
         OperationId.ObservationRead => new("observation-read", "POST", "/v1/observations/read", Authentication.SessionBearer, false),
         OperationId.OpenapiRead => new("openapi-read", "GET", "/v1/schema/openapi", Authentication.Public, false),
+        OperationId.ProjectConfigurationApply => new("project-configuration-apply", "POST", "/v1/configuration/project/apply", Authentication.SessionBearer, true),
+        OperationId.ProjectConfigurationPreview => new("project-configuration-preview", "POST", "/v1/configuration/project/preview", Authentication.SessionBearer, false),
+        OperationId.ProjectConfigurationRead => new("project-configuration-read", "POST", "/v1/configuration/project/read", Authentication.SessionBearer, false),
         OperationId.QueryExecute => new("query-execute", "POST", "/v1/query", Authentication.SessionBearer, false),
         OperationId.QueryExport => new("query-export", "POST", "/v1/query/export", Authentication.SessionBearer, false),
         OperationId.QueryIndexEnsure => new("query-index-ensure", "POST", "/v1/query/indexes/ensure", Authentication.SessionBearer, true),

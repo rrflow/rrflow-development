@@ -62,7 +62,10 @@ binds the source to a private native rrflowKV control store, published through
 digest-approved local OS-owner operations. Project installations seal an
 explicit source identity, absolute root and history-read budget. Numeric query
 and recall admission resolves that source without a cloud dependency or extra
-daemon. Remote publication, organization policies and a complete global-source
+daemon. Authenticated project read/preview/apply operations now append numeric
+policy corrections in the project control store; effective reads and operation
+admission identify the selected project revision independently of installation
+ceilings. The installed source binding remains sealed. Remote publication, organization policies and a complete global-source
 recovery lifecycle remain open; this bounded implementation does not satisfy
 all acceptance below. Clients cannot own an editable policy database.
 

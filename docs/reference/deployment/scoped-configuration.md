@@ -89,8 +89,45 @@ maximum = 80
 ```
 
 Use the platform's absolute path syntax. The source must already exist with
-the specified identity. Project configuration remains sealed at installation;
-this package does not add live project-policy editing.
+the specified identity. Installation ceilings and the user-source binding remain
+sealed. The project numeric settings snapshot can be changed through the
+public preview/apply operations below.
+
+## Edit project policies while running
+
+Use the authenticated public operations (or their generated SDK equivalents):
+
+1. `project-configuration-read` at `POST /v1/configuration/project/read`
+   returns project identity, the installed digest/settings and the latest
+   recorded edit. A missing `head` means revision zero, the installed baseline.
+   This read remains usable when effective defaults conflict, allowing repair.
+2. `project-configuration-preview` at `POST /v1/configuration/project/preview`
+   accepts `expected_revision` and a `change` containing a complete settings
+   snapshot and half-open valid interval. It requires `engram.admin`, but writes
+   nothing. The preview shows resolved values, user-policy revisions, project
+   head and a five-minute approval digest. It validates composition at the named
+   `evaluated_at_unix_ms`; it does not promise all future policies will compose.
+3. `project-configuration-apply` at `POST /v1/configuration/project/apply`
+   accepts that exact `plan` and matching `approved_plan_sha256`, with the usual
+   mutation idempotency key. It rechecks authority, identity, expiry, project
+   head, observed user policy and composition before atomically publishing one
+   immutable revision and the head. Changed inputs require a new preview.
+
+An edit replaces the project numeric settings for its valid interval. Omitting
+one setting removes that project's rule; user requirements and installed
+ceilings still apply. Empty settings explicitly select no project rules for
+that interval. An older applicable project revision remains selectable outside
+an edit's interval; the installed snapshot is revision zero. This is temporal
+selection from one history, not an alternate implementation or hidden policy
+recovery. History selection is capped at 4096 revision reads and refuses missing,
+corrupt or over-budget history. It never treats such failure as empty policy.
+
+Lost-response retry returns the same publication only while its exact plan is
+still the head. It cannot resurrect a superseded revision. A new conflicting
+user policy may invalidate project defaults; the operator can read and repair
+project settings through this same flow. Running query/recall admissions observe
+published project edits without restart. Project editing cannot change the
+user-source binding, installation ceilings, credentials or another project's data.
 
 ## Resolve and enforce
 
@@ -103,14 +140,17 @@ default is a configuration conflict; an out-of-bounds request is a limit error.
 Authenticated `POST /v1/configuration/effective/read` returns the installed
 identity, project digest, selected user snapshot and read revision, units,
 bounds, rule provenance and selected value for every setting. Optional
-`valid_at_unix_ms` and `recorded_revision` are diagnostic historical coordinates;
+`valid_at_unix_ms`, user `recorded_revision` and `project_recorded_revision` are
+diagnostic historical coordinates;
 they never authorize a historical policy for a new effect. A `requested` map
 can explain specific capacities before use. The operation requires `engram.read`.
 
 Query and recall admission load current policy from the bound source using host
 time. Their returned query result or context packet includes a compact
 `configuration` admission stamp with the actual project digest, evaluated time
-and selected/read user revisions and digest. The context digest binds that
+and selected/read user and project-policy revisions and digests. The installed
+`project_revision`/`project_configuration_sha256` remain distinct from the live
+`project_read_revision` and selected `project_policy`. The context digest binds that
 stamp. A separate diagnostic read cannot substitute for this execution evidence.
 Already admitted work retains its admission; subsequent admission observes
 updates without restarting the project server. This is not a transaction across
@@ -124,7 +164,8 @@ retrieval rules. Vectorization cannot override policy admission.
 
 The [package journal](../../evidence/change-journals/gate-d/scoped-configuration-foundation-20261121.md)
 records the installed two-project driver, restart, correction, historical read,
-isolation and required-source failure checks. Numeric enforcement is a foundation
+isolation and required-source failure checks. The [live project-edit journal](../../evidence/change-journals/gate-d/project-policy-controls-20261121.md)
+adds approved edits, concurrency, correction, repair and installed restart proof. Numeric enforcement is a foundation
 for the broader policy model, not completion of D-06 or POAM-077. Connectome
 editing, behavioral obligations, controller integration and vector freshness
 still need their own implementation and installed evidence.

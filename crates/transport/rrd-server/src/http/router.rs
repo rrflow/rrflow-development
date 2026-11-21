@@ -77,8 +77,11 @@ http_dispatch_catalogue! {
     FlightRead => ("flight-read", RrdOperation::FlightRead),
     EndpointCatalogue => ("endpoint-catalogue", RrdOperation::ServiceInspect),
     EndpointConfigurationRead => ("endpoint-configuration-read", RrdOperation::EngramRead),
+    ProjectConfigurationRead => ("project-configuration-read", RrdOperation::EngramRead),
+    ProjectConfigurationPreview => ("project-configuration-preview", RrdOperation::ConfigurationPreview),
+    ProjectConfigurationApply => ("project-configuration-apply", RrdOperation::EngramAdmin),
     ConfigurationEffectiveRead => ("configuration-effective-read", RrdOperation::EngramRead),
-    EndpointConfigurationPreview => ("endpoint-configuration-preview", RrdOperation::EndpointConfigurationPreview),
+    EndpointConfigurationPreview => ("endpoint-configuration-preview", RrdOperation::ConfigurationPreview),
     EndpointConfigurationApply => ("endpoint-configuration-apply", RrdOperation::EngramAdmin),
     EngramRead => ("engram-read", RrdOperation::EngramRead),
     HealthLive => ("health-live", RrdOperation::ServiceInspect),
@@ -306,6 +309,15 @@ impl AppState {
             Some(HttpDispatch::QueryExecute) => self.execute_query(&headers, &body, now),
             Some(HttpDispatch::EndpointConfigurationRead) => {
                 self.read_endpoint_configuration(&headers, &body, now)
+            }
+            Some(HttpDispatch::ProjectConfigurationRead) => {
+                self.read_project_configuration(&headers, &body, now)
+            }
+            Some(HttpDispatch::ProjectConfigurationPreview) => {
+                self.preview_project_configuration(&headers, &body, now)
+            }
+            Some(HttpDispatch::ProjectConfigurationApply) => {
+                self.apply_project_configuration(&headers, &body, now)
             }
             Some(HttpDispatch::ConfigurationEffectiveRead) => {
                 self.read_effective_configuration(&headers, &body, now)

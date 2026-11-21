@@ -31,9 +31,16 @@ impl RrdEngine {
             request.recorded_revision,
             now,
         )?;
+        let (project_read_revision, project_policy) =
+            self.select_project_policy(valid_at, request.project_recorded_revision)?;
         let values = resolve(
             &self.engram_configuration,
             user.as_ref(),
+            project_policy
+                .as_ref()
+                .map_or(&self.engram_configuration.scoped.settings, |policy| {
+                    &policy.change.settings
+                }),
             &request.requested,
             ConfigurationSetting::ALL,
         )?;
@@ -43,6 +50,8 @@ impl RrdEngine {
             project_revision: self.engram_configuration.revision,
             project_configuration_sha256: self.engram_configuration.configuration_sha256.clone(),
             valid_at_unix_ms: valid_at,
+            project_read_revision,
+            project_policy,
             user_read_revision: known,
             user_revision: user,
             values,
@@ -82,22 +91,37 @@ impl RrdEngine {
         &self,
         requested: BTreeMap<ConfigurationSetting, u64>,
     ) -> Result<Option<rrd_contract::ConfigurationAdmission>> {
+        let now = current_time()?;
+        let (project_read_revision, project_policy) = self.select_project_policy(now, None)?;
         if self.engram_configuration.scoped.user.is_none()
             && self.engram_configuration.scoped.settings.is_empty()
+            && project_read_revision == 0
         {
             return Ok(None);
         }
-        let now = current_time()?;
         let (known, user) = load_user(&self.engram_configuration, now, None, now)?;
         resolve(
             &self.engram_configuration,
             user.as_ref(),
+            project_policy
+                .as_ref()
+                .map_or(&self.engram_configuration.scoped.settings, |policy| {
+                    &policy.change.settings
+                }),
             &requested,
             requested.keys().copied(),
         )?;
         Ok(Some(rrd_contract::ConfigurationAdmission {
             project_revision: self.engram_configuration.revision,
             project_configuration_sha256: self.engram_configuration.configuration_sha256.clone(),
+            project_read_revision,
+            project_policy: project_policy.map(|policy| {
+                rrd_contract::ConfigurationRevisionAdmission {
+                    read_revision: project_read_revision,
+                    selected_revision: policy.revision,
+                    revision_sha256: policy.revision_sha256,
+                }
+            }),
             evaluated_at_unix_ms: now,
             user: user.map(|revision| rrd_contract::UserConfigurationAdmission {
                 source_id: revision.source_id,
@@ -118,12 +142,12 @@ impl RrdEngine {
     }
 }
 
-fn load_user(
+pub(super) fn load_user(
     configuration: &EngramConfiguration,
     valid_at: u64,
     known: Option<u64>,
     now: u64,
-) -> Result<(Option<u64>, Option<UserConfigurationRevision>)> {
+) -> Result<(Option<u64>, Option<ConfigurationRevision>)> {
     let Some(binding) = &configuration.scoped.user else {
         if known.is_some() {
             return Err(unavailable("no user configuration source is bound"));
@@ -146,7 +170,8 @@ fn load_user(
 
 pub(super) fn resolve(
     configuration: &EngramConfiguration,
-    user: Option<&UserConfigurationRevision>,
+    user: Option<&ConfigurationRevision>,
+    project_settings: &ConfigurationSettings,
     requested: &BTreeMap<ConfigurationSetting, u64>,
     settings: impl IntoIterator<Item = ConfigurationSetting>,
 ) -> Result<BTreeMap<ConfigurationSetting, EffectiveConfigurationValue>> {
@@ -155,7 +180,7 @@ pub(super) fn resolve(
     let mut values = BTreeMap::new();
     for setting in settings {
         let user_rule = user_settings.get(&setting);
-        let project_rule = configuration.scoped.settings.get(&setting);
+        let project_rule = project_settings.get(&setting);
         let installed_ceiling = setting.installed_value(configuration);
         let (mut minimum, _) = setting.bounds();
         let mut maximum = installed_ceiling;

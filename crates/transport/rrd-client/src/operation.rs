@@ -5,6 +5,7 @@ mod configuration;
 mod data;
 mod knowledge;
 mod operations;
+mod project_configuration;
 mod tasks;
 mod vectors;
 

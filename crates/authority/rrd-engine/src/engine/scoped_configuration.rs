@@ -1,13 +1,16 @@
-//! User configuration is engine-owned control data, independent of a project
-//! engram. Local owner access is required; project sessions receive read only.
+//! Engine-owned user and project policy. User publication requires local owner
+//! access; installed project edits require authenticated administration.
 use super::*;
 use rrd_contract::{
-    ConfigurationSetting, ConfigurationSettings, ConfigurationValueSource, EffectiveConfiguration,
-    EffectiveConfigurationValue, ReadEffectiveConfiguration, UserConfigurationBinding,
-    UserConfigurationChange, UserConfigurationPlan, UserConfigurationRevision,
-    SCOPED_CONFIGURATION_VERSION, USER_CONFIGURATION_PLAN_TTL_MS,
+    ConfigurationChange, ConfigurationRevision, ConfigurationSetting, ConfigurationSettings,
+    ConfigurationValueSource, EffectiveConfiguration, EffectiveConfigurationValue,
+    ReadEffectiveConfiguration, UserConfigurationBinding, UserConfigurationPlan,
+    CONFIGURATION_PLAN_TTL_MS, SCOPED_CONFIGURATION_VERSION,
 };
 
+mod history;
+mod project;
+mod project_store;
 mod publication;
 mod resolution;
 mod store;

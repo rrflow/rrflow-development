@@ -24,8 +24,8 @@ preferences apply; a project preference cannot weaken a user policy.
 owns the sourced terminology and resolution contract. The initial
 [scoped configuration implementation](docs/reference/deployment/scoped-configuration.md)
 binds a durable user source to isolated project instances and enforces query
-and recall capacities. Broader obligations, live project configuration and UI
-controls remain open ([POAM-077](docs/poam/rrflow-1.0-alpha/poam-077.md)).
+and recall capacities. Governed live edits cover these project capacities; broader obligations, full
+configuration editing and UI controls remain open ([POAM-077](docs/poam/rrflow-1.0-alpha/poam-077.md)).
 The [memory freshness and vectorization contract](docs/reference/data/knowledge-connectors.md#memory-freshness-and-vectorization)
 joins this configuration to correction-aware recall and optional embeddings.
 Its focus/pivot/correct/return acceptance measures stale evidence and answer

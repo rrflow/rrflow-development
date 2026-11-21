@@ -13,7 +13,7 @@ pub enum ConfigurationAction {
         source: String,
         #[arg(long)]
         expected_revision: u64,
-        /// JSON UserConfigurationChange with a valid interval and typed settings.
+        /// JSON ConfigurationChange with a valid interval and typed settings.
         #[arg(long)]
         input: PathBuf,
         #[arg(long, default_value_t = 256)]

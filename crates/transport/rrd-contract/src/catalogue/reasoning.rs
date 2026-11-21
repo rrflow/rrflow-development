@@ -3,6 +3,27 @@
 use crate::*;
 
 operations! {
+    ProjectConfigurationRead = "project-configuration-read",
+        Post "/v1/configuration/project/read",
+        SessionBearer,
+        false,
+        EngramRead,
+        ReadProjectConfiguration => ProjectConfiguration,
+        Read;
+    ProjectConfigurationPreview = "project-configuration-preview",
+        Post "/v1/configuration/project/preview",
+        SessionBearer,
+        false,
+        EngramAdmin,
+        PreviewProjectConfiguration => ProjectConfigurationPlan,
+        Read;
+    ProjectConfigurationApply = "project-configuration-apply",
+        Post "/v1/configuration/project/apply",
+        SessionBearer,
+        true,
+        EngramAdmin,
+        ApplyProjectConfiguration => ProjectConfiguration,
+        KeyedMutation;
     ConfigurationEffectiveRead = "configuration-effective-read",
         Post "/v1/configuration/effective/read",
         SessionBearer,
