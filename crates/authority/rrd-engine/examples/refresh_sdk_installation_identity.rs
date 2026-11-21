@@ -42,6 +42,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     corpus.vector.quantization.build.scope.clone_from(&scope);
     corpus.vector.quantization.activate.scope.clone_from(&scope);
     corpus.vector.quantization.search.scope.clone_from(&scope);
+    corpus.vector.index.payload_index.scope.clone_from(&scope);
+    corpus.vector.index.ensure.scope.clone_from(&scope);
+    corpus.vector.index.search.scope.clone_from(&scope);
+    corpus
+        .vector
+        .index
+        .spare_payload_index
+        .scope
+        .clone_from(&scope);
+    corpus
+        .vector
+        .index
+        .delete_payload_index
+        .scope
+        .clone_from(&scope);
+    corpus.cold_history.read.scope.clone_from(&scope);
     corpus.changefeed.read.scope = scope;
     corpus.validate()?;
     if std::env::args().skip(1).any(|arg| arg == "--check") {
@@ -62,6 +78,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "/vector/quantization/build/scope",
             "/vector/quantization/activate/scope",
             "/vector/quantization/search/scope",
+            "/vector/index/payload_index/scope",
+            "/vector/index/ensure/scope",
+            "/vector/index/search/scope",
+            "/vector/index/spare_payload_index/scope",
+            "/vector/index/delete_payload_index/scope",
+            "/cold_history/read/scope",
             "/changefeed/read/scope",
         ] {
             *original

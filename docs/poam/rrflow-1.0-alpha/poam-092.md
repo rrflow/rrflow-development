@@ -62,4 +62,23 @@ The final full-suite log is `publication-final-full-engine-tests.log` under
 Candidate [44797439370](https://github.com/rrflow/rrflow-development/actions/runs/44797439370)
 and merge-group [44798441599](https://github.com/rrflow/rrflow-development/actions/runs/44798441599)
 both passed. The original engine oracle and containment assertions were not
-weakened. Parent ledger status: Closed; no broader storage qualification claimed.
+weakened. The parent ledger was closed on that evidence; no broader storage
+qualification was claimed.
+
+## Reopened: false absence after the native repair
+
+On the later PR448 worktree based on `95cd44d86065e76c242ec5e5a7cc9266cb208044`,
+`cargo test --locked -p rrd-engine --lib` produced 522 passed, one failed and
+12 ignored in 417.42 seconds. The same concurrency oracle failed in its reader
+at `serving.rs:149`: `a look found no serving record during replacement`.
+The writer's replacement did not report the earlier access-denied error.
+Serving and filesystem source were unchanged by PR448's timestamp work.
+Log: `cold-load-time-engine-suite.log` in the existing session scratchpad.
+
+[Alarm449](https://github.com/rrflow/rrflow-development/issues/449) and
+[repair PR450](https://github.com/rrflow/rrflow-development/pull/450) own this
+investigation; the [new journal](../../evidence/change-journals/gate-d/serving-record-false-absence-20261120.md) records its native-open reproduction and subsequent checks. A focused single test and all 15 serving tests passed, but do
+not explain the observed false absence. The earlier native repair remains;
+its passing checks do not qualify this newly observed failure. Parent status
+is Open again. Preserve the atomic old-or-new oracle and identify the exact
+failing operation before claiming another repair.

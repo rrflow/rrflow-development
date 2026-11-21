@@ -73,6 +73,43 @@ fn configuration_rejects_invalid_limits_and_digest_drift() {
 }
 
 #[test]
+fn automatic_attunement_policy_is_bound_to_configuration_identity() {
+    let disabled = EngramConfiguration::from_input(1, input()).unwrap();
+    let enabled = disabled
+        .clone()
+        .with_attunement_follow(Some(rrd_contract::AttunementFollowPolicy {
+            interval_ms: 1_000,
+        }))
+        .unwrap();
+    let slower = enabled
+        .clone()
+        .with_attunement_follow(Some(rrd_contract::AttunementFollowPolicy {
+            interval_ms: 2_000,
+        }))
+        .unwrap();
+    let configurations = [disabled, enabled, slower];
+    for (source_index, source) in configurations.iter().enumerate() {
+        source.validate().unwrap();
+        for (target_index, target) in configurations.iter().enumerate() {
+            if source_index == target_index {
+                continue;
+            }
+            assert_ne!(source.configuration_sha256, target.configuration_sha256);
+            let mut changed = source.clone();
+            changed.attunement_follow = target.attunement_follow;
+            assert!(changed.validate().is_err());
+        }
+    }
+    assert_eq!(
+        configurations[1]
+            .clone()
+            .with_attunement_follow(None)
+            .unwrap(),
+        configurations[0]
+    );
+}
+
+#[test]
 fn read_retention_ceiling_is_positive_bounded_and_sealed() {
     let baseline = EngramConfiguration::from_input(1, input()).unwrap();
     for (views, bytes) in [(0, 1), (65_537, 1), (1, 0), (1, (1 << 40) + 1)] {
