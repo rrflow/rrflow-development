@@ -78,3 +78,11 @@ test_inspect_candidate_runs.py (9), check_workflow.py (19 container pins);
 No benchmark/container/installed-runtime workload was run for this unchanged
 implementation tree. The original native diagnostic integration merge is
 1c0a68e7. PR485 must land and be joined before this draft becomes ready.
+
+Queue ordering refinement: the initial manual PR485/main-join wait is replaced
+by protected queue ordering 485, 486, 487. Final source inspection establishes
+that this package changes only its journal/index; PR485 owns Parse admission.
+No shared implementation interface requires a readiness dependency. The queue
+must still verify the exact integrated candidate and require green ci-gate;
+no local result is attributed to an untested later tree. This refinement avoids
+holding independent recovered sources outside the queue while it works.
