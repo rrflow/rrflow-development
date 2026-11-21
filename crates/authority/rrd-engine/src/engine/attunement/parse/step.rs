@@ -336,8 +336,14 @@ pub(in crate::engine::attunement) fn execute(
     // is not retried until its content changes.
     let mut take = groups.len();
     let (batch_mutations, summary_sha256) = loop {
+        if take == 0 && !groups.is_empty() {
+            return Err(ServiceError::StorageAdmission(format!(
+                "the Parse batch cannot publish even one refusal within its logical limit {budget} and physical limit {limit}"
+            )));
+        }
         let summary = summary(&states, &groups[..take], &kept)?;
         let batch_mutations = assemble(&mutations, &groups[..take]);
+        let encoded = encoded_len(&batch_mutations)?;
         let measured = measure(
             engine,
             &work,
@@ -349,13 +355,21 @@ pub(in crate::engine::attunement) fn execute(
                 summary_sha256: &summary,
             },
         )?;
-        if measured <= limit {
+        if measured <= limit && encoded <= budget {
             break (batch_mutations, summary);
         }
+        // The policy bounds logical JSON independently of physical encoding.
+        // Gathering admits the first indivisible file to inspect it, so both
+        // bounds must also be enforced on the final publication.
+        let (observed, ceiling, bound) = if encoded > budget {
+            (encoded, budget, "commit_budget")
+        } else {
+            (measured as u64, limit as u64, "physical_batch")
+        };
         match take {
             0 => {
                 return Err(ServiceError::StorageAdmission(format!(
-                    "the Parse batch's base records measure {measured} bytes against the physical batch limit {limit}"
+                    "the Parse batch's base records exceed {bound}: {observed}>{ceiling}"
                 )))
             }
             1 => match &mut groups[0].answer {
@@ -364,7 +378,7 @@ pub(in crate::engine::attunement) fn execute(
                 // rather than retried under another shape.
                 None => {
                     return Err(ServiceError::StorageAdmission(format!(
-                        "retiring {} measures {measured} bytes against the physical batch limit {limit}",
+                        "retiring {} exceeds {bound}: {observed}>{ceiling}",
                         departed[0].path
                     )))
                 }
@@ -372,9 +386,7 @@ pub(in crate::engine::attunement) fn execute(
                     let rejected = records::file_mutations(
                         answer.previous.as_ref(),
                         answer.next.clone(),
-                        Outcome::Rejected(format!(
-                            "facts_exceed_physical_batch:{measured}>{limit}"
-                        )),
+                        Outcome::Rejected(format!("facts_exceed_{bound}:{observed}>{ceiling}")),
                         &[],
                         at,
                     )?;
@@ -384,7 +396,7 @@ pub(in crate::engine::attunement) fn execute(
                 Some(_) => take = 0,
             },
             _ => {
-                let fit = (take as u128 * (limit as u128 * 9 / 10) / measured as u128) as usize;
+                let fit = (take as u128 * (ceiling as u128 * 9 / 10) / observed as u128) as usize;
                 take = fit.clamp(1, take - 1);
             }
         }

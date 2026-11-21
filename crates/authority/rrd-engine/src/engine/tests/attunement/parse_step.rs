@@ -339,6 +339,84 @@ fn finish_parse(
     (job, steps)
 }
 
+/// Carried from the original parser stack: one oversized file is refused once,
+/// without preventing a smaller file from publishing or losing the refusal on reopen.
+#[test]
+fn a_file_whose_facts_exceed_one_commit_is_rejected_not_retried() {
+    let mut policy = policy(64);
+    policy.max_commit_bytes = 16_384;
+    let (installed, engine, session, job) = at_parse_with(policy, |root| {
+        std::fs::write(root.join("small.rs"), "fn small() {}\n").unwrap();
+        let body: String = (0..40)
+            .map(|index| format!("fn function_{index}() {{}}\n"))
+            .collect();
+        std::fs::write(root.join("big.rs"), body).unwrap();
+    });
+    let (done, steps) = finish_parse(&engine, &session, job, "oversized-file");
+    assert!(steps <= 2, "an oversized file must not be retried: {steps}");
+    let at = done.updated_at_unix_ms + 1;
+    let read = |engine: &RrdEngine, session: &SessionLease, at| {
+        query(
+            engine,
+            session,
+            at,
+            &format!(
+                "FROM record:source-parse AT VALID {at} KNOWN HEAD PROJECT path, status, reason"
+            ),
+        )
+        .1
+        .into_iter()
+        .map(|row| {
+            let text = |key: &str| match row.get(key) {
+                Some(rrd_contract::QueryValue::String(value)) => value.clone(),
+                other => panic!("{key} is {other:?}"),
+            };
+            (text("path"), (text("status"), text("reason")))
+        })
+        .collect::<BTreeMap<_, _>>()
+    };
+    let states = read(&engine, &session, at);
+    assert_eq!(states.len(), 2);
+    assert_eq!(states["small.rs"], ("parsed".into(), String::new()));
+    assert_eq!(states["big.rs"].0, "rejected");
+    assert!(states["big.rs"]
+        .1
+        .starts_with("facts_exceed_commit_budget:"));
+    assert_eq!(
+        symbols(&engine, &session, at),
+        BTreeSet::from([("small".into(), "definition".into())])
+    );
+    drop(engine);
+    let engine = installed.reopen(at + 1_000);
+    let session = installed.session(&engine, "oversized-file-reopen", at + 1_100);
+    assert_eq!(read(&engine, &session, at + 1_200), states);
+}
+
+#[test]
+fn a_parse_budget_too_small_for_a_refusal_fails_before_an_empty_commit() {
+    let mut policy = policy(1);
+    policy.max_commit_bytes = 1;
+    let (_installed, engine, session, job) = at_parse_with(policy, |root| {
+        std::fs::write(root.join("small.rs"), "fn small() {}\n").unwrap();
+    });
+    let error = call(
+        &engine,
+        &session,
+        &step(&job),
+        "unpublishable-refusal",
+        job.updated_at_unix_ms + 1,
+    )
+    .unwrap_err();
+    assert!(
+        matches!(
+            error,
+            ServiceError::StorageAdmission(ref reason) if reason.contains("cannot publish even one refusal")
+        ),
+        "unexpected admission error: {error:?}"
+    );
+    assert!(parse_states(&engine, &session, tick(10_000)).is_empty());
+}
+
 /// Replan a job against the project as it is now and step its successor to Parse.
 fn replan_to_parse(
     engine: &RrdEngine,
