@@ -207,10 +207,14 @@ The current implementation must be evaluated separately for each ACID property:
 - **Consistency:** schema, references used by relations, uniqueness, budgets and
   authorization are checked at the engine boundary. Missing record-reference
   deletion rules cannot be claimed as enforced consistency rules.
-- **Isolation:** physical transactions use snapshots and detect conflicts on
-  written keys. The engine additionally binds semantic commits to a global
-  expected cursor, so even disjoint work may require a retry. This is not proof
-  of serializable read predicates or parallel independent commit execution.
+- **Isolation.** Each transaction retains its begin snapshot. Independent
+  open-ended record puts may publish at successive log positions after the
+  engine checks their complete identity histories and the schema and catalogue
+  revisions. A later correction or retirement of the same identity conflicts.
+  Mixed-model transactions, bounded valid-time writes and governed function
+  receipts retain the global cursor check. Publication still orders the WAL
+  and audit history. Predicate serializability and throughput under load
+  require separate evidence.
 - **Durability:** the selected native durability mode, WAL sync and recovery
   determine acknowledgment guarantees. Reopen tests are necessary but do not
   substitute for power-loss/fault qualification on supported filesystems.

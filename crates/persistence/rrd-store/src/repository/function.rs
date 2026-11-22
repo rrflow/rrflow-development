@@ -8,8 +8,6 @@ use crate::{
     FunctionInvocationReceiptRecord, Result, StorageEngine, TransactionFunctionBindingRecord,
 };
 
-const FUNCTION_TRANSACTION_ATTEMPTS: usize = 16;
-
 /// Typed governed-function state over the one profile-neutral storage port.
 ///
 /// This repository owns only immutable catalogue records, the active CAS head,
@@ -33,7 +31,7 @@ impl<'a> FunctionCatalogueRepository<'a> {
         validate_coordinate(instance, "function catalogue instance")?;
         publication.validate()?;
         publication.maximum_physical_batch_bytes(instance)?;
-        for _ in 0..FUNCTION_TRANSACTION_ATTEMPTS {
+        for _ in 0..super::PUBLICATION_ATTEMPTS {
             match self.publish_once(instance, publication) {
                 Err(Error::TransactionConflict { .. }) => continue,
                 result => return result,
@@ -187,7 +185,7 @@ impl<'a> FunctionCatalogueRepository<'a> {
         instance: &str,
         receipt: &FunctionInvocationReceiptRecord,
     ) -> Result<()> {
-        for _ in 0..FUNCTION_TRANSACTION_ATTEMPTS {
+        for _ in 0..super::PUBLICATION_ATTEMPTS {
             let mut transaction = self.storage.begin_transaction()?;
             let changed = put_standalone_function_receipt(&mut *transaction, instance, receipt)?;
             if !changed {

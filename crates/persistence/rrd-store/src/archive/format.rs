@@ -79,6 +79,21 @@ pub(super) enum ArchiveAction {
     },
 }
 
+/// A stamped commit retains the cursor at which its writer read. Publication
+/// appends after the preceding archive action, which can be a later cursor.
+pub(super) fn commit_read_cursor(audit: &AuditEnvelope, previous_cursor: u64) -> Result<u64> {
+    let cursor = audit
+        .read
+        .as_ref()
+        .map_or(previous_cursor, |read| read.commit_cursor);
+    if cursor > previous_cursor {
+        return Err(Error::Archive(
+            "runtime commit read is ahead of the replay cursor".into(),
+        ));
+    }
+    Ok(cursor)
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) struct ArchiveHeader {
     pub claim_sequence: u64,
@@ -129,9 +144,9 @@ impl ReplayState {
             }
             ArchiveAction::RuntimeCommit { commit, audit } => {
                 commit.validate()?;
-                if commit.expected_cursor != self.runtime_cursor {
+                if commit.expected_cursor != commit_read_cursor(audit, self.runtime_cursor)? {
                     return Err(Error::Archive(
-                        "runtime commit cursor is not replay-contiguous".into(),
+                        "runtime commit expected cursor differs from its archived read".into(),
                     ));
                 }
                 let mutations = commit.mutations.len() as u64;
@@ -623,4 +638,64 @@ pub(super) fn hex(digest: [u8; 32]) -> String {
         write!(&mut output, "{byte:02x}").expect("writing to String cannot fail");
     }
     output
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rrd_core::{ReadStamp, RuntimeRecord, RuntimeRef, ScopeId};
+
+    #[test]
+    fn replay_rejects_unbound_or_future_read_cursors_even_with_a_resealed_audit() {
+        let scope = ScopeId::new("instance:archive-documents").unwrap();
+        let commit = RuntimeCommit {
+            scope: scope.clone(),
+            at: 11,
+            actor: "writer".into(),
+            expected_cursor: 1,
+            mutations: vec![RuntimeMutation::Record {
+                record: RuntimeRecord {
+                    reference: RuntimeRef::new("document", "example").unwrap(),
+                    valid_from: 1,
+                    valid_to: None,
+                    properties: Default::default(),
+                },
+            }],
+        };
+        for (read_cursor, base, outcome) in [
+            (None, 2, 3),    // Unstamped writer cannot publish from an older cursor.
+            (Some(2), 2, 3), // Commit identity binds cursor 1, audit names cursor 2.
+            (Some(1), 0, 1), // Stamped cursor 1 does not exist in this replay prefix.
+            (Some(1), 2, 2), // Read is valid but publication is not contiguous.
+        ] {
+            let read = read_cursor.map(|cursor| {
+                ReadStamp::authenticated(
+                    scope.clone(),
+                    Some(1),
+                    0,
+                    cursor,
+                    Some("ab".repeat(32)),
+                    "cd".repeat(32),
+                )
+                .unwrap()
+            });
+            let audit = AuditEnvelope::accepted_commit_at_read(
+                &commit,
+                read.as_ref(),
+                &commit.digest(),
+                outcome,
+                None,
+            )
+            .unwrap();
+            let action = ArchiveAction::RuntimeCommit {
+                commit: commit.clone(),
+                audit: Box::new(audit),
+            };
+            let mut state = ReplayState {
+                runtime_cursor: base,
+                ..Default::default()
+            };
+            assert!(matches!(state.accept(&action, 0), Err(Error::Archive(_))));
+        }
+    }
 }

@@ -13,6 +13,9 @@ mod invocation;
 mod projection;
 mod runtime;
 
+/// Bounds retries when another physical transaction wins publication.
+const PUBLICATION_ATTEMPTS: usize = 16;
+
 pub use claims::ClaimRepository;
 pub(crate) use control::prepare_control_batch;
 pub use control::ControlRepository;

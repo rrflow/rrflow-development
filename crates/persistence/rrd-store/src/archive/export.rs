@@ -1,6 +1,6 @@
 use super::format::{
-    action_bytes, scan_archive_prefix, ArchiveAction, ArchiveHeader, ArchiveWriter,
-    LogicalArchiveCheckpoint, LogicalArchiveInventory, LogicalArchiveOperation,
+    action_bytes, commit_read_cursor, scan_archive_prefix, ArchiveAction, ArchiveHeader,
+    ArchiveWriter, LogicalArchiveCheckpoint, LogicalArchiveInventory, LogicalArchiveOperation,
     LogicalArchiveProgress, PrefixActionReader, MAX_ACTION_BYTES,
 };
 use super::receipt::{
@@ -467,7 +467,11 @@ impl<'a, E: StorageEngine> RuntimeCommitPager<'a, E> {
         let scope = first.scope.clone();
         let at = first.at;
         let actor = first.actor.clone();
-        let expected_cursor = first.cursor - 1;
+        let first_cursor = first.cursor;
+        let audit = self.engine.runtime().audit(&commit_id)?.ok_or_else(|| {
+            Error::Archive(format!("runtime commit {commit_id} has no audit envelope"))
+        })?;
+        let expected_cursor = commit_read_cursor(&audit, self.validated_through)?;
         let mut mutations = Vec::new();
         let mut encoded_bound = 0usize;
         let mut change = first;
@@ -517,13 +521,9 @@ impl<'a, E: StorageEngine> RuntimeCommitPager<'a, E> {
         commit.validate()?;
         if commit.digest() != commit_id {
             return Err(Error::Archive(format!(
-                "runtime commit at cursor {} has a mismatched content identity",
-                expected_cursor + 1
+                "runtime commit at cursor {first_cursor} has a mismatched content identity"
             )));
         }
-        let audit = self.engine.runtime().audit(&commit_id)?.ok_or_else(|| {
-            Error::Archive(format!("runtime commit {commit_id} has no audit envelope"))
-        })?;
         let expected_audit = AuditEnvelope::accepted_commit_at_read(
             &commit,
             audit.read.as_ref(),

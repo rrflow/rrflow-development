@@ -2,6 +2,9 @@
 
 use super::*;
 
+#[path = "campaign/document_writers.rs"]
+mod document_writers;
+
 pub(super) type Completion = (
     u64,
     u64,
@@ -556,18 +559,28 @@ fn installed_disjoint_writes_from_one_stamp_conflict_without_partial_effect() {
         .build()
         .unwrap();
     runtime.block_on(async {
+        let create = CreateSession {
+            limits: SessionLimits {
+                idle_timeout_ms: 300_000,
+                absolute_timeout_ms: 600_000,
+                max_open_transactions: 4,
+            },
+        };
         let session = client
             .create_session(
                 credential.principal_id.clone(),
                 credential.credential(),
-                CreateSession {
-                    limits: SessionLimits {
-                        idle_timeout_ms: 300_000,
-                        absolute_timeout_ms: 600_000,
-                        max_open_transactions: 4,
-                    },
-                },
+                create.clone(),
                 mutation_options("conflict-oracle-session"),
+            )
+            .await
+            .unwrap();
+        let peer = client
+            .create_session(
+                credential.principal_id.clone(),
+                credential.credential(),
+                create,
+                mutation_options("document-writer-peer-session"),
             )
             .await
             .unwrap();
@@ -725,9 +738,11 @@ fn installed_disjoint_writes_from_one_stamp_conflict_without_partial_effect() {
         let fresh = work.execute(&second).await.unwrap();
         assert!(!fresh.idempotent_replay);
         work.verify(&second).await.unwrap();
+        let documents = document_writers::exercise(&work, &peer).await;
         super::super::kill(child, clock);
         let (reopened, client, _) = engram.start_for(clock, Duration::from_secs(300));
         work.client = client;
+        documents.verify_reopened(&work, &peer).await;
         work.verify(&first).await.unwrap();
         work.verify(&second).await.unwrap();
         let replay = work.execute(&second).await.unwrap();

@@ -11,7 +11,6 @@ use crate::keyspaces::{self, Durability};
 use crate::{Error, IndexCommitBindingDefinition, Result, StorageEngine, StorageTransaction};
 use rrd_core::{digest, ScopeId};
 
-const CONTROL_TRANSACTION_ATTEMPTS: usize = 16;
 const INDEX_CATALOGUE_CONTROL_PREFIX: &str = "server/state/index-catalogue/";
 
 #[cfg(test)]
@@ -101,7 +100,7 @@ impl<'a> ControlRepository<'a> {
         index_bindings: Option<&IndexBindingProjection<'_>>,
     ) -> Result<(Option<u64>, ControlJournalEntry)> {
         transition.validate()?;
-        for _ in 0..CONTROL_TRANSACTION_ATTEMPTS {
+        for _ in 0..super::PUBLICATION_ATTEMPTS {
             match self.commit_one_attempt(transition, catalog_scope, index_bindings) {
                 Err(Error::TransactionConflict { .. }) => continue,
                 result => return result,
@@ -170,7 +169,7 @@ impl<'a> ControlRepository<'a> {
         transitions: &[ControlTransition],
     ) -> Result<Vec<ControlJournalEntry>> {
         validate_control_batch(transitions)?;
-        for _ in 0..CONTROL_TRANSACTION_ATTEMPTS {
+        for _ in 0..super::PUBLICATION_ATTEMPTS {
             match self.commit_batch_attempt(transitions) {
                 Err(Error::TransactionConflict { .. }) => continue,
                 result => return result,
