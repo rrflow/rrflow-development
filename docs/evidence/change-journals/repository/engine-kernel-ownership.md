@@ -96,8 +96,33 @@ The workflow validator resolved all 30 default-feature packages. After
 rebuilding the executable the same install, correction, concurrent-write and
 reopen operations succeeded with binary SHA-256
 `d0fd2f25bc6a412cbabb232c7695f4ae3077d7617990d51ed368e4165ed2d1c0`.
-The final responses are in
+The responses from that intermediate candidate are in
 `rrflow-kernel-500-final-664a1525e39948658d5d7b56348cd8ae` in the temporary directory.
+
+The next candidate exposed an extra write in schema encoding. The new helper
+and the original match both wrote the logical-model byte. Fresh installation
+and reopen had agreed with each other while changing the historical schema
+digests. Removing the original match restores one byte per table. A separate
+consumer deserialized each original registry and ran the public kernel's
+`RuntimeCommit::digest` against the stored values. All three matched, including
+the every-model registry, engine-owned registry and organised registry. The
+frozen bytes and digest expectations were kept. The exported protocol digest
+now also matches the reviewed OpenAPI document.
+
+The same run exposed query fixtures whose generated edges crossed the validity
+of their endpoints or whose endpoint retirements lacked an explicit cascade.
+The accepted-write fixtures now bound edges to their endpoints and declare
+their cascade policy. The historical row comparisons and the independent graph
+traversal oracle still run over the committed data.
+
+The corrected executable repeated the two historical reads, the valid-time
+boundary, and the eight concurrent writes across restart. Its SHA-256 was
+`18e7b19f1d3d0280c002a31b521a94fc88763cd93ba447981d3d483be63539a5`.
+`evidence.json`, `multiwriter.json` and `registry-receipts.json` are under
+`rrflow-kernel-500-durable-9a43eb2ecef14be48c81eb99ae67b47e` in the temporary
+directory. Opening the older PR 497 installation with the replacement binary
+returned `ProjectBindingMismatch`. Cross-binary installation reopen therefore
+has no acceptance claim from this run.
 
 Local test suites and benchmarks were skipped per the owner's direction.
 These runs exercise single-node behavior on this Windows executable. They

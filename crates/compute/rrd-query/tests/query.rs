@@ -78,6 +78,8 @@ fn schema() -> RuntimeMutation {
             RuntimeRelationSchema {
                 from: BTreeSet::from([document_kind.clone()]),
                 to: BTreeSet::from([document_kind.clone()]),
+                on_delete_from: Some(rrflow_kernel::RuntimeReferentialAction::Cascade),
+                on_delete_to: Some(rrflow_kernel::RuntimeReferentialAction::Cascade),
                 properties: BTreeMap::from([(
                     "strength".into(),
                     RuntimePropertySchema::required(RuntimeValueType::String),
