@@ -189,3 +189,41 @@ fn same_batch_schema_future_relation_and_endpoint_retirement_resolve_once() {
         &relation("future", "b", 300).reference
     ));
 }
+
+#[test]
+fn open_ended_record_updates_add_coverage_but_finite_corrections_check_incident_history() {
+    let storage = RrflowMxStore::new();
+    let fixture = commit_fixture(&storage);
+    let read = storage.runtime().read_stamp(&fixture.scope).unwrap();
+    let mut commit = RuntimeCommit {
+        scope: fixture.scope,
+        at: 500,
+        actor: "agent:coverage-proof".into(),
+        expected_cursor: read.commit_cursor,
+        mutations: vec![RuntimeMutation::Record {
+            record: RuntimeRecord {
+                valid_from: 150,
+                ..record("b")
+            },
+        }],
+    };
+    // Adding an unbounded version cannot uncover an endpoint interval. No
+    // graph selection is needed even with an operator key budget of one.
+    let (resolved, evidence) = storage
+        .runtime()
+        .resolve_relation_actions(
+            &DataTransaction::new(read.clone(), commit.clone()).unwrap(),
+            RuntimeReadBudget::new(1).unwrap(),
+        )
+        .unwrap();
+    assert_eq!(resolved, commit);
+    assert!(evidence.is_none());
+    if let RuntimeMutation::Record { record } = &mut commit.mutations[0] {
+        record.valid_to = Some(180);
+    }
+    assert!(matches!(
+        storage.runtime().commit(&commit),
+        Err(Error::DanglingRuntimeReference(_))
+    ));
+    assert_eq!(storage.runtime().read_stamp(&read.scope).unwrap(), read);
+}

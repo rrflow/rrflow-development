@@ -315,13 +315,17 @@ pub(super) fn transaction_retry_reuses_prepared_receipts_pinned_before_the_crash
             &revision_one,
             &request,
             &transaction.transaction_id,
-            base,
-            &engine
-                .load_authenticated(&lease.session_id, &lease.token)
-                .unwrap()
-                .1
-                .transactions[&transaction.transaction_id]
-                .read,
+            DataTransaction::new(
+                engine
+                    .load_authenticated(&lease.session_id, &lease.token)
+                    .unwrap()
+                    .1
+                    .transactions[&transaction.transaction_id]
+                    .read
+                    .clone(),
+                base,
+            )
+            .unwrap(),
             None,
             runtime_at,
             "request-function-retry-prepare",
@@ -455,13 +459,17 @@ pub(super) fn substituted_runtime_build_in_a_prepared_receipt_fails_closed_after
             &engine.load_current_function_catalogue().unwrap(),
             &request,
             &transaction.transaction_id,
-            base,
-            &engine
-                .load_authenticated(&lease.session_id, &lease.token)
-                .unwrap()
-                .1
-                .transactions[&transaction.transaction_id]
-                .read,
+            DataTransaction::new(
+                engine
+                    .load_authenticated(&lease.session_id, &lease.token)
+                    .unwrap()
+                    .1
+                    .transactions[&transaction.transaction_id]
+                    .read
+                    .clone(),
+                base,
+            )
+            .unwrap(),
             None,
             runtime_at,
             "request-function-runtime-substitution-prepare",
@@ -581,13 +589,17 @@ pub(super) fn durable_function_receipt_closes_a_lost_ack_without_reexecution() {
             &engine.load_current_function_catalogue().unwrap(),
             &request,
             &transaction.transaction_id,
-            base,
-            &engine
-                .load_authenticated(&lease.session_id, &lease.token)
-                .unwrap()
-                .1
-                .transactions[&transaction.transaction_id]
-                .read,
+            DataTransaction::new(
+                engine
+                    .load_authenticated(&lease.session_id, &lease.token)
+                    .unwrap()
+                    .1
+                    .transactions[&transaction.transaction_id]
+                    .read
+                    .clone(),
+                base,
+            )
+            .unwrap(),
             None,
             runtime_at,
             "request-function-lost-ack-prepare",

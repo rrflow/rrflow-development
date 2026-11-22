@@ -18,7 +18,10 @@ pub(crate) fn relation_actions(
     budget: RuntimeReadBudget,
 ) -> Result<(Vec<RuntimeRetirement>, Option<RuntimeReadEvidence>)> {
     if !commit.mutations.iter().any(|mutation| match mutation {
-        RuntimeMutation::Record { .. } | RuntimeMutation::Relation { .. } => true,
+        // An open-ended put only adds endpoint coverage under the canonical
+        // newest-known-version reducer. It cannot invalidate an existing edge.
+        RuntimeMutation::Record { record } => record.valid_to.is_some(),
+        RuntimeMutation::Relation { .. } => true,
         RuntimeMutation::Retire { retirement } => {
             retirement.model.is_record_like()
                 || retirement.model == RuntimeLogicalModel::GraphRelation
@@ -91,7 +94,7 @@ impl Selection {
             let mut affected = BTreeSet::new();
             for mutation in &commit.mutations {
                 match mutation {
-                    RuntimeMutation::Record { record } => {
+                    RuntimeMutation::Record { record } if record.valid_to.is_some() => {
                         affected.insert(record.reference.clone());
                     }
                     RuntimeMutation::Retire { retirement } if retirement.model.is_record_like() => {
