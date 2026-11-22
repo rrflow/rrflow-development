@@ -6,6 +6,9 @@
 //! type, in relation-reference order, over the complete authenticated change
 //! log. It shares no code with the native adjacency reader.
 
+#[path = "query/transactions.rs"]
+mod transactions;
+
 use rrd_query::{
     parse, ExecutionBudget, Parameters, PhysicalOperator, QueryExecution, StampedQueryPipeline,
 };
@@ -177,18 +180,17 @@ fn record(id: &str, valid_to: Option<u64>) -> RuntimeMutation {
 }
 
 fn commit<E: StorageEngine>(engine: &E, at: u64, mutations: Vec<RuntimeMutation>) -> u64 {
-    let expected_cursor = engine.runtime().cursor().unwrap();
-    engine
-        .runtime()
-        .commit(&RuntimeCommit {
+    transactions::publish(
+        engine,
+        RuntimeCommit {
             scope: scope(),
             at,
             actor: ACTOR.into(),
-            expected_cursor,
+            expected_cursor: engine.runtime().cursor().unwrap(),
             mutations,
-        })
-        .unwrap()
-        .last_cursor
+        },
+    )
+    .last_cursor
 }
 
 /// A seeded temporal graph: two relation types, self-loops, bounded and

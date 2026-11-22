@@ -115,6 +115,13 @@ The accepted-write fixtures now bound edges to their endpoints and declare
 their cascade policy. The historical row comparisons and the independent graph
 traversal oracle still run over the committed data.
 
+The subsequent candidate passed the frozen identities and wire contract.
+It also showed that declaring cascade on a relation does not itself prepare
+a storage commit. The direct query fixtures now use the existing
+`resolve_relation_actions` operation against their declared read stamp and
+pass that transaction to `commit_data_transaction`. Production storage
+continues to reject unresolved effects. No test cases were added for this repair.
+
 The corrected executable repeated the two historical reads, the valid-time
 boundary, and the eight concurrent writes across restart. Its SHA-256 was
 `18e7b19f1d3d0280c002a31b521a94fc88763cd93ba447981d3d483be63539a5`.

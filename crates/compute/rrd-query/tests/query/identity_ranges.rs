@@ -181,9 +181,9 @@ fn populate<E: StorageEngine>(engine: &E) -> u64 {
         })
         .unwrap()
         .last_cursor;
-    engine
-        .runtime()
-        .commit(&RuntimeCommit {
+    transactions::publish(
+        engine,
+        RuntimeCommit {
             scope,
             at: 103,
             actor: "range-test".into(),
@@ -204,8 +204,8 @@ fn populate<E: StorageEngine>(engine: &E) -> u64 {
                     },
                 },
             ],
-        })
-        .unwrap();
+        },
+    );
     original
 }
 
@@ -269,7 +269,7 @@ fn identity_ranges_resolve_parameters_and_preserve_fallback_predicates() {
     );
     // A value no identifier can hold cannot narrow the scan, and the predicate still decides.
     let query =
-        parse("FROM record:document AT VALID 40 KNOWN HEAD WHERE id > \"é\" PROJECT *").unwrap();
+        parse("FROM record:document AT VALID 40 KNOWN HEAD WHERE id > \"Ã©\" PROJECT *").unwrap();
     let physical = plan(&bind(&query, &Parameters::new(), &catalog).unwrap()).unwrap();
     assert!(matches!(
         physical.logical.version_sources.as_slice(),

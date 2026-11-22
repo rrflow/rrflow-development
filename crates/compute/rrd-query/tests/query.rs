@@ -31,6 +31,8 @@ mod identity_reads;
 mod relational_select;
 #[path = "query/stamped_admission.rs"]
 mod stamped_admission;
+#[path = "query/transactions.rs"]
+mod transactions;
 
 fn value(value: &str) -> RuntimeValue {
     RuntimeValue::String(value.into())
