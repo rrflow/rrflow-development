@@ -225,3 +225,17 @@ No benchmark or release/diagnostic parity ran; exact planned backend test and
 benchmark commands remain in the linked six-layer review and are still not
 runnable production targets. Candidate/queue qualification and the parent
 gitlink advance remain pending. No schema, tier or parity gate is closed.
+
+### Verified UI candidate and source pin
+
+Connectome revision `a54f2f92d28145dda6f94a2445f1197d22517cbb` passed
+[candidate run 45042570704](https://github.com/rrflow/connectome-development/actions/runs/45042570704):
+frontend check/build/render smoke, native format/check/test/clippy on Linux,
+macOS and Windows, real RRD process integration, and `ci-gate`. The final
+local build and all 38 browser cases were also rerun successfully after the
+last graph-total correction. PR119 is ready and queued through the protected
+merge queue; the superseded candidate was cancelled and is not passing
+evidence. The parent now pins that verified UI source. Queue/main results
+remain GitHub-owned and are not inferred from candidate success. The engine
+PR remains a draft under the six-layer review disposition; no additional
+engine capability or roadmap closure is claimed by advancing this gitlink.
