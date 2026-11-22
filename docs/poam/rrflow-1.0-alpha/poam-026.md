@@ -54,6 +54,17 @@ breakdowns and source-quality joins remain unqualified; no status is closed.
 
 ## Impact
 
+The 2026-11-22 Connectome review found another concrete projection defect:
+the engine overview assigned KV's physical sequence to the semantic change
+cursor without a returned mapping, replaced an independently observed DB
+cursor with a newer query cursor, and rendered missing maintenance counters
+as zero. Paired [Connectome PR119](https://github.com/rrflow/connectome-development/pull/119)
+corrects those projections and distinguishes interval activity from prompt
+cost. Its [supporting pattern](https://github.com/rrflow/connectome-development/blob/feat/temporal-relation-policy/docs/engine-evidence.md)
+maps configuration and evidence ownership to the existing files. These UI
+repairs do not provide the missing engine process epoch, full prompt trace,
+six-layer tuning contract or release/diagnostic parity. This item remains open.
+
 Local logs or scattered elapsed counters can be mistaken for system proof; regressions,
 stalls, repeated work, index misses, memory/spill pressure, exporter loss, or tail latency
 can remain invisible; and a debug-only behavior could appear to qualify the release engine.

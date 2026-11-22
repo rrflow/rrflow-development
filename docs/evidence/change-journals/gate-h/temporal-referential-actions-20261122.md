@@ -162,3 +162,66 @@ and cursor. Parent gitlink advances only after that paired candidate passes.
 Field references, UNSET, vector/geo cleanup, fine-grained concurrent semantic
 commits, cold-tier query convergence and parity remain unfinished. POAM-072/073
 are not closed on the evidence available at this commit.
+
+## Configuration and diagnostic follow-through, 2026-11-22
+
+The owner's six-layer configurability direction prompted a code-grounded
+review before any new engine-tier implementation. Root starting revision:
+`01efc47dfbbd2b13a5bcc143e9741452969c5753`; Connectome starting revision:
+`dd54eb1d90b4ec1036ebb33910b206e741e6b545`. The
+[six-layer review](six-layer-boundary-review-20261122.md) remains the record
+of the failed production-backend feature probes and the QL/DB/CLD replacement
+boundary. No additional QL, TX, MX, DB, LSM or CLD runtime implementation was
+changed in this follow-through. The paired UI projection was repaired and
+POAM-026 records the newly verified diagnostic deficiency without closing it.
+
+Complete root files read for this review:
+
+- `Cargo.toml`;
+- `docs/reference/deployment/scoped-configuration.md`;
+- `docs/evidence/change-journals/gate-h/observability-diagnostic-build-and-latency-evidence-planning-journal.md`;
+- `crates/transport/rrd-contract/src/diagnostic.rs`;
+- `crates/authority/rrd-engine/src/engine/diagnostic.rs`;
+- `crates/authority/rrd-engine/src/engine/diagnostic/storage.rs`;
+- `crates/operations/rrd-observation/src/lib.rs`;
+- `crates/persistence/rrd-lsm/src/write_diagnostics.rs`;
+- `crates/authority/rrd-engine/assets/install/default-engram-configuration-v3.toml`;
+- `docs/poam/rrflow-1.0-alpha/poam-026.md` and `poam-029.md`.
+
+The runtime-mode, metric and latency sections of `engine-data-flow.md` were
+read as sections, not the entire file. The diagnostic Cargo profile and
+bounded write recorder exist; full release/diagnostic parity, a complete
+operation trace and six-layer live configuration do not follow from those
+definitions. The UI [supporting pattern](https://github.com/rrflow/connectome-development/blob/feat/temporal-relation-policy/docs/engine-evidence.md)
+maps the requested controls to their engine owners and the existing native,
+model and view files. The same engine semantics must serve internal and
+customer builds; optional diagnostic collection cannot add another authority.
+
+PR119 now preserves independently measured cursors, physical sequences,
+unavailable/reset counters and stale-read failures. A first model oracle
+failed on the prior inferred KV agreement; it passes after the correction.
+Final `corepack pnpm check`, `corepack pnpm build`, and
+`corepack pnpm test:smoke --workers=2` pass (38 browser cases). The child
+journal records the formatting, wrapper-type and terminology failures that
+were fixed. Browser mocks qualify presentation only.
+
+Actual desktop readback on the retained installed project now shows source
+REJECT / target CASCADE at schema 3, knowledge 10; zero current `proof_link`
+rows; one historical row at valid 175 / known 7; zero at valid 175 / known 10;
+and one at valid 149 / known 10. Query work and unavailable policy-admission
+evidence are displayed as returned. Engine overview shows semantic/cold
+cursor 10 separately from the physical durable sequence. Screenshots/logs
+remain under `D:/.usr/Temp/rrflow-bitemporal-validation`; the actual project
+is `D:/.usr/Temp/rrflow-temporal-relations-20261122/project`.
+
+Earlier runs now checked against retained logs: engine library 531 passed,
+12 ignored; native Connectome 88 passed, 34 ignored; real-process goldens
+three passed; latest focused engine tests four passed and real HTTP
+`query_transaction` tests two passed. Those are earlier package runs, not
+reruns in this documentation/UI review. The installed driver's retained
+`evidence.json` identifies its unqualified Windows debug binary by SHA-256
+`1aada6feeadeaaedba6d0dd6c8596338ed07e12f1e1500716708abf067cff03e`.
+No benchmark or release/diagnostic parity ran; exact planned backend test and
+benchmark commands remain in the linked six-layer review and are still not
+runnable production targets. Candidate/queue qualification and the parent
+gitlink advance remain pending. No schema, tier or parity gate is closed.
