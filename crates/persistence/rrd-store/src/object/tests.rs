@@ -329,3 +329,102 @@ fn explicit_orphan_reclamation_removes_only_proven_candidates() {
     assert_eq!(removed, vec![orphan.sha256]);
     assert!(store.verify(&retained.sha256).is_ok());
 }
+
+#[test]
+#[ignore = "child process for repair_guard_is_released_when_owner_dies"]
+fn repair_guard_owner_child() {
+    let root = std::env::var_os("RRFLOW_OBJECT_LOCK_ROOT").unwrap();
+    let ready = std::env::var_os("RRFLOW_OBJECT_LOCK_READY").unwrap();
+    let store = LocalObjectStore::open(root).unwrap();
+    let _guard = store
+        .repair_guard(
+            &digest::sha256_hex(b"crash lock"),
+            std::time::Duration::from_secs(10),
+        )
+        .unwrap();
+    fs::write(ready, b"locked").unwrap();
+    std::thread::sleep(std::time::Duration::from_secs(60));
+}
+
+#[test]
+fn repair_guard_is_released_when_owner_dies() {
+    use std::process::{Command, Stdio};
+    use std::time::{Duration, Instant};
+
+    let directory = tempdir().unwrap();
+    let root = directory.path().join("store");
+    let ready = directory.path().join("ready");
+    let store = LocalObjectStore::open(&root).unwrap();
+    let original = store.put(b"crash lock").unwrap();
+    fs::write(
+        store.root().join(&original.receipt.key),
+        b"corrupt predecessor",
+    )
+    .unwrap();
+    let mut child = Command::new(std::env::current_exe().unwrap())
+        .args([
+            "--exact",
+            "object::tests::repair_guard_owner_child",
+            "--ignored",
+        ])
+        .env("RRFLOW_OBJECT_LOCK_ROOT", &root)
+        .env("RRFLOW_OBJECT_LOCK_READY", &ready)
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .unwrap();
+    let deadline = Instant::now() + Duration::from_secs(10);
+    while !ready.exists() && Instant::now() < deadline && child.try_wait().unwrap().is_none() {
+        std::thread::sleep(Duration::from_millis(5));
+    }
+    let locked = ready.exists();
+    if child.try_wait().unwrap().is_none() {
+        child.kill().unwrap();
+    }
+    child.wait().unwrap();
+    assert!(locked, "child did not acquire the publication guard");
+    let (tx, rx) = std::sync::mpsc::channel();
+    std::thread::spawn(move || tx.send(store.put(b"crash lock")).unwrap());
+    let recovered = rx.recv_timeout(Duration::from_secs(10)).unwrap().unwrap();
+    assert_eq!(recovered.sha256, digest::sha256_hex(b"crash lock"));
+}
+
+#[test]
+fn repair_admission_is_bounded_and_healthy_publication_never_waits() {
+    let directory = tempdir().unwrap();
+    let store = LocalObjectStore::open(directory.path()).unwrap();
+    let bytes = b"healthy lock-free publication";
+    let sha = digest::sha256_hex(bytes);
+    let _guard = store.repair_guard(&sha, std::time::Duration::ZERO).unwrap();
+    let error = store
+        .repair_guard(&sha, std::time::Duration::from_millis(5))
+        .unwrap_err();
+    assert!(error
+        .to_string()
+        .contains("repair lock admission timed out"));
+    let object = store.put(bytes).unwrap();
+    assert_eq!(store.put(bytes).unwrap(), object);
+    assert!(store
+        .inventory(&BTreeSet::new())
+        .unwrap()
+        .staging_files
+        .is_empty());
+}
+
+#[test]
+fn quarantine_rechecks_and_preserves_a_repaired_winner() {
+    let directory = tempdir().unwrap();
+    let store = LocalObjectStore::open(directory.path()).unwrap();
+    let original = store.put(b"repaired winner").unwrap();
+    assert!(store
+        .quarantine(&original.sha256)
+        .unwrap_err()
+        .to_string()
+        .contains("verified object"));
+    assert_eq!(store.verify(&original.sha256).unwrap(), original);
+    assert!(store
+        .inventory(&BTreeSet::new())
+        .unwrap()
+        .quarantined_files
+        .is_empty());
+}

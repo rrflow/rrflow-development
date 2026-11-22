@@ -347,18 +347,66 @@ impl LocalObjectStore {
     /// Moves corrupt objects out of the addressable namespace. The returned
     /// path is operator evidence; no reachable reference is silently rewritten.
     pub fn quarantine(&self, sha256: &str) -> Result<PathBuf> {
+        let _guard = self.repair_guard(sha256, std::time::Duration::from_secs(10))?;
+        match self.verify(sha256) {
+            Err(Error::ObjectCorrupt { .. }) => self.quarantine_corrupt(sha256),
+            Ok(_) => Err(Error::Object("cannot quarantine a verified object".into())),
+            Err(error) => Err(error),
+        }
+    }
+
+    fn quarantine_corrupt(&self, sha256: &str) -> Result<PathBuf> {
         let key = ObjectReference::canonical_key(sha256).map_err(Error::from)?;
         let source = self.root.join(key);
         if !source.try_exists()? {
             return Err(Error::ObjectMissing(sha256.to_owned()));
         }
         let target = self.root.join("quarantine").join(format!(
-            "{}-{}",
+            "{}-{}-{}",
             sha256,
+            std::process::id(),
             STAGE_ORDINAL.fetch_add(1, Ordering::Relaxed)
         ));
-        source.rename_to(&target)?;
+        source.rename_new_to(&target)?;
         Ok(target.diagnostic_path().to_owned())
+    }
+
+    // Only corrupt-object recovery needs serialization. Keep healthy publication
+    // lock-free and retain these bounded shard files: unlinking a lock file could
+    // admit two owners of different file identities for the same shard.
+    pub(super) fn repair_guard(&self, sha256: &str, timeout: std::time::Duration) -> Result<File> {
+        ObjectReference::canonical_key(sha256).map_err(Error::from)?;
+        let locks = self.root.join("repair-locks");
+        locks.create_dir_all()?;
+        let file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .open(&locks.join(&sha256[..2]))?;
+        let started = std::time::Instant::now();
+        tracing::trace!("object repair lock wait started");
+        loop {
+            match file.try_lock() {
+                Ok(()) => {
+                    let elapsed_micros =
+                        u64::try_from(started.elapsed().as_micros()).unwrap_or(u64::MAX);
+                    tracing::trace!(elapsed_micros, "object repair lock acquired");
+                    return Ok(file);
+                }
+                Err(std::fs::TryLockError::WouldBlock) if started.elapsed() < timeout => {
+                    std::thread::sleep(std::time::Duration::from_millis(1));
+                }
+                Err(std::fs::TryLockError::WouldBlock) => {
+                    tracing::trace!("object repair lock admission timed out");
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::TimedOut,
+                        "object corruption repair lock admission timed out",
+                    )
+                    .into());
+                }
+                Err(std::fs::TryLockError::Error(error)) => return Err(error.into()),
+            }
+        }
     }
 
     /// Reclaims only digests the caller proved unreachable. A later M4
@@ -387,22 +435,24 @@ impl LocalObjectStore {
             .parent()
             .ok_or_else(|| Error::Object("object publication target has no parent".into()))?;
         parent.create_dir_all()?;
-        if final_path.try_exists()? {
-            match self.verify(sha256) {
-                Ok(_) => {
-                    // Content addressing makes an existing verified value equivalent.
-                    stage_path.remove_file()?;
-                }
-                Err(Error::ObjectCorrupt { .. }) => {
-                    self.quarantine(sha256)?;
-                    publish_object_path(stage_path, final_path, sha256)?;
-                }
-                Err(error) => return Err(error),
-            }
-        } else {
-            publish_object_path(stage_path, final_path, sha256)?;
+        match publish_object_path(stage_path, final_path, sha256) {
+            Ok(()) => return Ok(()),
+            Err(Error::ObjectCorrupt { .. }) => {}
+            // A competing repair can remove a corrupt collision before we open
+            // it. A missing stage is an actual publication error, not that race.
+            Err(Error::ObjectMissing(_)) if stage_path.try_exists()? => {}
+            Err(error) => return Err(error),
         }
-        Ok(())
+        let _guard = self.repair_guard(sha256, std::time::Duration::from_secs(10))?;
+        match self.verify(sha256) {
+            Ok(_) => return publish_object_path(stage_path, final_path, sha256),
+            Err(Error::ObjectCorrupt { .. }) => {
+                self.quarantine_corrupt(sha256)?;
+            }
+            Err(Error::ObjectMissing(_)) => {}
+            Err(error) => return Err(error),
+        }
+        publish_object_path(stage_path, final_path, sha256)
     }
 }
 
@@ -479,7 +529,13 @@ pub(super) fn publish_object_path(
         Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
             // Another publisher can win after the caller observed absence.
             // Reuse only verified content, preserving its file identity and readers.
-            let mut winner = target.open_read()?;
+            let mut winner = target.open_read().map_err(|error| {
+                if error.kind() == std::io::ErrorKind::NotFound {
+                    Error::ObjectMissing(expected_sha256.to_owned())
+                } else {
+                    error.into()
+                }
+            })?;
             let (actual, _) = digest_reader(&mut winner)?;
             if actual != expected_sha256 {
                 return Err(Error::ObjectCorrupt {
