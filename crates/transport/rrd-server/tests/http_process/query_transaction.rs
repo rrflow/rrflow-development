@@ -17,7 +17,12 @@ fn document(id: &str, title: &str) -> Value {
         "valid_from": 100, "properties": {"title": {"type": "string", "value": title}}})
 }
 
-fn read(server: &RunningServer, session: (&str, &str), cursor: u64, valid: u64) -> Value {
+fn read(
+    server: &RunningServer,
+    session: (&str, &str),
+    cursor: impl std::fmt::Display,
+    valid: u64,
+) -> Value {
     let request = envelope(
         json!({"scope": "instance:socket-test",
             "query": format!("FROM record:document AT VALID {valid} KNOWN {cursor} WHERE id = \"alpha\" PROJECT title EXPLAIN CONTRACT"),
@@ -105,6 +110,9 @@ fn public_query_transaction_preserves_corrections_cancel_and_replay_across_resta
     let new = read(&server, session, new_cursor, 100);
     assert_eq!(old["rows"][0]["values"]["title"]["value"], "Original");
     assert_eq!(new["rows"][0]["values"]["title"]["value"], "Corrected");
+    let head = read(&server, session, "HEAD", 100);
+    assert_eq!(head["known_at_cursor"], new_cursor);
+    assert_eq!(head["rows"], new["rows"]);
     assert_eq!(read(&server, session, new_cursor, 99)["rows"], json!([]));
     server.stop();
     let reopened = start(&root);
@@ -123,4 +131,7 @@ fn public_query_transaction_preserves_corrections_cancel_and_replay_across_resta
         payload(&replay)["commit"]["last_runtime_cursor"],
         new_cursor
     );
+    let head = read(&reopened, session, "HEAD", 100);
+    assert_eq!(head["known_at_cursor"], new_cursor);
+    assert_eq!(head["rows"], new["rows"]);
 }

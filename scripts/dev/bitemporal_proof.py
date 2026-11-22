@@ -284,6 +284,7 @@ def prove(engine: Path, output: Path) -> None:
                     ("old", 100, old_cursor, "Original"),
                     ("new", 100, new_cursor, "Corrected"),
                     ("before_valid", 99, new_cursor, None),
+                    ("head_after_cancel_or_replay", 100, "HEAD", "Corrected"),
                 ):
                     query = f'FROM record:proof_document AT VALID {valid} KNOWN {cursor} WHERE id = "alpha" PROJECT title EXPLAIN CONTRACT'
                     result = call(
@@ -307,7 +308,8 @@ def prove(engine: Path, output: Path) -> None:
                         else None
                     )
                     assert actual == expected, (phase, label, result)
-                    assert result["known_at_cursor"] == cursor
+                    expected_cursor = new_cursor if cursor == "HEAD" else cursor
+                    assert result["known_at_cursor"] == expected_cursor
                     evidence["observations"].append(
                         {
                             "phase": phase,

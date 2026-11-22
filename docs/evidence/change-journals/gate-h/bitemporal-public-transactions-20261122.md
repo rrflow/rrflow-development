@@ -190,3 +190,13 @@ against that exact published pin; root queue admission waits for the child's
 green merge. No roadmap gate is marked complete. GitHub's PR/check/merge records
 remain the authoritative landing evidence; candidate/main success is not
 claimed before it is observed.
+
+Final oracle review found that a query fixed at cursor 7 alone would not catch
+an accidental later write from CANCEL or a refused retry. The HTTP oracle now
+also queries KNOWN HEAD after those requests and after restart/replay, requiring
+cursor 7 and the unchanged Corrected row. The installed driver makes the same
+assertion. Both strengthened oracles passed. The second retained driver run is
+`D:/.usr/Temp/rrflow-installed-bitemporal-head-20261122/evidence.json`, SHA-256
+`c4ceabafe3e87f09a5a1119cffc55cea5bf559dab3aa217934e1d5108c3a29a9`;
+it uses the same executable and public contract as the desktop proof. No engine
+or SDK implementation changed after the paired SDK revision was published.
