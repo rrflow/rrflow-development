@@ -1,4 +1,4 @@
-# POAM-090 — the product writes Parquet, and rrflowCLD has no format of its own
+# POAM-090 — cold history bypasses the rrflowCLD backend boundary
 
 **Status:** active parent-owned POA&M detail
 **Coordinate:** `rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-090`
@@ -9,7 +9,7 @@ priority or closure status.
 
 ## Observed deficiency
 
-Read on 2026-11-20 at `33159f8e2`. The owner's direction of 2026-11-19 and 2026-11-20 is that Parquet is a reference module for testing and comparison, never the product ([direction](../../roadmap/reference-modules-and-reasoning-fabric-owner-direction-20261120.md)). On `main`:
+Read on 2026-11-20 at `33159f8e2`. The original [reference-module direction](../../roadmap/reference-modules-and-reasoning-fabric-owner-direction-20261120.md) explains the initial comparison harness. At that revision:
 
 - `parquet` is a normal dependency of `rrd-query` (`crates/compute/rrd-query/Cargo.toml`), reached by every product binary through `rrd-engine`'s default `full` feature.
 - The cold tier is that writer. `encode_cold_history_page` and `decode_cold_history_page` (`rrd-query/src/cold_history.rs`) call the Parquet crate directly, the file extension `.parquet` is in `rrd-engine/src/engine/cold_history/maintain.rs`, and the bundled install configuration turns it on (`[storage.cold_history]`).
@@ -22,12 +22,13 @@ Since 2026-11-20 a columnar port exists in `rrd-store` with Parquet and Vortex a
 The [database semantics audit](../../reference/data/database-semantics.md) at
 `b7def0fc7` confirms authenticated, bounded Parquet generation readback with
 artifact/source verification. The outstanding deficiency is production use of
-the columnar port and native format plus merged query/context access, not the
-absence of all cold-history reads. Existing readback does not close this item.
+the columnar port and a stamped query/context read spanning the eligible tiers.
 
 ## Impact
 
-The cold tier cannot be compared with a reference, because it is the reference. Every product build carries the Parquet and Arrow writer stack. What rrflowCLD is meant to be for reasoning, columnar history read cold at one stamp, has no implementation to tune.
+The installed history path currently binds query code to the Parquet writer.
+Codec-only measurements omit the costs and correctness requirements of
+publication, point retrieval, focus prefetch and recovery in the engine.
 
 ## Owning gates
 
@@ -37,4 +38,9 @@ Roadmap owner: [Gate F](../../roadmap/rrflow-1.0/gate-f.md).
 
 ## Closure evidence
 
-Closed when a columnar port in the storage tier has a native rrflowCLD implementation that the product uses; Parquet and Vortex are optional reference modules behind the same port that no product package enables, enforced by the workspace architecture test; and a comparison of the three on the cold-history workload is recorded.
+Close when production publication and stamped readback both use the RRFlow-owned
+CLD port, QL and TX are format-independent, and the Vortex and Parquet feature
+builds pass the same installed correctness, recovery and workload tests in
+[F-06](../../roadmap/rrflow-1.0/gate-f.md). Publish comparative point and scan
+costs at matched quality. Keep this deficiency open until both product paths
+have that evidence.

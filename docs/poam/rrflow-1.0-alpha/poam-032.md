@@ -10,6 +10,17 @@ independently.
 
 ## Observed deficiency
 
+On November 22 an installed Windows engine reproduced a failure in flight
+detail after a successful launch. A Pruned Observe prompt returned a claim at
+rank 1 and `record:proof_document:source` at rank 2. It persisted one use edge
+with suffix `.2`. Listing the flight succeeded at cursor 7. Reading that ID
+and replaying the exact launch both returned HTTP 500 reporting zero edges
+instead of one. After forced termination and restart, rrflowQL traversal still
+found the edge and the same flight read still failed. See the
+[installed evidence](../../evidence/change-journals/gate-h/bitemporal-engine-contract.md).
+Acceptance requires a detail read that returns the original rank, matches the
+graph, stays within the request budget and survives reopening without a new launch.
+
 The pre-rebrand workbench recorded prompt flights in the retired in-repository
 workbench crate's `src/flight.rs` (1,756 lines): fresh, pruned, and full context
 arms, durable flight rows and append-only events in the runtime log,

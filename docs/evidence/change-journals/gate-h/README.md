@@ -8,6 +8,7 @@ The roadmap owns Gate H acceptance. This generated index only discovers its
 linked package evidence.
 
 <!-- rrflow:generated-index:start -->
+- [Capture the installed reasoning workflow and six-layer target](bitemporal-engine-contract.md) — [`rrflow://rrflow-instance/data/evidence/change-journal/gate-h/bitemporal-engine-contract`](rrflow://rrflow-instance/data/evidence/change-journal/gate-h/bitemporal-engine-contract) — active architecture and roadmap evidence
 - [Public bitemporal database transactions and desktop proof](bitemporal-public-transactions-20261122.md) — [`rrflow://rrflow-instance/data/evidence/change-journal/gate-h/bitemporal-public-transactions-20261122`](rrflow://rrflow-instance/data/evidence/change-journal/gate-h/bitemporal-public-transactions-20261122) — active implementation and verification
 - [Build, debug, trace, and optimization research journal](build-debug-trace-optimize-research-journal.md) — [`rrflow://rrflow-instance/data/evidence/change-journal/gate-h/build-debug-trace-optimize-research`](rrflow://rrflow-instance/data/evidence/change-journal/gate-h/build-debug-trace-optimize-research) — active immutable change-journal evidence
 - [Connectome's engine items checked against the source](connectome-engine-gaps.md) — [`rrflow://rrflow-instance/data/evidence/change-journal/gate-h/connectome-engine-gaps`](rrflow://rrflow-instance/data/evidence/change-journal/gate-h/connectome-engine-gaps) — active implementation evidence; documentation only, no engine capability advanced
