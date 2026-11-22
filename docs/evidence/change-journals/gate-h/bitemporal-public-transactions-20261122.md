@@ -149,3 +149,44 @@ POAM-005/011/090/093 gain source-grounded findings, with no closure or roadmap
 completion. The detailed reference names the remaining owners and distinguishes
 reviewed files/ranges from the unreviewed remainder. Final paired desktop proof,
 candidate and merge-queue CI are still required.
+
+## Paired desktop verification
+
+Engine source `dd1f7a182f6978b577915117f2090055df160749` is pinned by both
+Connectome SDKs at child candidate `17f00fd485a01c8a6e5d6eb1be64fa02fc947fdc`.
+No contract check was relaxed. Adding the retained project path recognized its
+existing locator, skipped installation, started RRD and authenticated readiness.
+The desktop showed the actual instance identity, three records and one relation.
+
+Query lab visibly returned Original at valid 100/known 6 and Corrected at valid
+100/known 7. A relation query returned alpha -> beta with valid_from 100. The
+UI showed selected/rejected plans, exactness, source cursor, key scans/point
+reads and decoded bytes. The engine diagnostics view showed DB/KV/QL/cold
+publication cursors at 7. Those watermarks do not establish merged hot/cold QL.
+Screenshots in the validation directory above: `connectome-live-database.jpg`,
+`connectome-known-6-original.jpg`, `connectome-known-7-corrected.jpg`,
+`connectome-persisted-relation.jpg`, `connectome-live-engine-diagnostics.jpg`.
+
+The installed journey also reproduced a false Tables refusal: a schemaless
+document table was treated as unreadable without a strict record schema. The
+child repaired that condition; the same database now displays Corrected and
+Evidence in Tables at cursor 7/schema 2, with 47 storage keys examined.
+`connectome-schemaless-table.jpg` retains the result. The child journal records
+the changed files and actual checks; no engine schema was altered for this fix.
+
+The child regenerates and verifies value/query/offer golden fixtures by three
+real process tests against the pinned source. Its final frontend check/build
+and five project-manager smoke tests pass; native tests pass 88 with 34 ignored
+process tests separately owned by CI (three were run locally as above).
+The root's final documentation policy, navigation and execution-inventory
+checks passed; generated surface parity passed. Source/diff review included
+the new complete driver and HTTP oracle, full client data operations, HTTP data
+handler/router, operation catalogue, launcher/tests, detailed reference and
+changed documentation; generated projection changes were reviewed against the
+canonical export. This is package review, not an exhaustive repository audit.
+
+The root pin identifies the tested child candidate. Root candidate CI can run
+against that exact published pin; root queue admission waits for the child's
+green merge. No roadmap gate is marked complete. GitHub's PR/check/merge records
+remain the authoritative landing evidence; candidate/main success is not
+claimed before it is observed.

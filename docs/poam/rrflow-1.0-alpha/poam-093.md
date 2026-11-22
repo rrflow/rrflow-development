@@ -14,6 +14,13 @@ it was running. The launcher now reuses an identical single-link private copy;
 changed builds still require replacement and do not silently select old bytes.
 This narrow repair does not close the complete desktop/task-control oracle.
 
+That journey also found the desktop's old SDK contract pin rejecting the newly
+exposed query-transaction operation, and Tables incorrectly refusing native
+schemaless records without a strict record schema. The paired child candidate
+updates both SDK pins and repairs that table eligibility condition. Actual
+desktop readback now shows the same record before/after correction and the
+persisted relationship; this remains narrower than the full task-control gate.
+
 On 2026-11-20, the documented development launcher at engine revision
 `36dccea2c8b47f6e431078fbdbb54165546236ef` inherited the engine Cargo target into
 Connectome. Cargo placed both executables under its `debug` directory. With a
