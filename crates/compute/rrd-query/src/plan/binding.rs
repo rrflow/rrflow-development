@@ -122,7 +122,7 @@ pub(crate) fn prepare_binding(
             .filter(|entry| entry.maintenance.is_some())
             .filter(|entry| {
                 entry.result_identity_version
-                    == Some(rrd_core::result_identity::RESULT_IDENTITY_VERSION)
+                    == Some(rrflow_kernel::result_identity::RESULT_IDENTITY_VERSION)
             })
             .filter_map(|entry| {
                 let matched_prefix = entry

@@ -1,11 +1,11 @@
 //! Durable execution boundary for project-scoped external operator knowledge.
 
 use super::{DurableTraceSpan, TraceIdentity};
-use rrd_contract::InstalledEngramIdentity;
-use rrd_core::{
+use crate::kernel::{
     digest, Millis, RuntimeProperties, RuntimeValue, TraceBoundary, TraceDataClass, TraceLink,
     TraceOutcome,
 };
+use rrd_contract::InstalledEngramIdentity;
 use rrd_operator_knowledge::{
     execute_operator_search, execute_operator_sync as apply_operator_sync, IterativeScanMode,
     OperatorAccessPath, OperatorKnowledgeAdapter, OperatorKnowledgeBinding,

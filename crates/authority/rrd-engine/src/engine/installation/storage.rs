@@ -306,7 +306,7 @@ pub(super) fn replay_installation_result(
     let (_, locator, locator_bytes) = read_locator_anchored(project)?;
     let inspector = RrflowKvInspector::open_anchored_with_options(
         &safe_join(project, &locator.storage_root)?,
-        super::super::core::installed_storage_options(&locator.storage)?,
+        super::super::instance::installed_storage_options(&locator.storage)?,
     )?;
     let installed: InstalledEngramRecord =
         decode_control(&inspector, INSTALLED_RECORD_KEY, "installed engram record")?;

@@ -160,9 +160,9 @@ fn stamped_query_addressed_history_remains_exact_after_head_and_schema_changes()
         replay.execution.read_evidence.stamp_validation.method,
         "rfc9162_direct_versions"
     );
-    engine
-        .runtime()
-        .commit(&RuntimeCommit {
+    transactions::publish(
+        &engine,
+        RuntimeCommit {
             scope: scope.clone(),
             at: 103,
             actor: "pipeline-history".into(),
@@ -174,8 +174,8 @@ fn stamped_query_addressed_history_remains_exact_after_head_and_schema_changes()
                     effective_at: 50,
                 },
             }],
-        })
-        .unwrap();
+        },
+    );
     let current =
         StampedQueryPipeline::new(&engine, engine.runtime().read_stamp(&scope).unwrap()).unwrap();
     assert_eq!(

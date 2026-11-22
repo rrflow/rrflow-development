@@ -1,14 +1,14 @@
 #![cfg(feature = "accelerator")]
 
-use rrd_core::{
-    ProjectionId, RuntimeProperties, RuntimeRef, RuntimeVector, ScopeId, VectorCollectionAddress,
-    VectorValue,
-};
 use rrd_vector::{
     build_dense_artifact, AcceleratedBuildPolicy, AcceleratorTarget, BuildDifferentialStatus,
     CompactDenseSegment, DenseArtifactBuilder, DenseBuildBackend, HnswAcceleratorRegistry,
     HnswArtifactBuilder, HnswBuildPolicy, HnswConfig, HnswIndex, ScoreMetric, VectorCandidate,
     VectorSegmentConfig, COMPACT_DENSE_FORMAT_VERSION, HNSW_FORMAT_VERSION,
+};
+use rrflow_kernel::{
+    ProjectionId, RuntimeProperties, RuntimeRef, RuntimeVector, ScopeId, VectorCollectionAddress,
+    VectorValue,
 };
 use std::collections::BTreeSet;
 
@@ -52,9 +52,9 @@ impl DenseArtifactBuilder for FakeGpu {
         generation: u64,
         source_cursor: u64,
         candidates: &[VectorCandidate],
-    ) -> rrd_core::Result<Vec<u8>> {
+    ) -> rrflow_kernel::Result<Vec<u8>> {
         if matches!(self.behavior, Behavior::Fail) {
-            return Err(rrd_core::Error::InvalidRuntime {
+            return Err(rrflow_kernel::Error::InvalidRuntime {
                 reason: "simulated GPU failure".into(),
             });
         }
@@ -218,9 +218,9 @@ impl HnswArtifactBuilder for FakeHnswGpu {
         generation: u64,
         source_cursor: u64,
         candidates: &[VectorCandidate],
-    ) -> rrd_core::Result<Vec<u8>> {
+    ) -> rrflow_kernel::Result<Vec<u8>> {
         if matches!(self.behavior, Behavior::Fail) {
-            return Err(rrd_core::Error::InvalidRuntime {
+            return Err(rrflow_kernel::Error::InvalidRuntime {
                 reason: "simulated HNSW device loss".into(),
             });
         }

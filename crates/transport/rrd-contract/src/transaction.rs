@@ -5,8 +5,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 
-/// Public multi-model mutation vocabulary. It is deliberately independent of
-/// `rrd_core`; adapters lower these values into the authoritative runtime.
+/// Document, relation, and other data mutations that an adapter submits to the engine.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "mutation", rename_all = "snake_case", deny_unknown_fields)]
 pub enum TransactionMutation {
@@ -337,7 +336,7 @@ pub(crate) fn validate_data_schema(registry: &DataSchemaRegistry) -> Result<()> 
     validate_data_organisation(registry)
 }
 
-/// Public-boundary checks of the engram organisation. `rrd-core` repeats them
+/// Public-boundary checks of the engram organisation. `rrflow-kernel` repeats them
 /// as the authority at commit; an engine parity test keeps the two aligned.
 pub(crate) fn validate_data_organisation(registry: &DataSchemaRegistry) -> Result<()> {
     let organisation = &registry.organisation;

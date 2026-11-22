@@ -819,7 +819,10 @@ impl EmbeddingBackend for CountedBackend {
             .as_ref()
             .unwrap_or_else(|| self.inner.descriptor())
     }
-    fn embed(&mut self, request: &EmbeddingRequest) -> rrd_core::Result<rrd_core::VectorValue> {
+    fn embed(
+        &mut self,
+        request: &EmbeddingRequest,
+    ) -> crate::kernel::Result<crate::kernel::VectorValue> {
         self.calls.fetch_add(1, Ordering::SeqCst);
         if let Some((entered, release)) = &self.blocked {
             entered.send(()).unwrap();

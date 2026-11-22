@@ -6,7 +6,7 @@ use datafusion::arrow::{
     datatypes::{DataType, Field, Schema, SchemaRef},
     record_batch::RecordBatch,
 };
-use rrd_core::{RuntimeValue, RuntimeValueType};
+use rrflow_kernel::{RuntimeValue, RuntimeValueType};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::sync::Arc;
 

@@ -28,7 +28,7 @@ that exist are the `rrd-*` ones below.
 | VyrmQL, `vyrm-ql` | rrflowQL, crate `compute/rrd-query` | **verified** by capability: tokenizer, planner modes, filter algebra |
 | `vyrm-vector` | crate `compute/rrd-vector` | **verified** by capability: HNSW, TurboQuant, sparse, MaxSim, payload indexes |
 | VyrmMX (`vyrm-mx`) | folded into the one query contract | decision 2026-11-14; the test oracle remains |
-| `vyrm-core` | `kernel/rrd-core` | mapped by role, not read |
+| `vyrm-core` | `kernel/rrflow-kernel` | mapped by role, not read |
 | `vyrm-embed` | `compute/rrd-inference` | mapped by role, not read |
 | `vyrm-edge` | `adapters/rrflow-edge` | mapped by role, not read |
 | `vyrm-cluster` | `operations/rrd-cluster` | mapped by role, not read |

@@ -5,7 +5,7 @@
 //! type or property exists. Every query must state valid time and known state;
 //! there is no ambient "latest" hidden in the language contract.
 
-use rrd_core::{Predicate, RuntimeRef, RuntimeType, RuntimeValue};
+use rrflow_kernel::{Predicate, RuntimeRef, RuntimeType, RuntimeValue};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 

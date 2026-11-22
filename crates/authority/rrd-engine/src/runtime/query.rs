@@ -6,7 +6,7 @@
 //! observability from changing the meaning of `KNOWN HEAD`.
 
 use super::{DurableTraceSpan, TraceIdentity};
-use rrd_core::{
+use crate::kernel::{
     digest, Millis, RuntimeProperties, RuntimeValue, ScopeId, TraceAttribute, TraceBoundary,
     TraceDataClass, TraceLink, TraceOutcome,
 };

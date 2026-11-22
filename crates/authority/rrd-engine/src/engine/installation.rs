@@ -43,7 +43,7 @@ use rrd_contract::{
     MAX_ATTUNEMENT_DESCRIPTION_BYTES, MAX_ATTUNEMENT_PHASES,
 };
 
-use rrd_core::digest::Sha256 as IncrementalSha256;
+use crate::kernel::digest::Sha256 as IncrementalSha256;
 
 use rrd_security::{Principal, PrincipalKind, ResourceGrant, SecurityState, SECURITY_FORMAT};
 

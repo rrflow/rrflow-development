@@ -6,11 +6,11 @@
 //! saturation and query-side Robertson IDF.
 
 use crate::{Error, Result};
-use rrd_core::digest;
 pub use rrd_store::lexical::{
     analyze, analyze_with_offsets, bm25_contribution, Bm25Analyzer, Bm25Config, Bm25Identifiers,
     Bm25Offset, Bm25Stemmer, Bm25Tokenizer, MAX_TOKEN_CHARS,
 };
+use rrflow_kernel::digest;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 

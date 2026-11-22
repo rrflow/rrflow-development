@@ -207,7 +207,7 @@ fn adjacency_prefixes_isolate_node_and_relation_type_and_keys_round_trip() {
         valid_to: None,
         properties: Default::default(),
     };
-    let imports = rrd_core::RuntimeType::new("imports").unwrap();
+    let imports = rrflow_kernel::RuntimeType::new("imports").unwrap();
     for (space, near, far) in [
         (RUNTIME_OUTGOING_EDGE_VERSIONS, &relation.from, &relation.to),
         (RUNTIME_INCOMING_EDGE_VERSIONS, &relation.to, &relation.from),
@@ -274,13 +274,13 @@ fn every_direct_version_family_is_scope_bound_and_newest_first() {
         assert!(!newer.starts_with(&runtime_scope_prefix(space, &other)));
     }
 
-    let claim = rrd_core::Claim::new(
+    let claim = rrflow_kernel::Claim::new(
         Subject::new("document-alpha").unwrap(),
         Predicate::new("status").unwrap(),
         "ready",
         100,
         200,
-        rrd_core::Producer {
+        rrflow_kernel::Producer {
             actor: "test:direct-version-keys".into(),
             on_behalf_of: None,
             session: None,
@@ -298,13 +298,13 @@ fn every_direct_version_family_is_scope_bound_and_newest_first() {
 fn direct_version_key_shapes_match_the_frozen_fixture() {
     let scope = ScopeId::new("project:version-fixture").unwrap();
     let reference = RuntimeRef::new("document", "alpha").unwrap();
-    let claim = rrd_core::Claim::new(
+    let claim = rrflow_kernel::Claim::new(
         Subject::new("document-alpha").unwrap(),
         Predicate::new("status").unwrap(),
         "ready",
         100,
         200,
-        rrd_core::Producer {
+        rrflow_kernel::Producer {
             actor: "test:version-fixture".into(),
             on_behalf_of: None,
             session: None,

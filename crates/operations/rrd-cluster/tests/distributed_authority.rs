@@ -4,8 +4,8 @@ use rrd_cluster::{
     ReadConsistency, RegionId, ReplicaRole, ShardId, TenantId, TenantPlacementPolicy,
     WriteConsistency, ZoneId,
 };
-use rrd_core::ScopeId;
 use rrd_store::{RrflowKvStore, StorageEngine};
+use rrflow_kernel::ScopeId;
 use std::collections::BTreeSet;
 
 fn node(index: u8) -> PlacementNode {

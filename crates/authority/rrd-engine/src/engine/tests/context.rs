@@ -129,7 +129,7 @@ fn a_packet_over_varied_text_validates_after_crossing_the_wire() {
 
 #[test]
 fn distinct_typed_records_remain_distinct_in_context_after_reopen() {
-    use rrd_core::{
+    use crate::kernel::{
         RuntimeCommit, RuntimeLogicalModel, RuntimeMutation, RuntimeRecord, RuntimeRef,
         RuntimeSchemaRegistry, RuntimeTableSchema, RuntimeType, RuntimeValue, ScopeId,
     };

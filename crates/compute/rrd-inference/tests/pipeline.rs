@@ -2,11 +2,6 @@ use rrd_contract::{
     router_model_handshake_sha256, RouteDecisionKind, RouterBackendDescriptor,
     RouterModelHandshake, RouterModelManifest,
 };
-use rrd_core::{
-    digest, ReadStamp, RuntimeCommit, RuntimeId, RuntimeLogicalModel, RuntimeMutation,
-    RuntimeProperties, RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry,
-    RuntimeTableSchema, RuntimeType, RuntimeValue, ScopeId, VectorCollectionAddress, VectorValue,
-};
 use rrd_inference::{
     load_router_model_after_handshake, EmbeddingBackend, EmbeddingBackendRegistry,
     EmbeddingCoordinator, EmbeddingJob, EmbeddingRequest, EmbeddingSourceReader,
@@ -14,6 +9,11 @@ use rrd_inference::{
     NetworkPolicy, NetworkRequirement, RouterModelArtifacts, EMBEDDING_CONTRACT_VERSION,
 };
 use rrd_store::{RrflowMxStore, StorageEngine};
+use rrflow_kernel::{
+    digest, ReadStamp, RuntimeCommit, RuntimeId, RuntimeLogicalModel, RuntimeMutation,
+    RuntimeProperties, RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry,
+    RuntimeTableSchema, RuntimeType, RuntimeValue, ScopeId, VectorCollectionAddress, VectorValue,
+};
 use std::collections::BTreeSet;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -44,7 +44,7 @@ struct SequenceReader {
 }
 
 impl EmbeddingSourceReader for SequenceReader {
-    fn read(&mut self, _source: &RuntimeRef) -> rrd_core::Result<EmbeddingSourceSnapshot> {
+    fn read(&mut self, _source: &RuntimeRef) -> rrflow_kernel::Result<EmbeddingSourceSnapshot> {
         let snapshot = self.snapshots[self.reads.min(self.snapshots.len() - 1)].clone();
         self.reads += 1;
         Ok(snapshot)
@@ -147,7 +147,7 @@ impl EmbeddingBackend for CountingBackend {
         &self.descriptor
     }
 
-    fn embed(&mut self, _request: &EmbeddingRequest) -> rrd_core::Result<VectorValue> {
+    fn embed(&mut self, _request: &EmbeddingRequest) -> rrflow_kernel::Result<VectorValue> {
         self.calls.fetch_add(1, Ordering::SeqCst);
         let mut values = vec![0.0; self.descriptor.model.dimensions as usize];
         values[0] = 1.0;
@@ -213,7 +213,7 @@ impl EmbeddingBackend for MalformedBackend {
         &self.descriptor
     }
 
-    fn embed(&mut self, _request: &EmbeddingRequest) -> rrd_core::Result<VectorValue> {
+    fn embed(&mut self, _request: &EmbeddingRequest) -> rrflow_kernel::Result<VectorValue> {
         Ok(VectorValue::Dense {
             values: vec![1.0, 0.0],
         })

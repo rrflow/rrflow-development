@@ -348,7 +348,7 @@ pub fn load_engram_configuration(path: Option<&Path>) -> Result<EngramConfigurat
     .map_err(|error| ServiceError::Contract(error.to_string()))?;
     let configuration = EngramConfiguration::from_input(1, input)
         .map_err(|error| ServiceError::Contract(error.to_string()))?;
-    super::super::core::installed_storage_options(&configuration.storage)?;
+    super::super::instance::installed_storage_options(&configuration.storage)?;
     Ok(configuration)
 }
 

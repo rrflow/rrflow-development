@@ -13,11 +13,11 @@ use rrd_cluster::{
     RrdRaftStorageLifecycle, RrdRaftStore, RrdRaftTypeConfig, ShardId, ShardPlacement, ZoneId,
     CLUSTER_CONTRACT_VERSION,
 };
-use rrd_core::{
+use rrd_store::{RrflowKvStore, StorageEngine};
+use rrflow_kernel::{
     RuntimeCommit, RuntimeLogicalModel, RuntimeMutation, RuntimeRecordSchema,
     RuntimeSchemaRegistry, RuntimeType, ScopeId,
 };
-use rrd_store::{RrflowKvStore, StorageEngine};
 use std::collections::{BTreeMap, BTreeSet};
 use std::io;
 use std::sync::Arc;

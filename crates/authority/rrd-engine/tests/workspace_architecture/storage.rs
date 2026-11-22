@@ -398,8 +398,14 @@ pub(super) fn alpha_storage_closure_has_one_required_physical_dependency_and_cur
 #[test]
 pub(super) fn schema_catalogue_has_one_explicit_logical_model_authority() {
     let metadata = workspace_metadata();
-    let core_schema = module_source(&metadata.root, "crates/kernel/rrd-core/src/schema.rs");
-    let core_runtime = module_source(&metadata.root, "crates/kernel/rrd-core/src/runtime.rs");
+    let core_schema = module_source(
+        &metadata.root,
+        "crates/authority/rrd-engine/kernel/src/schema.rs",
+    );
+    let core_runtime = module_source(
+        &metadata.root,
+        "crates/authority/rrd-engine/kernel/src/runtime.rs",
+    );
     let public_contract = module_source(&metadata.root, "crates/transport/rrd-contract/src/lib.rs");
 
     let optional_table_field =
@@ -452,7 +458,7 @@ pub(super) fn vector_writes_require_one_canonical_collection_address() {
     let required_address_sources = [
         (
             "kernel runtime vector",
-            "crates/kernel/rrd-core/src/data.rs",
+            "crates/authority/rrd-engine/kernel/src/data.rs",
             "pub collection: VectorCollectionAddress,",
         ),
         (
@@ -517,7 +523,10 @@ pub(super) fn vector_writes_require_one_canonical_collection_address() {
         "public PutVector regained an optional address component"
     );
 
-    let runtime = module_source(&metadata.root, "crates/kernel/rrd-core/src/runtime.rs");
+    let runtime = module_source(
+        &metadata.root,
+        "crates/authority/rrd-engine/kernel/src/runtime.rs",
+    );
     for required in [
         "text(out, &vector.collection.collection_id);",
         "text(out, &vector.collection.vector_name);",

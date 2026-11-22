@@ -1,8 +1,8 @@
-use rrd_core::{RuntimeType, RuntimeValue};
 use rrd_query::{
     parse, parse_transaction_program, ComparisonOperator, CursorExpr, Filter, Projection, Query,
     Source, TemporalSelector, TimeExpr, TransactionDisposition, ValueExpr,
 };
+use rrflow_kernel::{RuntimeType, RuntimeValue};
 
 #[test]
 fn traversal_start_ids_round_trip_exactly_when_quoted() {

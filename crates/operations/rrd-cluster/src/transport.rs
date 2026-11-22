@@ -24,9 +24,9 @@ use openraft::raft::{
     InstallSnapshotResponse, SnapshotResponse, VoteRequest, VoteResponse,
 };
 use openraft::{OptionalSend, Raft, Snapshot, Vote};
-use rrd_core::digest::sha256_hex;
-use rrd_core::ScopeId;
 use rrd_store::LocalObjectStore;
+use rrflow_kernel::digest::sha256_hex;
+use rrflow_kernel::ScopeId;
 use rustls::client::WebPkiServerVerifier;
 use rustls::pki_types::{CertificateDer, CertificateRevocationListDer, PrivateKeyDer, ServerName};
 use rustls::server::WebPkiClientVerifier;

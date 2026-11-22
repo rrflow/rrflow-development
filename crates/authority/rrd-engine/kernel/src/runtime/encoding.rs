@@ -306,23 +306,7 @@ pub(super) fn encode_schema(out: &mut Vec<u8>, registry: &RuntimeSchemaRegistry)
     out.extend_from_slice(&(registry.tables.len() as u64).to_be_bytes());
     for (kind, table) in &registry.tables {
         text(out, kind.as_str());
-        out.push(match table.model {
-            crate::RuntimeLogicalModel::Document => 0,
-            crate::RuntimeLogicalModel::Relational => 1,
-            crate::RuntimeLogicalModel::GraphNode => 2,
-            crate::RuntimeLogicalModel::GraphRelation => 3,
-            crate::RuntimeLogicalModel::KeyValue => 4,
-            crate::RuntimeLogicalModel::Vector => 5,
-            crate::RuntimeLogicalModel::Event => 6,
-            crate::RuntimeLogicalModel::TimeSeries => 7,
-            crate::RuntimeLogicalModel::Geo => 8,
-            crate::RuntimeLogicalModel::Object => 9,
-            crate::RuntimeLogicalModel::ReasoningRecord => 10,
-            crate::RuntimeLogicalModel::ReasoningEvent => 11,
-            crate::RuntimeLogicalModel::LifecycleRecord => 12,
-            crate::RuntimeLogicalModel::LifecycleEvent => 13,
-            crate::RuntimeLogicalModel::ReasoningClaim => 14,
-        });
+        out.push(runtime_logical_model_tag(table.model));
         out.push(match table.mode {
             crate::RuntimeSchemaMode::Strict => 0,
             crate::RuntimeSchemaMode::Schemaless => 1,

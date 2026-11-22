@@ -14,7 +14,7 @@ pub const MAX_CANONICAL_ID_BYTES: usize = 128;
 
 /// Why `value` is not a canonical identifier, or `None` when it is.
 ///
-/// This is the one grammar for an identifier that can reach a public projection,
+/// This is the kernel grammar for an identifier that can reach a public projection,
 /// a SPIFFE identity or a certificate. `rrd-contract` has no workspace
 /// dependencies, so its `CanonicalId` keeps its own copy, and a test there proves
 /// the two agree.

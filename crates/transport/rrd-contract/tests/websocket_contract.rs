@@ -509,7 +509,7 @@ fn cursor_only_subscription_progress_is_a_valid_delivery() {
                 timed_out: false,
                 waited_ms: 0,
                 query_sha256: "e".repeat(64),
-                result_identity_version: rrd_core::result_identity::RESULT_IDENTITY_VERSION,
+                result_identity_version: rrflow_kernel::result_identity::RESULT_IDENTITY_VERSION,
                 from_cursor: 7,
                 through_cursor: 8,
                 head_cursor: 8,

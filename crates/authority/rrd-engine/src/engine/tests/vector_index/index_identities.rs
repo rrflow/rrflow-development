@@ -2,8 +2,8 @@
 //! changefeed, because every identity the catalogue writes is public.
 
 use super::*;
+use crate::kernel::{ProjectionId, ScopeId};
 use rrd_contract::{ChangeMutationSnapshot, ReadChangefeed, SessionLease};
-use rrd_core::{ProjectionId, ScopeId};
 use std::collections::BTreeSet;
 
 fn scope() -> String {

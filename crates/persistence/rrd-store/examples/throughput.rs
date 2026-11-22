@@ -11,8 +11,8 @@
 //! cargo run --release -p rrd-store --example throughput -- <path-on-ext4>
 //! ```
 
-use rrd_core::{Claim, ClaimReader, Predicate, Producer, Reader, Subject};
 use rrd_store::{ClaimBatchWriter, ClaimBatchWriterConfig, RrflowKvStore, StorageEngine};
+use rrflow_kernel::{Claim, ClaimReader, Predicate, Producer, Reader, Subject};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 

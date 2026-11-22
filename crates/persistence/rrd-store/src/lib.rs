@@ -98,11 +98,11 @@ pub use repository::{
     ClaimRepository, ControlRepository, FunctionCatalogueRepository, InvocationRepository,
     ProjectionRepository, RuntimeDataSnapshotRead, RuntimeRepository,
 };
-pub use rrd_core::{
+pub use rrd_lsm::filesystem;
+pub use rrflow_kernel::{
     DataTransaction, DataTransactionView, ReadStamp, RetentionPin, RetentionPinId,
     RuntimeChangePage, RuntimeCommitOutcome, SnapshotHandle, SnapshotId,
 };
-pub use rrd_lsm::filesystem;
 /// The physical write-batch payload ceiling every commit must fit; see
 /// [`RuntimeRepository::measure_commit_with_control`].
 pub const PHYSICAL_BATCH_PAYLOAD_BYTES: usize = rrd_lsm::WAL_MAX_PAYLOAD_BYTES;

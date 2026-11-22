@@ -177,9 +177,9 @@ pub(super) fn in_process(_memory_limit: u64) -> io::Result<Worker> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::kernel::digest::sha256_hex;
     use rrd_attunement::parse::ParseLimits;
     use rrd_attunement::worker::{run_worker, WORKER_PROTOCOL_VERSION};
-    use rrd_core::digest::sha256_hex;
     use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::Arc;
 

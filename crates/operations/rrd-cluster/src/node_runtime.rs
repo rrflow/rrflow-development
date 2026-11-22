@@ -17,7 +17,7 @@ use crate::{
 };
 use openraft::metrics::Metric;
 use openraft::{Config, Raft, SnapshotPolicy};
-use rrd_core::{RuntimeCommit, ScopeId};
+use rrflow_kernel::{RuntimeCommit, ScopeId};
 use rustls::pki_types::{
     CertificateDer, CertificateRevocationListDer, PrivateKeyDer, PrivatePkcs8KeyDer,
 };

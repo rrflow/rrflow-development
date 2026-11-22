@@ -436,7 +436,9 @@ pub(super) fn exercise_installed_source_worker(
         question_id: CanonicalId::new("installed-assessment-question").unwrap(),
         template_id: CanonicalId::new("installed-assessment-template").unwrap(),
         template_revision: 1,
-        template_sha256: rrd_core::digest::sha256_hex(b"controlled installed practice declaration"),
+        template_sha256: rrflow_kernel::digest::sha256_hex(
+            b"controlled installed practice declaration",
+        ),
         requirement_id: CanonicalId::new("installed-assessment-requirement").unwrap(),
     };
     let practice_text = "Review only the selected source bytes against this declared practice.";
@@ -546,7 +548,7 @@ pub(super) fn exercise_installed_source_worker(
         assert_eq!(packet["practice_text"], practice_text);
         assert_eq!(
             packet["practice_sha256"],
-            rrd_core::digest::sha256_hex(practice_text.as_bytes())
+            rrflow_kernel::digest::sha256_hex(practice_text.as_bytes())
         );
         assert_eq!(packet["source_content"], source_content);
         assert_eq!(packet["source"]["entry_identity"], source_identity);
@@ -555,7 +557,7 @@ pub(super) fn exercise_installed_source_worker(
         assert_eq!(assessment.source.content_sha256, content_sha256);
         assert_eq!(
             assessment.practice_sha256,
-            rrd_core::digest::sha256_hex(practice_text.as_bytes())
+            rrflow_kernel::digest::sha256_hex(practice_text.as_bytes())
         );
         match (&request.descriptor, &assessment.decision, reference_input) {
             (
@@ -597,7 +599,7 @@ pub(super) fn exercise_installed_source_worker(
                 assert_eq!(reference.input, AssessmentInputKind::Practice);
                 assert_eq!(
                     reference.input_sha256,
-                    rrd_core::digest::sha256_hex(practice_text.as_bytes())
+                    rrflow_kernel::digest::sha256_hex(practice_text.as_bytes())
                 );
                 assert_eq!((reference.start_byte, reference.end_byte), (0, 6));
                 assert_eq!(&practice_text[0..6], "Review");

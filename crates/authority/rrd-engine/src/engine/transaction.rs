@@ -20,7 +20,7 @@ impl BeginTiming {
         }
         let now = std::time::Instant::now();
         Some(Self {
-            request_sha256: rrd_core::digest::sha256_hex(request_id.as_bytes()),
+            request_sha256: crate::kernel::digest::sha256_hex(request_id.as_bytes()),
             started: now,
             stage_started: now,
             stage: 0,
@@ -783,7 +783,7 @@ fn require_same_commit(
 fn classify_rejected_commit(error: rrd_store::Error) -> ServiceError {
     match error {
         rrd_store::Error::DanglingRuntimeReference(reason) => ServiceError::Query(reason),
-        rrd_store::Error::Kernel(rrd_core::Error::InvalidRuntime { reason }) => {
+        rrd_store::Error::Kernel(crate::kernel::Error::InvalidRuntime { reason }) => {
             ServiceError::Query(reason)
         }
         rrd_store::Error::RuntimeConflict { expected, actual } if actual > expected => {

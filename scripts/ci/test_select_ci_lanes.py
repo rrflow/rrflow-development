@@ -15,11 +15,11 @@ from workspace_packages import member_directories
 METADATA = {
     "workspace_members": ["core", "lsm", "engine", "cli", "eval", "lab"],
     "packages": [
-        {"id": "core", "name": "rrd-core", "dependencies": []},
-        {"id": "lsm", "name": "rrd-lsm", "dependencies": [{"name": "rrd-core"}]},
-        {"id": "engine", "name": "rrd-engine", "dependencies": [{"name": "rrd-core"}, {"name": "rrd-lsm"}]},
+        {"id": "core", "name": "rrflow-kernel", "dependencies": []},
+        {"id": "lsm", "name": "rrd-lsm", "dependencies": [{"name": "rrflow-kernel"}]},
+        {"id": "engine", "name": "rrd-engine", "dependencies": [{"name": "rrflow-kernel"}, {"name": "rrd-lsm"}]},
         {"id": "cli", "name": "rrflow-cli", "dependencies": [{"name": "rrd-engine"}, {"name": "serde"}]},
-        {"id": "eval", "name": "rrflow-eval", "dependencies": [{"name": "rrd-core"}]},
+        {"id": "eval", "name": "rrflow-eval", "dependencies": [{"name": "rrflow-kernel"}]},
         {"id": "lab", "name": "rrflow-lab-core", "dependencies": []},
     ],
 }
@@ -30,7 +30,7 @@ class LaneSelectionTests(unittest.TestCase):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name)
-        members = [("kernel", "rrd-core"), ("persistence", "rrd-lsm"), ("authority", "rrd-engine"),
+        members = [("persistence", "rrd-lsm"), ("authority", "rrd-engine"),
                    ("adapters", "rrflow-cli"), ("evaluation", "rrflow-eval"), ("transport", "rrd-contract"),
                    ("evaluation/lab", "rrflow-lab-core")]
         for group, crate in members:
@@ -42,6 +42,10 @@ class LaneSelectionTests(unittest.TestCase):
         fuzz.parent.mkdir(parents=True)
         fuzz.write_text('[package]\nname = "rrflow-eval-fuzz"\nversion = "0.0.0"\n', encoding="utf-8")
         listed = ", ".join(f'"crates/{group}/{crate}"' for group, crate in members)
+        kernel = "crates/authority/rrd-engine/kernel"
+        (self.root / kernel).mkdir()
+        (self.root / kernel / "Cargo.toml").write_text('[package]\nname = "rrflow-kernel"\n', encoding="utf-8")
+        listed += f', "{kernel}"'
         (self.root / "Cargo.toml").write_text(f"[workspace]\nmembers = [{listed}]\n", encoding="utf-8")
 
     def lanes(self, *paths, **options):
@@ -139,7 +143,7 @@ class LaneSelectionTests(unittest.TestCase):
         # The full matrix is release qualification: nightly and on demand only.
         for path in (
             "crates/persistence/rrd-lsm/src/database.rs",
-            "crates/kernel/rrd-core/src/lib.rs",
+            "crates/authority/rrd-engine/kernel/src/lib.rs",
             "crates/adapters/rrflow-cli/src/main.rs",
             "crates/authority/rrd-engine/src/engine/transaction.rs",
             "crates/authority/rrd-engine/src/engine/installation/admission.rs",
@@ -206,8 +210,8 @@ class LaneSelectionTests(unittest.TestCase):
 
     def test_dependents_close_over_the_workspace_only(self):
         graph = workspace_graph(METADATA)
-        self.assertEqual(with_dependents({"rrd-core"}, graph),
-                         {"rrd-core", "rrd-lsm", "rrd-engine", "rrflow-cli", "rrflow-eval"})
+        self.assertEqual(with_dependents({"rrflow-kernel"}, graph),
+                         {"rrflow-kernel", "rrd-lsm", "rrd-engine", "rrflow-cli", "rrflow-eval"})
         self.assertEqual(with_dependents({"rrflow-cli"}, graph), {"rrflow-cli"})
         self.assertNotIn("serde", graph)
 

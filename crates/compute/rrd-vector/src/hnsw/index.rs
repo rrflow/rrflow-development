@@ -8,9 +8,9 @@ pub struct HnswIndex {
     pub(super) config: HnswConfig,
     pub(super) entrypoint: Option<usize>,
     pub(super) nodes: Vec<HnswNode>,
-    pub(super) versions: BTreeMap<rrd_core::RuntimeRef, Vec<usize>>,
+    pub(super) versions: BTreeMap<rrflow_kernel::RuntimeRef, Vec<usize>>,
     /// The collections its nodes belong to, derived when it is read and never stored.
-    pub(super) collections: Vec<rrd_core::VectorCollectionAddress>,
+    pub(super) collections: Vec<rrflow_kernel::VectorCollectionAddress>,
     /// The version lists of evenly spaced identities, derived when read and never stored.
     pub(super) cost_sample: Vec<Vec<usize>>,
     pub(super) bytes: Vec<u8>,
@@ -82,7 +82,7 @@ impl HnswIndex {
                 .stamp
                 .generation
                 .checked_add(1)
-                .ok_or_else(|| rrd_core::Error::InvalidRuntime {
+                .ok_or_else(|| rrflow_kernel::Error::InvalidRuntime {
                     reason: "HNSW generation overflowed".into(),
                 })?;
         if generation != expected_generation {
@@ -161,10 +161,11 @@ impl HnswIndex {
         if bytes.len() > MAX_HNSW_BYTES {
             return invalid("encoded HNSW artifact exceeds the 1 GiB safety limit");
         }
-        let envelope: HnswEnvelope =
-            serde_json::from_slice(bytes).map_err(|error| rrd_core::Error::InvalidRuntime {
+        let envelope: HnswEnvelope = serde_json::from_slice(bytes).map_err(|error| {
+            rrflow_kernel::Error::InvalidRuntime {
                 reason: format!("HNSW artifact cannot be decoded: {error}"),
-            })?;
+            }
+        })?;
         if envelope.magic != HNSW_MAGIC || envelope.format_version != HNSW_FORMAT_VERSION {
             return invalid("HNSW magic or format version is unsupported");
         }
@@ -211,7 +212,7 @@ impl HnswIndex {
             envelope.body.entrypoint,
             &envelope.body.nodes,
         )?;
-        let mut versions = BTreeMap::<rrd_core::RuntimeRef, Vec<usize>>::new();
+        let mut versions = BTreeMap::<rrflow_kernel::RuntimeRef, Vec<usize>>::new();
         for (id, node) in envelope.body.nodes.iter().enumerate() {
             versions
                 .entry(node.candidate.vector.reference.clone())
@@ -257,13 +258,13 @@ impl HnswIndex {
     /// Whether this generation stores versions of `collection`. A descriptor names a field and
     /// not a collection, and two collections may share a field, so only the graph can say. An
     /// empty graph holds nothing to get wrong, and an overlay serves all of its source.
-    pub fn serves_collection(&self, collection: &rrd_core::VectorCollectionAddress) -> bool {
+    pub fn serves_collection(&self, collection: &rrflow_kernel::VectorCollectionAddress) -> bool {
         self.nodes.is_empty() || self.collections.contains(collection)
     }
 
     /// The identity and source cursor of every version this generation
     /// stores. A generation never removes one.
-    pub fn stored_versions(&self) -> BTreeSet<(rrd_core::RuntimeRef, u64)> {
+    pub fn stored_versions(&self) -> BTreeSet<(rrflow_kernel::RuntimeRef, u64)> {
         self.nodes
             .iter()
             .map(|node| {
@@ -280,7 +281,7 @@ impl HnswIndex {
     }
 
     /// A bound graph may contain only versions from its declared source.
-    pub fn contains_only_source(&self, source: &rrd_core::VectorCollectionAddress) -> bool {
+    pub fn contains_only_source(&self, source: &rrflow_kernel::VectorCollectionAddress) -> bool {
         self.nodes
             .iter()
             .all(|node| &node.candidate.vector.collection == source)

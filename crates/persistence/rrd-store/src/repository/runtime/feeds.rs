@@ -65,7 +65,7 @@ impl<'a> RuntimeRepository<'a> {
     pub fn index_source_deltas_since(
         &self,
         scope: &ScopeId,
-        index: &rrd_core::ProjectionId,
+        index: &rrflow_kernel::ProjectionId,
         after: u64,
         limit: usize,
     ) -> Result<Vec<IndexSourceDelta>> {

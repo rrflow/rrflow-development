@@ -16,7 +16,10 @@ impl EmbeddingBackend for BlockedBackend {
         &self.descriptor
     }
 
-    fn embed(&mut self, request: &EmbeddingRequest) -> rrd_core::Result<rrd_core::VectorValue> {
+    fn embed(
+        &mut self,
+        request: &EmbeddingRequest,
+    ) -> crate::kernel::Result<crate::kernel::VectorValue> {
         self.entered.send(()).unwrap();
         self.release.recv_timeout(Duration::from_secs(20)).unwrap();
         self.inner.embed(request)

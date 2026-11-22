@@ -237,7 +237,7 @@ where
 pub(super) struct DurableEmbeddingBackend<'a, E, B> {
     store: &'a E,
     backend: &'a mut B,
-    scope: rrd_core::ScopeId,
+    scope: crate::kernel::ScopeId,
     actor: &'a str,
     at: Millis,
     parent: TraceIdentity,
@@ -250,7 +250,10 @@ impl<E: StorageEngine, B: EmbeddingBackend> EmbeddingBackend for DurableEmbeddin
         self.backend.descriptor()
     }
 
-    fn embed(&mut self, request: &EmbeddingRequest) -> rrd_core::Result<rrd_core::VectorValue> {
+    fn embed(
+        &mut self,
+        request: &EmbeddingRequest,
+    ) -> crate::kernel::Result<crate::kernel::VectorValue> {
         let descriptor = self.backend.descriptor().clone();
         let span = DurableTraceSpan::start(
             self.store,

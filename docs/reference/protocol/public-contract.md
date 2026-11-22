@@ -83,7 +83,7 @@ version, which remains frozen at `1.0.0` by the
 [version policy](../release/version-policy.md).
 
 The deterministic OpenAPI projection is currently bound to SHA-256
-`59fbc172ad1c75997b82984a12e851f015076562eb69fcbc1cf90b3347e30f27`.
+`051542fec7c7c8ffb3d39afb379254ab9816715dcb8da36df0378da3c0fba45c`.
 Changing its bytes requires an explicit protocol/schema review and regeneration
 of every checked-in SDK surface; `scripts/ci/check_generated_surfaces.py`
 verifies the SDK projections, the signal reference, and this citation against
@@ -96,7 +96,7 @@ binds it with `x-rrd-signal-catalogue-sha256`. The
 [generated signal reference](signal-catalogue.md) and five SDK constants are
 derived from those fields. They expose stable diagnostic, trace, and metric
 identity for tooling; they neither activate telemetry nor report runtime state.
-`crates/kernel/rrd-core/src/telemetry.rs` remains the sole semantic owner. Its
+`crates/authority/rrd-engine/kernel/src/telemetry.rs` remains the sole semantic owner. Its
 test-verified golden projection drives the private generated contract source;
 the focused parity test compares OpenAPI back to the live kernel value.
 
@@ -259,7 +259,7 @@ D-01 engram/configuration slice.
 | `cargo test -p rrd-contract --test signal_catalogue_projection --locked` | Exact kernel-to-OpenAPI catalogue/fingerprint equality, 4/9/22 closure, and a discovery-only field boundary. | Signal emission, level activation, propagation, export, diagnostic parity, overhead, or engine behavior. |
 | `cargo test -p rrd-contract --test websocket_contract --locked` | The B-04 golden frame contract, sender directions, sequence and connection integrity, exact correlations/resume coordinates, negotiated/hard resource limits, and malformed/unknown representation rejection. | H-04 operation execution, generated-language carriage, or release qualification. |
 | `cargo test -p rrd-query --test graphql_equivalence --locked` | B-05 schema-derived GraphQL parsing, lowering, bound-query/digest equality with rrflowQL, historical-schema binding, typed variables, and fail-closed unsupported shapes. | A public GraphQL route, transport authentication, engine execution, storage/index behavior, or cross-surface qualification. |
-| Normal-dependency inspection | `rrd-contract` retains no RRFlow workspace package in its normal dependency graph; `rrd-core` remains test-only for live-kernel parity. | That every adapter depends inward correctly or lowers every type through `RrdEngine`. |
+| Normal-dependency inspection | `rrd-contract` retains no RRFlow workspace package in its normal dependency graph; `rrflow-kernel` remains test-only for live-kernel parity. | That every adapter depends inward correctly or lowers every type through `RrdEngine`. |
 | Generated-surface parity check | The private Rust bridge, coordinated reference, and five SDK identities reproduce exactly; OpenAPI retains 40 endpoint descriptors and exact kernel signal/fingerprint equality. | Real-process semantic equivalence, complete SDK operation coverage, or runtime telemetry. |
 | Server and client suites | Separately documented real-process HTTP, mutual-TLS, WebSocket, and durable-subscription behavior. | The complete target engine or released deployment. |
 
@@ -269,7 +269,7 @@ D-01 engram/configuration slice.
   `crates/transport/rrd-contract/src/lib.rs`
 - Installed identity, deployment, and effective-configuration contract:
   `crates/transport/rrd-contract/src/deployment.rs`
-- Signal semantic owner: `crates/kernel/rrd-core/src/telemetry.rs`
+- Signal semantic owner: `crates/authority/rrd-engine/kernel/src/telemetry.rs`
 - Private generated contract projection:
   `crates/transport/rrd-contract/src/generated/signal_catalogue.rs`
 - Generated signal reference: `docs/reference/protocol/signal-catalogue.md`

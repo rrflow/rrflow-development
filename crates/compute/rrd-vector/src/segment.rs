@@ -4,7 +4,7 @@ use crate::{
     search_exact_ref, AccessPathKind, CandidatePath, EmbeddingModelBinding, ScoreMetric, SearchHit,
     SearchRequest, VectorCandidate,
 };
-use rrd_core::{
+use rrflow_kernel::{
     digest, ProjectionId, ProjectionStamp, ProjectionState, Result, ScopeId,
     DATA_RUNTIME_CONTRACT_VERSION,
 };
@@ -53,9 +53,10 @@ impl VectorSegmentConfig {
 
     pub fn digest(&self) -> Result<String> {
         self.validate()?;
-        let bytes = serde_json::to_vec(self).map_err(|error| rrd_core::Error::InvalidRuntime {
-            reason: format!("vector segment configuration cannot be encoded: {error}"),
-        })?;
+        let bytes =
+            serde_json::to_vec(self).map_err(|error| rrflow_kernel::Error::InvalidRuntime {
+                reason: format!("vector segment configuration cannot be encoded: {error}"),
+            })?;
         Ok(digest::sha256_hex(&bytes))
     }
 }
@@ -195,10 +196,11 @@ impl ImmutableVectorSegment {
         if bytes.len() > MAX_VECTOR_SEGMENT_BYTES {
             return invalid("encoded vector segment exceeds the 1 GiB safety limit");
         }
-        let envelope: SegmentEnvelope =
-            serde_json::from_slice(bytes).map_err(|error| rrd_core::Error::InvalidRuntime {
+        let envelope: SegmentEnvelope = serde_json::from_slice(bytes).map_err(|error| {
+            rrflow_kernel::Error::InvalidRuntime {
                 reason: format!("vector segment cannot be decoded: {error}"),
-            })?;
+            }
+        })?;
         if envelope.magic != VECTOR_SEGMENT_MAGIC
             || envelope.format_version != VECTOR_SEGMENT_FORMAT_VERSION
         {
@@ -294,7 +296,7 @@ impl ImmutableVectorSegment {
 }
 
 fn encode_json<T: Serialize>(value: &T) -> Result<Vec<u8>> {
-    serde_json::to_vec(value).map_err(|error| rrd_core::Error::InvalidRuntime {
+    serde_json::to_vec(value).map_err(|error| rrflow_kernel::Error::InvalidRuntime {
         reason: format!("vector segment cannot be encoded: {error}"),
     })
 }
@@ -303,7 +305,7 @@ fn encode_json<T: Serialize>(value: &T) -> Result<Vec<u8>> {
 mod tests {
     use super::*;
     use crate::{SearchMode, VectorQuery};
-    use rrd_core::{
+    use rrflow_kernel::{
         ReadStamp, RuntimeProperties, RuntimeRef, RuntimeVector, VectorCollectionAddress,
         VectorValue,
     };

@@ -1,7 +1,7 @@
 use crate::{bind, execute, plan, Catalog, Error, ExecutionBudget, Parameters, QueryRow, Result};
 use crate::{CursorExpr, Query};
-use rrd_core::{digest, ScopeId};
 use rrd_store::{RuntimeReadBudget, StorageEngine};
+use rrflow_kernel::{digest, ScopeId};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -57,7 +57,7 @@ pub fn poll_live_query<E: StorageEngine>(
     result_identity_version: Option<u16>,
     budget: &LiveQueryBudget,
 ) -> Result<LiveQueryDelta> {
-    let current_identity = rrd_core::result_identity::RESULT_IDENTITY_VERSION;
+    let current_identity = rrflow_kernel::result_identity::RESULT_IDENTITY_VERSION;
     if result_identity_version.is_some_and(|version| version != current_identity)
         || (after_cursor > 0 && result_identity_version != Some(current_identity))
     {

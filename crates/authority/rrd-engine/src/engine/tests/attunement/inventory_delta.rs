@@ -1,5 +1,5 @@
 use super::*;
-use rrd_core::{ReadStamp, RuntimeCommit, RuntimeLogicalModel, RuntimeType};
+use crate::kernel::{ReadStamp, RuntimeCommit, RuntimeLogicalModel, RuntimeType};
 use rrd_store::{RuntimeReadBudget, RuntimeVersionedSource};
 
 #[test]
@@ -698,7 +698,7 @@ fn inventory_reuse_observes_current_records_edges_and_retirements() {
                 RuntimeMutation::Relation { relation }
             }
             "retirement" => RuntimeMutation::Retire {
-                retirement: rrd_core::RuntimeRetirement {
+                retirement: crate::kernel::RuntimeRetirement {
                     model: RuntimeLogicalModel::GraphNode,
                     reference: original.reference.clone(),
                     effective_at: at,
@@ -717,7 +717,7 @@ fn inventory_reuse_observes_current_records_edges_and_retirements() {
                 mutations: if changed_kind == "retirement" {
                     vec![
                         RuntimeMutation::Retire {
-                            retirement: rrd_core::RuntimeRetirement {
+                            retirement: crate::kernel::RuntimeRetirement {
                                 model: RuntimeLogicalModel::GraphRelation,
                                 reference: original_edge.reference.clone(),
                                 effective_at: at,

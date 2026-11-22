@@ -506,7 +506,7 @@ fn turboquant_search_is_bounded_by_its_budget() {
 fn unsupported_filter_is_rejected_before_vector_versions_are_read() {
     for unrelated in [0, 64] {
         let (_root, engine, _lease) = fixture(unrelated);
-        let scope_id = rrd_core::ScopeId::new(scope()).unwrap();
+        let scope_id = crate::kernel::ScopeId::new(scope()).unwrap();
         let read = engine.storage.runtime().read_stamp(&scope_id).unwrap();
         let catalogue = crate::runtime::vector_catalog::read_vector_catalogue_versions(
             &engine.storage,

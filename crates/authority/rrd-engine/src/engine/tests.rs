@@ -2,6 +2,7 @@ use super::{
     public_runtime_commit, Invocation, InvocationCompletion, InvocationCredential, RrdEngine,
     RrdOperation, ServiceError,
 };
+use crate::kernel::digest;
 use rrd_contract::{
     AbortTransaction, AuditDecision, AuditPhase, BeginTransaction, CanonicalId, CloseSession,
     CommitTransaction, CorrelationId, CreateSession, DataEngramOrganisation,
@@ -9,7 +10,6 @@ use rrd_contract::{
     RequestContext, ResourceId, ResourceKind, ResourcePath, SecurityAction, SessionLimits,
     TransactionMutation, TransactionState, VectorMemoryTier, VectorSearchMetric, VectorValueKind,
 };
-use rrd_core::digest;
 use rrd_security::{Principal, PrincipalKind, ResourceGrant, SecurityRepository, SecurityState};
 use rrd_store::{ControlTransition, StorageEngine};
 use serde_json::Value;

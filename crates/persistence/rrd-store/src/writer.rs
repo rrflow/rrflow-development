@@ -50,7 +50,7 @@
 
 use crate::error::{Error, Result};
 use crate::{RrflowKvStore, StorageEngine};
-use rrd_core::Claim;
+use rrflow_kernel::Claim;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread::JoinHandle;

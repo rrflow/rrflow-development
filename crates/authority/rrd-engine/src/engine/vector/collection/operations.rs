@@ -407,7 +407,7 @@ impl RrdEngine {
                     .keys()
                     .any(|name| name.as_str() == address.vector_name)
         };
-        let mut histories = BTreeMap::<rrd_core::RuntimeRef, Vec<_>>::new();
+        let mut histories = BTreeMap::<crate::kernel::RuntimeRef, Vec<_>>::new();
         for candidate in rrd_vector::candidates_from_changes(changes, &read.scope) {
             histories
                 .entry(candidate.vector.reference.clone())

@@ -11,7 +11,7 @@ priority or closure status.
 
 A code read at `de435238` on 2026-11-11 counted 115 calls to `RrdEngine::open(`, its definition included, and 29 calls to `open_installed(`.
 
-- `RrdEngine::open` uses the built-in default configuration and default LSM options (`crates/authority/rrd-engine/src/engine/core.rs:212-268`).
+- `RrdEngine::open` uses the built-in default configuration and default LSM options (`crates/authority/rrd-engine/src/engine/instance.rs:212-268`).
 - `open_installed` applies the sealed installed configuration and storage options.
 - The two differ. For example, `StorageLimits::default()` has `cold_history: None` (`crates/transport/rrd-contract/src/deployment.rs:375-378`), while the shipped configuration turns the cold tier on (`crates/authority/rrd-engine/assets/install/default-engram-configuration-v3.toml:62-70`).
 

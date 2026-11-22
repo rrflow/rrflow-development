@@ -550,7 +550,7 @@ fn membership(
 #[test]
 fn every_move_is_a_delta_of_the_sources_it_leaves_and_joins() {
     let (_root, engine, lease) = engram();
-    let scope_id = rrd_core::ScopeId::new(scope()).unwrap();
+    let scope_id = crate::kernel::ScopeId::new(scope()).unwrap();
     let mut location = IDENTITIES
         .iter()
         .map(|id| (*id, if *id == "e" { "archive" } else { "documents" }))
@@ -574,7 +574,7 @@ fn every_move_is_a_delta_of_the_sources_it_leaves_and_joins() {
                 .read_vector_deltas(
                     &read,
                     &rrd_store::VectorSourceAddress {
-                        collection: rrd_core::VectorCollectionAddress {
+                        collection: crate::kernel::VectorCollectionAddress {
                             collection_id: collection.into(),
                             vector_name: "body".into(),
                         },
@@ -980,7 +980,7 @@ fn an_empty_bound_hnsw_serves_later_source_updates_after_reopen() {
     let (root, engine, lease) = engram();
     empty_documents(&engine, &lease, &[]);
     hnsw(&engine, &lease, "empty-bound");
-    let scope_id = rrd_core::ScopeId::new(scope()).unwrap();
+    let scope_id = crate::kernel::ScopeId::new(scope()).unwrap();
     let entries = crate::vector_artifact_catalog_entries(&engine.storage, &scope_id).unwrap();
     let bound = entries.last().unwrap();
     assert_eq!(bound.source().unwrap().collection_id, "documents");

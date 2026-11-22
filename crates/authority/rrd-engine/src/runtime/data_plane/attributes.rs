@@ -232,16 +232,16 @@ pub(super) fn execution_target_name(target: &ExecutionTarget) -> String {
     }
 }
 
-pub(super) fn vector_value_kind(value: &rrd_core::VectorValue) -> &'static str {
+pub(super) fn vector_value_kind(value: &crate::kernel::VectorValue) -> &'static str {
     match value {
-        rrd_core::VectorValue::Dense { .. } => "dense",
-        rrd_core::VectorValue::Sparse { .. } => "sparse",
-        rrd_core::VectorValue::MultiDense { .. } => "multi_dense",
+        crate::kernel::VectorValue::Dense { .. } => "dense",
+        crate::kernel::VectorValue::Sparse { .. } => "sparse",
+        crate::kernel::VectorValue::MultiDense { .. } => "multi_dense",
     }
 }
 
-pub(super) fn core_trace_error(error: Box<dyn std::error::Error>) -> rrd_core::Error {
-    rrd_core::Error::InvalidRuntime {
+pub(super) fn core_trace_error(error: Box<dyn std::error::Error>) -> crate::kernel::Error {
+    crate::kernel::Error::InvalidRuntime {
         reason: format!("authoritative embedding trace failed: {error}"),
     }
 }

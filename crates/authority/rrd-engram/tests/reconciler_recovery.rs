@@ -1,11 +1,11 @@
 use rrd_contract::CanonicalId;
-use rrd_core::digest;
 use rrd_engram::{
     DesiredPhase, DesiredTarget, DriverEffect, DriverError, DriverObservation, DriverRequest,
     EngramDriver, EngramRepository, MutationContext, ObservedPhase, OperationState,
     ReconcileBoundary, ReconcileOutcome, Reconciler, SetDesired,
 };
 use rrd_store::{RrflowKvStore, StorageEngine};
+use rrflow_kernel::digest;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};

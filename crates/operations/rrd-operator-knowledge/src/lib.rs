@@ -5,11 +5,11 @@
 //! type in this crate claims a transaction spanning RRD and the external
 //! system.
 
-use rrd_core::{
+use rrd_vector::{EmbeddingModelBinding, ScoreMetric, SearchMode, SearchRequest, VectorRuntime};
+use rrflow_kernel::{
     digest, Error, ProjectionFamily, ProjectionStamp, ProjectionState, ProjectionWork, Result,
     ScopeId,
 };
-use rrd_vector::{EmbeddingModelBinding, ScoreMetric, SearchMode, SearchRequest, VectorRuntime};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 

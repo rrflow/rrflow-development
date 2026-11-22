@@ -571,7 +571,7 @@ impl DistributedAuthorityCatalogue {
         actor: impl Into<String>,
         expected_cursor: u64,
         current_schema: Option<&RuntimeSchemaRegistry>,
-    ) -> Result<rrd_core::RuntimeCommit> {
+    ) -> Result<rrflow_kernel::RuntimeCommit> {
         self.validate()?;
         let actor = actor.into();
         validate_text(&actor, "distributed authority actor")?;
@@ -612,7 +612,7 @@ impl DistributedAuthorityCatalogue {
                 ]),
             },
         });
-        let commit = rrd_core::RuntimeCommit {
+        let commit = rrflow_kernel::RuntimeCommit {
             scope,
             at: self.updated_at,
             actor,

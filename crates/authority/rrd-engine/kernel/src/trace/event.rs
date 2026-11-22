@@ -401,6 +401,30 @@ impl RuntimeTraceEvent {
         registry.define_event_table(kind, RuntimeLogicalModel::Event, schema)
     }
 
+    /// Returns the schema revision to publish when installing or repairing trace events.
+    pub fn schema_update(
+        current_schema: Option<&RuntimeSchemaRegistry>,
+    ) -> Result<Option<RuntimeSchemaRegistry>> {
+        let mut registry = current_schema
+            .cloned()
+            .unwrap_or_else(|| RuntimeSchemaRegistry::empty(1, "install runtime trace contract"));
+        if !Self::register_schema(&mut registry)? {
+            return Ok(None);
+        }
+        if let Some(current) = current_schema {
+            registry.revision =
+                current
+                    .revision
+                    .checked_add(1)
+                    .ok_or_else(|| Error::InvalidRuntime {
+                        reason: "runtime schema revision overflow while installing trace contract"
+                            .into(),
+                    })?;
+            registry.migration = "install canonical runtime trace contract".into();
+        }
+        Ok(Some(registry))
+    }
+
     /// Prepares the one canonical runtime commit used by both local engines
     /// and consensus-backed trace writers. Schema installation/repair and the
     /// event share the caller's exact read cursor CAS.
@@ -420,22 +444,7 @@ impl RuntimeTraceEvent {
         }
 
         let mut mutations = Vec::new();
-        let mut registry = current_schema
-            .cloned()
-            .unwrap_or_else(|| RuntimeSchemaRegistry::empty(1, "install runtime trace contract"));
-        if Self::register_schema(&mut registry)? {
-            if let Some(current) = current_schema {
-                registry.revision =
-                    current
-                        .revision
-                        .checked_add(1)
-                        .ok_or_else(|| Error::InvalidRuntime {
-                            reason:
-                                "runtime schema revision overflow while installing trace contract"
-                                    .into(),
-                        })?;
-                registry.migration = "install canonical runtime trace contract".into();
-            }
+        if let Some(registry) = Self::schema_update(current_schema)? {
             mutations.push(RuntimeMutation::Schema { registry });
         }
         mutations.push(RuntimeMutation::Event {

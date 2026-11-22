@@ -69,7 +69,7 @@ pub(crate) fn runtime_version_key(
 pub(crate) fn runtime_kind_prefix(
     space: Space,
     scope: &ScopeId,
-    kind: &rrd_core::RuntimeType,
+    kind: &rrflow_kernel::RuntimeType,
 ) -> Vec<u8> {
     debug_assert!(matches!(
         space,
@@ -115,7 +115,7 @@ pub(crate) fn runtime_reference_prefix(
 
 pub(crate) fn runtime_claim_version_key(
     scope: &ScopeId,
-    claim: &rrd_core::Claim,
+    claim: &rrflow_kernel::Claim,
     cursor: u64,
 ) -> Vec<u8> {
     encode(
@@ -214,7 +214,7 @@ pub(crate) fn runtime_adjacency_prefix(
     space: Space,
     scope: &ScopeId,
     node: &RuntimeRef,
-    relation_kind: &rrd_core::RuntimeType,
+    relation_kind: &rrflow_kernel::RuntimeType,
 ) -> Vec<u8> {
     debug_assert!(matches!(
         space,

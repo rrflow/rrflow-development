@@ -11,8 +11,8 @@ use super::runtime_state::{checked_key, get, AccessRead};
 use super::SemanticCommitPlan;
 use crate::keyspaces;
 use crate::{Error, Result, StorageTransaction};
-use rrd_core::digest;
 use rrd_lsm::{Mutation, WriteBatch};
+use rrflow_kernel::digest;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 

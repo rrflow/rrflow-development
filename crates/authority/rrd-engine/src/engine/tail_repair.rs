@@ -126,10 +126,10 @@ impl BoundRepair {
             return Err(ServiceError::ProjectBindingMismatch);
         }
         let root = safe_join(&project, &locator.storage_root)?;
-        super::core::validate_existing_object_layout(&root)?;
+        super::instance::validate_existing_object_layout(&root)?;
         let repair = RrflowKvTailRepair::open_anchored(
             &root,
-            super::core::installed_storage_options(&locator.storage)?,
+            super::instance::installed_storage_options(&locator.storage)?,
         )?;
         let installed: InstalledEngramRecord = decode(&repair, INSTALLED_RECORD_KEY)?;
         installed.validate()?;

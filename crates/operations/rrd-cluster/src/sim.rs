@@ -1,7 +1,7 @@
 use crate::{
     ClusterError, NodeId, PlacementPolicy, ReplicaRole, Result, ShardPlacement, ShardReadStamp,
 };
-use rrd_core::digest::sha256_hex;
+use rrflow_kernel::digest::sha256_hex;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 

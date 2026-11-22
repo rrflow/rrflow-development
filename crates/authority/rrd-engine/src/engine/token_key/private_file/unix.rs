@@ -120,7 +120,7 @@ pub(super) fn directory_security_sha256(file: &File) -> io::Result<String> {
         default,
     ))
     .map_err(io::Error::other)?;
-    Ok(rrd_core::digest::sha256_hex(&bytes))
+    Ok(crate::kernel::digest::sha256_hex(&bytes))
 }
 
 /// The four `acl(3)` calls the retained-directory digest needs on macOS. The
@@ -211,7 +211,7 @@ pub(super) fn directory_security_sha256(file: &File) -> io::Result<String> {
         acl,
     ))
     .map_err(io::Error::other)?;
-    Ok(rrd_core::digest::sha256_hex(&bytes))
+    Ok(crate::kernel::digest::sha256_hex(&bytes))
 }
 
 #[cfg(not(any(target_os = "linux", target_os = "macos")))]

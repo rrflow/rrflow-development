@@ -45,8 +45,8 @@ impl RrflowKvStore {
         &self,
         rows: usize,
         bytes: usize,
-        scope: &rrd_core::ScopeId,
-        kind: &rrd_core::RuntimeType,
+        scope: &rrflow_kernel::ScopeId,
+        kind: &rrflow_kernel::RuntimeType,
     ) -> Result<StorageInspectionCursor> {
         let prefix = keyspaces::runtime_kind_prefix(keyspaces::RUNTIME_RECORDS, scope, kind);
         let end = prefix_end(&prefix);

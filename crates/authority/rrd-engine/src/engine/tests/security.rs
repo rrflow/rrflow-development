@@ -1,11 +1,11 @@
 use super::*;
+use crate::kernel::RuntimeValue;
 use crate::ServiceErrorKind;
 use rrd_contract::{
     AssembleContext, DataLogicalModel, DataPropertySchema, DataRecordSchema, DataReference,
     DataSchemaMode, DataSchemaRegistry, DataTableSchema, DataValueType, ExecuteQuery, QueryBudget,
     QueryValue,
 };
-use rrd_core::RuntimeValue;
 use rrd_security::{
     DataPolicy, IdentityBinding, JwtIssueRequest, JwtIssuer, PolicyPredicate, Role,
 };

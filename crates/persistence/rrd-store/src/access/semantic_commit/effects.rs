@@ -187,7 +187,7 @@ pub(super) fn encode_domain_effect(
                 );
             }
             let current_space = match retirement.model {
-                rrd_core::RuntimeLogicalModel::GraphRelation => {
+                rrflow_kernel::RuntimeLogicalModel::GraphRelation => {
                     // History persists even when an earlier retirement already
                     // removed the current head. Its valid-time target came from
                     // the authenticated retirement validation in this plan.
@@ -225,7 +225,7 @@ pub(super) fn encode_domain_effect(
                     staged_relations.insert(retirement.reference.clone(), None);
                     Some(keyspaces::RUNTIME_RELATIONS)
                 }
-                rrd_core::RuntimeLogicalModel::Vector => {
+                rrflow_kernel::RuntimeLogicalModel::Vector => {
                     super::super::encode_vector_retirement(
                         plan,
                         &commit.scope,
@@ -235,9 +235,9 @@ pub(super) fn encode_domain_effect(
                     )?;
                     None
                 }
-                rrd_core::RuntimeLogicalModel::Event
-                | rrd_core::RuntimeLogicalModel::ReasoningEvent
-                | rrd_core::RuntimeLogicalModel::LifecycleEvent => {
+                rrflow_kernel::RuntimeLogicalModel::Event
+                | rrflow_kernel::RuntimeLogicalModel::ReasoningEvent
+                | rrflow_kernel::RuntimeLogicalModel::LifecycleEvent => {
                     plan.put_json(
                         keyspaces::RUNTIME_EVENT_VERSIONS,
                         &keyspaces::runtime_version_key(
@@ -251,7 +251,7 @@ pub(super) fn encode_domain_effect(
                     )?;
                     None
                 }
-                rrd_core::RuntimeLogicalModel::TimeSeries => {
+                rrflow_kernel::RuntimeLogicalModel::TimeSeries => {
                     plan.put_json(
                         keyspaces::RUNTIME_SERIES_VERSIONS,
                         &keyspaces::runtime_version_key(
@@ -265,7 +265,7 @@ pub(super) fn encode_domain_effect(
                     )?;
                     Some(keyspaces::RUNTIME_SERIES)
                 }
-                rrd_core::RuntimeLogicalModel::Geo => {
+                rrflow_kernel::RuntimeLogicalModel::Geo => {
                     plan.put_json(
                         keyspaces::RUNTIME_GEO_VERSIONS,
                         &keyspaces::runtime_version_key(
@@ -279,7 +279,7 @@ pub(super) fn encode_domain_effect(
                     )?;
                     Some(keyspaces::RUNTIME_GEO)
                 }
-                rrd_core::RuntimeLogicalModel::Object => {
+                rrflow_kernel::RuntimeLogicalModel::Object => {
                     plan.put_json(
                         keyspaces::RUNTIME_OBJECT_VERSIONS,
                         &keyspaces::runtime_version_key(
@@ -293,13 +293,13 @@ pub(super) fn encode_domain_effect(
                     )?;
                     Some(keyspaces::RUNTIME_OBJECTS)
                 }
-                rrd_core::RuntimeLogicalModel::ReasoningClaim
-                | rrd_core::RuntimeLogicalModel::Document
-                | rrd_core::RuntimeLogicalModel::Relational
-                | rrd_core::RuntimeLogicalModel::GraphNode
-                | rrd_core::RuntimeLogicalModel::KeyValue
-                | rrd_core::RuntimeLogicalModel::ReasoningRecord
-                | rrd_core::RuntimeLogicalModel::LifecycleRecord => None,
+                rrflow_kernel::RuntimeLogicalModel::ReasoningClaim
+                | rrflow_kernel::RuntimeLogicalModel::Document
+                | rrflow_kernel::RuntimeLogicalModel::Relational
+                | rrflow_kernel::RuntimeLogicalModel::GraphNode
+                | rrflow_kernel::RuntimeLogicalModel::KeyValue
+                | rrflow_kernel::RuntimeLogicalModel::ReasoningRecord
+                | rrflow_kernel::RuntimeLogicalModel::LifecycleRecord => None,
             };
             if let Some(space) = current_space {
                 plan.delete(
@@ -315,7 +315,7 @@ pub(super) fn encode_domain_effect(
 pub(super) fn current_relation(
     reader: &(impl AccessRead + ?Sized),
     staged_relations: &mut BTreeMap<RuntimeRef, Option<RuntimeRelation>>,
-    scope: &rrd_core::ScopeId,
+    scope: &rrflow_kernel::ScopeId,
     reference: &RuntimeRef,
 ) -> Result<Option<RuntimeRelation>> {
     if let Some(staged) = staged_relations.get(reference) {
@@ -332,7 +332,7 @@ pub(super) fn current_relation(
 
 pub(super) fn put_adjacency(
     plan: &mut SemanticCommitPlan,
-    scope: &rrd_core::ScopeId,
+    scope: &rrflow_kernel::ScopeId,
     relation: &RuntimeRelation,
     effective_at: u64,
     change: &RuntimeChange,
@@ -369,7 +369,7 @@ pub(super) fn put_adjacency(
 
 pub(super) fn put_temporal_adjacency(
     plan: &mut SemanticCommitPlan,
-    scope: &rrd_core::ScopeId,
+    scope: &rrflow_kernel::ScopeId,
     relation: &RuntimeRelation,
     effective_at: u64,
     change: &RuntimeChange,
@@ -395,7 +395,7 @@ pub(super) fn put_temporal_adjacency(
 
 pub(super) fn delete_current_adjacency(
     plan: &mut SemanticCommitPlan,
-    scope: &rrd_core::ScopeId,
+    scope: &rrflow_kernel::ScopeId,
     relation: &RuntimeRelation,
 ) -> Result<()> {
     for space in [

@@ -241,7 +241,7 @@ impl ManagedChild {
         limit: u64,
         environment: Environment,
     ) -> io::Result<(Self, std::fs::File, std::fs::File)> {
-        let _launch = rrd_core::child_launch_lock();
+        let _launch = crate::kernel::child_launch_lock();
         let pipes = Pipes::new()?;
         let child = Self::spawn_inner(executable, args, limit, Some(&pipes), environment)?;
         let Pipes {

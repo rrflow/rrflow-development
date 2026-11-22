@@ -9,7 +9,7 @@
 use super::policy::CompiledPolicy;
 use super::DefaultInstallProfile;
 use crate::engine::{Result, ServiceError};
-use rrd_core::digest::Sha256 as IncrementalSha256;
+use crate::kernel::digest::Sha256 as IncrementalSha256;
 use rrd_store::filesystem::{AnchoredPath, SourceKind, SourceLeaf, SourceObservation};
 
 use std::fs::Metadata;

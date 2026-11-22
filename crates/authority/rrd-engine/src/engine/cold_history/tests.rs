@@ -1,7 +1,9 @@
 use super::*;
+use crate::kernel::{
+    RuntimeLogicalModel, RuntimeRecord, RuntimeSchemaRegistry, RuntimeTableSchema,
+};
 use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
 use rrd_contract::ColdHistoryCompression;
-use rrd_core::{RuntimeLogicalModel, RuntimeRecord, RuntimeSchemaRegistry, RuntimeTableSchema};
 
 /// A test child parks here when its environment names this checkpoint, so its
 /// parent can kill it at exactly this point of a publication.

@@ -179,7 +179,7 @@ fn add_counter(left: u64, right: u64) -> Result<u64> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rrd_core::RuntimeReadValidation;
+    use crate::kernel::RuntimeReadValidation;
     use rrd_store::RuntimeReadPathEvidence;
 
     fn storage_evidence(method: &str) -> RuntimeReadEvidence {

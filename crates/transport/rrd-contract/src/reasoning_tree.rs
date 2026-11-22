@@ -2,7 +2,7 @@
 //!
 //! This transport boundary mirrors the kernel semantics without importing a
 //! runtime implementation. Cross-boundary conformance tests feed the same
-//! golden and rejection corpus to this module and `rrd-core`.
+//! golden and rejection corpus to this module and `rrflow-kernel`.
 
 use crate::{invalid, sha256_bytes, validate_sha256, CanonicalId, Result};
 use schemars::JsonSchema;

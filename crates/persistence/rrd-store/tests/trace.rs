@@ -1,9 +1,9 @@
-use rrd_core::{
+use rrd_store::{RrflowKvStore, RrflowMxStore, StorageEngine};
+use rrflow_kernel::{
     RuntimeCommit, RuntimeLogicalModel, RuntimeMutation, RuntimeProperties, RuntimeSchemaRegistry,
     RuntimeTraceEvent, RuntimeType, RuntimeValue, ScopeId, SpanId, TraceAttribute, TraceBoundary,
     TraceDataClass, TraceId, TraceLink, TraceOperation, TraceOutcome,
 };
-use rrd_store::{RrflowKvStore, RrflowMxStore, StorageEngine};
 
 fn trace_id() -> TraceId {
     TraceId::new("0123456789abcdef0123456789abcdef").unwrap()

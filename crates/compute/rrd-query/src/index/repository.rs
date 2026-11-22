@@ -233,10 +233,10 @@ impl<'a, E: StorageEngine> IndexCatalogueRepository<'a, E> {
                 let documents = rows
                     .iter()
                     .filter_map(|row| match row.values.get(field) {
-                        Some(rrd_core::RuntimeValue::String(text)) => {
+                        Some(rrflow_kernel::RuntimeValue::String(text)) => {
                             Some(Ok((row.identity.clone(), text.clone())))
                         }
-                        Some(rrd_core::RuntimeValue::Null) | None => None,
+                        Some(rrflow_kernel::RuntimeValue::Null) | None => None,
                         Some(_) => Some(Err(Error::Catalog(format!(
                             "BM25 field {field:?} produced a non-string value"
                         )))),

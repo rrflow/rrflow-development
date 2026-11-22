@@ -179,7 +179,7 @@ pub(super) fn verify_vector_deltas(
             "vector source delta at cursor {cursor} {reason}"
         )))
     };
-    let in_source = |vector: &rrd_core::RuntimeVector| {
+    let in_source = |vector: &rrflow_kernel::RuntimeVector| {
         vector.collection == source.collection && vector.field == source.field
     };
     let vector_at = |cursor: u64, reference: &RuntimeRef| match changes.get(&cursor) {
@@ -189,7 +189,7 @@ pub(super) fn verify_vector_deltas(
         }) if &vector.reference == reference => Some(vector),
         _ => None,
     };
-    let points_to = |pointer: &VectorSourceVersion, vector: &rrd_core::RuntimeVector| {
+    let points_to = |pointer: &VectorSourceVersion, vector: &rrflow_kernel::RuntimeVector| {
         let change = &changes[&pointer.source_cursor];
         Ok::<_, Error>(
             pointer.commit_id == change.commit_id
@@ -197,7 +197,7 @@ pub(super) fn verify_vector_deltas(
                 && pointer.valid_from == vector.valid_from
                 && pointer.valid_to == vector.valid_to
                 && pointer.value_sha256
-                    == rrd_core::digest::sha256_hex(&serde_json::to_vec(&vector.value)?),
+                    == rrflow_kernel::digest::sha256_hex(&serde_json::to_vec(&vector.value)?),
         )
     };
     for delta in deltas {
@@ -347,7 +347,7 @@ pub(super) fn insert_version(
 pub(crate) fn schema_at_read(
     read: &ReadStamp,
     changes: &[RuntimeChange],
-) -> Result<rrd_core::RuntimeSchemaRegistry> {
+) -> Result<rrflow_kernel::RuntimeSchemaRegistry> {
     let expected_revision = read
         .schema_revision
         .ok_or_else(|| Error::RuntimeSchemaMissing(read.scope.to_string()))?;

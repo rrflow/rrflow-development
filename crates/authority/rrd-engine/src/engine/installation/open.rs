@@ -42,7 +42,7 @@ impl RrdEngine {
             &storage_root,
             locator.identity.instance_id.clone(),
             token_key,
-            super::super::core::installed_storage_options(&locator.storage)?,
+            super::super::instance::installed_storage_options(&locator.storage)?,
         )?;
         let bytes = engine
             .storage
@@ -230,10 +230,10 @@ impl RrdEngine {
         let credential = read_api_key_document(&safe_join(&project, &locator.operator_credential)?)
             .map_err(|error| ServiceError::Storage(error.to_string()))?;
         let storage_root = safe_join(&project, &locator.storage_root)?;
-        super::super::core::validate_existing_object_layout(&storage_root)?;
+        super::super::instance::validate_existing_object_layout(&storage_root)?;
         let inspector = RrflowKvInspector::open_anchored_with_options(
             &storage_root,
-            super::super::core::installed_storage_options(&locator.storage)?,
+            super::super::instance::installed_storage_options(&locator.storage)?,
         )?;
         let installed: InstalledEngramRecord =
             decode_control(&inspector, INSTALLED_RECORD_KEY, "installed engram record")?;

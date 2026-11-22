@@ -1,5 +1,5 @@
-use rrd_core::{Claim, Predicate, Producer, RuntimeCommit, RuntimeMutation, ScopeId, Subject};
 use rrd_store::{ControlTransition, RrflowKvInspector, RrflowKvStore, StorageEngine};
+use rrflow_kernel::{Claim, Predicate, Producer, RuntimeCommit, RuntimeMutation, ScopeId, Subject};
 
 fn bootstrap_commit() -> RuntimeCommit {
     RuntimeCommit {
@@ -121,8 +121,10 @@ fn physical_rows(store: &dyn StorageEngine) -> Vec<(Vec<u8>, Vec<u8>)> {
     rows
 }
 
-fn checkpoint_commit(store: &dyn StorageEngine) -> rrd_core::ReadStamp {
-    use rrd_core::{RuntimeLogicalModel, RuntimeRecordSchema, RuntimeSchemaRegistry, RuntimeType};
+fn checkpoint_commit(store: &dyn StorageEngine) -> rrflow_kernel::ReadStamp {
+    use rrflow_kernel::{
+        RuntimeLogicalModel, RuntimeRecordSchema, RuntimeSchemaRegistry, RuntimeType,
+    };
     let mut commit = bootstrap_commit();
     let mut registry = RuntimeSchemaRegistry::empty(1, "checkpoint composition fixture");
     registry
@@ -136,11 +138,11 @@ fn checkpoint_commit(store: &dyn StorageEngine) -> rrd_core::ReadStamp {
         .mutations
         .insert(0, RuntimeMutation::Schema { registry });
     commit.mutations.push(RuntimeMutation::Record {
-        record: rrd_core::RuntimeRecord {
-            reference: rrd_core::RuntimeRef::new("file", "src-lib.rs").unwrap(),
+        record: rrflow_kernel::RuntimeRecord {
+            reference: rrflow_kernel::RuntimeRef::new("file", "src-lib.rs").unwrap(),
             valid_from: 100,
             valid_to: None,
-            properties: rrd_core::RuntimeProperties::new(),
+            properties: rrflow_kernel::RuntimeProperties::new(),
         },
     });
     let prior = store.runtime().read_stamp(&commit.scope).unwrap();
@@ -163,7 +165,7 @@ fn checkpoint_commit(store: &dyn StorageEngine) -> rrd_core::ReadStamp {
     assert_eq!(outcome.last_cursor, commit.mutations.len() as u64);
     assert_eq!(entries.len(), 1);
     assert_eq!(staged, store.runtime().read_stamp(&commit.scope).unwrap());
-    let stored: rrd_core::ReadStamp = serde_json::from_slice(
+    let stored: rrflow_kernel::ReadStamp = serde_json::from_slice(
         &store
             .control()
             .get("server/state/install/record")
@@ -243,7 +245,7 @@ fn checkpoint_and_resulting_runtime_stamp_share_one_wal_frame_and_reopen() {
     let reopened = RrflowKvStore::open_existing(&root).unwrap();
     let actual = reopened.runtime().read_stamp(&expected.scope).unwrap();
     assert_eq!(actual, expected);
-    let checkpoint: rrd_core::ReadStamp = serde_json::from_slice(
+    let checkpoint: rrflow_kernel::ReadStamp = serde_json::from_slice(
         &reopened
             .control()
             .get("server/state/install/record")
@@ -260,11 +262,11 @@ fn checkpoint_and_resulting_runtime_stamp_share_one_wal_frame_and_reopen() {
 // that the latest event is a valid inventory selection.
 #[test]
 fn selection_event_and_checkpoint_are_stamped_together_across_reopen() {
-    use rrd_core::{
+    use rrd_store::{Error, RuntimeReadBudget, RuntimeVersionedSource};
+    use rrflow_kernel::{
         RuntimeEvent, RuntimeEventSchema, RuntimeLogicalModel, RuntimeProperties,
         RuntimeSchemaRegistry, RuntimeType, RuntimeValue,
     };
-    use rrd_store::{Error, RuntimeReadBudget, RuntimeVersionedSource};
 
     let parent = tempfile::tempdir().unwrap();
     let root = parent.path().join("selection");
@@ -362,7 +364,7 @@ fn selection_event_and_checkpoint_are_stamped_together_across_reopen() {
     drop(store);
 
     let reopened = RrflowKvStore::open_existing(&root).unwrap();
-    let saved: rrd_core::ReadStamp = serde_json::from_slice(
+    let saved: rrflow_kernel::ReadStamp = serde_json::from_slice(
         &reopened
             .control()
             .get("server/state/install/record")
@@ -375,7 +377,7 @@ fn selection_event_and_checkpoint_are_stamped_together_across_reopen() {
     let source = RuntimeVersionedSource::Events {
         kind: Some(event_kind),
     };
-    let values = |read: &rrd_core::ReadStamp| {
+    let values = |read: &rrflow_kernel::ReadStamp| {
         reopened
             .runtime()
             .read_versioned(

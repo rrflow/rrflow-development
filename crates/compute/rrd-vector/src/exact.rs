@@ -2,7 +2,7 @@ use crate::contract::invalid;
 use crate::{
     ScoreMetric, SearchHit, SearchRequest, VectorCandidate, VectorQuery, VectorVisibilityRequest,
 };
-use rrd_core::{Result, RuntimeChange, RuntimeMutation, RuntimeRef, ScopeId, VectorValue};
+use rrflow_kernel::{Result, RuntimeChange, RuntimeMutation, RuntimeRef, ScopeId, VectorValue};
 use std::collections::{BTreeMap, BTreeSet};
 
 pub fn candidates_from_changes(changes: &[RuntimeChange], scope: &ScopeId) -> Vec<VectorCandidate> {
@@ -26,7 +26,7 @@ fn candidates_from_changes_at(
                 vector: vector.clone(),
             }),
             RuntimeMutation::Retire { retirement }
-                if retirement.model == rrd_core::RuntimeLogicalModel::Vector =>
+                if retirement.model == rrflow_kernel::RuntimeLogicalModel::Vector =>
             {
                 if let Some(mut candidate) = candidates
                     .iter()
@@ -268,7 +268,7 @@ pub fn score_query(
                     .collect::<Result<Vec<_>>>()?
                     .into_iter()
                     .max_by(f64::total_cmp)
-                    .ok_or_else(|| rrd_core::Error::InvalidRuntime {
+                    .ok_or_else(|| rrflow_kernel::Error::InvalidRuntime {
                         reason: "multi-vector candidate has no rows".into(),
                     })?;
                 total += best;
@@ -388,13 +388,14 @@ fn score_sparse(
 mod tests {
     use super::*;
     use crate::SearchMode;
-    use rrd_core::{
+    use rrflow_kernel::{
         RuntimeCommit, RuntimeLogicalModel, RuntimeMutation, RuntimeProperties, RuntimeRetirement,
         RuntimeValue, ScopeId, VectorCollectionAddress,
     };
 
-    fn stamp(scope: &ScopeId, cursor: u64) -> rrd_core::ReadStamp {
-        rrd_core::ReadStamp::new(scope.clone(), None, 0, cursor, Some("11".repeat(32))).unwrap()
+    fn stamp(scope: &ScopeId, cursor: u64) -> rrflow_kernel::ReadStamp {
+        rrflow_kernel::ReadStamp::new(scope.clone(), None, 0, cursor, Some("11".repeat(32)))
+            .unwrap()
     }
 
     fn candidate(
@@ -409,7 +410,7 @@ mod tests {
         VectorCandidate {
             scope: scope.clone(),
             source_cursor: cursor,
-            vector: rrd_core::RuntimeVector {
+            vector: rrflow_kernel::RuntimeVector {
                 reference: RuntimeRef::new("embedding", id).unwrap(),
                 subject: RuntimeRef::new("document", id).unwrap(),
                 collection: VectorCollectionAddress {

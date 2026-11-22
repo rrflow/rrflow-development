@@ -1,10 +1,10 @@
-use rrd_core::{
-    ReadStamp, RuntimeProperties, RuntimeRef, RuntimeValue, RuntimeVector, ScopeId,
-    VectorCollectionAddress, VectorValue,
-};
 use rrd_vector::{
     search_exact, FilterCondition, FilterExpression, FilterOperator, ScoreMetric, SearchMode,
     SearchRequest, VectorCandidate, VectorQuery,
+};
+use rrflow_kernel::{
+    ReadStamp, RuntimeProperties, RuntimeRef, RuntimeValue, RuntimeVector, ScopeId,
+    VectorCollectionAddress, VectorValue,
 };
 use std::cmp::Ordering;
 

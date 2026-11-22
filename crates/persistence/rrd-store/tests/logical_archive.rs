@@ -1,13 +1,13 @@
-use rrd_core::{
-    Claim, DataTransaction, Predicate, Producer, RuntimeCommit, RuntimeMutation, ScopeId, Subject,
-};
-use rrd_core::{
-    RuntimeEventSchema, RuntimeLogicalModel, RuntimeRecord, RuntimeRef, RuntimeSchemaRegistry,
-    RuntimeTableSchema, RuntimeType,
-};
 use rrd_store::{
     export_logical_archive, inspect_logical_archive, restore_logical_archive_to_new_root,
     ControlTransition, RrflowKvStore, StorageEngine,
+};
+use rrflow_kernel::{
+    Claim, DataTransaction, Predicate, Producer, RuntimeCommit, RuntimeMutation, ScopeId, Subject,
+};
+use rrflow_kernel::{
+    RuntimeEventSchema, RuntimeLogicalModel, RuntimeRecord, RuntimeRef, RuntimeSchemaRegistry,
+    RuntimeTableSchema, RuntimeType,
 };
 use std::fs::OpenOptions;
 use std::io::{Seek, SeekFrom, Write};

@@ -52,7 +52,7 @@ impl RrdEngine {
         // moved on, and another request under the key is a conflict.
         let persisted = crate::vector_artifact_catalog_entries(&self.storage, &scope)
             .map_err(|error| ServiceError::Vector(error.to_string()))?;
-        let source = rrd_core::VectorCollectionAddress {
+        let source = crate::kernel::VectorCollectionAddress {
             collection_id: request.collection_id.as_str().into(),
             vector_name: request.vector_name.as_str().into(),
         };

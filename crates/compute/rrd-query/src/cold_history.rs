@@ -9,7 +9,7 @@ use crate::{
 };
 use bytes::Bytes;
 use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
-use rrd_core::{
+use rrflow_kernel::{
     ReadStamp, RuntimeChange, RuntimeChangePage, RuntimeMutation, RuntimeValue, RuntimeValueType,
 };
 use std::{
@@ -134,7 +134,7 @@ fn decode_cold_history_page_with_clock(
         .stamp
         .validate()
         .map_err(|error| Error::Integrity(error.to_string()))?;
-    if rrd_core::digest::sha256_hex(&bytes) != expected.artifact_sha256 {
+    if rrflow_kernel::digest::sha256_hex(&bytes) != expected.artifact_sha256 {
         return Err(Error::Integrity("cold history artifact digest mismatch".into()).into());
     }
     let encoded_bytes = bytes.len();
@@ -529,7 +529,7 @@ fn bounded_json<T: serde::Serialize>(
 #[cfg(test)]
 mod deadline_tests {
     use super::*;
-    use rrd_core::{RuntimeReadValidation, ScopeId};
+    use rrflow_kernel::{RuntimeReadValidation, ScopeId};
     use std::time::Duration;
 
     #[test]
@@ -584,7 +584,7 @@ mod deadline_tests {
             requested_after: 0,
             through_cursor: 0,
             rows: 0,
-            artifact_sha256: rrd_core::digest::sha256_hex(&encoded),
+            artifact_sha256: rrflow_kernel::digest::sha256_hex(&encoded),
         };
         let limits = ColdHistoryReadLimits {
             max_rows: 1,

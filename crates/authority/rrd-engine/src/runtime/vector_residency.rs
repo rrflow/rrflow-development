@@ -456,7 +456,7 @@ mod tests {
         assert_eq!(limits.pinned_bytes, 1024 * 1024 * 1024, "pinned tier");
         assert_eq!(limits.cached_bytes, 64 * 1024 * 1024, "cached tier");
     }
-    use rrd_core::{
+    use crate::kernel::{
         ObjectReference, ProjectionId, RuntimeProperties, RuntimeRef, RuntimeVector, ScopeId,
         VectorCollectionAddress, VectorValue,
     };

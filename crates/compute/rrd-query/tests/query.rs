@@ -1,11 +1,3 @@
-use rrd_core::{
-    Claim, GeoPoint, GeoValue, Predicate, Producer, RuntimeCommit, RuntimeEvent,
-    RuntimeEventSchema, RuntimeGeo, RuntimeGraphSnapshot, RuntimeLogicalModel, RuntimeMutation,
-    RuntimeProperties, RuntimePropertySchema, RuntimeRecord, RuntimeRecordSchema, RuntimeRef,
-    RuntimeRelation, RuntimeRelationSchema, RuntimeRetirement, RuntimeSchemaRegistry,
-    RuntimeSeriesSample, RuntimeTableSchema, RuntimeType, RuntimeValue, RuntimeValueType, ScopeId,
-    SeriesValue, Subject,
-};
 use rrd_query::{
     bind, execute, plan, Catalog, Error, ExecutionBudget, Parameters, PhysicalOperator,
     StampedQueryPipeline,
@@ -16,6 +8,14 @@ use rrd_query::{
 use rrd_store::{
     RrflowKvStore, RrflowMxStore, RuntimeReadAccessPath, RuntimeReadBudget, RuntimeVersionedSource,
     StorageEngine,
+};
+use rrflow_kernel::{
+    Claim, GeoPoint, GeoValue, Predicate, Producer, RuntimeCommit, RuntimeEvent,
+    RuntimeEventSchema, RuntimeGeo, RuntimeGraphSnapshot, RuntimeLogicalModel, RuntimeMutation,
+    RuntimeProperties, RuntimePropertySchema, RuntimeRecord, RuntimeRecordSchema, RuntimeRef,
+    RuntimeRelation, RuntimeRelationSchema, RuntimeRetirement, RuntimeSchemaRegistry,
+    RuntimeSeriesSample, RuntimeTableSchema, RuntimeType, RuntimeValue, RuntimeValueType, ScopeId,
+    SeriesValue, Subject,
 };
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -31,6 +31,8 @@ mod identity_reads;
 mod relational_select;
 #[path = "query/stamped_admission.rs"]
 mod stamped_admission;
+#[path = "query/transactions.rs"]
+mod transactions;
 
 fn value(value: &str) -> RuntimeValue {
     RuntimeValue::String(value.into())
@@ -78,6 +80,8 @@ fn schema() -> RuntimeMutation {
             RuntimeRelationSchema {
                 from: BTreeSet::from([document_kind.clone()]),
                 to: BTreeSet::from([document_kind.clone()]),
+                on_delete_from: Some(rrflow_kernel::RuntimeReferentialAction::Cascade),
+                on_delete_to: Some(rrflow_kernel::RuntimeReferentialAction::Cascade),
                 properties: BTreeMap::from([(
                     "strength".into(),
                     RuntimePropertySchema::required(RuntimeValueType::String),
@@ -825,7 +829,7 @@ fn all_source_families_execute_at_explicit_time() {
     let engine = RrflowMxStore::new();
     engine.runtime().commit(&fixture_commit()).unwrap();
     let catalog = fixture_catalog(&engine);
-    let claim_identity = rrd_core::result_identity::claim(
+    let claim_identity = rrflow_kernel::result_identity::claim(
         &Subject::new("document-a").unwrap(),
         &Predicate::new("status").unwrap(),
     );

@@ -125,7 +125,7 @@ fn grow<E: StorageEngine>(engine: &E) -> u64 {
 }
 
 fn change<E: StorageEngine>(engine: &E) {
-    for (at, valid_from, from, to) in [(102, 30, "b", "a"), (103, 15, "a", "b")] {
+    for (at, valid_from, from, to) in [(102, 30, "b", "a"), (103, 20, "a", "b")] {
         commit(
             engine,
             at,

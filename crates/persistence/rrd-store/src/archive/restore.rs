@@ -6,7 +6,7 @@ use super::format::{
 use super::receipt::{load_receipt, remove_receipt, restore_paths, write_receipt, RestoreReceipt};
 use crate::filesystem::{AnchorInput, AnchoredPath};
 use crate::{Error, Result, RrflowKvStore, StorageEngine};
-use rrd_core::{RuntimeCommitOutcome, RuntimeMutation};
+use rrflow_kernel::{RuntimeCommitOutcome, RuntimeMutation};
 
 pub fn restore_logical_archive_to_new_root(
     archive: &(impl AnchorInput + ?Sized),
@@ -312,7 +312,7 @@ fn verify_action_present(
                 outbox_count: commit
                     .mutations
                     .iter()
-                    .filter(|mutation| rrd_core::projection_family(mutation).is_some())
+                    .filter(|mutation| rrflow_kernel::projection_family(mutation).is_some())
                     .count(),
             };
             if engine.runtime().commit_outcome(&commit.digest())?.as_ref()

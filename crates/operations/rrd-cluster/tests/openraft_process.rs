@@ -12,12 +12,12 @@ use rrd_cluster::{
     RrdTransportOperation, ShardId, ShardPlacement, ZoneId, CLUSTER_CONTRACT_VERSION,
     RRFLOW_NODE_CONFIG_VERSION, RRFLOW_NODE_CONTROL_VERSION,
 };
-use rrd_core::{
+use rrd_store::{LocalObjectStore, RrflowKvStore, StorageEngine};
+use rrflow_kernel::{
     ObjectReference, RuntimeChange, RuntimeCommit, RuntimeLogicalModel, RuntimeMutation,
     RuntimeRecordSchema, RuntimeSchemaRegistry, RuntimeTableSchema, RuntimeType, RuntimeValue,
     ScopeId,
 };
-use rrd_store::{LocalObjectStore, RrflowKvStore, StorageEngine};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::io::{BufRead, BufReader, Write};

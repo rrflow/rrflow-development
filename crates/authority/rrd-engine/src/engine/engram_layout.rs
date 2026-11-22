@@ -480,7 +480,7 @@ impl EngramLayout {
                 kind,
                 relative_path,
                 precondition_sha256: if kind == InstallationManagedPathKind::InstallationLease {
-                    rrd_core::digest::sha256_hex(
+                    crate::kernel::digest::sha256_hex(
                         rrd_contract::INSTALLATION_LEASE_PRECONDITION.as_bytes(),
                     )
                 } else {

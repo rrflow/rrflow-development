@@ -1,9 +1,9 @@
-use rrd_core::{digest, RuntimeId, VectorValue};
 use rrd_inference::{
     EmbeddingBackend, EmbeddingBackendDescriptor, EmbeddingBackendRegistry, EmbeddingCancellation,
     EmbeddingDispatchError, EmbeddingExecutionControl, EmbeddingRequest, FeatureHashBackend,
     NetworkPolicy,
 };
+use rrflow_kernel::{digest, RuntimeId, VectorValue};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{mpsc, Arc};
 use std::time::{Duration, Instant};
@@ -31,7 +31,7 @@ impl EmbeddingBackend for Backend {
     fn descriptor(&self) -> &EmbeddingBackendDescriptor {
         self.inner.descriptor()
     }
-    fn embed(&mut self, request: &EmbeddingRequest) -> rrd_core::Result<VectorValue> {
+    fn embed(&mut self, request: &EmbeddingRequest) -> rrflow_kernel::Result<VectorValue> {
         self.inner.embed(request)
     }
     fn embed_batch_controlled(

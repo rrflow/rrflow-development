@@ -1,12 +1,12 @@
 //! Durable causal wrapper for cross-node immutable artifact hydration.
 
 use super::{DurableTraceSpan, TraceIdentity};
+use crate::kernel::{
+    Millis, RuntimeProperties, RuntimeValue, TraceBoundary, TraceDataClass, TraceLink, TraceOutcome,
+};
 use rrd_cluster::{
     artifact_transfer_trace_event, transfer_artifacts, ArtifactTransferManifest,
     ArtifactTransferObservation, ArtifactTransferObserver, ArtifactTransferReceipt, ClusterError,
-};
-use rrd_core::{
-    Millis, RuntimeProperties, RuntimeValue, TraceBoundary, TraceDataClass, TraceLink, TraceOutcome,
 };
 use rrd_store::{ImmutableObjectStore, StorageEngine};
 use std::sync::Arc;
@@ -228,7 +228,7 @@ fn finish_transfer_error<E: StorageEngine, T>(
         ("failed_stage".into(), RuntimeValue::String(stage.into())),
         (
             "error_digest".into(),
-            RuntimeValue::Digest(rrd_core::digest::sha256_hex(rendered.as_bytes())),
+            RuntimeValue::Digest(crate::kernel::digest::sha256_hex(rendered.as_bytes())),
         ),
     ]);
     let mut trace_errors = Vec::new();

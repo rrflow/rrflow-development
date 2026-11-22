@@ -1,11 +1,11 @@
-use rrd_core::{
-    ProjectionId, ReadStamp, RuntimeProperties, RuntimeRef, RuntimeVector, ScopeId,
-    VectorCollectionAddress, VectorValue,
-};
 use rrd_vector::{
     search_exact_ref, ProductCompression, QuantizationMethod, QuantizedKernel, QuantizedSegment,
     QuantizedSegmentConfig, ScoreMetric, SearchHit, SearchMode, SearchRequest, TurboQuantBits,
     TurboQuantSegment, TurboQuantSegmentConfig, VectorCandidate, VectorQuery,
+};
+use rrflow_kernel::{
+    ProjectionId, ReadStamp, RuntimeProperties, RuntimeRef, RuntimeVector, ScopeId,
+    VectorCollectionAddress, VectorValue,
 };
 use serde_json::json;
 use std::collections::{BTreeMap, BTreeSet};

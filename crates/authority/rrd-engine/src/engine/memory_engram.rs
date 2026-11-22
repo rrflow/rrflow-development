@@ -83,8 +83,8 @@ impl RrdEngine {
             },
             authorization.as_ref(),
         )?;
-        let expected = rrd_core::result_identity::typed(
-            rrd_core::result_identity::ResultIdentityFamily::Record,
+        let expected = crate::kernel::result_identity::typed(
+            crate::kernel::result_identity::ResultIdentityFamily::Record,
             &runtime_ref(&warp.target)?,
         );
         if !context.items.iter().any(|item| item.identity == expected) {

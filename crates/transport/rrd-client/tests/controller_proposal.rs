@@ -6,7 +6,6 @@ use rrd_client::{
     RrdClient, Session,
 };
 use rrd_contract::*;
-use rrd_core::digest;
 use rrd_engine::RrdEngine;
 use rrd_security::{
     Action, Principal, PrincipalKind, ResourceGrant, SecurityRepository, SecurityState,
@@ -14,6 +13,7 @@ use rrd_security::{
 };
 use rrd_server::RrdHttpServer;
 use rrd_store::RrflowKvStore;
+use rrflow_kernel::digest;
 use serde_json::Value;
 use std::{collections::BTreeMap, net::SocketAddr, time::Duration};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};

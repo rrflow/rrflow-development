@@ -1,8 +1,8 @@
-use rrd_core::{
+use rrd_store::{Error, RrflowKvStore, StorageEngine};
+use rrflow_kernel::{
     RuntimeCommit, RuntimeLogicalModel, RuntimeMutation, RuntimeRecord, RuntimeRef,
     RuntimeSchemaRegistry, RuntimeTableSchema, RuntimeType, RuntimeValue, ScopeId,
 };
-use rrd_store::{Error, RrflowKvStore, StorageEngine};
 use std::collections::BTreeMap;
 use std::time::{Duration, Instant};
 

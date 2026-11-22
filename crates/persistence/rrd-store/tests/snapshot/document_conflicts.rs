@@ -1,6 +1,6 @@
 use super::*;
-use rrd_core::{RuntimePropertySchema, RuntimeRetirement, RuntimeValue, RuntimeValueType};
 use rrd_store::ControlTransition;
+use rrflow_kernel::{RuntimePropertySchema, RuntimeRetirement, RuntimeValue, RuntimeValueType};
 
 fn put(read: &ReadStamp, id: &str, valid_from: u64, code: Option<&str>) -> DataTransaction {
     let mut commit = item(&read.scope, read.commit_cursor, id);
@@ -102,7 +102,7 @@ fn disjoint_writers_cannot_publish_the_same_unique_value() {
         .commit_data_transaction(&put(&read, "two", 1, Some("shared")))
         .unwrap_err();
     assert!(
-        matches!(error, Error::Kernel(rrd_core::Error::InvalidRuntime { reason }) if reason.contains("not unique"))
+        matches!(error, Error::Kernel(rrflow_kernel::Error::InvalidRuntime { reason }) if reason.contains("not unique"))
     );
     assert_eq!(runtime.cursor().unwrap(), 2);
 }

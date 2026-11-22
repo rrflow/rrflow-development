@@ -42,7 +42,7 @@ impl RrdEngine {
             &paths.backups,
             backup_sha256,
             &paths.candidate,
-            super::super::core::installed_storage_options(&locator.storage)?,
+            super::super::instance::installed_storage_options(&locator.storage)?,
         )?;
         let active = RootReading::open(&paths.active, &locator)?;
         let candidate = RootReading::open(&paths.candidate, &locator)?;

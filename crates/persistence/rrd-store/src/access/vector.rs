@@ -8,7 +8,7 @@ use super::runtime_state::get_json;
 use super::semantic_commit::SemanticCommitPlan;
 use crate::keyspaces;
 use crate::{Error, Result};
-use rrd_core::{
+use rrflow_kernel::{
     digest, RuntimeChange, RuntimeCommit, RuntimeMutation, RuntimeRef, RuntimeVector, ScopeId,
     VectorCollectionAddress,
 };
@@ -273,7 +273,7 @@ fn vector_transitions(
         let (reference, vector) = match mutation {
             RuntimeMutation::Vector { vector } => (&vector.reference, Some(vector.clone())),
             RuntimeMutation::Retire { retirement }
-                if retirement.model == rrd_core::RuntimeLogicalModel::Vector =>
+                if retirement.model == rrflow_kernel::RuntimeLogicalModel::Vector =>
             {
                 (&retirement.reference, None)
             }

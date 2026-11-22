@@ -3,7 +3,7 @@ use super::{
     EngramDocument, Error, MutationContext, Result,
 };
 use rrd_contract::CanonicalId;
-use rrd_core::digest;
+use rrflow_kernel::digest;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 

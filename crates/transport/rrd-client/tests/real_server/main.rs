@@ -19,11 +19,6 @@ use rrd_contract::{
     WebSocketCancel, WebSocketCancellationDisposition, WebSocketErrorTarget, WebSocketFrame,
     WebSocketPayload, WebSocketRequest, PROTOCOL, PROTOCOL_VERSION,
 };
-use rrd_core::{
-    digest, RuntimeCommit, RuntimeLogicalModel, RuntimeProperties, RuntimePropertySchema,
-    RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeType, RuntimeValue, RuntimeValueType,
-    ScopeId,
-};
 use rrd_engine::RrdEngine;
 use rrd_security::{
     Action, Principal, PrincipalKind, ResourceGrant, SecurityRepository, SecurityState,
@@ -32,6 +27,11 @@ use rrd_security::{
 use rrd_server::RrdHttpServer;
 use rrd_server::RrdMutualTlsServerConfig;
 use rrd_store::{RrflowKvStore, StorageEngine};
+use rrflow_kernel::{
+    digest, RuntimeCommit, RuntimeLogicalModel, RuntimeProperties, RuntimePropertySchema,
+    RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeType, RuntimeValue, RuntimeValueType,
+    ScopeId,
+};
 use rustls::pki_types::{PrivateKeyDer, PrivatePkcs8KeyDer};
 use rustls::{ClientConfig as RustlsClientConfig, RootCertStore};
 use serde_json::{json, Value};
@@ -124,8 +124,8 @@ fn seed(engine: &RrflowKvStore, scope: &str) {
             actor: "rrd-client-fixture".into(),
             expected_cursor: read.commit_cursor,
             mutations: vec![
-                rrd_core::RuntimeMutation::Schema { registry },
-                rrd_core::RuntimeMutation::Record {
+                rrflow_kernel::RuntimeMutation::Schema { registry },
+                rrflow_kernel::RuntimeMutation::Record {
                     record: RuntimeRecord {
                         reference: RuntimeRef::new("document", "alpha").unwrap(),
                         valid_from: 100,

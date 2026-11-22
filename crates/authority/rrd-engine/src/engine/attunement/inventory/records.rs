@@ -359,7 +359,7 @@ pub(super) fn mutations(
             ),
         ] {
             mutations.push(RuntimeMutation::Retire {
-                retirement: rrd_core::RuntimeRetirement {
+                retirement: crate::kernel::RuntimeRetirement {
                     model,
                     reference: RuntimeRef::new(kind, id).map_err(contract)?,
                     effective_at: at,

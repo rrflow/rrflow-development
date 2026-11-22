@@ -6,18 +6,21 @@
 //! type, in relation-reference order, over the complete authenticated change
 //! log. It shares no code with the native adjacency reader.
 
-use rrd_core::{
-    ReadStamp, RuntimeChange, RuntimeCommit, RuntimeLogicalModel, RuntimeMutation,
-    RuntimeProperties, RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeRelation,
-    RuntimeRelationSchema, RuntimeRetirement, RuntimeSchemaRegistry, RuntimeType, RuntimeValue,
-    ScopeId,
-};
+#[path = "query/transactions.rs"]
+mod transactions;
+
 use rrd_query::{
     parse, ExecutionBudget, Parameters, PhysicalOperator, QueryExecution, StampedQueryPipeline,
 };
 use rrd_store::{
     RrflowKvStore, RrflowMxStore, RuntimeReadAccessPath, RuntimeReadBudget, RuntimeVersionedSource,
     StorageEngine,
+};
+use rrflow_kernel::{
+    ReadStamp, RuntimeChange, RuntimeCommit, RuntimeLogicalModel, RuntimeMutation,
+    RuntimeProperties, RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeRelation,
+    RuntimeRelationSchema, RuntimeRetirement, RuntimeSchemaRegistry, RuntimeType, RuntimeValue,
+    ScopeId,
 };
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
@@ -154,6 +157,8 @@ fn schema() -> RuntimeSchemaRegistry {
                 RuntimeRelationSchema {
                     from: BTreeSet::from([kind("node")]),
                     to: BTreeSet::from([kind("node")]),
+                    on_delete_from: Some(rrflow_kernel::RuntimeReferentialAction::Cascade),
+                    on_delete_to: Some(rrflow_kernel::RuntimeReferentialAction::Cascade),
                     allow_additional_properties: true,
                     ..RuntimeRelationSchema::default()
                 },
@@ -175,18 +180,17 @@ fn record(id: &str, valid_to: Option<u64>) -> RuntimeMutation {
 }
 
 fn commit<E: StorageEngine>(engine: &E, at: u64, mutations: Vec<RuntimeMutation>) -> u64 {
-    let expected_cursor = engine.runtime().cursor().unwrap();
-    engine
-        .runtime()
-        .commit(&RuntimeCommit {
+    transactions::publish(
+        engine,
+        RuntimeCommit {
             scope: scope(),
             at,
             actor: ACTOR.into(),
-            expected_cursor,
+            expected_cursor: engine.runtime().cursor().unwrap(),
             mutations,
-        })
-        .unwrap()
-        .last_cursor
+        },
+    )
+    .last_cursor
 }
 
 /// A seeded temporal graph: two relation types, self-loops, bounded and
@@ -196,13 +200,24 @@ fn commit<E: StorageEngine>(engine: &E, at: u64, mutations: Vec<RuntimeMutation>
 fn commit_random_graph<E: StorageEngine>(engine: &E, seed: u64) -> Vec<u64> {
     let mut stream = Stream(seed.wrapping_mul(0x9e37_79b9_7f4a_7c15) | 1);
     let mut nodes = vec![RuntimeMutation::Schema { registry: schema() }];
-    let mut node_valid_to = Vec::new();
+    let mut node_valid_to = BTreeMap::new();
     for index in 0..NODES {
         let valid_to = stream.chance(20).then(|| 100 + stream.below(200));
-        node_valid_to.push(valid_to);
+        node_valid_to.insert(node(&format!("n{index}")), valid_to);
         nodes.push(record(&format!("n{index}"), valid_to));
     }
     let mut cursors = vec![commit(engine, 1, nodes)];
+    // Every proposed edge must fit within both endpoint lifetimes.
+    let fit = |relation: &mut RuntimeRelation| {
+        if let Some(end) = [node_valid_to[&relation.from], node_valid_to[&relation.to]]
+            .into_iter()
+            .flatten()
+            .min()
+        {
+            relation.valid_from = relation.valid_from.min(end - 1);
+            relation.valid_to = Some(relation.valid_to.unwrap_or(end).min(end));
+        }
+    };
     // Current relation per identity, plus the greatest valid_from it has had.
     let mut current = BTreeMap::<RuntimeRef, (RuntimeRelation, u64)>::new();
     let mut retired = Vec::<(RuntimeRef, u64)>::new();
@@ -226,6 +241,7 @@ fn commit_random_graph<E: StorageEngine>(engine: &E, seed: u64) -> Vec<u64> {
                 relation.valid_to = stream
                     .chance(20)
                     .then(|| relation.valid_from + 1 + stream.below(150));
+                fit(&mut relation);
                 greatest = greatest.max(relation.valid_from);
                 mutations.push(RuntimeMutation::Relation {
                     relation: relation.clone(),
@@ -256,7 +272,7 @@ fn commit_random_graph<E: StorageEngine>(engine: &E, seed: u64) -> Vec<u64> {
                     retired.push((reference, greatest));
                     continue;
                 }
-                let relation = RuntimeRelation {
+                let mut relation = RuntimeRelation {
                     reference: reference.clone(),
                     from: node(&format!("n{}", stream.below(NODES as u64))),
                     to: node(&format!("n{}", stream.below(NODES as u64))),
@@ -264,6 +280,7 @@ fn commit_random_graph<E: StorageEngine>(engine: &E, seed: u64) -> Vec<u64> {
                     valid_to: None,
                     properties: RuntimeProperties::new(),
                 };
+                fit(&mut relation);
                 let greatest = greatest.max(relation.valid_from);
                 mutations.push(RuntimeMutation::Relation {
                     relation: relation.clone(),
@@ -278,7 +295,7 @@ fn commit_random_graph<E: StorageEngine>(engine: &E, seed: u64) -> Vec<u64> {
                     stream.below(NODES as u64)
                 };
                 let valid_from = stream.below(300);
-                let relation = RuntimeRelation {
+                let mut relation = RuntimeRelation {
                     reference: RuntimeRef::new(relation_kind, format!("r{next_id}")).unwrap(),
                     from: node(&format!("n{from}")),
                     to: node(&format!("n{to}")),
@@ -288,11 +305,13 @@ fn commit_random_graph<E: StorageEngine>(engine: &E, seed: u64) -> Vec<u64> {
                         .then(|| valid_from + 1 + stream.below(150)),
                     properties: RuntimeProperties::new(),
                 };
+                fit(&mut relation);
                 next_id += 1;
                 touched.insert(relation.reference.clone());
                 mutations.push(RuntimeMutation::Relation {
                     relation: relation.clone(),
                 });
+                let valid_from = relation.valid_from;
                 current.insert(relation.reference.clone(), (relation, valid_from));
             }
         }
@@ -301,12 +320,12 @@ fn commit_random_graph<E: StorageEngine>(engine: &E, seed: u64) -> Vec<u64> {
         }
     }
     let mut retirements = Vec::new();
-    for (index, valid_to) in node_valid_to.iter().enumerate() {
+    for (reference, valid_to) in &node_valid_to {
         if valid_to.is_none() && stream.chance(25) {
             retirements.push(RuntimeMutation::Retire {
                 retirement: RuntimeRetirement {
                     model: RuntimeLogicalModel::Relational,
-                    reference: node(&format!("n{index}")),
+                    reference: reference.clone(),
                     effective_at: 150 + stream.below(200),
                 },
             });

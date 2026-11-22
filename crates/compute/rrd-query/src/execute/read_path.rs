@@ -170,7 +170,7 @@ impl ReadPath {
     pub(super) fn load<E: StorageEngine>(
         &self,
         engine: &E,
-        stamp: &rrd_core::ReadStamp,
+        stamp: &rrflow_kernel::ReadStamp,
         shape: &PlanShape,
         budget: RuntimeReadBudget,
     ) -> Result<LoadedAccess> {
@@ -304,7 +304,7 @@ impl ReadPath {
                 .projections()
                 .get(&name)?
                 .ok_or_else(|| Error::Integrity(format!("index artifact {id} is missing")))?;
-            if rrd_core::digest::sha256_hex(&bytes) != *artifact_digest {
+            if rrflow_kernel::digest::sha256_hex(&bytes) != *artifact_digest {
                 return Err(Error::Integrity(format!(
                     "index artifact {id} digest does not verify"
                 )));
@@ -347,7 +347,7 @@ impl ReadPath {
         }
 
         struct LoadedIndexArtifact {
-            scope: rrd_core::ScopeId,
+            scope: rrflow_kernel::ScopeId,
             definition: IndexDefinition,
             generation: u64,
             source_cursor: u64,
@@ -364,7 +364,7 @@ impl ReadPath {
         struct IndexArtifactEnvelope<'a> {
             contract_version: u16,
             result_identity_version: u16,
-            scope: rrd_core::ScopeId,
+            scope: rrflow_kernel::ScopeId,
             definition: IndexDefinition,
             generation: u64,
             source_cursor: u64,
@@ -574,22 +574,24 @@ impl ReadPath {
                             // outside this adjacency must still govern visibility.
                             changes
                                 .iter()
-                                .filter_map(|change| match &change.mutation {
+                                .filter_map(|change| {
+                                    match &change.mutation {
                                     RuntimeMutation::Relation { relation } => {
                                         Some(relation.reference.clone())
                                     }
                                     RuntimeMutation::Retire { retirement }
                                         if retirement.model
-                                            == rrd_core::RuntimeLogicalModel::GraphRelation =>
+                                            == rrflow_kernel::RuntimeLogicalModel::GraphRelation =>
                                     {
                                         Some(retirement.reference.clone())
                                     }
                                     _ => None,
+                                }
                                 })
                                 .collect::<std::collections::BTreeSet<_>>()
                                 .into_iter()
                                 .map(|reference| RuntimeVersionedSource::Identity {
-                                    model: rrd_core::RuntimeLogicalModel::GraphRelation,
+                                    model: rrflow_kernel::RuntimeLogicalModel::GraphRelation,
                                     reference,
                                 })
                                 .collect()

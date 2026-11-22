@@ -5,7 +5,7 @@ use crate::{
     TurboQuantDescriptor, VectorArtifact, VectorArtifactKind, EXACT_SCAN_PROJECTION_ID,
 };
 
-use rrd_core::{
+use rrflow_kernel::{
     digest, ObjectReference, ProjectionId, ProjectionStamp, ProjectionState, Result, RuntimeRef,
     ScopeId, VectorCollectionAddress,
 };
@@ -27,7 +27,7 @@ pub fn vector_source_digest(source: &VectorCollectionAddress) -> Result<String> 
     // evolving public struct's serialized fields.
     identity.extend(
         serde_json::to_vec(&(&source.collection_id, &source.vector_name)).map_err(|error| {
-            rrd_core::Error::InvalidRuntime {
+            rrflow_kernel::Error::InvalidRuntime {
                 reason: format!("vector source cannot be encoded: {error}"),
             }
         })?,
@@ -148,11 +148,12 @@ impl VectorArtifactCatalogEntry {
             return invalid("source must be bound by the catalogue constructor");
         }
         if let Some(address) = source {
-            let receipt = operation
-                .as_mut()
-                .ok_or_else(|| rrd_core::Error::InvalidRuntime {
-                    reason: "named source requires an operation receipt".into(),
-                })?;
+            let receipt =
+                operation
+                    .as_mut()
+                    .ok_or_else(|| rrflow_kernel::Error::InvalidRuntime {
+                        reason: "named source requires an operation receipt".into(),
+                    })?;
             receipt.source = Some(VectorArtifactSource {
                 contract_version: 1,
                 address,
@@ -268,12 +269,12 @@ impl VectorArtifactCatalogEntry {
             (VectorProjectionDescriptor::Hnsw { descriptor }, Some(build_evidence)) => {
                 build_evidence.validate()?;
                 let nodes = u64::try_from(descriptor.nodes).map_err(|_| {
-                    rrd_core::Error::InvalidRuntime {
+                    rrflow_kernel::Error::InvalidRuntime {
                         reason: "HNSW descriptor node count exceeds u64".into(),
                     }
                 })?;
                 let dimensions = u64::try_from(descriptor.dimensions).map_err(|_| {
-                    rrd_core::Error::InvalidRuntime {
+                    rrflow_kernel::Error::InvalidRuntime {
                         reason: "HNSW descriptor dimensions exceed u64".into(),
                     }
                 })?;
@@ -312,7 +313,7 @@ impl VectorArtifactCatalogEntry {
             &self.build_evidence,
             &self.operation,
         ));
-        encoded.map_err(|error| rrd_core::Error::InvalidRuntime {
+        encoded.map_err(|error| rrflow_kernel::Error::InvalidRuntime {
             reason: format!("vector artifact catalog identity cannot be encoded: {error}"),
         })
     }
@@ -337,7 +338,7 @@ impl VectorProjectionDescriptor {
         }
     }
 
-    pub fn scope(&self) -> &rrd_core::ScopeId {
+    pub fn scope(&self) -> &rrflow_kernel::ScopeId {
         match self {
             Self::ExactSegment { descriptor } => &descriptor.scope,
             Self::Hnsw { descriptor } => &descriptor.scope,
@@ -519,7 +520,7 @@ impl VectorCatalog {
         let descriptor =
             self.entries
                 .get_mut(id)
-                .ok_or_else(|| rrd_core::Error::InvalidRuntime {
+                .ok_or_else(|| rrflow_kernel::Error::InvalidRuntime {
                     reason: format!("vector projection {id} is absent"),
                 })?;
         if descriptor.stamp().generation != generation {
@@ -560,7 +561,7 @@ impl VectorCatalog {
         self.revision =
             self.revision
                 .checked_add(1)
-                .ok_or_else(|| rrd_core::Error::InvalidRuntime {
+                .ok_or_else(|| rrflow_kernel::Error::InvalidRuntime {
                     reason: "vector catalog revision overflowed".into(),
                 })?;
         Ok(self.revision)

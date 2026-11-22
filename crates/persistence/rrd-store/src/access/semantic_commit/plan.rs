@@ -108,7 +108,7 @@ pub(crate) fn prepare_semantic_commit(
         RuntimeReadBudget::relation_integrity(start, commit.mutations.len())?,
     )?;
     if !unresolved.is_empty() {
-        return Err(Error::Kernel(rrd_core::Error::InvalidRuntime {
+        return Err(Error::Kernel(rrflow_kernel::Error::InvalidRuntime {
             reason:
                 "relation cascades must be resolved into the canonical transaction before commit"
                     .into(),

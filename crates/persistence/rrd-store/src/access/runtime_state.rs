@@ -3,7 +3,7 @@
 use crate::key_codec::{prefix_end, KeyCodec};
 use crate::keyspaces::{self, Space};
 use crate::{Error, Result, StorageTransaction};
-use rrd_core::{
+use rrflow_kernel::{
     ReadStamp, RuntimeChange, RuntimeChangePage, RuntimeLogAccumulator, RuntimeMutation,
     RuntimeReadValidation, RuntimeSchemaRegistry, ScopeId,
 };
@@ -437,18 +437,18 @@ pub(crate) fn read_accumulator_node(
     reader: &(impl AccessRead + ?Sized),
     level: u8,
     index: u64,
-) -> rrd_core::Result<Option<String>> {
+) -> rrflow_kernel::Result<Option<String>> {
     get(
         reader,
         keyspaces::META,
         &keyspaces::runtime_accumulator_node_key(level, index),
     )
-    .map_err(|error| rrd_core::Error::InvalidRuntime {
+    .map_err(|error| rrflow_kernel::Error::InvalidRuntime {
         reason: format!("cannot read runtime accumulator node: {error}"),
     })?
     .map(String::from_utf8)
     .transpose()
-    .map_err(|error| rrd_core::Error::InvalidRuntime {
+    .map_err(|error| rrflow_kernel::Error::InvalidRuntime {
         reason: format!("runtime accumulator node is not UTF-8: {error}"),
     })
 }
@@ -710,7 +710,7 @@ fn catalog_revision_in_effect(
 mod cold_history_authentication_tests {
     use super::*;
     use crate::{Durability, RrflowKvStore, StorageEngine};
-    use rrd_core::{
+    use rrflow_kernel::{
         RuntimeCommit, RuntimeLogicalModel, RuntimeRecord, RuntimeRef, RuntimeTableSchema,
         RuntimeType,
     };

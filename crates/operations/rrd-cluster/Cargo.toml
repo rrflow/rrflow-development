@@ -19,7 +19,7 @@ openraft-transport = [
 ]
 
 [dependencies]
-rrd-core = { path = "../../kernel/rrd-core" }
+rrflow-kernel = { workspace = true }
 rrd-lsm = { path = "../../persistence/rrd-lsm", optional = true }
 rrd-store = { path = "../../persistence/rrd-store", optional = true }
 serde = { workspace = true }

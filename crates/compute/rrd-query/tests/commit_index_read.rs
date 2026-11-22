@@ -2,16 +2,16 @@
 //! same data, a store whose indexes are defined answers every query exactly as
 //! a store without them, through edits and retirements, reads fewer keys, and
 //! ranks MATCH with the same scores.
-use rrd_core::{
-    ProjectionId, RuntimeCommit, RuntimeLogicalModel, RuntimeMutation, RuntimePropertySchema,
-    RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeRetirement, RuntimeSchemaRegistry,
-    RuntimeType, RuntimeValue, RuntimeValueType, ScopeId,
-};
 use rrd_query::{
     bind, execute, parse, plan, Bm25Config, Catalog, ExecutionBudget, IndexCatalogueRepository,
     IndexDefinition, IndexKind, IndexMutationContext, Parameters, QueryRow, Source,
 };
 use rrd_store::{RrflowKvStore, RrflowMxStore, RuntimeReadBudget, StorageEngine};
+use rrflow_kernel::{
+    ProjectionId, RuntimeCommit, RuntimeLogicalModel, RuntimeMutation, RuntimePropertySchema,
+    RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeRetirement, RuntimeSchemaRegistry,
+    RuntimeType, RuntimeValue, RuntimeValueType, ScopeId,
+};
 use std::collections::BTreeMap;
 
 fn scope() -> ScopeId {

@@ -5,12 +5,12 @@
 //! that protects the source cut.
 
 use rrd_contract::CanonicalId;
-use rrd_core::{
+use rrd_store::StorageEngine;
+use rrflow_kernel::{
     digest, RuntimeCommit, RuntimeEvent, RuntimeEventSchema, RuntimeLogicalModel, RuntimeMutation,
     RuntimeProperties, RuntimePropertySchema, RuntimeRecord, RuntimeRecordSchema, RuntimeRef,
     RuntimeSchemaRegistry, RuntimeType, RuntimeValue, RuntimeValueType, ScopeId,
 };
-use rrd_store::StorageEngine;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 

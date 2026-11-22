@@ -23,7 +23,7 @@ use crate::{
     RuntimeVersionedRead, RuntimeVersionedSource, StorageEngine, VectorSourceAddress,
 };
 
-use rrd_core::{
+use rrflow_kernel::{
     AuditEnvelope, DataTransaction, DataTransactionView, Millis, ProjectionWork, ReadStamp,
     RetentionPin, RuntimeChange, RuntimeChangePage, RuntimeCommit, RuntimeCommitOutcome,
     RuntimeDataSnapshot, RuntimeGraphSnapshot, RuntimeMutation, RuntimeReadValidation,

@@ -16,12 +16,12 @@ use rrd_cluster::{
     RrdTransportBinding, RrdTransportGate, RrdTransportOperation, RrdTransportTrust, ShardId,
     ShardPlacement, ZoneId, CLUSTER_CONTRACT_VERSION,
 };
-use rrd_core::{
+use rrd_store::LocalObjectStore;
+use rrflow_kernel::{
     ObjectReference, RuntimeCommit, RuntimeLogicalModel, RuntimeMutation, RuntimeRecordSchema,
     RuntimeSchemaRegistry, RuntimeTableSchema, RuntimeTraceEvent, RuntimeType, ScopeId, SpanId,
     TraceBoundary, TraceDataClass, TraceId, TraceOperation, TraceOutcome,
 };
-use rrd_store::LocalObjectStore;
 use rustls::pki_types::{CertificateRevocationListDer, PrivateKeyDer, PrivatePkcs8KeyDer};
 use rustls::RootCertStore;
 use std::collections::{BTreeMap, BTreeSet};

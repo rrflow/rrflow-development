@@ -2,7 +2,7 @@
 //! are explicitly derived and do not inherit the captured authorization receipt.
 
 use rrd_contract::{CanonicalId, EndpointProfile};
-use rrd_core::digest::sha256_hex;
+use rrflow_kernel::digest::sha256_hex;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 

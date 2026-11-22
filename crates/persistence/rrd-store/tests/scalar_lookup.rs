@@ -1,14 +1,14 @@
 //! A scalar commit-bound index narrows a read to exactly the current records
 //! whose indexed values match, through edit and retirement, and refuses a
 //! valid time its current entries cannot answer.
-use rrd_core::{
-    digest, ProjectionId, RuntimeCommit, RuntimeLogicalModel, RuntimeMutation,
-    RuntimePropertySchema, RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeRetirement,
-    RuntimeSchemaRegistry, RuntimeType, RuntimeValue, RuntimeValueType, ScopeId,
-};
 use rrd_store::{
     ControlTransition, IndexCommitBindingDefinition, IndexCommitBindingKind, IndexLookup,
     RrflowKvStore, RrflowMxStore, StorageEngine,
+};
+use rrflow_kernel::{
+    digest, ProjectionId, RuntimeCommit, RuntimeLogicalModel, RuntimeMutation,
+    RuntimePropertySchema, RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeRetirement,
+    RuntimeSchemaRegistry, RuntimeType, RuntimeValue, RuntimeValueType, ScopeId,
 };
 use std::collections::BTreeMap;
 

@@ -1,9 +1,3 @@
-use rrd_core::{
-    digest, DataTransaction, GeoPoint, GeoValue, ProjectionId, ProjectionState, RuntimeCommit,
-    RuntimeGeo, RuntimeLogicalModel, RuntimeMutation, RuntimePropertySchema, RuntimeRecord,
-    RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry, RuntimeTableSchema, RuntimeType,
-    RuntimeValue, RuntimeValueType, ScopeId,
-};
 use rrd_query::{
     bind, execute, plan, Bm25Config, Catalog, ComparisonOperator, Error, ExecutionBudget, Filter,
     IndexArtifact, IndexArtifactPublication, IndexCatalogueRepository, IndexDefinition, IndexKind,
@@ -13,6 +7,12 @@ use rrd_query::{parse, Source};
 use rrd_store::{
     ControlTransition, Durability, RrflowKvStore, RrflowMxStore, RuntimeReadAccessPath,
     RuntimeReadBudget, StorageEngine,
+};
+use rrflow_kernel::{
+    digest, DataTransaction, GeoPoint, GeoValue, ProjectionId, ProjectionState, RuntimeCommit,
+    RuntimeGeo, RuntimeLogicalModel, RuntimeMutation, RuntimePropertySchema, RuntimeRecord,
+    RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry, RuntimeTableSchema, RuntimeType,
+    RuntimeValue, RuntimeValueType, ScopeId,
 };
 
 #[test]

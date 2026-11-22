@@ -19,7 +19,7 @@ use super::format::{
 use crate::control::{validate_control_key, ControlJournalEntry};
 use crate::filesystem::{AnchorInput, AnchoredPath, OpenOptions};
 use crate::{Error, Result};
-use rrd_core::digest::Sha256;
+use rrflow_kernel::digest::Sha256;
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::{Read, Write};

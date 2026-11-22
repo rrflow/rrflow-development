@@ -334,7 +334,7 @@ fn concurrent_builds_with_one_key_publish_one_generation() {
     let read = engine
         .storage
         .runtime()
-        .read_stamp(&rrd_core::ScopeId::new(scope()).unwrap())
+        .read_stamp(&crate::kernel::ScopeId::new(scope()).unwrap())
         .unwrap();
     let events = engine
         .storage
@@ -343,7 +343,7 @@ fn concurrent_builds_with_one_key_publish_one_generation() {
             &read,
             &[rrd_store::RuntimeVersionedSource::Records {
                 kind: Some(
-                    rrd_core::RuntimeType::new(rrd_vector::QUANTIZATION_LIFECYCLE_RECORD_TYPE)
+                    crate::kernel::RuntimeType::new(rrd_vector::QUANTIZATION_LIFECYCLE_RECORD_TYPE)
                         .unwrap(),
                 ),
             }],
@@ -407,7 +407,7 @@ fn a_denied_lifecycle_operation_is_audited_and_replays_nothing() {
             "operation-lifecycle-denied-session",
         )
         .unwrap();
-    let scope = rrd_core::ScopeId::new(scope()).unwrap();
+    let scope = crate::kernel::ScopeId::new(scope()).unwrap();
     let revision = crate::quantization_artifact_catalogue(&engine.storage, &scope)
         .unwrap()
         .revision;

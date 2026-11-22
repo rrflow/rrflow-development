@@ -78,7 +78,7 @@ impl RrdEngine {
                 result_identity_version,
                 ..
             } => {
-                let current = rrd_core::result_identity::RESULT_IDENTITY_VERSION;
+                let current = crate::kernel::result_identity::RESULT_IDENTITY_VERSION;
                 if result_identity_version.is_some_and(|version| version != current)
                     || (request.after_cursor > 0 && *result_identity_version != Some(current))
                 {
@@ -600,7 +600,8 @@ fn ensure_subscription_open(state: &SubscriptionState, now: u64) -> Result<()> {
 
 fn ensure_live_identity_current(state: &SubscriptionState) -> Result<()> {
     if matches!(&state.stream, SubscriptionStream::LiveQuery { .. })
-        && state.result_identity_version != Some(rrd_core::result_identity::RESULT_IDENTITY_VERSION)
+        && state.result_identity_version
+            != Some(crate::kernel::result_identity::RESULT_IDENTITY_VERSION)
     {
         return Err(ServiceError::Subscription(
             "live subscription uses an obsolete result identity version; close it and establish a new baseline".into(),

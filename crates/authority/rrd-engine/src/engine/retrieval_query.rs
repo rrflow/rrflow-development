@@ -543,18 +543,18 @@ fn best_score_recommendation(
     positive: &[rrd_vector::VectorQuery],
     negative: &[rrd_vector::VectorQuery],
     metric: rrd_vector::ScoreMetric,
-) -> rrd_core::Result<f64> {
+) -> crate::kernel::Result<f64> {
     let positive = positive
         .iter()
         .map(|query| rrd_vector::score_query(query, candidate, metric))
-        .collect::<rrd_core::Result<Vec<_>>>()?
+        .collect::<crate::kernel::Result<Vec<_>>>()?
         .into_iter()
         .max_by(f64::total_cmp)
         .expect("recommendation has positive examples");
     let negative = negative
         .iter()
         .map(|query| rrd_vector::score_query(query, candidate, metric))
-        .collect::<rrd_core::Result<Vec<_>>>()?
+        .collect::<crate::kernel::Result<Vec<_>>>()?
         .into_iter()
         .max_by(f64::total_cmp);
     Ok(negative.map_or(positive, |negative| {
@@ -571,7 +571,7 @@ fn discovery_score(
     target: Option<&rrd_vector::VectorQuery>,
     context: &[(rrd_vector::VectorQuery, rrd_vector::VectorQuery)],
     metric: rrd_vector::ScoreMetric,
-) -> rrd_core::Result<f64> {
+) -> crate::kernel::Result<f64> {
     let mut wins = 0_u64;
     let mut bounded_margin = 0.0;
     for (positive, negative) in context {

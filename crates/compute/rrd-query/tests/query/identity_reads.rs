@@ -120,9 +120,9 @@ fn grow_and_change<E: StorageEngine>(engine: &E) -> (u64, u64) {
         })
         .unwrap()
         .last_cursor;
-    engine
-        .runtime()
-        .commit(&RuntimeCommit {
+    transactions::publish(
+        engine,
+        RuntimeCommit {
             scope: ScopeId::new("instance:test").unwrap(),
             at: 103,
             actor: "identity-test".into(),
@@ -143,8 +143,8 @@ fn grow_and_change<E: StorageEngine>(engine: &E) -> (u64, u64) {
                     },
                 },
             ],
-        })
-        .unwrap();
+        },
+    );
     (first, updated)
 }
 

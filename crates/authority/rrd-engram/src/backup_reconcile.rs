@@ -5,8 +5,8 @@ use crate::{
     Result,
 };
 use rrd_contract::CanonicalId;
-use rrd_core::digest;
 use rrd_store::StorageEngine;
+use rrflow_kernel::digest;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

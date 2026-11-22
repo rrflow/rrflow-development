@@ -40,7 +40,7 @@ fn installed_disk_reserve_lowers_to_native_policy_and_rejection_class() {
         source_page_bytes: 32768,
         ..Default::default()
     };
-    let native = crate::engine::core::installed_storage_options(&policy).unwrap();
+    let native = crate::engine::instance::installed_storage_options(&policy).unwrap();
     assert_eq!(native.recovery_reserve_bytes, policy.recovery_reserve_bytes);
     assert_eq!(native.transaction_limits.active, 5);
     assert_eq!(native.transaction_limits.buffered_bytes, 16384);
@@ -84,7 +84,7 @@ fn installed_disk_reserve_lowers_to_native_policy_and_rejection_class() {
 fn domain_evidence(engine: &RrdEngine, prior_commit: &str, rejected_commit: &str) -> Value {
     let storage = &engine.storage;
     let sequence = storage.claims().sequence().unwrap();
-    let scope = rrd_core::ScopeId::new(format!("instance:{}", instance())).unwrap();
+    let scope = crate::kernel::ScopeId::new(format!("instance:{}", instance())).unwrap();
     let read = storage.runtime().read_stamp(&scope).unwrap();
     let versions = storage
         .runtime()
@@ -445,7 +445,7 @@ fn rejection_history(
 fn segment_handle_policy_and_pressure_preserve_durable_outcome_classification() {
     let mut policy = rrd_contract::StorageLimits::default();
     assert_eq!(
-        crate::engine::core::installed_storage_options(&policy)
+        crate::engine::instance::installed_storage_options(&policy)
             .unwrap()
             .segment_io
             .max_open_files,
@@ -459,7 +459,7 @@ fn segment_handle_policy_and_pressure_preserve_durable_outcome_classification() 
     );
     policy.segment_open_files = Some(3);
     assert_eq!(
-        crate::engine::core::installed_storage_options(&policy)
+        crate::engine::instance::installed_storage_options(&policy)
             .unwrap()
             .segment_io
             .max_open_files,
@@ -467,7 +467,7 @@ fn segment_handle_policy_and_pressure_preserve_durable_outcome_classification() 
     );
     for invalid in [0, 4097] {
         policy.segment_open_files = Some(invalid);
-        assert!(crate::engine::core::installed_storage_options(&policy).is_err());
+        assert!(crate::engine::instance::installed_storage_options(&policy).is_err());
     }
     let denial = || rrd_store::Error::SegmentHandleLimit {
         limit: 3,

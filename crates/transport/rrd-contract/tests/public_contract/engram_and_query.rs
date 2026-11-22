@@ -178,7 +178,7 @@ pub(super) fn query_contract_is_transport_neutral_bounded_and_strict() {
         scope: request.scope.clone(),
         read_manifest_sha256: "a".repeat(64),
         known_at_cursor: 7,
-        result_identity_version: rrd_core::result_identity::RESULT_IDENTITY_VERSION,
+        result_identity_version: rrflow_kernel::result_identity::RESULT_IDENTITY_VERSION,
         schema_revision: 1,
         plan: QueryPlanSnapshot {
             plan_sha256: "b".repeat(64),
@@ -330,7 +330,7 @@ pub(super) fn live_query_contract_is_resumable_bounded_and_strict() {
         query: "FROM record:document AT VALID 42 KNOWN HEAD PROJECT title".into(),
         parameters: BTreeMap::new(),
         after_cursor: 41,
-        result_identity_version: Some(rrd_core::result_identity::RESULT_IDENTITY_VERSION),
+        result_identity_version: Some(rrflow_kernel::result_identity::RESULT_IDENTITY_VERSION),
         budget: QueryBudget::default(),
         max_delta_rows: 256,
         wait_timeout_ms: 1_000,

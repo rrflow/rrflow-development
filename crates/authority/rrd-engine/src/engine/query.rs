@@ -122,7 +122,7 @@ impl RrdEngine {
             scope: request.scope.clone(),
             read_manifest_sha256: execution.read_manifest.clone(),
             known_at_cursor: execution.known_at_cursor,
-            result_identity_version: rrd_core::result_identity::RESULT_IDENTITY_VERSION,
+            result_identity_version: crate::kernel::result_identity::RESULT_IDENTITY_VERSION,
             schema_revision: bound.schema_revision,
             plan: QueryPlanSnapshot {
                 plan_sha256: plan.digest.clone(),
@@ -701,9 +701,9 @@ pub(in crate::engine) fn public_query_index(
         built_valid_at: entry.built_valid_at,
         artifact_rows: entry.artifact_rows,
         result_identity_version: entry.result_identity_version,
-        identity_rebuild_required: entry.stamp.state == rrd_core::ProjectionState::Ready
+        identity_rebuild_required: entry.stamp.state == crate::kernel::ProjectionState::Ready
             && entry.result_identity_version
-                != Some(rrd_core::result_identity::RESULT_IDENTITY_VERSION),
+                != Some(crate::kernel::result_identity::RESULT_IDENTITY_VERSION),
         analytics_total_count: entry.analytics_total_count,
         analytics_group_count: entry.analytics_group_count,
         maintenance: entry

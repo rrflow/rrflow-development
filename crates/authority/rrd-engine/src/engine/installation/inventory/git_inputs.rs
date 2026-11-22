@@ -1,10 +1,10 @@
 //! Engine-owned, root-relative Git inputs. The compute crate only sees bytes.
 use super::{storage_error, CompiledPolicy, Result, ServiceError, WorkBudget};
+use crate::kernel::digest::sha256_hex;
 use rrd_attunement::git::{
     IgnoreInput, IgnoreLimits, IgnoreOrigin, IgnoreRules, ParseLimits, RepositoryConfig,
     TrackedKind, TrackedPaths,
 };
-use rrd_core::digest::sha256_hex;
 use rrd_store::filesystem::{AnchoredPath, SourceKind, SourceLeaf};
 use std::io::{ErrorKind, Read};
 

@@ -303,7 +303,7 @@ impl RrdRaftStateMachine {
     pub fn artifact_manifest_for_cached_snapshot(
         &self,
         meta: &SnapshotMeta<u64, RrdRaftNode>,
-        scope: &rrd_core::ScopeId,
+        scope: &rrflow_kernel::ScopeId,
         source: NodeId,
         target: NodeId,
     ) -> std::result::Result<Option<ArtifactTransferManifest>, StorageError<u64>> {

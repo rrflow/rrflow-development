@@ -88,7 +88,7 @@ pub(super) fn validate_graph(
 }
 
 pub(super) fn encode_json<T: Serialize>(value: &T) -> Result<Vec<u8>> {
-    serde_json::to_vec(value).map_err(|error| rrd_core::Error::InvalidRuntime {
+    serde_json::to_vec(value).map_err(|error| rrflow_kernel::Error::InvalidRuntime {
         reason: format!("HNSW artifact cannot be encoded: {error}"),
     })
 }

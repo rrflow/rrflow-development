@@ -5,7 +5,7 @@
 //! above `rrd-inference`; the bundled feature-hash backend exists to keep the
 //! complete source-provenance-to-search path executable without a network.
 
-use rrd_core::{
+use crate::kernel::{
     digest, ProjectionId, ReadStamp, Result, RuntimeId, RuntimeProperties, RuntimeRef, ScopeId,
     VectorCollectionAddress, VectorValue,
 };
@@ -293,8 +293,8 @@ fn invalid<T>(reason: impl Into<String>) -> Result<T> {
     Err(runtime_error(reason))
 }
 
-fn runtime_error(reason: impl Into<String>) -> rrd_core::Error {
-    rrd_core::Error::InvalidRuntime {
+fn runtime_error(reason: impl Into<String>) -> crate::kernel::Error {
+    crate::kernel::Error::InvalidRuntime {
         reason: reason.into(),
     }
 }

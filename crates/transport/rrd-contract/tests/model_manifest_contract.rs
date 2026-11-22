@@ -41,7 +41,7 @@ fn artifact(
         format: canonical_id(format),
         format_revision,
         encoded_bytes: bytes.len() as u64,
-        sha256: rrd_core::digest::sha256_hex(bytes),
+        sha256: rrflow_kernel::digest::sha256_hex(bytes),
     }
 }
 

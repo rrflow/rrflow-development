@@ -275,7 +275,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "rrd-core"
+name = "rrflow-kernel"
 version = "1.0.0"
 dependencies = [
  "serde",
@@ -292,7 +292,7 @@ dependencies = [
  "lz4_flex",
  "memmap2",
  "ring",
- "rrd-core",
+ "rrflow-kernel",
  "serde",
  "serde_json",
  "tracing",

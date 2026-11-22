@@ -151,7 +151,7 @@ fn insert_choice(
 ) -> Result<()> {
     let bytes =
         serde_json::to_vec(&choice).map_err(|_| failure("invalid System One criterion", false))?;
-    choices.insert(rrd_core::digest::sha256_hex(&bytes), choice);
+    choices.insert(rrflow_kernel::digest::sha256_hex(&bytes), choice);
     Ok(())
 }
 

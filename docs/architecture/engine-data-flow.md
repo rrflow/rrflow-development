@@ -669,7 +669,7 @@ rather than false synchronous parentage.
 ### Canonical operation catalogue
 
 Machine operation names are closed, low-cardinality values of the form
-`rrflow.<boundary>.<operation>`. `rrd-core::TraceOperation` is the source-level
+`rrflow.<boundary>.<operation>`. `rrflow-kernel::TraceOperation` is the source-level
 catalogue and `TraceBoundary` is the persisted boundary. A canonical event is
 invalid when those two disagree. Dynamic record, scope, project, route, query,
 provider, model, file, index generation, error, or result values never enter
@@ -726,7 +726,7 @@ routine/resource coordinates; model or tool execution uses `Resource` plus
 provider, workflow, or external-database trace authority.
 
 The `attributes` map is for bounded measurements and decisions, not identities
-already represented by links. `rrd-core::TraceAttribute` is the closed
+already represented by links. `rrflow-kernel::TraceAttribute` is the closed
 cross-boundary catalogue. Names are lowercase `snake_case`, fixed at the
 instrumenting call site, and may be extended only with the behavior's owning
 gate and a corresponding contract test. An arbitrary caller-supplied key is
@@ -750,7 +750,7 @@ bounded digest is recorded. `TraceDataClass` controls retention and diagnostic
 projection but never relaxes secret exclusion.
 
 Reviewed current producers also have one private, exact
-`DIRECT_CONVERGENCE_ATTRIBUTE_NAMES` inventory in `rrd-core`. It admits their
+`DIRECT_CONVERGENCE_ATTRIBUTE_NAMES` inventory in `rrflow-kernel`. It admits their
 already-emitted physical and subsystem-specific fields while their C-through-I
 behavior is replaced. The list can only shrink: new work uses
 `TraceAttribute`, and an owning package must move stable identities/revisions

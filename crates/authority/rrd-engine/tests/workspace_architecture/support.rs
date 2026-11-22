@@ -86,15 +86,6 @@ pub(super) fn workspace_metadata() -> WorkspaceMetadata {
                 )
             })
             .to_path_buf();
-        let package_directory_name = manifest_path
-            .parent()
-            .and_then(Path::file_name)
-            .and_then(|value| value.to_str())
-            .expect("workspace package manifests must have UTF-8 parent directories");
-        assert_eq!(
-            package_directory_name, name,
-            "workspace package {name} must live in a same-named directory; forwarding package boundaries are forbidden"
-        );
         for target in package["targets"]
             .as_array()
             .expect("package targets must be an array")

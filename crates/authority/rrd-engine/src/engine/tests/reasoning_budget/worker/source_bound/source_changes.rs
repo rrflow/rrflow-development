@@ -364,7 +364,7 @@ pub(super) fn persisted_legacy_inventory_reopens_and_eligible_replan_publishes_s
         _ => panic!("fixture source entry is a regular file"),
     };
     let legacy_digest = legacy.proposal_sha256.clone();
-    let entry_type = rrd_core::RuntimeType::new("source-tree-entry").unwrap();
+    let entry_type = crate::kernel::RuntimeType::new("source-tree-entry").unwrap();
     let legacy_schema = engine.storage.runtime().schema(&scope).unwrap().unwrap();
     assert!(!legacy_schema.records[&entry_type]
         .properties

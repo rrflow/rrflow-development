@@ -4,12 +4,12 @@
 //! engine-owned value types, never a second storage-opening handle or an
 //! `rrd_store::StorageEngine` escape.
 
+use crate::kernel::{RuntimeCommit, RuntimeMutation};
 use crate::RrdEngine;
-use rrd_core::{RuntimeCommit, RuntimeMutation};
 use rrd_store::StorageEngine as _;
 use std::path::Path;
 
-pub use rrd_core::{
+pub use crate::kernel::{
     digest, Claim, ClaimReader, Millis, Predicate, Producer, Reader, ScopeId, Subject,
 };
 pub use rrd_store::{
@@ -85,20 +85,22 @@ impl RrdEngine {
                 .as_of(&claim.subject, &claim.predicate, claim.valid_from)?;
         let claims = match previous {
             Some(previous) if previous.valid_from < claim.valid_from => {
-                rrd_core::supersede(&previous, claim.clone())?.to_vec()
+                crate::kernel::supersede(&previous, claim.clone())?.to_vec()
             }
             _ => vec![claim.clone()],
         };
         let mut mutations =
             Vec::with_capacity(claims.len() + usize::from(read.schema_revision.is_none()));
         if read.schema_revision.is_none() {
-            let mut schema = rrd_core::RuntimeSchemaRegistry::empty(
+            let mut schema = crate::kernel::RuntimeSchemaRegistry::empty(
                 1,
                 "install canonical reasoning claim model",
             );
             schema.tables.insert(
-                rrd_core::RuntimeType::new("claim")?,
-                rrd_core::RuntimeTableSchema::strict(rrd_core::RuntimeLogicalModel::ReasoningClaim),
+                crate::kernel::RuntimeType::new("claim")?,
+                crate::kernel::RuntimeTableSchema::strict(
+                    crate::kernel::RuntimeLogicalModel::ReasoningClaim,
+                ),
             );
             mutations.push(RuntimeMutation::Schema { registry: schema });
         }

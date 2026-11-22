@@ -4,7 +4,7 @@ use crate::database::wal_path;
 use crate::filesystem::{AnchoredPath, OpenOptions};
 use crate::recovery_budget::RecoveryBudget;
 use crate::{DatabaseInspection, DatabaseOptions, Error, ReadOnlyDatabase, Result};
-use rrd_core::digest::{sha256_hex, Sha256};
+use rrflow_kernel::digest::{sha256_hex, Sha256};
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};

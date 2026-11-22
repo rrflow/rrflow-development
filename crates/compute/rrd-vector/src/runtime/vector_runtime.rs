@@ -331,14 +331,13 @@ impl VectorRuntime {
             | AccessPathKind::BinaryQuantized
             | AccessPathKind::TurboQuant => {
                 let key = (plan.selected.id.clone(), plan.selected.generation);
-                let artifact =
-                    self.artifacts
-                        .get(&key)
-                        .ok_or_else(|| rrd_core::Error::InvalidRuntime {
-                            reason: "selected vector artifact bytes are absent".into(),
-                        })?;
+                let artifact = self.artifacts.get(&key).ok_or_else(|| {
+                    rrflow_kernel::Error::InvalidRuntime {
+                        reason: "selected vector artifact bytes are absent".into(),
+                    }
+                })?;
                 let published = self.catalog.entries.get(&plan.selected.id).ok_or_else(|| {
-                    rrd_core::Error::InvalidRuntime {
+                    rrflow_kernel::Error::InvalidRuntime {
                         reason: "selected vector projection is absent from the catalog".into(),
                     }
                 })?;
@@ -480,7 +479,10 @@ pub(super) fn turboquant_covers_candidate(
         && candidate.vector.field == descriptor.field
         && candidate.vector.value.dimensions() == descriptor.dimensions
         && candidate.matches_model(descriptor.embedding_model.as_ref())
-        && matches!(candidate.vector.value, rrd_core::VectorValue::Dense { .. })
+        && matches!(
+            candidate.vector.value,
+            rrflow_kernel::VectorValue::Dense { .. }
+        )
 }
 
 pub(super) fn hnsw_covers_candidate(
@@ -491,7 +493,10 @@ pub(super) fn hnsw_covers_candidate(
         && candidate.vector.field == descriptor.field
         && candidate.vector.value.dimensions() == descriptor.dimensions
         && candidate.matches_model(descriptor.embedding_model.as_ref())
-        && matches!(candidate.vector.value, rrd_core::VectorValue::Dense { .. })
+        && matches!(
+            candidate.vector.value,
+            rrflow_kernel::VectorValue::Dense { .. }
+        )
 }
 
 pub(super) fn prepared_plan_digest(

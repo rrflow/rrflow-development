@@ -20,7 +20,7 @@ pub(super) fn bootstrap() -> InstallationBootstrap {
         template_id: canonical_id("generic-project"),
         template_revision: 1,
         template_text: "# Project instructions\n".into(),
-        template_sha256: rrd_core::digest::sha256_hex(b"# Project instructions\n"),
+        template_sha256: rrflow_kernel::digest::sha256_hex(b"# Project instructions\n"),
         specialization_sha256: specialization.digest().unwrap(),
         specialization,
         instructions_sha256: digest(0),
@@ -57,7 +57,7 @@ pub(super) fn bootstrap() -> InstallationBootstrap {
         activated_provider_bindings: Vec::new(),
     };
     result.instructions_sha256 =
-        rrd_core::digest::sha256_hex(result.rendered_instructions().as_bytes());
+        rrflow_kernel::digest::sha256_hex(result.rendered_instructions().as_bytes());
     result
 }
 
@@ -176,7 +176,7 @@ pub(super) fn installation_plan(attunement: &AttunementPlan) -> InstallationPlan
             InstallationManagedPath {
                 kind: InstallationManagedPathKind::InstallationLease,
                 relative_path: rrd_contract::INSTALLATION_LEASE_PATH.into(),
-                precondition_sha256: rrd_core::digest::sha256_hex(
+                precondition_sha256: rrflow_kernel::digest::sha256_hex(
                     rrd_contract::INSTALLATION_LEASE_PRECONDITION.as_bytes(),
                 ),
                 removal_rule: InstallationRemovalRule::RetainForExclusion,

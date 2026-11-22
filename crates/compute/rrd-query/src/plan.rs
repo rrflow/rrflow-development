@@ -4,11 +4,11 @@ use crate::{
     ComparisonOperator, CursorExpr, Join, Projection, Query, Source, TimeExpr, ValueExpr,
     QUERY_CONTRACT_VERSION,
 };
-use rrd_core::{
+use rrd_store::RuntimeVersionedSource;
+use rrflow_kernel::{
     digest, ProjectionId, ProjectionState, ReadStamp, RuntimeSchemaRegistry, RuntimeValue,
     RuntimeValueType,
 };
-use rrd_store::RuntimeVersionedSource;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 

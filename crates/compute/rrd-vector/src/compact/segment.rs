@@ -39,7 +39,7 @@ pub(super) struct DenseMetadata {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct DenseCandidateMetadata {
-    pub(super) scope: rrd_core::ScopeId,
+    pub(super) scope: rrflow_kernel::ScopeId,
     pub(super) source_cursor: u64,
     pub(super) reference: RuntimeRef,
     pub(super) subject: RuntimeRef,

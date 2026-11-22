@@ -1,7 +1,7 @@
 //! Removal candidacy by query.
 
-use rrd_core::{Claim, Predicate, Producer, Reader, Subject};
 use rrd_store::{RrflowKvStore, StorageEngine, Verdict};
+use rrflow_kernel::{Claim, Predicate, Producer, Reader, Subject};
 
 fn producer() -> Producer {
     Producer {

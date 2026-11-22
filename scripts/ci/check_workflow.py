@@ -10,6 +10,7 @@ import sys
 from pathlib import Path
 
 import tomllib
+from workspace_packages import member_directories
 
 ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW_DIRECTORY = ROOT / ".github/workflows"
@@ -501,9 +502,7 @@ def verify_execution_inventory_ci(verify: str) -> None:
 
 
 def workspace_packages() -> set[str]:
-    with (ROOT / "Cargo.toml").open("rb") as source:
-        workspace = tomllib.load(source)["workspace"]
-    return {Path(member).name for member in workspace["members"]}
+    return set(member_directories(ROOT).values())
 
 
 def optional_feature_packages() -> set[str]:

@@ -51,7 +51,7 @@ fn system_one_projects_only_allowed_pairs_and_maps_usage_without_fake_measuremen
     let content = serde_json::to_vec(&observed.choice).unwrap();
     assert_eq!(
         observed.content_sha256,
-        rrd_core::digest::sha256_hex(&content)
+        rrflow_kernel::digest::sha256_hex(&content)
     );
     assert_eq!(observed.usage.unwrap().total_tokens, Some(132));
     assert_eq!(observed.elapsed_ms, None);

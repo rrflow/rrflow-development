@@ -1,16 +1,16 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use rrd_core::{
+use rrd_store::{
+    Error, RrflowKvStore, RrflowMxStore, RuntimeReadAccessPath, RuntimeReadBudget,
+    RuntimeReadEvidence, RuntimeVersionedSource, StorageEngine,
+};
+use rrflow_kernel::{
     Claim, GeoPoint, GeoValue, ObjectReceipt, Predicate, Producer, RuntimeChange, RuntimeCommit,
     RuntimeDataSnapshot, RuntimeEvent, RuntimeEventSchema, RuntimeGeo, RuntimeLogicalModel,
     RuntimeMutation, RuntimeProperties, RuntimeRecord, RuntimeRecordSchema, RuntimeRef,
     RuntimeRelation, RuntimeRelationSchema, RuntimeRetirement, RuntimeSchemaRegistry,
     RuntimeSeriesSample, RuntimeTableSchema, RuntimeType, RuntimeVector, ScopeId, SeriesValue,
     Subject, VectorCollectionAddress, VectorValue,
-};
-use rrd_store::{
-    Error, RrflowKvStore, RrflowMxStore, RuntimeReadAccessPath, RuntimeReadBudget,
-    RuntimeReadEvidence, RuntimeVersionedSource, StorageEngine,
 };
 
 const READ_BUDGET: u64 = 10_000;
@@ -80,15 +80,15 @@ fn record(id: &str) -> RuntimeRecord {
 
 fn initial_mutations() -> Vec<RuntimeMutation> {
     let entity = reference("entity", "a");
-    let object_sha256 = rrd_core::digest::sha256_hex(b"direct-read fixture");
-    let object = rrd_core::ObjectReference::for_bytes(
+    let object_sha256 = rrflow_kernel::digest::sha256_hex(b"direct-read fixture");
+    let object = rrflow_kernel::ObjectReference::for_bytes(
         "source-a",
         Some(entity.clone()),
         "text/plain",
         b"direct-read fixture",
         ObjectReceipt {
             backend: "fixture".into(),
-            key: rrd_core::ObjectReference::canonical_key(&object_sha256).unwrap(),
+            key: rrflow_kernel::ObjectReference::canonical_key(&object_sha256).unwrap(),
             version: Some("v1".into()),
             etag: None,
         },
@@ -215,8 +215,8 @@ fn retirements(event_cursor: u64) -> Vec<RuntimeMutation> {
 
 #[derive(Clone)]
 struct Corpus {
-    retained: rrd_core::ReadStamp,
-    current: rrd_core::ReadStamp,
+    retained: rrflow_kernel::ReadStamp,
+    current: rrflow_kernel::ReadStamp,
     retained_changes: Vec<RuntimeChange>,
     current_changes: Vec<RuntimeChange>,
     retained_snapshot: RuntimeDataSnapshot,
@@ -290,7 +290,10 @@ fn commit_corpus(engine: &dyn StorageEngine) -> Corpus {
     }
 }
 
-fn oracle_changes(engine: &dyn StorageEngine, read: &rrd_core::ReadStamp) -> Vec<RuntimeChange> {
+fn oracle_changes(
+    engine: &dyn StorageEngine,
+    read: &rrflow_kernel::ReadStamp,
+) -> Vec<RuntimeChange> {
     let page = engine.runtime().read_changes(read, 0, usize::MAX).unwrap();
     assert_eq!(page.through_cursor, read.commit_cursor);
     assert!(!page.has_more());
@@ -298,7 +301,7 @@ fn oracle_changes(engine: &dyn StorageEngine, read: &rrd_core::ReadStamp) -> Vec
 }
 
 fn snapshot(
-    read: &rrd_core::ReadStamp,
+    read: &rrflow_kernel::ReadStamp,
     changes: &[RuntimeChange],
     valid_at: u64,
 ) -> RuntimeDataSnapshot {
@@ -529,7 +532,7 @@ fn rrflow_mx_and_rrflow_kv_direct_versions_match_the_exact_oracle_and_reopen() {
 
 #[test]
 fn adjacent_versions_reuse_proof_nodes_without_changing_the_authenticated_result() {
-    fn check(engine: &dyn StorageEngine, read: &rrd_core::ReadStamp) {
+    fn check(engine: &dyn StorageEngine, read: &rrflow_kernel::ReadStamp) {
         let sources = [RuntimeVersionedSource::Records {
             kind: Some(RuntimeType::new("entity").unwrap()),
         }];
@@ -575,7 +578,7 @@ fn adjacent_versions_reuse_proof_nodes_without_changing_the_authenticated_result
             Err(Error::RuntimeReadBudgetExceeded { .. })
         ));
     }
-    fn seed(engine: &dyn StorageEngine) -> rrd_core::ReadStamp {
+    fn seed(engine: &dyn StorageEngine) -> rrflow_kernel::ReadStamp {
         let mut mutations = vec![RuntimeMutation::Schema { registry: schema() }];
         mutations.extend((0..32).map(|n| RuntimeMutation::Record {
             record: record(&format!("proof-{n:04}")),

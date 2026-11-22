@@ -5,7 +5,7 @@ use crate::projection::{
     RebuildOutcome, CURRENT_PROJECTION,
 };
 use crate::{Error, Result, StorageEngine};
-use rrd_core::Millis;
+use rrflow_kernel::Millis;
 
 /// Derived claim projections. Authoritative claims are always read through
 /// [`crate::ClaimRepository`]; projection bytes never become source truth.

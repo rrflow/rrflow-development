@@ -7,7 +7,7 @@ use rrd_contract::{
     EndpointTokenParameter, EndpointTokenUsage, WorkloadClass, MAX_ROUTE_REQUEST_BYTES,
     MAX_ROUTE_RESPONSE_BYTES,
 };
-use rrd_core::digest::sha256_hex;
+use rrflow_kernel::digest::sha256_hex;
 use serde::{Deserialize, Serialize};
 use std::io::{Read, Write};
 use std::net::IpAddr;

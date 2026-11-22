@@ -1,5 +1,5 @@
-use rrd_core::ScopeId;
 use rrd_store::{ControlTransition, Error, RrflowKvStore, RrflowMxStore, StorageEngine};
+use rrflow_kernel::ScopeId;
 
 fn scope(name: &str) -> ScopeId {
     ScopeId::new(name).unwrap()

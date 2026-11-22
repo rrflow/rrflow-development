@@ -4,7 +4,7 @@
 **Coordinate:** `rrflow://rrflow-instance/data/reference/data/schema-catalogue`
 **Owner:** canonical logical model, schema mode, and governed mutation validation
 
-`rrd_core::RuntimeSchemaRegistry` is the canonical logical schema catalogue for
+`rrflow_kernel::RuntimeSchemaRegistry` is the canonical logical schema catalogue for
 one runtime scope. It is installed as `RuntimeMutation::Schema` through the
 normal cursor-CAS commit path. `RrdEngine` remains the only transaction and
 authorization authority; index, vector-collection, and other physical

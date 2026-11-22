@@ -1,11 +1,11 @@
-use rrd_core::{
-    digest, DataTransaction, RuntimeCommit, RuntimeLogicalModel, RuntimeMutation,
-    RuntimeProperties, RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeRelation,
-    RuntimeRelationSchema, RuntimeSchemaRegistry, RuntimeType, ScopeId,
-};
 use rrd_store::{
     Error, FunctionInvocationReceiptRecord, RrflowKvStore, RrflowMxStore, StorageEngine,
     FUNCTION_INVOCATION_RECEIPT_FORMAT_VERSION,
+};
+use rrflow_kernel::{
+    digest, DataTransaction, RuntimeCommit, RuntimeLogicalModel, RuntimeMutation,
+    RuntimeProperties, RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeRelation,
+    RuntimeRelationSchema, RuntimeSchemaRegistry, RuntimeType, ScopeId,
 };
 use std::collections::BTreeSet;
 
@@ -49,13 +49,13 @@ fn reject_plan(
     assert_eq!((seeded.records, seeded.relations), (2, 1));
     let before = physical_rows(storage);
     let claim = |index: usize, object: String| {
-        rrd_core::Claim::new(
-            rrd_core::Subject::new(format!("admission-{index}")).unwrap(),
-            rrd_core::Predicate::new("contains").unwrap(),
+        rrflow_kernel::Claim::new(
+            rrflow_kernel::Subject::new(format!("admission-{index}")).unwrap(),
+            rrflow_kernel::Predicate::new("contains").unwrap(),
             object,
             200,
             200,
-            rrd_core::Producer {
+            rrflow_kernel::Producer {
                 actor: "admission-oracle".into(),
                 on_behalf_of: None,
                 session: None,

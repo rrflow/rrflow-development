@@ -1,7 +1,7 @@
 //! Authoritative, replayable control-plane state transitions.
 
 use crate::{Error, Result};
-use rrd_core::digest;
+use rrflow_kernel::digest;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 

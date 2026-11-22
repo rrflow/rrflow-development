@@ -64,7 +64,7 @@ fn commit_data(
 fn committed_audit(
     engine: &RrdEngine,
     receipt: &rrd_contract::CommitReceipt,
-) -> (String, rrd_core::AuditEnvelope) {
+) -> (String, crate::kernel::AuditEnvelope) {
     let commit_id = receipt.runtime_commit_sha256.clone().unwrap();
     let audit = engine.storage.runtime().audit(&commit_id).unwrap().unwrap();
     audit.validate().unwrap();

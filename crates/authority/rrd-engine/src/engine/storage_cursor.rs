@@ -1,7 +1,7 @@
 //! Engine-owned ephemeral physical readers; no durable or client lifecycle authority.
 use super::*;
+use crate::kernel::{RuntimeType, ScopeId};
 use rrd_contract::{InspectStorageCursor, StorageCursorAction, StorageCursorSnapshot};
-use rrd_core::{RuntimeType, ScopeId};
 use rrd_store::StorageInspectionCursor;
 
 pub(super) struct RetainedCursor {

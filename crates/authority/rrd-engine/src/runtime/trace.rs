@@ -1,14 +1,14 @@
 //! Conflict-safe persistence bridge for durable runtime traces.
 //!
 //! Process-local `tracing` spans are diagnostics. This module commits the
-//! portable `rrd-core` trace contract into the authoritative scoped runtime
+//! portable `rrflow-kernel` trace contract into the authoritative scoped runtime
 //! log. Schema installation and the event share one cursor CAS, and bounded
 //! retries rebase only on an observed concurrent winner.
 
-use rrd_core::{
+use crate::kernel::{
     digest, Millis, RuntimeCommit, RuntimeCommitOutcome, RuntimeMutation, RuntimeProperties,
-    RuntimeSchemaRegistry, RuntimeTraceEvent, RuntimeValue, ScopeId, SpanId, TraceAttribute,
-    TraceBoundary, TraceDataClass, TraceId, TraceLink, TraceOutcome,
+    RuntimeTraceEvent, RuntimeValue, ScopeId, SpanId, TraceAttribute, TraceBoundary,
+    TraceDataClass, TraceId, TraceLink, TraceOutcome,
 };
 use rrd_store::{Error, StorageEngine};
 use std::time::Instant;
@@ -225,19 +225,9 @@ fn commit_trace<E: StorageEngine>(
         let commit = if let Some(event) = &event {
             event.prepare_commit(&read, current.as_ref(), actor)?
         } else {
-            let mut registry = current.clone().unwrap_or_else(|| {
-                RuntimeSchemaRegistry::empty(1, "install runtime trace contract")
-            });
-            if !RuntimeTraceEvent::register_schema(&mut registry)? {
+            let Some(registry) = RuntimeTraceEvent::schema_update(current.as_ref())? else {
                 return Ok(None);
-            }
-            if let Some(current) = &current {
-                registry.revision = current
-                    .revision
-                    .checked_add(1)
-                    .ok_or("runtime schema revision overflow while installing trace contract")?;
-                registry.migration = "install canonical runtime trace contract".into();
-            }
+            };
             RuntimeCommit {
                 scope: scope.clone(),
                 at,

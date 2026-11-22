@@ -11,7 +11,7 @@ rrd-contract = { path = "../../transport/rrd-contract" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = "2"
-rrd-core = { path = "../../kernel/rrd-core" }
+rrflow-kernel = { workspace = true }
 rrd-store = { path = "../../persistence/rrd-store" }
 
 [dev-dependencies]

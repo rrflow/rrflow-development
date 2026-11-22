@@ -475,7 +475,7 @@ impl RrdEngine {
             configuration,
             scope: request.scope.clone(),
             valid_at: request.valid_at,
-            result_identity_version: rrd_core::result_identity::RESULT_IDENTITY_VERSION,
+            result_identity_version: crate::kernel::result_identity::RESULT_IDENTITY_VERSION,
             query_sha256: digest::sha256_hex(request.query.as_bytes()),
             read: context_read,
             plan,

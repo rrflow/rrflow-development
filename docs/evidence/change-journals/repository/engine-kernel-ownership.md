@@ -1,0 +1,137 @@
+# Engine ownership of the temporal kernel
+
+**Status:** active evidence from the installed Windows development binary
+**Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/repository/engine-kernel-ownership`
+**Owner:** single-engine prerequisite for the [kernel contract](../../../roadmap/kernel-contract.md)
+
+Baseline commit `5fe635b20605606e052cdccd2160a03f9e64143e`, repository
+tree `1a5b8961b82d501627b7f639ab714f357385a7b7`, original kernel tree
+`f77f46260bb69d71372b7d7e5d3b42e2bc321d53`. The change brief and the
+candidate and merge records belong to [PR 500](https://github.com/rrflow/rrflow-development/pull/500).
+
+## Ownership and source review
+
+The original package at `crates/kernel/rrd-core` supplied shared values and
+invariants to the planner, storage, and engine. It had no server entry point.
+All 61 tracked files moved under `crates/authority/rrd-engine/kernel`.
+`rrd_engine::kernel` exports the same Rust types used by storage and query.
+They can depend on the nested library without depending on their caller,
+`RrdEngine`. The engine instance implementation moved from `engine/core.rs`
+to `engine/instance.rs`. Package membership, downstream dependency edges,
+compiled consumers, generators and current source references follow the move.
+
+The production review covered the kernel manifest and these source files,
+listed by their original paths relative to `src`. Standalone test modules,
+fixture contents and inline test bodies were outside the production review.
+
+| Directory | Rust modules read |
+|---|---|
+| Root | lib, authenticated_log, claim, data, digest, error, ident, reasoning_tree, reference, result_identity, runtime, schema, telemetry, temporal, trace |
+| authenticated_log | accumulator, generation |
+| runtime | audit, data_snapshot, encoding, graph, ids, model, projection, referential, stamps, transaction, validate |
+| runtime/referential | timeline |
+| schema | organisation, registry, types, validation |
+| trace | convergence, event, ids, validation, vocabulary |
+
+The engine review followed the package manifest, public composition root,
+instance construction, transaction and trace callers. Two rules had duplicate
+implementations. Trace events and standalone trace installation now use
+`RuntimeTraceEvent::schema_update` for schema registration, revision
+increments and overflow rejection. The engine retains its cursor comparison
+and retry policy. Schema encoding now calls the existing
+`runtime_logical_model_tag` used by retirement encoding. Both inputs previously
+mapped the same model variants to the same bytes. Transport retains its
+independent wire types and the frozen reasoning-tree wire fixture.
+
+Removed the Rust test that repeated every package path listed by Cargo and
+enumerated top-level directories. Removed the shared assertion that equated
+package names with directory names. The Cargo manifests own membership.
+Architecture checks still inspect actual dependency edges and outward imports.
+This work involves no external algorithm adaptation or change in tier policy.
+Existing durable trace events and public commit receipts supply the observations.
+
+## Installed engine evidence
+
+The first executable build reported three references to the former instance
+module in tail repair. After updating the callers,
+`cargo build --offline --locked -p rrflow-cli --bin rrflow` succeeded.
+`cargo tree --offline --locked -p rrflow-kernel --edges normal --depth 1`
+reported exactly `serde` and `sha2`. The installed binary SHA-256 was
+`d94e9a0913576072d0de1b0c156009a38f82f9027492728af2ea9a181a58c2e6`.
+
+The installed flow used this checkout's `scripts/dev/bitemporal_proof.py`
+and Python SDK. It planned and applied installation in a fresh project,
+started a loopback server, made transactions, killed the process, and reopened
+the same project. To repeat that part with an unused output directory:
+
+```powershell
+python scripts/dev/bitemporal_proof.py --engine target/debug/rrflow.exe --output "$env:TEMP/rrflow-kernel-proof-$([guid]::NewGuid())"
+```
+
+| Actual operation | Before and after process termination |
+|---|---|
+| Read document alpha at valid time 100, known cursor 6 | Original |
+| Read the same document at valid time 100, known cursor 7 | Corrected |
+| Read the same document at valid time 99, known cursor 7 | Zero rows |
+| Read beta and its edge at known cursor 10 | Both present at valid time 149 and absent at 150 after cascade |
+
+On the same installation the retained eight-client driver opened eight
+sessions and eight data transactions at cursor 10. Each previewed a different
+document, then all clients submitted commits from a barrier. Each received an
+acknowledgment, with eight distinct cursors from 11 through 18. After another
+forced termination the public query returned worker-0 through worker-7 at
+cursor 18. The driver checked the exact returned titles against the committed
+set. The host retained the full responses in `evidence.json` and
+`multiwriter.json` under `rrflow-kernel-500-09e4d3520f5e48abba529c11e5278936`
+in the temporary directory.
+
+The first candidate gate found two integration failures. Its workflow validator
+read a directory basename as a package name, and the SDK digests still described
+the previous OpenAPI export. The validator now asks the shared Cargo member
+resolver. The public mutation description names the operation in domain terms.
+All five language generators ran against that export. The surface checker
+verified 88 HTTP operations and seven signal projections, with OpenAPI digest
+`051542fec7c7c8ffb3d39afb379254ab9816715dcb8da36df0378da3c0fba45c`.
+The workflow validator resolved all 30 default-feature packages. After
+rebuilding the executable the same install, correction, concurrent-write and
+reopen operations succeeded with binary SHA-256
+`d0fd2f25bc6a412cbabb232c7695f4ae3077d7617990d51ed368e4165ed2d1c0`.
+The responses from that intermediate candidate are in
+`rrflow-kernel-500-final-664a1525e39948658d5d7b56348cd8ae` in the temporary directory.
+
+The next candidate exposed an extra write in schema encoding. The new helper
+and the original match both wrote the logical-model byte. Fresh installation
+and reopen had agreed with each other while changing the historical schema
+digests. Removing the original match restores one byte per table. A separate
+consumer deserialized each original registry and ran the public kernel's
+`RuntimeCommit::digest` against the stored values. All three matched, including
+the every-model registry, engine-owned registry and organised registry. The
+frozen bytes and digest expectations were kept. The exported protocol digest
+now also matches the reviewed OpenAPI document.
+
+The same run exposed query fixtures whose generated edges crossed the validity
+of their endpoints or whose endpoint retirements lacked an explicit cascade.
+The accepted-write fixtures now bound edges to their endpoints and declare
+their cascade policy. The historical row comparisons and the independent graph
+traversal oracle still run over the committed data.
+
+The subsequent candidate passed the frozen identities and wire contract.
+It also showed that declaring cascade on a relation does not itself prepare
+a storage commit. The direct query fixtures now use the existing
+`resolve_relation_actions` operation against their declared read stamp and
+pass that transaction to `commit_data_transaction`. Production storage
+continues to reject unresolved effects. No test cases were added for this repair.
+
+The corrected executable repeated the two historical reads, the valid-time
+boundary, and the eight concurrent writes across restart. Its SHA-256 was
+`18e7b19f1d3d0280c002a31b521a94fc88763cd93ba447981d3d483be63539a5`.
+`evidence.json`, `multiwriter.json` and `registry-receipts.json` are under
+`rrflow-kernel-500-durable-9a43eb2ecef14be48c81eb99ae67b47e` in the temporary
+directory. Opening the older PR 497 installation with the replacement binary
+returned `ProjectBindingMismatch`. Cross-binary installation reopen therefore
+has no acceptance claim from this run.
+
+Local test suites and benchmarks were skipped per the owner's direction.
+These runs exercise single-node behavior on this Windows executable. They
+establish neither distributed transaction guarantees nor cold-tier or UI
+coverage. No objective, roadmap or POA&M status changed.

@@ -1,10 +1,10 @@
-use rrd_core::{
+use rrd_store::{Error, RrflowKvStore, RrflowMxStore, StorageEngine};
+use rrflow_kernel::{
     Claim, Predicate, Producer, RuntimeCommit, RuntimeLogicalModel, RuntimeMutation,
     RuntimeProperties, RuntimePropertySchema, RuntimeRecord, RuntimeRecordSchema, RuntimeRef,
     RuntimeRelation, RuntimeRelationSchema, RuntimeSchemaRegistry, RuntimeType, RuntimeValue,
     RuntimeValueType, ScopeId, Subject,
 };
-use rrd_store::{Error, RrflowKvStore, RrflowMxStore, StorageEngine};
 use std::collections::BTreeMap;
 
 fn record(kind: &str, id: &str) -> RuntimeRecord {

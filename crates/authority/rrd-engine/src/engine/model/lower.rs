@@ -135,7 +135,7 @@ pub(in crate::engine) fn public_runtime_mutation(
             vector: RuntimeVector {
                 reference: runtime_ref(reference)?,
                 subject: runtime_ref(subject)?,
-                collection: rrd_core::VectorCollectionAddress {
+                collection: crate::kernel::VectorCollectionAddress {
                     collection_id: collection_id.as_str().into(),
                     vector_name: vector_name.as_str().into(),
                 },
@@ -233,7 +233,7 @@ pub(in crate::engine) fn public_runtime_mutation(
             target,
             effective_at,
         } => RuntimeMutation::Retire {
-            retirement: rrd_core::RuntimeRetirement {
+            retirement: crate::kernel::RuntimeRetirement {
                 model: runtime_logical_model(*model),
                 reference: runtime_data_target(target)?,
                 effective_at: *effective_at,
@@ -268,21 +268,21 @@ fn runtime_id(id: &CanonicalId) -> Result<RuntimeType> {
 
 fn runtime_organisation(
     organisation: &DataEngramOrganisation,
-) -> Result<rrd_core::RuntimeEngramOrganisation> {
+) -> Result<crate::kernel::RuntimeEngramOrganisation> {
     let memberships = |entries: &BTreeMap<CanonicalId, CanonicalId>| {
         entries
             .iter()
             .map(|(identity, domain)| Ok((runtime_id(identity)?, runtime_id(domain)?)))
             .collect::<Result<BTreeMap<_, _>>>()
     };
-    Ok(rrd_core::RuntimeEngramOrganisation {
+    Ok(crate::kernel::RuntimeEngramOrganisation {
         domains: organisation
             .domains
             .iter()
             .map(|(id, domain)| {
                 Ok((
                     runtime_id(id)?,
-                    rrd_core::RuntimeDomainSchema {
+                    crate::kernel::RuntimeDomainSchema {
                         title: domain.title.clone(),
                         description: domain.description.clone(),
                         parent: domain.parent.as_ref().map(runtime_id).transpose()?,
@@ -296,22 +296,26 @@ fn runtime_organisation(
             .map(|(id, category)| {
                 Ok((
                     runtime_id(id)?,
-                    rrd_core::RuntimeCategorySchema {
+                    crate::kernel::RuntimeCategorySchema {
                         title: category.title.clone(),
                         description: category.description.clone(),
                         targets: match category.targets {
-                            DataCategoryTargets::Kinds => rrd_core::RuntimeCategoryTargets::Kinds,
+                            DataCategoryTargets::Kinds => {
+                                crate::kernel::RuntimeCategoryTargets::Kinds
+                            }
                             DataCategoryTargets::Records => {
-                                rrd_core::RuntimeCategoryTargets::Records
+                                crate::kernel::RuntimeCategoryTargets::Records
                             }
                             DataCategoryTargets::KindsAndRecords => {
-                                rrd_core::RuntimeCategoryTargets::KindsAndRecords
+                                crate::kernel::RuntimeCategoryTargets::KindsAndRecords
                             }
                         },
                         cardinality: match category.cardinality {
-                            DataTagCardinality::Single => rrd_core::RuntimeTagCardinality::Single,
+                            DataTagCardinality::Single => {
+                                crate::kernel::RuntimeTagCardinality::Single
+                            }
                             DataTagCardinality::Multiple => {
-                                rrd_core::RuntimeTagCardinality::Multiple
+                                crate::kernel::RuntimeTagCardinality::Multiple
                             }
                         },
                         open: category.open,
@@ -321,7 +325,7 @@ fn runtime_organisation(
                             .map(|(tag, schema)| {
                                 Ok((
                                     runtime_id(tag)?,
-                                    rrd_core::RuntimeTagSchema {
+                                    crate::kernel::RuntimeTagSchema {
                                         title: schema.title.clone(),
                                         description: schema.description.clone(),
                                     },
@@ -342,7 +346,7 @@ fn runtime_organisation(
                     runtime_id(kind)?,
                     tags.iter()
                         .map(|reference| {
-                            Ok(rrd_core::RuntimeTagRef {
+                            Ok(crate::kernel::RuntimeTagRef {
                                 category: runtime_id(&reference.category)?,
                                 tag: runtime_id(&reference.tag)?,
                             })
@@ -465,10 +469,14 @@ fn runtime_logical_model(model: DataLogicalModel) -> RuntimeLogicalModel {
 
 fn runtime_referential_action(
     action: rrd_contract::DataReferentialAction,
-) -> rrd_core::RuntimeReferentialAction {
+) -> crate::kernel::RuntimeReferentialAction {
     match action {
-        rrd_contract::DataReferentialAction::Reject => rrd_core::RuntimeReferentialAction::Reject,
-        rrd_contract::DataReferentialAction::Cascade => rrd_core::RuntimeReferentialAction::Cascade,
+        rrd_contract::DataReferentialAction::Reject => {
+            crate::kernel::RuntimeReferentialAction::Reject
+        }
+        rrd_contract::DataReferentialAction::Cascade => {
+            crate::kernel::RuntimeReferentialAction::Cascade
+        }
     }
 }
 
@@ -542,11 +550,11 @@ pub(in crate::engine) fn runtime_geo_value(value: &DataGeoValue) -> GeoValue {
     }
 }
 
-pub(in crate::engine) fn core_contract(error: rrd_core::Error) -> ServiceError {
+pub(in crate::engine) fn core_contract(error: crate::kernel::Error) -> ServiceError {
     ServiceError::Contract(error.to_string())
 }
 
-pub(in crate::engine) fn core_changefeed(error: rrd_core::Error) -> ServiceError {
+pub(in crate::engine) fn core_changefeed(error: crate::kernel::Error) -> ServiceError {
     ServiceError::Changefeed(error.to_string())
 }
 
@@ -587,7 +595,7 @@ pub(in crate::engine) fn public_claim(
 pub(in crate::engine) fn runtime_receipt(
     transaction_id: &CorrelationId,
     operation_sha256: &str,
-    accepted: &rrd_core::RuntimeCommitOutcome,
+    accepted: &crate::kernel::RuntimeCommitOutcome,
     idempotent_replay: bool,
 ) -> CommitReceipt {
     let claim_count = accepted

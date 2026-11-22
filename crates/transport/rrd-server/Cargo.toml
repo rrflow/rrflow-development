@@ -27,7 +27,7 @@ tracing-subscriber = { workspace = true }
 tokio = { version = "1", features = ["test-util"] }
 rrd-engram = { path = "../../authority/rrd-engram" }
 rrd-security = { path = "../../authority/rrd-security" }
-rrd-core = { path = "../../kernel/rrd-core" }
+rrflow-kernel = { workspace = true }
 rrd-store = { path = "../../persistence/rrd-store" }
 tempfile = "3"
 sysinfo = "0.39.6"

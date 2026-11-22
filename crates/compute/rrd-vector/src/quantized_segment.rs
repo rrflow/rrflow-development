@@ -11,7 +11,7 @@ use crate::{
     VectorCandidate, VectorQuery,
 };
 use memmap2::{Mmap, MmapOptions};
-use rrd_core::{
+use rrflow_kernel::{
     digest, ProjectionId, ProjectionStamp, ProjectionState, Result, RuntimeProperties, RuntimeRef,
     ScopeId, VectorCollectionAddress, VectorValue, DATA_RUNTIME_CONTRACT_VERSION,
 };

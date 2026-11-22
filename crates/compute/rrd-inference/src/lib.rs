@@ -8,7 +8,7 @@
 use rrd_contract::{
     RouterArtifactDescriptor, RouterBackendDescriptor, RouterModelHandshake, RouterModelManifest,
 };
-use rrd_core::{
+use rrflow_kernel::{
     digest, DataTransaction, EmbeddingProvenance, Error, Millis, ReadStamp, Result, RuntimeCommit,
     RuntimeId, RuntimeMutation, RuntimeProperties, RuntimeRef, RuntimeValue, RuntimeVector,
     ScopeId, VectorCollectionAddress, VectorNormalization, VectorValue,

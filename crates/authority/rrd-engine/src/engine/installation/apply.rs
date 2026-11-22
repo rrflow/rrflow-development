@@ -293,7 +293,7 @@ impl RrdEngine {
                     &storage_root,
                     instance_id.clone(),
                     token_key,
-                    super::super::core::installed_storage_options(
+                    super::super::instance::installed_storage_options(
                         &preview.installation.configuration.storage,
                     )?,
                 )?
@@ -304,7 +304,7 @@ impl RrdEngine {
                     &storage_root,
                     instance_id.clone(),
                     token_key,
-                    super::super::core::installed_storage_options(
+                    super::super::instance::installed_storage_options(
                         &preview.installation.configuration.storage,
                     )?,
                 )?
@@ -538,7 +538,7 @@ impl RrdEngine {
             &transitions,
             expected_runtime_cursor,
             bootstrap_control_sequence,
-            super::super::core::installed_storage_options(
+            super::super::instance::installed_storage_options(
                 &preview.installation.configuration.storage,
             )?,
         )?;

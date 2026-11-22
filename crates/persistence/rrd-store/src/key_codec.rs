@@ -14,7 +14,7 @@
 //! sort first.
 //!
 //! This module owns physical bytes. Kernel types remain semantic and neither
-//! `rrd-core` nor a client may construct rrflowKV keys.
+//! `rrflow-kernel` nor a client may construct rrflowKV keys.
 
 use std::fmt;
 

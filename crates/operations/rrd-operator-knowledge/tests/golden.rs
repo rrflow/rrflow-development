@@ -1,13 +1,13 @@
-use rrd_core::{
-    ProjectionId, ProjectionStamp, ProjectionState, ReadStamp, ScopeId,
-    DATA_RUNTIME_CONTRACT_VERSION,
-};
 use rrd_operator_knowledge::{
     IterativeScanMode, OperatorAccessPath, OperatorAdapterDescriptor, OperatorKnowledgeBinding,
     OperatorSearchControls, OperatorSearchRequest, OperatorSourceRevision,
     OPERATOR_KNOWLEDGE_CONTRACT_VERSION,
 };
 use rrd_vector::{EmbeddingModelBinding, ScoreMetric, SearchMode, SearchRequest, VectorQuery};
+use rrflow_kernel::{
+    ProjectionId, ProjectionStamp, ProjectionState, ReadStamp, ScopeId,
+    DATA_RUNTIME_CONTRACT_VERSION,
+};
 use std::collections::BTreeSet;
 
 mod support;

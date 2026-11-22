@@ -1,14 +1,14 @@
-use rrd_core::{
-    digest, Predicate, RuntimeCommit, RuntimeEvent, RuntimeEventSchema, RuntimeLogicalModel,
-    RuntimeMutation, RuntimeProperties, RuntimePropertySchema, RuntimeRecord, RuntimeRecordSchema,
-    RuntimeRef, RuntimeRelation, RuntimeRelationSchema, RuntimeSchemaRegistry, RuntimeType,
-    RuntimeValue, RuntimeValueType, ScopeId,
-};
 use rrd_query::{
     bind, bind_graphql, derive_graphql_schema, lower_graphql, parse, Catalog, ExecutionBudget,
     GraphqlRequest, Parameters, Source, TraversalDirection,
 };
 use rrd_store::{RrflowMxStore, RuntimeReadBudget, StorageEngine};
+use rrflow_kernel::{
+    digest, Predicate, RuntimeCommit, RuntimeEvent, RuntimeEventSchema, RuntimeLogicalModel,
+    RuntimeMutation, RuntimeProperties, RuntimePropertySchema, RuntimeRecord, RuntimeRecordSchema,
+    RuntimeRef, RuntimeRelation, RuntimeRelationSchema, RuntimeSchemaRegistry, RuntimeType,
+    RuntimeValue, RuntimeValueType, ScopeId,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 

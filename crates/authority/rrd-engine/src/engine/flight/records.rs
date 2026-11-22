@@ -143,7 +143,7 @@ pub(super) fn context_uses(packet: &ContextPacket) -> Result<Vec<(RuntimeRef, Pr
 }
 
 pub(super) fn context_record_reference(value: &str) -> Result<(RuntimeRef, DataReference)> {
-    let target = rrd_core::result_identity::parse_reference(value).ok_or_else(|| {
+    let target = crate::kernel::result_identity::parse_reference(value).ok_or_else(|| {
         ServiceError::Storage("context record identity is malformed or noncanonical".into())
     })?;
     let canonical = |value: &str| {
