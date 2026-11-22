@@ -1,15 +1,15 @@
 //! BM25 postings maintained at commit (E-03) answer exactly what a full
 //! rebuild over the current documents answers, through backfill, update,
 //! retirement and reopen, on both storage profiles.
-use rrd_core::{
-    digest, ProjectionId, RuntimeCommit, RuntimeLogicalModel, RuntimeMutation,
-    RuntimePropertySchema, RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeRetirement,
-    RuntimeSchemaRegistry, RuntimeType, RuntimeValue, RuntimeValueType, ScopeId,
-};
 use rrd_store::lexical::{analyze, bm25_contribution, Bm25Config, Bm25Identifiers};
 use rrd_store::{
     ControlTransition, IndexCommitBindingDefinition, IndexCommitBindingKind, LexicalQuery,
     LexicalSearch, RrflowKvStore, RrflowMxStore, StorageEngine,
+};
+use rrflow_kernel::{
+    digest, ProjectionId, RuntimeCommit, RuntimeLogicalModel, RuntimeMutation,
+    RuntimePropertySchema, RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeRetirement,
+    RuntimeSchemaRegistry, RuntimeType, RuntimeValue, RuntimeValueType, ScopeId,
 };
 use std::collections::{BTreeMap, BTreeSet};
 

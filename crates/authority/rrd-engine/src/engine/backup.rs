@@ -241,7 +241,7 @@ impl RrdEngine {
             // before object verification reopens the root.
             let restored = rrd_store::RrflowKvStore::open_existing_anchored(
                 &target,
-                super::core::installed_storage_options(&self.engram_configuration.storage)?,
+                super::instance::installed_storage_options(&self.engram_configuration.storage)?,
             )?;
             if restored.claims().sequence()? != backup.archive.claim_sequence
                 || restored.runtime().cursor()? != backup.archive.runtime_cursor
@@ -255,7 +255,7 @@ impl RrdEngine {
                 &backup_root,
                 &request.backup_sha256,
                 &target,
-                super::core::installed_storage_options(&self.engram_configuration.storage)?,
+                super::instance::installed_storage_options(&self.engram_configuration.storage)?,
             )?;
             (backup.archive.clone(), true, true)
         } else {
@@ -264,7 +264,7 @@ impl RrdEngine {
                 &request.backup_sha256,
                 &target,
                 request.restored_at_unix_ms,
-                super::core::installed_storage_options(&self.engram_configuration.storage)?,
+                super::instance::installed_storage_options(&self.engram_configuration.storage)?,
             )?;
             (report.inventory, report.reopened, false)
         };

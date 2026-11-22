@@ -97,7 +97,7 @@ pub(super) fn commit_catalog_record<D>(
     actor: &str,
     at: Millis,
     record: RuntimeRecord,
-    object: rrd_core::ObjectReference,
+    object: crate::kernel::ObjectReference,
 ) -> Result<RuntimeCommitOutcome, Box<dyn std::error::Error>>
 where
     D: DataRuntimeAccess,

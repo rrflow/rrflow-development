@@ -1,7 +1,6 @@
 //! Real authenticated HTTP -> engine -> durable store -> reopen -> replay.
 use rrd_client::{ClientConfig, RequestOptions, RrdClient};
 use rrd_contract::*;
-use rrd_core::digest;
 use rrd_engine::RrdEngine;
 use rrd_security::{
     Action, Principal, PrincipalKind, ResourceGrant, SecurityRepository, SecurityState,
@@ -9,6 +8,7 @@ use rrd_security::{
 };
 use rrd_server::RrdHttpServer;
 use rrd_store::RrflowKvStore;
+use rrflow_kernel::digest;
 use std::collections::BTreeMap;
 
 fn mutation(id: &str) -> RequestOptions {

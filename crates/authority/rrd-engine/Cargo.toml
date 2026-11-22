@@ -15,7 +15,6 @@ default = ["full"]
 crash-test = ["full", "rrd-store/crash-test"]
 cluster-transfer = ["full", "rrd-cluster/openraft-adapter"]
 edge = [
-    "dep:rrd-core",
     "dep:rrd-inference",
     "dep:rrd-vector",
     "dep:serde",
@@ -51,7 +50,7 @@ rrd-attunement = { path = "../../compute/rrd-attunement", optional = true }
 rrd-contract = { path = "../../transport/rrd-contract", optional = true }
 rrd-engram = { path = "../rrd-engram", optional = true }
 rrd-security = { path = "../rrd-security", optional = true }
-rrd-core = { path = "../../kernel/rrd-core", optional = true }
+rrflow-kernel.workspace = true
 rrd-query = { path = "../../compute/rrd-query", optional = true }
 rrd-store = { path = "../../persistence/rrd-store", optional = true }
 rrd-vector = { path = "../../compute/rrd-vector", optional = true }

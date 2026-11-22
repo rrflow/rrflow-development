@@ -1,10 +1,10 @@
 use super::*;
-use rrd_core::{RuntimeCommit, RuntimeSchemaRegistry, ScopeId};
+use rrflow_kernel::{RuntimeCommit, RuntimeSchemaRegistry, ScopeId};
 
 #[test]
 fn selection_event_range_authenticates_inclusion_but_not_omission() {
     use crate::{Durability, RrflowKvStore, StorageEngine};
-    use rrd_core::{RuntimeEvent, RuntimeEventSchema, RuntimeProperties, RuntimeValue};
+    use rrflow_kernel::{RuntimeEvent, RuntimeEventSchema, RuntimeProperties, RuntimeValue};
 
     let directory = tempfile::tempdir().unwrap();
     let root = directory.path().join("selection-omission");
@@ -190,7 +190,7 @@ fn committed(mutation: RuntimeMutation, cursor: u64) -> RuntimeChange {
 
 #[test]
 fn an_adjacency_value_must_name_its_node_type_identity_time_and_cursor() {
-    let relation = rrd_core::RuntimeRelation {
+    let relation = rrflow_kernel::RuntimeRelation {
         reference: RuntimeRef::new("depends_on", "a-b").unwrap(),
         from: RuntimeRef::new("document", "a").unwrap(),
         to: RuntimeRef::new("document", "b").unwrap(),
@@ -207,7 +207,7 @@ fn an_adjacency_value_must_name_its_node_type_identity_time_and_cursor() {
         },
         4,
     );
-    let key = |relation: &rrd_core::RuntimeRelation, at: u64, cursor: u64| {
+    let key = |relation: &rrflow_kernel::RuntimeRelation, at: u64, cursor: u64| {
         keyspaces::runtime_adjacency_version_key(space, &put.scope, relation, at, cursor)
     };
     let validate = |node: &RuntimeRef,
@@ -238,7 +238,7 @@ fn an_adjacency_value_must_name_its_node_type_identity_time_and_cursor() {
 
     let retirement = committed(
         RuntimeMutation::Retire {
-            retirement: rrd_core::RuntimeRetirement {
+            retirement: rrflow_kernel::RuntimeRetirement {
                 model: RuntimeLogicalModel::GraphRelation,
                 reference: relation.reference.clone(),
                 effective_at: 300,
@@ -273,7 +273,7 @@ fn an_adjacency_value_must_name_its_node_type_identity_time_and_cursor() {
     assert!(validate(&relation.to, outgoing, &key(&relation, 300, 5), &retirement).is_err());
     let record_retirement = committed(
         RuntimeMutation::Retire {
-            retirement: rrd_core::RuntimeRetirement {
+            retirement: rrflow_kernel::RuntimeRetirement {
                 model: RuntimeLogicalModel::Document,
                 reference: relation.reference.clone(),
                 effective_at: 300,

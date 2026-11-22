@@ -111,7 +111,7 @@ pub(super) fn encoding(policy: &ColdHistoryPolicy) -> ParquetEncoding {
 
 pub(super) fn encode(
     stamp: &ReadStamp,
-    page: &rrd_core::RuntimeChangePage,
+    page: &crate::kernel::RuntimeChangePage,
     policy: &ColdHistoryPolicy,
     deadline: Instant,
 ) -> Result<rrd_query::ColdHistoryPage> {
@@ -119,7 +119,7 @@ pub(super) fn encode(
         .map_err(ServiceError::from)
 }
 
-pub(super) fn source_digest(stamp: &ReadStamp, page: &rrd_core::RuntimeChangePage) -> String {
+pub(super) fn source_digest(stamp: &ReadStamp, page: &crate::kernel::RuntimeChangePage) -> String {
     source_digest_parts(
         stamp,
         page.requested_after,

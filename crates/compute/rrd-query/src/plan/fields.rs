@@ -54,7 +54,7 @@ pub(super) fn is_schemaless_record_projection(
         return false;
     };
     schema.tables.get(kind).is_some_and(|table| {
-        table.model.is_record_like() && table.mode == rrd_core::RuntimeSchemaMode::Schemaless
+        table.model.is_record_like() && table.mode == rrflow_kernel::RuntimeSchemaMode::Schemaless
     })
 }
 
@@ -123,7 +123,7 @@ pub(crate) fn fields_for_source(
                     .collect()
             } else if schema.tables.get(kind).is_some_and(|table| {
                 table.model.is_record_like()
-                    && table.mode == rrd_core::RuntimeSchemaMode::Schemaless
+                    && table.mode == rrflow_kernel::RuntimeSchemaMode::Schemaless
             }) {
                 Vec::new()
             } else {

@@ -2,7 +2,7 @@ use rrd_client::{is_unauthenticated, ClientConfig, Error, RequestOptions, RrdCli
 use rrd_contract::{
     FollowChangefeed, ReadChangefeed, SdkConformanceCorpus, SessionEndState, TransactionState,
 };
-use rrd_core::digest;
+use rrflow_kernel::digest;
 use serde::Deserialize;
 use std::collections::BTreeMap;
 use std::net::SocketAddr;

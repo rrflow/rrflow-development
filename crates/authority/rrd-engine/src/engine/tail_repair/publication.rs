@@ -281,14 +281,14 @@ fn apply_inner(
         observer("candidate-copied")?;
         let repair = RrflowKvTailRepair::open_anchored(
             &candidate,
-            crate::engine::core::installed_storage_options(&locator.storage)?,
+            crate::engine::instance::installed_storage_options(&locator.storage)?,
         )?;
         let runtime_cursor = repair.inspection().runtime_cursor;
         let claim_sequence = repair.inspection().claim_sequence;
         let storage = repair.apply(&plan.storage, &plan.storage.plan_sha256)?;
         let inspector = RrflowKvInspector::open_anchored_with_options(
             &candidate,
-            crate::engine::core::installed_storage_options(&locator.storage)?,
+            crate::engine::instance::installed_storage_options(&locator.storage)?,
         )?;
         if inspector.inspection().runtime_cursor != runtime_cursor
             || inspector.inspection().claim_sequence != claim_sequence
@@ -431,7 +431,7 @@ fn verify_candidate(root: &AnchoredPath, locator: &ProjectLocator, intent: &Inte
     }
     let inspector = RrflowKvInspector::open_anchored_with_options(
         root,
-        crate::engine::core::installed_storage_options(&locator.storage)?,
+        crate::engine::instance::installed_storage_options(&locator.storage)?,
     )?;
     if inspector.inspection().runtime_cursor != receipt.runtime_cursor
         || inspector.inspection().claim_sequence != receipt.claim_sequence
@@ -498,7 +498,7 @@ fn hash_file(path: &AnchoredPath, relative: &str, work: &mut Work) -> Result<Rep
     work.charge(bytes)?;
     let mut remaining = bytes;
     let mut buffer = [0u8; 64 * 1024];
-    let mut digest = rrd_core::digest::Sha256::new();
+    let mut digest = crate::kernel::digest::Sha256::new();
     while remaining != 0 {
         work.tick()?;
         let n = remaining.min(buffer.len() as u64) as usize;
@@ -569,7 +569,7 @@ fn copy_candidate(
             .map_err(io_error)?;
         let mut remaining = expected.bytes;
         let mut buffer = [0u8; 64 * 1024];
-        let mut digest = rrd_core::digest::Sha256::new();
+        let mut digest = crate::kernel::digest::Sha256::new();
         while remaining != 0 {
             work.tick()?;
             let n = remaining.min(buffer.len() as u64) as usize;

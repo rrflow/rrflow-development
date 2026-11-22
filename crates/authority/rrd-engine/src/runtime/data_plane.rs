@@ -5,7 +5,7 @@
 //! trace contract; their caller-owned requests are represented by digests.
 
 use super::{DurableTraceSpan, TraceIdentity};
-use rrd_core::{
+use crate::kernel::{
     digest, DataTransaction, Millis, ProjectionFamily, ReadStamp, RuntimeCommit,
     RuntimeCommitOutcome, RuntimeMutation, RuntimeProperties, RuntimeSchemaRegistry,
     RuntimeTraceEvent, RuntimeValue, TraceBoundary, TraceDataClass, TraceLink, TraceOutcome,

@@ -56,7 +56,7 @@ fn expected_values(name: &str) -> BTreeMap<String, String> {
             (
                 format!(
                     "claim:{}",
-                    rrd_core::digest::sha256_hex(
+                    rrflow_kernel::digest::sha256_hex(
                         format!("rrd-context-claim-v1\0history-{name}-{index}\0history").as_bytes()
                     )
                 ),

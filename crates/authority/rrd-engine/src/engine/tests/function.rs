@@ -1,4 +1,5 @@
 use super::*;
+use crate::kernel::{DataTransaction, ScopeId};
 use base64::engine::general_purpose::STANDARD;
 use base64::Engine as _;
 use rrd_contract::{
@@ -11,7 +12,6 @@ use rrd_contract::{
     TransactionMutationKind, WebAssemblyAbi, FUNCTION_CONTRACT_VERSION,
     MAX_FUNCTION_CATALOGUE_ENCODED_BYTES, MAX_FUNCTION_WASM_BYTES,
 };
-use rrd_core::{DataTransaction, ScopeId};
 use std::collections::{BTreeMap, BTreeSet};
 use std::ops::{Deref, DerefMut};
 

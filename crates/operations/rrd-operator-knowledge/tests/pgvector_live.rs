@@ -1,10 +1,6 @@
 #![cfg(feature = "pgvector-postgres")]
 
 use postgres::{Client, NoTls};
-use rrd_core::{
-    digest, ProjectionFamily, ProjectionId, ProjectionStamp, ProjectionState, ProjectionWork,
-    ReadStamp, ScopeId, DATA_RUNTIME_CONTRACT_VERSION,
-};
 use rrd_operator_knowledge::{
     execute_operator_search, execute_operator_sync, IterativeScanMode, OperatorAccessPath,
     OperatorKnowledgeBinding, OperatorSearchControls, OperatorSearchRequest, OperatorSearchResult,
@@ -12,6 +8,10 @@ use rrd_operator_knowledge::{
     PgvectorRelation, PgvectorSyncPayload, OPERATOR_KNOWLEDGE_CONTRACT_VERSION,
 };
 use rrd_vector::{EmbeddingModelBinding, ScoreMetric, SearchMode, SearchRequest, VectorQuery};
+use rrflow_kernel::{
+    digest, ProjectionFamily, ProjectionId, ProjectionStamp, ProjectionState, ProjectionWork,
+    ReadStamp, ScopeId, DATA_RUNTIME_CONTRACT_VERSION,
+};
 
 fn scope() -> ScopeId {
     ScopeId::new("instance:pgvector-live-test").unwrap()

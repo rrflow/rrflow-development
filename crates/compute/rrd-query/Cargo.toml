@@ -7,7 +7,7 @@ publish.workspace = true
 description = "rrflowQL syntax, catalog binding, deterministic planning, and execution."
 
 [dependencies]
-rrd-core = { path = "../../kernel/rrd-core" }
+rrflow-kernel = { workspace = true }
 rrd-store = { path = "../../persistence/rrd-store" }
 serde = { workspace = true }
 serde_json = { workspace = true, features = ["raw_value"] }

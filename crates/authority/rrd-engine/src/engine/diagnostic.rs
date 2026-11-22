@@ -79,7 +79,7 @@ mod bounded_graph_tests {
 
     fn graph(records: &[&str], relations: &[(&str, &str)]) -> RuntimeGraphSnapshot {
         RuntimeGraphSnapshot {
-            scope: rrd_core::ScopeId::new("instance:test").unwrap(),
+            scope: crate::kernel::ScopeId::new("instance:test").unwrap(),
             valid_at: 1,
             known_at_cursor: 4,
             records: records

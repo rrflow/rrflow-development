@@ -1,5 +1,4 @@
 use rrd_contract::CanonicalId;
-use rrd_core::digest;
 use rrd_engram::{
     BackupCompleteRequest, BackupDriverRequest, BackupJobState, BackupLeaseRequest,
     BackupReconcileBoundary, BackupReconcileOutcome, BackupReconciler, BackupResult, DesiredPhase,
@@ -8,6 +7,7 @@ use rrd_engram::{
     ScheduleBackup, SetDesired,
 };
 use rrd_store::{RrflowKvStore, StorageEngine};
+use rrflow_kernel::digest;
 use std::fs;
 use std::path::PathBuf;
 

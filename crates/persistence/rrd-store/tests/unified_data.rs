@@ -1,16 +1,16 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use rrd_core::{
+use rrd_store::{
+    DataRuntime, DataRuntimeStep, Error, LocalObjectStore, RrflowKvStore, RrflowMxStore,
+    StorageEngine,
+};
+use rrflow_kernel::{
     Claim, DataTransaction, EmbeddingProvenance, GeoPoint, GeoValue, Predicate, Producer,
     RuntimeCommit, RuntimeEvent, RuntimeEventSchema, RuntimeGeo, RuntimeLogicalModel,
     RuntimeMutation, RuntimeProperties, RuntimeRecord, RuntimeRecordSchema, RuntimeRef,
     RuntimeRelation, RuntimeRelationSchema, RuntimeSchemaRegistry, RuntimeSeriesSample,
     RuntimeTableSchema, RuntimeType, RuntimeVector, ScopeId, SeriesValue, Subject,
     VectorCollectionAddress, VectorNormalization, VectorValue,
-};
-use rrd_store::{
-    DataRuntime, DataRuntimeStep, Error, LocalObjectStore, RrflowKvStore, RrflowMxStore,
-    StorageEngine,
 };
 use tempfile::tempdir;
 
@@ -91,7 +91,7 @@ fn bootstrap(engine: &dyn StorageEngine, scope: &ScopeId) -> u64 {
         .last_cursor
 }
 
-fn unified_mutations(object: rrd_core::ObjectReference) -> Vec<RuntimeMutation> {
+fn unified_mutations(object: rrflow_kernel::ObjectReference) -> Vec<RuntimeMutation> {
     let subject = RuntimeRef::new("entity", "a").unwrap();
     vec![
         RuntimeMutation::Claim {

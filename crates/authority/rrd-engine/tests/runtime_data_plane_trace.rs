@@ -1,9 +1,3 @@
-use rrd_core::{
-    digest, ProjectionFamily, RuntimeCommit, RuntimeId, RuntimeLogicalModel, RuntimeMutation,
-    RuntimeProperties, RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry,
-    RuntimeTableSchema, RuntimeType, RuntimeValue, RuntimeVector, ScopeId, VectorCollectionAddress,
-    VectorValue,
-};
 use rrd_engine::{
     execute_traced_embedding, execute_traced_vector_search, publish_traced_vector_artifact,
 };
@@ -15,6 +9,12 @@ use rrd_store::{DataRuntime, LocalObjectStore, RrflowKvStore, RrflowMxStore, Sto
 use rrd_vector::{
     HnswConfig, HnswIndex, ScoreMetric, SearchMode, SearchRequest, VectorCandidate, VectorQuery,
     VectorRuntime,
+};
+use rrflow_kernel::{
+    digest, ProjectionFamily, RuntimeCommit, RuntimeId, RuntimeLogicalModel, RuntimeMutation,
+    RuntimeProperties, RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry,
+    RuntimeTableSchema, RuntimeType, RuntimeValue, RuntimeVector, ScopeId, VectorCollectionAddress,
+    VectorValue,
 };
 use std::collections::BTreeSet;
 
@@ -263,7 +263,7 @@ fn projection_publication_and_approximate_selection_remain_fresh_across_trace_ev
     let mut runtime = VectorRuntime::new(candidates.clone()).unwrap();
     let hnsw = HnswIndex::build(
         HnswConfig {
-            id: rrd_core::ProjectionId::new("vector-hnsw-body").unwrap(),
+            id: rrflow_kernel::ProjectionId::new("vector-hnsw-body").unwrap(),
             scope: scope(),
             field: "body".into(),
             dimensions: 3,
@@ -410,7 +410,7 @@ struct SequenceReader {
 }
 
 impl EmbeddingSourceReader for SequenceReader {
-    fn read(&mut self, _source: &RuntimeRef) -> rrd_core::Result<EmbeddingSourceSnapshot> {
+    fn read(&mut self, _source: &RuntimeRef) -> rrflow_kernel::Result<EmbeddingSourceSnapshot> {
         let snapshot = self.snapshots[self.reads.min(self.snapshots.len() - 1)].clone();
         self.reads += 1;
         Ok(snapshot)
@@ -576,7 +576,7 @@ struct MutatingReader<'a, E> {
 }
 
 impl<E: StorageEngine> EmbeddingSourceReader for MutatingReader<'_, E> {
-    fn read(&mut self, _source: &RuntimeRef) -> rrd_core::Result<EmbeddingSourceSnapshot> {
+    fn read(&mut self, _source: &RuntimeRef) -> rrflow_kernel::Result<EmbeddingSourceSnapshot> {
         self.reads += 1;
         if self.reads == 2 {
             let read = self.store.runtime().read_stamp(&scope()).unwrap();

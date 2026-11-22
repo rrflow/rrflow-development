@@ -1,10 +1,10 @@
-use rrd_core::{
-    EmbeddingProvenance, ProjectionId, ReadStamp, RuntimeProperties, RuntimeRef, RuntimeVector,
-    ScopeId, VectorCollectionAddress, VectorNormalization, VectorValue,
-};
 use rrd_vector::{
     search_exact, CompactDenseSegment, EmbeddingModelBinding, ScoreMetric, SearchMode,
     SearchRequest, VectorCandidate, VectorQuery, VectorSegmentConfig,
+};
+use rrflow_kernel::{
+    EmbeddingProvenance, ProjectionId, ReadStamp, RuntimeProperties, RuntimeRef, RuntimeVector,
+    ScopeId, VectorCollectionAddress, VectorNormalization, VectorValue,
 };
 use std::collections::BTreeSet;
 

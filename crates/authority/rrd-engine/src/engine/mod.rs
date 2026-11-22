@@ -1,5 +1,15 @@
 //! Authoritative RRFlow engine composition and operations.
 
+use crate::kernel::{
+    digest, Claim, DataTransaction, EmbeddingProvenance, GeoPoint, GeoValue, ObjectReceipt,
+    ObjectReference, Predicate, Producer, ProjectionId, ProjectionState, PromotionState, ReadStamp,
+    RetentionPin, RuntimeChange, RuntimeCommit, RuntimeDataSnapshot, RuntimeEvent,
+    RuntimeEventSchema, RuntimeGeo, RuntimeGraphSnapshot, RuntimeLogicalModel, RuntimeMutation,
+    RuntimeProperties, RuntimePropertySchema, RuntimeRecord, RuntimeRecordSchema, RuntimeRef,
+    RuntimeRelation, RuntimeRelationSchema, RuntimeSchemaMode, RuntimeSchemaRegistry,
+    RuntimeSeriesSample, RuntimeTableSchema, RuntimeType, RuntimeValue, RuntimeValueType,
+    RuntimeVector, ScopeId, SeriesValue, Subject, Tier, VectorNormalization, VectorValue,
+};
 use hmac::{Hmac, KeyInit, Mac};
 use rrd_contract::{
     transaction_operation_sha256, AbortTransaction, ActivateVectorQuantizationArtifact,
@@ -72,16 +82,6 @@ use rrd_contract::{
     EmbeddingResourceLimits, EmbeddingTrustBoundary, GenerateEmbeddings, GenerateEmbeddingsResult,
     GeneratedEmbedding, ListEmbeddingModels,
 };
-use rrd_core::{
-    digest, Claim, DataTransaction, EmbeddingProvenance, GeoPoint, GeoValue, ObjectReceipt,
-    ObjectReference, Predicate, Producer, ProjectionId, ProjectionState, PromotionState, ReadStamp,
-    RetentionPin, RuntimeChange, RuntimeCommit, RuntimeDataSnapshot, RuntimeEvent,
-    RuntimeEventSchema, RuntimeGeo, RuntimeGraphSnapshot, RuntimeLogicalModel, RuntimeMutation,
-    RuntimeProperties, RuntimePropertySchema, RuntimeRecord, RuntimeRecordSchema, RuntimeRef,
-    RuntimeRelation, RuntimeRelationSchema, RuntimeSchemaMode, RuntimeSchemaRegistry,
-    RuntimeSeriesSample, RuntimeTableSchema, RuntimeType, RuntimeValue, RuntimeValueType,
-    RuntimeVector, ScopeId, SeriesValue, Subject, Tier, VectorNormalization, VectorValue,
-};
 use rrd_query::{ComparisonOperator, CursorExpr, Filter, Projection, TimeExpr, ValueExpr};
 use rrd_store::{
     ControlTransition, MemoryObjectStore, ObjectStoreBox, RrflowKvStore, RuntimeDataSnapshotRead,
@@ -102,13 +102,13 @@ mod clock;
 mod cold_history;
 mod context;
 mod control;
-mod core;
 mod data;
 mod diagnostic;
 mod distributed;
 mod endpoint_configuration;
 mod endpoint_proposal;
 mod endpoint_worker;
+mod instance;
 mod scoped_configuration;
 pub use endpoint_proposal::EndpointCredentials;
 mod engram;
@@ -162,7 +162,6 @@ pub use clock::{
     ClockSourceKind, ClockTrustLevel, CLOCK_OBSERVATION_FORMAT_VERSION,
 };
 use control::*;
-pub use core::RrdEngine;
 use data::public_data_snapshot;
 pub use distributed::{
     DistributedAuthorityRead, DistributedReadRoute, PreparedDistributedAuthority,
@@ -180,6 +179,7 @@ pub use installation::{
     NestedRepositoryDiscovery, ProjectLocator, ATTUNEMENT_PROPOSAL_FORMAT_VERSION,
     INSTALLATION_PREVIEW_FORMAT_VERSION,
 };
+pub use instance::RrdEngine;
 pub use instance_registry::{
     InstanceRegistration, InstanceRegistry, InstanceRegistryEntry, InstanceRegistryListing,
     InstanceStatus, UnreadableInstanceEntry, DEFAULT_INSTANCE_REGISTRY_LOCK_WAIT_MS,

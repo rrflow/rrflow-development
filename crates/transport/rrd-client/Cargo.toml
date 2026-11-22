@@ -28,7 +28,7 @@ rrd-engine = { path = "../../authority/rrd-engine" }
 rrd-engram = { path = "../../authority/rrd-engram" }
 rrd-security = { path = "../../authority/rrd-security" }
 rrd-server = { path = "../rrd-server" }
-rrd-core = { path = "../../kernel/rrd-core" }
+rrflow-kernel = { workspace = true }
 rrd-store = { path = "../../persistence/rrd-store" }
 tempfile = "3"
 rcgen = "0.14"

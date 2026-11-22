@@ -1,6 +1,6 @@
 use super::*;
 use crate::{FilterCondition, FilterExpression, FilterOperator};
-use rrd_core::{
+use rrflow_kernel::{
     ReadStamp, RuntimeProperties, RuntimeRef, RuntimeValue, RuntimeVector, VectorCollectionAddress,
 };
 

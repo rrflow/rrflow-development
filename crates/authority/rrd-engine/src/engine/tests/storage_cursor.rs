@@ -1,10 +1,10 @@
 use super::*;
-use crate::ServiceErrorKind;
-use rrd_contract::{InspectStorageCursor, StorageCursorAction};
-use rrd_core::{
+use crate::kernel::{
     RuntimeCommit, RuntimeLogicalModel, RuntimeMutation, RuntimeProperties, RuntimeRecord,
     RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry, RuntimeType, ScopeId,
 };
+use crate::ServiceErrorKind;
+use rrd_contract::{InspectStorageCursor, StorageCursorAction};
 
 #[test]
 fn physical_cursor_denial_is_resource_exhausted_and_retry_releases_owners() {

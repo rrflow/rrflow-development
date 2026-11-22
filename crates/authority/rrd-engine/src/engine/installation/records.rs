@@ -72,7 +72,7 @@ pub struct ProjectLocator {
 
 impl ProjectLocator {
     pub(super) fn validate(&self) -> Result<()> {
-        super::super::core::installed_storage_options(&self.storage)?;
+        super::super::instance::installed_storage_options(&self.storage)?;
         if self.format_version != LOCATOR_FORMAT
             || self.product_version != env!("CARGO_PKG_VERSION")
             || !is_sha256(&self.plan_sha256)

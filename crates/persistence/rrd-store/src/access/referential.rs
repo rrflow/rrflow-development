@@ -5,7 +5,7 @@ use super::{
     RuntimeReadEvidence, RuntimeVersionedSource,
 };
 use crate::{Error, Result};
-use rrd_core::{
+use rrflow_kernel::{
     ReadStamp, RuntimeChange, RuntimeCommit, RuntimeLogicalModel, RuntimeMutation, RuntimeRef,
     RuntimeRetirement, RuntimeSchemaRegistry,
 };
@@ -57,11 +57,11 @@ pub(crate) fn relation_actions(
     let schema = selection
         .schema
         .ok_or_else(|| Error::RuntimeSchemaMissing(read.scope.to_string()))?;
-    let actions = rrd_core::relation_referential_actions(&schema, &versions.changes, commit)
+    let actions = rrflow_kernel::relation_referential_actions(&schema, &versions.changes, commit)
         .map_err(|error| match error {
-            rrd_core::Error::InvalidRuntime { reason } => Error::DanglingRuntimeReference(reason),
-            other => Error::Kernel(other),
-        })?;
+        rrflow_kernel::Error::InvalidRuntime { reason } => Error::DanglingRuntimeReference(reason),
+        other => Error::Kernel(other),
+    })?;
     Ok((actions, Some(versions.evidence)))
 }
 

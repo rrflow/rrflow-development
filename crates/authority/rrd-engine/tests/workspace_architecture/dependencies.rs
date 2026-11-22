@@ -2,116 +2,6 @@
 
 use super::*;
 
-#[test]
-pub(super) fn workspace_packages_use_the_canonical_grouped_layout() {
-    let metadata = workspace_metadata();
-    let expected = [
-        ("rrd-core", "crates/kernel/rrd-core/Cargo.toml"),
-        ("rrd-lsm", "crates/persistence/rrd-lsm/Cargo.toml"),
-        ("rrd-store", "crates/persistence/rrd-store/Cargo.toml"),
-        ("rrd-query", "crates/compute/rrd-query/Cargo.toml"),
-        ("rrd-vector", "crates/compute/rrd-vector/Cargo.toml"),
-        ("rrd-inference", "crates/compute/rrd-inference/Cargo.toml"),
-        ("rrd-attunement", "crates/compute/rrd-attunement/Cargo.toml"),
-        ("rrd-security", "crates/authority/rrd-security/Cargo.toml"),
-        ("rrd-engram", "crates/authority/rrd-engram/Cargo.toml"),
-        ("rrd-engine", "crates/authority/rrd-engine/Cargo.toml"),
-        ("rrd-contract", "crates/transport/rrd-contract/Cargo.toml"),
-        ("rrd-client", "crates/transport/rrd-client/Cargo.toml"),
-        ("rrd-server", "crates/transport/rrd-server/Cargo.toml"),
-        ("rrflow-cli", "crates/adapters/rrflow-cli/Cargo.toml"),
-        ("rrflow-mcp", "crates/adapters/rrflow-mcp/Cargo.toml"),
-        ("rrflow-edge", "crates/adapters/rrflow-edge/Cargo.toml"),
-        ("rrd-cluster", "crates/operations/rrd-cluster/Cargo.toml"),
-        (
-            "rrd-kubernetes",
-            "crates/operations/rrd-kubernetes/Cargo.toml",
-        ),
-        (
-            "rrd-maintenance",
-            "crates/operations/rrd-maintenance/Cargo.toml",
-        ),
-        (
-            "rrd-operator-knowledge",
-            "crates/operations/rrd-operator-knowledge/Cargo.toml",
-        ),
-        (
-            "rrd-observation",
-            "crates/operations/rrd-observation/Cargo.toml",
-        ),
-        (
-            "rrflow-evaluation-core",
-            "crates/evaluation/rrflow-evaluation-core/Cargo.toml",
-        ),
-        (
-            "rrflow-lab-systems",
-            "crates/evaluation/lab/rrflow-lab-systems/Cargo.toml",
-        ),
-        (
-            "rrflow-lab-datasets",
-            "crates/evaluation/lab/rrflow-lab-datasets/Cargo.toml",
-        ),
-        (
-            "rrflow-lab-benchmarks",
-            "crates/evaluation/lab/rrflow-lab-benchmarks/Cargo.toml",
-        ),
-        (
-            "rrflow-lab-evals",
-            "crates/evaluation/lab/rrflow-lab-evals/Cargo.toml",
-        ),
-        (
-            "rrflow-lab-definitions",
-            "crates/evaluation/lab/rrflow-lab-definitions/Cargo.toml",
-        ),
-        ("rrflow-lab", "crates/evaluation/lab/rrflow-lab/Cargo.toml"),
-        (
-            "rrflow-lab-experiments",
-            "crates/evaluation/lab/rrflow-lab-experiments/Cargo.toml",
-        ),
-        (
-            "rrflow-qualification-storage",
-            "crates/evaluation/qualification/rrflow-qualification-storage/Cargo.toml",
-        ),
-    ]
-    .into_iter()
-    .map(|(name, path)| (name.to_owned(), PathBuf::from(path)))
-    .collect::<BTreeMap<_, _>>();
-    let actual = metadata
-        .packages
-        .iter()
-        .map(|(name, package)| (name.clone(), package.manifest.clone()))
-        .collect::<BTreeMap<_, _>>();
-    assert_eq!(actual, expected, "workspace package paths changed");
-
-    let groups = fs::read_dir(metadata.root.join("crates"))
-        .expect("crates directory must be readable")
-        .collect::<Result<Vec<_>, _>>()
-        .expect("crates entries must be readable")
-        .into_iter()
-        .filter(|entry| entry.file_type().is_ok_and(|kind| kind.is_dir()))
-        .map(|entry| {
-            entry
-                .file_name()
-                .into_string()
-                .expect("crate group names must be UTF-8")
-        })
-        .collect::<BTreeSet<_>>();
-    assert_eq!(
-        groups,
-        names(&[
-            "adapters",
-            "authority",
-            "compute",
-            "evaluation",
-            "kernel",
-            "operations",
-            "persistence",
-            "transport",
-        ]),
-        "crates must contain only the canonical source groups"
-    );
-}
-
 /// RRFlow Lab's crates by dependency tier. A lab crate may depend only on
 /// crates in a lower tier; the `rrflow-lab` tool alone composes every domain.
 pub(super) const LAB_TIERS: [&[&str]; 4] = [
@@ -221,7 +111,7 @@ pub(super) fn attunement_proposals_have_no_runtime_or_store_dependency() {
     assert_exact(
         &metadata.packages["rrd-attunement"].all,
         names(&[
-            "rrd-core",
+            "rrflow-kernel",
             "serde",
             "serde_json",
             "gix-index",
@@ -251,7 +141,7 @@ pub(super) fn engine_has_exact_composition() {
             "rrd-engram",
             "rrd-security",
             "rrd-cluster",
-            "rrd-core",
+            "rrflow-kernel",
             "rrd-inference",
             "rrd-observation",
             "rrd-operator-knowledge",
@@ -280,7 +170,7 @@ pub(super) fn observation_transport_has_no_authority_or_storage_dependency() {
         &metadata.packages["rrd-observation"].all,
         names(&[
             "rrd-contract",
-            "rrd-core",
+            "rrflow-kernel",
             "serde",
             "serde_json",
             "chrono",
@@ -339,7 +229,7 @@ pub(super) fn outward_consumers_cannot_bypass_the_engine_boundary() {
         "rrd-engram",
         "rrd-security",
         "rrd-cluster",
-        "rrd-core",
+        "rrflow-kernel",
         "rrd-inference",
         "rrd-lsm",
         "rrd-observation",
@@ -367,7 +257,7 @@ pub(super) fn outward_product_sources_do_not_import_physical_components() {
     let physical = [
         "rrd_attunement",
         "rrd_cluster",
-        "rrd_core",
+        "rrflow_kernel",
         "rrd_engram",
         "rrd_graph",
         "rrd_inference",

@@ -1,7 +1,7 @@
 use crate::filesystem::{AnchorInput, AnchoredPath, OpenOptions};
 use crate::{Error, Result};
-use rrd_core::digest::Sha256;
-use rrd_core::{AuditEnvelope, Claim, RuntimeCommit, RuntimeMutation};
+use rrflow_kernel::digest::Sha256;
+use rrflow_kernel::{AuditEnvelope, Claim, RuntimeCommit, RuntimeMutation};
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::{Read, Seek, Write};
@@ -643,7 +643,7 @@ pub(super) fn hex(digest: [u8; 32]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rrd_core::{ReadStamp, RuntimeRecord, RuntimeRef, ScopeId};
+    use rrflow_kernel::{ReadStamp, RuntimeRecord, RuntimeRef, ScopeId};
 
     #[test]
     fn replay_rejects_unbound_or_future_read_cursors_even_with_a_resealed_audit() {

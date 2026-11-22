@@ -19,7 +19,7 @@ files of a crate is neutral:
 - `boxed_error`               `Box<dyn Error>` (R5)
 - `too_many_arguments_allow`  an allowed `clippy::too_many_arguments` (R7)
 - `sha2_crate`                any `sha2::` path outside the digest owner (R6); the owner's own
-                              `rrd_core::digest::Sha256` hasher is the intended API and is not counted
+                              `rrflow_kernel::digest::Sha256` hasher is the intended API and is not counted
 
 The recorded baseline (`code_shape_baseline.json`) lists every file that broke a rule when the
 rules landed, with its size or count at that time. The check fails when:
@@ -46,7 +46,7 @@ ENTRY_LIMIT = 200
 SOURCE_LIMIT = 800
 HARNESS_LIMIT = 1500
 BASELINE = Path(__file__).with_name("code_shape_baseline.json")
-DIGEST_OWNER = "crates/kernel/rrd-core/src/digest.rs"
+DIGEST_OWNER = "crates/authority/rrd-engine/kernel/src/digest.rs"
 
 PATTERNS: dict[str, re.Pattern[str]] = {
     "path_attribute": re.compile(r"#\[path\s*="),

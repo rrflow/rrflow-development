@@ -641,7 +641,7 @@ fn hashing_cannot_read_past_admission_even_when_the_source_never_ends() {
         assert_eq!(reader.consumed as u64, length);
         assert_eq!(
             digest,
-            rrd_core::digest::sha256_hex(&vec![b'a'; length as usize])
+            crate::kernel::digest::sha256_hex(&vec![b'a'; length as usize])
         );
     }
     let mut short = std::io::Cursor::new(b"abc");
@@ -656,7 +656,7 @@ fn observed_file_growth_shrinkage_and_timestamp_changes_fail_closed() {
     let admitted = std::fs::metadata(&path).unwrap();
     assert_eq!(
         hash_inventory_file(&AnchoredPath::from_path(&path).unwrap(), &admitted).unwrap(),
-        rrd_core::digest::sha256_hex(b"abc")
+        crate::kernel::digest::sha256_hex(b"abc")
     );
     std::fs::write(&path, b"abcdef").unwrap();
     assert!(hash_inventory_file(&AnchoredPath::from_path(&path).unwrap(), &admitted).is_err());

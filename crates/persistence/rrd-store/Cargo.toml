@@ -19,7 +19,7 @@ parquet-reference = ["dep:parquet", "dep:arrow-array", "dep:arrow-cast", "dep:ar
 vortex-reference = ["dep:vortex", "dep:arrow-array", "dep:arrow-cast", "dep:arrow-schema"]
 
 [dependencies]
-rrd-core = { path = "../../kernel/rrd-core" }
+rrflow-kernel = { workspace = true }
 rrd-lsm = { path = "../rrd-lsm" }
 serde = { workspace = true }
 serde_json = { workspace = true }

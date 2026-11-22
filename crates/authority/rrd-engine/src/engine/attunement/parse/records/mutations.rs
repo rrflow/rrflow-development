@@ -152,7 +152,7 @@ pub(in super::super) fn index_definitions() -> Result<Vec<rrd_query::IndexDefini
     };
     let definition = |id: &str, kind: &str, field: &str, index: rrd_query::IndexKind| {
         Ok(rrd_query::IndexDefinition {
-            id: rrd_core::ProjectionId::new(id).map_err(contract)?,
+            id: crate::kernel::ProjectionId::new(id).map_err(contract)?,
             source: record(kind)?,
             fields: vec![field.into()],
             unique: false,

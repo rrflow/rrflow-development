@@ -497,7 +497,7 @@ pub fn execute_traced_query<E: StorageEngine>(
 }
 
 pub(super) fn execution_links_for_storage(
-    read: &rrd_core::ReadStamp,
+    read: &crate::kernel::ReadStamp,
     plan: &PhysicalPlan,
 ) -> Vec<TraceLink> {
     vec![

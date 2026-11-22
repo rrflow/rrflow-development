@@ -2,7 +2,7 @@ use super::super::*;
 use super::lower::query_value;
 
 pub(in crate::engine) fn public_runtime_change(
-    change: &rrd_core::RuntimeChange,
+    change: &crate::kernel::RuntimeChange,
 ) -> Result<RuntimeChangeSnapshot> {
     Ok(RuntimeChangeSnapshot {
         cursor: change.cursor,
@@ -192,7 +192,7 @@ pub(in crate::engine) fn public_properties(
 }
 
 fn public_organisation(
-    organisation: &rrd_core::RuntimeEngramOrganisation,
+    organisation: &crate::kernel::RuntimeEngramOrganisation,
 ) -> Result<DataEngramOrganisation> {
     let id = |value: &RuntimeType| public_change_id(value.as_str());
     let memberships = |entries: &BTreeMap<RuntimeType, RuntimeType>| {
@@ -226,17 +226,21 @@ fn public_organisation(
                         title: category.title.clone(),
                         description: category.description.clone(),
                         targets: match category.targets {
-                            rrd_core::RuntimeCategoryTargets::Kinds => DataCategoryTargets::Kinds,
-                            rrd_core::RuntimeCategoryTargets::Records => {
+                            crate::kernel::RuntimeCategoryTargets::Kinds => {
+                                DataCategoryTargets::Kinds
+                            }
+                            crate::kernel::RuntimeCategoryTargets::Records => {
                                 DataCategoryTargets::Records
                             }
-                            rrd_core::RuntimeCategoryTargets::KindsAndRecords => {
+                            crate::kernel::RuntimeCategoryTargets::KindsAndRecords => {
                                 DataCategoryTargets::KindsAndRecords
                             }
                         },
                         cardinality: match category.cardinality {
-                            rrd_core::RuntimeTagCardinality::Single => DataTagCardinality::Single,
-                            rrd_core::RuntimeTagCardinality::Multiple => {
+                            crate::kernel::RuntimeTagCardinality::Single => {
+                                DataTagCardinality::Single
+                            }
+                            crate::kernel::RuntimeTagCardinality::Multiple => {
                                 DataTagCardinality::Multiple
                             }
                         },
@@ -460,10 +464,14 @@ pub(in crate::engine) fn public_geo_value(value: &GeoValue) -> DataGeoValue {
 }
 
 fn data_referential_action(
-    action: rrd_core::RuntimeReferentialAction,
+    action: crate::kernel::RuntimeReferentialAction,
 ) -> rrd_contract::DataReferentialAction {
     match action {
-        rrd_core::RuntimeReferentialAction::Reject => rrd_contract::DataReferentialAction::Reject,
-        rrd_core::RuntimeReferentialAction::Cascade => rrd_contract::DataReferentialAction::Cascade,
+        crate::kernel::RuntimeReferentialAction::Reject => {
+            rrd_contract::DataReferentialAction::Reject
+        }
+        crate::kernel::RuntimeReferentialAction::Cascade => {
+            rrd_contract::DataReferentialAction::Cascade
+        }
     }
 }

@@ -2,7 +2,7 @@
 //! makes Parse resumable; its fact counts name the records a later edit retires.
 
 use super::*;
-use rrd_core::RuntimeRetirement;
+use crate::kernel::RuntimeRetirement;
 use rrd_store::{RuntimeReadBudget, RuntimeVersionedSource};
 use std::collections::{BTreeMap, BTreeSet};
 

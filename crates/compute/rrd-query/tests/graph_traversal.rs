@@ -6,18 +6,18 @@
 //! type, in relation-reference order, over the complete authenticated change
 //! log. It shares no code with the native adjacency reader.
 
-use rrd_core::{
-    ReadStamp, RuntimeChange, RuntimeCommit, RuntimeLogicalModel, RuntimeMutation,
-    RuntimeProperties, RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeRelation,
-    RuntimeRelationSchema, RuntimeRetirement, RuntimeSchemaRegistry, RuntimeType, RuntimeValue,
-    ScopeId,
-};
 use rrd_query::{
     parse, ExecutionBudget, Parameters, PhysicalOperator, QueryExecution, StampedQueryPipeline,
 };
 use rrd_store::{
     RrflowKvStore, RrflowMxStore, RuntimeReadAccessPath, RuntimeReadBudget, RuntimeVersionedSource,
     StorageEngine,
+};
+use rrflow_kernel::{
+    ReadStamp, RuntimeChange, RuntimeCommit, RuntimeLogicalModel, RuntimeMutation,
+    RuntimeProperties, RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeRelation,
+    RuntimeRelationSchema, RuntimeRetirement, RuntimeSchemaRegistry, RuntimeType, RuntimeValue,
+    ScopeId,
 };
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 

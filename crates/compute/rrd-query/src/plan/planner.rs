@@ -32,7 +32,7 @@ pub fn plan(bound: &BoundQuery) -> Result<PhysicalPlan> {
     }
     let logical = LogicalPlan {
         contract_version: bound.contract_version,
-        result_identity_version: rrd_core::result_identity::RESULT_IDENTITY_VERSION,
+        result_identity_version: rrflow_kernel::result_identity::RESULT_IDENTITY_VERSION,
         read: bound.read.clone(),
         schema_revision: bound.schema_revision,
         source_cursor: bound.source_cursor,

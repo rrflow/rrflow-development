@@ -13,7 +13,7 @@ impl SourceRanges {
     pub(super) fn admit(
         &mut self,
         sources: &[RuntimeVersionedSource],
-        scope: &rrd_core::ScopeId,
+        scope: &rrflow_kernel::ScopeId,
     ) -> Result<Vec<RuntimeVersionedSource>> {
         let mut step = Vec::new();
         for source in sources {
@@ -101,7 +101,7 @@ pub(super) fn scan_in_batches(
 
 pub(super) fn source_interval(
     source: &RuntimeVersionedSource,
-    scope: &rrd_core::ScopeId,
+    scope: &rrflow_kernel::ScopeId,
 ) -> Result<(Space, Vec<u8>, Vec<u8>)> {
     let end_of = |prefix: &[u8]| {
         prefix_end(prefix)
@@ -153,7 +153,7 @@ pub(super) fn source_interval(
 
 pub(super) fn source_range(
     source: &RuntimeVersionedSource,
-    scope: &rrd_core::ScopeId,
+    scope: &rrflow_kernel::ScopeId,
 ) -> Result<(Space, Vec<u8>)> {
     Ok(match source {
         RuntimeVersionedSource::Schema => (
@@ -230,7 +230,7 @@ pub(super) const fn adjacency_space(direction: RuntimeAdjacencyDirection) -> Spa
 
 pub(super) fn version_range(
     space: Space,
-    scope: &rrd_core::ScopeId,
+    scope: &rrflow_kernel::ScopeId,
     kind: Option<&RuntimeType>,
 ) -> (Space, Vec<u8>) {
     let prefix = kind.map_or_else(

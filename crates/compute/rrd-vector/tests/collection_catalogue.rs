@@ -1,10 +1,10 @@
-use rrd_core::{digest, ProjectionId, ScopeId};
 use rrd_store::{RrflowKvStore, StorageEngine};
 use rrd_vector::{
     CollectionError, CollectionMutationContext, NamedVectorConfig, PayloadIndexDefinition,
     PayloadIndexKind, ScoreMetric, VectorCollectionDefinition, VectorCollectionRepository,
     VectorMemoryTier, VectorValueKind,
 };
+use rrflow_kernel::{digest, ProjectionId, ScopeId};
 use std::collections::BTreeMap;
 
 fn context(at: u64, operation: &str) -> CollectionMutationContext {

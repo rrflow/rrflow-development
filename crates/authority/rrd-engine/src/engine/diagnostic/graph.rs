@@ -182,7 +182,7 @@ pub(super) fn public_graph_snapshot(
 
 pub(super) fn public_graph_difference(
     valid_at: u64,
-    difference: &rrd_core::RuntimeGraphDiff,
+    difference: &crate::kernel::RuntimeGraphDiff,
     keep: Option<&std::collections::BTreeSet<RuntimeRef>>,
 ) -> Result<DiagnosticGraphDifference> {
     let kept = |reference: &RuntimeRef| keep.is_none_or(|keep| keep.contains(reference));

@@ -1,11 +1,11 @@
 use rrd_contract::{CanonicalId, ResourceId, ResourceKind, ResourcePath};
-use rrd_core::digest;
 use rrd_security::{
     Action, AuditDecision, AuditEvent, AuditPhase, DataPolicy, Error, IdentityBinding,
     JwtIssueRequest, JwtIssuer, PolicyPredicate, Principal, PrincipalKind, ResourceGrant, Role,
     SecurityRepository, SecurityState, SECURITY_FORMAT,
 };
 use rrd_store::{ControlTransition, RrflowKvStore, RrflowMxStore, StorageEngine};
+use rrflow_kernel::digest;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
@@ -410,11 +410,11 @@ fn roles_jwt_external_identity_rotation_revocation_and_reopen_share_one_authorit
     let tenant_policy = DataPolicy {
         tenant: Some(PolicyPredicate {
             field: "tenant_id".into(),
-            value: rrd_core::RuntimeValue::String("tenant-alpha".into()),
+            value: rrflow_kernel::RuntimeValue::String("tenant-alpha".into()),
         }),
         rows: vec![PolicyPredicate {
             field: "classification".into(),
-            value: rrd_core::RuntimeValue::String("public".into()),
+            value: rrflow_kernel::RuntimeValue::String("public".into()),
         }],
         allowed_fields: Some(BTreeSet::from(["body".into(), "id".into()])),
     };
@@ -654,7 +654,7 @@ fn cyclic_roles_and_ambiguous_equally_specific_policy_fail_closed() {
                 data_policy: Some(DataPolicy {
                     tenant: Some(PolicyPredicate {
                         field: "tenant_id".into(),
-                        value: rrd_core::RuntimeValue::String("tenant-alpha".into()),
+                        value: rrflow_kernel::RuntimeValue::String("tenant-alpha".into()),
                     }),
                     rows: Vec::new(),
                     allowed_fields: None,

@@ -225,7 +225,7 @@ impl RrdEngine {
                 .filter(|binding| vector_artifact_relevant(&binding.descriptor, &search))
             {
                 if let Some((collection, vector)) = &collection_address {
-                    let source = rrd_core::VectorCollectionAddress {
+                    let source = crate::kernel::VectorCollectionAddress {
                         collection_id: collection.as_str().into(),
                         vector_name: vector.as_str().into(),
                     };
@@ -404,7 +404,7 @@ impl RrdEngine {
         let budget = request.max_storage_keys;
         let mut examined = catalogue.evidence.keys_examined;
         let source = rrd_store::VectorSourceAddress {
-            collection: rrd_core::VectorCollectionAddress {
+            collection: crate::kernel::VectorCollectionAddress {
                 collection_id: collection_id.as_str().into(),
                 vector_name: vector_name.as_str().into(),
             },
@@ -462,7 +462,7 @@ impl RrdEngine {
                         &unchanged
                             .into_iter()
                             .map(|reference| rrd_store::RuntimeVersionedSource::Identity {
-                                model: rrd_core::RuntimeLogicalModel::Vector,
+                                model: crate::kernel::RuntimeLogicalModel::Vector,
                                 reference,
                             })
                             .collect::<Vec<_>>(),

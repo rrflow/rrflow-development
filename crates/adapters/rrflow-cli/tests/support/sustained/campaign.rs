@@ -351,7 +351,7 @@ pub(super) fn check_sample_trace(bytes: &[u8], request_id: &str, credential: &st
     let raw = std::str::from_utf8(bytes).unwrap();
     assert!(!raw.contains(request_id));
     assert!(!raw.contains(credential));
-    let digest = rrd_core::digest::sha256_hex(request_id.as_bytes());
+    let digest = rrflow_kernel::digest::sha256_hex(request_id.as_bytes());
     let events: Vec<serde_json::Value> = raw
         .lines()
         .map(|line| serde_json::from_str(line).expect("trace is complete JSON"))
@@ -441,7 +441,7 @@ fn installed_sampler_trace_during_write_load() {
         let failed = |stage: &str, ordinal: u64, detail: &str| {
             format!(
                 "{stage} ordinal={ordinal} error_sha256={}",
-                rrd_core::digest::sha256_hex(detail.as_bytes())
+                rrflow_kernel::digest::sha256_hex(detail.as_bytes())
             )
         };
         for ordinal in 0..RECORDS {

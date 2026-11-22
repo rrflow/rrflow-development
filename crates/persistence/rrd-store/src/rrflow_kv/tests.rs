@@ -1,12 +1,12 @@
 use super::*;
-use rrd_core::{
+use rrd_lsm::{FailureMode, WriteBatch, WriteBoundary};
+use rrflow_kernel::{
     digest, Claim, DataTransaction, ObjectReceipt, Predicate, Producer, ProjectionId, RuntimeEvent,
     RuntimeEventSchema, RuntimeLogicalModel, RuntimeMutation, RuntimeProperties,
     RuntimePropertySchema, RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeRelation,
     RuntimeRelationSchema, RuntimeSchemaRegistry, RuntimeTableSchema, RuntimeType, RuntimeValue,
     RuntimeValueType, RuntimeVector, Subject, VectorCollectionAddress, VectorValue,
 };
-use rrd_lsm::{FailureMode, WriteBatch, WriteBoundary};
 use std::collections::BTreeMap;
 
 #[test]
@@ -344,8 +344,8 @@ fn reconciliation_evidence_attributes_actual_io_backend() {
 
 fn claim() -> Claim {
     Claim::new(
-        rrd_core::Subject::new("test-subject").unwrap(),
-        rrd_core::Predicate::new("test-predicate").unwrap(),
+        rrflow_kernel::Subject::new("test-subject").unwrap(),
+        rrflow_kernel::Predicate::new("test-predicate").unwrap(),
         "test-value",
         10,
         11,
@@ -891,7 +891,7 @@ fn snapshot_object_closure_denies_foreign_project_references() {
     let first_scope = ScopeId::new("project:first").unwrap();
     let second_scope = ScopeId::new("project:second").unwrap();
     let object = |id: &str, bytes: &[u8]| {
-        let sha256 = rrd_core::digest::sha256_hex(bytes);
+        let sha256 = rrflow_kernel::digest::sha256_hex(bytes);
         ObjectReference::for_bytes(
             id,
             None,

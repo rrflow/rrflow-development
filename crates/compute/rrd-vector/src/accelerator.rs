@@ -10,7 +10,7 @@ use crate::{
     CompactDenseSegment, HnswConfig, HnswIndex, SearchMode, SearchRequest, VectorCandidate,
     VectorQuery, VectorSegmentConfig, COMPACT_DENSE_FORMAT_VERSION, HNSW_FORMAT_VERSION,
 };
-use rrd_core::{ReadStamp, Result, VectorValue};
+use rrflow_kernel::{ReadStamp, Result, VectorValue};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -106,7 +106,7 @@ impl HnswBuildEvidence {
                     .resources
                     .input_vectors
                     .checked_mul(self.resources.dimensions)
-                    .ok_or_else(|| rrd_core::Error::InvalidRuntime {
+                    .ok_or_else(|| rrflow_kernel::Error::InvalidRuntime {
                         reason: "HNSW build resource values overflowed".into(),
                     })?
             || self.resources.cpu_artifact_bytes == 0
@@ -225,7 +225,7 @@ impl HnswAcceleratorRegistry {
         self.revision =
             self.revision
                 .checked_add(1)
-                .ok_or_else(|| rrd_core::Error::InvalidRuntime {
+                .ok_or_else(|| rrflow_kernel::Error::InvalidRuntime {
                     reason: "HNSW accelerator registry revision overflowed".into(),
                 })?;
         self.builders.insert(id, builder);
@@ -278,22 +278,22 @@ pub fn build_hnsw_artifact(
     )?;
     let cpu_backend = hnsw_cpu_backend();
     let input_vectors =
-        u64::try_from(candidates.len()).map_err(|_| rrd_core::Error::InvalidRuntime {
+        u64::try_from(candidates.len()).map_err(|_| rrflow_kernel::Error::InvalidRuntime {
             reason: "HNSW build vector count exceeds u64".into(),
         })?;
     let dimensions =
-        u64::try_from(config.dimensions).map_err(|_| rrd_core::Error::InvalidRuntime {
+        u64::try_from(config.dimensions).map_err(|_| rrflow_kernel::Error::InvalidRuntime {
             reason: "HNSW build dimensions exceed u64".into(),
         })?;
     let cpu_artifact_bytes =
-        u64::try_from(cpu.as_bytes().len()).map_err(|_| rrd_core::Error::InvalidRuntime {
+        u64::try_from(cpu.as_bytes().len()).map_err(|_| rrflow_kernel::Error::InvalidRuntime {
             reason: "HNSW CPU artifact bytes exceed u64".into(),
         })?;
     let base_resources = VectorBuildResourceEvidence {
         input_vectors,
         dimensions,
         input_values: input_vectors.checked_mul(dimensions).ok_or_else(|| {
-            rrd_core::Error::InvalidRuntime {
+            rrflow_kernel::Error::InvalidRuntime {
                 reason: "HNSW input value count overflowed".into(),
             }
         })?,
@@ -391,7 +391,7 @@ pub fn build_hnsw_artifact(
     let mut resources = base_resources;
     resources.accelerator_artifact_bytes =
         Some(
-            u64::try_from(bytes.len()).map_err(|_| rrd_core::Error::InvalidRuntime {
+            u64::try_from(bytes.len()).map_err(|_| rrflow_kernel::Error::InvalidRuntime {
                 reason: "HNSW accelerator artifact bytes exceed u64".into(),
             })?,
         );
@@ -466,11 +466,11 @@ pub fn build_hnsw_artifact(
 pub fn cpu_hnsw_build_evidence(artifact: &HnswIndex) -> Result<HnswBuildEvidence> {
     let descriptor = artifact.descriptor();
     let input_vectors =
-        u64::try_from(descriptor.nodes).map_err(|_| rrd_core::Error::InvalidRuntime {
+        u64::try_from(descriptor.nodes).map_err(|_| rrflow_kernel::Error::InvalidRuntime {
             reason: "HNSW build vector count exceeds u64".into(),
         })?;
     let dimensions =
-        u64::try_from(descriptor.dimensions).map_err(|_| rrd_core::Error::InvalidRuntime {
+        u64::try_from(descriptor.dimensions).map_err(|_| rrflow_kernel::Error::InvalidRuntime {
             reason: "HNSW build dimensions exceed u64".into(),
         })?;
     let evidence = HnswBuildEvidence {
@@ -484,12 +484,12 @@ pub fn cpu_hnsw_build_evidence(artifact: &HnswIndex) -> Result<HnswBuildEvidence
             input_vectors,
             dimensions,
             input_values: input_vectors.checked_mul(dimensions).ok_or_else(|| {
-                rrd_core::Error::InvalidRuntime {
+                rrflow_kernel::Error::InvalidRuntime {
                     reason: "HNSW input value count overflowed".into(),
                 }
             })?,
             cpu_artifact_bytes: u64::try_from(artifact.as_bytes().len()).map_err(|_| {
-                rrd_core::Error::InvalidRuntime {
+                rrflow_kernel::Error::InvalidRuntime {
                     reason: "HNSW CPU artifact bytes exceed u64".into(),
                 }
             })?,

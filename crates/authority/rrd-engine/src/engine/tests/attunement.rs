@@ -11,7 +11,7 @@ use rrd_contract::{
     CancelAttunement, InstallationTargetKind, ResumeAttunement, SessionLease,
 };
 
-use rrd_core::{RuntimeMutation, RuntimeValue, ScopeId};
+use crate::kernel::{RuntimeMutation, RuntimeValue, ScopeId};
 
 use std::path::{Path, PathBuf};
 

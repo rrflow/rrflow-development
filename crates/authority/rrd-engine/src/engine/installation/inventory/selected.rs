@@ -76,7 +76,7 @@ pub(in crate::engine) fn read_admitted_inventory_file(
         return Err(ServiceError::ProjectBindingMismatch);
     }
     budget.check()?;
-    let content_sha256 = rrd_core::digest::sha256_hex(&bytes);
+    let content_sha256 = crate::kernel::digest::sha256_hex(&bytes);
     Ok((bytes, content_sha256))
 }
 

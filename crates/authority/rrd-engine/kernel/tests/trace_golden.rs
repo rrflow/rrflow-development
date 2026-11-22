@@ -1,4 +1,4 @@
-use rrd_core::RuntimeTraceEvent;
+use rrflow_kernel::RuntimeTraceEvent;
 use serde_json::Value;
 
 #[test]

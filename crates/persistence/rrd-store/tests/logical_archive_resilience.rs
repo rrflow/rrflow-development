@@ -1,15 +1,15 @@
-use rrd_core::{
+use rrd_store::{
+    export_logical_archive, export_logical_archive_with_progress, inspect_logical_archive,
+    restore_logical_archive_to_new_root, restore_logical_archive_to_new_root_with_progress,
+    DataRuntime, Error, LocalObjectStore, LogicalArchiveCheckpoint, RrflowKvStore, StorageEngine,
+};
+use rrflow_kernel::{
     Claim, DataTransaction, EmbeddingProvenance, GeoPoint, GeoValue, Predicate, Producer,
     RuntimeCommit, RuntimeEvent, RuntimeEventSchema, RuntimeGeo, RuntimeLogicalModel,
     RuntimeMutation, RuntimeProperties, RuntimeRecord, RuntimeRecordSchema, RuntimeRef,
     RuntimeRelation, RuntimeRelationSchema, RuntimeSchemaRegistry, RuntimeSeriesSample,
     RuntimeTableSchema, RuntimeType, RuntimeVector, ScopeId, SeriesValue, Subject,
     VectorCollectionAddress, VectorNormalization, VectorValue,
-};
-use rrd_store::{
-    export_logical_archive, export_logical_archive_with_progress, inspect_logical_archive,
-    restore_logical_archive_to_new_root, restore_logical_archive_to_new_root_with_progress,
-    DataRuntime, Error, LocalObjectStore, LogicalArchiveCheckpoint, RrflowKvStore, StorageEngine,
 };
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs::OpenOptions;
@@ -610,7 +610,7 @@ fn record(id: &str) -> RuntimeRecord {
     }
 }
 
-fn all_family_mutations(object: rrd_core::ObjectReference) -> Vec<RuntimeMutation> {
+fn all_family_mutations(object: rrflow_kernel::ObjectReference) -> Vec<RuntimeMutation> {
     let subject = RuntimeRef::new("entity", "a").unwrap();
     vec![
         RuntimeMutation::Claim {

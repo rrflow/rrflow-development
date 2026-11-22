@@ -12,7 +12,7 @@ pub(super) struct CommitLexical {
     pub(super) excluded: BTreeSet<RuntimeType>,
     /// The hits' identities, read at the request's stamp.
     pub(super) identities: Vec<rrd_store::RuntimeVersionedSource>,
-    pub(super) hits: Vec<(rrd_core::ProjectionId, Vec<rrd_store::LexicalHit>)>,
+    pub(super) hits: Vec<(crate::kernel::ProjectionId, Vec<rrd_store::LexicalHit>)>,
     pub(super) keys_read: usize,
 }
 

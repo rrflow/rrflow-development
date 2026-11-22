@@ -41,7 +41,7 @@ all required profile cases pass against a real installed binary.
 | Inspected boundary | Existing behavior | Work still required |
 |---|---|---|
 | `rrd-lsm`, `rrd-store` | Native WAL, MVCC, hybrid immutable segments, transaction port, recovery and storage evidence | Finish existing C-04/C-07 qualification; prove SQL workloads over these paths |
-| `rrd-core/src/runtime.rs`, `schema.rs` | Canonical temporal records/relations, property values, schema catalogue | SQL type identity, typmods, nullability, defaults, constraints and relational schema evolution |
+| `rrd-engine/kernel/src/runtime.rs`, `schema.rs` | Canonical temporal records/relations, property values, schema catalogue | SQL type identity, typmods, nullability, defaults, constraints and relational schema evolution |
 | `rrd-query/src/syntax.rs`, `plan.rs` | Narrow rrflowQL grammar and stamped plans | PostgreSQL parsing, SQL binding/coercion/NULL semantics, relational DDL/DML and supported SELECT lowering |
 | `rrd-query/src/fusion.rs`, `arrow.rs` | DataFusion execution with materialized rows | Existing Gate F streaming work plus SQL semantic parity; parser dialect selection alone is insufficient |
 | `rrd-store/src/transaction.rs` | Snapshot-isolated byte transaction and write-conflict detection | PostgreSQL statement snapshots, read/write overlay, savepoints, abort state, locks and constraint concurrency |
@@ -72,7 +72,7 @@ flowchart TD
 ```
 
 `rrd-server` handles bytes, connection-local statement/portal handles and
-responses; it has no direct storage access. `rrd-core` owns canonical values
+responses; it has no direct storage access. `rrflow-kernel` owns canonical values
 and schema meaning. `rrd-query` parses SQL into a bounded AST, binds it against
 an authorized catalogue snapshot, and produces the same canonical plans and
 mutation proposals used by native callers. `RrdEngine` chooses read identity,

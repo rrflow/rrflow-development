@@ -103,11 +103,7 @@ pub(super) fn retired_fixed_reasoning_ledger_api_is_absent() {
         ["reasoning ", "ledger"].concat(),
     ];
     let mut violations = Vec::new();
-    for relative in [
-        "crates/kernel/rrd-core",
-        "crates/authority/rrd-engine",
-        "crates/adapters/rrflow-cli",
-    ] {
+    for relative in ["crates/authority/rrd-engine", "crates/adapters/rrflow-cli"] {
         for retired in &retired_symbols {
             collect_rust_sources(&metadata.root.join(relative), &mut violations, retired);
         }

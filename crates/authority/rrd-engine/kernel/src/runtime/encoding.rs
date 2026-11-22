@@ -306,6 +306,7 @@ pub(super) fn encode_schema(out: &mut Vec<u8>, registry: &RuntimeSchemaRegistry)
     out.extend_from_slice(&(registry.tables.len() as u64).to_be_bytes());
     for (kind, table) in &registry.tables {
         text(out, kind.as_str());
+        out.push(runtime_logical_model_tag(table.model));
         out.push(match table.model {
             crate::RuntimeLogicalModel::Document => 0,
             crate::RuntimeLogicalModel::Relational => 1,

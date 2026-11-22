@@ -1,5 +1,5 @@
-use rrd_core::digest;
 use rrd_store::LocalObjectStore;
+use rrflow_kernel::digest;
 use std::io::Write;
 use std::sync::{Arc, Mutex};
 

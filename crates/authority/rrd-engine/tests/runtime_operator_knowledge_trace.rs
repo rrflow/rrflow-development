@@ -1,11 +1,4 @@
 use rrd_contract::{CanonicalId, InstalledEngramIdentity};
-use rrd_core::{
-    digest, EmbeddingProvenance, ProjectionStamp, ProjectionState, RuntimeCommit,
-    RuntimeLogicalModel, RuntimeMutation, RuntimeProperties, RuntimeRecord, RuntimeRecordSchema,
-    RuntimeRef, RuntimeSchemaRegistry, RuntimeTableSchema, RuntimeType, RuntimeValue,
-    RuntimeVector, ScopeId, VectorCollectionAddress, VectorNormalization, VectorValue,
-    DATA_RUNTIME_CONTRACT_VERSION,
-};
 use rrd_engine::execute_traced_operator_search;
 use rrd_operator_knowledge::{
     OperatorAccessPath, OperatorAdapterDescriptor, OperatorKnowledgeBinding,
@@ -16,6 +9,13 @@ use rrd_store::{RrflowKvStore, RrflowMxStore, StorageEngine};
 use rrd_vector::{
     EmbeddingModelBinding, ScoreMetric, SearchMode, SearchRequest, VectorCandidate, VectorQuery,
     VectorRuntime,
+};
+use rrflow_kernel::{
+    digest, EmbeddingProvenance, ProjectionStamp, ProjectionState, RuntimeCommit,
+    RuntimeLogicalModel, RuntimeMutation, RuntimeProperties, RuntimeRecord, RuntimeRecordSchema,
+    RuntimeRef, RuntimeSchemaRegistry, RuntimeTableSchema, RuntimeType, RuntimeValue,
+    RuntimeVector, ScopeId, VectorCollectionAddress, VectorNormalization, VectorValue,
+    DATA_RUNTIME_CONTRACT_VERSION,
 };
 use std::collections::BTreeSet;
 
@@ -144,7 +144,7 @@ fn knowledge(installed: &InstalledEngramIdentity) -> OperatorKnowledgeBinding {
         dimensions: 3,
         projection: ProjectionStamp {
             contract_version: DATA_RUNTIME_CONTRACT_VERSION,
-            id: rrd_core::ProjectionId::new("operator-pgvector-knowledge").unwrap(),
+            id: rrflow_kernel::ProjectionId::new("operator-pgvector-knowledge").unwrap(),
             generation: 1,
             source_cursor: 7,
             config_digest: "22".repeat(32),

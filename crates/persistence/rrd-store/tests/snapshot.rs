@@ -2,12 +2,12 @@ use std::collections::BTreeMap;
 use std::sync::{Arc, Barrier};
 use std::thread;
 
-use rrd_core::{
+use rrd_store::{Error, RrflowKvStore, RrflowMxStore, StorageEngine};
+use rrflow_kernel::{
     DataTransaction, ReadStamp, RuntimeCommit, RuntimeEvent, RuntimeEventSchema,
     RuntimeGraphSnapshot, RuntimeLogicalModel, RuntimeMutation, RuntimeProperties, RuntimeRecord,
     RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry, RuntimeType, ScopeId,
 };
-use rrd_store::{Error, RrflowKvStore, RrflowMxStore, StorageEngine};
 
 #[path = "snapshot/document_conflicts.rs"]
 mod document_conflicts;
@@ -178,11 +178,11 @@ fn assert_historical_authenticated_point_read(engine: &dyn StorageEngine) {
         .unwrap()
         .snapshot;
     assert!(data_preview.contains(
-        rrd_core::RuntimeLogicalModel::Relational,
+        rrflow_kernel::RuntimeLogicalModel::Relational,
         &RuntimeRef::new("item", "preview-only").unwrap(),
     ));
     assert!(!data_preview.contains(
-        rrd_core::RuntimeLogicalModel::Relational,
+        rrflow_kernel::RuntimeLogicalModel::Relational,
         &RuntimeRef::new("item", "later").unwrap(),
     ));
 

@@ -12,12 +12,12 @@
 use crate::catalog::version_source_covers;
 use crate::execute::{active_graph_values, string, QueryRow};
 use crate::{Source, TraversalDirection};
-use rrd_core::result_identity::{self, ResultIdentityFamily};
-use rrd_core::{
+use rrd_store::{RuntimeAdjacencyDirection, RuntimeVersionedSource};
+use rrflow_kernel::result_identity::{self, ResultIdentityFamily};
+use rrflow_kernel::{
     RuntimeChange, RuntimeLogicalModel, RuntimeMutation, RuntimeRef, RuntimeRelation, RuntimeType,
     RuntimeValue, ScopeId,
 };
-use rrd_store::{RuntimeAdjacencyDirection, RuntimeVersionedSource};
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 pub(crate) mod state;

@@ -3,8 +3,8 @@
 //! Both profiles must produce identical claim reads, projections, and
 //! grounding stamps through the same engine boundary.
 
-use rrd_core::{Claim, ClaimReader, Predicate, Producer, Subject};
 use rrd_store::{GroundingReport, RrflowKvStore, RrflowMxStore, StorageEngine};
+use rrflow_kernel::{Claim, ClaimReader, Predicate, Producer, Subject};
 
 fn claim(subject: &str, predicate: &str, object: &str, from: u64) -> Claim {
     Claim::new(

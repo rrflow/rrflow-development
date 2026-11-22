@@ -12,7 +12,7 @@ const INSTANCE_SCOPE: &str = "instance:test-instance";
 
 #[test]
 fn unrepresentable_context_reference_denies_flight_before_runtime_publication() {
-    use rrd_core::{
+    use crate::kernel::{
         RuntimeCommit, RuntimeLogicalModel, RuntimeMutation, RuntimeRecord, RuntimeRef,
         RuntimeSchemaRegistry, RuntimeTableSchema, RuntimeType, RuntimeValue, ScopeId,
     };
@@ -646,7 +646,7 @@ fn prompt_flight_operations_require_their_exact_grants() {
 fn the_first_flight_on_an_empty_engram_installs_the_flight_tables() {
     let (_root, engine) = isolated_engine();
     let lease = session(&engine, "flight-empty-session");
-    let scope = rrd_core::ScopeId::new(INSTANCE_SCOPE).unwrap();
+    let scope = crate::kernel::ScopeId::new(INSTANCE_SCOPE).unwrap();
     assert_eq!(engine.storage.runtime().schema(&scope).unwrap(), None);
 
     let launched = engine
@@ -672,10 +672,10 @@ fn the_first_flight_on_an_empty_engram_installs_the_flight_tables() {
     assert_eq!(schema.revision, 1);
     assert!(schema
         .records
-        .contains_key(&rrd_core::RuntimeType::new(PROMPT_FLIGHT_KIND).unwrap()));
+        .contains_key(&crate::kernel::RuntimeType::new(PROMPT_FLIGHT_KIND).unwrap()));
     assert!(schema
         .events
-        .contains_key(&rrd_core::RuntimeType::new(PROMPT_FLIGHT_EVENT_KIND).unwrap()));
+        .contains_key(&crate::kernel::RuntimeType::new(PROMPT_FLIGHT_EVENT_KIND).unwrap()));
 }
 
 #[test]

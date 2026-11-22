@@ -5,7 +5,7 @@
 //! engine transaction. Failed commits leave explicit orphans for later GC.
 
 use crate::{Error, ImmutableObjectStore, Result, StorageEngine};
-use rrd_core::{
+use rrflow_kernel::{
     DataTransaction, ObjectReference, RuntimeCommitOutcome, RuntimeMutation, RuntimeRef,
 };
 

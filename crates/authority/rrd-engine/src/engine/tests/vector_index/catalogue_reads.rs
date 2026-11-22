@@ -34,7 +34,7 @@ fn retained_search_uses_its_artifact_generation_after_publication_and_reopen() {
         )
         .unwrap();
     assert_eq!(first.index.generation, 1);
-    let scope = rrd_core::ScopeId::new(format!("instance:{}", instance())).unwrap();
+    let scope = crate::kernel::ScopeId::new(format!("instance:{}", instance())).unwrap();
     let retained = engine.storage.runtime().read_stamp(&scope).unwrap();
     let request = search_request(VectorSearchMode::RequireApproximate {
         exact_rerank: 3,
@@ -107,7 +107,7 @@ fn catalogue_search_work_excludes_unrelated_history_and_shares_the_request_budge
             400,
         )
         .unwrap();
-    let scope = rrd_core::ScopeId::new(format!("instance:{}", instance())).unwrap();
+    let scope = crate::kernel::ScopeId::new(format!("instance:{}", instance())).unwrap();
     let retained = engine.storage.runtime().read_stamp(&scope).unwrap();
     let request = search_request(VectorSearchMode::RequireApproximate {
         exact_rerank: 3,
@@ -226,7 +226,7 @@ fn retained_quantization_state_survives_activation_retirement_and_reopen() {
             400,
         )
         .unwrap();
-    let scope = rrd_core::ScopeId::new(format!("instance:{}", instance())).unwrap();
+    let scope = crate::kernel::ScopeId::new(format!("instance:{}", instance())).unwrap();
     let ready = engine.storage.runtime().read_stamp(&scope).unwrap();
     engine
         .activate_vector_quantization_artifact(

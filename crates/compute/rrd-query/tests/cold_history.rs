@@ -1,16 +1,16 @@
 use bytes::Bytes;
 use parquet::{arrow::arrow_reader::ParquetRecordBatchReaderBuilder, basic::Compression};
-use rrd_core::{
-    ReadStamp, RuntimeChange, RuntimeCommit, RuntimeLogicalModel, RuntimeMutation, RuntimeRecord,
-    RuntimeRef, RuntimeRetirement, RuntimeSchemaRegistry, RuntimeTableSchema, RuntimeType,
-    RuntimeValue, ScopeId,
-};
 use rrd_query::{
     decode_cold_history_page, encode_cold_history_page, record_batch_to_rows,
     ColdHistoryReadExpectation, ColdHistoryReadLimits, ParquetCompression, ParquetEncoding,
     ParquetExportLimits,
 };
 use rrd_store::{RrflowKvStore, StorageEngine};
+use rrflow_kernel::{
+    ReadStamp, RuntimeChange, RuntimeCommit, RuntimeLogicalModel, RuntimeMutation, RuntimeRecord,
+    RuntimeRef, RuntimeRetirement, RuntimeSchemaRegistry, RuntimeTableSchema, RuntimeType,
+    RuntimeValue, ScopeId,
+};
 use std::{
     collections::BTreeMap,
     time::{Duration, Instant},
@@ -101,7 +101,7 @@ fn stamped_native_history_encodes_compressed_rows_and_survives_reopen() {
         requested_after: page.requested_after,
         through_cursor: page.through_cursor,
         rows: page.changes.len() as u64,
-        artifact_sha256: rrd_core::digest::sha256_hex(&bytes),
+        artifact_sha256: rrflow_kernel::digest::sha256_hex(&bytes),
     };
     let read_limits = ColdHistoryReadLimits {
         max_rows: 32,
@@ -125,7 +125,7 @@ fn stamped_native_history_encodes_compressed_rows_and_survives_reopen() {
         requested_after: empty.requested_after,
         through_cursor: empty.through_cursor,
         rows: 0,
-        artifact_sha256: rrd_core::digest::sha256_hex(&empty_artifact.artifact.bytes),
+        artifact_sha256: rrflow_kernel::digest::sha256_hex(&empty_artifact.artifact.bytes),
     };
     let empty_decoded = decode_cold_history_page(
         empty_artifact.artifact.bytes,

@@ -44,7 +44,7 @@ impl rrd_vector::HnswArtifactBuilder for FakeHnswGpu {
         generation: u64,
         source_cursor: u64,
         candidates: &[rrd_vector::VectorCandidate],
-    ) -> rrd_core::Result<Vec<u8>> {
+    ) -> crate::kernel::Result<Vec<u8>> {
         match self.mode {
             FakeHnswGpuMode::Correct => rrd_vector::HnswIndex::build(
                 config.clone(),
@@ -53,7 +53,7 @@ impl rrd_vector::HnswArtifactBuilder for FakeHnswGpu {
                 candidates.to_vec(),
             )
             .map(|artifact| artifact.as_bytes().to_vec()),
-            FakeHnswGpuMode::Fail => Err(rrd_core::Error::InvalidRuntime {
+            FakeHnswGpuMode::Fail => Err(crate::kernel::Error::InvalidRuntime {
                 reason: "test GPU device failed".into(),
             }),
             FakeHnswGpuMode::Corrupt => Ok(b"not-an-hnsw-artifact".to_vec()),
@@ -293,7 +293,7 @@ pub(super) fn gpu_hnsw_failure_falls_back_and_require_mode_cannot_publish() {
         VectorIndexDifferentialStatus::NotRun
     );
 
-    let scope = rrd_core::ScopeId::new(format!("instance:{}", instance())).unwrap();
+    let scope = crate::kernel::ScopeId::new(format!("instance:{}", instance())).unwrap();
     let entries_before_require =
         crate::vector_artifact_catalog_entries(&engine.storage, &scope).unwrap();
     let mut require_request = fallback_request.clone();

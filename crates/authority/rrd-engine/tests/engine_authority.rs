@@ -10,7 +10,6 @@ use rrd_contract::{
     SessionLimits, StorageProfileKind, TransactionMutation, VectorMemoryTier, VectorSearchMetric,
     VectorValueKind,
 };
-use rrd_core::{digest, Claim, Predicate, Producer, Subject};
 use rrd_engine::{
     EngramAdminAction, EngramAdminResult, Invocation, InvocationCredential, RrdEngine,
     RrdOperation, ServiceError,
@@ -21,6 +20,7 @@ use rrd_engram::{
     ReceiptRequest, ScheduleBackup, SetDesired, SetRecoveryPolicy, LOCAL_OPERATOR_POLICY_FORMAT,
 };
 use rrd_store::StorageEngine;
+use rrflow_kernel::{digest, Claim, Predicate, Producer, Subject};
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;

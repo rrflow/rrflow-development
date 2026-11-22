@@ -1,11 +1,11 @@
-use rrd_core::{
-    ProjectionId, ReadStamp, RuntimeProperties, RuntimeRef, RuntimeValue, RuntimeVector, ScopeId,
-    VectorCollectionAddress, VectorValue,
-};
 use rrd_vector::{
     search_exact_ref, FilterCondition, FilterExpression, FilterOperator, HnswConfig, HnswIndex,
     HnswMaintenanceKind, ScoreMetric, SearchMode, SearchRequest, VectorCandidate, VectorQuery,
     VectorRuntime,
+};
+use rrflow_kernel::{
+    ProjectionId, ReadStamp, RuntimeProperties, RuntimeRef, RuntimeValue, RuntimeVector, ScopeId,
+    VectorCollectionAddress, VectorValue,
 };
 use std::collections::BTreeSet;
 

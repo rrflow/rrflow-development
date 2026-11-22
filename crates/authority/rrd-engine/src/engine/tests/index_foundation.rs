@@ -219,7 +219,7 @@ fn public_ensure_rebuilds_legacy_identities_without_disabling_uniqueness() {
     assert!(!rebuilt.index.identity_rebuild_required);
     assert_eq!(
         rebuilt.index.result_identity_version,
-        Some(rrd_core::result_identity::RESULT_IDENTITY_VERSION)
+        Some(crate::kernel::result_identity::RESULT_IDENTITY_VERSION)
     );
     assert_eq!(rebuilt.index.maintenance.unwrap().mode, "full_build");
 }

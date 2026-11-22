@@ -41,7 +41,7 @@ pub(super) fn publication_attributes(
 }
 
 pub(super) fn quantization_trace_attributes(
-    stamp: &rrd_core::ProjectionStamp,
+    stamp: &crate::kernel::ProjectionStamp,
     kind: rrd_vector::VectorArtifactKind,
     action: &str,
 ) -> RuntimeProperties {
@@ -120,7 +120,7 @@ pub(super) fn finish_publication_error<E: StorageEngine, T>(
         ("failed_stage".into(), RuntimeValue::String(stage.into())),
         (
             "error_digest".into(),
-            RuntimeValue::Digest(rrd_core::digest::sha256_hex(rendered.as_bytes())),
+            RuntimeValue::Digest(crate::kernel::digest::sha256_hex(rendered.as_bytes())),
         ),
     ]);
     if let Err(trace_error) = span.finish(store, TraceOutcome::Error, Vec::new(), attributes) {

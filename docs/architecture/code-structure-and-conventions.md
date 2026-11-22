@@ -12,9 +12,9 @@ The owner's words of 2026-11-13: "files that are far too long need to be clearly
 | Area | Measured |
 |---|---|
 | Engine size | 30 crates, 787 `.rs` files, about 204k lines |
-| Long engine files | 61 non-test files over 1,000 lines and 147 over 500. The largest are `rrd-contract/src/lib.rs` (7,669 lines, 261 public types, an 850-line `endpoint_catalogue()`), `rrd-lsm/src/database.rs` (3,056), `rrd-core/src/runtime.rs` (2,825) and `rrd-lsm/src/segment/mod.rs` (2,802) |
+| Long engine files | 61 non-test files over 1,000 lines and 147 over 500. The largest are `rrd-contract/src/lib.rs` (7,669 lines, 261 public types, an 850-line `endpoint_catalogue()`), `rrd-lsm/src/database.rs` (3,056), `rrd-engine/kernel/src/runtime.rs` (2,825) and `rrd-lsm/src/segment/mod.rs` (2,802) |
 | Engine lint and layout rules | No `clippy.toml`, `rustfmt.toml`, `deny.toml` or `[workspace.lints]`; `too_many_arguments` allowed 132 times. `workspace_architecture.rs` enforces the package-to-path map, dependency sets for 7 crates, forbidden edges and vocabulary, but nothing on file size, module style, errors or tier order |
-| Engine module, error and naming patterns | Both `mod.rs` and file-named modules, plus 23 `#[path]` attributes. Errors are hand-written in five styles, with about 125 `Result<_, String>` and 109 `Box<dyn Error>` signatures. About 35 SHA-256 validators and 13 hand-written hex encoders sit beside `rrd-core::digest`. "engram" appears 3,100 times and "engram" 115, with miscased renames such as `InstalledengramRecord` |
+| Engine module, error and naming patterns | Both `mod.rs` and file-named modules, plus 23 `#[path]` attributes. Errors are hand-written in five styles, with about 125 `Result<_, String>` and 109 `Box<dyn Error>` signatures. About 35 SHA-256 validators and 13 hand-written hex encoders sit beside `rrflow-kernel::digest`. "engram" appears 3,100 times and "engram" 115, with miscased renames such as `InstalledengramRecord` |
 | Engine layering | Group directories do not match dependency tiers: `transport/` holds both the lowest crate (`rrd-contract`) and the highest (`rrd-server`). `rrd-maintenance` and `rrd-kubernetes` have no consumers |
 | Connectome size | 406 TS/TSX files (67,686 lines) and 41 Rust files (18,064 lines) |
 | Connectome layout | Five organizing schemes at once: layer folders, `screens/{pages,views}`, a half-built `shell/shared/spokes`, the `rrflow/` client, and workspace areas. Modals live in 3 places, stores in 2, components in 3 and connection logic in 4. 45 imports break the written spoke rules |
@@ -31,7 +31,7 @@ The owner's words of 2026-11-13: "files that are far too long need to be clearly
 | R3 | File-named modules (`foo.rs` with `foo/`). No new `mod.rs` and no `#[path]` | Rust 2018 module idiom | the same check, with the 10 `mod.rs` files and 23 `#[path]` attributes on the ratchet list |
 | R4 | Crates form declared tiers, and a crate depends only on lower tiers | layered architecture, as in rustc's own crate graph | one tier table in `workspace_architecture.rs`; every edge checked, not just 7 crates |
 | R5 | One `Error` enum per library crate in `error.rs` (`thiserror`), with `pub type Result<T>`. No `Result<_, String>` or `Box<dyn Error>` in library crates | Rust API guidelines C-GOOD-ERR | a source check on the ratchet: counts may only fall |
-| R6 | One digest type: `Sha256Digest` (validated lowercase hex), with one encoder and one validator, in a tier-0 crate both `rrd-core` and `rrd-contract` use | one owner per concept | the check refuses `Sha256::new` and hex encoders outside that crate |
+| R6 | One digest type: `Sha256Digest` (validated lowercase hex), with one encoder and one validator, in a tier-0 crate both `rrflow-kernel` and `rrd-contract` use | one owner per concept | the check refuses `Sha256::new` and hex encoders outside that crate |
 | R7 | Configuration naming: `Options` for constructor inputs, `Settings` only for S1 settings, `Policy` for rules, `Limits` for caps. One `open(path, Options)` instead of `open_with_*` and `create_with_*` fan-out. More than three optional inputs means an options struct | builder and options patterns of the API guidelines | `too_many_arguments` stops being allowed: its 132 escapes go on the ratchet |
 | R8 | `[workspace.lints]`: `unsafe_code` denied outside named crates, `clippy::undocumented_unsafe_blocks`, `unreachable_pub`, `missing_debug_implementations`; `cargo-deny` for licences and advisories | standard workspace hygiene | CI clippy and `cargo deny check` |
 | R9 | Tests: unit tests in a sibling `tests.rs` (`#[cfg(test)] mod tests;`); integration and public-API tests in `tests/`. `rrd-engine/src/engine/tests/` (42.8k lines inside the crate) moves to `tests/` wherever it uses the public API | Cargo conventions | the shape check |
@@ -42,7 +42,7 @@ The owner's words of 2026-11-13: "files that are far too long need to be clearly
 
 | Tier | Directory | Crates |
 |---|---|---|
-| 0 | `crates/foundation/` | digest and id primitives (new), `rrd-contract`, `rrd-core` |
+| 0 | `crates/foundation/` | digest and id primitives (new), `rrd-contract`, `rrflow-kernel` |
 | 1 | `crates/storage/` | `rrd-lsm`, `rrd-store` (rrflowKV and rrflowCLD) |
 | 2 | `crates/compute/` | `rrd-query`, `rrd-vector`, `rrd-inference`, `rrd-attunement` |
 | 3 | `crates/governance/` | `rrd-security`, `rrd-engram` (renamed to engram), `rrd-observation` |
@@ -74,7 +74,7 @@ The owner's words of 2026-11-13: "files that are far too long need to be clearly
 
    Proof: the OpenAPI digest constant is unchanged, every SDK projection regenerates with no diff, and all `rrd-contract` tests pass untouched.
 2. **`rrd-lsm/src/database.rs`** → `database/{options, failpoints, open, transactions, reads, compaction, gc, snapshot}.rs`.
-3. **`rrd-core/src/runtime.rs`**, **`rrd-lsm/src/segment/mod.rs`**, **`rrd-core/src/trace.rs`**, **`rrd-engine/src/engine/installation.rs`**, **`rrd-store/src/backup.rs`**, **`rrd-store/src/rrflow_kv.rs`** and **`rrd-vector/src/hnsw.rs`**, by the split points recorded in the 2026-11-13 survey.
+3. **`rrd-engine/kernel/src/runtime.rs`**, **`rrd-lsm/src/segment/mod.rs`**, **`rrd-engine/kernel/src/trace.rs`**, **`rrd-engine/src/engine/installation.rs`**, **`rrd-store/src/backup.rs`**, **`rrd-store/src/rrflow_kv.rs`** and **`rrd-vector/src/hnsw.rs`**, by the split points recorded in the 2026-11-13 survey.
 4. The remaining files on the ratchet list, largest first.
 
 ## 3. Connectome rules

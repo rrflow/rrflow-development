@@ -20,7 +20,7 @@ use crate::recovery_budget::RecoveryBudget;
 use crate::segment::{new_page_cache_with_limits, Segment};
 use crate::wal::replay_file_bounded;
 use crate::{DatabaseOptions, Error, Memtable, Result, VersionedValue};
-use rrd_core::digest::Sha256;
+use rrflow_kernel::digest::Sha256;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs::File;

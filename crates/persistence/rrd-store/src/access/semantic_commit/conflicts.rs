@@ -1,7 +1,7 @@
 //! Admission of document writes whose begin snapshot precedes publication.
 
 use super::*;
-use rrd_core::RuntimeLogicalModel;
+use rrflow_kernel::RuntimeLogicalModel;
 
 pub(super) fn validate_document_writes(
     reader: &(impl AccessRead + ?Sized),

@@ -173,7 +173,7 @@ pub(super) enum ReadPath {
         traversals: Vec<TraversalPlan>,
     },
     Index {
-        id: rrd_core::ProjectionId,
+        id: rrflow_kernel::ProjectionId,
         kind: IndexKind,
         generation: u64,
         source_cursor: u64,
@@ -184,9 +184,9 @@ pub(super) enum ReadPath {
         artifact_rows: u64,
     },
     CommitIndex {
-        id: rrd_core::ProjectionId,
+        id: rrflow_kernel::ProjectionId,
         probe: crate::plan::CommitIndexProbe,
-        model: rrd_core::RuntimeLogicalModel,
+        model: rrflow_kernel::RuntimeLogicalModel,
         fallback: Vec<RuntimeVersionedSource>,
     },
 }

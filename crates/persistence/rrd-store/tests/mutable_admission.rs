@@ -1,8 +1,8 @@
-use rrd_core::{Claim, Predicate, Producer, RuntimeCommit, RuntimeMutation, ScopeId, Subject};
 use rrd_store::{
     filesystem::AnchoredPath, ControlTransition, DatabaseOptions, Durability, Error, MutableLimits,
     MutableResource, RrflowKvInspector, RrflowKvStore, StorageEngine,
 };
+use rrflow_kernel::{Claim, Predicate, Producer, RuntimeCommit, RuntimeMutation, ScopeId, Subject};
 use std::{
     collections::BTreeMap,
     path::{Path, PathBuf},

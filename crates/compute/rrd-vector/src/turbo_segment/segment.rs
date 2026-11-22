@@ -193,26 +193,27 @@ impl TurboQuantSegment {
         let payload_len =
             u64::from_le_bytes(bytes[14..22].try_into().expect("fixed payload slice"));
         let header_len =
-            usize::try_from(header_len).map_err(|_| rrd_core::Error::InvalidRuntime {
+            usize::try_from(header_len).map_err(|_| rrflow_kernel::Error::InvalidRuntime {
                 reason: "TurboQuant header length overflows this host".into(),
             })?;
         let payload_len =
-            usize::try_from(payload_len).map_err(|_| rrd_core::Error::InvalidRuntime {
+            usize::try_from(payload_len).map_err(|_| rrflow_kernel::Error::InvalidRuntime {
                 reason: "TurboQuant payload length overflows this host".into(),
             })?;
         let expected_len = HEADER_PREFIX_BYTES
             .checked_add(header_len)
             .and_then(|value| value.checked_add(payload_len))
-            .ok_or_else(|| rrd_core::Error::InvalidRuntime {
+            .ok_or_else(|| rrflow_kernel::Error::InvalidRuntime {
                 reason: "TurboQuant artifact length overflows".into(),
             })?;
         if bytes.len() != expected_len {
             return invalid("TurboQuant artifact framing length is inconsistent");
         }
-        let advertised =
-            std::str::from_utf8(&bytes[22..86]).map_err(|_| rrd_core::Error::InvalidRuntime {
+        let advertised = std::str::from_utf8(&bytes[22..86]).map_err(|_| {
+            rrflow_kernel::Error::InvalidRuntime {
                 reason: "TurboQuant digest is not ASCII".into(),
-            })?;
+            }
+        })?;
         let header_bytes = &bytes[HEADER_PREFIX_BYTES..HEADER_PREFIX_BYTES + header_len];
         let payload = &bytes[HEADER_PREFIX_BYTES + header_len..];
         let actual = artifact_digest(header_bytes, payload);
@@ -220,7 +221,7 @@ impl TurboQuantSegment {
             return invalid("TurboQuant artifact digest does not match its bytes");
         }
         let header: SegmentHeader = serde_json::from_slice(header_bytes).map_err(|error| {
-            rrd_core::Error::InvalidRuntime {
+            rrflow_kernel::Error::InvalidRuntime {
                 reason: format!("TurboQuant header cannot be decoded: {error}"),
             }
         })?;

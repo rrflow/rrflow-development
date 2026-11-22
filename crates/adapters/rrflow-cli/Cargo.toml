@@ -30,7 +30,7 @@ bytes = "1"
 parquet = { version = "=59.2.0", default-features = false, features = ["arrow"] }
 rrd-query = { path = "../../compute/rrd-query" }
 tempfile = "3"
-rrd-core = { path = "../../kernel/rrd-core" }
+rrflow-kernel = { workspace = true }
 rrd-store = { path = "../../persistence/rrd-store" }
 rrd-security = { path = "../../authority/rrd-security" }
 rrd-engram = { path = "../../authority/rrd-engram" }

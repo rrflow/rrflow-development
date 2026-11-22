@@ -3,7 +3,7 @@
 //! every registry an estate already persisted keeps its digest, and with it
 //! its commit identities and history proofs. Never regenerate this fixture.
 
-use rrd_core::{
+use rrflow_kernel::{
     RuntimeCommit, RuntimeEventSchema, RuntimeLogicalModel, RuntimeMutation, RuntimePropertySchema,
     RuntimeRecordSchema, RuntimeRelationSchema, RuntimeSchemaRegistry, RuntimeTableSchema,
     RuntimeType, RuntimeValueType, ScopeId,

@@ -1,7 +1,7 @@
 use bytes::Bytes;
 use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
-use rrd_core::RuntimeValue;
 use rrd_query::{export_parquet, record_batch_to_rows, ParquetExportLimits, QueryRow};
+use rrflow_kernel::RuntimeValue;
 use std::{
     collections::BTreeMap,
     time::{Duration, Instant},

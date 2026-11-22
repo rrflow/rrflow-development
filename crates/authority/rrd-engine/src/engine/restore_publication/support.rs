@@ -136,7 +136,7 @@ pub(super) fn published_receipt(
     }
     let inspector = RrflowKvInspector::open_anchored_with_options(
         &paths.active,
-        super::super::core::installed_storage_options(&locator.storage)?,
+        super::super::instance::installed_storage_options(&locator.storage)?,
     )?;
     let key = publication_receipt_key(&locator.identity.instance_id, &plan.id);
     let Some(bytes) = inspector.control_record(&key)? else {

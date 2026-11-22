@@ -266,7 +266,7 @@ impl RrdEngine {
 pub(super) fn text_subject(identity: &str, kind: &CanonicalId) -> Result<DataReference> {
     let reference = identity
         .strip_prefix("record:")
-        .and_then(rrd_core::result_identity::parse_reference)
+        .and_then(crate::kernel::result_identity::parse_reference)
         .filter(|reference| reference.kind.as_str() == kind.as_str())
         .ok_or_else(|| {
             ServiceError::Query(

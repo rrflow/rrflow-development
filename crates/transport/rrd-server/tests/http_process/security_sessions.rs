@@ -19,7 +19,7 @@ pub(super) fn initialized_security_authority_binds_sessions_and_denies_ungranted
     let principal = Principal {
         id: CanonicalId::new("connectome-local").unwrap(),
         kind: PrincipalKind::User,
-        credential_sha256: rrd_core::digest::sha256_hex(b"local-api-key"),
+        credential_sha256: rrflow_kernel::digest::sha256_hex(b"local-api-key"),
         credential_revision: 1,
         not_before_unix_ms: 1,
         expires_at_unix_ms: u64::MAX,
@@ -304,7 +304,7 @@ pub(super) fn initialized_security_authority_binds_sessions_and_denies_ungranted
         assert_eq!(export["chain_head_sha256"], page["chain_head_sha256"]);
         assert_eq!(
             export["content_sha256"],
-            rrd_core::digest::sha256_hex(lines.as_bytes())
+            rrflow_kernel::digest::sha256_hex(lines.as_bytes())
         );
     }
 
@@ -315,7 +315,7 @@ pub(super) fn initialized_security_authority_binds_sessions_and_denies_ungranted
     let json_lines = exported["json_lines"].as_str().unwrap();
     assert_eq!(
         exported["content_sha256"],
-        rrd_core::digest::sha256_hex(json_lines.as_bytes())
+        rrflow_kernel::digest::sha256_hex(json_lines.as_bytes())
     );
     assert_eq!(
         exported["record_count"].as_u64().unwrap() as usize,
@@ -359,7 +359,7 @@ pub(super) fn jwt_session_exchange_reopens_and_credential_rotation_revokes_token
     let principal = Principal {
         id: principal_id.clone(),
         kind: PrincipalKind::Service,
-        credential_sha256: rrd_core::digest::sha256_hex(b"jwt-api-key"),
+        credential_sha256: rrflow_kernel::digest::sha256_hex(b"jwt-api-key"),
         credential_revision: 1,
         not_before_unix_ms: 1,
         expires_at_unix_ms: u64::MAX,
@@ -387,7 +387,7 @@ pub(super) fn jwt_session_exchange_reopens_and_credential_rotation_revokes_token
         issuer: "https://rrd.test".into(),
         audience: "rrflow-client".into(),
         key_id: CanonicalId::new("jwt-key-1").unwrap(),
-        signing_key_sha256: rrd_core::digest::sha256_hex(signing_key),
+        signing_key_sha256: rrflow_kernel::digest::sha256_hex(signing_key),
         not_before_unix_ms: 1,
         expires_at_unix_ms: u64::MAX,
         disabled: false,
@@ -528,7 +528,7 @@ pub(super) fn jwt_session_exchange_reopens_and_credential_rotation_revokes_token
     rotated.revision = 2;
     let principal = rotated.principals.get_mut(&principal_id).unwrap();
     principal.credential_revision = 2;
-    principal.credential_sha256 = rrd_core::digest::sha256_hex(b"rotated-jwt-api-key");
+    principal.credential_sha256 = rrflow_kernel::digest::sha256_hex(b"rotated-jwt-api-key");
     repository
         .replace(
             1,

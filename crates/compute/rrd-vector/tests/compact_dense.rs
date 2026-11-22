@@ -1,11 +1,11 @@
-use rrd_core::{
-    digest, ProjectionId, ReadStamp, RuntimeProperties, RuntimeRef, RuntimeValue, RuntimeVector,
-    ScopeId, VectorCollectionAddress, VectorValue,
-};
 use rrd_vector::{
     search_exact_ref, CompactDenseSegment, DenseKernel, DenseMemoryPlacement, ScoreMetric,
     SearchMode, SearchRequest, VectorCandidate, VectorQuery, VectorSegmentConfig,
     COMPACT_DENSE_FORMAT_VERSION,
+};
+use rrflow_kernel::{
+    digest, ProjectionId, ReadStamp, RuntimeProperties, RuntimeRef, RuntimeValue, RuntimeVector,
+    ScopeId, VectorCollectionAddress, VectorValue,
 };
 use std::collections::BTreeSet;
 use tempfile::tempdir;

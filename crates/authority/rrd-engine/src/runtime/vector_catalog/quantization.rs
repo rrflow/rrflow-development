@@ -91,7 +91,7 @@ where
         quantization_trace_attributes(&stamp, artifact.kind(), "build"),
     )?;
     let result = (|| -> Result<QuantizationArtifactPublication, Box<dyn std::error::Error>> {
-        let mut staged: Option<(rrd_core::ObjectReference, QuantizationArtifactEntry)> = None;
+        let mut staged: Option<(crate::kernel::ObjectReference, QuantizationArtifactEntry)> = None;
         // A commit that loses its cursor to another commit in the scope
         // retries from a fresh catalogue read, which re-checks the operation
         // and the generation; the bytes are staged once.
@@ -449,7 +449,7 @@ pub(super) fn commit_quantization_records<D>(
     actor: &str,
     at: Millis,
     records: Vec<RuntimeRecord>,
-    object: Option<rrd_core::ObjectReference>,
+    object: Option<crate::kernel::ObjectReference>,
 ) -> Result<Option<RuntimeCommitOutcome>, Box<dyn std::error::Error>>
 where
     D: DataRuntimeAccess,

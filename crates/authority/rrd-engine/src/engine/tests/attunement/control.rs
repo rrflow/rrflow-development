@@ -112,7 +112,7 @@ pub(super) fn attunement_installed_connect_failure_and_exact_receipts_survive_re
         assert_eq!(connected.status.job.checkpoints.len(), 1);
         let checkpoint = &connected.status.job.checkpoints[0];
         assert_eq!(checkpoint.phase, Phase::Connect);
-        let scope = rrd_core::ScopeId::new(format!(
+        let scope = crate::kernel::ScopeId::new(format!(
             "instance:{}",
             installed.preview.attunement.target.instance_id
         ))

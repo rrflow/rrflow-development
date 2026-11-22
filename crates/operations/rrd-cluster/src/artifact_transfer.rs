@@ -5,11 +5,11 @@ use crate::{
     ArtifactTransferOperation, ArtifactTransferReceipt, ArtifactTransferRpc,
     ArtifactTransferRpcResult, ClusterError, NodeId, Result,
 };
-use rrd_core::{RuntimeMutation, ScopeId};
 use rrd_store::{
     publish_durable_rename, sync_directory_metadata, Error as StoreError, ImmutableObjectStore,
     LocalObjectStore, StorageEngine,
 };
+use rrflow_kernel::{RuntimeMutation, ScopeId};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs::{self, File, OpenOptions};
 use std::io::Write;

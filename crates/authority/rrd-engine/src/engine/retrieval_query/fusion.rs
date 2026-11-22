@@ -176,7 +176,7 @@ impl RetrievalExecutionContext<'_> {
                         rrd_vector::score_query(&query, candidate_vector, config.metric)
                             .map(bounded_similarity)
                     })
-                    .collect::<rrd_core::Result<Vec<_>>>()
+                    .collect::<crate::kernel::Result<Vec<_>>>()
                     .map_err(core_vector)?
                     .into_iter()
                     .max_by(f64::total_cmp)

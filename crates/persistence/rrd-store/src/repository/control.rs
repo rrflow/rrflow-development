@@ -9,7 +9,7 @@ use crate::control::{
 use crate::key_codec::KeyCodec;
 use crate::keyspaces::{self, Durability};
 use crate::{Error, IndexCommitBindingDefinition, Result, StorageEngine, StorageTransaction};
-use rrd_core::{digest, ScopeId};
+use rrflow_kernel::{digest, ScopeId};
 
 const INDEX_CATALOGUE_CONTROL_PREFIX: &str = "server/state/index-catalogue/";
 

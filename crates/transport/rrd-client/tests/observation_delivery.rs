@@ -5,9 +5,9 @@ use rrd_client::{
     ClientConfig, RequestOptions, RrdClient, Session,
 };
 use rrd_contract::*;
-use rrd_core::digest::sha256_hex;
 use rrd_engine::{EndpointCredentials, RrdEngine};
 use rrd_server::RrdHttpServer;
+use rrflow_kernel::digest::sha256_hex;
 use serde_json::{json, Value};
 use std::{path::Path, time::Duration};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};

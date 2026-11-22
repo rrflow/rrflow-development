@@ -7,7 +7,7 @@ members = [
     "crates/authority/rrd-security",
     "crates/authority/rrd-engine",
     "crates/transport/rrd-server",
-    "crates/kernel/rrd-core",
+    "crates/authority/rrd-engine/kernel",
     "crates/compute/rrd-query",
     "crates/persistence/rrd-store",
     "crates/compute/rrd-vector",
@@ -33,8 +33,7 @@ members = [
     "crates/evaluation/qualification/rrflow-qualification-storage",
 ]
 
-# Remaining future member. Current dependency arrows point inward:
-# core <- store <- engine <- {CLI, MCP, server}; eval is standalone.
+# Storage and query consume the engine-owned kernel. RrdEngine composes both.
 
 [workspace.package]
 version = "1.0.0"
@@ -44,12 +43,13 @@ repository = "https://github.com/rrflow/rrflow"
 publish = false
 
 [workspace.dependencies]
+rrflow-kernel = { path = "crates/authority/rrd-engine/kernel" }
 serde = { version = "1", features = ["derive"] }
 # A count or digest over a float is checked after the wire, so parsing has to be exact.
 serde_json = { version = "1", features = ["float_roundtrip"] }
 toml = "0.8"
 # Step T: spans at subsystem boundaries, zero-cost with no subscriber
-# installed. The kernel (rrd-core) stays out: serde and pure hashing only.
+# installed. The kernel (rrflow-kernel) stays out: serde and pure hashing only.
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 unicode-normalization = "0.1"

@@ -103,8 +103,8 @@ pub(super) fn add_graph_context(
                 })?;
                 let evidence = ContextEvidence {
                     kind: ContextEvidenceKind::Graph,
-                    source: rrd_core::result_identity::typed(
-                        rrd_core::result_identity::ResultIdentityFamily::Relation,
+                    source: crate::kernel::result_identity::typed(
+                        crate::kernel::result_identity::ResultIdentityFamily::Relation,
                         &edge.relation,
                     ),
                     source_rank: evidence_rank,
@@ -174,14 +174,14 @@ pub(super) fn add_candidate(
 }
 
 pub(super) fn record_identity(reference: &RuntimeRef) -> String {
-    rrd_core::result_identity::typed(
-        rrd_core::result_identity::ResultIdentityFamily::Record,
+    crate::kernel::result_identity::typed(
+        crate::kernel::result_identity::ResultIdentityFamily::Record,
         reference,
     )
 }
 
 pub(super) fn claim_identity(claim: &Claim) -> String {
-    rrd_core::result_identity::claim(&claim.subject, &claim.predicate)
+    crate::kernel::result_identity::claim(&claim.subject, &claim.predicate)
 }
 
 pub(super) fn claim_text(claim: &Claim) -> String {

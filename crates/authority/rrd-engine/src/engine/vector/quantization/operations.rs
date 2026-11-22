@@ -272,7 +272,7 @@ impl RrdEngine {
                     // changed in this source since it are read and encoded.
                     Some(base) => {
                         let source = rrd_store::VectorSourceAddress {
-                            collection: rrd_core::VectorCollectionAddress {
+                            collection: crate::kernel::VectorCollectionAddress {
                                 collection_id: request.collection_id.as_str().into(),
                                 vector_name: request.vector_name.as_str().into(),
                             },
@@ -419,7 +419,7 @@ impl RrdEngine {
             kind: entry.kind,
             descriptor: entry.descriptor.clone(),
             object: entry.object.clone(),
-            source: Some(rrd_core::VectorCollectionAddress {
+            source: Some(crate::kernel::VectorCollectionAddress {
                 collection_id: entry.collection_id.to_string(),
                 vector_name: entry.vector_name.to_string(),
             }),

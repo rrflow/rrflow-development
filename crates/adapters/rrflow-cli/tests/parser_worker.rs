@@ -1,6 +1,6 @@
 //! Actual primary-executable parser pipe tests; native process isolation is
 //! separately required before the engine can activate this worker.
-use rrd_core::digest::sha256_hex;
+use rrflow_kernel::digest::sha256_hex;
 use serde_json::{json, Value};
 use std::io::Write;
 use std::process::{Command, Stdio};

@@ -2109,7 +2109,7 @@ export interface components {
                                     family: "data";
                                     /**
                                      * @description Public multi-model mutation vocabulary. It is deliberately independent of
-                                     *     `rrd_core`; adapters lower these values into the authoritative runtime.
+                                     *     `rrflow_kernel`; adapters lower these values into the authoritative runtime.
                                      */
                                     mutation: {
                                         /** Format: float */
@@ -11310,7 +11310,7 @@ export interface operations {
                                             family: "data";
                                             /**
                                              * @description Public multi-model mutation vocabulary. It is deliberately independent of
-                                             *     `rrd_core`; adapters lower these values into the authoritative runtime.
+                                             *     `rrflow_kernel`; adapters lower these values into the authoritative runtime.
                                              */
                                             mutation: {
                                                 /** Format: float */
@@ -12356,7 +12356,7 @@ export interface operations {
                                             family: "data";
                                             /**
                                              * @description Public multi-model mutation vocabulary. It is deliberately independent of
-                                             *     `rrd_core`; adapters lower these values into the authoritative runtime.
+                                             *     `rrflow_kernel`; adapters lower these values into the authoritative runtime.
                                              */
                                             mutation: {
                                                 /** Format: float */
@@ -13453,7 +13453,7 @@ export interface operations {
                                         family: "data";
                                         /**
                                          * @description Public multi-model mutation vocabulary. It is deliberately independent of
-                                         *     `rrd_core`; adapters lower these values into the authoritative runtime.
+                                         *     `rrflow_kernel`; adapters lower these values into the authoritative runtime.
                                          */
                                         mutation: {
                                             /** Format: float */
@@ -14494,7 +14494,7 @@ export interface operations {
                                         family: "data";
                                         /**
                                          * @description Public multi-model mutation vocabulary. It is deliberately independent of
-                                         *     `rrd_core`; adapters lower these values into the authoritative runtime.
+                                         *     `rrflow_kernel`; adapters lower these values into the authoritative runtime.
                                          */
                                         mutation: {
                                             /** Format: float */
@@ -25065,7 +25065,7 @@ export interface operations {
                                             family: "data";
                                             /**
                                              * @description Public multi-model mutation vocabulary. It is deliberately independent of
-                                             *     `rrd_core`; adapters lower these values into the authoritative runtime.
+                                             *     `rrflow_kernel`; adapters lower these values into the authoritative runtime.
                                              */
                                             mutation: {
                                                 /** Format: float */
@@ -27824,7 +27824,7 @@ export interface operations {
                                             family: "data";
                                             /**
                                              * @description Public multi-model mutation vocabulary. It is deliberately independent of
-                                             *     `rrd_core`; adapters lower these values into the authoritative runtime.
+                                             *     `rrflow_kernel`; adapters lower these values into the authoritative runtime.
                                              */
                                             mutation: {
                                                 /** Format: float */
@@ -40732,7 +40732,7 @@ export interface operations {
                                         family: "data";
                                         /**
                                          * @description Public multi-model mutation vocabulary. It is deliberately independent of
-                                         *     `rrd_core`; adapters lower these values into the authoritative runtime.
+                                         *     `rrflow_kernel`; adapters lower these values into the authoritative runtime.
                                          */
                                         mutation: {
                                             /** Format: float */
@@ -41798,7 +41798,7 @@ export interface operations {
                                         family: "data";
                                         /**
                                          * @description Public multi-model mutation vocabulary. It is deliberately independent of
-                                         *     `rrd_core`; adapters lower these values into the authoritative runtime.
+                                         *     `rrflow_kernel`; adapters lower these values into the authoritative runtime.
                                          */
                                         mutation: {
                                             /** Format: float */
@@ -52352,7 +52352,7 @@ export interface operations {
                                         };
                                         /**
                                          * @description Public multi-model mutation vocabulary. It is deliberately independent of
-                                         *     `rrd_core`; adapters lower these values into the authoritative runtime.
+                                         *     `rrflow_kernel`; adapters lower these values into the authoritative runtime.
                                          */
                                         value: {
                                             /** Format: float */
@@ -54392,7 +54392,7 @@ export interface operations {
                                         };
                                         /**
                                          * @description Public multi-model mutation vocabulary. It is deliberately independent of
-                                         *     `rrd_core`; adapters lower these values into the authoritative runtime.
+                                         *     `rrflow_kernel`; adapters lower these values into the authoritative runtime.
                                          */
                                         value: {
                                             /** Format: float */

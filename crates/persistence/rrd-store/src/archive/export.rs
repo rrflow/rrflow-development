@@ -9,7 +9,7 @@ use super::receipt::{
 };
 use crate::filesystem::AnchorInput;
 use crate::{Error, Result, StorageEngine};
-use rrd_core::{AuditEnvelope, Claim, RuntimeChange, RuntimeCommit, RuntimeMutation};
+use rrflow_kernel::{AuditEnvelope, Claim, RuntimeChange, RuntimeCommit, RuntimeMutation};
 use std::collections::VecDeque;
 
 const PAGE_SIZE: usize = 1_024;
@@ -590,7 +590,7 @@ fn archive_io(error: std::io::Error) -> Error {
 mod checkpoint_tests {
     use super::*;
     use crate::RrflowKvStore;
-    use rrd_core::{Predicate, Producer, ScopeId, Subject};
+    use rrflow_kernel::{Predicate, Producer, ScopeId, Subject};
     use std::path::Path;
 
     fn source(path: &Path, actions: u64, value_bytes: usize) -> RrflowKvStore {

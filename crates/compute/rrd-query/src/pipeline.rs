@@ -2,8 +2,8 @@ use crate::{
     bind, execute, plan, BoundQuery, Catalog, Error, ExecutionBudget, Parameters, PhysicalPlan,
     Query, QueryExecution, Result,
 };
-use rrd_core::ReadStamp;
 use rrd_store::{RuntimeReadBudget, RuntimeReadEvidence, StorageEngine};
+use rrflow_kernel::ReadStamp;
 
 #[path = "pipeline/evidence.rs"]
 mod evidence;

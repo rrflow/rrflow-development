@@ -77,7 +77,7 @@ pub(super) fn validate_fields(catalogue: &Catalog, definition: &IndexDefinition)
         let field = &definition.fields[0];
         let accepted =
             super::super::plan::field_types_for_bound_source(&bound.source, catalogue, field)?;
-        if !accepted.contains(&rrd_core::RuntimeValueType::String) {
+        if !accepted.contains(&rrflow_kernel::RuntimeValueType::String) {
             return Err(Error::Catalog(format!(
                 "BM25 field {field:?} is not a string field"
             )));

@@ -225,10 +225,10 @@ struct RootReading {
 
 impl RootReading {
     fn open(root: &AnchoredPath, locator: &ProjectLocator) -> Result<Self> {
-        super::core::validate_existing_object_layout(root)?;
+        super::instance::validate_existing_object_layout(root)?;
         let inspector = RrflowKvInspector::open_anchored_with_options(
             root,
-            super::core::installed_storage_options(&locator.storage)?,
+            super::instance::installed_storage_options(&locator.storage)?,
         )?;
         let installed: InstalledEngramRecord =
             decode_control(&inspector, INSTALLED_RECORD_KEY, "installed engram record")?;

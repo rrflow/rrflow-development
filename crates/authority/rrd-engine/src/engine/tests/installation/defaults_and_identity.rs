@@ -22,7 +22,7 @@ pub(super) fn every_default_page_cache_is_the_one_search_was_measured_with() {
         MEASURED,
         "the storage engine's default"
     );
-    let installed = crate::engine::core::installed_storage_options(&bundled.storage).unwrap();
+    let installed = crate::engine::instance::installed_storage_options(&bundled.storage).unwrap();
     assert_eq!(
         installed.page_cache_bytes as u64, MEASURED,
         "what a default install opens with"
@@ -34,7 +34,7 @@ pub(super) fn a_configuration_still_chooses_its_own_page_cache() {
     let mut storage = crate::load_engram_configuration(None).unwrap().storage;
     for chosen in [0, 1024 * 1024, 1024 * 1024 * 1024] {
         storage.page_cache_bytes = chosen;
-        let installed = crate::engine::core::installed_storage_options(&storage).unwrap();
+        let installed = crate::engine::instance::installed_storage_options(&storage).unwrap();
         assert_eq!(installed.page_cache_bytes as u64, chosen);
     }
 }

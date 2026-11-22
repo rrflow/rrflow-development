@@ -34,7 +34,7 @@ pub(super) fn run_preparation(
         .stdout(Stdio::from(stdout))
         .stderr(Stdio::from(stderr));
     configure_platform_environment(&mut command, request)?;
-    let launch = rrd_core::child_launch_lock();
+    let launch = rrflow_kernel::child_launch_lock();
     let spawned = command.spawn();
     drop(launch);
     let mut child = spawned.map_err(|error| {

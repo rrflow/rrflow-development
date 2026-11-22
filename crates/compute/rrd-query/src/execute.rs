@@ -6,12 +6,12 @@ use crate::{
     PhysicalOperator, PhysicalPlan, Result, INDEX_ARTIFACT_CONTRACT_VERSION,
 };
 use crate::{Join, Projection, Source};
-use rrd_core::result_identity::{self, ResultIdentityFamily, RESULT_IDENTITY_VERSION};
-use rrd_core::{
+use rrd_store::{RuntimeReadBudget, RuntimeReadEvidence, RuntimeVersionedSource, StorageEngine};
+use rrflow_kernel::result_identity::{self, ResultIdentityFamily, RESULT_IDENTITY_VERSION};
+use rrflow_kernel::{
     resolve_as_of, Claim, GeoValue, RuntimeChange, RuntimeGeo, RuntimeMutation, RuntimeRecord,
     RuntimeRelation, RuntimeValue, SeriesValue,
 };
-use rrd_store::{RuntimeReadBudget, RuntimeReadEvidence, RuntimeVersionedSource, StorageEngine};
 use serde::de::{DeserializeSeed, IgnoredAny, SeqAccess, Visitor};
 use serde::{Deserialize, Serialize};
 use serde_json::value::RawValue;

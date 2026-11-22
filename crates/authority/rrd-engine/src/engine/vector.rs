@@ -62,6 +62,6 @@ fn public_vector_read(direct: rrd_store::RuntimeVersionedRead) -> Result<DirectV
     })
 }
 
-pub(in crate::engine) fn core_vector(error: rrd_core::Error) -> ServiceError {
+pub(in crate::engine) fn core_vector(error: crate::kernel::Error) -> ServiceError {
     ServiceError::Vector(error.to_string())
 }

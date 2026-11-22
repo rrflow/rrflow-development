@@ -8,7 +8,7 @@ description = "Persistent RRD principals, deny-by-default policy, and authentica
 
 [dependencies]
 rrd-contract = { path = "../../transport/rrd-contract" }
-rrd-core = { path = "../../kernel/rrd-core" }
+rrflow-kernel = { workspace = true }
 rrd-store = { path = "../../persistence/rrd-store" }
 serde = { workspace = true }
 serde_json = { workspace = true }

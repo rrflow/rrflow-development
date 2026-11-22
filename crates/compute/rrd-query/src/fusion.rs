@@ -20,7 +20,7 @@ use datafusion::{
 use datafusion_datasource::{memory::MemorySourceConfig, source::DataSourceExec};
 use futures::{future::Either, FutureExt, StreamExt};
 use futures_timer::Delay;
-use rrd_core::RuntimeValue;
+use rrflow_kernel::RuntimeValue;
 use serde::{Deserialize, Serialize};
 use std::{
     sync::{
@@ -441,7 +441,7 @@ fn datafusion_error(error: datafusion::common::DataFusionError) -> Error {
 mod tests {
     use super::*;
     use crate::{rows_to_arrow_snapshot, ArrowReadStamp, QueryFieldTypes};
-    use rrd_core::RuntimeValueType;
+    use rrflow_kernel::RuntimeValueType;
     use std::collections::BTreeMap;
 
     fn large_snapshot() -> ArrowSnapshot {

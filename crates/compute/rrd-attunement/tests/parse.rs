@@ -1,6 +1,6 @@
 use rrd_attunement::facts::source_facts;
 use rrd_attunement::parse::{ParseError, ParseLimits};
-use rrd_core::digest::sha256_hex;
+use rrflow_kernel::digest::sha256_hex;
 
 fn limits() -> ParseLimits {
     ParseLimits {

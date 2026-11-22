@@ -449,7 +449,7 @@ jobs:
         run: cargo test --locked -p rrflow-lab-experiments --test provider_compatibility
       - name: Enforce kernel dependency boundary
         run: |
-          tree="$(cargo tree --locked -p rrd-core --edges normal --depth 1 --prefix none --format '{p}' --color never)"
+          tree="$(cargo tree --locked -p rrflow-kernel --edges normal --depth 1 --prefix none --format '{p}' --color never)"
           printf '%s\n' "$tree"
           dependencies="$(printf '%s\n' "$tree" | tail -n +2 | cut -d ' ' -f 1 | sort)"
           test "$dependencies" = "$(printf 'serde\nsha2')"
@@ -476,7 +476,7 @@ jobs:
       matrix:
         include:
           - name: kernel-storage
-            packages: "-p rrd-core -p rrd-lsm -p rrd-store -p rrd-maintenance"
+            packages: "-p rrflow-kernel -p rrd-lsm -p rrd-store -p rrd-maintenance"
           - name: query-retrieval
             packages: "-p rrd-query -p rrd-vector -p rrd-inference -p rrd-attunement -p rrd-operator-knowledge"
           - name: engine-authority

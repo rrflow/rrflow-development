@@ -3,7 +3,7 @@ use crate::{
     OperationKind,
 };
 use rrd_contract::CanonicalId;
-use rrd_core::digest;
+use rrflow_kernel::digest;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;

@@ -6,7 +6,7 @@
 //! control-plane trace.
 
 use super::{DurableTraceSpan, TraceIdentity};
-use rrd_core::{
+use crate::kernel::{
     DataTransaction, Millis, ObjectReference, ProjectionId, ReadStamp, RuntimeChange,
     RuntimeCommit, RuntimeCommitOutcome, RuntimeId, RuntimeLogicalModel, RuntimeMutation,
     RuntimeProperties, RuntimePropertySchema, RuntimeRecord, RuntimeRecordSchema, RuntimeRef,

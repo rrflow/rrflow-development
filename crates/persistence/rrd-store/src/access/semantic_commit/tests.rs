@@ -1,14 +1,14 @@
 use super::super::runtime_state::{get, get_json};
 use super::*;
 use crate::{RrflowKvStore, RrflowMxStore, StorageEngine};
-use rrd_core::{
+use rrflow_kernel::{
     RuntimeLogicalModel, RuntimeProperties, RuntimeRecord, RuntimeRecordSchema, RuntimeRef,
     RuntimeRelationSchema, RuntimeRetirement, RuntimeSchemaRegistry, RuntimeType,
 };
 use std::collections::BTreeSet;
 
 struct CommittedFixture {
-    scope: rrd_core::ScopeId,
+    scope: rrflow_kernel::ScopeId,
     original: RuntimeRelation,
     replacement: RuntimeRelation,
     commit_ids: Vec<String>,
@@ -58,7 +58,7 @@ fn schema() -> RuntimeSchemaRegistry {
 }
 
 fn commit_fixture(storage: &dyn StorageEngine) -> CommittedFixture {
-    let scope = rrd_core::ScopeId::new("project:semantic-atomicity").unwrap();
+    let scope = rrflow_kernel::ScopeId::new("project:semantic-atomicity").unwrap();
     let original = relation("a-target", "b", 100);
     let replacement = relation("a-target", "c", 200);
     let first = storage
@@ -249,7 +249,7 @@ fn assert_missing_accumulator_is_rejected(storage: &dyn StorageEngine, cursor: u
     let error = storage
         .runtime()
         .commit(&RuntimeCommit {
-            scope: rrd_core::ScopeId::new("project:semantic-atomicity").unwrap(),
+            scope: rrflow_kernel::ScopeId::new("project:semantic-atomicity").unwrap(),
             at: 400,
             actor: "agent:semantic-atomicity".into(),
             expected_cursor: cursor,

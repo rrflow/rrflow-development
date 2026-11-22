@@ -1,7 +1,7 @@
 //! An identifier outside the canonical grammar cannot be constructed, so nothing can store a value
 //! the public projection would later refuse.
-use rrd_core::ident::canonical_id_problem;
-use rrd_core::{
+use rrflow_kernel::ident::canonical_id_problem;
+use rrflow_kernel::{
     OutboxId, Predicate, ProjectionId, Reader, RetentionPinId, RuntimeId, RuntimeRef, RuntimeType,
     ScopeId, SnapshotId, Subject,
 };

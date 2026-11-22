@@ -11,7 +11,7 @@ use super::runtime_state::{
 };
 use super::semantic_commit::SemanticCommitPlan;
 use crate::{Error, Result, StorageTransaction};
-use rrd_core::{
+use rrflow_kernel::{
     digest, ProjectionId, RuntimeCommit, RuntimeMutation, RuntimeRecord, RuntimeRef,
     RuntimeSchemaRegistry, RuntimeType, RuntimeValue, RuntimeValueType, ScopeId,
 };

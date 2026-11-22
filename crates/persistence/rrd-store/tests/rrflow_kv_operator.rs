@@ -1,9 +1,9 @@
-use rrd_core::{Claim, ClaimReader, Predicate, Producer, Reader, Subject};
 use rrd_lsm::{
     DatabaseOptions, MaintenancePolicy, DEFAULT_MEMTABLE_MAX_VERSIONS,
     DEFAULT_WAL_PAYLOAD_MAX_BYTES,
 };
 use rrd_store::{InvocationInput, Outcome, RrflowKvStore, StorageEngine, Trigger};
+use rrflow_kernel::{Claim, ClaimReader, Predicate, Producer, Reader, Subject};
 
 fn claim(subject: &str, object: &str) -> Claim {
     Claim::new(

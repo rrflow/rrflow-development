@@ -342,7 +342,7 @@ pub(super) fn directory_security_sha256(file: &File) -> io::Result<String> {
     for word in words {
         bytes.extend_from_slice(&word.to_le_bytes());
     }
-    let digest = rrd_core::digest::sha256_hex(&bytes);
+    let digest = crate::kernel::digest::sha256_hex(&bytes);
     drop(encoded);
     Ok(digest)
 }

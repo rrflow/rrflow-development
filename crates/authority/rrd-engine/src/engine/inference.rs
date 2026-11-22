@@ -337,7 +337,8 @@ fn embedding_request(
     ))
     .map_err(|error| ServiceError::Contract(error.to_string()))?;
     Ok(rrd_inference::EmbeddingRequest {
-        job_id: rrd_core::RuntimeId::new(input.id.as_str()).map_err(super::vector::core_vector)?,
+        job_id: crate::kernel::RuntimeId::new(input.id.as_str())
+            .map_err(super::vector::core_vector)?,
         job_digest: digest::sha256_hex(&job_identity),
         source_digest,
         media_type: input.media_type.clone(),
@@ -476,7 +477,7 @@ fn trust_name(value: &rrd_inference::InferenceTrustBoundary) -> String {
     }
 }
 
-fn inference_error(error: rrd_core::Error) -> ServiceError {
+fn inference_error(error: crate::kernel::Error) -> ServiceError {
     ServiceError::Inference(error.to_string())
 }
 

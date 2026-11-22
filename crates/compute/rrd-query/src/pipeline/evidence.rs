@@ -89,8 +89,8 @@ pub(super) fn combine(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rrd_core::RuntimeReadValidation;
     use rrd_store::{RuntimeReadAccessPath, RuntimeReadPathEvidence};
+    use rrflow_kernel::RuntimeReadValidation;
 
     fn evidence(keys: u64) -> RuntimeReadEvidence {
         RuntimeReadEvidence {

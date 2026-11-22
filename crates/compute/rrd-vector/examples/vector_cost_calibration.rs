@@ -9,14 +9,14 @@
 //! `RERANK` candidates. `relative_cost_per_candidate` is the median over rounds
 //! of codec scan time over that round's exact scan time, with its range.
 
-use rrd_core::{
-    ProjectionId, ReadStamp, RuntimeProperties, RuntimeRef, RuntimeVector, ScopeId,
-    VectorCollectionAddress, VectorValue,
-};
 use rrd_vector::{
     search_exact_ref, ProductCompression, QuantizationMethod, QuantizedKernel, QuantizedSegment,
     QuantizedSegmentConfig, ScoreMetric, SearchHit, SearchMode, SearchRequest, TurboQuantBits,
     TurboQuantEstimator, TurboQuantSegment, TurboQuantSegmentConfig, VectorCandidate, VectorQuery,
+};
+use rrflow_kernel::{
+    ProjectionId, ReadStamp, RuntimeProperties, RuntimeRef, RuntimeVector, ScopeId,
+    VectorCollectionAddress, VectorValue,
 };
 use serde_json::json;
 use std::collections::BTreeSet;

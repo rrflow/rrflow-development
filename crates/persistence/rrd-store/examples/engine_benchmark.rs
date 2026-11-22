@@ -5,7 +5,6 @@
 //! correctness, throughput, latency, recovery, memory, maintenance, and
 //! footprint measurements. A single machine run is not a universal claim.
 
-use rrd_core::{Claim, Predicate, Producer, Subject};
 use rrd_lsm::{
     WritePathDiagnostics, WritePathPhaseTiming, WritePathSample,
     WRITE_PATH_DIAGNOSTICS_CONTRACT_VERSION,
@@ -13,6 +12,7 @@ use rrd_lsm::{
 use rrd_store::{
     measure_storage_footprint, FootprintBytes, RrflowKvStore, StorageEngine, StorageFootprint,
 };
+use rrflow_kernel::{Claim, Predicate, Producer, Subject};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use std::fs;

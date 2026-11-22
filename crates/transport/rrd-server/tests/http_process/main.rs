@@ -9,7 +9,7 @@ use rrd_contract::{
     TransactionMutation,
 };
 
-use rrd_core::{
+use rrflow_kernel::{
     RuntimeCommit, RuntimeEventSchema, RuntimeLogicalModel, RuntimeMutation, RuntimeProperties,
     RuntimePropertySchema, RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeRelationSchema,
     RuntimeSchemaRegistry, RuntimeType, RuntimeValue, RuntimeValueType, ScopeId,
@@ -112,7 +112,7 @@ fn authenticated_storage_diagnostic_trace_correlates_store_without_secrets() {
     let principal = Principal {
         id: CanonicalId::new("trace-client").unwrap(),
         kind: PrincipalKind::User,
-        credential_sha256: rrd_core::digest::sha256_hex(b"trace-test-api-key"),
+        credential_sha256: rrflow_kernel::digest::sha256_hex(b"trace-test-api-key"),
         credential_revision: 1,
         not_before_unix_ms: 1,
         expires_at_unix_ms: u64::MAX,
@@ -231,7 +231,7 @@ fn authenticated_storage_diagnostic_trace_correlates_store_without_secrets() {
                 .expect("HTTP transaction begin must emit its actual outcome");
             assert_eq!(
                 event["fields"]["request_sha256"],
-                rrd_core::digest::sha256_hex(b"private-begin-sentinel")
+                rrflow_kernel::digest::sha256_hex(b"private-begin-sentinel")
             );
             for field in [
                 "validation_ns",
@@ -251,7 +251,7 @@ fn authenticated_storage_diagnostic_trace_correlates_store_without_secrets() {
             .expect("quota rejection must emit an error timing");
         assert_eq!(
             rejection["fields"]["request_sha256"],
-            rrd_core::digest::sha256_hex(b"private-error-sentinel")
+            rrflow_kernel::digest::sha256_hex(b"private-error-sentinel")
         );
     }
     let event = events
@@ -260,7 +260,7 @@ fn authenticated_storage_diagnostic_trace_correlates_store_without_secrets() {
         .expect("actual HTTP diagnostic must emit a store timing event");
     assert_eq!(
         event["span"]["request_sha256"],
-        rrd_core::digest::sha256_hex(b"private-request-sentinel")
+        rrflow_kernel::digest::sha256_hex(b"private-request-sentinel")
     );
     assert!(event["fields"]["mutex_wait_ns"].is_u64());
     assert!(event["fields"]["mutex_held_assembly_ns"].is_u64());
@@ -271,7 +271,7 @@ fn authenticated_storage_diagnostic_trace_correlates_store_without_secrets() {
         .expect("actual HTTP diagnostic must emit a service timing event");
     assert_eq!(
         service["span"]["request_sha256"],
-        rrd_core::digest::sha256_hex(b"private-request-sentinel")
+        rrflow_kernel::digest::sha256_hex(b"private-request-sentinel")
     );
     assert_eq!(service["fields"]["success"], true);
     let elapsed = service["fields"]["service_elapsed_ns"].as_u64().unwrap();

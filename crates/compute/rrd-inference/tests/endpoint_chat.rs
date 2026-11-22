@@ -244,7 +244,7 @@ fn native_live_calls_retain_actual_bytes_and_uncertain_failures() {
         serde_json::from_slice(&std::fs::read(root.join("files.json")).unwrap()).unwrap();
     for (file, hash) in hashes {
         assert_eq!(
-            rrd_core::digest::sha256_hex(&std::fs::read(root.join(file)).unwrap()),
+            rrflow_kernel::digest::sha256_hex(&std::fs::read(root.join(file)).unwrap()),
             hash
         );
     }

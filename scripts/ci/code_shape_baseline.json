@@ -67,7 +67,7 @@
    "crates/authority/rrd-engine": 108,
    "crates/compute/rrd-query": 1,
    "crates/compute/rrd-vector": 2,
-   "crates/kernel/rrd-core": 6,
+   "crates/authority/rrd-engine/kernel": 6,
    "crates/persistence/rrd-store": 1,
    "crates/transport/rrd-client": 2,
    "crates/transport/rrd-contract": 1,

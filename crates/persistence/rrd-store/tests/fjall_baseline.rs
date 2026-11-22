@@ -6,11 +6,11 @@
 
 #![cfg(feature = "fjall-baseline")]
 
-use rrd_core::{Claim, Predicate, Producer, Subject};
 use rrd_store::{
     Durability, Error, FjallBaselineStore, GroundingReport, RrflowKvStore, RrflowMxStore,
     StorageEngine,
 };
+use rrflow_kernel::{Claim, Predicate, Producer, Subject};
 
 fn claim(subject: &str, predicate: &str, object: &str, from: u64) -> Claim {
     Claim::new(

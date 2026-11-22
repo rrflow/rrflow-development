@@ -1,13 +1,13 @@
-use rrd_core::{
-    digest, ProjectionFamily, ProjectionId, ProjectionStamp, ProjectionState, ProjectionWork,
-    ScopeId, DATA_RUNTIME_CONTRACT_VERSION,
-};
 use rrd_operator_knowledge::{
     execute_operator_sync, OperatorAccessPath, OperatorAdapterDescriptor, OperatorKnowledgeBinding,
     OperatorSourceRevision, OperatorSyncWork, ReferenceOperatorWriter,
     OPERATOR_KNOWLEDGE_CONTRACT_VERSION,
 };
 use rrd_vector::{EmbeddingModelBinding, ScoreMetric};
+use rrflow_kernel::{
+    digest, ProjectionFamily, ProjectionId, ProjectionStamp, ProjectionState, ProjectionWork,
+    ScopeId, DATA_RUNTIME_CONTRACT_VERSION,
+};
 use std::collections::BTreeSet;
 
 fn binding() -> OperatorKnowledgeBinding {

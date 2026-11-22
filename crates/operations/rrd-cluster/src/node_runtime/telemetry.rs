@@ -194,7 +194,7 @@ impl ConsensusArtifactTransferObserver {
             ));
         }
         let event = artifact_transfer_trace_event(&observation)?;
-        let event_digest = rrd_core::digest::sha256_hex(
+        let event_digest = rrflow_kernel::digest::sha256_hex(
             &serde_json::to_vec(&event)
                 .map_err(|error| ClusterError::Invalid(error.to_string()))?,
         );

@@ -5,9 +5,9 @@ use rrd_cluster::{
     ShardReadStamp, TenantId, TenantPlacementPolicy, WriteConsistency, ZoneId,
 };
 use rrd_contract::CanonicalId;
-use rrd_core::digest;
 use rrd_engine::RrdEngine;
 use rrd_store::{RrflowKvStore, StorageEngine};
+use rrflow_kernel::digest;
 use std::collections::{BTreeMap, BTreeSet};
 
 fn node(index: u8) -> PlacementNode {

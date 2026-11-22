@@ -149,7 +149,7 @@ impl RrdEngine {
             .iter()
             .map(|reference| {
                 Ok(rrd_store::RuntimeVersionedSource::Identity {
-                    model: rrd_core::RuntimeLogicalModel::Vector,
+                    model: crate::kernel::RuntimeLogicalModel::Vector,
                     reference: runtime_ref(reference)?,
                 })
             })

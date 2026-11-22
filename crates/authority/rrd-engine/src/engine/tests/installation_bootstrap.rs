@@ -269,7 +269,7 @@ fn bundled_bootstrap_closes_observed_files_records_and_inactive_specializations(
         let job: Value = serde_json::from_slice(journal[7].replacement.as_ref().unwrap()).unwrap();
         assert_eq!(job["state"], "pending");
         let scope =
-            rrd_core::ScopeId::new(format!("instance:{}", plan.target.instance_id)).unwrap();
+            crate::kernel::ScopeId::new(format!("instance:{}", plan.target.instance_id)).unwrap();
         let read = engine.storage.runtime().read_stamp(&scope).unwrap();
         let changes = engine
             .storage
@@ -289,8 +289,8 @@ fn bundled_bootstrap_closes_observed_files_records_and_inactive_specializations(
         assert!(matches!(
             mutations.as_slice(),
             [
-                rrd_core::RuntimeMutation::Schema { .. },
-                rrd_core::RuntimeMutation::Record { .. }
+                crate::kernel::RuntimeMutation::Schema { .. },
+                crate::kernel::RuntimeMutation::Record { .. }
             ]
         ));
         drop(engine);

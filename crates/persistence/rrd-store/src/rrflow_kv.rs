@@ -13,15 +13,15 @@ use crate::key_codec::prefix_end;
 use crate::key_codec::KeyCodec;
 use crate::keyspaces::{self, Durability};
 use crate::transaction::{StorageTransaction, TransactionCommit, TransactionRollback};
-use rrd_core::{
-    AuditEnvelope, Millis, ObjectReference, ReadStamp, RuntimeCommit, RuntimeCommitOutcome,
-    RuntimeLogAccumulator, RuntimeSchemaRegistry, ScopeId, SnapshotHandle, SnapshotId,
-};
 use rrd_lsm::filesystem::AnchoredPath;
 use rrd_lsm::{
     CompactionOutcome, Database, DatabaseInspection, DatabaseOptions, GarbageCollectionReport,
     Manifest, Mutation, PageCacheStats, ReadOnlyDatabase, SegmentIoStats, SegmentOpenEvidence,
     Snapshot, SnapshotBundleFile, WriteLockWait, WritePathDiagnostics,
+};
+use rrflow_kernel::{
+    AuditEnvelope, Millis, ObjectReference, ReadStamp, RuntimeCommit, RuntimeCommitOutcome,
+    RuntimeLogAccumulator, RuntimeSchemaRegistry, ScopeId, SnapshotHandle, SnapshotId,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::collections::BTreeSet;

@@ -72,7 +72,7 @@ fn native_job_transports_framed_parser_request_without_unrelated_handle_inherita
     let request = WorkerRequest {
         format_version: 2,
         source_id: "fixture/source.rs".into(),
-        content_sha256: rrd_core::digest::sha256_hex(source),
+        content_sha256: crate::kernel::digest::sha256_hex(source),
         language: "rust".into(),
         source_bytes: source.len() as u64,
         limits: ParseLimits {
@@ -189,7 +189,7 @@ fn native_job_runs_primary_binary_parser_worker() {
     let request = WorkerRequest {
         format_version: 2,
         source_id: "fixture/source.rs".into(),
-        content_sha256: rrd_core::digest::sha256_hex(source),
+        content_sha256: crate::kernel::digest::sha256_hex(source),
         language: "rust".into(),
         source_bytes: source.len() as u64,
         limits: ParseLimits {

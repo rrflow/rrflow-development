@@ -1,13 +1,13 @@
 use super::*;
+use crate::kernel::{
+    RuntimeCommit, RuntimeLogicalModel, RuntimeMutation, RuntimeProperties, RuntimePropertySchema,
+    RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry, RuntimeType,
+    RuntimeValue, RuntimeValueType, ScopeId,
+};
 use rrd_contract::{
     CloseSubscription, OpenSubscription, SubscriptionAcknowledgement, SubscriptionDelivery,
     SubscriptionLeaseCoordinate, SubscriptionPoll, SubscriptionResume, SubscriptionStatus,
     SubscriptionStream,
-};
-use rrd_core::{
-    RuntimeCommit, RuntimeLogicalModel, RuntimeMutation, RuntimeProperties, RuntimePropertySchema,
-    RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry, RuntimeType,
-    RuntimeValue, RuntimeValueType, ScopeId,
 };
 use std::collections::BTreeMap;
 
@@ -669,7 +669,7 @@ fn live_query_subscription_pushes_semantic_delta_on_the_runtime_cursor() {
             parameters: BTreeMap::new(),
             budget: rrd_contract::QueryBudget::default(),
             max_delta_rows: 16,
-            result_identity_version: Some(rrd_core::result_identity::RESULT_IDENTITY_VERSION),
+            result_identity_version: Some(crate::kernel::result_identity::RESULT_IDENTITY_VERSION),
         },
         after_cursor: 2,
         batch_size: 1,

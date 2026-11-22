@@ -173,7 +173,7 @@ fn verify_source_file_query_policy(
             tenant: None,
             rows: vec![rrd_security::PolicyPredicate {
                 field: "identity".into(),
-                value: rrd_core::RuntimeValue::String("0".repeat(64)),
+                value: crate::kernel::RuntimeValue::String("0".repeat(64)),
             }],
             allowed_fields: Some(std::collections::BTreeSet::from([
                 "identity".into(),

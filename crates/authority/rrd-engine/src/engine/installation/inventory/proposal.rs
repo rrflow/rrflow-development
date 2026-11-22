@@ -28,7 +28,7 @@ pub(super) fn builder<'a>(
     git: &GitInputs,
 ) -> Result<Builder<'a>> {
     let limits = &policy.source.limits;
-    let effective_policy = rrd_core::digest::sha256_hex(
+    let effective_policy = crate::kernel::digest::sha256_hex(
         &serde_json::to_vec(&(
             "rrflow-effective-inventory-policy-v1",
             &policy.sha256,
@@ -111,7 +111,9 @@ pub(super) fn ingest_file(
         bytes: observation.bytes(),
         executable: observation.executable_mode(),
         revision: observation.revision_sha256().map_err(storage_error)?,
-        classification_sha256: rrd_core::digest::sha256_hex(b"rrflow-content-only-v1:unclassified"),
+        classification_sha256: crate::kernel::digest::sha256_hex(
+            b"rrflow-content-only-v1:unclassified",
+        ),
     };
     let mut remaining = observation.bytes();
     let mut failure = None;

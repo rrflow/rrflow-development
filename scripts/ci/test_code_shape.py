@@ -21,15 +21,15 @@ def lines(count: int) -> str:
 
 class ClassifyTests(unittest.TestCase):
     def test_entry_harness_and_source(self):
-        self.assertEqual(classify("crates/kernel/rrd-core/src/lib.rs"), "entry")
+        self.assertEqual(classify("crates/authority/rrd-engine/kernel/src/lib.rs"), "entry")
         self.assertEqual(classify("crates/adapters/rrflow-cli/src/main.rs"), "entry")
-        self.assertEqual(classify("crates/kernel/rrd-core/src/engine/lib.rs"), "source")
-        self.assertEqual(classify("crates/kernel/rrd-core/tests/runtime.rs"), "harness")
-        self.assertEqual(classify("crates/kernel/rrd-core/src/engine/tests/query.rs"), "harness")
-        self.assertEqual(classify("crates/kernel/rrd-core/src/access/versioned_read_tests.rs"), "harness")
-        self.assertEqual(classify("crates/kernel/rrd-core/src/access/tests.rs"), "harness")
-        self.assertEqual(classify("crates/kernel/rrd-core/examples/bench.rs"), "harness")
-        self.assertEqual(classify("crates/kernel/rrd-core/src/runtime.rs"), "source")
+        self.assertEqual(classify("crates/authority/rrd-engine/kernel/src/engine/lib.rs"), "source")
+        self.assertEqual(classify("crates/authority/rrd-engine/kernel/tests/runtime.rs"), "harness")
+        self.assertEqual(classify("crates/authority/rrd-engine/kernel/src/engine/tests/query.rs"), "harness")
+        self.assertEqual(classify("crates/authority/rrd-engine/kernel/src/access/versioned_read_tests.rs"), "harness")
+        self.assertEqual(classify("crates/authority/rrd-engine/kernel/src/access/tests.rs"), "harness")
+        self.assertEqual(classify("crates/authority/rrd-engine/kernel/examples/bench.rs"), "harness")
+        self.assertEqual(classify("crates/authority/rrd-engine/kernel/src/runtime.rs"), "source")
 
 
 class MeasureTests(unittest.TestCase):
@@ -49,7 +49,7 @@ class MeasureTests(unittest.TestCase):
                 "#[path = \"x_tests.rs\"] mod t;\n"
                 "let h = sha2::Sha256::digest(b\"x\");\n")
         shape = measure({"crates/a/x/src/thing/mod.rs": text, "crates/a/x/tests/t.rs": text,
-                         "crates/kernel/rrd-core/src/digest.rs": "sha2::Sha256::new()\n"})
+                         "crates/authority/rrd-engine/kernel/src/digest.rs": "sha2::Sha256::new()\n"})
         path = "crates/a/x/src/thing/mod.rs"
         for name in ("mod_rs", "path_attribute", "string_error", "boxed_error", "too_many_arguments_allow", "sha2_crate"):
             self.assertEqual(shape.patterns[name], {"crates/a/x": 1}, name)

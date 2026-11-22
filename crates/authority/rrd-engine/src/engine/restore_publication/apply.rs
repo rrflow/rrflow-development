@@ -130,7 +130,7 @@ impl RrdEngine {
                 &paths.backups,
                 &plan.backup_sha256,
                 &paths.candidate,
-                super::super::core::installed_storage_options(&locator.storage)?,
+                super::super::instance::installed_storage_options(&locator.storage)?,
             )?;
             if active_token_key_sha256(&paths.active, &active.installed)? != plan.token_key_sha256 {
                 return Err(ServiceError::ProjectBindingMismatch);

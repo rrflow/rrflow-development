@@ -19,14 +19,14 @@ pub(super) fn generation_serves(
     // contents.
     if let Some(source) = &binding.source {
         return *source
-            == rrd_core::VectorCollectionAddress {
+            == crate::kernel::VectorCollectionAddress {
                 collection_id: collection_id.as_str().into(),
                 vector_name: vector_name.as_str().into(),
             };
     }
     match artifact {
         rrd_vector::VectorArtifact::Hnsw(index) => {
-            index.serves_collection(&rrd_core::VectorCollectionAddress {
+            index.serves_collection(&crate::kernel::VectorCollectionAddress {
                 collection_id: collection_id.as_str().into(),
                 vector_name: vector_name.as_str().into(),
             })
