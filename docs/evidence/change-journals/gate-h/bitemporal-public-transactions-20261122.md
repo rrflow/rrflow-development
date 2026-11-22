@@ -200,3 +200,30 @@ assertion. Both strengthened oracles passed. The second retained driver run is
 `c4ceabafe3e87f09a5a1119cffc55cea5bf559dab3aa217934e1d5108c3a29a9`;
 it uses the same executable and public contract as the desktop proof. No engine
 or SDK implementation changed after the paired SDK revision was published.
+
+## Candidate qualification repair
+
+Root candidate run 44988125524 failed the storage qualification package: 33
+unit tests rejected its retained synthetic manifest with `public catalogue
+identity differs from validator`, and the golden test found the same stale
+catalogue digest. The new public operation legitimately changes that identity.
+Issue 495 retains the merge alarm. Read the shared fixture loader in
+`rrflow-qualification-storage/src/sustained/tests.rs`, the catalogue validator
+in `src/validation.rs`, and the fixture author/golden writer in
+`tests/storage_contract.rs`. These are synthetic contract fixtures, not native
+performance or durability results.
+
+Ran the existing generator with `RRFLOW_UPDATE_STORAGE_GOLDENS=1 cargo test
+--locked -p rrflow-qualification-storage --test storage_contract
+generated_schemas_and_synthetic_receipts_match_goldens`: passed. It changed
+only the public catalogue digest and dependent manifest/result hashes in
+`tests/fixtures/storage/{manifest,result,report}.json`. No validator, assertion,
+schema, engine or SDK implementation changed. Then ran `cargo test --locked
+-p rrflow-qualification-storage` without the update variable: the entire package
+passed. Logs: `storage-goldens-update.log` and `storage-qualification-final.log`
+in the validation directory above. The replacement candidate and merge-queue
+gates still must pass; local success does not close that requirement.
+
+Connectome candidate run 44987893340 passed frontend build/render smoke,
+native Linux/macOS/Windows, real RRD process integration and its aggregate
+gate. Its repaired smoke alarm 118 is closed and PR117 is in the merge queue.
