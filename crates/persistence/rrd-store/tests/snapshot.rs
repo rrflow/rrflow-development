@@ -9,6 +9,9 @@ use rrd_core::{
 };
 use rrd_store::{Error, RrflowKvStore, RrflowMxStore, StorageEngine};
 
+#[path = "snapshot/document_conflicts.rs"]
+mod document_conflicts;
+
 fn schema() -> RuntimeSchemaRegistry {
     let mut registry = RuntimeSchemaRegistry::empty(1, "snapshot test schema");
     registry
@@ -438,18 +441,18 @@ where
     let read = engine.runtime().read_stamp(&scope).unwrap();
     let disjoint = run_pair(
         DataTransaction::new(read.clone(), item(&scope, 2, "left")).unwrap(),
-        DataTransaction::new(read, item(&scope, 2, "right")).unwrap(),
+        DataTransaction::new(read.clone(), item(&scope, 2, "right")).unwrap(),
     );
-    assert_eq!(disjoint.iter().filter(|result| result.is_ok()).count(), 1);
-    assert_eq!(
-        disjoint
-            .iter()
-            .filter(|result| matches!(result, Err(Error::RuntimeConflict { .. })))
-            .count(),
-        1,
-        "M1 deliberately uses global serializable CAS even for disjoint identities"
-    );
-    assert_eq!(engine.runtime().cursor().unwrap(), 3);
+    let mut cursors = Vec::new();
+    for outcome in disjoint {
+        let outcome = outcome.unwrap();
+        let audit = engine.runtime().audit(&outcome.commit_id).unwrap().unwrap();
+        assert_eq!(audit.read.as_ref(), Some(&read));
+        cursors.push(outcome.last_cursor);
+    }
+    cursors.sort_unstable();
+    assert_eq!(cursors, [3, 4]);
+    assert_eq!(engine.runtime().cursor().unwrap(), 4);
 }
 
 #[test]

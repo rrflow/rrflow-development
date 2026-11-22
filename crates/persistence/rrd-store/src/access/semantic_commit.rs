@@ -23,6 +23,7 @@ use rrd_core::{
 };
 use std::collections::{BTreeMap, BTreeSet};
 
+mod conflicts;
 mod constraints;
 
 #[cfg(test)]

@@ -1,10 +1,13 @@
 use rrd_core::{
     Claim, DataTransaction, Predicate, Producer, RuntimeCommit, RuntimeMutation, ScopeId, Subject,
 };
-use rrd_core::{RuntimeEventSchema, RuntimeLogicalModel, RuntimeSchemaRegistry, RuntimeType};
+use rrd_core::{
+    RuntimeEventSchema, RuntimeLogicalModel, RuntimeRecord, RuntimeRef, RuntimeSchemaRegistry,
+    RuntimeTableSchema, RuntimeType,
+};
 use rrd_store::{
     export_logical_archive, inspect_logical_archive, restore_logical_archive_to_new_root,
-    RrflowKvStore, StorageEngine,
+    ControlTransition, RrflowKvStore, StorageEngine,
 };
 use std::fs::OpenOptions;
 use std::io::{Seek, SeekFrom, Write};
@@ -208,5 +211,99 @@ fn restore_preserves_the_original_transaction_audit_envelope() {
         restored.runtime().audit(&outcome.commit_id).unwrap(),
         Some(expected_audit),
         "logical recovery must retain the transaction's exact read and audit chain"
+    );
+}
+
+#[test]
+fn disjoint_document_transactions_restore_original_read_and_publication_order() {
+    let root = tempfile::tempdir().unwrap();
+    let source = RrflowKvStore::open(&root.path().join("source")).unwrap();
+    let scope = ScopeId::new("instance:archive-documents").unwrap();
+    let mut registry = RuntimeSchemaRegistry::empty(1, "archive documents");
+    registry.tables.insert(
+        RuntimeType::new("document").unwrap(),
+        RuntimeTableSchema::schemaless(RuntimeLogicalModel::Document),
+    );
+    source
+        .runtime()
+        .commit(&RuntimeCommit {
+            scope: scope.clone(),
+            at: 1,
+            actor: "archive-test".into(),
+            expected_cursor: 0,
+            mutations: vec![RuntimeMutation::Schema { registry }],
+        })
+        .unwrap();
+    // Logical archives replay runtime history. The separate control archive
+    // owns this catalogue transition, while the runtime audit retains its stamp.
+    source
+        .control()
+        .commit_catalog(
+            &scope,
+            &ControlTransition {
+                key: "server/state/catalogue/documents".into(),
+                expected: None,
+                replacement: Some(b"ready".to_vec()),
+                at: 1,
+                actor: "archive-test".into(),
+                action: "catalogue.ensure".into(),
+                request_id: "catalogue-documents".into(),
+                operation_id: "catalogue-documents".into(),
+            },
+        )
+        .unwrap();
+    let read = source.runtime().read_stamp(&scope).unwrap();
+    assert_eq!(read.catalog_revision, 1);
+    let mut outcomes = Vec::new();
+    for id in ["left", "right"] {
+        let commit = RuntimeCommit {
+            scope: scope.clone(),
+            at: 2,
+            actor: id.into(),
+            expected_cursor: read.commit_cursor,
+            mutations: vec![RuntimeMutation::Record {
+                record: RuntimeRecord {
+                    reference: RuntimeRef::new("document", id).unwrap(),
+                    valid_from: 1,
+                    valid_to: None,
+                    properties: Default::default(),
+                },
+            }],
+        };
+        let txn = DataTransaction::new(read.clone(), commit).unwrap();
+        outcomes.push(source.runtime().commit_data_transaction(&txn).unwrap());
+    }
+    assert_eq!(outcomes[0].last_cursor, 2);
+    assert_eq!(outcomes[1].first_cursor, 3);
+    let archive = root.path().join("documents.rrd-archive");
+    let inventory = export_logical_archive(&source, &archive).unwrap();
+    assert_eq!(inspect_logical_archive(&archive).unwrap(), inventory);
+    let target = root.path().join("restored");
+    restore_logical_archive_to_new_root(&archive, &target, 100).unwrap();
+    let restored = RrflowKvStore::open(&target).unwrap();
+    for outcome in outcomes {
+        let audit = restored
+            .runtime()
+            .audit(&outcome.commit_id)
+            .unwrap()
+            .unwrap();
+        assert_eq!(audit.read.as_ref(), Some(&read));
+        assert_eq!(audit.outcome_cursor, Some(outcome.last_cursor));
+        assert_eq!(
+            restored
+                .runtime()
+                .commit_outcome(&outcome.commit_id)
+                .unwrap(),
+            Some(outcome)
+        );
+    }
+    let second_export = root.path().join("restored.rrd-archive");
+    assert_eq!(
+        export_logical_archive(&restored, &second_export).unwrap(),
+        inventory
+    );
+    assert_eq!(
+        std::fs::read(second_export).unwrap(),
+        std::fs::read(archive).unwrap()
     );
 }

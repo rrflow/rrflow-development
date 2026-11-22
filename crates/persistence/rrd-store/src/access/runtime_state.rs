@@ -203,6 +203,23 @@ pub(crate) fn validate_read_stamp(
     reader: &(impl AccessRead + ?Sized),
     read: &ReadStamp,
 ) -> Result<RuntimeReadValidation> {
+    validate_retained_read(reader, read, true)
+}
+
+/// A logical archive carries the source catalogue revision in its sealed
+/// audit but omits control journals. Verify its retained data history.
+pub(crate) fn validate_archived_read(
+    reader: &(impl AccessRead + ?Sized),
+    read: &ReadStamp,
+) -> Result<RuntimeReadValidation> {
+    validate_retained_read(reader, read, false)
+}
+
+fn validate_retained_read(
+    reader: &(impl AccessRead + ?Sized),
+    read: &ReadStamp,
+    check_catalogue: bool,
+) -> Result<RuntimeReadValidation> {
     read.validate()?;
     let current = read_sequence(reader, &keyspaces::runtime_cursor_key())?;
     if read.commit_cursor > current {
@@ -228,7 +245,7 @@ pub(crate) fn validate_read_stamp(
         .map(|schema| schema.revision);
         let catalog_revision =
             read_sequence(reader, &keyspaces::catalog_revision_key(&read.scope))?;
-        if read.catalog_revision != catalog_revision
+        if (check_catalogue && read.catalog_revision != catalog_revision)
             || read.head_digest != head_digest
             || read.schema_revision != schema_revision
             || read.accumulator_root.as_deref() != Some(accumulator.root.as_str())
@@ -294,7 +311,7 @@ pub(crate) fn validate_read_stamp(
             proof.verify_change(change, root)?;
         }
     }
-    if !catalog_revision_in_effect(reader, read)?
+    if (check_catalogue && !catalog_revision_in_effect(reader, read)?)
         || read.head_digest != retained_head.as_ref().map(|change| change.digest.clone())
         || read.schema_revision != schema_revision
     {

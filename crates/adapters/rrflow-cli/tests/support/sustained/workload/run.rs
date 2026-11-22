@@ -570,7 +570,7 @@ impl Workload {
             idempotent_replay,
         })
     }
-    async fn query(
+    pub(in super::super) async fn query(
         &self,
         source: &str,
         filter: &str,

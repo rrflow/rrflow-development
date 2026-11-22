@@ -87,10 +87,14 @@ pub(crate) fn prepare_semantic_commit(
     let commit_id = commit.digest();
     let start = read_sequence(reader, &keyspaces::runtime_cursor_key())?;
     if start != commit.expected_cursor {
-        return Err(Error::RuntimeConflict {
-            expected: commit.expected_cursor,
-            actual: start,
-        });
+        conflicts::validate_document_writes(
+            reader,
+            commit,
+            start,
+            read,
+            archived_audit,
+            function_receipts,
+        )?;
     }
     let mut accumulator = current_accumulator(reader, start)?;
     validate_retirement_targets(reader, commit, start)?;

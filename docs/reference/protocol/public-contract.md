@@ -119,13 +119,19 @@ internal failures. Error messages and detail values are bounded. Credentials,
 secrets, arbitrary headers, and private storage types are not public contract
 payloads.
 
-A transaction commit whose exact outcome is absent and whose runtime cursor has
-advanced past the lease's read cursor returns `conflict` with `retryable=false`.
-Its details identify `transaction-snapshot-stale`, the bounded expected and
-actual cursors, and `abort-and-reexecute-transaction`. The caller must abort the
-old transaction and redo its reads, decisions and writes on a fresh snapshot.
-The engine does not silently rebase or replay the stale commit. A generic
-conflict or uncertain outcome does not carry this conclusion.
+Each transaction lease keeps the snapshot captured by begin. A batch containing
+only record writes with open-ended valid time and no governed function receipts
+can commit after the head advances. Each target identity must be unchanged since
+begin, the schema and catalogue revisions must match, and the batch must still
+satisfy its constraints. The receipt identifies the actual publication cursor.
+A preview from the earlier lease still sees its original snapshot plus its proposed writes.
+An exact replay returns the original receipt even after the daemon restarts.
+
+An intervening write to the same record, or an advanced snapshot for a mixed
+mutation batch that requires the original head, returns `conflict` with
+`retryable=false`. Its details identify `transaction-snapshot-stale`, the
+expected and actual cursors, and `abort-and-reexecute-transaction`. The caller
+aborts that transaction and repeats its reads and writes on a fresh snapshot.
 
 ## Deployment and capability discovery
 

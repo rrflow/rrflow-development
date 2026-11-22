@@ -127,23 +127,32 @@ impl<'a> RuntimeRepository<'a> {
         function_receipts: Option<(&str, &[FunctionInvocationReceiptRecord])>,
     ) -> Result<RuntimeCommitOutcome> {
         commit.validate()?;
-        let mut transaction = self.storage.begin_transaction()?;
-        let plan = prepare_semantic_commit(
-            &*transaction,
-            commit,
-            read,
-            archived_audit,
-            function_receipts,
-        )?;
-        let outcome = plan.apply(&mut *transaction)?;
-        match transaction.commit(Durability::Authoritative) {
-            Ok(_) => Ok(outcome),
-            Err(Error::TransactionConflict { .. }) => Err(Error::RuntimeConflict {
-                expected: commit.expected_cursor,
-                actual: self.cursor()?,
-            }),
-            Err(error) => Err(error),
+        for _ in 0..super::super::PUBLICATION_ATTEMPTS {
+            let mut transaction = self.storage.begin_transaction()?;
+            let plan = prepare_semantic_commit(
+                &*transaction,
+                commit,
+                read,
+                archived_audit,
+                function_receipts,
+            )?;
+            let outcome = plan.apply(&mut *transaction)?;
+            match transaction.commit(Durability::Authoritative) {
+                Ok(_) => return Ok(outcome),
+                Err(Error::TransactionConflict { .. }) => {
+                    // A winning runtime commit occupied the planned log slots.
+                    // Revalidate the original intent against the new head.
+                    if read.is_none() || self.cursor()? < outcome.first_cursor {
+                        break;
+                    }
+                }
+                Err(error) => return Err(error),
+            }
         }
+        Err(Error::RuntimeConflict {
+            expected: commit.expected_cursor,
+            actual: self.cursor()?,
+        })
     }
 
     pub fn commit_outcome(&self, commit_id: &str) -> Result<Option<RuntimeCommitOutcome>> {
