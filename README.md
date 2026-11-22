@@ -43,6 +43,9 @@ qualification; neither compatibility claim is established today. The
 [database identity and compatibility
 boundary](docs/architecture/system-overview.md#persistence-and-memory-boundary)
 separates that target from current implementation and compatibility evidence.
+The [installed developer workflow and capability requirements](docs/roadmap/rrflow-1.0/executable-dependency-spine.md#what-a-developer-must-see-in-connectome)
+show how to judge the prototype from Connectome, including focus changes,
+multimodal ingestion, agent transactions, retrieval and optional hosting.
 The [database semantics reference](docs/reference/data/database-semantics.md)
 details the two temporal coordinates, DB/QL/KV/LSM/CLD responsibilities,
 transaction authority, record links versus graph edges, public protocols and

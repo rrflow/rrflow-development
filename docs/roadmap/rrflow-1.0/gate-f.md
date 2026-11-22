@@ -15,14 +15,32 @@ either independently.
 | [ ] | F-03 | Implement internal relationship expansion, BM25 candidate generation, HNSW candidate generation, and `math::rrf()` as native physical operators that exchange stamped Arrow batches with DataFusion. Relationship expansion consumes the E-01/F-01 stream and respects the same authorization, cache, stamp and budgets. | `rrd-query`, `rrd-vector` | Mixed query tests prove one stamp, deterministic ordering, exact reranking, configured cache use and no external database round trip or bypass of the storage stream. |
 | [ ] | F-04 | Enforce query memory, spill, elapsed-time, scanned-key, graph-step, candidate, and result-byte budgets across native and DataFusion operators. | `rrd-query`, `rrd-engine` | Each limit has a deterministic truncation or denial fixture with measured resource evidence. |
 | [ ] | F-05 | Add read-stamp/query/projection caches with byte accounting and cursor/schema invalidation. | `rrd-engine`, `rrd-query` | Repeated-query benchmark shows bounded reuse; mutation and schema tests prove stale batches are never returned. |
-| [ ] | F-06 | Implement configurable engine-owned background compaction of selected cold history, audit and analytical data into compressed Parquet row groups, with the native WAL and transaction authority unchanged. Decide and document the canonical versus derived status of each cold artifact before reclaiming its source; preserve table/record identity, versions, tombstones, provenance, authorization and read stamps. | `rrd-lsm`, `rrd-store`, `rrd-query`, `rrd-engine` | Independent hot/cold and retained-stamp results agree across update/delete, interruption, full disk, corruption, concurrent reads, restart and reclamation. Durable publication never loses an acknowledged write or exposes an incomplete generation. Show bounded background work and actual rows/pages/bytes read, decoded and compressed; measure selective projection/predicate pruning against an exact unpruned oracle. Bounded export alone does not pass. |
+| [ ] | F-06 | rrflowDB coordinates publication of selected hot history through rrflowKV to a format-independent rrflowCLD backend. rrflowQL requests a stamped scan from DB. Keep each artifact's role, versions, tombstones, provenance, authorization and read stamps explicit before reclaiming its source. | DB, KV and CLD own placement, storage access and encoding. TX owns atomic visibility. QL consumes the scan. | Run the identical historical point/range, projection and recovery corpus against Vortex and Parquet. Answers and both temporal coordinates must agree through correction, interruption, full disk, corruption, concurrent reads, restart and reclamation. Record selected format/path, publication and read stamps, bytes read, decoding work, latency and peak memory. Compare pruning with an unpruned exact read. |
 
-F-06 is a target, not an assertion that Parquet currently backs rrflowKV.
-The current v6 segment path and its accepted tests remain authoritative until
-an exact replacement or archival design proves its identity, snapshot,
-recovery and reclamation semantics. Evaluate native Parquet-compatible writing
-against the existing locked Rust implementation and the format specification;
-do not equate columnar files with WAL durability or automatic zero-copy.
+The installed path currently writes Parquet cold history. The columnar comparison port
+has separate reference adapters. The first change moves the existing generation writer
+and authenticated reader behind the same storage contract, preserving source digests
+and stamped answers. Then connect the DB scan to QL, with format-specific dependencies
+confined to CLD. Vortex is the primary candidate and Parquet the required reference
+backend. Select a deployment default from measured point-read, scan, encoding, size
+and recovery workloads. Reclamation requires proven coverage of retained stamps.
+
+Both planned product features, `cld-vortex` and `cld-parquet`, must select the
+same integration and benchmark targets. The existing `vortex-reference` and
+`parquet-reference` comparison features establish no installed-path parity. Record
+buffer ownership, bytes copied and bytes decoded when promoting a slice to MX.
+
+The backend implementation package must provide the following verification
+commands. The feature names and benchmark target below are planned interfaces.
+Both runs must exercise the same data and assertions. Keep the process-level
+correction, focus change and reopen test in the installed engine suite as well.
+
+```sh
+cargo test --locked -p rrd-store --features cld-vortex
+cargo test --locked -p rrd-store --features cld-parquet
+cargo bench --locked -p rrd-store --features cld-vortex --bench cold_history
+cargo bench --locked -p rrd-store --features cld-parquet --bench cold_history
+```
 
 ## Consumption by the real-project build
 
@@ -37,5 +55,5 @@ prerequisite and measured allocation/batch-lifetime oracle.
 ## Exit condition
 
 Gate F exits only when DataFusion consumes streamed authoritative access paths
-instead of hiding an eager whole-engram materialization, and F-06's Parquet
-cold-storage publication, query and recovery cases pass.
+with bounded materialization, and both F-06 backends pass the same cold-storage
+publication, query and recovery cases.
