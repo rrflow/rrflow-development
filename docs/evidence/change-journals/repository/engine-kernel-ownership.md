@@ -1,6 +1,6 @@
 # Engine ownership of the temporal kernel
 
-**Status:** installed development binary exercised on Windows
+**Status:** active evidence from the installed Windows development binary
 **Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/repository/engine-kernel-ownership`
 **Owner:** single-engine prerequisite for the [kernel contract](../../../roadmap/kernel-contract.md)
 
