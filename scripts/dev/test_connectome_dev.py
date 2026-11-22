@@ -71,6 +71,16 @@ class LaunchEnvironmentTests(unittest.TestCase):
 
 
 class StagingTests(unittest.TestCase):
+    def test_identical_private_engine_is_reused_without_replacement(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            built = fake_engine(Path(temporary) / "debug")
+            staged = dev.stage_engine(built, Path(temporary) / "dev-loop")
+            before = staged.stat()
+            with patch.object(dev.os, "replace", side_effect=PermissionError("running executable")):
+                self.assertEqual(dev.stage_engine(built, staged.parent), staged)
+            self.assertEqual(staged.stat().st_ino, before.st_ino)
+            self.assertEqual(staged.stat().st_mtime_ns, before.st_mtime_ns)
+
     def test_staging_gives_a_single_link_copy_of_a_hard_linked_build(self):
         with tempfile.TemporaryDirectory() as temporary:
             built = fake_engine(Path(temporary) / "debug")

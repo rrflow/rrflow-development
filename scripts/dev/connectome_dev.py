@@ -76,6 +76,10 @@ def stage_engine(built: Path, directory: Path) -> Path:
     """Copy the built engine to a file of its own: one link, identical bytes."""
     directory.mkdir(parents=True, exist_ok=True)
     staged = directory / ENGINE_NAME
+    # Windows cannot replace a running executable. An unchanged private copy
+    # already satisfies the launch contract and needs no filesystem mutation.
+    if staged.is_file() and staged.stat().st_nlink == 1 and sha256(staged) == sha256(built):
+        return staged
     pending = directory / f"{ENGINE_NAME}.pending"
     shutil.copy2(built, pending)
     os.replace(pending, staged)

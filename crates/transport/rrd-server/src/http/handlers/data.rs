@@ -131,6 +131,35 @@ impl AppState {
         )
     }
 
+    /// The outer invocation admits a transaction begin. The canonical engine
+    /// still checks commit/abort and every mutation; query-read permission is
+    /// never enough to publish a program.
+    pub(in crate::http) fn execute_query_transaction(
+        &self,
+        headers: &HeaderMap,
+        body: &[u8],
+        now: u64,
+    ) -> HttpResponse {
+        self.with_authenticated_envelope::<rrd_contract::ExecuteQueryTransaction, _, _>(
+            headers,
+            body,
+            now,
+            RrdOperation::TransactionBegin,
+            None,
+            |envelope, session, token| {
+                self.service
+                    .execute_query_transaction(
+                        session,
+                        token,
+                        &envelope.payload,
+                        &envelope.context,
+                        now,
+                    )
+                    .map_err(api_error)
+            },
+        )
+    }
+
     pub(in crate::http) fn export_query(
         &self,
         headers: &HeaderMap,

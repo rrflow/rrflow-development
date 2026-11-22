@@ -285,6 +285,7 @@ mod data_transaction;
 mod fixtures;
 mod installed_flows;
 mod query_and_changefeed;
+mod query_transaction;
 mod security_sessions;
 mod socket_faults;
 

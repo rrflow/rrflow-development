@@ -76,5 +76,76 @@ This establishes startup, not bitemporal transaction correctness.
 
 ## Validation and landing
 
-Pending implementation, focused checks, complete diff review, candidate and
-merge-queue CI. No completion or parity claim.
+Root PR: https://github.com/rrflow/rrflow-development/pull/494.
+Dependent desktop PR: https://github.com/rrflow/connectome-development/pull/117.
+The public binding delegates to the existing engine transaction authority;
+no transaction implementation was replaced. New files are the HTTP oracle,
+`scripts/dev/bitemporal_proof.py` and `docs/reference/data/database-semantics.md`.
+The catalogue drives the Rust operation, OpenAPI and five language projections.
+The generated fixture endpoint count changes from 87 to 88. No files are
+deleted or moved. The launcher reuses identical private executable bytes.
+
+Commands and results on Windows, with `CARGO_TARGET_DIR` set to
+`D:/.usr/Temp/rrflow-root-target` and four Cargo jobs:
+
+- Focused `public_query_transaction_preserves_corrections_cancel_and_replay_across_restart`:
+  failed first with HTTP 404; passed after the public binding.
+- `cargo test -p rrd-contract -p rrd-client -p rrd-server --all-targets --locked`:
+  final run passed, 281 tests across targets. The first broad run exposed the
+  stale 87-operation fixture, corrected to the actual 88 operations.
+- `cargo clippy -p rrd-contract -p rrd-client -p rrd-server --all-targets --locked -- -D warnings`:
+  passed. `cargo build --locked -p rrflow-cli --bin rrflow`: passed.
+- `python scripts/dev/test_connectome_dev.py`: 11 passed.
+- `pnpm --dir sdks/typescript check`: passed, including seven tests.
+- `python scripts/ci/check_generated_surfaces.py --check`: passed, 88 operations,
+  seven signal projections, OpenAPI digest
+  `1408587885ad396797b05260bd0a7b5b855d95c2d37920ddc87e7ea21cafe232`.
+- `python scripts/ci/check_documentation.py` and navigation render: passed
+  during authoring; final journal/index reconciliation remains below.
+
+The installed public SDK driver passed:
+
+```powershell
+$env:UV_PROJECT_ENVIRONMENT='D:/.usr/Temp/rrflow-python-proof-env'
+uv run --locked --project sdks/python python scripts/dev/bitemporal_proof.py --engine D:/.usr/Temp/rrflow-root-target/debug/rrflow.exe --output D:/.usr/Temp/rrflow-installed-bitemporal-20261122
+```
+
+The retained database is the output directory's `project` subdirectory;
+instance `instance-52ff55ae0e362f21637b617f`. Executable SHA-256 is
+`7c2c933ed6d1c879d3141d76dbdbbb467f19857ecdffb87dbddbbd61a4f7dd1f`.
+The driver installs through the public CLI, extends the existing schema through
+the public Python SDK and commits two documents plus a relation. At valid 100,
+known cursor 6 returns Original and cursor 7 returns Corrected. Valid 99 returns
+no row. CANCEL publishes no replacement. After forcibly terminating its own
+server child and reopening, both historical answers and the relation remain;
+retrying the correction returns its retained receipt and cursor 7.
+`evidence.json` SHA-256:
+`f79bda9146ed4f056ce8b30035ce33529337879aa0098880e0ac58363615a295`.
+Requests, installation plan, process announcements, stderr and complete query
+plans/read manifests are retained alongside it; credentials are not copied into
+the evidence. Build/test logs are in
+`D:/.usr/Temp/rrflow-bitemporal-validation`. This is a debug build, not a signed
+release or power-loss qualification.
+
+Surfaced intermediate failures: the new operation's reference row was initially
+absent and then out of binary-search order; the final catalogue is sorted and
+the full suite passes. The existing Python environment refused access to its
+lib64 entry; a separate locked UV environment ran the proof. The desktop's
+existing Vite process briefly occupied port 1420 during restart; after its
+normal shutdown the development launcher started successfully.
+
+Actual desktop preview showed native storage location, server behavior and all
+13 managed paths on demand; cancel left its isolated folder uninstalled. The
+reopened proof database reached a new local server but readiness correctly
+refused the desktop's old contract digest. PR117 must bind both its Rust and
+TypeScript SDKs to this engine contract before this joined journey is complete.
+Its initial CI run 44986579524 passed native jobs but failed the smoke assertion
+for the removed heading; updating that assertion made the exact smoke journey
+pass locally. Neither failure is hidden by accepting mismatched contracts.
+
+No full workspace, power-loss, throughput, Fjall/SurrealDB/Qdrant parity, hosted
+sync, controller or cold-tier qualification was run for this bounded package.
+POAM-005/011/090/093 gain source-grounded findings, with no closure or roadmap
+completion. The detailed reference names the remaining owners and distinguishes
+reviewed files/ranges from the unreviewed remainder. Final paired desktop proof,
+candidate and merge-queue CI are still required.

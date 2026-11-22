@@ -2,9 +2,9 @@
 
 package rrd
 
-// OpenAPI SHA-256: 45a1377eddcc481533db43c70756e40963a468e319126082a372358a9868c7bd
+// OpenAPI SHA-256: 1408587885ad396797b05260bd0a7b5b855d95c2d37920ddc87e7ea21cafe232
 
-const EndpointOpenAPIDocumentSHA256 = "45a1377eddcc481533db43c70756e40963a468e319126082a372358a9868c7bd"
+const EndpointOpenAPIDocumentSHA256 = "1408587885ad396797b05260bd0a7b5b855d95c2d37920ddc87e7ea21cafe232"
 
 type OperationID string
 
@@ -60,6 +60,7 @@ const (
 	OperationQueryIndexEnsure             OperationID = "query-index-ensure"
 	OperationQueryIndexList               OperationID = "query-index-list"
 	OperationQueryLivePoll                OperationID = "query-live-poll"
+	OperationQueryTransactionExecute      OperationID = "query-transaction-execute"
 	OperationRestoreCreate                OperationID = "restore-create"
 	OperationSessionClose                 OperationID = "session-close"
 	OperationSessionCreate                OperationID = "session-create"
@@ -150,6 +151,7 @@ var endpoints = map[OperationID]Endpoint{
 	OperationQueryIndexEnsure:             {Method: "POST", Path: "/v1/query/indexes/ensure", Authentication: "session_bearer", Mutation: true},
 	OperationQueryIndexList:               {Method: "POST", Path: "/v1/query/indexes/list", Authentication: "session_bearer", Mutation: false},
 	OperationQueryLivePoll:                {Method: "POST", Path: "/v1/query/live/poll", Authentication: "session_bearer", Mutation: false},
+	OperationQueryTransactionExecute:      {Method: "POST", Path: "/v1/query/transactions", Authentication: "session_bearer", Mutation: true},
 	OperationRestoreCreate:                {Method: "POST", Path: "/v1/restores", Authentication: "session_bearer", Mutation: true},
 	OperationSessionClose:                 {Method: "DELETE", Path: "/v1/sessions/{session}", Authentication: "session_bearer", Mutation: true},
 	OperationSessionCreate:                {Method: "POST", Path: "/v1/sessions", Authentication: "api_key", Mutation: true},

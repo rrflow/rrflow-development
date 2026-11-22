@@ -8,6 +8,12 @@ The parent ledger owns priority and lifecycle status.
 
 ## Observed deficiency
 
+The [bitemporal desktop proof](../../evidence/change-journals/gate-h/bitemporal-public-transactions-20261122.md)
+also reproduced Windows refusing replacement of the staged executable while
+it was running. The launcher now reuses an identical single-link private copy;
+changed builds still require replacement and do not silently select old bytes.
+This narrow repair does not close the complete desktop/task-control oracle.
+
 On 2026-11-20, the documented development launcher at engine revision
 `36dccea2c8b47f6e431078fbdbb54165546236ef` inherited the engine Cargo target into
 Connectome. Cargo placed both executables under its `debug` directory. With a

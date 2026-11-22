@@ -19,6 +19,12 @@ Read on 2026-11-20 at `33159f8e2`. The owner's direction of 2026-11-19 and 2026-
 
 Since 2026-11-20 a columnar port exists in `rrd-store` with Parquet and Vortex as optional reference modules behind it. The cold tier does not use the port yet, and no native format is behind it.
 
+The [database semantics audit](../../reference/data/database-semantics.md) at
+`b7def0fc7` confirms authenticated, bounded Parquet generation readback with
+artifact/source verification. The outstanding deficiency is production use of
+the columnar port and native format plus merged query/context access, not the
+absence of all cold-history reads. Existing readback does not close this item.
+
 ## Impact
 
 The cold tier cannot be compared with a reference, because it is the reference. Every product build carries the Parquet and Arrow writer stack. What rrflowCLD is meant to be for reasoning, columnar history read cold at one stamp, has no implementation to tune.

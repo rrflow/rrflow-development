@@ -90,6 +90,7 @@ http_dispatch_catalogue! {
     KnowledgeTreeReplace => ("knowledge-tree-replace", RrdOperation::KnowledgeTreeWrite),
     OpenapiRead => ("openapi-read", RrdOperation::ServiceInspect),
     QueryExecute => ("query-execute", RrdOperation::QueryExecute),
+    QueryTransactionExecute => ("query-transaction-execute", RrdOperation::TransactionBegin),
     QueryExport => ("query-export", RrdOperation::QueryExecute),
     QueryIndexEnsure => ("query-index-ensure", RrdOperation::QueryIndexEnsure),
     QueryIndexList => ("query-index-list", RrdOperation::QueryIndexList),
@@ -307,6 +308,9 @@ impl AppState {
             Some(HttpDispatch::SessionClose) => self.close_session(&headers, &body, &path, now),
             Some(HttpDispatch::TransactionBegin) => self.begin_transaction(&headers, &body, now),
             Some(HttpDispatch::QueryExecute) => self.execute_query(&headers, &body, now),
+            Some(HttpDispatch::QueryTransactionExecute) => {
+                self.execute_query_transaction(&headers, &body, now)
+            }
             Some(HttpDispatch::EndpointConfigurationRead) => {
                 self.read_endpoint_configuration(&headers, &body, now)
             }
