@@ -1,4 +1,4 @@
-// OpenAPI SHA-256: 59fbc172ad1c75997b82984a12e851f015076562eb69fcbc1cf90b3347e30f27
+// OpenAPI SHA-256: 051542fec7c7c8ffb3d39afb379254ab9816715dcb8da36df0378da3c0fba45c
 export interface paths {
     "/v1/attunement/cancel": {
         parameters: {
@@ -2107,10 +2107,7 @@ export interface components {
                                 } | {
                                     /** @constant */
                                     family: "data";
-                                    /**
-                                     * @description Public multi-model mutation vocabulary. It is deliberately independent of
-                                     *     `rrflow_kernel`; adapters lower these values into the authoritative runtime.
-                                     */
+                                    /** @description Document, relation, and other data mutations that an adapter submits to the engine. */
                                     mutation: {
                                         /** Format: float */
                                         confidence?: number | null;
@@ -11308,10 +11305,7 @@ export interface operations {
                                         } | {
                                             /** @constant */
                                             family: "data";
-                                            /**
-                                             * @description Public multi-model mutation vocabulary. It is deliberately independent of
-                                             *     `rrflow_kernel`; adapters lower these values into the authoritative runtime.
-                                             */
+                                            /** @description Document, relation, and other data mutations that an adapter submits to the engine. */
                                             mutation: {
                                                 /** Format: float */
                                                 confidence?: number | null;
@@ -12354,10 +12348,7 @@ export interface operations {
                                         } | {
                                             /** @constant */
                                             family: "data";
-                                            /**
-                                             * @description Public multi-model mutation vocabulary. It is deliberately independent of
-                                             *     `rrflow_kernel`; adapters lower these values into the authoritative runtime.
-                                             */
+                                            /** @description Document, relation, and other data mutations that an adapter submits to the engine. */
                                             mutation: {
                                                 /** Format: float */
                                                 confidence?: number | null;
@@ -13451,10 +13442,7 @@ export interface operations {
                                     } | {
                                         /** @constant */
                                         family: "data";
-                                        /**
-                                         * @description Public multi-model mutation vocabulary. It is deliberately independent of
-                                         *     `rrflow_kernel`; adapters lower these values into the authoritative runtime.
-                                         */
+                                        /** @description Document, relation, and other data mutations that an adapter submits to the engine. */
                                         mutation: {
                                             /** Format: float */
                                             confidence?: number | null;
@@ -14492,10 +14480,7 @@ export interface operations {
                                     } | {
                                         /** @constant */
                                         family: "data";
-                                        /**
-                                         * @description Public multi-model mutation vocabulary. It is deliberately independent of
-                                         *     `rrflow_kernel`; adapters lower these values into the authoritative runtime.
-                                         */
+                                        /** @description Document, relation, and other data mutations that an adapter submits to the engine. */
                                         mutation: {
                                             /** Format: float */
                                             confidence?: number | null;
@@ -25063,10 +25048,7 @@ export interface operations {
                                         } | {
                                             /** @constant */
                                             family: "data";
-                                            /**
-                                             * @description Public multi-model mutation vocabulary. It is deliberately independent of
-                                             *     `rrflow_kernel`; adapters lower these values into the authoritative runtime.
-                                             */
+                                            /** @description Document, relation, and other data mutations that an adapter submits to the engine. */
                                             mutation: {
                                                 /** Format: float */
                                                 confidence?: number | null;
@@ -27822,10 +27804,7 @@ export interface operations {
                                         } | {
                                             /** @constant */
                                             family: "data";
-                                            /**
-                                             * @description Public multi-model mutation vocabulary. It is deliberately independent of
-                                             *     `rrflow_kernel`; adapters lower these values into the authoritative runtime.
-                                             */
+                                            /** @description Document, relation, and other data mutations that an adapter submits to the engine. */
                                             mutation: {
                                                 /** Format: float */
                                                 confidence?: number | null;
@@ -40730,10 +40709,7 @@ export interface operations {
                                     } | {
                                         /** @constant */
                                         family: "data";
-                                        /**
-                                         * @description Public multi-model mutation vocabulary. It is deliberately independent of
-                                         *     `rrflow_kernel`; adapters lower these values into the authoritative runtime.
-                                         */
+                                        /** @description Document, relation, and other data mutations that an adapter submits to the engine. */
                                         mutation: {
                                             /** Format: float */
                                             confidence?: number | null;
@@ -41796,10 +41772,7 @@ export interface operations {
                                     } | {
                                         /** @constant */
                                         family: "data";
-                                        /**
-                                         * @description Public multi-model mutation vocabulary. It is deliberately independent of
-                                         *     `rrflow_kernel`; adapters lower these values into the authoritative runtime.
-                                         */
+                                        /** @description Document, relation, and other data mutations that an adapter submits to the engine. */
                                         mutation: {
                                             /** Format: float */
                                             confidence?: number | null;
@@ -52350,10 +52323,7 @@ export interface operations {
                                              */
                                             kind: string;
                                         };
-                                        /**
-                                         * @description Public multi-model mutation vocabulary. It is deliberately independent of
-                                         *     `rrflow_kernel`; adapters lower these values into the authoritative runtime.
-                                         */
+                                        /** @description Document, relation, and other data mutations that an adapter submits to the engine. */
                                         value: {
                                             /** Format: float */
                                             confidence?: number | null;
@@ -54390,10 +54360,7 @@ export interface operations {
                                              */
                                             kind: string;
                                         };
-                                        /**
-                                         * @description Public multi-model mutation vocabulary. It is deliberately independent of
-                                         *     `rrflow_kernel`; adapters lower these values into the authoritative runtime.
-                                         */
+                                        /** @description Document, relation, and other data mutations that an adapter submits to the engine. */
                                         value: {
                                             /** Format: float */
                                             confidence?: number | null;

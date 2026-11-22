@@ -85,6 +85,20 @@ set. The host retained the full responses in `evidence.json` and
 `multiwriter.json` under `rrflow-kernel-500-09e4d3520f5e48abba529c11e5278936`
 in the temporary directory.
 
+The first candidate gate found two integration failures. Its workflow validator
+read a directory basename as a package name, and the SDK digests still described
+the previous OpenAPI export. The validator now asks the shared Cargo member
+resolver. The public mutation description names the operation in domain terms.
+All five language generators ran against that export. The surface checker
+verified 88 HTTP operations and seven signal projections, with OpenAPI digest
+`051542fec7c7c8ffb3d39afb379254ab9816715dcb8da36df0378da3c0fba45c`.
+The workflow validator resolved all 30 default-feature packages. After
+rebuilding the executable the same install, correction, concurrent-write and
+reopen operations succeeded with binary SHA-256
+`d0fd2f25bc6a412cbabb232c7695f4ae3077d7617990d51ed368e4165ed2d1c0`.
+The final responses are in
+`rrflow-kernel-500-final-664a1525e39948658d5d7b56348cd8ae` in the temporary directory.
+
 Local test suites and benchmarks were skipped per the owner's direction.
 These runs exercise single-node behavior on this Windows executable. They
 establish neither distributed transaction guarantees nor cold-tier or UI

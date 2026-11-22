@@ -5,8 +5,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 
-/// Public multi-model mutation vocabulary. It is deliberately independent of
-/// `rrflow_kernel`; adapters lower these values into the authoritative runtime.
+/// Document, relation, and other data mutations that an adapter submits to the engine.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "mutation", rename_all = "snake_case", deny_unknown_fields)]
 pub enum TransactionMutation {

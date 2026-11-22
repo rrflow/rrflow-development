@@ -5727,12 +5727,12 @@ dependencies = [
  "hyper-util",
  "rcgen",
  "rrd-contract",
- "rrflow-kernel",
  "rrd-engine",
  "rrd-engram",
  "rrd-security",
  "rrd-server",
  "rrd-store",
+ "rrflow-kernel",
  "rustls",
  "serde",
  "serde_json",
@@ -5747,9 +5747,9 @@ version = "1.0.0"
 dependencies = [
  "openraft",
  "rcgen",
- "rrflow-kernel",
  "rrd-lsm",
  "rrd-store",
+ "rrflow-kernel",
  "rustls",
  "serde",
  "serde_json",
@@ -5772,15 +5772,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rrflow-kernel"
-version = "1.0.0"
-dependencies = [
- "serde",
- "serde_json",
- "sha2",
-]
-
-[[package]]
 name = "rrd-engine"
 version = "1.0.0"
 dependencies = [
@@ -5793,7 +5784,6 @@ dependencies = [
  "rrd-attunement",
  "rrd-cluster",
  "rrd-contract",
- "rrflow-kernel",
  "rrd-engram",
  "rrd-inference",
  "rrd-observation",
@@ -5802,6 +5792,7 @@ dependencies = [
  "rrd-security",
  "rrd-store",
  "rrd-vector",
+ "rrflow-kernel",
  "schemars",
  "serde",
  "serde_json",
@@ -5820,8 +5811,8 @@ name = "rrd-engram"
 version = "1.0.0"
 dependencies = [
  "rrd-contract",
- "rrflow-kernel",
  "rrd-store",
+ "rrflow-kernel",
  "serde",
  "serde_json",
  "sha2",
@@ -5836,8 +5827,8 @@ version = "1.0.0"
 dependencies = [
  "fastembed",
  "rrd-contract",
- "rrflow-kernel",
  "rrd-store",
+ "rrflow-kernel",
  "serde",
  "serde_json",
  "ureq",
@@ -5889,8 +5880,8 @@ name = "rrd-maintenance"
 version = "1.0.0"
 dependencies = [
  "rrd-contract",
- "rrflow-kernel",
  "rrd-store",
+ "rrflow-kernel",
  "serde",
  "serde_json",
  "tempfile",
@@ -5916,8 +5907,8 @@ dependencies = [
  "native-tls",
  "postgres",
  "postgres-native-tls",
- "rrflow-kernel",
  "rrd-vector",
+ "rrflow-kernel",
  "serde",
  "serde_json",
  "tempfile",
@@ -5937,8 +5928,8 @@ dependencies = [
  "futures",
  "futures-timer",
  "parquet",
- "rrflow-kernel",
  "rrd-store",
+ "rrflow-kernel",
  "serde",
  "serde_json",
  "tempfile",
@@ -5953,8 +5944,8 @@ dependencies = [
  "base64 0.22.1",
  "hmac",
  "rrd-contract",
- "rrflow-kernel",
  "rrd-store",
+ "rrflow-kernel",
  "serde",
  "serde_json",
  "sha2",
@@ -5971,11 +5962,11 @@ dependencies = [
  "hyper-util",
  "rcgen",
  "rrd-contract",
- "rrflow-kernel",
  "rrd-engine",
  "rrd-engram",
  "rrd-security",
  "rrd-store",
+ "rrflow-kernel",
  "rustls",
  "rustls-pemfile",
  "serde",
@@ -5999,8 +5990,8 @@ dependencies = [
  "bytes",
  "fjall",
  "parquet",
- "rrflow-kernel",
  "rrd-lsm",
+ "rrflow-kernel",
  "serde",
  "serde_json",
  "sha2",
@@ -6016,8 +6007,8 @@ name = "rrd-vector"
 version = "1.0.0"
 dependencies = [
  "memmap2",
- "rrflow-kernel",
  "rrd-store",
+ "rrflow-kernel",
  "serde",
  "serde_json",
  "tempfile",
@@ -6033,13 +6024,13 @@ dependencies = [
  "parquet",
  "rrd-client",
  "rrd-contract",
- "rrflow-kernel",
  "rrd-engine",
  "rrd-engram",
  "rrd-query",
  "rrd-security",
  "rrd-server",
  "rrd-store",
+ "rrflow-kernel",
  "rrflow-qualification-storage",
  "serde",
  "serde_json",
@@ -6066,6 +6057,15 @@ name = "rrflow-evaluation-core"
 version = "1.0.0"
 dependencies = [
  "schemars",
+ "serde",
+ "serde_json",
+ "sha2",
+]
+
+[[package]]
+name = "rrflow-kernel"
+version = "1.0.0"
+dependencies = [
  "serde",
  "serde_json",
  "sha2",
@@ -6166,11 +6166,11 @@ version = "1.0.0"
 dependencies = [
  "rrd-client",
  "rrd-contract",
- "rrflow-kernel",
  "rrd-engine",
  "rrd-security",
  "rrd-server",
  "rrd-store",
+ "rrflow-kernel",
  "serde",
  "serde_json",
  "tempfile",
