@@ -253,8 +253,11 @@
       "refs": [
         "refs/codex/turn-diffs/checkpoints/b4c383a96af6b1456df4bb44954f76a8f9d3448d04eadc9e91e7924e750bd59a/7b1d5fc0e8ec10a4bf821c4c82ec4dba1f9ac01e54457b70677e97956c69f7ec/1788025615205/e3ba621c-a26b-4b50-962a-d56f02a7c264"
       ],
-      "disposition": "Historical planning authority, superseded by current README/objective/roadmap/POAM chain; preserved in original bundle, not installed as a parallel authority.",
-      "review": "Headers and ownership inspected; not a full historical body review."
+      "disposition": "Retain current single-authority vector lifecycle. Do not reinstate retired planning records or generic quantized publication bypasses.",
+      "review": "Complete nearest-main-history delta reviewed in PR493; checkpoint omits later quantization lifecycle governance, with no unique implementation to restore.",
+      "nearest_main_history_blob": "8e3e3d3e465066b95e9a4dd1b9b92dc3e0abcc17",
+      "nearest_main_history_commit": "3deb168a80e626ebf9bbc122fa8ec025e7d85969",
+      "main_history_delta_lines": 18
     },
     {
       "path": "STATUS.md",
@@ -262,8 +265,11 @@
       "refs": [
         "refs/codex/turn-diffs/checkpoints/b4c383a96af6b1456df4bb44954f76a8f9d3448d04eadc9e91e7924e750bd59a/7b1d5fc0e8ec10a4bf821c4c82ec4dba1f9ac01e54457b70677e97956c69f7ec/1788025615205/e3ba621c-a26b-4b50-962a-d56f02a7c264"
       ],
-      "disposition": "Historical planning authority, superseded by current README/objective/roadmap/POAM chain; preserved in original bundle, not installed as a parallel authority.",
-      "review": "Headers and ownership inspected; not a full historical body review."
+      "disposition": "Retain current single-authority vector lifecycle. Do not reinstate retired planning records or generic quantized publication bypasses.",
+      "review": "Complete nearest-main-history delta reviewed in PR493; checkpoint omits later quantization lifecycle governance, with no unique implementation to restore.",
+      "nearest_main_history_blob": "1d5964449df12eeefed009ded3bb31d468d5e247",
+      "nearest_main_history_commit": "3deb168a80e626ebf9bbc122fa8ec025e7d85969",
+      "main_history_delta_lines": 19
     },
     {
       "path": "crates/rrd-engine/src/engine/tests/vector_index.rs",
@@ -348,8 +354,11 @@
       "refs": [
         "refs/codex/turn-diffs/checkpoints/b4c383a96af6b1456df4bb44954f76a8f9d3448d04eadc9e91e7924e750bd59a/7b1d5fc0e8ec10a4bf821c4c82ec4dba1f9ac01e54457b70677e97956c69f7ec/1788025615205/e3ba621c-a26b-4b50-962a-d56f02a7c264"
       ],
-      "disposition": "Historical planning authority, superseded by current README/objective/roadmap/POAM chain; preserved in original bundle, not installed as a parallel authority.",
-      "review": "Headers and ownership inspected; not a full historical body review."
+      "disposition": "Retain current single-authority vector lifecycle. Do not reinstate retired planning records or generic quantized publication bypasses.",
+      "review": "Complete nearest-main-history delta reviewed in PR493; checkpoint omits later quantization lifecycle governance, with no unique implementation to restore.",
+      "nearest_main_history_blob": "e392e24b9375d9fe4dcfaec8e3ab665b7cbb1180",
+      "nearest_main_history_commit": "3deb168a80e626ebf9bbc122fa8ec025e7d85969",
+      "main_history_delta_lines": 17
     },
     {
       "path": "docs/rrd-quantization-lifecycle-v1.md",
@@ -357,8 +366,11 @@
       "refs": [
         "refs/codex/turn-diffs/checkpoints/b4c383a96af6b1456df4bb44954f76a8f9d3448d04eadc9e91e7924e750bd59a/7b1d5fc0e8ec10a4bf821c4c82ec4dba1f9ac01e54457b70677e97956c69f7ec/1788025615205/e3ba621c-a26b-4b50-962a-d56f02a7c264"
       ],
-      "disposition": "Current owner docs/reference/vector/quantization-lifecycle.md and current lifecycle code/tests; historical draft preserved in bundle.",
-      "review": "Ownership and implementation/test mapping, not a full historical body review."
+      "disposition": "Retain current single-authority vector lifecycle. Do not reinstate retired planning records or generic quantized publication bypasses.",
+      "review": "Complete nearest-main-history delta reviewed in PR493; checkpoint omits later quantization lifecycle governance, with no unique implementation to restore.",
+      "nearest_main_history_blob": "a284de236a68087733b65fc849a60a8bcefbfdd0",
+      "nearest_main_history_commit": "3deb168a80e626ebf9bbc122fa8ec025e7d85969",
+      "main_history_delta_lines": 33
     }
   ],
   "remaining_original_objects": [
@@ -1356,5 +1368,502 @@
         }
       ]
     }
-  ]
+  ],
+  "consolidated_followup": {
+    "journal": "recovered-source-contracts-20261122.md",
+    "baseline": "493293f2087045baf36eac0ab060fe5b983e8a30",
+    "connectome_baseline": "36d388e919c27de7b72fbccb3d7e7af7bbb71030",
+    "scope_method": "git merge-base saved base/head, then git diff --numstat --no-renames merge-base head; complete Git trees, not the GitHub 100-file response.",
+    "scope": [
+      {
+        "repository": "rrflow-development",
+        "pull_request": 365,
+        "head": "854ffd4ff86db6b5bf9c335db0787ff17b596305",
+        "merge_base": "181b0e676b382427f0ba9ee074e8f7b817a0c4d1",
+        "changed_paths": 218
+      },
+      {
+        "repository": "rrflow-development",
+        "pull_request": 364,
+        "head": "12722a07b7978c814e383e5cd6c6e7d2a6a3528e",
+        "merge_base": "181b0e676b382427f0ba9ee074e8f7b817a0c4d1",
+        "changed_paths": 30
+      },
+      {
+        "repository": "rrflow-development",
+        "pull_request": 344,
+        "head": "81059c9df60c64567414d14d0ed70f6dd10dc1a7",
+        "merge_base": "55d6c89f3baf9ce17a663da1894c8c8bd6180844",
+        "changed_paths": 7
+      },
+      {
+        "repository": "rrflow-development",
+        "pull_request": 316,
+        "head": "5741a7660e244e8bd71425c029d93a41f0420a35",
+        "merge_base": "d5e66d4360651a548b5c2e79ceff053294cce4b8",
+        "changed_paths": 24
+      },
+      {
+        "repository": "rrflow-development",
+        "pull_request": 315,
+        "head": "d26ad75bed82fe529f804b5b0fee3c19f50b6c73",
+        "merge_base": "6b02d8c888a391ca447996d5692185b4d34cc255",
+        "changed_paths": 32
+      },
+      {
+        "repository": "rrflow-development",
+        "pull_request": 300,
+        "head": "d26a1322dd5d87ec19b417420a5074c077e09de1",
+        "merge_base": "ae01ce3287bf64a067c9074f73b2da73541d400d",
+        "changed_paths": 2
+      },
+      {
+        "repository": "rrflow-development",
+        "pull_request": 286,
+        "head": "6795422b7b9ed1187af60f707576473f99866084",
+        "merge_base": "23c3f16e776f2cd5dae49130acdb26a100926ff3",
+        "changed_paths": 1
+      },
+      {
+        "repository": "rrflow-development",
+        "pull_request": 277,
+        "head": "d9f34f33e365eabc40a5b31a62b05343dfafdd01",
+        "merge_base": "db6c8022d4201d552aa1105f2fd2a41329e3d515",
+        "changed_paths": 284
+      },
+      {
+        "repository": "rrflow-development",
+        "pull_request": 274,
+        "head": "c870dd77732683f0e0aea16f0a6d6899ead3fa40",
+        "merge_base": "653aab9a314a8f9aba74a132ab370f2358995db3",
+        "changed_paths": 19
+      },
+      {
+        "repository": "rrflow-development",
+        "pull_request": 272,
+        "head": "653aab9a314a8f9aba74a132ab370f2358995db3",
+        "merge_base": "92f18c232d1744b3b16abee9e7b1858a539b84f4",
+        "changed_paths": 12
+      },
+      {
+        "repository": "rrflow-development",
+        "pull_request": 268,
+        "head": "92f18c232d1744b3b16abee9e7b1858a539b84f4",
+        "merge_base": "8bec67c89eea61715dc7c8ae8fc551d2cc71ae9a",
+        "changed_paths": 32
+      },
+      {
+        "repository": "rrflow-development",
+        "pull_request": 267,
+        "head": "3dc198111bda847165f33ff0ec3330dd05e2c7f9",
+        "merge_base": "a7587fed7d7cf4f279bee90ffe06f0cfacfae8b4",
+        "changed_paths": 21
+      },
+      {
+        "repository": "rrflow-development",
+        "pull_request": 262,
+        "head": "a7587fed7d7cf4f279bee90ffe06f0cfacfae8b4",
+        "merge_base": "e095ce39a5943d327d1f21517afdaa0ac345042b",
+        "changed_paths": 20
+      },
+      {
+        "repository": "rrflow-development",
+        "pull_request": 260,
+        "head": "e095ce39a5943d327d1f21517afdaa0ac345042b",
+        "merge_base": "23c3f16e776f2cd5dae49130acdb26a100926ff3",
+        "changed_paths": 42
+      },
+      {
+        "repository": "rrflow-development",
+        "pull_request": 234,
+        "head": "f0223d3e160817d6e82f2952d19b77fbc7a5c30f",
+        "merge_base": "6c069e1462d2b9cbb0237e9c117c379d1482bbaa",
+        "changed_paths": 0
+      },
+      {
+        "repository": "rrflow-development",
+        "pull_request": 231,
+        "head": "8d47500869329f1a5604821138f1a6c8efc349a5",
+        "merge_base": "5b4039fe930332895c1b24138891d39f600030c7",
+        "changed_paths": 288
+      },
+      {
+        "repository": "rrflow-development",
+        "pull_request": 225,
+        "head": "f256c8e1337d85fa01f2a0c61e895a4d213163fa",
+        "merge_base": "6d40731817064106824b22dfe3f719f17ff1d4ee",
+        "changed_paths": 191
+      },
+      {
+        "repository": "rrflow-development",
+        "pull_request": 220,
+        "head": "5697b208b5269f76817d437cb219f79b2434c500",
+        "merge_base": "6fe8b7590d913beda9b009551e5d2d2644e406d9",
+        "changed_paths": 8
+      },
+      {
+        "repository": "rrflow-development",
+        "pull_request": 219,
+        "head": "e93e9870ca8885d6dfc42f2667f013972566fc55",
+        "merge_base": "6fe8b7590d913beda9b009551e5d2d2644e406d9",
+        "changed_paths": 11
+      },
+      {
+        "repository": "rrflow-development",
+        "pull_request": 203,
+        "head": "241509b33941d0e4851e161230a705d04158d44f",
+        "merge_base": "44cbfa7346fe458d84daead188d33cbac7392efd",
+        "changed_paths": 110
+      },
+      {
+        "repository": "rrflow-development",
+        "pull_request": 201,
+        "head": "2c3f6bff9db9c87731899ebe4640bd3008324799",
+        "merge_base": "44cbfa7346fe458d84daead188d33cbac7392efd",
+        "changed_paths": 107
+      },
+      {
+        "repository": "rrflow-development",
+        "pull_request": 199,
+        "head": "5ee39f39942f610e4414fec287ce21dbe88b2d8b",
+        "merge_base": "291fee511887932572ecc9935e9786e098727677",
+        "changed_paths": 82
+      },
+      {
+        "repository": "rrflow-development",
+        "pull_request": 198,
+        "head": "63375dd42c77986ea8bd64a9c6034c07af2d3c9a",
+        "merge_base": "291fee511887932572ecc9935e9786e098727677",
+        "changed_paths": 34
+      },
+      {
+        "repository": "rrflow-development",
+        "pull_request": 197,
+        "head": "e3eaa78b3272bd19b58f93cfd6c8a6365ac4a01d",
+        "merge_base": "bdb954e48d2eb751b4839ed6efa761cc1e294071",
+        "changed_paths": 6
+      },
+      {
+        "repository": "rrflow-development",
+        "pull_request": 192,
+        "head": "a754de83acd20912a4d4dcc701c6fecb6e331e34",
+        "merge_base": "1f8fa02cf9df74ad5dab5b7481c49f68eeca96af",
+        "changed_paths": 0
+      },
+      {
+        "repository": "rrflow-development",
+        "pull_request": 189,
+        "head": "c15ed0b923dfb56ff947be0e14c04b10d8c650a1",
+        "merge_base": "e73ba9287dafba5d8fb8fb6a990fd145ffd01ab3",
+        "changed_paths": 41
+      },
+      {
+        "repository": "rrflow-development",
+        "pull_request": 151,
+        "head": "9aea9987b21e4437c5f6d96a5c5832da9e00939f",
+        "merge_base": "81fce08e14497bbc280790beefe4666716355aec",
+        "changed_paths": 13
+      },
+      {
+        "repository": "rrflow-development",
+        "pull_request": 148,
+        "head": "326957e9716225b9e18246dc0298c1cfde9dca1d",
+        "merge_base": "e73ba9287dafba5d8fb8fb6a990fd145ffd01ab3",
+        "changed_paths": 24
+      },
+      {
+        "repository": "rrflow-development",
+        "pull_request": 141,
+        "head": "3b28e5b75db461e4bddb8ee88fb0d5da4a56d66f",
+        "merge_base": "9a441efd5cbef924fc01f6cc47b6e6c5c844d4e6",
+        "changed_paths": 7
+      },
+      {
+        "repository": "rrflow-development",
+        "pull_request": 139,
+        "head": "0592829ce1f57eb99513e5f05d5068545389e5c1",
+        "merge_base": "9a441efd5cbef924fc01f6cc47b6e6c5c844d4e6",
+        "changed_paths": 29
+      },
+      {
+        "repository": "rrflow-development",
+        "pull_request": 137,
+        "head": "24814c6d5e64660c6b0c6ef05267f6f6c3af33ea",
+        "merge_base": "dd225072bcc639c89b0eef968625cc73303ea998",
+        "changed_paths": 38
+      },
+      {
+        "repository": "rrflow-development",
+        "pull_request": 136,
+        "head": "cc91c18cf824d3c43466465eb5092374e775b792",
+        "merge_base": "dd225072bcc639c89b0eef968625cc73303ea998",
+        "changed_paths": 21
+      },
+      {
+        "repository": "rrflow-development",
+        "pull_request": 135,
+        "head": "bec6e0d8685d37ae8848f5624d370433af48976b",
+        "merge_base": "dd225072bcc639c89b0eef968625cc73303ea998",
+        "changed_paths": 0
+      },
+      {
+        "repository": "rrflow-development",
+        "pull_request": 134,
+        "head": "4e2dbaffad29039d742f6b151f7636378ce3e7fe",
+        "merge_base": "dd225072bcc639c89b0eef968625cc73303ea998",
+        "changed_paths": 69
+      },
+      {
+        "repository": "rrflow-development",
+        "pull_request": 133,
+        "head": "f5109dbb853b0c688c0f651a92f7193cd34e2697",
+        "merge_base": "dd225072bcc639c89b0eef968625cc73303ea998",
+        "changed_paths": 6
+      },
+      {
+        "repository": "rrflow-development",
+        "pull_request": 132,
+        "head": "3ed0d67ea4810c4ecc19905d365357359765b1d1",
+        "merge_base": "dd225072bcc639c89b0eef968625cc73303ea998",
+        "changed_paths": 4
+      },
+      {
+        "repository": "rrflow-development",
+        "pull_request": 125,
+        "head": "ae93174f0dda83609935dea7bdf78a7e139f26fa",
+        "merge_base": "94d0567fb865fb49a90aaeeef4b5861707c9f8a7",
+        "changed_paths": 11
+      },
+      {
+        "repository": "rrflow-development",
+        "pull_request": 124,
+        "head": "018e2ce12b19b97e7cfeb6fa300e2252d4e02b7a",
+        "merge_base": "94d0567fb865fb49a90aaeeef4b5861707c9f8a7",
+        "changed_paths": 7
+      },
+      {
+        "repository": "rrflow-development",
+        "pull_request": 123,
+        "head": "1880734887b1624247f623bc8966be8946912fb7",
+        "merge_base": "94d0567fb865fb49a90aaeeef4b5861707c9f8a7",
+        "changed_paths": 44
+      },
+      {
+        "repository": "rrflow-development",
+        "pull_request": 122,
+        "head": "94a0786710519c7e389098041c6c84cff7cde478",
+        "merge_base": "94d0567fb865fb49a90aaeeef4b5861707c9f8a7",
+        "changed_paths": 6
+      },
+      {
+        "repository": "rrflow-development",
+        "pull_request": 121,
+        "head": "316569a3abe2060c324581f838e250ed4aead47b",
+        "merge_base": "94d0567fb865fb49a90aaeeef4b5861707c9f8a7",
+        "changed_paths": 39
+      },
+      {
+        "repository": "rrflow-development",
+        "pull_request": 120,
+        "head": "037635afbf202fe8379ebec647f51bd57b410a79",
+        "merge_base": "94d0567fb865fb49a90aaeeef4b5861707c9f8a7",
+        "changed_paths": 33
+      },
+      {
+        "repository": "rrflow-development",
+        "pull_request": 119,
+        "head": "eb4d7091644d2a0a3efc8417da56778a32de6e58",
+        "merge_base": "94d0567fb865fb49a90aaeeef4b5861707c9f8a7",
+        "changed_paths": 8
+      },
+      {
+        "repository": "rrflow-development",
+        "pull_request": 117,
+        "head": "155b400ae827822b4e6d38d542c172d7514d172d",
+        "merge_base": "94d0567fb865fb49a90aaeeef4b5861707c9f8a7",
+        "changed_paths": 18
+      },
+      {
+        "repository": "rrflow-development",
+        "pull_request": 68,
+        "head": "02951068179220d61ea5041dc95cff7b88c865b3",
+        "merge_base": "dde6ef86d278b8c59cf1f61ebc2d3923186396d5",
+        "changed_paths": 3
+      },
+      {
+        "repository": "rrflow-development",
+        "pull_request": 67,
+        "head": "fb4f1e880fbede3a097ea58f6464c2dd82012094",
+        "merge_base": "dde6ef86d278b8c59cf1f61ebc2d3923186396d5",
+        "changed_paths": 3
+      },
+      {
+        "repository": "rrflow-development",
+        "pull_request": 66,
+        "head": "c5888e2373ba03155774361e8105639dcf709363",
+        "merge_base": "dde6ef86d278b8c59cf1f61ebc2d3923186396d5",
+        "changed_paths": 3
+      },
+      {
+        "repository": "rrflow-development",
+        "pull_request": 25,
+        "head": "d134734bd765545475d5d6020b22749feae8045e",
+        "merge_base": "9bcc6154e9ee48f3ad8d28786a6abe75689e371d",
+        "changed_paths": 18
+      },
+      {
+        "repository": "rrflow-development",
+        "pull_request": 24,
+        "head": "f661cc965093f9ed4b3ae7a222da35c65599b43e",
+        "merge_base": "9bcc6154e9ee48f3ad8d28786a6abe75689e371d",
+        "changed_paths": 6
+      },
+      {
+        "repository": "connectome-development",
+        "pull_request": 48,
+        "head": "edd9b45af52c0f76e530f5c68c76554436949eea",
+        "merge_base": "247f2e442df7e7dc124adc11049e062b298d63e2",
+        "changed_paths": 1
+      },
+      {
+        "repository": "connectome-development",
+        "pull_request": 42,
+        "head": "52c3a5eb1d6ada8ae928578dc11bda32d82ef798",
+        "merge_base": "e74f2ef1a06632e0c70169f3c09aa83669b81977",
+        "changed_paths": 0
+      },
+      {
+        "repository": "connectome-development",
+        "pull_request": 10,
+        "head": "8a9eb5e52b8df91b888b75f6c98edabeb8d3199d",
+        "merge_base": "abc549cf7bb61f2ed4a20353ccb2e3621da515c9",
+        "changed_paths": 337
+      }
+    ],
+    "declaration_scan": "1227 distinct names added by original Rust/Python diffs; 31 absent by exact current declaration at baseline. Name inventory is triage, not proof of full behavioral parity.",
+    "declaration_dispositions": [
+      {
+        "original_declarations": [
+          "wait_for_device_release",
+          "test_returns_at_once_when_the_node_is_gone",
+          "test_waits_for_the_whole_disk_node_to_go",
+          "test_a_node_that_never_goes_fails_naming_it",
+          "test_an_unowned_identity_is_refused"
+        ],
+        "canonical_destination": "scripts/ci/run_native_capacity.py::darwin_template; docs/evidence/change-journals/gate-c/c-07-hdiutil-held-output-retry-20261114.md",
+        "disposition": "Superseded device-settle theory: one pristine APFS template replaces repeated create-after-detach. Ownership checks and bounded helper-output release remain. Not restored as a second lifecycle."
+      },
+      {
+        "original_declarations": [
+          "test_macos_volume_retries_a_busy_create_after_its_helper_lets_go",
+          "test_macos_volume_keeps_a_busy_create_whose_helper_never_lets_go"
+        ],
+        "canonical_destination": "scripts/ci/test_native_capacity.py::test_macos_template_retries_a_busy_create_after_its_helper_lets_go / test_macos_template_keeps_a_busy_create_whose_helper_never_lets_go",
+        "disposition": "Ported to current template owner; current bodies verify detach-before-retry, bounded output release and retained evidence on failure."
+      },
+      {
+        "original_declarations": [
+          "retryable_busy_hdiutil_create",
+          "test_macos_volume_retries_busy_create_and_propagates_failure",
+          "test_macos_volume_requests_verbose_creation_once_and_propagates_busy"
+        ],
+        "canonical_destination": "scripts/ci/run_native_capacity.py::is_busy_darwin_create, held_output, darwin_template; scripts/ci/test_native_capacity.py",
+        "disposition": "Replaced by bounded busy-template retries with timeout refusal and held-helper detection. Earlier one-create assertion deliberately superseded by recovery behavior; native failures remain loud."
+      },
+      {
+        "original_declarations": [
+          "estate"
+        ],
+        "canonical_destination": "crates/authority/rrd-engine/src/engine/tests/vector_index/hnsw_read_path.rs::engram",
+        "disposition": "Original and current entire function bodies are equal after terminology replacement; no assertion lost in this declaration."
+      },
+      {
+        "original_declarations": [
+          "prior_source_cannot_cross_estate_project_or_root"
+        ],
+        "canonical_destination": "crates/compute/rrd-attunement/tests/inventory.rs::prior_source_cannot_cross_engram_project_or_root",
+        "disposition": "Original and current entire function bodies are equal after terminology replacement; no assertion lost in this declaration."
+      },
+      {
+        "original_declarations": [
+          "disjoint_estate_search_does_not_walk_every_descriptor"
+        ],
+        "canonical_destination": "crates/persistence/rrd-lsm/src/database/point_index.rs::disjoint_engram_search_does_not_walk_every_descriptor",
+        "disposition": "Original and current entire function bodies are equal after terminology replacement; no assertion lost in this declaration."
+      },
+      {
+        "original_declarations": [
+          "segment_estate_exceeds_native_descriptor_ceiling_and_reopens"
+        ],
+        "canonical_destination": "crates/persistence/rrd-lsm/tests/segment_handles.rs::segment_engram_exceeds_native_descriptor_ceiling_and_reopens",
+        "disposition": "Original and current entire function bodies are equal after terminology replacement; no assertion lost in this declaration."
+      },
+      {
+        "original_declarations": [
+          "import_chunks"
+        ],
+        "canonical_destination": "crates/evaluation/lab/rrflow-lab-systems/src/adapters/rrflow.rs::import_records; crates/evaluation/lab/rrflow-lab/src/cli/studies.rs::import_repository",
+        "disposition": "Original schema installation and encoded-size/claim-bounded commits retained in generalized records API; caller still passes chunk mutations and table. Read both importer bodies and current caller. No comparison workload executed."
+      },
+      {
+        "original_declarations": [
+          "a"
+        ],
+        "canonical_destination": "crates/evaluation/lab/rrflow-lab-evals/tests/tasks.rs",
+        "disposition": "False positive: fn a() is text inside three repository chunk fixtures. Original fixture text and identity/importability assertions remain."
+      },
+      {
+        "original_declarations": [
+          "worker_absence_preserves_identity_and_present_settings_require_a_new_approval",
+          "policy_is_explicit_and_absence_preserves_actual_configuration_identity",
+          "actual_model_choice_and_withheld_candidate_abstention_validate"
+        ],
+        "canonical_destination": "crates/transport/rrd-contract/tests/endpoint_worker.rs, endpoint_policy.rs, endpoint_selection.rs; tests/support/observed_configuration.rs",
+        "disposition": "PR489 replaced false captured-identity assertions with explicitly derived configuration identity, immutable raw receipts, hash validation, approval change and recorded choice/abstention checks. Current renamed bodies read; historical receipt is not rewritten to fit a derived fixture."
+      },
+      {
+        "original_declarations": [
+          "quarantine_locked",
+          "publication_guard",
+          "publish_absent_stage"
+        ],
+        "canonical_destination": "crates/persistence/rrd-store/src/object/local.rs::quarantine_corrupt, repair_guard, publish_object_path",
+        "disposition": "PR228 non-replacing verified-winner publication remains. PR493 reproduces concurrent corrupt-repair failure and adds bounded crash-released recovery-only locking, revalidation and non-overwriting quarantine evidence. No lock on healthy publication."
+      },
+      {
+        "original_declarations": [
+          "concurrent_identical_puts_publish_one_verified_object_without_rejection",
+          "exclusive_publication_only_adopts_an_authenticated_winner"
+        ],
+        "canonical_destination": "crates/persistence/rrd-store/src/object/tests.rs::concurrent_object_publishers_return_one_verified_address, publication_keeps_a_reader_held_winner, publication_rejects_a_corrupt_collision_and_retains_the_stage",
+        "disposition": "Current thread race, reader identity and corrupt collision tests retain useful assertions at the native publication owner."
+      },
+      {
+        "original_declarations": [
+          "publisher_waits_for_the_same_digest_guard",
+          "publication_guard_owner_child",
+          "publication_guard_is_released_when_owner_dies"
+        ],
+        "canonical_destination": "crates/persistence/rrd-store/src/object/tests.rs::repair_admission_is_bounded_and_healthy_publication_never_waits, repair_guard_owner_child, repair_guard_is_released_when_owner_dies",
+        "disposition": "Mandatory publication locking is replaced by recovery-only admission. Restored original killed-child assertion, adapted to corrupt-object repair; healthy writes must bypass a held repair guard."
+      },
+      {
+        "original_declarations": [
+          "publishing_over_a_preexisting_corrupt_object_preserves_recovery",
+          "concurrent_object_writer_child",
+          "concurrent_object_publication_across_processes"
+        ],
+        "canonical_destination": "crates/persistence/rrd-store/tests/object_publication_race.rs",
+        "disposition": "Restored original synchronized separate-process oracle and extended it to corrupt predecessors. Each run verifies all published bytes, clean staging and exactly one preserved corrupt predecessor per distinct repaired digest."
+      },
+      {
+        "original_declarations": [
+          "object_publication_reports_lock_wait_without_payload_or_digest"
+        ],
+        "canonical_destination": "crates/persistence/rrd-store/tests/object_publication_trace.rs::object_repair_reports_lock_wait_without_payload_or_digest",
+        "disposition": "Restored diagnostic privacy oracle at recovery-only admission; elapsed wait visible, payload/digest/root absent."
+      }
+    ],
+    "connectome_disposition": "Original PR10 has 337 changed paths, not 100. Current owners and read scopes are in connectome/docs/recovered-native-client-branch-20261121.md and recovered-client-foundation-20261121.md. The four recovered Icon oracles landed in PR115; child source is unchanged here. Old placeholder native methods, second grammar, vendor-hosted service and historical dependency pins are not revived. Native capability parity and statement-range behavior remain open in the child requirement record; not represented as recovered working features."
+  }
 }

@@ -14,6 +14,14 @@ C-07 and the repository-wide review remain open.
 
 ## Observed deficiency
 
+The [consolidated recovery candidate](../../evidence/change-journals/repository/recovered-source-contracts-20261122.md)
+reproduced simultaneous corrupt-object repair failing with `ObjectMissing` in a
+separate process. Its repair retains normal non-replacing publication and
+coordinates only corruption recovery, revalidating before quarantine. Recovered
+process and crash-release assertions pass locally, as do the store suite and
+21 real HTTP process tests. Candidate and merge-queue acceptance are still
+required; this does not qualify capacity, soak, or close POAM-035.
+
 The [controller publication integration](../../evidence/change-journals/gate-g/controller-publication-integration.md)
 composes PR228 into the failed controller source. The original concurrency case,
 all 353 engine tests and 208 contract/inference/client tests now pass locally.
