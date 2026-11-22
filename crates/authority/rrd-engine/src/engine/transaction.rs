@@ -257,6 +257,13 @@ impl RrdEngine {
         if record.lease.state != TransactionState::Open {
             return Err(ServiceError::TransactionClosed);
         }
+        let rejection = EngineControlContext {
+            session_id,
+            now,
+            action: "transaction.commit_rejected",
+            request_id,
+            operation_id,
+        };
         let mut prepared_runtime_functions = None;
         if let Some(intent) = &record.commit_intent {
             require_same_commit(intent, idempotency_key, &request.operation_sha256)?;
@@ -335,13 +342,10 @@ impl RrdEngine {
                         // failure is a definite refusal, including a failed
                         // dependency read; it must not consume an open lease.
                         self.finish_rejected_transaction(
-                            session_id,
                             transaction_id,
                             bytes,
                             &mut state,
-                            now,
-                            request_id,
-                            operation_id,
+                            &rejection,
                         )?;
                         return Err(error);
                     }
@@ -480,13 +484,10 @@ impl RrdEngine {
                                     | rrd_store::Error::RuntimeReadBudgetExceeded { .. }
                             ) {
                                 self.finish_rejected_transaction(
-                                    session_id,
                                     transaction_id,
                                     bytes,
                                     &mut state,
-                                    now,
-                                    request_id,
-                                    operation_id,
+                                    &rejection,
                                 )?;
                             }
                             return Err(classify_rejected_commit(error));

@@ -239,3 +239,27 @@ evidence. The parent now pins that verified UI source. Queue/main results
 remain GitHub-owned and are not inferred from candidate success. The engine
 PR remains a draft under the six-layer review disposition; no additional
 engine capability or roadmap closure is claimed by advancing this gitlink.
+
+### Queue qualification and transaction refusal repair
+
+Connectome PR119 merged at `54d178b8ba0ea6cea2463a9955f6998947bb5623`
+through [merge-group CI](https://github.com/rrflow/connectome-development/actions/runs/45049877869).
+The engine candidate at `e478b10f3421dcf7f3d06ce42abb92f541b43bec`
+failed its [repository invariant check](https://github.com/rrflow/rrflow-development/actions/runs/45049859374/job/137292591981).
+Its new refusal helper increased the engine crate's allowed oversized argument
+lists from 108 to 109. The same failure reproduced locally with
+`python scripts/ci/check_code_shape.py`.
+
+Both refusal paths now pass the existing `EngineControlContext` to
+`finish_rejected_transaction`. The session identity, action, time and trace
+identifiers are the same inputs to the same session compare-and-swap.
+The edit stays within transaction coordination. It changes no physical storage
+format, query semantics or public contract. The focused review covered both
+callers in `engine/transaction.rs`, the complete `transaction/outcomes.rs` and
+`engine/control.rs` files, and the session storage and authentication methods.
+`python scripts/ci/check_code_shape.py`, `cargo fmt --all -- --check` and
+`git diff --check` passed locally after the repair. The separate worktree
+`D:/.usr/Temp/rrflow-queue-496-shape` owns its Cargo target directory.
+`cargo test --locked --jobs 3 -p rrd-server --test http_process query_transaction`
+exercises the public transaction paths, including refusal, CASCADE and reopen.
+Final candidate and queue outcomes are recorded by GitHub.
