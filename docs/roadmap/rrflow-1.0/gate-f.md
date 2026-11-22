@@ -29,6 +29,10 @@ Both planned product features, `cld-vortex` and `cld-parquet`, must select the
 same integration and benchmark targets. The existing `vortex-reference` and
 `parquet-reference` comparison features establish no installed-path parity. Record
 buffer ownership, bytes copied and bytes decoded when promoting a slice to MX.
+When wiring those backends, replace the current reference-feature assertions
+in the [workspace storage tests](../../../crates/authority/rrd-engine/tests/workspace_architecture/storage.rs)
+with checks that permit codecs only below the CLD boundary. Keep the Fjall
+baseline separate from the deployed LSM.
 
 The backend implementation package must provide the following verification
 commands. The feature names and benchmark target below are planned interfaces.

@@ -7,6 +7,13 @@
 
 This record continues the [engine baselines direction](engine-baselines-owner-direction-20261119.md) and corrects one line of it.
 
+**November 22 scope update.** The quotation and inventory below preserve the
+November 20 direction. For new CLD work the [kernel contract](kernel-contract.md)
+and [F-06](rrflow-1.0/gate-f.md) now require an RRFlow-owned storage boundary
+with swappable Vortex and Parquet backends. The earlier prohibition on using
+either behind the product's cold-storage port is superseded. Fjall's role as
+a comparison for the native LSM is unchanged.
+
 ## The owner's words
 
 Typos are the owner's and are kept.

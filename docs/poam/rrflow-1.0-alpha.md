@@ -103,7 +103,7 @@
 | POAM-087 | High | Open | [storage maintenance stalls every search, and searches cause it](rrflow-1.0-alpha/poam-087.md) |
 | POAM-088 | High | Open | [managed instances have fixed driver timings and are not registered or stoppable in every form](rrflow-1.0-alpha/poam-088.md) |
 | POAM-089 | High | Open | [installed process suites sometimes fail on a busy Windows host](rrflow-1.0-alpha/poam-089.md) |
-| POAM-090 | High | Open | [the product writes Parquet, and rrflowCLD has no format of its own](rrflow-1.0-alpha/poam-090.md) |
+| POAM-090 | High | Open | [cold history bypasses the rrflowCLD backend boundary](rrflow-1.0-alpha/poam-090.md) |
 | POAM-091 | High | Open | [attunement tests give fixed times that a slow machine overtakes](rrflow-1.0-alpha/poam-091.md) |
 | POAM-092 | High | Closed | [Windows serving-record replacement fails during concurrent reads](rrflow-1.0-alpha/poam-092.md) |
 | POAM-093 | High | Open | [development launcher selects a different engine](rrflow-1.0-alpha/poam-093.md) |
