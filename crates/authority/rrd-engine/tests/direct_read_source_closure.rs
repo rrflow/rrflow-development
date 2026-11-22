@@ -116,6 +116,12 @@ const ALLOWED_USES: &[AllowedUse] = &[
         operation: "kernel graph reducer self-test",
     },
     AllowedUse {
+        path: "crates/kernel/rrd-core/src/runtime/referential/tests.rs",
+        kind: SensitiveReadUse::GraphSnapshotReducer,
+        count: 5,
+        operation: "interval sweep and before/after CASCADE compared to the graph reducer",
+    },
+    AllowedUse {
         path: "crates/authority/rrd-engine/src/engine/diagnostic/graph.rs",
         kind: SensitiveReadUse::CausalLogPage,
         count: 1,
@@ -128,10 +134,16 @@ const ALLOWED_USES: &[AllowedUse] = &[
         operation: "explicit diagnostic graph comparison",
     },
     AllowedUse {
-        path: "crates/persistence/rrd-store/src/access/semantic_commit/plan.rs",
+        path: "crates/persistence/rrd-store/src/access/semantic_commit/retirements.rs",
         kind: SensitiveReadUse::DataSnapshotReducer,
         count: 1,
         operation: "retirement validation over directly selected versions",
+    },
+    AllowedUse {
+        path: "crates/persistence/rrd-store/src/access/semantic_commit/tests/temporal.rs",
+        kind: SensitiveReadUse::DataSnapshotReducer,
+        count: 1,
+        operation: "bounded versioned snapshot oracle for cascade and historical reopen checks",
     },
     AllowedUse {
         path: "crates/persistence/rrd-store/src/repository/runtime.rs",

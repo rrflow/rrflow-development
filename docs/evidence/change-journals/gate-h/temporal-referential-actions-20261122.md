@@ -263,3 +263,20 @@ callers in `engine/transaction.rs`, the complete `transaction/outcomes.rs` and
 `cargo test --locked --jobs 3 -p rrd-server --test http_process query_transaction`
 exercises the public transaction paths, including refusal, CASCADE and reopen.
 Final candidate and queue outcomes are recorded by GitHub.
+
+The exact repaired refusal helper at `989948cb6` passed both public HTTP
+regressions above in a fresh build. Hosted job 137295155977 ran the changed
+crates with `--no-fail-fast` and reported one failure. The source-closure test
+still named the retirement snapshot reducer's old module and missed the new
+kernel and store test oracles. Comparing both implementations showed the same
+single production reducer uses directly selected, stamped retirement versions.
+The closure now names `semantic_commit/retirements.rs` for that one call.
+The kernel temporal tests use five reference graph reductions on synthetic
+histories. The store temporal tests use one data reduction on bounded version
+reads for the historical restart check. The closure tracks those exact source
+files and counts and still rejects unlisted production calls.
+
+The standalone `direct_read_source_closure` test compiled with `rustc --test`
+and passed on the changed tree (one assertion suite). Source formatting, the
+code-shape check and whitespace validation also passed. This repair changes
+the inventory maintained by the regression test only.
