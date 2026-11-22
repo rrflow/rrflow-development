@@ -714,7 +714,20 @@ fn inventory_reuse_observes_current_records_edges_and_retirements() {
                 at,
                 actor: "test-fixture".into(),
                 expected_cursor: before.commit_cursor,
-                mutations: vec![mutation],
+                mutations: if changed_kind == "retirement" {
+                    vec![
+                        RuntimeMutation::Retire {
+                            retirement: rrd_core::RuntimeRetirement {
+                                model: RuntimeLogicalModel::GraphRelation,
+                                reference: original_edge.reference.clone(),
+                                effective_at: at,
+                            },
+                        },
+                        mutation,
+                    ]
+                } else {
+                    vec![mutation]
+                },
             })
             .unwrap();
         let intervening = engine.storage.runtime().read_stamp(&scope).unwrap();

@@ -75,6 +75,19 @@ pub struct DataRelationSchema {
     pub max_outgoing: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub max_incoming: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub on_delete_from: Option<DataReferentialAction>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub on_delete_to: Option<DataReferentialAction>,
+}
+
+/// Native edge endpoint policy. Omitted rules reject a dangling retirement.
+/// CASCADE retires the edge identity; it does not delete the opposite record.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum DataReferentialAction {
+    Reject,
+    Cascade,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]

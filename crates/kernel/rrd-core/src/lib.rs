@@ -67,23 +67,23 @@ pub use reasoning_tree::{
     MAX_REASONING_TREE_RECIPES, REASONING_TREE_CONTRACT_VERSION,
 };
 pub use runtime::{
-    projection_family, AuditDecision, AuditEnvelope, DataTransaction, DataTransactionView,
-    OutboxId, ProjectionFamily, ProjectionId, ProjectionStamp, ProjectionState, ProjectionWork,
-    ReadStamp, RetentionPin, RetentionPinId, RuntimeChange, RuntimeChangePage, RuntimeCommit,
-    RuntimeCommitOutcome, RuntimeDataSnapshot, RuntimeEvent, RuntimeEventValue, RuntimeGraphDiff,
-    RuntimeGraphSnapshot, RuntimeId, RuntimeModelValue, RuntimeMutation, RuntimeProperties,
-    RuntimeReadValidation, RuntimeRecord, RuntimeRecordChange, RuntimeRef, RuntimeRelation,
-    RuntimeRelationChange, RuntimeRetirement, RuntimeType, RuntimeValue, ScopeId, SnapshotHandle,
-    SnapshotId, DATA_RUNTIME_CONTRACT_VERSION,
+    projection_family, relation_referential_actions, AuditDecision, AuditEnvelope, DataTransaction,
+    DataTransactionView, OutboxId, ProjectionFamily, ProjectionId, ProjectionStamp,
+    ProjectionState, ProjectionWork, ReadStamp, RetentionPin, RetentionPinId, RuntimeChange,
+    RuntimeChangePage, RuntimeCommit, RuntimeCommitOutcome, RuntimeDataSnapshot, RuntimeEvent,
+    RuntimeEventValue, RuntimeGraphDiff, RuntimeGraphSnapshot, RuntimeId, RuntimeModelValue,
+    RuntimeMutation, RuntimeProperties, RuntimeReadValidation, RuntimeRecord, RuntimeRecordChange,
+    RuntimeRef, RuntimeRelation, RuntimeRelationChange, RuntimeRetirement, RuntimeType,
+    RuntimeValue, ScopeId, SnapshotHandle, SnapshotId, DATA_RUNTIME_CONTRACT_VERSION,
 };
 pub use schema::{
     RuntimeCategorySchema, RuntimeCategoryTargets, RuntimeDomainSchema, RuntimeEngramOrganisation,
     RuntimeEventSchema, RuntimeLogicalModel, RuntimePropertySchema, RuntimeRecordSchema,
-    RuntimeRelationSchema, RuntimeSchemaMode, RuntimeSchemaRegistry, RuntimeTableSchema,
-    RuntimeTagCardinality, RuntimeTagRef, RuntimeTagSchema, RuntimeValueType, DEFAULT_DOMAIN,
-    ENGINE_DOMAIN, ENGINE_OWNED_PREFIX, MAX_CATEGORIES, MAX_DOMAINS, MAX_DOMAIN_DEPTH,
-    MAX_ORGANISATION_DESCRIPTION_BYTES, MAX_ORGANISATION_TITLE_BYTES, MAX_TAGS_PER_CATEGORY,
-    MAX_TAGS_PER_KIND,
+    RuntimeReferentialAction, RuntimeRelationSchema, RuntimeSchemaMode, RuntimeSchemaRegistry,
+    RuntimeTableSchema, RuntimeTagCardinality, RuntimeTagRef, RuntimeTagSchema, RuntimeValueType,
+    DEFAULT_DOMAIN, ENGINE_DOMAIN, ENGINE_OWNED_PREFIX, MAX_CATEGORIES, MAX_DOMAINS,
+    MAX_DOMAIN_DEPTH, MAX_ORGANISATION_DESCRIPTION_BYTES, MAX_ORGANISATION_TITLE_BYTES,
+    MAX_TAGS_PER_CATEGORY, MAX_TAGS_PER_KIND,
 };
 pub use telemetry::{
     signal_catalogue, signal_catalogue_sha256, DiagnosticLevel, MetricAttribute, MetricDescriptor,

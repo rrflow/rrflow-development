@@ -23,7 +23,10 @@ pub(super) fn validate_version_entry(
         direction,
     } = source
     {
-        return validate_adjacency_entry(relation, node, *direction, stored_key, change);
+        return validate_adjacency_entry(Some(relation), node, *direction, stored_key, change);
+    }
+    if let RuntimeVersionedSource::Incident { node, direction } = source {
+        return validate_adjacency_entry(None, node, *direction, stored_key, change);
     }
     let expected = expected_version_key(source, change)?;
     if stored_key != expected {
@@ -39,7 +42,7 @@ pub(super) fn validate_version_entry(
 /// not carry endpoints, so its strictly decoded key must name the selected
 /// node and relation type and the retirement's identity, time, and cursor.
 pub(super) fn validate_adjacency_entry(
-    relation_kind: &RuntimeType,
+    relation_kind: Option<&RuntimeType>,
     node: &RuntimeRef,
     direction: RuntimeAdjacencyDirection,
     stored_key: &[u8],
@@ -52,7 +55,7 @@ pub(super) fn validate_adjacency_entry(
                 RuntimeAdjacencyDirection::Outgoing => &relation.from,
                 RuntimeAdjacencyDirection::Incoming => &relation.to,
             };
-            &relation.reference.kind == relation_kind
+            relation_kind.is_none_or(|kind| &relation.reference.kind == kind)
                 && near == node
                 && stored_key
                     == keyspaces::runtime_adjacency_version_key(
@@ -69,7 +72,7 @@ pub(super) fn validate_adjacency_entry(
             let key = keyspaces::parse_runtime_adjacency_version_key(KeyCodec, space, stored_key)?;
             key.scope == change.scope
                 && &key.node == node
-                && &retirement.reference.kind == relation_kind
+                && relation_kind.is_none_or(|kind| &retirement.reference.kind == kind)
                 && key.relation == retirement.reference
                 && key.effective_at == retirement.effective_at
                 && key.cursor == change.cursor
@@ -248,6 +251,7 @@ pub(super) fn source_accepts_address(
         }
         RuntimeVersionedSource::Schema
         | RuntimeVersionedSource::Claims { .. }
+        | RuntimeVersionedSource::Incident { .. }
         | RuntimeVersionedSource::Adjacency { .. } => return Ok(false),
     };
     Ok(space == address.space && kind.is_none_or(|expected| expected == &address.reference.kind))

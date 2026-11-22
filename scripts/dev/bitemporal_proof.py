@@ -13,6 +13,7 @@ activated. Only public CLI/HTTP operations author the database.
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 import json
 import queue
@@ -27,7 +28,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "sdks/python/src"))
-from rrd_client import RequestOptions, RrdClient
+from rrd_client import RequestOptions, RrdApiError, RrdClient
 
 
 def save(path: Path, value: object) -> None:
@@ -155,7 +156,7 @@ def prove(engine: Path, output: Path) -> None:
                         "limits": {
                             "idle_timeout_ms": 60000,
                             "absolute_timeout_ms": 300000,
-                            "max_open_transactions": 8,
+                            "max_open_transactions": 1,
                         }
                     },
                     options("session", True),
@@ -224,6 +225,8 @@ def prove(engine: Path, output: Path) -> None:
                         "properties": {},
                         "allow_additional_properties": True,
                         "unique_pair": True,
+                        "on_delete_from": "reject",
+                        "on_delete_to": "reject",
                     }
                     original = program(
                         {
@@ -259,6 +262,62 @@ def prove(engine: Path, output: Path) -> None:
                         canceled["state"] == "aborted"
                         and canceled.get("commit") is None
                     )
+                    retirement = {
+                        "mutation": "retire_data",
+                        "model": "document",
+                        "target": {
+                            "identity": "reference",
+                            "reference": {"kind": "proof_document", "id": "beta"},
+                        },
+                        "effective_at": 150,
+                    }
+                    refusals = []
+                    for attempt in range(3):
+                        try:
+                            call(
+                                "query-transaction-execute",
+                                program({"retirement": retirement}),
+                                f"reject-{attempt}",
+                                True,
+                            )
+                        except RrdApiError as error:
+                            assert (
+                                error.status == 400
+                                and "unavailable endpoint" in str(error)
+                            ), str(error)
+                            refusals.append(
+                                {
+                                    "status": error.status,
+                                    "code": error.code,
+                                    "message": str(error),
+                                    "retryable": error.retryable,
+                                }
+                            )
+                        else:
+                            raise AssertionError("REJECT accepted a dangling relation")
+                    cascade_schema = copy.deepcopy(schema)
+                    cascade_schema["revision"] += 1
+                    cascade_schema["migration"] = "temporal edge cascade policy"
+                    cascade_schema["relations"]["proof_link"]["on_delete_to"] = (
+                        "cascade"
+                    )
+                    cascade = program(
+                        {
+                            "schema": {
+                                "mutation": "put_schema",
+                                "registry": cascade_schema,
+                            },
+                            "retirement": retirement,
+                        }
+                    )
+                    cascaded = call(
+                        "query-transaction-execute", cascade, "cascade", True
+                    )
+                    final_cursor = cascaded["commit"]["last_runtime_cursor"]
+                    assert final_cursor == new_cursor + 3, cascaded
+                    evidence["relation_refusals"] = refusals
+                    evidence["cascade"] = cascaded
+                    evidence["final_cursor"] = final_cursor
                     evidence.update(
                         {
                             "original": committed,
@@ -270,7 +329,11 @@ def prove(engine: Path, output: Path) -> None:
                     )
                     save(
                         output / "requests.json",
-                        {"original": original, "correction": correction},
+                        {
+                            "original": original,
+                            "correction": correction,
+                            "cascade": cascade,
+                        },
                     )
                 else:
                     replay = call(
@@ -279,6 +342,14 @@ def prove(engine: Path, output: Path) -> None:
                     assert replay["commit"]["idempotent_replay"]
                     assert replay["commit"]["last_runtime_cursor"] == new_cursor
                     evidence["replay_after_termination"] = replay
+                    cascade_replay = call(
+                        "query-transaction-execute", cascade, "cascade", True
+                    )
+                    assert cascade_replay["commit"]["idempotent_replay"]
+                    assert (
+                        cascade_replay["commit"]["last_runtime_cursor"] == final_cursor
+                    )
+                    evidence["cascade_replay_after_termination"] = cascade_replay
 
                 for label, valid, cursor, expected in (
                     ("old", 100, old_cursor, "Original"),
@@ -308,7 +379,7 @@ def prove(engine: Path, output: Path) -> None:
                         else None
                     )
                     assert actual == expected, (phase, label, result)
-                    expected_cursor = new_cursor if cursor == "HEAD" else cursor
+                    expected_cursor = final_cursor if cursor == "HEAD" else cursor
                     assert result["known_at_cursor"] == expected_cursor
                     evidence["observations"].append(
                         {
@@ -337,6 +408,40 @@ def prove(engine: Path, output: Path) -> None:
                 evidence["observations"].append(
                     {"phase": phase, "label": "edge", "result": edges}
                 )
+                for cursor, valid, count in (
+                    (new_cursor, 175, 1),
+                    (final_cursor, 149, 1),
+                    (final_cursor, 150, 0),
+                ):
+                    for source in ("relation:proof_link", "record:proof_document"):
+                        condition = (
+                            ' WHERE id = "beta"' if source.startswith("record:") else ""
+                        )
+                        query = f"FROM {source} AT VALID {valid} KNOWN {cursor}{condition} EXPLAIN CONTRACT"
+                        result = call(
+                            "query-execute",
+                            {
+                                "scope": scope,
+                                "query": query,
+                                "parameters": {},
+                                "budget": {
+                                    "max_storage_keys": 1024,
+                                    "max_rows": 10,
+                                    "max_output_bytes": 16384,
+                                    "max_batch_rows": 10,
+                                },
+                            },
+                            f"integrity-{source.split(':')[0]}-{cursor}-{valid}",
+                        )
+                        assert len(result["rows"]) == count, result
+                        evidence["observations"].append(
+                            {
+                                "phase": phase,
+                                "label": "relation-integrity",
+                                "query": query,
+                                "result": result,
+                            }
+                        )
     evidence["passed"] = True
     save(output / "evidence.json", evidence)
     print(

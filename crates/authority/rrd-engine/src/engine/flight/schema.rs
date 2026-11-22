@@ -164,6 +164,8 @@ pub(super) fn register_flight_schema(
                     unique_pair: false,
                     max_outgoing: None,
                     max_incoming: None,
+                    on_delete_from: None,
+                    on_delete_to: None,
                 },
             )
             .map_err(core_contract)?

@@ -333,6 +333,28 @@ pub(super) fn encode_schema(out: &mut Vec<u8>, registry: &RuntimeSchemaRegistry)
     if !registry.organisation.is_default() {
         encode_organisation(out, &registry.organisation);
     }
+    let actions = registry
+        .relations
+        .iter()
+        .filter(|(_, rule)| rule.on_delete_from.is_some() || rule.on_delete_to.is_some())
+        .collect::<Vec<_>>();
+    if !actions.is_empty() {
+        // Optional schema declarations extend the canonical encoding. Absent
+        // declarations retain their identity; explicit rules are digest-bound.
+        out.push(0xFE);
+        out.extend_from_slice(b"rrflow-relation-referential-actions-v1\0");
+        out.extend_from_slice(&(actions.len() as u64).to_be_bytes());
+        for (kind, rule) in actions {
+            text(out, kind.as_str());
+            for action in [rule.on_delete_from, rule.on_delete_to] {
+                out.push(match action {
+                    None => 0,
+                    Some(crate::RuntimeReferentialAction::Reject) => 1,
+                    Some(crate::RuntimeReferentialAction::Cascade) => 2,
+                });
+            }
+        }
+    }
 }
 
 /// Appended only when the organisation is not the default. What can follow a

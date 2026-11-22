@@ -415,6 +415,8 @@ pub(in crate::engine) fn runtime_schema(
                         unique_pair: schema.unique_pair,
                         max_outgoing: schema.max_outgoing,
                         max_incoming: schema.max_incoming,
+                        on_delete_from: schema.on_delete_from.map(runtime_referential_action),
+                        on_delete_to: schema.on_delete_to.map(runtime_referential_action),
                     },
                 ))
             })
@@ -458,6 +460,15 @@ fn runtime_logical_model(model: DataLogicalModel) -> RuntimeLogicalModel {
         DataLogicalModel::ReasoningEvent => RuntimeLogicalModel::ReasoningEvent,
         DataLogicalModel::LifecycleRecord => RuntimeLogicalModel::LifecycleRecord,
         DataLogicalModel::LifecycleEvent => RuntimeLogicalModel::LifecycleEvent,
+    }
+}
+
+fn runtime_referential_action(
+    action: rrd_contract::DataReferentialAction,
+) -> rrd_core::RuntimeReferentialAction {
+    match action {
+        rrd_contract::DataReferentialAction::Reject => rrd_core::RuntimeReferentialAction::Reject,
+        rrd_contract::DataReferentialAction::Cascade => rrd_core::RuntimeReferentialAction::Cascade,
     }
 }
 

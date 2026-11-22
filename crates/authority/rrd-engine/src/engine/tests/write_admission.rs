@@ -330,7 +330,10 @@ fn rejection_history(
     let (_, rejected_state) = engine
         .load_authenticated(&lease.session_id, &lease.token)
         .unwrap();
-    let intent_retained = rejected_state.transactions[&rejected.transaction_id]
+    let intent_retained = engine
+        .transaction_record(&rejected_state, &rejected.transaction_id)
+        .unwrap()
+        .unwrap()
         .commit_intent
         .is_some();
     assert_eq!(
@@ -351,9 +354,12 @@ fn rejection_history(
     let (_, state) = engine
         .load_authenticated(&lease.session_id, &lease.token)
         .unwrap();
-    assert!(state.transactions[&rejected.transaction_id]
-        .commit_intent
-        .is_none());
+    let terminal = engine
+        .transaction_record(&state, &rejected.transaction_id)
+        .unwrap()
+        .unwrap();
+    assert!(terminal.commit_intent.is_none());
+    assert_eq!(terminal.lease.state, TransactionState::Aborted);
     drop(engine);
     let reopened = configured_engine(&path, limits, native, false);
     assert_eq!(reopened.storage.runtime().cursor().unwrap(), before);

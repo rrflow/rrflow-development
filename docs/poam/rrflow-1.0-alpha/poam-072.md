@@ -26,3 +26,12 @@ Roadmap owner: [Gate H](../../roadmap/rrflow-1.0/gate-h.md).
 ## Closure evidence
 
 Closed when a schema can declare restrict and cascade behavior for a relation, retiring a referenced row follows it, and the outcome holds through time travel and restart.
+
+## Current remediation
+
+[Temporal relation integrity package](../../evidence/change-journals/gate-h/temporal-referential-actions-20261122.md)
+implements per-endpoint REJECT/CASCADE and validates full valid-time coverage.
+Its new oracle also exposed a backdated retirement missing from version storage
+when an edge had already lost its current head; the same canonical effect path
+is repaired. Full installed/paired acceptance is pending. Vector and geo subject
+cleanup are not implemented by this relation package; this ledger remains open.

@@ -3,7 +3,7 @@
 pub const PROTOCOL: &str = "rrd";
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const OPENAPI_DOCUMENT_SHA256: &str =
-    "1408587885ad396797b05260bd0a7b5b855d95c2d37920ddc87e7ea21cafe232";
+    "59fbc172ad1c75997b82984a12e851f015076562eb69fcbc1cf90b3347e30f27";
 pub const MAX_ID_BYTES: usize = 128;
 pub const MAX_MESSAGE_BYTES: usize = 4_096;
 pub const MAX_CAPABILITIES: usize = 512;

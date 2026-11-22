@@ -1,4 +1,6 @@
 use super::*;
+mod outcomes;
+mod referential;
 
 // This diagnostic is independent of the durable runtime log. It is created
 // before the transaction permit so its Drop runs after the permit is released.
@@ -255,6 +257,13 @@ impl RrdEngine {
         if record.lease.state != TransactionState::Open {
             return Err(ServiceError::TransactionClosed);
         }
+        let rejection = EngineControlContext {
+            session_id,
+            now,
+            action: "transaction.commit_rejected",
+            request_id,
+            operation_id,
+        };
         let mut prepared_runtime_functions = None;
         if let Some(intent) = &record.commit_intent {
             require_same_commit(intent, idempotency_key, &request.operation_sha256)?;
@@ -317,16 +326,30 @@ impl RrdEngine {
                     read.commit_cursor,
                     runtime_at,
                 )?;
-                let prepared = self.prepare_transaction_function_bindings(
+                let prepared = match self.prepare_transaction_function_bindings(
                     &catalogue,
                     request,
                     transaction_id,
-                    commit,
+                    DataTransaction::new(read.clone(), commit).map_err(core_contract)?,
                     principal_id.clone(),
                     runtime_at,
                     request_id,
                     operation_id,
-                )?;
+                ) {
+                    Ok(prepared) => prepared,
+                    Err(error) => {
+                        // No domain commit has been attempted. Preparation
+                        // failure is a definite refusal, including a failed
+                        // dependency read; it must not consume an open lease.
+                        self.finish_rejected_transaction(
+                            transaction_id,
+                            bytes,
+                            &mut state,
+                            &rejection,
+                        )?;
+                        return Err(error);
+                    }
+                };
                 let identity = (
                     runtime_at,
                     prepared.commit.digest(),
@@ -396,7 +419,7 @@ impl RrdEngine {
                         &catalogue,
                         request,
                         transaction_id,
-                        commit,
+                        DataTransaction::new(read.clone(), commit).map_err(core_contract)?,
                         &prepared_receipts,
                         runtime_at,
                     )?
@@ -458,20 +481,13 @@ impl RrdEngine {
                                     | rrd_store::Error::RuntimeSchemaMissing(_)
                                     | rrd_store::Error::RuntimeSchemaConflict { .. }
                                     | rrd_store::Error::IndexConstraint(_)
+                                    | rrd_store::Error::RuntimeReadBudgetExceeded { .. }
                             ) {
-                                state
-                                    .transactions
-                                    .get_mut(transaction_id)
-                                    .expect("transaction retained")
-                                    .commit_intent = None;
-                                self.replace_session(
-                                    session_id,
+                                self.finish_rejected_transaction(
+                                    transaction_id,
                                     bytes,
                                     &mut state,
-                                    now,
-                                    "transaction.commit_rejected",
-                                    request_id,
-                                    operation_id,
+                                    &rejection,
                                 )?;
                             }
                             return Err(classify_rejected_commit(error));
@@ -563,6 +579,12 @@ impl RrdEngine {
                 "transaction.aborted"
             }
             TransactionState::Aborted => {
+                // A definite commit refusal already closed this lease. An
+                // explicit abort acknowledges that terminal outcome without
+                // inventing another transition or changing its provenance.
+                if transaction.abort.is_none() {
+                    return Ok(transaction.lease.clone());
+                }
                 let accepted = transaction
                     .abort
                     .as_ref()
@@ -760,6 +782,10 @@ fn require_same_commit(
 // cursor, so only a strictly newer cursor proves this read stamp is stale.
 fn classify_rejected_commit(error: rrd_store::Error) -> ServiceError {
     match error {
+        rrd_store::Error::DanglingRuntimeReference(reason) => ServiceError::Query(reason),
+        rrd_store::Error::Kernel(rrd_core::Error::InvalidRuntime { reason }) => {
+            ServiceError::Query(reason)
+        }
         rrd_store::Error::RuntimeConflict { expected, actual } if actual > expected => {
             ServiceError::TransactionSnapshotStale { expected, actual }
         }
