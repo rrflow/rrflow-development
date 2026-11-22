@@ -38,6 +38,13 @@ operations! {
         QueryExecute,
         ExecuteQuery => QueryResult,
         Read;
+    QueryTransactionExecute = "query-transaction-execute",
+        Post "/v1/query/transactions",
+        SessionBearer,
+        true,
+        TransactionBegin,
+        ExecuteQueryTransaction => QueryTransactionResult,
+        KeyedMutation;
     QueryIndexEnsure = "query-index-ensure",
         Post "/v1/query/indexes/ensure",
         SessionBearer,

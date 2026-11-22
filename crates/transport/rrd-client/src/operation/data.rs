@@ -51,6 +51,27 @@ impl RrdClient {
             .await
     }
 
+    /// Execute typed rrflowQL mutations through the same session transaction
+    /// authority as begin/commit/abort. Preserve the idempotency key on retry.
+    pub async fn execute_query_transaction(
+        &self,
+        session: &Session,
+        request: rrd_contract::ExecuteQueryTransaction,
+        options: RequestOptions,
+    ) -> Result<rrd_contract::QueryTransactionResult> {
+        use rrd_contract::Operation;
+        request.validate().map_err(contract)?;
+        self.session_call(
+            Method::POST,
+            rrd_contract::operations::QueryTransactionExecute::PATH,
+            session,
+            request,
+            options,
+            true,
+        )
+        .await
+    }
+
     pub async fn export_query(
         &self,
         session: &Session,

@@ -10,6 +10,14 @@ independently.
 
 ## Observed deficiency
 
+The [database semantics audit](../../reference/data/database-semantics.md)
+also distinguishes typed record identities from property links. At baseline
+`b7def0fc7`, `RuntimeValue` has no record-reference variant; reviewed property
+schemas do not define tracked backlinks or CASCADE/UNSET/REJECT field policies.
+First-class relation records and adjacency do not supply those semantics.
+Implement and characterize the temporal effects at the kernel/semantic commit
+boundary before exposing them in QL and Connectome; this item remains open.
+
 Native `RuntimeRef` accepts nonempty UTF-8 kind and ID components without NUL,
 but public `DataReference` uses the narrower lowercase ASCII `CanonicalId` for
 both. Public mutation and anchor operations therefore cannot represent all

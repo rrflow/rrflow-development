@@ -1,9 +1,9 @@
 # Generated from rrd-contract; do not edit.
-# OpenAPI SHA-256: 45a1377eddcc481533db43c70756e40963a468e319126082a372358a9868c7bd
+# OpenAPI SHA-256: 1408587885ad396797b05260bd0a7b5b855d95c2d37920ddc87e7ea21cafe232
 from typing import Final, Literal, TypedDict
 
 ENDPOINT_OPENAPI_DOCUMENT_SHA256: Final[str] = (
-    "45a1377eddcc481533db43c70756e40963a468e319126082a372358a9868c7bd"
+    "1408587885ad396797b05260bd0a7b5b855d95c2d37920ddc87e7ea21cafe232"
 )
 
 OperationId = Literal[
@@ -58,6 +58,7 @@ OperationId = Literal[
     "query-index-ensure",
     "query-index-list",
     "query-live-poll",
+    "query-transaction-execute",
     "restore-create",
     "session-close",
     "session-create",
@@ -410,6 +411,12 @@ ENDPOINTS: Final[dict[OperationId, Endpoint]] = {
         "method": "POST",
         "mutation": False,
         "path": "/v1/query/live/poll",
+    },
+    "query-transaction-execute": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": True,
+        "path": "/v1/query/transactions",
     },
     "restore-create": {
         "authentication": "session_bearer",

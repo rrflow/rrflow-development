@@ -10,6 +10,12 @@ independently.
 
 ## Observed deficiency
 
+At baseline `b7def0fc7`, the engine's typed rrflowQL transaction program has
+no public catalogue or HTTP binding: its process oracle returns 404. The
+[public transaction package](../../evidence/change-journals/gate-h/bitemporal-public-transactions-20261122.md)
+connects that existing authority and retains a real installed proof. This
+does not establish all typed retrieval, GraphQL, SDK or Connectome surfaces.
+
 The executable public contract, six language SDKs, CLI, MCP,
 GraphQL carriage, mesh resolution, and Connectome have not passed one
 D-01-installed, real-process conformance corpus across every supported operation

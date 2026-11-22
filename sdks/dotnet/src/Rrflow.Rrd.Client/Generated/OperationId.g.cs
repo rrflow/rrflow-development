@@ -1,5 +1,5 @@
 // Generated from rrd-contract; do not edit.
-// OpenAPI SHA-256: 45a1377eddcc481533db43c70756e40963a468e319126082a372358a9868c7bd
+// OpenAPI SHA-256: 1408587885ad396797b05260bd0a7b5b855d95c2d37920ddc87e7ea21cafe232
 namespace Rrflow.Rrd;
 
 public enum OperationId
@@ -55,6 +55,7 @@ public enum OperationId
     QueryIndexEnsure,
     QueryIndexList,
     QueryLivePoll,
+    QueryTransactionExecute,
     RestoreCreate,
     SessionClose,
     SessionCreate,
@@ -109,8 +110,8 @@ public sealed record Endpoint(
 
 public static class EndpointCatalog
 {
-    public const string OpenApiDocumentSha256 = "45a1377eddcc481533db43c70756e40963a468e319126082a372358a9868c7bd";
-    public const int Count = 87;
+    public const string OpenApiDocumentSha256 = "1408587885ad396797b05260bd0a7b5b855d95c2d37920ddc87e7ea21cafe232";
+    public const int Count = 88;
 
     public static Endpoint Get(OperationId operation) => operation switch
     {
@@ -165,6 +166,7 @@ public static class EndpointCatalog
         OperationId.QueryIndexEnsure => new("query-index-ensure", "POST", "/v1/query/indexes/ensure", Authentication.SessionBearer, true),
         OperationId.QueryIndexList => new("query-index-list", "POST", "/v1/query/indexes/list", Authentication.SessionBearer, false),
         OperationId.QueryLivePoll => new("query-live-poll", "POST", "/v1/query/live/poll", Authentication.SessionBearer, false),
+        OperationId.QueryTransactionExecute => new("query-transaction-execute", "POST", "/v1/query/transactions", Authentication.SessionBearer, true),
         OperationId.RestoreCreate => new("restore-create", "POST", "/v1/restores", Authentication.SessionBearer, true),
         OperationId.SessionClose => new("session-close", "DELETE", "/v1/sessions/{session}", Authentication.SessionBearer, true),
         OperationId.SessionCreate => new("session-create", "POST", "/v1/sessions", Authentication.ApiKey, true),

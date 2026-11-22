@@ -1,6 +1,6 @@
 // Generated from rrd-contract; do not edit.
-// OpenAPI SHA-256: 45a1377eddcc481533db43c70756e40963a468e319126082a372358a9868c7bd
-export const ENDPOINT_OPENAPI_DOCUMENT_SHA256 = "45a1377eddcc481533db43c70756e40963a468e319126082a372358a9868c7bd" as const;
+// OpenAPI SHA-256: 1408587885ad396797b05260bd0a7b5b855d95c2d37920ddc87e7ea21cafe232
+export const ENDPOINT_OPENAPI_DOCUMENT_SHA256 = "1408587885ad396797b05260bd0a7b5b855d95c2d37920ddc87e7ea21cafe232" as const;
 
 export const endpoints = {
   "attunement-cancel": {
@@ -290,6 +290,12 @@ export const endpoints = {
     "path": "/v1/query/live/poll",
     "authentication": "session_bearer",
     "mutation": false
+  },
+  "query-transaction-execute": {
+    "method": "POST",
+    "path": "/v1/query/transactions",
+    "authentication": "session_bearer",
+    "mutation": true
   },
   "restore-create": {
     "method": "POST",
