@@ -3,6 +3,49 @@
 use super::*;
 
 impl<'a> RuntimeRepository<'a> {
+    /// Resolve endpoint policy against the transaction's authenticated read.
+    /// No effect is published here. Commit validation independently refuses an
+    /// unresolved or dangling write set under its atomic storage snapshot.
+    pub fn resolve_relation_actions(
+        &self,
+        transaction: &DataTransaction,
+        budget: RuntimeReadBudget,
+    ) -> Result<(RuntimeCommit, Option<RuntimeReadEvidence>)> {
+        transaction.validate()?;
+        let physical = self.storage.begin_transaction()?;
+        let (actions, evidence) = crate::access::relation_actions(
+            &*physical,
+            &transaction.read,
+            &transaction.commit,
+            budget,
+        )?;
+        let mut commit = transaction.commit.clone();
+        for retirement in actions {
+            let existing = commit
+                .mutations
+                .iter_mut()
+                .find_map(|mutation| match mutation {
+                    RuntimeMutation::Retire {
+                        retirement: existing,
+                    } if existing.model == retirement.model
+                        && existing.reference == retirement.reference =>
+                    {
+                        Some(existing)
+                    }
+                    _ => None,
+                });
+            if let Some(existing) = existing {
+                existing.effective_at = existing.effective_at.min(retirement.effective_at);
+            } else {
+                commit
+                    .mutations
+                    .push(RuntimeMutation::Retire { retirement });
+            }
+        }
+        commit.validate()?;
+        Ok((commit, evidence))
+    }
+
     pub fn commit(&self, commit: &RuntimeCommit) -> Result<RuntimeCommitOutcome> {
         self.commit_at_read(commit, None, None, None)
     }

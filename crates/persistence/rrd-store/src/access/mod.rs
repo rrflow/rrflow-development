@@ -8,6 +8,7 @@ mod function;
 mod index;
 pub(crate) mod lexical_index;
 mod proof_nodes;
+mod referential;
 pub(crate) mod runtime_state;
 mod semantic_commit;
 mod vector;
@@ -31,6 +32,7 @@ pub use index::{
     INDEX_COMMIT_BINDING_CONTRACT_VERSION, INDEX_SOURCE_DELTA_CONTRACT_VERSION,
 };
 pub use lexical_index::{IndexLookup, LexicalHit, LexicalQuery, LexicalSearch};
+pub(crate) use referential::relation_actions;
 pub(crate) use semantic_commit::prepare_semantic_commit;
 pub use semantic_commit::SemanticCommitPlan;
 pub(crate) use vector::{

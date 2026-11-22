@@ -1052,8 +1052,8 @@ fn context_graph_anchors_require_visible_records_in_memory_and_after_reopen() {
                 reference: reference("supports", name),
                 from: reference("note", name),
                 to: reference("note", &format!("{name}-leaf")),
-                valid_from: 1_100,
-                valid_to: None,
+                valid_from,
+                valid_to,
                 properties: BTreeMap::new(),
             });
         }
@@ -1062,13 +1062,22 @@ fn context_graph_anchors_require_visible_records_in_memory_and_after_reopen() {
             &engine,
             &lease,
             "anchor-retire",
-            vec![TransactionMutation::RetireData {
-                model: DataLogicalModel::GraphNode,
-                target: rrd_contract::DataTarget::Reference {
-                    reference: reference("note", "retired"),
+            vec![
+                TransactionMutation::RetireData {
+                    model: DataLogicalModel::GraphRelation,
+                    target: rrd_contract::DataTarget::Reference {
+                        reference: reference("supports", "retired"),
+                    },
+                    effective_at: 1_250,
                 },
-                effective_at: 1_250,
-            }],
+                TransactionMutation::RetireData {
+                    model: DataLogicalModel::GraphNode,
+                    target: rrd_contract::DataTarget::Reference {
+                        reference: reference("note", "retired"),
+                    },
+                    effective_at: 1_250,
+                },
+            ],
         );
         let packets = verify(&engine, &lease);
         if persistent {

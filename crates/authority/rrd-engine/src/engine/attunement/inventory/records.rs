@@ -595,6 +595,8 @@ fn register(registry: &mut RuntimeSchemaRegistry) -> Result<bool> {
                 unique_pair: false,
                 max_outgoing: None,
                 max_incoming: None,
+                on_delete_from: None,
+                on_delete_to: None,
             },
         )
         .map_err(contract)?;

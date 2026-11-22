@@ -1,4 +1,4 @@
-// OpenAPI SHA-256: 1408587885ad396797b05260bd0a7b5b855d95c2d37920ddc87e7ea21cafe232
+// OpenAPI SHA-256: 59fbc172ad1c75997b82984a12e851f015076562eb69fcbc1cf90b3347e30f27
 export interface paths {
     "/v1/attunement/cancel": {
         parameters: {
@@ -2254,6 +2254,18 @@ export interface components {
                                                     max_incoming?: number | null;
                                                     /** Format: uint64 */
                                                     max_outgoing?: number | null;
+                                                    /**
+                                                     * @description Native edge endpoint policy. Omitted rules reject a dangling retirement.
+                                                     *     CASCADE retires the edge identity; it does not delete the opposite record.
+                                                     * @enum {string|null}
+                                                     */
+                                                    on_delete_from?: "reject" | "cascade" | null;
+                                                    /**
+                                                     * @description Native edge endpoint policy. Omitted rules reject a dangling retirement.
+                                                     *     CASCADE retires the edge identity; it does not delete the opposite record.
+                                                     * @enum {string|null}
+                                                     */
+                                                    on_delete_to?: "reject" | "cascade" | null;
                                                     /** @default {} */
                                                     properties: {
                                                         [key: string]: {
@@ -11443,6 +11455,18 @@ export interface operations {
                                                             max_incoming?: number | null;
                                                             /** Format: uint64 */
                                                             max_outgoing?: number | null;
+                                                            /**
+                                                             * @description Native edge endpoint policy. Omitted rules reject a dangling retirement.
+                                                             *     CASCADE retires the edge identity; it does not delete the opposite record.
+                                                             * @enum {string|null}
+                                                             */
+                                                            on_delete_from?: "reject" | "cascade" | null;
+                                                            /**
+                                                             * @description Native edge endpoint policy. Omitted rules reject a dangling retirement.
+                                                             *     CASCADE retires the edge identity; it does not delete the opposite record.
+                                                             * @enum {string|null}
+                                                             */
+                                                            on_delete_to?: "reject" | "cascade" | null;
                                                             /** @default {} */
                                                             properties: {
                                                                 [key: string]: {
@@ -12477,6 +12501,18 @@ export interface operations {
                                                             max_incoming?: number | null;
                                                             /** Format: uint64 */
                                                             max_outgoing?: number | null;
+                                                            /**
+                                                             * @description Native edge endpoint policy. Omitted rules reject a dangling retirement.
+                                                             *     CASCADE retires the edge identity; it does not delete the opposite record.
+                                                             * @enum {string|null}
+                                                             */
+                                                            on_delete_from?: "reject" | "cascade" | null;
+                                                            /**
+                                                             * @description Native edge endpoint policy. Omitted rules reject a dangling retirement.
+                                                             *     CASCADE retires the edge identity; it does not delete the opposite record.
+                                                             * @enum {string|null}
+                                                             */
+                                                            on_delete_to?: "reject" | "cascade" | null;
                                                             /** @default {} */
                                                             properties: {
                                                                 [key: string]: {
@@ -13562,6 +13598,18 @@ export interface operations {
                                                         max_incoming?: number | null;
                                                         /** Format: uint64 */
                                                         max_outgoing?: number | null;
+                                                        /**
+                                                         * @description Native edge endpoint policy. Omitted rules reject a dangling retirement.
+                                                         *     CASCADE retires the edge identity; it does not delete the opposite record.
+                                                         * @enum {string|null}
+                                                         */
+                                                        on_delete_from?: "reject" | "cascade" | null;
+                                                        /**
+                                                         * @description Native edge endpoint policy. Omitted rules reject a dangling retirement.
+                                                         *     CASCADE retires the edge identity; it does not delete the opposite record.
+                                                         * @enum {string|null}
+                                                         */
+                                                        on_delete_to?: "reject" | "cascade" | null;
                                                         /** @default {} */
                                                         properties: {
                                                             [key: string]: {
@@ -14591,6 +14639,18 @@ export interface operations {
                                                         max_incoming?: number | null;
                                                         /** Format: uint64 */
                                                         max_outgoing?: number | null;
+                                                        /**
+                                                         * @description Native edge endpoint policy. Omitted rules reject a dangling retirement.
+                                                         *     CASCADE retires the edge identity; it does not delete the opposite record.
+                                                         * @enum {string|null}
+                                                         */
+                                                        on_delete_from?: "reject" | "cascade" | null;
+                                                        /**
+                                                         * @description Native edge endpoint policy. Omitted rules reject a dangling retirement.
+                                                         *     CASCADE retires the edge identity; it does not delete the opposite record.
+                                                         * @enum {string|null}
+                                                         */
+                                                        on_delete_to?: "reject" | "cascade" | null;
                                                         /** @default {} */
                                                         properties: {
                                                             [key: string]: {
@@ -24497,6 +24557,18 @@ export interface operations {
                                             max_incoming?: number | null;
                                             /** Format: uint64 */
                                             max_outgoing?: number | null;
+                                            /**
+                                             * @description Native edge endpoint policy. Omitted rules reject a dangling retirement.
+                                             *     CASCADE retires the edge identity; it does not delete the opposite record.
+                                             * @enum {string|null}
+                                             */
+                                            on_delete_from?: "reject" | "cascade" | null;
+                                            /**
+                                             * @description Native edge endpoint policy. Omitted rules reject a dangling retirement.
+                                             *     CASCADE retires the edge identity; it does not delete the opposite record.
+                                             * @enum {string|null}
+                                             */
+                                            on_delete_to?: "reject" | "cascade" | null;
                                             /** @default {} */
                                             properties: {
                                                 [key: string]: {
@@ -24729,6 +24801,18 @@ export interface operations {
                                             max_incoming?: number | null;
                                             /** Format: uint64 */
                                             max_outgoing?: number | null;
+                                            /**
+                                             * @description Native edge endpoint policy. Omitted rules reject a dangling retirement.
+                                             *     CASCADE retires the edge identity; it does not delete the opposite record.
+                                             * @enum {string|null}
+                                             */
+                                            on_delete_from?: "reject" | "cascade" | null;
+                                            /**
+                                             * @description Native edge endpoint policy. Omitted rules reject a dangling retirement.
+                                             *     CASCADE retires the edge identity; it does not delete the opposite record.
+                                             * @enum {string|null}
+                                             */
+                                            on_delete_to?: "reject" | "cascade" | null;
                                             /** @default {} */
                                             properties: {
                                                 [key: string]: {
@@ -25126,6 +25210,18 @@ export interface operations {
                                                             max_incoming?: number | null;
                                                             /** Format: uint64 */
                                                             max_outgoing?: number | null;
+                                                            /**
+                                                             * @description Native edge endpoint policy. Omitted rules reject a dangling retirement.
+                                                             *     CASCADE retires the edge identity; it does not delete the opposite record.
+                                                             * @enum {string|null}
+                                                             */
+                                                            on_delete_from?: "reject" | "cascade" | null;
+                                                            /**
+                                                             * @description Native edge endpoint policy. Omitted rules reject a dangling retirement.
+                                                             *     CASCADE retires the edge identity; it does not delete the opposite record.
+                                                             * @enum {string|null}
+                                                             */
+                                                            on_delete_to?: "reject" | "cascade" | null;
                                                             /** @default {} */
                                                             properties: {
                                                                 [key: string]: {
@@ -27173,6 +27269,18 @@ export interface operations {
                                             max_incoming?: number | null;
                                             /** Format: uint64 */
                                             max_outgoing?: number | null;
+                                            /**
+                                             * @description Native edge endpoint policy. Omitted rules reject a dangling retirement.
+                                             *     CASCADE retires the edge identity; it does not delete the opposite record.
+                                             * @enum {string|null}
+                                             */
+                                            on_delete_from?: "reject" | "cascade" | null;
+                                            /**
+                                             * @description Native edge endpoint policy. Omitted rules reject a dangling retirement.
+                                             *     CASCADE retires the edge identity; it does not delete the opposite record.
+                                             * @enum {string|null}
+                                             */
+                                            on_delete_to?: "reject" | "cascade" | null;
                                             /** @default {} */
                                             properties: {
                                                 [key: string]: {
@@ -27861,6 +27969,18 @@ export interface operations {
                                                             max_incoming?: number | null;
                                                             /** Format: uint64 */
                                                             max_outgoing?: number | null;
+                                                            /**
+                                                             * @description Native edge endpoint policy. Omitted rules reject a dangling retirement.
+                                                             *     CASCADE retires the edge identity; it does not delete the opposite record.
+                                                             * @enum {string|null}
+                                                             */
+                                                            on_delete_from?: "reject" | "cascade" | null;
+                                                            /**
+                                                             * @description Native edge endpoint policy. Omitted rules reject a dangling retirement.
+                                                             *     CASCADE retires the edge identity; it does not delete the opposite record.
+                                                             * @enum {string|null}
+                                                             */
+                                                            on_delete_to?: "reject" | "cascade" | null;
                                                             /** @default {} */
                                                             properties: {
                                                                 [key: string]: {
@@ -29908,6 +30028,18 @@ export interface operations {
                                             max_incoming?: number | null;
                                             /** Format: uint64 */
                                             max_outgoing?: number | null;
+                                            /**
+                                             * @description Native edge endpoint policy. Omitted rules reject a dangling retirement.
+                                             *     CASCADE retires the edge identity; it does not delete the opposite record.
+                                             * @enum {string|null}
+                                             */
+                                            on_delete_from?: "reject" | "cascade" | null;
+                                            /**
+                                             * @description Native edge endpoint policy. Omitted rules reject a dangling retirement.
+                                             *     CASCADE retires the edge identity; it does not delete the opposite record.
+                                             * @enum {string|null}
+                                             */
+                                            on_delete_to?: "reject" | "cascade" | null;
                                             /** @default {} */
                                             properties: {
                                                 [key: string]: {
@@ -38574,6 +38706,18 @@ export interface operations {
                                             max_incoming?: number | null;
                                             /** Format: uint64 */
                                             max_outgoing?: number | null;
+                                            /**
+                                             * @description Native edge endpoint policy. Omitted rules reject a dangling retirement.
+                                             *     CASCADE retires the edge identity; it does not delete the opposite record.
+                                             * @enum {string|null}
+                                             */
+                                            on_delete_from?: "reject" | "cascade" | null;
+                                            /**
+                                             * @description Native edge endpoint policy. Omitted rules reject a dangling retirement.
+                                             *     CASCADE retires the edge identity; it does not delete the opposite record.
+                                             * @enum {string|null}
+                                             */
+                                            on_delete_to?: "reject" | "cascade" | null;
                                             /** @default {} */
                                             properties?: {
                                                 [key: string]: {
@@ -40733,6 +40877,18 @@ export interface operations {
                                                         max_incoming?: number | null;
                                                         /** Format: uint64 */
                                                         max_outgoing?: number | null;
+                                                        /**
+                                                         * @description Native edge endpoint policy. Omitted rules reject a dangling retirement.
+                                                         *     CASCADE retires the edge identity; it does not delete the opposite record.
+                                                         * @enum {string|null}
+                                                         */
+                                                        on_delete_from?: "reject" | "cascade" | null;
+                                                        /**
+                                                         * @description Native edge endpoint policy. Omitted rules reject a dangling retirement.
+                                                         *     CASCADE retires the edge identity; it does not delete the opposite record.
+                                                         * @enum {string|null}
+                                                         */
+                                                        on_delete_to?: "reject" | "cascade" | null;
                                                         /** @default {} */
                                                         properties: {
                                                             [key: string]: {
@@ -41787,6 +41943,18 @@ export interface operations {
                                                         max_incoming?: number | null;
                                                         /** Format: uint64 */
                                                         max_outgoing?: number | null;
+                                                        /**
+                                                         * @description Native edge endpoint policy. Omitted rules reject a dangling retirement.
+                                                         *     CASCADE retires the edge identity; it does not delete the opposite record.
+                                                         * @enum {string|null}
+                                                         */
+                                                        on_delete_from?: "reject" | "cascade" | null;
+                                                        /**
+                                                         * @description Native edge endpoint policy. Omitted rules reject a dangling retirement.
+                                                         *     CASCADE retires the edge identity; it does not delete the opposite record.
+                                                         * @enum {string|null}
+                                                         */
+                                                        on_delete_to?: "reject" | "cascade" | null;
                                                         /** @default {} */
                                                         properties: {
                                                             [key: string]: {
@@ -49244,6 +49412,18 @@ export interface operations {
                                         max_incoming?: number | null;
                                         /** Format: uint64 */
                                         max_outgoing?: number | null;
+                                        /**
+                                         * @description Native edge endpoint policy. Omitted rules reject a dangling retirement.
+                                         *     CASCADE retires the edge identity; it does not delete the opposite record.
+                                         * @enum {string|null}
+                                         */
+                                        on_delete_from?: "reject" | "cascade" | null;
+                                        /**
+                                         * @description Native edge endpoint policy. Omitted rules reject a dangling retirement.
+                                         *     CASCADE retires the edge identity; it does not delete the opposite record.
+                                         * @enum {string|null}
+                                         */
+                                        on_delete_to?: "reject" | "cascade" | null;
                                         /** @default {} */
                                         properties?: {
                                             [key: string]: {
@@ -50333,6 +50513,18 @@ export interface operations {
                                         max_incoming?: number | null;
                                         /** Format: uint64 */
                                         max_outgoing?: number | null;
+                                        /**
+                                         * @description Native edge endpoint policy. Omitted rules reject a dangling retirement.
+                                         *     CASCADE retires the edge identity; it does not delete the opposite record.
+                                         * @enum {string|null}
+                                         */
+                                        on_delete_from?: "reject" | "cascade" | null;
+                                        /**
+                                         * @description Native edge endpoint policy. Omitted rules reject a dangling retirement.
+                                         *     CASCADE retires the edge identity; it does not delete the opposite record.
+                                         * @enum {string|null}
+                                         */
+                                        on_delete_to?: "reject" | "cascade" | null;
                                         /** @default {} */
                                         properties?: {
                                             [key: string]: {
@@ -51311,6 +51503,18 @@ export interface operations {
                                                 max_incoming?: number | null;
                                                 /** Format: uint64 */
                                                 max_outgoing?: number | null;
+                                                /**
+                                                 * @description Native edge endpoint policy. Omitted rules reject a dangling retirement.
+                                                 *     CASCADE retires the edge identity; it does not delete the opposite record.
+                                                 * @enum {string|null}
+                                                 */
+                                                on_delete_from?: "reject" | "cascade" | null;
+                                                /**
+                                                 * @description Native edge endpoint policy. Omitted rules reject a dangling retirement.
+                                                 *     CASCADE retires the edge identity; it does not delete the opposite record.
+                                                 * @enum {string|null}
+                                                 */
+                                                on_delete_to?: "reject" | "cascade" | null;
                                                 /** @default {} */
                                                 properties: {
                                                     [key: string]: {
@@ -52293,6 +52497,18 @@ export interface operations {
                                                         max_incoming?: number | null;
                                                         /** Format: uint64 */
                                                         max_outgoing?: number | null;
+                                                        /**
+                                                         * @description Native edge endpoint policy. Omitted rules reject a dangling retirement.
+                                                         *     CASCADE retires the edge identity; it does not delete the opposite record.
+                                                         * @enum {string|null}
+                                                         */
+                                                        on_delete_from?: "reject" | "cascade" | null;
+                                                        /**
+                                                         * @description Native edge endpoint policy. Omitted rules reject a dangling retirement.
+                                                         *     CASCADE retires the edge identity; it does not delete the opposite record.
+                                                         * @enum {string|null}
+                                                         */
+                                                        on_delete_to?: "reject" | "cascade" | null;
                                                         /** @default {} */
                                                         properties: {
                                                             [key: string]: {
@@ -53327,6 +53543,18 @@ export interface operations {
                                                 max_incoming?: number | null;
                                                 /** Format: uint64 */
                                                 max_outgoing?: number | null;
+                                                /**
+                                                 * @description Native edge endpoint policy. Omitted rules reject a dangling retirement.
+                                                 *     CASCADE retires the edge identity; it does not delete the opposite record.
+                                                 * @enum {string|null}
+                                                 */
+                                                on_delete_from?: "reject" | "cascade" | null;
+                                                /**
+                                                 * @description Native edge endpoint policy. Omitted rules reject a dangling retirement.
+                                                 *     CASCADE retires the edge identity; it does not delete the opposite record.
+                                                 * @enum {string|null}
+                                                 */
+                                                on_delete_to?: "reject" | "cascade" | null;
                                                 /** @default {} */
                                                 properties: {
                                                     [key: string]: {
@@ -54309,6 +54537,18 @@ export interface operations {
                                                         max_incoming?: number | null;
                                                         /** Format: uint64 */
                                                         max_outgoing?: number | null;
+                                                        /**
+                                                         * @description Native edge endpoint policy. Omitted rules reject a dangling retirement.
+                                                         *     CASCADE retires the edge identity; it does not delete the opposite record.
+                                                         * @enum {string|null}
+                                                         */
+                                                        on_delete_from?: "reject" | "cascade" | null;
+                                                        /**
+                                                         * @description Native edge endpoint policy. Omitted rules reject a dangling retirement.
+                                                         *     CASCADE retires the edge identity; it does not delete the opposite record.
+                                                         * @enum {string|null}
+                                                         */
+                                                        on_delete_to?: "reject" | "cascade" | null;
                                                         /** @default {} */
                                                         properties: {
                                                             [key: string]: {

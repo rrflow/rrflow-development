@@ -367,6 +367,8 @@ fn memory_engram_schema(current: Option<DataSchemaRegistry>) -> Result<(DataSche
         unique_pair: true,
         max_outgoing: Some(1),
         max_incoming: None,
+        on_delete_from: None,
+        on_delete_to: None,
     };
     let mut changed = false;
     for (kind, expected) in expected_tables {

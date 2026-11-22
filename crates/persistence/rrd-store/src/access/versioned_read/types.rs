@@ -45,6 +45,23 @@ impl RuntimeReadBudget {
             .ok_or(Error::SequenceOverflow)?;
         Self::new(max_keys)
     }
+
+    /// Write integrity may visit each committed relation through its identity
+    /// and both endpoint indexes. Include proposed identities in the bound:
+    /// an initial batch can select many as-yet-empty ranges at cursor zero.
+    /// This is independent of query-workload policy; physical storage and
+    /// transaction admission limits still apply to the write.
+    pub fn relation_integrity(commit_cursor: u64, mutations: usize) -> Result<Self> {
+        let extent = commit_cursor
+            .checked_add(u64::try_from(mutations).map_err(|_| Error::SequenceOverflow)?)
+            .ok_or(Error::SequenceOverflow)?;
+        Self::new(
+            Self::authenticated_history_integrity(extent)?
+                .max_keys
+                .checked_mul(3)
+                .ok_or(Error::SequenceOverflow)?,
+        )
+    }
 }
 
 /// One typed semantic version range. An absent discriminator selects the
@@ -112,6 +129,12 @@ pub enum RuntimeVersionedSource {
         node: RuntimeRef,
         direction: RuntimeAdjacencyDirection,
     },
+    /// All relation kinds incident to one endpoint. Uses the node prefix,
+    /// independent of how many relation kinds are declared in the schema.
+    Incident {
+        node: RuntimeRef,
+        direction: RuntimeAdjacencyDirection,
+    },
 }
 
 /// Endpoint of a relation that an adjacency range is keyed by.
@@ -153,7 +176,9 @@ impl RuntimeVersionedSource {
             Self::Identity { model, .. } | Self::IdentityRange { model, .. } => {
                 access_path_for_model(*model)
             }
-            Self::Adjacency { .. } => Ok(RuntimeReadAccessPath::AdjacencyVersions),
+            Self::Adjacency { .. } | Self::Incident { .. } => {
+                Ok(RuntimeReadAccessPath::AdjacencyVersions)
+            }
         }
     }
 }

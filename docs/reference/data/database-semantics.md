@@ -89,7 +89,9 @@ stronger isolation available for specified backends. [SurrealDB architecture](ht
 | Graph edge | A first-class relation with its own ID, typed endpoints, metadata and temporal interval; outgoing/incoming traversal. | `RuntimeRelation` stores `from`, `to`, properties and valid interval. Commit effects write its current record, immutable version and directional adjacency keys in the same write set. Relation schemas constrain endpoint kinds, pair uniqueness and degree. |
 
 SurrealDB record links target record IDs directly; tracked references add
-reverse traversal and deletion behavior. Its policies include IGNORE, UNSET,
+reverse traversal and deletion behavior. Tracking alone does not require the
+target to exist; SurrealDB documents a separate `ASSERT record::exists()` check.
+Its policies include IGNORE, UNSET,
 CASCADE, REJECT and custom THEN behavior. CASCADE can delete the referencing
 record; it is not merely deletion of an edge. RRFlow must define and test the
 temporal consequences before implementing those policies. [Record links](https://surrealdb.com/docs/reference/query-language/language-primitives/record-links),
@@ -106,6 +108,65 @@ See [key encoding](../../../crates/persistence/rrd-store/src/keyspaces/runtime.r
 and [constraints](../../../crates/persistence/rrd-store/src/access/semantic_commit/constraints.rs).
 SurrealDB's `RELATE` similarly creates edge records; this statement does not
 assert identical internal key bytes. [RELATE](https://surrealdb.com/docs/reference/query-language/statements/relate).
+
+## Native temporal relation integrity
+
+A relation schema declares `on_delete_from` and `on_delete_to` independently,
+with `reject` or `cascade`. An omitted declaration enforces rejection. This is
+policy for first-class edge records; it does not add typed field links,
+reverse field references, UNSET, or SurrealQL syntax. Explicit declarations are
+included in the canonical schema digest and public SDK projection.
+
+For every affected relation, rrflowTX resolves its complete valid-time timeline
+at the transaction's captured knowledge cursor, then overlays the proposed
+mutations in order. Every live interval must be covered by both endpoint
+records. Checking only the current endpoint, or only an edge's starting instant,
+is insufficient. The engine selects historical incident-edge indexes, full
+histories of the selected edges (including endpoint moves), and the endpoint
+histories under one authenticated read stamp. It does not scan other graph
+neighbourhoods recursively. Discovery uses two node-prefix ranges, independent
+of how many relation kinds exist in the schema.
+
+- `reject`: an explicit endpoint retirement that would uncover any interval
+  refuses the entire transaction. The caller may instead retire or correct the
+  affected edge in that same transaction.
+- `cascade`: an explicit endpoint retirement generates an edge retirement at
+  the first uncovered instant. For an edge beginning after that endpoint was
+  retired, the cutoff is the edge's start. The new knowledge version masks that
+  edge's later already-known versions too; recreation requires a later explicit
+  write whose endpoints cover its interval. A record correction that merely
+  shortens `valid_to` is not an implicit delete request: it needs an explicit
+  matching edge correction/retirement or it is refused.
+- Both endpoints are checked. A self-loop with simultaneous gaps and a REJECT
+  rule cannot evade that rule through the other endpoint's CASCADE declaration.
+
+Example: an edge begins at valid time 100. At knowledge cursor K it references
+B until valid time 200, then C until 300. Retiring B effective 150 cannot rely
+on current adjacency, where that edge has disappeared. REJECT preserves the
+entire pre-transaction state. CASCADE appends an ordinary edge retirement at
+150 in the same commit as B's retirement. `KNOWN K` still returns the original
+edge at valid time 175; the new knowledge cursor does not. At valid time 149,
+both knowledge coordinates retain the edge. Restart must preserve all answers.
+
+Derived retirements enter the canonical `RuntimeCommit` before its digest,
+function receipts and commit intent are sealed. They share the existing WAL,
+version, adjacency, projection, audit and outcome publication. The low-level
+store refuses unresolved cascades, rather than performing invisible extra
+writes. A retirement version is persisted even when its current head is already
+absent. Query transaction `mutation_count` counts submitted bindings; the commit
+receipt's runtime cursor interval covers the resolved effects.
+
+The selector enforces an explicit key budget and reports examined keys and
+decoded bytes. Engine writes use the storage integrity bound, including proposed
+identities; a user's query-read limit does not silently become a write limit.
+Physical storage and transaction admission limits still apply. This does not
+establish a fan-out latency target, independent concurrent semantic commits, or
+vector/geo subject cascade cleanup. Those remain separate acceptance work.
+
+Implementation: [kernel temporal policy](../../../crates/kernel/rrd-core/src/runtime/referential.rs),
+[bounded dependency selection](../../../crates/persistence/rrd-store/src/access/referential.rs),
+[engine preparation](../../../crates/authority/rrd-engine/src/engine/transaction/referential.rs),
+and [package evidence](../../evidence/change-journals/gate-h/temporal-referential-actions-20261122.md).
 
 ## Transaction path and concurrency
 
@@ -132,7 +193,11 @@ not executable strings. Missing/extra bindings are rejected. `CANCEL` uses the
 existing abort path. The engine checks begin and commit/abort permissions;
 query-read permission alone is insufficient. Retry the identical intent with
 the identical idempotency key after an uncertain response. Reusing that key for
-different intent is a conflict. This is a bounded native transaction grammar,
+different intent is a conflict. A preparation refusal, or a typed pre-publication
+failure with a verified absent outcome, closes the lease as aborted and releases
+its quota. A subsequent commit on that lease is closed; uncertain storage/I/O
+failures retain prepared intent for exact retry and outcome reconciliation.
+An explicit abort can acknowledge an already-refused lease. This is a bounded native transaction grammar,
 not SQL INSERT/UPDATE/DELETE or arbitrary multi-statement SQL support.
 
 The current implementation must be evaluated separately for each ACID property:

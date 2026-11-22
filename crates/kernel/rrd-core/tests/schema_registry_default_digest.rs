@@ -48,6 +48,8 @@ fn every_model() -> RuntimeSchemaRegistry {
                 unique_pair: true,
                 max_outgoing: Some(64),
                 max_incoming: None,
+                on_delete_from: None,
+                on_delete_to: None,
             },
         )
         .unwrap();

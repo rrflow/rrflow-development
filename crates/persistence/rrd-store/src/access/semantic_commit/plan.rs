@@ -93,9 +93,23 @@ pub(crate) fn prepare_semantic_commit(
         });
     }
     let mut accumulator = current_accumulator(reader, start)?;
-    validate_retirement_targets(reader, commit, start)?;
+    let retired_relations = validate_retirement_targets(reader, commit, start)?;
     let effective_schema = validate_schema_and_objects(reader, commit)?;
     validate_references(reader, commit)?;
+    let relation_read = read_stamp_with(reader, &commit.scope)?;
+    let (unresolved, _) = super::super::relation_actions(
+        reader,
+        &relation_read,
+        commit,
+        RuntimeReadBudget::relation_integrity(start, commit.mutations.len())?,
+    )?;
+    if !unresolved.is_empty() {
+        return Err(Error::Kernel(rrd_core::Error::InvalidRuntime {
+            reason:
+                "relation cascades must be resolved into the canonical transaction before commit"
+                    .into(),
+        }));
+    }
     let catalogue_revision =
         read_sequence(reader, &keyspaces::catalog_revision_key(&commit.scope))?;
 
@@ -211,6 +225,7 @@ pub(crate) fn prepare_semantic_commit(
             reader,
             &mut plan,
             &mut staged_relations,
+            retired_relations.get(&ordinal),
             commit,
             mutation,
             &change,
@@ -366,7 +381,9 @@ pub(super) fn validate_references(
         .collect::<BTreeSet<_>>();
     for mutation in &commit.mutations {
         let references: Vec<&RuntimeRef> = match mutation {
-            RuntimeMutation::Relation { relation } => vec![&relation.from, &relation.to],
+            // Relation endpoints are checked over their full temporal interval
+            // by relation_actions, rather than only against current heads.
+            RuntimeMutation::Relation { .. } => Vec::new(),
             RuntimeMutation::Event { event } => event.subject.iter().collect(),
             RuntimeMutation::Vector { vector } => vec![&vector.subject],
             RuntimeMutation::SeriesSample { sample } => vec![&sample.series],
@@ -395,74 +412,6 @@ pub(super) fn validate_references(
                     reference.kind, reference.id, commit.scope
                 )));
             }
-        }
-    }
-    Ok(())
-}
-
-pub(super) fn validate_retirement_targets(
-    reader: &(impl AccessRead + ?Sized),
-    commit: &RuntimeCommit,
-    head: u64,
-) -> Result<()> {
-    let retirements = commit
-        .mutations
-        .iter()
-        .filter_map(|mutation| match mutation {
-            RuntimeMutation::Retire { retirement } => Some(retirement),
-            _ => None,
-        })
-        .collect::<Vec<_>>();
-    if retirements.is_empty() {
-        return Ok(());
-    }
-    let read = read_stamp_with(reader, &commit.scope)?;
-    if read.commit_cursor != head {
-        return Err(Error::ReadStampUnavailable(format!(
-            "retirement validation for {} moved from cursor {head} to {}",
-            commit.scope, read.commit_cursor
-        )));
-    }
-    let mut sources = vec![RuntimeVersionedSource::Schema];
-    sources.extend(
-        retirements
-            .iter()
-            .map(|retirement| RuntimeVersionedSource::Identity {
-                model: retirement.model,
-                reference: retirement.reference.clone(),
-            }),
-    );
-    let direct = read_versioned(
-        reader,
-        &read,
-        &sources,
-        RuntimeReadBudget::authenticated_history_integrity(head)?,
-    )?;
-    let schema = schema_at_read(&read, &direct.changes)?;
-    let mut snapshots = BTreeMap::new();
-    for retirement in retirements {
-        let snapshot = match snapshots.entry(retirement.effective_at) {
-            std::collections::btree_map::Entry::Occupied(entry) => entry.into_mut(),
-            std::collections::btree_map::Entry::Vacant(entry) => entry.insert(
-                RuntimeDataSnapshot::from_changes(
-                    &direct.changes,
-                    &schema,
-                    commit.scope.clone(),
-                    retirement.effective_at,
-                    head,
-                )
-                .map_err(Error::from)?,
-            ),
-        };
-        if !snapshot.contains(retirement.model, &retirement.reference) {
-            return Err(Error::RuntimeTargetNotFound(format!(
-                "{:?} {}/{} at {} in scope {}",
-                retirement.model,
-                retirement.reference.kind,
-                retirement.reference.id,
-                retirement.effective_at,
-                commit.scope
-            )));
         }
     }
     Ok(())

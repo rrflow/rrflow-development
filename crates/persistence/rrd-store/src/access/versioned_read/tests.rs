@@ -214,7 +214,7 @@ fn an_adjacency_value_must_name_its_node_type_identity_time_and_cursor() {
                     direction: RuntimeAdjacencyDirection,
                     stored: &[u8],
                     change: &RuntimeChange| {
-        validate_adjacency_entry(&depends_on, node, direction, stored, change)
+        validate_adjacency_entry(Some(&depends_on), node, direction, stored, change)
     };
     validate(&relation.from, outgoing, &key(&relation, 100, 4), &put).unwrap();
     let mut moved = relation.clone();

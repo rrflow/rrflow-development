@@ -24,3 +24,12 @@ Roadmap owner: [Gate H](../../roadmap/rrflow-1.0/gate-h.md).
 ## Closure evidence
 
 Closed when the contract states what a refused commit does to its transaction and a process test holds it.
+
+## Current remediation
+
+[Temporal transaction outcomes package](../../evidence/change-journals/gate-h/temporal-referential-actions-20261122.md)
+closes definitely refused leases using the existing terminal record, while
+preserving uncertain commit intents. The new real HTTP process oracle passes
+three distinct rejected transactions with a quota of one before a successful
+commit, then verifies restart and replay. Final installed and candidate evidence
+is pending; this record does not independently change the parent status.

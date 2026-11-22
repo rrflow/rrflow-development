@@ -341,6 +341,8 @@ pub(in crate::engine) fn public_schema(
                         unique_pair: schema.unique_pair,
                         max_outgoing: schema.max_outgoing,
                         max_incoming: schema.max_incoming,
+                        on_delete_from: schema.on_delete_from.map(data_referential_action),
+                        on_delete_to: schema.on_delete_to.map(data_referential_action),
                     },
                 ))
             })
@@ -454,5 +456,14 @@ pub(in crate::engine) fn public_geo_value(value: &GeoValue) -> DataGeoValue {
             southwest: point(southwest),
             northeast: point(northeast),
         },
+    }
+}
+
+fn data_referential_action(
+    action: rrd_core::RuntimeReferentialAction,
+) -> rrd_contract::DataReferentialAction {
+    match action {
+        rrd_core::RuntimeReferentialAction::Reject => rrd_contract::DataReferentialAction::Reject,
+        rrd_core::RuntimeReferentialAction::Cascade => rrd_contract::DataReferentialAction::Cascade,
     }
 }

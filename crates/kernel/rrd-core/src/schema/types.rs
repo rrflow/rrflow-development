@@ -82,6 +82,19 @@ pub struct RuntimeRelationSchema {
     pub max_outgoing: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub max_incoming: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub on_delete_from: Option<RuntimeReferentialAction>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub on_delete_to: Option<RuntimeReferentialAction>,
+}
+
+/// Deleting a relation endpoint either refuses the commit or retires the edge.
+/// This is not a field-reference action: a relation cannot have an unset end.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RuntimeReferentialAction {
+    Reject,
+    Cascade,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]

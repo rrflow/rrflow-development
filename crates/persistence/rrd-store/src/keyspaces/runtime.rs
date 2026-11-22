@@ -195,6 +195,21 @@ pub(crate) fn runtime_adjacency_version_key(
 
 /// Current or temporal adjacency range for one node and relation type.
 /// Temporal ranges include every version and retirement at that endpoint.
+pub(crate) fn runtime_adjacency_node_prefix(
+    space: Space,
+    scope: &ScopeId,
+    node: &RuntimeRef,
+) -> Vec<u8> {
+    encode(
+        space,
+        &[
+            KeyPart::Text(scope.as_str()),
+            KeyPart::Text(node.kind.as_str()),
+            KeyPart::Text(node.id.as_str()),
+        ],
+    )
+}
+
 pub(crate) fn runtime_adjacency_prefix(
     space: Space,
     scope: &ScopeId,

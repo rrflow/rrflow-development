@@ -305,3 +305,48 @@ fn nonempty_runtime_never_rebuilds_a_missing_accumulator_from_the_change_log() {
     let reopened = RrflowKvStore::open(&path).unwrap();
     assert_missing_accumulator_is_rejected(&reopened, 7);
 }
+
+fn assert_temporal_endpoint_retirement_is_atomic(storage: &dyn StorageEngine) {
+    let fixture = commit_fixture(storage);
+    let before = storage.runtime().read_stamp(&fixture.scope).unwrap();
+    // The edge is absent from current adjacency: it moved from b to c at 200
+    // and was retired at 300. Retiring b at 150 still breaks its known history
+    // on [150, 200). Current-head checks alone cannot establish this invariant.
+    let result = storage.runtime().commit(&RuntimeCommit {
+        scope: fixture.scope.clone(),
+        at: 400,
+        actor: "agent:temporal-reference-proof".into(),
+        expected_cursor: before.commit_cursor,
+        mutations: vec![RuntimeMutation::Retire {
+            retirement: RuntimeRetirement {
+                model: RuntimeLogicalModel::Relational,
+                reference: record("b").reference,
+                effective_at: 150,
+            },
+        }],
+    });
+    assert!(
+        result.is_err(),
+        "dangling historical relation was accepted: {result:?}"
+    );
+    assert_eq!(
+        storage.runtime().read_stamp(&fixture.scope).unwrap(),
+        before
+    );
+    assert_physical_fan_out(storage, &fixture);
+}
+
+#[test]
+fn temporal_endpoint_integrity_is_enforced_on_mx() {
+    assert_temporal_endpoint_retirement_is_atomic(&RrflowMxStore::new());
+}
+
+#[test]
+fn temporal_endpoint_integrity_is_enforced_on_kv() {
+    let directory = tempfile::tempdir().unwrap();
+    let kv = RrflowKvStore::open(&directory.path().join("rrflow-kv")).unwrap();
+    assert_temporal_endpoint_retirement_is_atomic(&kv);
+}
+
+#[path = "tests/temporal.rs"]
+mod temporal;

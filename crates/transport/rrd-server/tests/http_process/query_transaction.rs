@@ -135,3 +135,118 @@ fn public_query_transaction_preserves_corrections_cancel_and_replay_across_resta
     assert_eq!(head["known_at_cursor"], new_cursor);
     assert_eq!(head["rows"], new["rows"]);
 }
+
+#[test]
+fn temporal_relation_refusal_cascade_and_terminal_leases_survive_restart() {
+    let (_temporary, root, server) = start_root();
+    let create = envelope(
+        json!({"limits": {"idle_timeout_ms": 60_000,
+        "absolute_timeout_ms": 300_000, "max_open_transactions": 1}}),
+        Some("relation-session"),
+        None,
+    );
+    let (status, created) = post(&server, "/v1/sessions", &create, None);
+    assert_eq!(status, 200, "{created}");
+    let session_id = payload(&created)["session_id"].as_str().unwrap().to_owned();
+    let token = payload(&created)["token"].as_str().unwrap().to_owned();
+    let session = (session_id.as_str(), token.as_str());
+    let mut schema = json!({"revision": 1, "migration": "temporal endpoint policy",
+        "tables": {"document": {"model": "document", "mode": "schemaless"},
+            "linked": {"model": "graph_relation", "mode": "strict"}},
+        "records": {}, "events": {}, "relations": {"linked": {
+            "from": ["document"], "to": ["document"], "properties": {},
+            "allow_additional_properties": true,
+            "on_delete_from": "reject", "on_delete_to": "reject"}}});
+    let seed = program(
+        "BEGIN; MUTATE $schema; MUTATE $first; MUTATE $second; MUTATE $edge; COMMIT;",
+        json!({"schema": {"mutation": "put_schema", "registry": schema},
+            "first": document("alpha", "Source"), "second": document("beta", "Target"),
+            "edge": {"mutation": "put_relation", "reference": {"kind": "linked", "id": "evidence"},
+                "from": {"kind": "document", "id": "alpha"}, "to": {"kind": "document", "id": "beta"},
+                "valid_from": 100, "properties": {}}}),
+        "relation-seed",
+    );
+    let (status, committed) = post(&server, PATH, &seed, Some(session));
+    assert_eq!(status, 200, "{committed}");
+    let old_cursor = payload(&committed)["commit"]["last_runtime_cursor"]
+        .as_u64()
+        .unwrap();
+    let retirement = json!({"mutation": "retire_data", "model": "document",
+        "target": {"identity": "reference", "reference": {"kind": "document", "id": "beta"}},
+        "effective_at": 150});
+    // Each refusal uses a new key; a leaked lease would exhaust the quota of
+    // one before the next refusal or the subsequent successful schema commit.
+    for attempt in 0..3 {
+        let request = program(
+            "BEGIN; MUTATE $retirement; COMMIT;",
+            json!({"retirement": retirement}),
+            &format!("relation-reject-{attempt}"),
+        );
+        let (status, refused) = post(&server, PATH, &request, Some(session));
+        assert_eq!(status, 400, "{refused}");
+        assert!(
+            refused.to_string().contains("unavailable endpoint"),
+            "{refused}"
+        );
+        assert_eq!(
+            read(&server, session, "HEAD", 175)["known_at_cursor"],
+            old_cursor
+        );
+    }
+    schema["revision"] = json!(2);
+    schema["relations"]["linked"]["on_delete_to"] = json!("cascade");
+    let cascade = program(
+        "BEGIN; MUTATE $schema; MUTATE $retirement; COMMIT;",
+        json!({"schema": {"mutation": "put_schema", "registry": schema},
+            "retirement": retirement}),
+        "relation-cascade",
+    );
+    let (status, committed) = post(&server, PATH, &cascade, Some(session));
+    assert_eq!(status, 200, "{committed}");
+    let new_cursor = payload(&committed)["commit"]["last_runtime_cursor"]
+        .as_u64()
+        .unwrap();
+    assert_eq!(new_cursor, old_cursor + 3); // schema + endpoint + derived edge
+    assert_eq!(payload(&committed)["mutation_count"], 2); // submitted bindings
+    let verify = |server: &RunningServer| {
+        for (cursor, valid, count) in [
+            (old_cursor, 175, 1),
+            (new_cursor, 149, 1),
+            (new_cursor, 150, 0),
+        ] {
+            for source in ["relation:linked", "record:document"] {
+                let filter = if source.starts_with("record") {
+                    " WHERE id = \"beta\""
+                } else {
+                    ""
+                };
+                let request = envelope(
+                    json!({"scope": "instance:socket-test",
+                    "query": format!("FROM {source} AT VALID {valid} KNOWN {cursor}{filter} EXPLAIN CONTRACT"),
+                    "parameters": {}, "budget": {"max_storage_keys": 1024, "max_rows": 10,
+                        "max_output_bytes": 16384, "max_batch_rows": 10}}),
+                    None,
+                    None,
+                );
+                let (status, result) = post(server, "/v1/query", &request, Some(session));
+                assert_eq!(status, 200, "{result}");
+                assert_eq!(
+                    payload(&result)["rows"].as_array().unwrap().len(),
+                    count,
+                    "{result}"
+                );
+            }
+        }
+    };
+    verify(&server);
+    server.stop();
+    let reopened = start(&root);
+    verify(&reopened);
+    let (status, replay) = post(&reopened, PATH, &cascade, Some(session));
+    assert_eq!(status, 200, "{replay}");
+    assert_eq!(payload(&replay)["commit"]["idempotent_replay"], true);
+    assert_eq!(
+        payload(&replay)["commit"]["last_runtime_cursor"],
+        new_cursor
+    );
+}

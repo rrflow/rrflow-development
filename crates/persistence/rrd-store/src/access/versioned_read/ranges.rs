@@ -211,6 +211,13 @@ pub(super) fn source_range(
                 keyspaces::runtime_adjacency_prefix(space, scope, node, relation),
             )
         }
+        RuntimeVersionedSource::Incident { node, direction } => {
+            let space = adjacency_space(*direction);
+            (
+                space,
+                keyspaces::runtime_adjacency_node_prefix(space, scope, node),
+            )
+        }
     })
 }
 

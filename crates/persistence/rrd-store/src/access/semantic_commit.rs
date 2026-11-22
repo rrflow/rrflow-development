@@ -31,9 +31,11 @@ mod constraint_tests;
 
 mod effects;
 mod plan;
+mod retirements;
 
 use effects::*;
 pub use plan::*;
+use retirements::*;
 
 #[cfg(test)]
 mod tests;

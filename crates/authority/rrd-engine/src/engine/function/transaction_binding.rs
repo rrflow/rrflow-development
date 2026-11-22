@@ -17,6 +17,7 @@ impl RrdEngine {
         request: &CommitTransaction,
         transaction_id: &CorrelationId,
         mut commit: RuntimeCommit,
+        read: &ReadStamp,
         principal_id: Option<CanonicalId>,
         at: u64,
         request_id: &str,
@@ -116,6 +117,7 @@ impl RrdEngine {
                 });
             }
         }
+        commit = self.resolve_transaction_relation_actions(read, commit)?;
         commit.validate().map_err(core_contract)?;
         let commit_sha256 = commit.digest();
         let receipts = receipts
@@ -136,6 +138,7 @@ impl RrdEngine {
         request: &CommitTransaction,
         transaction_id: &CorrelationId,
         mut commit: RuntimeCommit,
+        read: &ReadStamp,
         receipts: &[FunctionInvocationReceipt],
         at: u64,
     ) -> Result<RuntimeCommit> {
@@ -207,6 +210,7 @@ impl RrdEngine {
                 "prepared transaction contains unmatched function receipts".into(),
             ));
         }
+        commit = self.resolve_transaction_relation_actions(read, commit)?;
         commit.validate().map_err(core_contract)?;
         let commit_sha256 = commit.digest();
         if receipts

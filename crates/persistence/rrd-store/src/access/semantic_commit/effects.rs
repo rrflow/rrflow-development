@@ -6,6 +6,7 @@ pub(super) fn encode_domain_effect(
     reader: &(impl AccessRead + ?Sized),
     plan: &mut SemanticCommitPlan,
     staged_relations: &mut BTreeMap<RuntimeRef, Option<RuntimeRelation>>,
+    retired_relation: Option<&RuntimeRelation>,
     commit: &RuntimeCommit,
     mutation: &RuntimeMutation,
     change: &RuntimeChange,
@@ -187,33 +188,41 @@ pub(super) fn encode_domain_effect(
             }
             let current_space = match retirement.model {
                 rrd_core::RuntimeLogicalModel::GraphRelation => {
-                    if let Some(relation) = current_relation(
+                    // History persists even when an earlier retirement already
+                    // removed the current head. Its valid-time target came from
+                    // the authenticated retirement validation in this plan.
+                    plan.put_json(
+                        keyspaces::RUNTIME_RELATION_VERSIONS,
+                        &keyspaces::runtime_version_key(
+                            keyspaces::RUNTIME_RELATION_VERSIONS,
+                            &commit.scope,
+                            &retirement.reference,
+                            retirement.effective_at,
+                            change.cursor,
+                        ),
+                        change,
+                    )?;
+                    let historical = retired_relation.ok_or_else(|| {
+                        Error::RuntimeTargetNotFound(
+                            "relation retirement has no validated temporal target".into(),
+                        )
+                    })?;
+                    put_temporal_adjacency(
+                        plan,
+                        &commit.scope,
+                        historical,
+                        retirement.effective_at,
+                        change,
+                    )?;
+                    if let Some(current) = current_relation(
                         reader,
                         staged_relations,
                         &commit.scope,
                         &retirement.reference,
                     )? {
-                        plan.put_json(
-                            keyspaces::RUNTIME_RELATION_VERSIONS,
-                            &keyspaces::runtime_version_key(
-                                keyspaces::RUNTIME_RELATION_VERSIONS,
-                                &commit.scope,
-                                &retirement.reference,
-                                retirement.effective_at,
-                                change.cursor,
-                            ),
-                            change,
-                        )?;
-                        put_temporal_adjacency(
-                            plan,
-                            &commit.scope,
-                            &relation,
-                            retirement.effective_at,
-                            change,
-                        )?;
-                        delete_current_adjacency(plan, &commit.scope, &relation)?;
-                        staged_relations.insert(retirement.reference.clone(), None);
+                        delete_current_adjacency(plan, &commit.scope, &current)?;
                     }
+                    staged_relations.insert(retirement.reference.clone(), None);
                     Some(keyspaces::RUNTIME_RELATIONS)
                 }
                 rrd_core::RuntimeLogicalModel::Vector => {
