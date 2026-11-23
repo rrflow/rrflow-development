@@ -11,12 +11,15 @@
 //! This is a diagnostic from one machine. It states no verdict.
 //!
 //! ```text
-//! cargo run --release -p rrd-store --features parquet-reference,vortex-reference \
+//! cargo run --release -p rrflow-cld --features cld-parquet,cld-vortex \
 //!   --example columnar_comparison -- --rows 100000 --trials 7 --output out.json
 //! ```
 
-use rrd_store::columnar::{ColumnarColumn, ColumnarFormat, ColumnarTable};
-use rrd_store::columnar_reference::{ParquetReference, VortexReference};
+use rrflow_cld::columnar::{ColumnarColumn, ColumnarFormat, ColumnarTable};
+#[cfg(feature = "cld-parquet")]
+use rrflow_cld::formats::ParquetReference;
+#[cfg(feature = "cld-vortex")]
+use rrflow_cld::formats::VortexReference;
 use serde::Serialize;
 use std::hint::black_box;
 use std::path::PathBuf;
@@ -52,7 +55,7 @@ struct Evidence {
     arms: Vec<Arm>,
 }
 
-fn main() {
+pub fn main() {
     if let Err(error) = run() {
         eprintln!("columnar comparison failed: {error}");
         std::process::exit(1);
@@ -63,7 +66,10 @@ fn run() -> Result<(), String> {
     let mut rows = 100_000usize;
     let mut trials = 5usize;
     let mut output = None;
-    let arguments = std::env::args().skip(1).collect::<Vec<_>>();
+    let arguments = std::env::args()
+        .skip(1)
+        .filter(|arg| arg != "--bench")
+        .collect::<Vec<_>>();
     let mut index = 0;
     while index < arguments.len() {
         let value = arguments
@@ -83,7 +89,12 @@ fn run() -> Result<(), String> {
     let expected_projection = table
         .project(&PROJECTION)
         .map_err(|error| error.to_string())?;
-    let modules: [&dyn ColumnarFormat; 2] = [&ParquetReference, &VortexReference];
+    let modules: &[&dyn ColumnarFormat] = &[
+        #[cfg(feature = "cld-parquet")]
+        &ParquetReference,
+        #[cfg(feature = "cld-vortex")]
+        &VortexReference,
+    ];
     let mut arms = Vec::new();
     for module in modules {
         let mut encode = Vec::with_capacity(trials);

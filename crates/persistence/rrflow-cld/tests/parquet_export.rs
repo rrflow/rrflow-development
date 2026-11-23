@@ -1,14 +1,15 @@
+#![cfg(feature = "cld-parquet")]
 use bytes::Bytes;
 use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
-use rrd_query::{export_parquet, record_batch_to_rows, ParquetExportLimits, QueryRow};
+use rrflow_cld::{export_parquet, record_batch_to_rows, QueryRow, WriteLimits};
 use rrflow_kernel::RuntimeValue;
 use std::{
     collections::BTreeMap,
     time::{Duration, Instant},
 };
 
-fn limits() -> ParquetExportLimits {
-    ParquetExportLimits {
+fn limits() -> WriteLimits {
+    WriteLimits {
         max_rows: 1024,
         max_columns: 64,
         max_input_bytes: 262144,
@@ -101,35 +102,35 @@ fn resource_denials_never_return_partial_artifacts() {
     let complete = export_parquet(&rows, &BTreeMap::new(), base).unwrap();
     assert!(complete.observed_writer_bytes > 0);
     for denied in [
-        ParquetExportLimits {
+        WriteLimits {
             max_rows: 1,
             ..base
         },
-        ParquetExportLimits {
+        WriteLimits {
             max_columns: 1,
             ..base
         },
-        ParquetExportLimits {
+        WriteLimits {
             max_input_bytes: 12,
             ..base
         },
-        ParquetExportLimits {
+        WriteLimits {
             max_output_bytes: 12,
             ..base
         },
-        ParquetExportLimits {
+        WriteLimits {
             max_output_bytes: complete.bytes.len() - 1,
             ..base
         },
-        ParquetExportLimits {
+        WriteLimits {
             max_memory_bytes: 12,
             ..base
         },
-        ParquetExportLimits {
+        WriteLimits {
             row_group_rows: 0,
             ..base
         },
-        ParquetExportLimits {
+        WriteLimits {
             deadline: Instant::now(),
             ..base
         },

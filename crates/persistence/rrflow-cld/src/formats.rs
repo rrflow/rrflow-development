@@ -1,13 +1,4 @@
-//! Reference modules behind the columnar port: Parquet and Vortex.
-//!
-//! Neither is rrflowCLD. Each is a proven outside format plugged in beside the
-//! port so the same table can be put through both, their answers compared line
-//! for line, and their costs measured. Each sits behind its own feature, off by
-//! default; no product package enables one.
-//!
-//! Both modules exchange data with their format through Arrow, so the table is
-//! turned into one Arrow record batch once, here, and each module does only
-//! what is specific to its format.
+//! Physical columnar adapters for projection and interchange.
 
 use crate::columnar::{ColumnarColumn, ColumnarTable};
 use crate::{Error, Result};
@@ -15,18 +6,18 @@ use arrow_array::{Array, ArrayRef, RecordBatch, StringArray, UInt64Array};
 use arrow_schema::{DataType, Field, Schema, SchemaRef};
 use std::sync::Arc;
 
-#[cfg(feature = "parquet-reference")]
+#[cfg(feature = "cld-parquet")]
 mod parquet;
-#[cfg(feature = "vortex-reference")]
+#[cfg(feature = "cld-vortex")]
 mod vortex;
 
-#[cfg(feature = "parquet-reference")]
+#[cfg(feature = "cld-parquet")]
 pub use self::parquet::ParquetReference;
-#[cfg(feature = "vortex-reference")]
+#[cfg(feature = "cld-vortex")]
 pub use self::vortex::VortexReference;
 
 fn failed(module: &str, error: impl std::fmt::Display) -> Error {
-    Error::Substrate(format!("{module} reference module: {error}"))
+    Error::Execution(format!("{module} reference module: {error}"))
 }
 
 fn schema_of(table: &ColumnarTable) -> SchemaRef {

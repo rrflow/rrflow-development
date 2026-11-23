@@ -1,4 +1,4 @@
-// OpenAPI SHA-256: 051542fec7c7c8ffb3d39afb379254ab9816715dcb8da36df0378da3c0fba45c
+// OpenAPI SHA-256: 7d118dcc05f099348810e08897edff472522c8e5ea2f5682cb09471a1cbf6e2b
 export interface paths {
     "/v1/attunement/cancel": {
         parameters: {
@@ -10525,16 +10525,24 @@ export interface operations {
                                         checkpoint_entries: number;
                                         /** @description Explicitly configured background cold-history work; absent means disabled. */
                                         cold_history?: {
-                                            compression: {
+                                            encoding: {
+                                                compression: {
+                                                    /** @constant */
+                                                    kind: "uncompressed";
+                                                } | {
+                                                    /** @constant */
+                                                    kind: "zstd";
+                                                    /** Format: uint8 */
+                                                    level: number;
+                                                };
+                                                dictionary: boolean;
                                                 /** @constant */
-                                                kind: "uncompressed";
+                                                format: "parquet";
+                                                statistics: boolean;
                                             } | {
                                                 /** @constant */
-                                                kind: "zstd";
-                                                /** Format: uint8 */
-                                                level: number;
+                                                format: "vortex";
                                             };
-                                            dictionary: boolean;
                                             /**
                                              * Format: uint64
                                              * @description Target period between server offers; missed or busy offers are skipped.
@@ -10552,7 +10560,6 @@ export interface operations {
                                             max_output_bytes: number;
                                             /** Format: uint64 */
                                             row_group_rows: number;
-                                            statistics: boolean;
                                         } | null;
                                         /** Format: uint64 */
                                         compaction_elapsed_ms: number;
@@ -10983,16 +10990,24 @@ export interface operations {
                                         checkpoint_entries: number;
                                         /** @description Explicitly configured background cold-history work; absent means disabled. */
                                         cold_history?: {
-                                            compression: {
+                                            encoding: {
+                                                compression: {
+                                                    /** @constant */
+                                                    kind: "uncompressed";
+                                                } | {
+                                                    /** @constant */
+                                                    kind: "zstd";
+                                                    /** Format: uint8 */
+                                                    level: number;
+                                                };
+                                                dictionary: boolean;
                                                 /** @constant */
-                                                kind: "uncompressed";
+                                                format: "parquet";
+                                                statistics: boolean;
                                             } | {
                                                 /** @constant */
-                                                kind: "zstd";
-                                                /** Format: uint8 */
-                                                level: number;
+                                                format: "vortex";
                                             };
-                                            dictionary: boolean;
                                             /**
                                              * Format: uint64
                                              * @description Target period between server offers; missed or busy offers are skipped.
@@ -11010,7 +11025,6 @@ export interface operations {
                                             max_output_bytes: number;
                                             /** Format: uint64 */
                                             row_group_rows: number;
-                                            statistics: boolean;
                                         } | null;
                                         /** Format: uint64 */
                                         compaction_elapsed_ms: number;
@@ -41680,6 +41694,7 @@ export interface operations {
                                     artifact_sha256: string;
                                     /** Format: uint64 */
                                     declared_uncompressed_bytes: number;
+                                    format: string;
                                     /** Format: uint64 */
                                     generation: number;
                                     /** Format: uint64 */
@@ -42743,6 +42758,7 @@ export interface operations {
                                     artifact_sha256: string;
                                     /** Format: uint64 */
                                     declared_uncompressed_bytes: number;
+                                    format: string;
                                     /** Format: uint64 */
                                     generation: number;
                                     /** Format: uint64 */

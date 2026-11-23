@@ -3,8 +3,7 @@
 use super::*;
 
 pub type Parameters = BTreeMap<String, RuntimeValue>;
-pub(super) type FieldTypes = Vec<RuntimeValueType>;
-pub type QueryFieldTypes = BTreeMap<String, FieldTypes>;
+pub use rrflow_arrow::QueryFieldTypes;
 pub(super) type FieldCatalog = QueryFieldTypes;
 pub(super) type BuiltinFields = &'static [(&'static str, &'static [RuntimeValueType])];
 

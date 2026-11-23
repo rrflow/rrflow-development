@@ -9,6 +9,8 @@ members = [
     "crates/transport/rrd-server",
     "crates/authority/rrd-engine/kernel",
     "crates/compute/rrd-query",
+    "crates/compute/rrflow-arrow",
+    "crates/persistence/rrflow-cld",
     "crates/persistence/rrd-store",
     "crates/compute/rrd-vector",
     "crates/operations/rrd-operator-knowledge",

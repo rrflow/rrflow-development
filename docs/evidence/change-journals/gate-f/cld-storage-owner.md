@@ -20,3 +20,51 @@ Check both format features independently, compare the same projected source
 values, and exercise the existing installed lifecycle readback. Do not infer
 zero-copy, throughput superiority or equality of backend guarantees from a
 successful build. Keep F-06 open for behavior lacking installed evidence.
+
+## Source and replacement
+
+The former query codec in `rrd-query/src/cold_history.rs` is now split between
+the CLD stamped-row validator and its Parquet reader/writer. Bounded query
+interchange moved from `rrd-query/src/parquet.rs` to CLD. The Arrow row, field
+types and stamped batch conversion have one owner in `rrflow-arrow`, imported
+by both crates. Neither CLD nor its Arrow dependency imports the planner.
+The former store columnar table, projected format adapters and comparison
+workload are in CLD. Existing error identities, corruption checks, empty pages
+and read limits moved with their implementations.
+
+The engine still owns source reads, authorization, durable receipt chaining
+and the transaction gate. It now asks a `ColdStorageBackend` to encode and
+decode. A pending generation carries its format and authenticated stamp.
+Reopen selects the codec from the receipt. The installed policy selects the
+writer and the engine admits its availability during configuration. The debug
+event records source manifest, format, bytes read and decoded, and decode time.
+
+## Execution evidence
+
+On Windows, `cargo test -p rrflow-cli --features cld-vortex --test installed_lifecycle -- cold_history_publishes_and_reads_after_process_restart` ran against actual child
+processes. Initial verification ran a Parquet case and a Vortex case, both
+passed. The final selector exercises both settings in the owning installed
+lifecycle case. The driver commits a document and correction, authenticates
+to the serving process, reads generations, terminates it, starts the same
+installation again and checks the original changes and receipts.
+
+The first Vortex stamped-generation read returned an integrity error because
+the native reader did not request the metadata segment. The corrected open
+explicitly includes metadata. The first independent Parquet test build also
+exposed a missing trait import in the moved footer-failure characterization.
+Both failures were retained here instead of weakening their checks.
+
+Independent backend acceptance commands, using the same 5,000-row corpus:
+
+```sh
+cargo test --locked -p rrflow-cld --no-default-features --features cld-parquet
+cargo test --locked -p rrflow-cld --no-default-features --features cld-vortex
+cargo bench --locked -p rrflow-cld --profile dev --no-default-features --features cld-parquet --bench columnar -- --rows 5000 --trials 3
+cargo bench --locked -p rrflow-cld --profile dev --no-default-features --features cld-vortex --bench columnar -- --rows 5000 --trials 3
+```
+
+Docker ran the repository's selected-test resolver and the 12 inventory checks
+with the checkout mounted read-only. The timed workload measures in-memory
+column encoding and projection. It does not measure filesystem point reads,
+mixed-tier QL planning, focus rotation, GPU handoff or a production crossover.
+F-06 and POAM-090 remain open.

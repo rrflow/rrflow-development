@@ -5792,6 +5792,7 @@ dependencies = [
  "rrd-security",
  "rrd-store",
  "rrd-vector",
+ "rrflow-cld",
  "rrflow-kernel",
  "schemars",
  "serde",
@@ -5921,14 +5922,13 @@ dependencies = [
  "async-graphql-parser",
  "async-graphql-value",
  "async-trait",
- "bytes",
  "datafusion",
  "datafusion-datasource",
  "datafusion-session",
  "futures",
  "futures-timer",
- "parquet",
  "rrd-store",
+ "rrflow-arrow",
  "rrflow-kernel",
  "serde",
  "serde_json",
@@ -5984,12 +5984,7 @@ dependencies = [
 name = "rrd-store"
 version = "1.0.0"
 dependencies = [
- "arrow-array",
- "arrow-cast",
- "arrow-schema",
- "bytes",
  "fjall",
- "parquet",
  "rrd-lsm",
  "rrflow-kernel",
  "serde",
@@ -5999,7 +5994,6 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "unicode-normalization",
- "vortex",
 ]
 
 [[package]]
@@ -6012,6 +6006,35 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
+]
+
+[[package]]
+name = "rrflow-arrow"
+version = "1.0.0"
+dependencies = [
+ "arrow-array",
+ "arrow-schema",
+ "rrflow-kernel",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "rrflow-cld"
+version = "1.0.0"
+dependencies = [
+ "arrow-array",
+ "arrow-cast",
+ "arrow-schema",
+ "bytes",
+ "parquet",
+ "rrd-store",
+ "rrflow-arrow",
+ "rrflow-kernel",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "vortex",
 ]
 
 [[package]]

@@ -48,11 +48,7 @@ impl ExecutionBudget {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct QueryRow {
-    pub identity: String,
-    pub values: BTreeMap<String, RuntimeValue>,
-}
+pub use rrflow_arrow::QueryRow;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct QueryBatch {

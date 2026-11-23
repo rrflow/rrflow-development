@@ -1,7 +1,7 @@
 """Generated signal catalogue identity. Do not edit."""
 
 SIGNAL_CATALOGUE_SHA256: str = "239df2ced5974d4351ca01565369646964cb65c63d0fbae01dddccb4c3ac5a07"
-OPENAPI_DOCUMENT_SHA256: str = "051542fec7c7c8ffb3d39afb379254ab9816715dcb8da36df0378da3c0fba45c"
+OPENAPI_DOCUMENT_SHA256: str = "7d118dcc05f099348810e08897edff472522c8e5ea2f5682cb09471a1cbf6e2b"
 SIGNAL_CATALOGUE_JSON: str = (
     '{"contract_version":1,"default_diagnostic_level":"normal","d'
     'efault_metric_cardinality_limit":2000,"diagnostic_levels":["'

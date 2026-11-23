@@ -13,6 +13,17 @@ around that boundary.
 This record distinguishes implemented local storage mechanics from the
 unfinished DevForge placement and hibernation system.
 
+## Select the cold-generation codec
+
+The installed `[storage.cold_history]` policy selects an encoding. The bundled
+configuration uses `encoding = { format = "parquet", compression = { kind = "zstd", level = 3 }, dictionary = true, statistics = true }`.
+A build with `cld-vortex` also accepts `encoding = { format = "vortex" }`.
+Each generation receipt identifies its codec and authenticated source stamp.
+Changing the writer leaves previous generations bound to their recorded reader.
+The protected cold-history read returns the format, encoded size, chunk count
+and decoded Arrow bytes. The `rrflow::cld` debug event includes decode time.
+
+
 ## rrflowCLD: the Parquet cold tier
 
 rrflowKV's LSM is the hot tier and rrflowCLD is the cold tier. The bundled

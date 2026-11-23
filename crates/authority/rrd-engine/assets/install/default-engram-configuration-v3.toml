@@ -72,6 +72,4 @@ max_output_bytes = 67108864
 max_memory_bytes = 2684354560
 max_elapsed_ms = 30000
 row_group_rows = 64
-compression = { kind = "zstd", level = 3 }
-dictionary = true
-statistics = true
+encoding = { format = "parquet", compression = { kind = "zstd", level = 3 }, dictionary = true, statistics = true }

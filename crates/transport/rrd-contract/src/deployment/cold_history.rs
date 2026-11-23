@@ -15,9 +15,18 @@ pub struct ColdHistoryPolicy {
     pub max_memory_bytes: u64,
     pub max_elapsed_ms: u64,
     pub row_group_rows: u64,
-    pub compression: ColdHistoryCompression,
-    pub dictionary: bool,
-    pub statistics: bool,
+    pub encoding: ColdHistoryEncoding,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "format", rename_all = "snake_case", deny_unknown_fields)]
+pub enum ColdHistoryEncoding {
+    Parquet {
+        compression: ColdHistoryCompression,
+        dictionary: bool,
+        statistics: bool,
+    },
+    Vortex,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -85,7 +94,11 @@ impl ColdHistoryPolicy {
         if self.max_memory_bytes < self.minimum_working_memory_bytes() {
             return invalid("cold history working-memory budget cannot encode one full input page");
         }
-        if let ColdHistoryCompression::Zstd { level } = self.compression {
+        if let ColdHistoryEncoding::Parquet {
+            compression: ColdHistoryCompression::Zstd { level },
+            ..
+        } = self.encoding
+        {
             if !(1..=22).contains(&level) {
                 return invalid("cold history zstd level must be in 1..=22");
             }

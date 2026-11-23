@@ -27,7 +27,7 @@ pub(super) fn cold_source_error(error: rrd_store::Error) -> ServiceError {
 pub(super) fn cold_read_error(error: ColdHistoryReadError) -> ServiceError {
     match error {
         ColdHistoryReadError::DeadlineExceeded => ServiceError::DeadlineExceeded,
-        ColdHistoryReadError::Query(error) => error.into(),
+        ColdHistoryReadError::Codec(error) => error.into(),
     }
 }
 
@@ -84,8 +84,8 @@ pub(super) fn valid_sha256(value: &str) -> bool {
             .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
 }
 
-pub(super) fn limits(policy: &ColdHistoryPolicy, deadline: Instant) -> Result<ParquetExportLimits> {
-    Ok(ParquetExportLimits {
+pub(super) fn limits(policy: &ColdHistoryPolicy, deadline: Instant) -> Result<WriteLimits> {
+    Ok(WriteLimits {
         max_rows: native(policy.max_changes)?,
         max_columns: 14,
         max_input_bytes: native(policy.max_input_bytes)?,
@@ -96,16 +96,26 @@ pub(super) fn limits(policy: &ColdHistoryPolicy, deadline: Instant) -> Result<Pa
     })
 }
 
-pub(super) fn encoding(policy: &ColdHistoryPolicy) -> ParquetEncoding {
-    ParquetEncoding {
-        compression: match policy.compression {
-            ColdHistoryCompression::Uncompressed => ParquetCompression::Uncompressed,
-            ColdHistoryCompression::Zstd { level } => ParquetCompression::Zstd {
-                level: i32::from(level),
-            },
-        },
-        dictionary: policy.dictionary,
-        statistics: policy.statistics,
+pub(super) fn writer(policy: &ColdHistoryPolicy) -> Result<Box<dyn ColdStorageBackend>> {
+    match policy.encoding {
+        rrd_contract::ColdHistoryEncoding::Parquet {
+            compression,
+            dictionary,
+            statistics,
+        } => {
+            let settings = Encoding {
+                compression: match compression {
+                    ColdHistoryCompression::Uncompressed => Compression::Uncompressed,
+                    ColdHistoryCompression::Zstd { level } => Compression::Zstd {
+                        level: i32::from(level),
+                    },
+                },
+                dictionary,
+                statistics,
+            };
+            Ok(rrflow_cld::HistoryWriter::Parquet(settings).open()?)
+        }
+        rrd_contract::ColdHistoryEncoding::Vortex => Ok(rrflow_cld::HistoryWriter::Vortex.open()?),
     }
 }
 
@@ -114,8 +124,9 @@ pub(super) fn encode(
     page: &crate::kernel::RuntimeChangePage,
     policy: &ColdHistoryPolicy,
     deadline: Instant,
-) -> Result<rrd_query::ColdHistoryPage> {
-    encode_cold_history_page(stamp, page, limits(policy, deadline)?, encoding(policy))
+) -> Result<rrflow_cld::ColdHistoryPage> {
+    writer(policy)?
+        .encode(stamp, page, limits(policy, deadline)?)
         .map_err(ServiceError::from)
 }
 
@@ -254,9 +265,12 @@ pub(super) fn verify_head(
             "cold history head receipt is invalid".into(),
         ));
     }
-    let file = root
-        .join("cold-history")
-        .join(format!("{}.parquet", receipt.pending.artifact_sha256));
+    let file = root.join("cold-history").join(
+        receipt
+            .pending
+            .format
+            .artifact_name(&receipt.pending.artifact_sha256),
+    );
     verify_file(
         &file,
         &receipt.pending.artifact_sha256,

@@ -255,6 +255,16 @@ impl From<rrd_security::Error> for ServiceError {
     }
 }
 
+impl From<rrflow_cld::Error> for ServiceError {
+    fn from(error: rrflow_cld::Error) -> Self {
+        match error {
+            rrflow_cld::Error::Budget(message) => Self::ConfigurationLimit(message),
+            rrflow_cld::Error::DeadlineExceeded(_) => Self::DeadlineExceeded,
+            other => Self::Storage(other.to_string()),
+        }
+    }
+}
+
 impl From<rrd_query::Error> for ServiceError {
     fn from(error: rrd_query::Error) -> Self {
         match error {

@@ -54,3 +54,14 @@ impl From<serde_json::Error> for Error {
         Self::Execution(value.to_string())
     }
 }
+
+impl From<rrflow_arrow::Error> for Error {
+    fn from(value: rrflow_arrow::Error) -> Self {
+        match value {
+            rrflow_arrow::Error::Binding(message) => Self::Binding(message),
+            rrflow_arrow::Error::Budget(message) => Self::Budget(message),
+            rrflow_arrow::Error::Execution(message) => Self::Execution(message),
+            rrflow_arrow::Error::Integrity(message) => Self::Integrity(message),
+        }
+    }
+}
