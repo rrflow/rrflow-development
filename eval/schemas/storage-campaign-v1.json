@@ -295,15 +295,54 @@
         }
       ]
     },
+    "ColdHistoryEncoding": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "compression": {
+              "$ref": "#/$defs/ColdHistoryCompression"
+            },
+            "dictionary": {
+              "type": "boolean"
+            },
+            "format": {
+              "const": "parquet",
+              "type": "string"
+            },
+            "statistics": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "format",
+            "compression",
+            "dictionary",
+            "statistics"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "format": {
+              "const": "vortex",
+              "type": "string"
+            }
+          },
+          "required": [
+            "format"
+          ],
+          "type": "object"
+        }
+      ]
+    },
     "ColdHistoryPolicy": {
       "additionalProperties": false,
       "description": "One admitted cold-history maintenance quantum. This is installed policy;\nits presence does not assert that an archive generation is available.",
       "properties": {
-        "compression": {
-          "$ref": "#/$defs/ColdHistoryCompression"
-        },
-        "dictionary": {
-          "type": "boolean"
+        "encoding": {
+          "$ref": "#/$defs/ColdHistoryEncoding"
         },
         "interval_ms": {
           "description": "Target period between server offers; missed or busy offers are skipped.",
@@ -340,9 +379,6 @@
           "format": "uint64",
           "minimum": 0,
           "type": "integer"
-        },
-        "statistics": {
-          "type": "boolean"
         }
       },
       "required": [
@@ -353,9 +389,7 @@
         "max_memory_bytes",
         "max_elapsed_ms",
         "row_group_rows",
-        "compression",
-        "dictionary",
-        "statistics"
+        "encoding"
       ],
       "type": "object"
     },

@@ -114,6 +114,19 @@ fn a_served_engram_is_found_proved_and_not_served_twice() {
 
 #[test]
 fn configured_cold_history_publishes_and_reads_after_process_restart() {
+    verify_cold_reopen(
+        rrd_contract::ColdHistoryEncoding::Parquet {
+            compression: rrd_contract::ColdHistoryCompression::Zstd { level: 3 },
+            dictionary: true,
+            statistics: true,
+        },
+        "parquet",
+    );
+    #[cfg(feature = "cld-vortex")]
+    verify_cold_reopen(rrd_contract::ColdHistoryEncoding::Vortex, "vortex");
+}
+
+fn verify_cold_reopen(encoding: rrd_contract::ColdHistoryEncoding, format: &str) {
     let root = tempfile::tempdir().unwrap();
     let project = root.path().join("project");
     std::fs::create_dir(&project).unwrap();
@@ -137,9 +150,7 @@ fn configured_cold_history_publishes_and_reads_after_process_restart() {
         max_memory_bytes: 64 * 1024 * 1024,
         max_elapsed_ms: 30_000,
         row_group_rows: 16,
-        compression: rrd_contract::ColdHistoryCompression::Zstd { level: 3 },
-        dictionary: true,
-        statistics: true,
+        encoding,
     });
     let configuration = root.path().join("cold.toml");
     std::fs::write(&configuration, toml::to_string(&input).unwrap()).unwrap();
@@ -344,6 +355,10 @@ fn configured_cold_history_publishes_and_reads_after_process_restart() {
             }
             results
         });
+        assert!(generations.iter().all(|g| g
+            .generation
+            .as_ref()
+            .is_some_and(|receipt| receipt.format == format)));
         assert_eq!(expected.len(), 3);
         for (cursor, mutation) in &expected {
             let matches = generations

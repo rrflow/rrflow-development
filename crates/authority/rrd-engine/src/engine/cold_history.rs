@@ -7,12 +7,11 @@ use rrd_contract::{
     ColdHistoryCompression, ColdHistoryFailure, ColdHistoryFailureCode,
     ColdHistoryGenerationSnapshot, ColdHistoryPolicy, ColdHistoryReadResult, ReadColdHistory,
 };
-use rrd_query::{
-    decode_cold_history_page, encode_cold_history_page, ColdHistoryReadError,
-    ColdHistoryReadExpectation, ColdHistoryReadLimits, ParquetCompression, ParquetEncoding,
-    ParquetExportLimits,
-};
 use rrd_store::filesystem::{AnchoredPath, OpenOptions};
+use rrflow_cld::{
+    ColdHistoryReadError, ColdHistoryReadExpectation, ColdHistoryReadLimits, ColdStorageBackend,
+    Compression, Encoding, WriteLimits,
+};
 use std::io::{Read, Write};
 use std::sync::TryLockError;
 
@@ -22,6 +21,11 @@ mod state;
 
 use files::*;
 use state::*;
+
+/// Installation and reopen must admit the configured writer before serving.
+pub(super) fn admit_backend(policy: &ColdHistoryPolicy) -> Result<()> {
+    writer(policy).map(drop)
+}
 
 #[cfg(test)]
 mod tests;

@@ -13,7 +13,18 @@ around that boundary.
 This record distinguishes implemented local storage mechanics from the
 unfinished DevForge placement and hibernation system.
 
-## rrflowCLD: the Parquet cold tier
+## Select the cold-generation codec
+
+The installed `[storage.cold_history]` policy selects an encoding. The bundled
+configuration uses `encoding = { format = "parquet", compression = { kind = "zstd", level = 3 }, dictionary = true, statistics = true }`.
+A build with `cld-vortex` also accepts `encoding = { format = "vortex" }`.
+Each generation receipt identifies its codec and authenticated source stamp.
+Changing the writer leaves previous generations bound to their recorded reader.
+The protected cold-history read returns the format, encoded size, chunk count
+and decoded Arrow bytes. The `rrflow::cld` debug event includes decode time.
+
+
+## Cold publication and recovery
 
 rrflowKV's LSM is the hot tier and rrflowCLD is the cold tier. The bundled
 configuration enables rrflowCLD's bounded background publication of scoped
@@ -37,13 +48,11 @@ max_output_bytes = 1048576
 max_memory_bytes = 67108864
 max_elapsed_ms = 30000
 row_group_rows = 16
-compression = { kind = "zstd", level = 3 }
-dictionary = true
-statistics = true
+encoding = { format = "parquet", compression = { kind = "zstd", level = 3 }, dictionary = true, statistics = true }
 ```
 
 The engine records the source stamp and configuration digest, prepares a page,
-syncs a content-addressed Parquet artifact and then commits its receipt and
+syncs the content-addressed artifact from the selected codec and then commits its receipt and
 cursor through the existing control journal. Before preparation and replay it
 checks each scanned source entry against the captured accumulator root. The
 cost and peak memory of those proof reads have not been qualified. The configured policy is sealed

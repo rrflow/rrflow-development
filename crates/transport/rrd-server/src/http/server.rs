@@ -443,9 +443,11 @@ mod cold_schedule_tests {
             max_memory_bytes: 1_048_576,
             max_elapsed_ms: 1000,
             row_group_rows: 4,
-            compression: rrd_contract::ColdHistoryCompression::Uncompressed,
-            dictionary: false,
-            statistics: false,
+            encoding: rrd_contract::ColdHistoryEncoding::Parquet {
+                compression: rrd_contract::ColdHistoryCompression::Uncompressed,
+                dictionary: false,
+                statistics: false,
+            },
         }
     }
 

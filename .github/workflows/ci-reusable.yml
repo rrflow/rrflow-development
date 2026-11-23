@@ -476,9 +476,9 @@ jobs:
       matrix:
         include:
           - name: kernel-storage
-            packages: "-p rrflow-kernel -p rrd-lsm -p rrd-store -p rrd-maintenance"
+            packages: "-p rrflow-kernel -p rrflow-cld -p rrd-lsm -p rrd-store -p rrd-maintenance"
           - name: query-retrieval
-            packages: "-p rrd-query -p rrd-vector -p rrd-inference -p rrd-attunement -p rrd-operator-knowledge"
+            packages: "-p rrflow-arrow -p rrd-query -p rrd-vector -p rrd-inference -p rrd-attunement -p rrd-operator-knowledge"
           - name: engine-authority
             packages: "-p rrd-contract -p rrd-cluster -p rrd-engine -p rrd-engram -p rrd-security"
           - name: service-protocol
@@ -611,6 +611,8 @@ jobs:
           - rrd-inference
           - rrd-lsm
           - rrd-store
+          - rrflow-cld
+          - rrflow-cli
           - rrd-vector
     env:
       CARGO_BUILD_JOBS: "2"
@@ -1073,6 +1075,16 @@ jobs:
       - name: Test the changed crates
         if: ${{ env.PACKAGES != '' }}
         run: cargo test $PACKAGES --locked --no-fail-fast
+      - name: Verify stamped cold history under each codec
+        if: ${{ contains(env.PACKAGES, '-p rrflow-cld') }}
+        env:
+          CARGO_PROFILE_DEV_DEBUG: "0"
+        run: |
+          for codec in cld-parquet cld-vortex; do
+            cargo test --locked -p rrflow-cld --no-default-features --features "$codec"
+            cargo bench --locked -p rrflow-cld --profile dev --no-default-features --features "$codec" --bench columnar -- --rows 5000 --trials 3
+          done
+          cargo test --locked -p rrflow-cli --features cld-vortex --test installed_lifecycle -- engrams_and_history::configured_cold_history_publishes_and_reads_after_process_restart --exact
       - name: Deny warnings in the changed crates
         if: ${{ env.PACKAGES != '' }}
         run: cargo clippy $PACKAGES --all-targets --locked -- -D warnings

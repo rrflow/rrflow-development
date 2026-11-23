@@ -136,7 +136,7 @@ class DefaultOutputPolicyTests(unittest.TestCase):
     def test_new_owner_assignments_preserve_prior_package_assignments(self) -> None:
         cases = (
             ("crates/authority/rrd-engine/kernel/src/schema.rs", "rrflow-kernel", {"H-08", "H-11", "H-12"}),
-            ("crates/compute/rrd-query/src/parquet.rs", "rrd-query", {"D-06", "F-06"}),
+            ("crates/persistence/rrflow-cld/src/interchange.rs", "rrflow-cld", {"D-06", "F-06"}),
         )
         for path, package, added in cases:
             with self.subTest(path=path):

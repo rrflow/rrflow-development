@@ -56,9 +56,11 @@ fn policy() -> ColdHistoryPolicy {
         max_memory_bytes: 64 * 1024 * 1024,
         max_elapsed_ms: 30_000,
         row_group_rows: 2,
-        compression: ColdHistoryCompression::Zstd { level: 3 },
-        dictionary: true,
-        statistics: true,
+        encoding: rrd_contract::ColdHistoryEncoding::Parquet {
+            compression: ColdHistoryCompression::Zstd { level: 3 },
+            dictionary: true,
+            statistics: true,
+        },
     }
 }
 
@@ -72,12 +74,14 @@ fn policy_minimum_equals_the_encoder_reservation_for_a_full_page() {
         max_memory_bytes: 4_294_967_296,
         max_elapsed_ms: 30_000,
         row_group_rows: 64,
-        compression: ColdHistoryCompression::Zstd { level: 3 },
-        dictionary: true,
-        statistics: true,
+        encoding: rrd_contract::ColdHistoryEncoding::Parquet {
+            compression: ColdHistoryCompression::Zstd { level: 3 },
+            dictionary: true,
+            statistics: true,
+        },
     };
     const COLUMNS: usize = 15;
-    let reservation = rrd_query::parquet_working_set_reservation(
+    let reservation = rrflow_cld::working_set_reservation(
         policy.max_input_bytes as usize,
         policy.max_changes as usize * COLUMNS,
         policy.max_output_bytes as usize,
@@ -260,7 +264,11 @@ fn changed_policy_replans_pending_work_without_rewinding_committed_cursor() {
     let first = policy();
     assert!(engine.maintain_cold_history_at(&first, 100).unwrap());
     let mut changed = first;
-    changed.compression = ColdHistoryCompression::Zstd { level: 4 };
+    changed.encoding = rrd_contract::ColdHistoryEncoding::Parquet {
+        compression: ColdHistoryCompression::Zstd { level: 4 },
+        dictionary: true,
+        statistics: true,
+    };
     assert!(engine.maintain_cold_history_at(&changed, 101).unwrap());
     assert!(state(&engine).pending.is_none());
     assert_eq!(state(&engine).through_cursor, 0);
@@ -332,6 +340,12 @@ fn authenticated_generation_readback_reopens_and_rejects_corruption_and_limits()
     assert_eq!(state(&engine).generation, 1);
     drop(engine);
     let mut engine = open(&path);
+    // A new writer configuration cannot reinterpret an existing generation.
+    #[cfg(feature = "cld-vortex")]
+    let policy = ColdHistoryPolicy {
+        encoding: rrd_contract::ColdHistoryEncoding::Vortex,
+        ..policy
+    };
     engine.engram_configuration.storage.cold_history = Some(policy);
     let session = engine
         .create_session(
@@ -373,6 +387,7 @@ fn authenticated_generation_readback_reopens_and_rejects_corruption_and_limits()
     let result = read(&request).unwrap();
     assert_eq!(result.changes.len(), 2);
     let artifact = result.generation.unwrap();
+    assert_eq!(artifact.format, "parquet");
     assert_eq!(artifact.through_cursor, 2);
     let mut restricted = request.clone();
     restricted.max_artifact_bytes = 1;
@@ -542,14 +557,14 @@ fn encoded_output_limit_is_reported_as_a_resource_failure() {
 #[test]
 fn encoder_errors_keep_their_cause_after_deadline() {
     let deadline = Instant::now();
-    let budget = rrd_query::Error::Budget("admitted bytes exceeded".into());
+    let budget = rrflow_cld::Error::Budget("admitted bytes exceeded".into());
     assert!(Instant::now() >= deadline);
     assert!(matches!(
         ServiceError::from(budget),
         ServiceError::ConfigurationLimit(_)
     ));
     assert!(matches!(
-        ServiceError::from(rrd_query::Error::DeadlineExceeded("expired".into())),
+        ServiceError::from(rrflow_cld::Error::DeadlineExceeded("expired".into())),
         ServiceError::DeadlineExceeded
     ));
 }
@@ -573,21 +588,26 @@ fn decoder_deadline_and_resource_failures_are_distinct() {
         max_batch_rows: 1,
         deadline,
     };
-    let timeout = decode_cold_history_page(vec![0], &expected, limits).unwrap_err();
+    let timeout = writer(&policy())
+        .unwrap()
+        .decode(vec![0], &expected, limits)
+        .unwrap_err();
     assert!(matches!(
         cold_read_error(timeout),
         ServiceError::DeadlineExceeded
     ));
     let future = Instant::now() + Duration::from_millis(500);
-    let resource = decode_cold_history_page(
-        vec![0, 0],
-        &expected,
-        ColdHistoryReadLimits {
-            deadline: future,
-            ..limits
-        },
-    )
-    .unwrap_err();
+    let resource = writer(&policy())
+        .unwrap()
+        .decode(
+            vec![0, 0],
+            &expected,
+            ColdHistoryReadLimits {
+                deadline: future,
+                ..limits
+            },
+        )
+        .unwrap_err();
     while Instant::now() < future {
         std::thread::sleep(future.saturating_duration_since(Instant::now()));
     }

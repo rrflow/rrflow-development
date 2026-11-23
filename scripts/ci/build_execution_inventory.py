@@ -20,6 +20,8 @@ ACTIVE_CHANGE_PLAN = "docs/roadmap/rrflow-1.0-active-change.json"
 
 PACKAGE_GATES: dict[str, tuple[str, ...]] = {
     "rrflow-kernel": ("A-07", "C-01", "C-02", "C-03", "H-05", "I-01"),
+    "rrflow-arrow": ("F-01", "F-02"),
+    "rrflow-cld": ("D-06", "F-06"),
     "rrd-lsm": ("A-07", "C-02", "C-06", "C-07", "D-09", "J-02", "J-04"),
     "rrd-store": (
         "A-07",
@@ -306,7 +308,7 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "C-07",
         "J-04",
     ),
-    "crates/compute/rrd-query/src/arrow.rs": ("F-01", "F-02"),
+    "crates/compute/rrflow-arrow/src/batch.rs": ("F-01", "F-02"),
     "crates/compute/rrd-query/src/execute.rs": (
         "E-01",
         "E-03",
@@ -325,7 +327,7 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "H-08",
         "H-12",
     ),
-    "crates/compute/rrd-query/src/parquet.rs": (
+    "crates/persistence/rrflow-cld/src/interchange.rs": (
         "B-05",
         "D-06",
         "E-01",
@@ -651,7 +653,7 @@ REMOVE_OR_REWRITE = {
     "deploy/kubernetes/operator-rbac.json": "regenerate as a namespace-scoped least-privilege default with explicit client selection and negative Secret evidence",
     "deploy/kubernetes/rrdinstances.rrflow.io-crd.json": "regenerate from the sole rrflow-kubernetes projection schema with standard conditions and no earlier-shape reader",
     "crates/compute/rrd-query/src/execute.rs": "decompose eager loading into native access operators and a streaming DataFusion execution boundary",
-    "crates/compute/rrd-query/src/arrow.rs": "replace Vec<QueryRow>-to-Arrow snapshot materialization with stamped page/batch adapters",
+    "crates/compute/rrflow-arrow/src/batch.rs": "replace Vec<QueryRow>-to-Arrow snapshot materialization with stamped page/batch adapters",
     "crates/compute/rrd-query/src/live.rs": "replace two-snapshot diffing with commit-impact evaluation",
 }
 
