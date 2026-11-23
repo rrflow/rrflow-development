@@ -809,8 +809,9 @@ fn each_prompt_is_a_graph_that_rrflowql_traverses_and_reads_cost_only_the_flight
             .read_evidence
             .paths
             .iter()
-            .find(|path| path.path == ReadAccessPath::RelationVersions)
-            .map(|path| path.keys_examined)
+            .find(|path| path.path == ReadAccessPath::AdjacencyVersions)
+            .expect("the stored flight has outgoing use edges")
+            .keys_examined
     };
     assert_eq!(relation_path(&before), relation_path(&after));
 }

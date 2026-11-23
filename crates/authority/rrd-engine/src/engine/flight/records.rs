@@ -401,6 +401,22 @@ pub(super) fn context_assembled_event(
             ),
             ("truncated".into(), QueryValue::Bool(packet.truncated)),
             (
+                "context_reads".into(),
+                QueryValue::Map(
+                    [
+                        ("key_budget", packet.read_evidence.key_budget),
+                        ("keys_examined", packet.read_evidence.keys_examined),
+                        ("values_decoded", packet.read_evidence.values_decoded),
+                        ("decoded_bytes", packet.read_evidence.decoded_bytes),
+                        ("point_reads", packet.read_evidence.point_reads),
+                        ("range_scans", packet.read_evidence.range_scans),
+                    ]
+                    .into_iter()
+                    .map(|(name, count)| (name.to_owned(), QueryValue::Unsigned(count)))
+                    .collect(),
+                ),
+            ),
+            (
                 "plan_sha256".into(),
                 QueryValue::Digest(packet.plan.plan_sha256.clone()),
             ),
