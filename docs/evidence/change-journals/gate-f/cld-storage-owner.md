@@ -100,3 +100,8 @@ The workspace architecture suite passed all 34 checks with the corrected
 ownership rules. Strict Clippy passed for both the Arrow and CLD crates with
 all features and targets. The generated SDK and signal surface check reported
 88 HTTP operations and verified seven projections. No alpha gate was closed.
+
+The candidate code-shape check caught a new `mod.rs` at the CLD contract
+boundary. The module root moved to `src/history.rs`, with its implementations
+under `src/history/`. The repository shape policy stays intact. A Linux Docker
+run of `--test stamped_history` against each isolated feature also passed.
