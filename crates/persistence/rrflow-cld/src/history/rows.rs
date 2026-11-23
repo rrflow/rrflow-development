@@ -279,29 +279,6 @@ fn bounded_json<T: serde::Serialize>(
     String::from_utf8(output.bytes).map_err(|error| Error::Integrity(error.to_string()))
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::time::Duration;
-    #[test]
-    fn cold_json_preserves_deadline_and_resource_identity() {
-        let mut limit = 1024;
-        assert!(matches!(
-            bounded_json(&"payload", &mut limit, Instant::now()),
-            Err(Error::DeadlineExceeded(_))
-        ));
-        let mut limit = 1;
-        assert!(matches!(
-            bounded_json(
-                &"payload",
-                &mut limit,
-                Instant::now() + Duration::from_secs(30)
-            ),
-            Err(Error::Budget(_))
-        ));
-    }
-}
-
 pub(super) fn checked_change(
     row: QueryRow,
     expected: &ColdHistoryReadExpectation,
@@ -323,4 +300,27 @@ pub(super) fn checked_change(
     }
     *previous = change.cursor;
     Ok(change)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::Duration;
+    #[test]
+    fn cold_json_preserves_deadline_and_resource_identity() {
+        let mut limit = 1024;
+        assert!(matches!(
+            bounded_json(&"payload", &mut limit, Instant::now()),
+            Err(Error::DeadlineExceeded(_))
+        ));
+        let mut limit = 1;
+        assert!(matches!(
+            bounded_json(
+                &"payload",
+                &mut limit,
+                Instant::now() + Duration::from_secs(30)
+            ),
+            Err(Error::Budget(_))
+        ));
+    }
 }

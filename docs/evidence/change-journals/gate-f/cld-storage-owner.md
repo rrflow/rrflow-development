@@ -1,6 +1,6 @@
 # Cold storage ownership
 
-**Status:** candidate evidence
+**Status:** active candidate evidence
 **Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/gate-f/cld-storage-owner`
 **Owner:** F-06 and [POAM-090](../../../poam/rrflow-1.0-alpha/poam-090.md)
 
@@ -68,3 +68,35 @@ with the checkout mounted read-only. The timed workload measures in-memory
 column encoding and projection. It does not measure filesystem point reads,
 mixed-tier QL planning, focus rotation, GPU handoff or a production crossover.
 F-06 and POAM-090 remain open.
+
+Both feature-isolated CLD suites passed. On x86-64 Windows, the three-trial
+development-profile medians for the 5,000-row columnar workload were:
+
+| Format | Encoded bytes | Encode ms | Full decode ms | Two-column decode ms |
+| --- | ---: | ---: | ---: | ---: |
+| Parquet | 134396 | 42.392 | 16.418 | 4.247 |
+| Vortex | 199812 | 492.934 | 16.528 | 5.046 |
+
+The combined run also verified that each codec rejects the other codec's
+artifact. The 14 engine cold-history checks passed, including corruption,
+restricted reads, changed configuration, writer contention and termination at
+publication boundaries. The first GitHub candidate rejected the journal status
+and the old invariant requiring Vortex to belong to rrd-store. The revised
+invariant binds both physical libraries exclusively to CLD and excludes QL
+and all physical hot storage from CLD's production dependencies.
+
+A separate Python SDK run then installed two fresh projects with the real
+executable (SHA-256
+`62cacbd21e0d22811829504f49bb68a33d1701721733d1d1cf2f0e46fbbed2b1`).
+Each committed the original document at cursor 4 and its correction at cursor
+5 with different valid-from times. Authenticated reads after process restart
+matched every original source manifest, artifact digest and mutation. Parquet
+published two generations and Vortex three, reflecting maintenance timing. The
+comparison used each project's own receipts. The local proof directory is
+`rrflow-cld-readback-f8952c9d47ee4cdbb7728025527d7bdb` under the temporary
+directory. Its readback.json contains the results without session credentials.
+
+The workspace architecture suite passed all 34 checks with the corrected
+ownership rules. Strict Clippy passed for both the Arrow and CLD crates with
+all features and targets. The generated SDK and signal surface check reported
+88 HTTP operations and verified seven projections. No alpha gate was closed.
