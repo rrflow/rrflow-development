@@ -260,7 +260,7 @@ const ALLOWED_USES: &[AllowedUse] = &[
         operation: "cold-history publication test oracle",
     },
     AllowedUse {
-        path: "crates/compute/rrd-query/tests/cold_history.rs",
+        path: "crates/persistence/rrflow-cld/tests/stamped_history.rs",
         kind: SensitiveReadUse::SnapshotCausalLogPage,
         count: 2,
         operation: "stamped cold-history page oracles",

@@ -105,3 +105,14 @@ The candidate code-shape check caught a new `mod.rs` at the CLD contract
 boundary. The module root moved to `src/history.rs`, with its implementations
 under `src/history/`. The repository shape policy stays intact. A Linux Docker
 run of `--test stamped_history` against each isolated feature also passed.
+
+The installed lifecycle case also passed in Linux Docker at `85981391c`,
+running both codecs against their respective installations. Candidate CI
+exposed the previous OpenAPI review digest, a read-audit allowance still
+pointing to the old test path, and storage qualification schema projections
+that still embedded the previous installation policy. The protocol digest
+now matches the generated API, the same two test-only snapshot reads are
+accounted for at their new location, and the manifest, campaign and segment
+schemas were regenerated from the Rust types. Rerunning the three affected
+suites gave 47 public-contract, one source-closure and 11 storage-contract
+passes. The Gate F chapter now gives commands for the installed interfaces.

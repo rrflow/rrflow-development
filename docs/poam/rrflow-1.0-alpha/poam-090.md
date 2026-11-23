@@ -25,9 +25,11 @@ artifact/source verification. A stamped query/context read spanning the eligible
 
 ## Impact
 
-The installed history path currently binds query code to the Parquet writer.
-Codec-only measurements omit the costs and correctness requirements of
-publication, point retrieval, focus prefetch and recovery in the engine.
+The installed history reader can reopen either supported format when its
+codec is included in the build. Ordinary QL queries still lack a stamped
+DB scan across hot and cold history. The codec benchmark measures encoding
+and decoding in memory. Installed historical point-read costs, focus prefetch
+and recovery following hot-space reclamation remain unqualified.
 
 ## Owning gates
 

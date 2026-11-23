@@ -23,11 +23,11 @@ stamped asynchronous `TableProvider`/`ExecutionPlan` proving provider backpressu
 semantics, shared request-budget enforcement, or borrowed `RecordBatch` lifetime through the
 full analytical path.
 
-The current `rrd-query/src/parquet.rs::export_parquet` writes a bounded,
-uncompressed query-result artifact. It does not implement the requested
-background Parquet cold-storage lifecycle. A separate engine-owned path now
-publishes derived compressed runtime-history generations and authenticates
-bounded generation readback against their receipts. This does not reclaim the
+The bounded query-result writer lives in
+[`rrflow-cld/src/interchange.rs`](../../../crates/persistence/rrflow-cld/src/interchange.rs).
+For background history, the installed engine publishes derived generations
+through the CLD storage trait and authenticates bounded readback against
+each generation's receipt. This does not reclaim the
 source or establish complete tiered reads, retention, all intended audit streams
 or recovery qualification. F-06 tracks that remaining work independently from
 exchange/import; its acceptance status is unchanged.
