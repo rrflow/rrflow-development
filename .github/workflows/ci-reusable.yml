@@ -631,10 +631,13 @@ jobs:
           shared-key: linux-feature-${{ matrix.package }}-test-debug0-lld1
           cache-on-failure: false
           save-if: ${{ github.event_name != 'merge_group' }}
+      # rrflow-cli also carries crash-test, which changes the served engine's
+      # private stdin contract and has its own native job. Its ordinary suites
+      # run with every other feature instead of --all-features.
       - name: Test package optional features
-        run: cargo test -p ${{ matrix.package }} --all-targets --all-features --locked --no-fail-fast
+        run: cargo test -p ${{ matrix.package }} --all-targets ${{ matrix.package == 'rrflow-cli' && '--features cld-parquet,cld-vortex' || '--all-features' }} --locked --no-fail-fast
       - name: Deny package optional-feature warnings
-        run: cargo clippy -p ${{ matrix.package }} --all-targets --all-features --locked -- -D warnings
+        run: cargo clippy -p ${{ matrix.package }} --all-targets ${{ matrix.package == 'rrflow-cli' && '--features cld-parquet,cld-vortex' || '--all-features' }} --locked -- -D warnings
 
   pgvector-feature:
     name: optional feature (rrd-operator-knowledge)

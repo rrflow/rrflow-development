@@ -906,8 +906,11 @@ corpus and a 30-minute native capacity step. Local execution remains explicit:
 this runner must never be pointed at an existing disk or mount.
 
 The nondefault four-crate `crash-test` composition is owned by this dedicated
-job; other optional features retain their existing matrix. It must never be
-used to assemble the normal distribution. These tests do not close installed
+job; other optional features retain their existing matrix. In that matrix
+`rrflow-cli` runs with `--features cld-parquet,cld-vortex` rather than
+`--all-features`, because `crash-test` makes the served engine read a control
+line on standard input that its ordinary suites do not send. The composition
+must never be used to assemble the normal distribution. These tests do not close installed
 publication/GC composition, 100-cycle operating profiles, resource limits,
 retained buffers, real exhaustion, sustained capacity or the 24-hour soak.
 
