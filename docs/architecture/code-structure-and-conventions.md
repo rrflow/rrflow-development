@@ -194,7 +194,7 @@ One rule, no exceptions: **every workspace crate is `rrflow-<name>`, and a produ
 | rrflowMX | `rrflow-mx` | `rrflow_mx` |
 | rrflowCX | `rrflow-cx` | `rrflow_cx` |
 
-Folders are named for the tier, in plain platform terms. A crate's folder name equals its package name.
+Folders are named for the tier, in plain platform terms. A crate's folder name equals its package name. The engine crate is `rrflow-core`: the name formed from the product name and the word engine is a retired split-engine identity that the `workspace_architecture` test forbids in every tracked file, and that ban stays.
 
 ### 6.2 Target workspace
 
@@ -220,7 +220,7 @@ A crate depends only on crates in a lower tier, or in its own tier where the tab
 | 3 | `crates/governance/` | `authority/rrd-security` | `rrflow-security` | 2,150 |
 | 3 | | `operations/rrd-observation` | `rrflow-observation` | 582 |
 | 3 | `crates/cloud/` | `operations/rrd-cluster` | `rrflow-cx` | 15,018 |
-| 4 | `crates/engine/` | `authority/rrd-engine` | `rrflow-engine` | 110,976 |
+| 4 | `crates/engine/` | `authority/rrd-engine` | `rrflow-core` | 110,976 |
 | 5 | `crates/interfaces/` | `transport/rrd-server` | `rrflow-server` | 11,957 |
 | 5 | | `transport/rrd-client` | `rrflow-client` | 12,034 |
 | 5 | | `adapters/rrflow-cli` (binary `rrflow`) | `rrflow-cli` | 24,270 |
@@ -260,7 +260,7 @@ Removed, each in the pull request named in 6.8: `rrd-maintenance` (no consumer; 
 `rrd-engine/src/engine/` holds 54 modules side by side, 45,916 lines of tests inside `src`, and a 303-line `mod.rs`. The target is one folder per thing the engine composes, each named for the crate it pulls:
 
 ```
-crates/engine/rrflow-engine/
+crates/engine/rrflow-core/
   src/
     lib.rs            declarations and re-exports only
     engine.rs         RrdEngine: open, close, the composed parts
@@ -333,7 +333,7 @@ One pull request per package. A package is complete when nothing of the old shap
 | 9 | Compute renames: `rrflow-ql`, `rrflow-vector`, `rrflow-inference`, `rrflow-attunement` | `rrd-*` in tier 2 |
 | 10 | `rrflow-mx` gathered; `rrflow-engram`, `rrflow-operator-knowledge`, `rrflow-security`, `rrflow-observation` moved and renamed | scattered memory code, `authority/`, `operations/` |
 | 11 | `rrflow-cx` and `rrflow-cx-operator` | `rrd-cluster`, `rrd-kubernetes` |
-| 12 | `rrflow-engine`: the 6.4 folders, tests out of `src` | the flat 54-module engine |
+| 12 | `rrflow-core`: the 6.4 folders, tests out of `src` | the flat 54-module engine |
 | 13 | Interfaces: `rrflow-server`, `rrflow-client`, the CLI, MCP and edge adapters | `transport/`, `adapters/` |
 | 14 | Connectome: `features/` named for the engine folders of 6.4, client repinned | the five organizing schemes of section 1 |
 
