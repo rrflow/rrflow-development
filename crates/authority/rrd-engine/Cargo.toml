@@ -12,6 +12,8 @@ required-features = ["full"]
 
 [features]
 default = ["full"]
+cld-vortex = ["full", "rrflow-cld/cld-vortex"]
+cld-parquet = ["full", "rrflow-cld/cld-parquet"]
 crash-test = ["full", "rrd-store/crash-test"]
 cluster-transfer = ["full", "rrd-cluster/openraft-adapter"]
 edge = [
@@ -31,6 +33,7 @@ full = [
     "dep:rrd-operator-knowledge",
     "dep:rrd-observation",
     "dep:rrd-query",
+    "dep:rrflow-cld",
     "dep:rrd-security",
     "dep:rrd-store",
     "dep:rquickjs",
@@ -46,6 +49,7 @@ full = [
 ]
 
 [dependencies]
+rrflow-cld = { path = "../../persistence/rrflow-cld", optional = true }
 rrd-attunement = { path = "../../compute/rrd-attunement", optional = true }
 rrd-contract = { path = "../../transport/rrd-contract", optional = true }
 rrd-engram = { path = "../rrd-engram", optional = true }

@@ -7,6 +7,8 @@ publish.workspace = true
 description = "RRFlow installed reasoning and recall engine command-line product surface."
 
 [features]
+cld-vortex = ["rrd-engine/cld-vortex"]
+cld-parquet = ["rrd-engine/cld-parquet"]
 crash-test = ["rrd-engine/crash-test"]
 
 [dependencies]

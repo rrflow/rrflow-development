@@ -708,17 +708,12 @@ fn installed_disjoint_writes_from_one_stamp_conflict_without_partial_effect() {
             )
             .await
             .unwrap_err();
+        // The stale refusal is definite, so it closed the lease as aborted.
+        // Repeating the commit cannot reopen it or publish the write.
         match repeated {
             rrd_client::Error::Api { error, .. } => {
-                assert_eq!(error.code, ErrorCode::Conflict);
-                assert!(!error.retryable);
-                assert_eq!(
-                    error
-                        .details
-                        .get(&CanonicalId::new("reason").unwrap())
-                        .map(String::as_str),
-                    Some("transaction-snapshot-stale")
-                );
+                assert_eq!(error.code, ErrorCode::FailedPrecondition);
+                assert!(!error.retryable, "a refused lease stays closed: {error:?}");
             }
             other => panic!("unexpected repeated error: {other:?}"),
         }

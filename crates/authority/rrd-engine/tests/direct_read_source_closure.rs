@@ -104,19 +104,19 @@ const ALLOWED_USES: &[AllowedUse] = &[
         operation: "exact vector candidate oracle",
     },
     AllowedUse {
-        path: "crates/authority/rrd-engine/kernel/src/runtime/tests.rs",
+        path: "crates/foundation/rrflow-kernel/src/runtime/tests.rs",
         kind: SensitiveReadUse::DataSnapshotReducer,
         count: 1,
         operation: "kernel data reducer missing-table rejection self-test",
     },
     AllowedUse {
-        path: "crates/authority/rrd-engine/kernel/src/runtime/tests.rs",
+        path: "crates/foundation/rrflow-kernel/src/runtime/tests.rs",
         kind: SensitiveReadUse::GraphSnapshotReducer,
         count: 1,
         operation: "kernel graph reducer self-test",
     },
     AllowedUse {
-        path: "crates/authority/rrd-engine/kernel/src/runtime/referential/tests.rs",
+        path: "crates/foundation/rrflow-kernel/src/runtime/referential/tests.rs",
         kind: SensitiveReadUse::GraphSnapshotReducer,
         count: 5,
         operation: "interval sweep and before/after CASCADE compared to the graph reducer",
@@ -260,7 +260,7 @@ const ALLOWED_USES: &[AllowedUse] = &[
         operation: "cold-history publication test oracle",
     },
     AllowedUse {
-        path: "crates/compute/rrd-query/tests/cold_history.rs",
+        path: "crates/persistence/rrflow-cld/tests/stamped_history.rs",
         kind: SensitiveReadUse::SnapshotCausalLogPage,
         count: 2,
         operation: "stamped cold-history page oracles",

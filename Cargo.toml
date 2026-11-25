@@ -7,8 +7,10 @@ members = [
     "crates/authority/rrd-security",
     "crates/authority/rrd-engine",
     "crates/transport/rrd-server",
-    "crates/authority/rrd-engine/kernel",
+    "crates/foundation/rrflow-kernel",
     "crates/compute/rrd-query",
+    "crates/compute/rrflow-arrow",
+    "crates/persistence/rrflow-cld",
     "crates/persistence/rrd-store",
     "crates/compute/rrd-vector",
     "crates/operations/rrd-operator-knowledge",
@@ -43,7 +45,7 @@ repository = "https://github.com/rrflow/rrflow"
 publish = false
 
 [workspace.dependencies]
-rrflow-kernel = { path = "crates/authority/rrd-engine/kernel" }
+rrflow-kernel = { path = "crates/foundation/rrflow-kernel" }
 serde = { version = "1", features = ["derive"] }
 # A count or digest over a float is checked after the wire, so parsing has to be exact.
 serde_json = { version = "1", features = ["float_roundtrip"] }

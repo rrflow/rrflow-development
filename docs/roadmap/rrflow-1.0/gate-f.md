@@ -17,33 +17,33 @@ either independently.
 | [ ] | F-05 | Add read-stamp/query/projection caches with byte accounting and cursor/schema invalidation. | `rrd-engine`, `rrd-query` | Repeated-query benchmark shows bounded reuse; mutation and schema tests prove stale batches are never returned. |
 | [ ] | F-06 | rrflowDB coordinates publication of selected hot history through rrflowKV to a format-independent rrflowCLD backend. rrflowQL requests a stamped scan from DB. Keep each artifact's role, versions, tombstones, provenance, authorization and read stamps explicit before reclaiming its source. | DB, KV and CLD own placement, storage access and encoding. TX owns atomic visibility. QL consumes the scan. | Run the identical historical point/range, projection and recovery corpus against Vortex and Parquet. Answers and both temporal coordinates must agree through correction, interruption, full disk, corruption, concurrent reads, restart and reclamation. Record selected format/path, publication and read stamps, bytes read, decoding work, latency and peak memory. Compare pruning with an unpruned exact read. |
 
-The installed path currently writes Parquet cold history. The columnar comparison port
-has separate reference adapters. The first change moves the existing generation writer
-and authenticated reader behind the same storage contract, preserving source digests
-and stamped answers. Then connect the DB scan to QL, with format-specific dependencies
-confined to CLD. Vortex is the primary candidate and Parquet the required reference
-backend. Select a deployment default from measured point-read, scan, encoding, size
-and recovery workloads. Reclamation requires proven coverage of retained stamps.
+The installed engine publishes immutable change generations through
+`rrflow-cld`. The writer comes from the installation policy and each reader
+comes from the generation's receipt. The CLI bundles Parquet and can include
+Vortex. Both formats preserve the original and corrected mutations across
+process restart. The [CLD change journal](../../evidence/change-journals/gate-f/cld-storage-owner.md)
+records the source paths, verification commands and measured comparison.
 
-Both planned product features, `cld-vortex` and `cld-parquet`, must select the
-same integration and benchmark targets. The existing `vortex-reference` and
-`parquet-reference` comparison features establish no installed-path parity. Record
-buffer ownership, bytes copied and bytes decoded when promoting a slice to MX.
-When wiring those backends, replace the current reference-feature assertions
-in the [workspace storage tests](../../../crates/authority/rrd-engine/tests/workspace_architecture/storage.rs)
-with checks that permit codecs only below the CLD boundary. Keep the Fjall
-baseline separate from the deployed LSM.
+F-06 remains open. The next read boundary is one DB scan that gives QL
+the correct result across hot and cold data at the requested valid time
+and knowledge cursor. Before reclaiming an LSM range, prove coverage and
+recovery for every retained stamp. Record buffer ownership, bytes copied and
+decoded when promoting a slice to MX. Vortex remains the primary candidate
+for workload evaluation. Format selection requires installed point-read,
+range-scan, encoding, size and recovery measurements.
 
-The backend implementation package must provide the following verification
-commands. The feature names and benchmark target below are planned interfaces.
-Both runs must exercise the same data and assertions. Keep the process-level
-correction, focus change and reopen test in the installed engine suite as well.
+The [workspace storage checks](../../../crates/authority/rrd-engine/tests/workspace_architecture/storage.rs)
+enforce ownership of the format dependencies. Use the same corpus for both
+feature-isolated runs. The columnar benchmark measures encoding, full decode
+and projected decode in memory. The installed lifecycle check runs the
+publication, correction and restart sequence with both writers.
 
 ```sh
-cargo test --locked -p rrd-store --features cld-vortex
-cargo test --locked -p rrd-store --features cld-parquet
-cargo bench --locked -p rrd-store --features cld-vortex --bench cold_history
-cargo bench --locked -p rrd-store --features cld-parquet --bench cold_history
+cargo test --locked -p rrflow-cld --no-default-features --features cld-vortex
+cargo test --locked -p rrflow-cld --no-default-features --features cld-parquet
+cargo bench --locked -p rrflow-cld --profile dev --no-default-features --features cld-vortex --bench columnar -- --rows 5000 --trials 3
+cargo bench --locked -p rrflow-cld --profile dev --no-default-features --features cld-parquet --bench columnar -- --rows 5000 --trials 3
+cargo test --locked -p rrflow-cli --features cld-vortex --test installed_lifecycle -- engrams_and_history::configured_cold_history_publishes_and_reads_after_process_restart --exact
 ```
 
 ## Consumption by the real-project build

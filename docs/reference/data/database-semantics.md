@@ -21,16 +21,16 @@ binds the examined baseline and commands; this is not full SurrealDB parity.
 | rrflowTX | The requested name for temporal transaction coordination. Today the implementation is `RrdEngine` session transactions and `SemanticCommitPlan`, not a separate crate or service. QL mutation programs delegate to that authority. | A second commit log, an independently committing query planner, or automatic commits from a controller. |
 | rrflowKV | Consistent, bounded physical access through the storage port. Its durable implementation uses native rrflowLSM, snapshots, manifests and recovery. | SQL planning, model-provider decisions or automatic historical deletion. |
 | rrflowLSM | Native WAL, mutable versions, immutable segments, checkpoint/compaction and MVCC snapshots in `rrd-lsm`. It retains historical versions as well as current state. | Only rows with infinite valid/system end times, demonstrated Fjall parity, or unrestricted concurrent writers to one directory. |
-| rrflowCLD | Intended columnar historical/analytical projection beneath KV. Current product publication is Parquet; authenticated bounded cold-generation readback exists. A separate `ColumnarFormat` port has optional Parquet/Vortex implementations, but production publication/readback does not use it. | A finished native CLD format, Z-ordering, automatic object-store placement, history eviction, or a unified QL hot/cold scan. |
+| rrflowCLD | The engine publishes and reads stamped generations through `rrflow-cld::ColdStorageBackend`. Each receipt identifies its physical format. The bundled policy selects Parquet. The optional `cld-vortex` build admits Vortex encoding. | A finished native CLD format, Z-ordering, automatic object-store placement, history eviction, or a unified QL hot/cold scan. |
 | rrflowMX | Existing volatile implementation of the semantic storage port. It is distinct from the durable LSM's memtable. The owning architecture records its planned convergence. | Uncommitted durable writes, an automatic RAM-to-WAL flush, or an implemented rename to rrflowMEM/rrflowRAM. |
 | TurboQuant | A derived vector candidate index, governed by collection, generation, source stamp, eligibility and search mode; canonical vectors remain available for exact scoring. | Authoritative data, universal exact recall, or a required stage for every query. |
 
-Source boundaries: [kernel values](../../../crates/authority/rrd-engine/kernel/src/runtime/model.rs),
+Source boundaries: [kernel values](../../../crates/foundation/rrflow-kernel/src/runtime/model.rs),
 [semantic commit plan](../../../crates/persistence/rrd-store/src/access/semantic_commit/plan.rs),
 [QL planner](../../../crates/compute/rrd-query/src/plan/planner.rs),
 [physical transactions](../../../crates/persistence/rrd-lsm/src/database/transactions.rs),
 [cold publication](../../../crates/authority/rrd-engine/src/engine/cold_history.rs),
-[columnar port](../../../crates/persistence/rrd-store/src/columnar.rs).
+[columnar port](../../../crates/persistence/rrflow-cld/src/columnar.rs).
 
 ## Two temporal coordinates, not merely a timestamp column
 
@@ -64,7 +64,7 @@ coordinate until the returned cursor/stamp is retained. The parser also accepts
 SQL-style `SELECT` projections for relational sources; it does not thereby
 accept arbitrary SQL or the proposed `AS OF` spelling. `SELECT` over a traversal
 source is explicitly rejected. See [parser](../../../crates/compute/rrd-query/src/syntax/parser.rs)
-and [read stamps](../../../crates/authority/rrd-engine/kernel/src/runtime/stamps.rs).
+and [read stamps](../../../crates/foundation/rrflow-kernel/src/runtime/stamps.rs).
 
 Version keys contain scope, kind, identity, descending effective time and
 descending commit cursor. Current materializations accelerate present reads;
@@ -163,7 +163,7 @@ Physical storage and transaction admission limits still apply. This does not
 establish a fan-out latency target, independent concurrent semantic commits, or
 vector/geo subject cascade cleanup. Those remain separate acceptance work.
 
-Implementation: [kernel temporal policy](../../../crates/authority/rrd-engine/kernel/src/runtime/referential.rs),
+Implementation: [kernel temporal policy](../../../crates/foundation/rrflow-kernel/src/runtime/referential.rs),
 [bounded dependency selection](../../../crates/persistence/rrd-store/src/access/referential.rs),
 [engine preparation](../../../crates/authority/rrd-engine/src/engine/transaction/referential.rs),
 and [package evidence](../../evidence/change-journals/gate-h/temporal-referential-actions-20261122.md).

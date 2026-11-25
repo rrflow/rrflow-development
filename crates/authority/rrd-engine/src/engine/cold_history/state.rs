@@ -2,7 +2,7 @@
 
 use super::*;
 
-pub(super) const COLD_STATE_VERSION: u16 = 1;
+pub(super) const COLD_STATE_VERSION: u16 = 2;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -19,6 +19,7 @@ pub(super) struct ColdState {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct ColdPending {
+    pub(super) format: rrflow_cld::HistoryFormat,
     pub(super) stamp: ReadStamp,
     pub(super) requested_after: u64,
     pub(super) through_cursor: u64,

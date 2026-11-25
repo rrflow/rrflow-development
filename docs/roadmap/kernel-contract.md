@@ -314,7 +314,7 @@ Order: K0, then K1, K2, K3, K4. K5, K6 and K7 follow; K7 can start once K2 has l
 
 Use the [installed HTTP correction/restart test](../../crates/transport/rrd-server/tests/http_process/query_transaction.rs)
 as the history oracle for both storage backends. Extend the
-[columnar reference conformance suite](../../crates/persistence/rrd-store/tests/columnar_reference.rs)
+[columnar reference conformance suite](../../crates/persistence/rrflow-cld/tests/columnar_backends.rs)
 to the same installed generation, including digest and source-scope checks,
 corrupt input, deadlines, byte limits and empty pages. For the subsequent
 focus test, pivot away, apply a correction, then return with an active reader

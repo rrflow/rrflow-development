@@ -1,11 +1,10 @@
 //! Reversible typed Arrow representation of one immutable RRD query snapshot.
 
 use crate::{Error, QueryFieldTypes, QueryRow, Result};
-use datafusion::arrow::{
-    array::{Array, ArrayRef, BinaryArray, BooleanArray, Int64Array, StringArray, UInt64Array},
-    datatypes::{DataType, Field, Schema, SchemaRef},
-    record_batch::RecordBatch,
+use arrow_array::{
+    Array, ArrayRef, BinaryArray, BooleanArray, Int64Array, RecordBatch, StringArray, UInt64Array,
 };
+use arrow_schema::{DataType, Field, Schema, SchemaRef};
 use rrflow_kernel::{RuntimeValue, RuntimeValueType};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::sync::Arc;

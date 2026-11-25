@@ -40,6 +40,7 @@ impl ReadColdHistory {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct ColdHistoryGenerationSnapshot {
+    pub format: String,
     pub generation: u64,
     pub requested_after_cursor: u64,
     pub through_cursor: u64,
@@ -98,7 +99,8 @@ impl ColdHistoryReadResult {
         match (request.generation, &self.generation) {
             (None, None) if self.changes.is_empty() => Ok(()),
             (Some(expected), Some(generation))
-                if generation.generation == expected
+                if matches!(generation.format.as_str(), "parquet" | "vortex")
+                    && generation.generation == expected
                     && expected <= self.current_generation
                     && generation.requested_after_cursor < generation.through_cursor
                     && generation.through_cursor <= self.through_cursor
@@ -197,9 +199,11 @@ mod tests {
             max_memory_bytes: 1_048_576,
             max_elapsed_ms: 1000,
             row_group_rows: 4,
-            compression: ColdHistoryCompression::Zstd { level: 3 },
-            dictionary: true,
-            statistics: true,
+            encoding: crate::ColdHistoryEncoding::Parquet {
+                compression: ColdHistoryCompression::Zstd { level: 3 },
+                dictionary: true,
+                statistics: true,
+            },
         };
         storage.cold_history = Some(policy.clone());
         storage.validate().unwrap();
@@ -210,7 +214,11 @@ mod tests {
         invalid.row_group_rows = 9;
         assert!(invalid.validate().is_err());
         invalid = policy.clone();
-        invalid.compression = ColdHistoryCompression::Zstd { level: 0 };
+        invalid.encoding = crate::ColdHistoryEncoding::Parquet {
+            compression: ColdHistoryCompression::Zstd { level: 0 },
+            dictionary: true,
+            statistics: true,
+        };
         assert!(invalid.validate().is_err());
         invalid = policy;
         invalid.max_input_bytes = invalid.max_memory_bytes + 1;

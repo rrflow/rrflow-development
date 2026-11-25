@@ -4,13 +4,19 @@
 //! different format, so every check here puts one table through every module
 //! and compares what each answers, line for line, with the table itself.
 
-#![cfg(all(feature = "parquet-reference", feature = "vortex-reference"))]
-
-use rrd_store::columnar::{ColumnarColumn, ColumnarFormat, ColumnarTable};
-use rrd_store::columnar_reference::{ParquetReference, VortexReference};
+use rrflow_cld::columnar::{ColumnarColumn, ColumnarFormat, ColumnarTable};
+#[cfg(feature = "cld-parquet")]
+use rrflow_cld::formats::ParquetReference;
+#[cfg(feature = "cld-vortex")]
+use rrflow_cld::formats::VortexReference;
 
 fn modules() -> Vec<Box<dyn ColumnarFormat>> {
-    vec![Box::new(ParquetReference), Box::new(VortexReference)]
+    vec![
+        #[cfg(feature = "cld-parquet")]
+        Box::new(ParquetReference),
+        #[cfg(feature = "cld-vortex")]
+        Box::new(VortexReference),
+    ]
 }
 
 /// A page shaped like cold history: text identities, a JSON payload, cursors.
@@ -147,6 +153,7 @@ fn an_empty_table_keeps_its_columns_in_every_module() {
 }
 
 #[test]
+#[cfg(all(feature = "cld-parquet", feature = "cld-vortex"))]
 fn the_modules_are_distinct_formats_with_distinct_names() {
     let table = history(64);
     let artifacts = modules()

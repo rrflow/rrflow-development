@@ -160,10 +160,12 @@ impl RrdEngine {
         let store = self.storage.as_rrflow_kv().ok_or_else(|| {
             ServiceError::Storage("cold history requires persistent rrflowKV".into())
         })?;
-        let path = store
-            .anchored_path()
-            .join("cold-history")
-            .join(format!("{}.parquet", receipt.pending.artifact_sha256));
+        let path = store.anchored_path().join("cold-history").join(
+            receipt
+                .pending
+                .format
+                .artifact_name(&receipt.pending.artifact_sha256),
+        );
         let mut file = path.open_read().map_err(io_error)?;
         if file.metadata().map_err(io_error)?.len() != receipt.pending.artifact_bytes {
             return Err(ServiceError::Storage(
@@ -179,19 +181,28 @@ impl RrdEngine {
             rows: receipt.pending.rows,
             artifact_sha256: receipt.pending.artifact_sha256.clone(),
         };
-        let decoded = decode_cold_history_page(
-            bytes,
-            &expectation,
-            ColdHistoryReadLimits {
-                max_rows: native(request.budget.max_rows)?,
-                max_encoded_bytes: native(request.max_artifact_bytes)?,
-                max_decoded_bytes: native(request.budget.max_memory_bytes / 32)?,
-                max_memory_bytes: native(request.budget.max_memory_bytes)?,
-                max_batch_rows: native(request.budget.max_batch_rows)?,
-                deadline,
-            },
-        )
-        .map_err(cold_read_error)?;
+        let decode_started = Instant::now();
+        let decoded = receipt
+            .pending
+            .format
+            .reader()?
+            .decode(
+                bytes,
+                &expectation,
+                ColdHistoryReadLimits {
+                    max_rows: native(request.budget.max_rows)?,
+                    max_encoded_bytes: native(request.max_artifact_bytes)?,
+                    max_decoded_bytes: native(request.budget.max_memory_bytes / 32)?,
+                    max_memory_bytes: native(request.budget.max_memory_bytes)?,
+                    max_batch_rows: native(request.budget.max_batch_rows)?,
+                    deadline,
+                },
+            )
+            .map_err(cold_read_error)?;
+        tracing::debug!(target: "rrflow::cld", generation, format = receipt.pending.format.name(),
+            source_manifest = %receipt.pending.stamp.manifest_id, encoded_bytes = decoded.encoded_bytes,
+            arrow_bytes = decoded.observed_arrow_bytes, decode_micros = decode_started.elapsed().as_micros() as u64,
+            "decoded cold generation");
         if decoded.row_groups as u64 != receipt.pending.row_groups {
             return Err(ServiceError::Storage(
                 "cold history row-group count differs from its receipt".into(),
@@ -215,6 +226,7 @@ impl RrdEngine {
             .map(public_runtime_change)
             .collect::<Result<Vec<_>>>()?;
         result.generation = Some(ColdHistoryGenerationSnapshot {
+            format: receipt.pending.format.name().into(),
             generation,
             requested_after_cursor: receipt.pending.requested_after,
             through_cursor: receipt.pending.through_cursor,
@@ -262,7 +274,7 @@ impl RrdEngine {
             Ok(progress) => Ok(progress),
             Err(error) => {
                 if self.record_cold_history_failure(&error, now).is_err() {
-                    tracing::warn!(target: "rrflow::parquet_compactor", "could not persist cold history failure status");
+                    tracing::warn!(target: "rrflow::cld", "could not persist cold history failure status");
                 }
                 Err(error)
             }
@@ -412,7 +424,7 @@ impl RrdEngine {
             }
             let directory = store.anchored_path().join("cold-history");
             directory.create_dir_all().map_err(io_error)?;
-            let final_path = directory.join(format!("{}.parquet", pending.artifact_sha256));
+            let final_path = directory.join(pending.format.artifact_name(&pending.artifact_sha256));
             if !final_path.try_exists().map_err(io_error)?
                 && !store.try_admit_immutable_file(pending.artifact_bytes)?
             {
@@ -460,7 +472,7 @@ impl RrdEngine {
             ])?;
             #[cfg(test)]
             tests::publication_checkpoint("receipt_committed");
-            tracing::info!(target: "rrflow::parquet_compactor", generation, rows = receipt.pending.rows, bytes = receipt.pending.artifact_bytes, "cold history generation published");
+            tracing::info!(target: "rrflow::cld", generation, rows = receipt.pending.rows, bytes = receipt.pending.artifact_bytes, "cold history generation published");
             return Ok(true);
         }
 
@@ -477,6 +489,7 @@ impl RrdEngine {
         if state.generation > 0 {
             verify_head(self, store.anchored_path(), &state, deadline)?;
         }
+        let backend = writer(policy)?;
         let mut scan_limit = policy.max_changes;
         let (page, artifact) = loop {
             check_deadline(deadline)?;
@@ -496,14 +509,9 @@ impl RrdEngine {
                     "cold history source did not advance".into(),
                 ));
             }
-            match encode_cold_history_page(
-                &stamp,
-                &page,
-                limits(policy, deadline)?,
-                encoding(policy),
-            ) {
+            match backend.encode(&stamp, &page, limits(policy, deadline)?) {
                 Ok(artifact) => break (page, artifact),
-                Err(rrd_query::Error::Budget(_)) if scan_limit > 1 => {
+                Err(rrflow_cld::Error::Budget(_)) if scan_limit > 1 => {
                     scan_limit = (scan_limit / 2).max(1)
                 }
                 Err(error) => return Err(error.into()),
@@ -511,6 +519,7 @@ impl RrdEngine {
         };
         let source_sha256 = source_digest(&stamp, &page);
         let pending = ColdPending {
+            format: backend.format(),
             stamp,
             requested_after: page.requested_after,
             through_cursor: page.through_cursor,

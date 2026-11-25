@@ -74,10 +74,10 @@ impl RrdEngine {
                     .map_err(|error| ServiceError::Query(error.to_string()))?,
             ),
         ]);
-        let artifact = rrd_query::export_parquet(
+        let artifact = rrflow_cld::export_parquet(
             &rows,
             &metadata,
-            rrd_query::ParquetExportLimits {
+            rrflow_cld::WriteLimits {
                 max_rows: MAX_PARQUET_EXPORT_ROWS,
                 max_columns: MAX_PARQUET_EXPORT_COLUMNS,
                 max_input_bytes: MAX_PARQUET_EXPORT_INPUT_BYTES,

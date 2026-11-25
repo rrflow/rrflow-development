@@ -145,6 +145,7 @@ pub(super) fn engine_has_exact_composition() {
             "rrd-inference",
             "rrd-observation",
             "rrd-operator-knowledge",
+            "rrflow-cld",
             "rrd-query",
             "rrd-store",
             "rrd-vector",
@@ -225,6 +226,8 @@ pub(super) fn public_contract_and_client_stay_implementation_free() {
 pub(super) fn outward_consumers_cannot_bypass_the_engine_boundary() {
     let metadata = workspace_metadata();
     let internal_components = names(&[
+        "rrflow-arrow",
+        "rrflow-cld",
         "rrd-attunement",
         "rrd-engram",
         "rrd-security",
@@ -255,6 +258,8 @@ pub(super) fn outward_consumers_cannot_bypass_the_engine_boundary() {
 pub(super) fn outward_product_sources_do_not_import_physical_components() {
     let metadata = workspace_metadata();
     let physical = [
+        "rrflow_arrow",
+        "rrflow_cld",
         "rrd_attunement",
         "rrd_cluster",
         "rrflow_kernel",

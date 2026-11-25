@@ -243,9 +243,11 @@ fn cld_policy(input: u64, output: u64, memory: u64) -> rrd_contract::ColdHistory
         max_memory_bytes: memory,
         max_elapsed_ms: 30_000,
         row_group_rows: 64,
-        compression: rrd_contract::ColdHistoryCompression::Zstd { level: 3 },
-        dictionary: true,
-        statistics: true,
+        encoding: rrd_contract::ColdHistoryEncoding::Parquet {
+            compression: rrd_contract::ColdHistoryCompression::Zstd { level: 3 },
+            dictionary: true,
+            statistics: true,
+        },
     }
 }
 

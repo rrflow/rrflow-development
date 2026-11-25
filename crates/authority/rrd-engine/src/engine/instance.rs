@@ -11,6 +11,9 @@ pub(super) fn installed_storage_options(
     policy
         .validate()
         .map_err(|error| ServiceError::Contract(error.to_string()))?;
+    if let Some(cold) = &policy.cold_history {
+        super::cold_history::admit_backend(cold)?;
+    }
     let native = |name: &str, value: u64| {
         usize::try_from(value).map_err(|_| {
             ServiceError::Contract(format!(

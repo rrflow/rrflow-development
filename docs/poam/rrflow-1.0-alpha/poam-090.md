@@ -17,18 +17,19 @@ Read on 2026-11-20 at `33159f8e2`. The original [reference-module direction](../
 - rrflowCLD has no storage-tier home and no format of its own, so there is nothing native to compare Parquet or Vortex against.
 - Vortex is named nowhere.
 
-Since 2026-11-20 a columnar port exists in `rrd-store` with Parquet and Vortex as optional reference modules behind it. The cold tier does not use the port yet, and no native format is behind it.
+The November 22 ownership change moves the codec, columnar port, physical adapters and their workloads into `crates/persistence/rrflow-cld`. Publication and receipt-directed readback use its `ColdStorageBackend` trait. [Candidate evidence](../../evidence/change-journals/gate-f/cld-storage-owner.md) records acceptance and remaining gaps.
 
 The [database semantics audit](../../reference/data/database-semantics.md) at
 `b7def0fc7` confirms authenticated, bounded Parquet generation readback with
-artifact/source verification. The outstanding deficiency is production use of
-the columnar port and a stamped query/context read spanning the eligible tiers.
+artifact/source verification. A stamped query/context read spanning the eligible tiers remains outstanding.
 
 ## Impact
 
-The installed history path currently binds query code to the Parquet writer.
-Codec-only measurements omit the costs and correctness requirements of
-publication, point retrieval, focus prefetch and recovery in the engine.
+The installed history reader can reopen either supported format when its
+codec is included in the build. Ordinary QL queries still lack a stamped
+DB scan across hot and cold history. The codec benchmark measures encoding
+and decoding in memory. Installed historical point-read costs, focus prefetch
+and recovery following hot-space reclamation remain unqualified.
 
 ## Owning gates
 

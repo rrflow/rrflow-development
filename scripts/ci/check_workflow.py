@@ -725,10 +725,19 @@ def verify_optional_features(optional: str, pgvector: str) -> int:
         routed | {"rrd-operator-knowledge"} == expected,
         f"optional-feature coverage mismatch: expected={sorted(expected)} routed={sorted(routed)}",
     )
+    # The served primary's diagnostic feature cannot join its ordinary suites,
+    # so that one package names every other feature its manifest declares.
+    with (ROOT / "crates/adapters/rrflow-cli/Cargo.toml").open("rb") as source:
+        installed = sorted(set(tomllib.load(source)["features"]) - {"default", "crash-test"})
+    selection = (
+        "${{ matrix.package == 'rrflow-cli' && '--features "
+        + ",".join(installed)
+        + "' || '--all-features' }}"
+    )
     require(
-        "cargo test -p ${{ matrix.package }} --all-targets --all-features --locked"
+        f"cargo test -p ${{{{ matrix.package }}}} --all-targets {selection} --locked"
         in optional
-        and "cargo clippy -p ${{ matrix.package }} --all-targets --all-features --locked -- -D warnings"
+        and f"cargo clippy -p ${{{{ matrix.package }}}} --all-targets {selection} --locked -- -D warnings"
         in optional,
         "optional-feature packages must run locked all-feature tests and strict Clippy",
     )

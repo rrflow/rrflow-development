@@ -83,7 +83,7 @@ version, which remains frozen at `1.0.0` by the
 [version policy](../release/version-policy.md).
 
 The deterministic OpenAPI projection is currently bound to SHA-256
-`051542fec7c7c8ffb3d39afb379254ab9816715dcb8da36df0378da3c0fba45c`.
+`7d118dcc05f099348810e08897edff472522c8e5ea2f5682cb09471a1cbf6e2b`.
 Changing its bytes requires an explicit protocol/schema review and regeneration
 of every checked-in SDK surface; `scripts/ci/check_generated_surfaces.py`
 verifies the SDK projections, the signal reference, and this citation against
@@ -96,7 +96,7 @@ binds it with `x-rrd-signal-catalogue-sha256`. The
 [generated signal reference](signal-catalogue.md) and five SDK constants are
 derived from those fields. They expose stable diagnostic, trace, and metric
 identity for tooling; they neither activate telemetry nor report runtime state.
-`crates/authority/rrd-engine/kernel/src/telemetry.rs` remains the sole semantic owner. Its
+`crates/foundation/rrflow-kernel/src/telemetry.rs` remains the sole semantic owner. Its
 test-verified golden projection drives the private generated contract source;
 the focused parity test compares OpenAPI back to the live kernel value.
 
@@ -269,7 +269,7 @@ D-01 engram/configuration slice.
   `crates/transport/rrd-contract/src/lib.rs`
 - Installed identity, deployment, and effective-configuration contract:
   `crates/transport/rrd-contract/src/deployment.rs`
-- Signal semantic owner: `crates/authority/rrd-engine/kernel/src/telemetry.rs`
+- Signal semantic owner: `crates/foundation/rrflow-kernel/src/telemetry.rs`
 - Private generated contract projection:
   `crates/transport/rrd-contract/src/generated/signal_catalogue.rs`
 - Generated signal reference: `docs/reference/protocol/signal-catalogue.md`

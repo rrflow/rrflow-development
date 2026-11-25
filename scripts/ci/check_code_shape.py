@@ -46,7 +46,7 @@ ENTRY_LIMIT = 200
 SOURCE_LIMIT = 800
 HARNESS_LIMIT = 1500
 BASELINE = Path(__file__).with_name("code_shape_baseline.json")
-DIGEST_OWNER = "crates/authority/rrd-engine/kernel/src/digest.rs"
+DIGEST_OWNER = "crates/foundation/rrflow-kernel/src/digest.rs"
 
 PATTERNS: dict[str, re.Pattern[str]] = {
     "path_attribute": re.compile(r"#\[path\s*="),

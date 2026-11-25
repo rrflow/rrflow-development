@@ -1,10 +1,4 @@
-//! The columnar port: one typed table and the contract a columnar format meets.
-//!
-//! rrflowCLD stores history column by column so a cold read touches only the
-//! columns it asks for. This module is the boundary a columnar implementation
-//! sits behind, native or reference. It names no format. The reference modules
-//! behind it (`columnar_reference`) are optional build inputs that no product
-//! build contains; they exist to be compared with and learned from.
+//! Named nullable columns and the projected-read contract for CLD codecs.
 
 use crate::{Error, Result};
 
@@ -51,17 +45,17 @@ impl ColumnarTable {
     /// repeated or empty column name.
     pub fn new(columns: Vec<ColumnarColumn>) -> Result<Self> {
         let Some(first) = columns.first() else {
-            return Err(Error::Substrate(
+            return Err(Error::Execution(
                 "a columnar table needs at least one column".into(),
             ));
         };
         let rows = first.len();
         for (index, column) in columns.iter().enumerate() {
             if column.name().is_empty() {
-                return Err(Error::Substrate("a column name is empty".into()));
+                return Err(Error::Execution("a column name is empty".into()));
             }
             if column.len() != rows {
-                return Err(Error::Substrate(format!(
+                return Err(Error::Execution(format!(
                     "column {} has {} rows, the first column has {rows}",
                     column.name(),
                     column.len()
@@ -71,7 +65,7 @@ impl ColumnarTable {
                 .iter()
                 .any(|earlier| earlier.name() == column.name())
             {
-                return Err(Error::Substrate(format!(
+                return Err(Error::Execution(format!(
                     "column name {} is repeated",
                     column.name()
                 )));
@@ -99,7 +93,7 @@ impl ColumnarTable {
             .map(|name| {
                 self.column(name)
                     .cloned()
-                    .ok_or_else(|| Error::Substrate(format!("no column named {name}")))
+                    .ok_or_else(|| Error::Execution(format!("no column named {name}")))
             })
             .collect::<Result<Vec<_>>>()?;
         Self::new(columns)
