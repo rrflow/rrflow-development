@@ -25,7 +25,7 @@ binds the examined baseline and commands; this is not full SurrealDB parity.
 | rrflowMX | Existing volatile implementation of the semantic storage port. It is distinct from the durable LSM's memtable. The owning architecture records its planned convergence. | Uncommitted durable writes, an automatic RAM-to-WAL flush, or an implemented rename to rrflowMEM/rrflowRAM. |
 | TurboQuant | A derived vector candidate index, governed by collection, generation, source stamp, eligibility and search mode; canonical vectors remain available for exact scoring. | Authoritative data, universal exact recall, or a required stage for every query. |
 
-Source boundaries: [kernel values](../../../crates/authority/rrd-engine/kernel/src/runtime/model.rs),
+Source boundaries: [kernel values](../../../crates/foundation/rrflow-kernel/src/runtime/model.rs),
 [semantic commit plan](../../../crates/persistence/rrd-store/src/access/semantic_commit/plan.rs),
 [QL planner](../../../crates/compute/rrd-query/src/plan/planner.rs),
 [physical transactions](../../../crates/persistence/rrd-lsm/src/database/transactions.rs),
@@ -64,7 +64,7 @@ coordinate until the returned cursor/stamp is retained. The parser also accepts
 SQL-style `SELECT` projections for relational sources; it does not thereby
 accept arbitrary SQL or the proposed `AS OF` spelling. `SELECT` over a traversal
 source is explicitly rejected. See [parser](../../../crates/compute/rrd-query/src/syntax/parser.rs)
-and [read stamps](../../../crates/authority/rrd-engine/kernel/src/runtime/stamps.rs).
+and [read stamps](../../../crates/foundation/rrflow-kernel/src/runtime/stamps.rs).
 
 Version keys contain scope, kind, identity, descending effective time and
 descending commit cursor. Current materializations accelerate present reads;
@@ -163,7 +163,7 @@ Physical storage and transaction admission limits still apply. This does not
 establish a fan-out latency target, independent concurrent semantic commits, or
 vector/geo subject cascade cleanup. Those remain separate acceptance work.
 
-Implementation: [kernel temporal policy](../../../crates/authority/rrd-engine/kernel/src/runtime/referential.rs),
+Implementation: [kernel temporal policy](../../../crates/foundation/rrflow-kernel/src/runtime/referential.rs),
 [bounded dependency selection](../../../crates/persistence/rrd-store/src/access/referential.rs),
 [engine preparation](../../../crates/authority/rrd-engine/src/engine/transaction/referential.rs),
 and [package evidence](../../evidence/change-journals/gate-h/temporal-referential-actions-20261122.md).
