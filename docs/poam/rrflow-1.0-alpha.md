@@ -108,3 +108,4 @@
 | POAM-092 | High | Closed | [Windows serving-record replacement fails during concurrent reads](rrflow-1.0-alpha/poam-092.md) |
 | POAM-093 | High | Open | [development launcher selects a different engine](rrflow-1.0-alpha/poam-093.md) |
 | POAM-094 | High | Open | [a same-size rewrite inside one timestamp step is not seen as drift](rrflow-1.0-alpha/poam-094.md) |
+| POAM-095 | High | Open | [no lexicon exists; terms are defined in five unconnected places](rrflow-1.0-alpha/poam-095.md) |

@@ -104,4 +104,5 @@
 - [POAM-092 — Windows serving-record replacement fails during concurrent reads](poam-092.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-092`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-092) — active parent-owned POA&M detail
 - [POAM-093 — development launcher selects a different engine](poam-093.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-093`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-093) — active parent-owned POA&M detail
 - [POAM-094 — a same-size rewrite inside one timestamp step is not seen as drift](poam-094.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-094`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-094) — active parent-owned POA&M detail
+- [POAM-095 — no lexicon exists; terms are defined in five unconnected places](poam-095.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-095`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-095) — active parent-owned POA&M detail
 <!-- rrflow:generated-index:end -->
