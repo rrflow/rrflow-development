@@ -35,7 +35,7 @@ The owner's words of 2026-11-13: "files that are far too long need to be clearly
 | R7 | Configuration naming: `Options` for constructor inputs, `Settings` only for S1 settings, `Policy` for rules, `Limits` for caps. One `open(path, Options)` instead of `open_with_*` and `create_with_*` fan-out. More than three optional inputs means an options struct | builder and options patterns of the API guidelines | `too_many_arguments` stops being allowed: its 132 escapes go on the ratchet |
 | R8 | `[workspace.lints]`: `unsafe_code` denied outside named crates, `clippy::undocumented_unsafe_blocks`, `unreachable_pub`, `missing_debug_implementations`; `cargo-deny` for licences and advisories | standard workspace hygiene | CI clippy and `cargo deny check` |
 | R9 | Tests: unit tests in a sibling `tests.rs` (`#[cfg(test)] mod tests;`); integration and public-API tests in `tests/`. `rrd-engine/src/engine/tests/` (42.8k lines inside the crate) moves to `tests/` wherever it uses the public API | Cargo conventions | the shape check |
-| R10 | Names: every workspace crate is `rrflow-<name>` and a component's crate carries the component's name (section 6.1); the `rrd-*` prefix is retired. Types carry no crate prefix except the facade (`RrdEngine`, `RrdClient`). No rename leaves an alias or shim | consistent vocabulary | the architecture checker of section 6.11 |
+| R10 | Names: every workspace crate is `rrflow-<name>` and a component's crate carries the component's name (section 6.1); the `rrd-` prefix is kept only by the four daemon crates named there. Types carry no crate prefix except the facade (`RrdEngine`, `RrdClient`). No rename leaves an alias or shim | consistent vocabulary | the architecture checker of section 6.11 |
 | R11 | No unconsumed crates or lab code in production crates: `rrd-maintenance` is removed and `physical_policy_lab.rs` moves to the Lab. `rrd-cluster`, `rrd-kubernetes` and the pgvector adapter are product scope (owner, 2026-11-13). They serve the shippin panel and cloud synchronization, so they move to the cloud tier and gain real consumers and tests (kernel package K15) | one current implementation | the architecture test lists every crate with a consumer or an owner decision |
 
 **Target tiers:** the crate, folder and tier table is in [section 6.2](#62-target-workspace).
@@ -175,6 +175,7 @@ This implements S6 of the [kernel contract](../roadmap/kernel-contract.md#36-s6-
 2. **`rrd-cluster`, `rrd-kubernetes` and `pgvector`:** decided 2026-11-13. They are product scope for the shippin panel and for synchronizing with the cloud offering, comparable to SurrealDB Cloud or ArangoDB's managed service and backed by shippinAI. They move to `crates/cloud/` under K15.
 3. **Limits:** 800 lines for Rust and 400 for TS/TSX are the proposed caps. The default is these values.
 4. **One repository:** decided 2026-11-25. The storage engines and foundation crates stay in this repository for now, each defined as a clearly bounded workspace crate. Section 6.12 is the rule that keeps each one able to leave later.
+5. **RRD and the order:** decided 2026-11-25. RRD, the Reason Ready Daemon, is the running process; the components it runs are rrflowDB, rrflowKV, rrflowTX, rrflowCX, rrflowQL and rrflowMX, and each must exist as its own boundary in code (6.1). The order is engine boundaries, then ACID and SurrealDB capability proof, then Connectome's structure (6.8).
 
 ## 6. Alignment plan of 2026-11-25
 
@@ -182,7 +183,7 @@ The owner ruled on 2026-11-24 that no new code is written until the existing cod
 
 ### 6.1 Naming
 
-One rule, no exceptions: **every workspace crate is `rrflow-<name>`, and a product component's crate carries the component's name.** The `rrd-*` prefix is retired. A rename replaces the old name everywhere in the same pull request; no alias, re-export shim or forwarding module is left behind.
+Two prefixes, each with one meaning. **A product component's crate is `rrflow-<name>` and carries the component's name. The running process is RRD, the Reason Ready Daemon (owner, 2026-11-25), and only the daemon's own crates carry `rrd-`: `rrd-engine` (the composition the process runs), `rrd-server` (its network surface), `rrd-client` and `rrd-contract` (how a caller reaches it).** Every other `rrd-*` crate is a component or a support crate and is renamed. A rename replaces the old name everywhere in the same pull request; no alias, re-export shim or forwarding module is left behind.
 
 | Component | Crate | Rust path |
 |---|---|---|
@@ -195,7 +196,7 @@ One rule, no exceptions: **every workspace crate is `rrflow-<name>`, and a produ
 | rrflowMX | `rrflow-mx` | `rrflow_mx` |
 | rrflowCX | `rrflow-cx` | `rrflow_cx` |
 
-Folders are named for the tier, in plain platform terms. A crate's folder name equals its package name. The engine crate is `rrflow-core`: the name formed from the product name and the word engine is a retired split-engine identity that the `workspace_architecture` test forbids in every tracked file, and that ban stays.
+Folders are named for the tier, in plain platform terms. A crate's folder name equals its package name. The engine crate keeps the name `rrd-engine`: it is the daemon's engine, and the `workspace_architecture` test still forbids the retired split-engine identities in every tracked file.
 
 ### 6.2 Target workspace
 
@@ -204,7 +205,7 @@ A crate depends only on crates in a lower tier, or in its own tier where the tab
 | Tier | Folder | Crate today | Target crate | Lines today |
 |---|---|---|---|---|
 | 0 | `crates/foundation/` | `rrflow-kernel` | `rrflow-kernel` | 13,631 |
-| 0 | | `transport/rrd-contract` | `rrflow-contract` | 37,718 |
+| 0 | | `transport/rrd-contract` | `rrd-contract` | 37,718 |
 | 0 | | `compute/rrflow-arrow` | `rrflow-arrow` | 624 |
 | 1 | `crates/storage/` | `persistence/rrd-lsm` | `rrflow-lsm` | 39,473 |
 | 1 | | `persistence/rrflow-cld` | `rrflow-cld` | 2,752 |
@@ -221,9 +222,9 @@ A crate depends only on crates in a lower tier, or in its own tier where the tab
 | 3 | `crates/governance/` | `authority/rrd-security` | `rrflow-security` | 2,150 |
 | 3 | | `operations/rrd-observation` | `rrflow-observation` | 582 |
 | 3 | `crates/cloud/` | `operations/rrd-cluster` | `rrflow-cx` | 15,018 |
-| 4 | `crates/engine/` | `authority/rrd-engine` | `rrflow-core` | 110,976 |
-| 5 | `crates/interfaces/` | `transport/rrd-server` | `rrflow-server` | 11,957 |
-| 5 | | `transport/rrd-client` | `rrflow-client` | 12,034 |
+| 4 | `crates/engine/` | `authority/rrd-engine` | `rrd-engine` | 110,976 |
+| 5 | `crates/interfaces/` | `transport/rrd-server` | `rrd-server` | 11,957 |
+| 5 | | `transport/rrd-client` | `rrd-client` | 12,034 |
 | 5 | | `adapters/rrflow-cli` (binary `rrflow`) | `rrflow-cli` | 24,270 |
 | 5 | | `adapters/rrflow-mcp` | `rrflow-mcp` | 1,046 |
 | 5 | | `adapters/rrflow-edge` | `rrflow-edge` | 321 |
@@ -261,7 +262,7 @@ Removed, each in the pull request named in 6.8: `rrd-maintenance` (no consumer; 
 `rrd-engine/src/engine/` holds 54 modules side by side, 45,916 lines of tests inside `src`, and a 303-line `mod.rs`. The target is one folder per thing the engine composes, each named for the crate it pulls:
 
 ```
-crates/engine/rrflow-core/
+crates/engine/rrd-engine/
   src/
     lib.rs            declarations and re-exports only
     engine.rs         RrdEngine: open, close, the composed parts
@@ -326,7 +327,7 @@ One pull request per package. A package is complete when nothing of the old shap
 | 1 | Repair `main` (pull request 511, POAM-094) | the red nightly |
 | 2 | One architecture manifest and one checker (6.11) | the path tables repeated in two test files, four CI scripts, two script tests and a baseline, all of which the kernel move had to edit by hand |
 | 3 | Dead code: `rrd-maintenance`, the empty folders, and the 29 files that still say "estate" | unconsumed crates and the retired name |
-| 4 | Foundation: `rrd-contract` → `foundation/rrflow-contract`, `rrflow-arrow` → `foundation/`, one reasoning-tree definition | the duplicate type set |
+| 4 | Foundation: `rrd-contract` → `foundation/`, `rrflow-arrow` → `foundation/`, one reasoning-tree definition | the duplicate type set |
 | 5 | `rrd-lsm` → `storage/rrflow-lsm`; `rrflow-cld` → `storage/` | `persistence/` |
 | 6 | `rrflow-kv` extracted, with the `VolatileStore` rename | the misnamed rrflowMX store |
 | 7 | `rrflow-tx` extracted from the store and the engine | transaction logic in two crates |
@@ -334,9 +335,11 @@ One pull request per package. A package is complete when nothing of the old shap
 | 9 | Compute renames: `rrflow-ql`, `rrflow-vector`, `rrflow-inference`, `rrflow-attunement` | `rrd-*` in tier 2 |
 | 10 | `rrflow-mx` gathered; `rrflow-engram`, `rrflow-operator-knowledge`, `rrflow-security`, `rrflow-observation` moved and renamed | scattered memory code, `authority/`, `operations/` |
 | 11 | `rrflow-cx` and `rrflow-cx-operator` | `rrd-cluster`, `rrd-kubernetes` |
-| 12 | `rrflow-core`: the 6.4 folders, tests out of `src` | the flat 54-module engine |
-| 13 | Interfaces: `rrflow-server`, `rrflow-client`, the CLI, MCP and edge adapters | `transport/`, `adapters/` |
+| 12 | `rrd-engine` → `crates/engine/`: the 6.4 folders, tests out of `src` | the flat 54-module engine |
+| 13 | Interfaces: `rrd-server`, `rrd-client`, the CLI, MCP and edge adapters | `transport/`, `adapters/` |
 | 14 | Connectome: `features/` named for the engine folders of 6.4, client repinned | the five organizing schemes of section 1 |
+
+Package 14 does not open when package 13 merges. The owner set the order on 2026-11-25: the engine's boundaries first, then proof that ACID holds and that every SurrealDB capability is represented in this engine, and only then Connectome's folders, which mirror the engine. The two proofs are evidence work owned by the objectives and the POA&M, not alignment packages; no record yet lists every SurrealDB capability against this engine (see 6.9).
 
 Packages 4 to 13 each exceed the 400-line warning because a rename touches every import. They are moves, reviewed as renames.
 
@@ -354,6 +357,7 @@ Each item is settled by reading code at the start of the package that needs it, 
 8. Whether `RrflowKvStore` and `StorageEngine` land in `rrflow-kv`. If they do, the `rrflow-cld` test of 6.12 conforms once it names `rrflow-kv`; if not, the test moves to `rrflow-db` (package 6).
 9. Which of the kernel product types that `rrd-store` uses are needed by the `rrflow-kv` part, and so whether `rrflow-kernel` as a whole is a fit dependency for a standalone key-value store or its `digest` module must be separable (package 6).
 10. Rule 3 of 6.12 has not been run for any crate (package 2).
+11. Which record owns the ACID proof and the SurrealDB capability map that gate package 14. OBJ-10 names SurrealDB as a measured baseline "where the compared capability exists" but lists no capabilities; Connectome's 348-capability parity list covers the UI client, not the engine. The owning record is found or written before package 13 merges.
 
 ### 6.10 Proof of no regression, every package
 
@@ -362,6 +366,7 @@ Each item is settled by reading code at the start of the package that needs it, 
 - `cargo test --workspace --locked` passes on the author's host, and the candidate gate passes.
 - The OpenAPI digest constant is unchanged and every generated projection regenerates with no difference.
 - After the merge the nightly full matrix is started by hand on the new `main`, and the next package does not open until it is green.
+- A macOS job that was cancelled or never given a runner is not a result. Green means the macOS jobs ran and passed on that commit; otherwise the run is started again, or the owner halts the work.
 
 ### 6.11 Enforcement
 
