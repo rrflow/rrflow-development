@@ -1,6 +1,6 @@
 # Code structure and conventions
 
-**Status:** active proposed standard; awaiting the owner's approval before any file moves; enforcement and moves are kernel packages K12 and K13
+**Status:** active standard; the owner ordered the alignment on 2026-11-24 and its complete plan on 2026-11-25; section 6 is that plan and governs every move
 **Coordinate:** `rrflow://rrflow-instance/data/architecture/code-structure-and-conventions`
 **Owner:** the canonical folder layout, naming, file-size, module, error, schema and dependency rules for the engine workspace and Connectome, and how each rule is enforced
 **Measured at:** engine `main` `297bd98f`, Connectome `19ee075c`, 2026-11-13
@@ -35,21 +35,10 @@ The owner's words of 2026-11-13: "files that are far too long need to be clearly
 | R7 | Configuration naming: `Options` for constructor inputs, `Settings` only for S1 settings, `Policy` for rules, `Limits` for caps. One `open(path, Options)` instead of `open_with_*` and `create_with_*` fan-out. More than three optional inputs means an options struct | builder and options patterns of the API guidelines | `too_many_arguments` stops being allowed: its 132 escapes go on the ratchet |
 | R8 | `[workspace.lints]`: `unsafe_code` denied outside named crates, `clippy::undocumented_unsafe_blocks`, `unreachable_pub`, `missing_debug_implementations`; `cargo-deny` for licences and advisories | standard workspace hygiene | CI clippy and `cargo deny check` |
 | R9 | Tests: unit tests in a sibling `tests.rs` (`#[cfg(test)] mod tests;`); integration and public-API tests in `tests/`. `rrd-engine/src/engine/tests/` (42.8k lines inside the crate) moves to `tests/` wherever it uses the public API | Cargo conventions | the shape check |
-| R10 | Names: `rrd-*` internal, `rrflow-*` outward (existing rule). Types carry no crate prefix except the facade (`RrdEngine`, `RrdClient`). The engram-to-engram rename is finished with correct casing, and its shims are removed (POAM-078) | consistent vocabulary | a vocabulary check like the existing retired-name bans |
+| R10 | Names: every workspace crate is `rrflow-<name>` and a component's crate carries the component's name (section 6.1); the `rrd-*` prefix is retired. Types carry no crate prefix except the facade (`RrdEngine`, `RrdClient`). No rename leaves an alias or shim | consistent vocabulary | the architecture checker of section 6.11 |
 | R11 | No unconsumed crates or lab code in production crates: `rrd-maintenance` is removed and `physical_policy_lab.rs` moves to the Lab. `rrd-cluster`, `rrd-kubernetes` and the pgvector adapter are product scope (owner, 2026-11-13). They serve the shippin panel and cloud synchronization, so they move to the cloud tier and gain real consumers and tests (kernel package K15) | one current implementation | the architecture test lists every crate with a consumer or an owner decision |
 
-**Target tiers** (directories follow tiers after the moves):
-
-| Tier | Directory | Crates |
-|---|---|---|
-| 0 | `crates/foundation/` | digest and id primitives (new), `rrd-contract`, `rrflow-kernel` |
-| 1 | `crates/storage/` | `rrd-lsm`, `rrd-store` (rrflowKV and rrflowCLD) |
-| 2 | `crates/compute/` | `rrd-query`, `rrd-vector`, `rrd-inference`, `rrd-attunement` |
-| 3 | `crates/governance/` | `rrd-security`, `rrd-engram` (renamed to engram), `rrd-observation` |
-| 4 | `crates/authority/` | `rrd-engine` |
-| 5 | `crates/interfaces/` | `rrd-server`, `rrd-client`, `rrflow-cli`, `rrflow-mcp`, `rrflow-edge` |
-| 5 | `crates/cloud/` | `rrd-cluster` (replication and synchronization), `rrd-kubernetes` (operator for the shippin.cloud deployment), the pgvector adapter. Feature-gated and optional: never required for local readiness, and consuming only public engine contracts |
-| — | `crates/evaluation/` | the Lab and qualification, dev-only, as today |
+**Target tiers:** the crate, folder and tier table is in [section 6.2](#62-target-workspace).
 
 **First splits**, one PR each, with behavior unchanged:
 
@@ -182,6 +171,202 @@ This implements S6 of the [kernel contract](../roadmap/kernel-contract.md#36-s6-
 
 ## 5. Owner decisions
 
-1. **Approve this structure** as written, or with changes. No file moves before approval.
+1. **Structure:** ordered by the owner on 2026-11-24 ("go") and 2026-11-25. Section 6 is the plan.
 2. **`rrd-cluster`, `rrd-kubernetes` and `pgvector`:** decided 2026-11-13. They are product scope for the shippin panel and for synchronizing with the cloud offering, comparable to SurrealDB Cloud or ArangoDB's managed service and backed by shippinAI. They move to `crates/cloud/` under K15.
 3. **Limits:** 800 lines for Rust and 400 for TS/TSX are the proposed caps. The default is these values.
+
+## 6. Alignment plan of 2026-11-25
+
+The owner ruled on 2026-11-24 that no new code is written until the existing code is aligned without regression, and on 2026-11-25 that the plan is complete before any further move. This section is that plan. It replaces the tier table that stood in section 2 before this date. Every number below was measured at `7f16ed4be`; anything not measured is listed in 6.9.
+
+### 6.1 Naming
+
+One rule, no exceptions: **every workspace crate is `rrflow-<name>`, and a product component's crate carries the component's name.** The `rrd-*` prefix is retired. A rename replaces the old name everywhere in the same pull request; no alias, re-export shim or forwarding module is left behind.
+
+| Component | Crate | Rust path |
+|---|---|---|
+| rrflowKV | `rrflow-kv` | `rrflow_kv` |
+| rrflowLSM | `rrflow-lsm` | `rrflow_lsm` |
+| rrflowCLD | `rrflow-cld` | `rrflow_cld` |
+| rrflowTX | `rrflow-tx` | `rrflow_tx` |
+| rrflowDB | `rrflow-db` | `rrflow_db` |
+| rrflowQL | `rrflow-ql` | `rrflow_ql` |
+| rrflowMX | `rrflow-mx` | `rrflow_mx` |
+| rrflowCX | `rrflow-cx` | `rrflow_cx` |
+
+Folders are named for the tier, in plain platform terms. A crate's folder name equals its package name.
+
+### 6.2 Target workspace
+
+A crate depends only on crates in a lower tier, or in its own tier where the table gives the order.
+
+| Tier | Folder | Crate today | Target crate | Lines today |
+|---|---|---|---|---|
+| 0 | `crates/foundation/` | `rrflow-kernel` | `rrflow-kernel` | 13,631 |
+| 0 | | `transport/rrd-contract` | `rrflow-contract` | 37,718 |
+| 0 | | `compute/rrflow-arrow` | `rrflow-arrow` | 624 |
+| 1 | `crates/storage/` | `persistence/rrd-lsm` | `rrflow-lsm` | 39,473 |
+| 1 | | `persistence/rrflow-cld` | `rrflow-cld` | 2,752 |
+| 1 | | part of `persistence/rrd-store` | `rrflow-kv` (on `rrflow-lsm`) | see 6.3 |
+| 1 | | part of `rrd-store` and of `rrd-engine` | `rrflow-tx` (on `rrflow-kv`) | see 6.3 |
+| 1 | | the rest of `rrd-store` | `rrflow-db` (on `rrflow-tx`) | see 6.3 |
+| 2 | `crates/compute/` | `rrd-query` | `rrflow-ql` | 15,291 |
+| 2 | | `rrd-vector` | `rrflow-vector` | 17,751 |
+| 2 | | `rrd-inference` | `rrflow-inference` | 5,433 |
+| 2 | | `rrd-attunement` | `rrflow-attunement` | 3,847 |
+| 3 | `crates/knowledge/` | scattered, see 6.3 | `rrflow-mx` | see 6.3 |
+| 3 | | `authority/rrd-engram` | `rrflow-engram` | 8,471 |
+| 3 | | `operations/rrd-operator-knowledge` | `rrflow-operator-knowledge` | 2,935 |
+| 3 | `crates/governance/` | `authority/rrd-security` | `rrflow-security` | 2,150 |
+| 3 | | `operations/rrd-observation` | `rrflow-observation` | 582 |
+| 3 | `crates/cloud/` | `operations/rrd-cluster` | `rrflow-cx` | 15,018 |
+| 4 | `crates/engine/` | `authority/rrd-engine` | `rrflow-engine` | 110,976 |
+| 5 | `crates/interfaces/` | `transport/rrd-server` | `rrflow-server` | 11,957 |
+| 5 | | `transport/rrd-client` | `rrflow-client` | 12,034 |
+| 5 | | `adapters/rrflow-cli` (binary `rrflow`) | `rrflow-cli` | 24,270 |
+| 5 | | `adapters/rrflow-mcp` | `rrflow-mcp` | 1,046 |
+| 5 | | `adapters/rrflow-edge` | `rrflow-edge` | 321 |
+| 5 | `crates/cloud/` | `operations/rrd-kubernetes` | `rrflow-cx-operator` | 927 |
+| — | `crates/evaluation/` | Lab and qualification crates | unchanged | |
+
+`rrd-cluster` sits below the engine today (it depends on `rrd-lsm`, `rrd-store` and the kernel, and the engine composes it behind the `cluster-transfer` feature), so `rrflow-cx` is tier 3 and stays optional. The Kubernetes operator has no consumer and depends only on the contract and kernel, so it is an interface-tier crate.
+
+Removed, each in the pull request named in 6.8: `rrd-maintenance` (no consumer; one file of 1,556 lines), the empty untracked folders `crates/authority/rrd-estate/` and `engine/estate_control/`, and `rrflow-lab-experiments` if 6.9 item 3 confirms it has no user.
+
+### 6.3 Component boundaries, measured
+
+**`rrd-store` splits three ways.** Its source is 28,824 lines in 25 top-level modules. A scan of `crate::` and `super::` references found no pair of modules that depend on each other, and found this order:
+
+- `key_codec` and `keyspaces` depend on nothing else in the crate.
+- `access/runtime_state.rs` (778 lines) is the root of the `access` layer: every other `access` module depends on it and it depends on none of them. It holds key checking, point reads, scans, sequences, read stamps and change pages.
+- `rrflow_kv/` (2,661 lines) depends on `access` only through `runtime_state` (11 references), and on `key_codec`, `keyspaces`, `transaction`, `control`, `engine`, `error` and `lexical`. Nothing in `access` or `repository` depends on `rrflow_kv`. It makes 24 direct `rrd_lsm::` uses; `access` makes 3.
+- `access/semantic_commit/` (1,998 lines: plan, conflicts, constraints, effects, retirements) depends only on `runtime_state`; `access/index` and `access/vector` depend on it.
+- `repository` depends on `access` (16 references); `backup` depends on `access`, `archive`, `repository` and `snapshot`.
+
+| Target | Takes from `rrd-store` | Takes from `rrd-engine` |
+|---|---|---|
+| `rrflow-kv` | `key_codec`, `keyspaces`, `error`, `transaction`, `engine` (the storage port, its profiles and the volatile store), `control`, `gc`, `snapshot`, `footprint`, `fjall_baseline`, `rrflow_kv/`, and the key, read, scan and sequence half of `access/runtime_state.rs` | nothing |
+| `rrflow-tx` | the read-stamp and change-page half of `access/runtime_state.rs`, `access/semantic_commit/`, `access/versioned_identity_ranges.rs` | `engine/transaction.rs` and `transaction/` (890 lines), `transaction_admission.rs` (411), `session_transactions.rs` (120), `query_transaction.rs` (175), `rollback.rs` (219), `clock.rs` (271): the parts that do not need `RrdEngine` state |
+| `rrflow-db` | `access/{index, lexical_index, vector, referential, function, versioned_read, proof_nodes}`, `repository`, `lexical`, `projection`, `ds`, `writer`, `invocation`, `outcome`, `object`, `s3`, `archive`, `backup` | nothing |
+
+`RrflowMxStore` is renamed `VolatileStore` and its profile `volatile` when it moves into `rrflow-kv`; the seven records named in the system overview are corrected in that pull request.
+
+**`rrflow-mx` is gathered.** Today the agent memory and knowledge behavior is in `rrd-engine` (`engine/knowledge.rs` 378 lines, `memory_engram.rs` 440, `context/` 1,136, `task.rs` 678, `task_assessment.rs` 616, `project_map.rs` 420) and in the contract (`knowledge_tree`, `knowledge`, `memory_context`, `memory_engram`). The crate takes the logic that does not need `RrdEngine` state; the engine keeps a `mx/` folder that calls it.
+
+**The reasoning tree has one definition.** `rrd-contract/src/reasoning_tree.rs` (679 lines) and `rrflow-kernel/src/reasoning_tree.rs` (654) declare the same 22 public items; the contract adds `ReasoningReadStamp`. The contract depends on the kernel only in tests, and one test parses the same JSON into both. The kernel keeps the definition and the contract re-exports it. See 6.9 item 1.
+
+### 6.4 The engine pulls each crate by name
+
+`rrd-engine/src/engine/` holds 54 modules side by side, 45,916 lines of tests inside `src`, and a 303-line `mod.rs`. The target is one folder per thing the engine composes, each named for the crate it pulls:
+
+```
+crates/engine/rrflow-engine/
+  src/
+    lib.rs            declarations and re-exports only
+    engine.rs         RrdEngine: open, close, the composed parts
+    error.rs
+    kv/               storage_cursor, tail_repair, maintenance
+    cld/              cold_history
+    tx/               transaction, transaction_admission, session, session_transactions,
+                      query_transaction, rollback, clock
+    db/               data, changefeed, subscription, backup, restore_publication
+    ql/               query, query_export, retrieval, retrieval_query, function
+    vector/           vector
+    mx/               knowledge, memory_engram, context, task, task_assessment,
+                      reasoning_budget, project_map
+    inference/        inference, model, endpoint_configuration, endpoint_proposal,
+                      endpoint_worker, source_language
+    cx/               distributed
+    security/         security, token_key, invocation
+    attunement/       attunement
+    installation/     installation, engram, engram_control, engram_layout, scoped_configuration
+    lifecycle/        instance, instance_registry, serving, control
+    dev/              diagnostic, flight, observation_delivery, observation_source
+    runtime/          the existing runtime module
+  tests/              every test that uses only the public API, in the same folder names
+```
+
+All 54 modules are placed above. A folder imports its own crate and the foundation; it reaches another component only through `engine.rs`. Logic that does not need engine state moves down into the component crate (6.3), so the engine folders become wiring.
+
+### 6.5 The golden layout inside every crate
+
+```
+<crate>/
+  Cargo.toml
+  src/
+    lib.rs              module declarations and re-exports, at most 200 lines
+    error.rs            one Error enum, pub type Result<T>
+    <feature>.rs        the feature's public surface
+    <feature>/          its parts, colocated: types.rs, <verb>.rs, tests.rs
+    dev/                trace, debug and inspection code, behind the `dev` feature
+  tests/                public-API tests
+```
+
+A feature folder holds everything that feature needs and nothing another feature owns. Shared helpers live in the lowest crate that every user can reach, never in a `utils` or `common` module. Rules R1 to R9 above apply unchanged.
+
+### 6.6 Processes and lifecycle
+
+Measured today: `rrd-server` has `process.rs` and `stop.rs`; the engine exports `ServingStopRequest`, `ServingStopState`, `EngineServingStop` and an instance registry. There is no pause, resume or drain operation anywhere in `serving.rs`, `instance.rs`, `instance_registry.rs`, `control.rs` or the CLI. POAM-088 records that managed instances are not registered or stoppable in every form.
+
+Alignment moves the existing start, serve, register and stop code into `lifecycle/` and changes none of it. Pause for patching, resume and drain are new behavior. They are the first package after alignment, built in `lifecycle/` behind one state type (`starting`, `serving`, `paused`, `draining`, `stopped`), so that a service is patched or stopped through one path.
+
+### 6.7 Development, trace and debug code
+
+Measured today: trace and inspection code is in `rrflow-kernel/src/trace/` (2,569 lines) and `telemetry.rs` (797), `rrd-engine` `diagnostic/` (1,345), `flight/` (1,595) and `runtime/trace.rs`, and `rrd-observation` (582). No crate has a `dev` or internal-build feature; the features are `full`, `edge`, `crash-test`, `cld-parquet`, `cld-vortex` and `cluster-transfer`.
+
+Target: each crate's development-only code is in its `dev/` folder behind a `dev` feature, and one workspace feature on `rrflow-cli` turns them all on for the internal build. Code that a released engine needs (the audit chain, the public diagnostic operations) is not development code and stays in its feature folder. See 6.9 item 2.
+
+### 6.8 Order of work
+
+One pull request per package. A package is complete when nothing of the old shape remains and the proof in 6.10 holds; a package that cannot be completed is not opened.
+
+| # | Package | Removes |
+|---|---|---|
+| 1 | Repair `main` (pull request 511, POAM-094) | the red nightly |
+| 2 | One architecture manifest and one checker (6.11) | the path tables repeated in two test files, four CI scripts, two script tests and a baseline, all of which the kernel move had to edit by hand |
+| 3 | Dead code: `rrd-maintenance`, the empty folders, `rrflow-lab-experiments`, and the 29 files that still say "estate" | unconsumed crates and the retired name |
+| 4 | Foundation: `rrd-contract` → `foundation/rrflow-contract`, `rrflow-arrow` → `foundation/`, one reasoning-tree definition | the duplicate type set |
+| 5 | `rrd-lsm` → `storage/rrflow-lsm`; `rrflow-cld` → `storage/` | `persistence/` |
+| 6 | `rrflow-kv` extracted, with the `VolatileStore` rename | the misnamed rrflowMX store |
+| 7 | `rrflow-tx` extracted from the store and the engine | transaction logic in two crates |
+| 8 | The rest of `rrd-store` → `storage/rrflow-db` | `rrd-store` |
+| 9 | Compute renames: `rrflow-ql`, `rrflow-vector`, `rrflow-inference`, `rrflow-attunement` | `rrd-*` in tier 2 |
+| 10 | `rrflow-mx` gathered; `rrflow-engram`, `rrflow-operator-knowledge`, `rrflow-security`, `rrflow-observation` moved and renamed | scattered memory code, `authority/`, `operations/` |
+| 11 | `rrflow-cx` and `rrflow-cx-operator` | `rrd-cluster`, `rrd-kubernetes` |
+| 12 | `rrflow-engine`: the 6.4 folders, tests out of `src` | the flat 54-module engine |
+| 13 | Interfaces: `rrflow-server`, `rrflow-client`, the CLI, MCP and edge adapters | `transport/`, `adapters/` |
+| 14 | Connectome: `features/` named for the engine folders of 6.4, client repinned | the five organizing schemes of section 1 |
+
+Packages 4 to 13 each exceed the 400-line warning because a rename touches every import. They are moves, reviewed as renames.
+
+### 6.9 Not yet measured
+
+Each item is settled by reading code at the start of the package that needs it, and the package's journal records the result. None is assumed.
+
+1. The two reasoning-tree files differ in 269 lines. Whether those are derive attributes and documentation or behavior decides whether the kernel definition can serve the public schema unchanged (package 4).
+2. Which trace and diagnostic code a released engine needs and which is development-only (packages 2 and 12).
+3. Whether a binary, test or CI lane uses `rrflow-lab-experiments` (package 3).
+4. Which rows of `rrd-maintenance` the [context-maintenance record](../reference/context/context-maintenance.md) requires to be covered elsewhere before removal (package 3).
+5. The file-level split of `access/runtime_state.rs` between `rrflow-kv` and `rrflow-tx`, and which engine transaction functions need `RrdEngine` state (packages 6 and 7).
+6. Whether time-series and geospatial capability exist in code, as the system overview already notes.
+7. The module graph in 6.3 comes from a text scan of `crate::` and `super::` paths. It misses glob imports. Package 2 replaces it with a graph from the compiler.
+
+### 6.10 Proof of no regression, every package
+
+- `cargo check --workspace --all-targets --locked` is clean and `Cargo.lock` changes only in package names.
+- The list of test names from `cargo test --workspace -- --list`, with crate and module prefixes mapped by the package's rename table, is identical before and after. No test is removed, ignored or renamed apart from its path.
+- `cargo test --workspace --locked` passes on the author's host, and the candidate gate passes.
+- The OpenAPI digest constant is unchanged and every generated projection regenerates with no difference.
+- After the merge the nightly full matrix is started by hand on the new `main`, and the next package does not open until it is green.
+
+### 6.11 Enforcement
+
+One file, `crates/architecture.toml`, is the only place that lists each crate's tier, folder and allowed dependencies, the engine folders of 6.4, the golden layout of 6.5 and the size limits. One checker reads it and fails with a hard error on:
+
+- a crate outside its folder, a crate name that is not `rrflow-<name>`, or a dependency on a higher tier;
+- an engine folder importing another component's crate directly;
+- a module named `utils`, `common`, `helpers` or `misc`; a `mod.rs`; a `#[path]`;
+- a file over its limit, or `lib.rs` holding logic;
+- development code outside `dev/`, or `dev/` code reachable without the `dev` feature.
+
+The existing `workspace_architecture` test and `check_code_shape.py` read the same file instead of their own tables. A violation that exists when a rule lands is recorded with its current measure and may only shrink. Adding a crate, an engine folder or a rule is one edit to the manifest, and the same checker runs in Connectome against the mirrored folder list.

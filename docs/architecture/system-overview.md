@@ -106,8 +106,9 @@ record links/references versus edges, and current protocol gaps.
 Product documentation uses the exact spellings **RRFlow**, **RRD**,
 **`RrdEngine`**, **rrflowDB**, **rrflowKV**, **rrflowLSM**, **rrflowCLD**,
 **rrflowMX**, **rrflowCX**, **rrflowTX**, **rrflowQL**, **RRO**, **RROFLOW**, **LFG**, and **SWAG**.
-Rust package names remain `rrd-*` for internal daemon/runtime boundaries and
-`rrflow-*` for outward product adapters.
+Rust package names are `rrflow-<name>`, and a component's package carries the
+component's name; the `rrd-*` prefix is retired as each package is renamed
+([alignment plan](code-structure-and-conventions.md#6-alignment-plan-of-2026-11-25)).
 
 "Trigger" is reserved for the post-commit engine-event condition above.
 Synchronous functions bound to a proposed transaction are transaction function
