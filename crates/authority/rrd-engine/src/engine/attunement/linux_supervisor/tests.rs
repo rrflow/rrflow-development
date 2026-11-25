@@ -2,6 +2,22 @@ use super::ManagedChild;
 use std::ffi::OsStr;
 use std::time::Duration;
 
+/// The address-space limit every fixture child runs under. It equals the
+/// default parse-worker limit in `rrd-contract`, so a test executable too
+/// large to start here is also too large for the product default.
+const CHILD_ADDRESS_LIMIT: u64 = 512 * 1024 * 1024;
+
+/// A child that died while starting reports an exit status here. Tests that
+/// then terminate the child assert this first, so a dead child is a failure
+/// and not a passing termination.
+fn assert_running(child: &mut ManagedChild) {
+    assert_eq!(
+        child.wait(Duration::from_millis(250)).unwrap(),
+        None,
+        "the child exited while starting"
+    );
+}
+
 #[test]
 fn parent_death_marker_requires_complete_pid() {
     assert_eq!(completed_pid(""), None);
@@ -35,7 +51,7 @@ fn start(case: &str, memory: u64) -> std::io::Result<ManagedChild> {
 fn native_linux_supervisor_enforces_address_limit() {
     let mut child = start(
         "engine::attunement::linux_supervisor::tests::child_checks_limit",
-        256 * 1024 * 1024,
+        CHILD_ADDRESS_LIMIT,
     )
     .unwrap();
     assert_eq!(child.wait(Duration::from_secs(15)).unwrap(), Some(37));
@@ -48,7 +64,7 @@ fn native_linux_supervisor_kills_child_when_supervisor_process_dies() {
 
     let mut supervisor = start(
         "engine::attunement::linux_supervisor::tests::child_supervises_a_child",
-        512 * 1024 * 1024,
+        CHILD_ADDRESS_LIMIT,
     )
     .unwrap();
     let parent_pid = supervisor.id();
@@ -108,11 +124,14 @@ fn marker_for(pid: u32) -> std::path::PathBuf {
 #[ignore = "subprocess fixture; run by native_linux_supervisor_kills_child_when_supervisor_process_dies"]
 fn child_supervises_a_child() {
     use std::io::Write;
-    let worker = start(
+    let mut worker = start(
         "engine::attunement::linux_supervisor::tests::child_waits",
-        256 * 1024 * 1024,
+        CHILD_ADDRESS_LIMIT,
     )
     .unwrap();
+    // Without a marker the parent test fails: a worker that died at start
+    // must not count as a worker killed by its supervisor's death.
+    assert_running(&mut worker);
     let mut marker = std::fs::OpenOptions::new()
         .write(true)
         .create_new(true)
@@ -128,7 +147,7 @@ fn child_supervises_a_child() {
 fn native_linux_supervisor_terminates_and_reaps_child() {
     let mut child = start(
         "engine::attunement::linux_supervisor::tests::child_waits",
-        256 * 1024 * 1024,
+        CHILD_ADDRESS_LIMIT,
     )
     .unwrap();
     assert_eq!(child.wait(Duration::from_millis(50)).unwrap(), None);
@@ -139,11 +158,12 @@ fn native_linux_supervisor_terminates_and_reaps_child() {
 #[test]
 fn native_linux_supervisor_drop_terminates_owned_child() {
     use std::os::fd::{AsRawFd, FromRawFd, OwnedFd};
-    let child = start(
+    let mut child = start(
         "engine::attunement::linux_supervisor::tests::child_waits",
-        256 * 1024 * 1024,
+        CHILD_ADDRESS_LIMIT,
     )
     .unwrap();
+    assert_running(&mut child);
     // SAFETY: pidfd_open creates a descriptor for this live owned child.
     let fd = unsafe { libc::syscall(libc::SYS_pidfd_open, child.id(), 0) } as i32;
     assert!(
@@ -178,7 +198,7 @@ fn native_linux_worker_survives_requesting_thread_exit() {
     let mut child = std::thread::spawn(|| {
         start(
             "engine::attunement::linux_supervisor::tests::child_waits",
-            256 * 1024 * 1024,
+            CHILD_ADDRESS_LIMIT,
         )
         .unwrap()
     })
@@ -200,7 +220,7 @@ fn child_checks_limit() {
     if unsafe { libc::getrlimit(libc::RLIMIT_AS, &mut limit) } != 0 {
         std::process::exit(41);
     }
-    if limit.rlim_cur != 256 * 1024 * 1024 || limit.rlim_max != 256 * 1024 * 1024 {
+    if limit.rlim_cur != CHILD_ADDRESS_LIMIT || limit.rlim_max != CHILD_ADDRESS_LIMIT {
         std::process::exit(42);
     }
     // SAFETY: an anonymous mapping is requested and its failure is checked.
