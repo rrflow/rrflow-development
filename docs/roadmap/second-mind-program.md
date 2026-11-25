@@ -44,7 +44,7 @@ RRFlow, LFG and SWAG work "truly as one tuned engine", with Connectome as a true
 | Two projects need not share RBAC, with stronger leakage measures once this is proven | Per-engram sessions and authorization | RBAC across a shared brain, then researched leakage controls |
 | Requests, chat and "even my rage" interpreted as constructional data | LFG's prompt hook journal; 743 of the owner's real prompts in `eval/inputs/staging` | Interpretation that feeds plans |
 | Thresholds "where honesty trumps moving forward blindly" | A hook passes a frustration reading to the session | Measured thresholds and a required realignment step |
-| A lexicon that grows, from layman words to specific analyses | Nothing | The lexicon, its analyses and its growth |
+| A lexicon that grows, from layman words to specific analyses | Nothing ([POAM-095](../poam/rrflow-1.0-alpha/poam-095.md)) | Two lexicons (owner, 2026-11-25): one for the project and the AI working in it, and a separate one for the second brain; their analyses and growth |
 | Real industry signs of reward hacking | Repository rules against hiding failures | A researched catalogue and automatic checks |
 
 ### Measurement
