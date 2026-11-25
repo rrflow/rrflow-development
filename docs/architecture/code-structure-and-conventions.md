@@ -231,7 +231,7 @@ A crate depends only on crates in a lower tier, or in its own tier where the tab
 
 `rrd-cluster` sits below the engine today (it depends on `rrd-lsm`, `rrd-store` and the kernel, and the engine composes it behind the `cluster-transfer` feature), so `rrflow-cx` is tier 3 and stays optional. The Kubernetes operator has no consumer and depends only on the contract and kernel, so it is an interface-tier crate.
 
-Removed, each in the pull request named in 6.8: `rrd-maintenance` (no consumer; one file of 1,556 lines), the empty untracked folders `crates/authority/rrd-estate/` and `engine/estate_control/`, and `rrflow-lab-experiments` if 6.9 item 3 confirms it has no user.
+Removed, each in the pull request named in 6.8: `rrd-maintenance` (no consumer; one file of 1,556 lines) and the empty untracked folders `crates/authority/rrd-estate/` and `engine/estate_control/`. `rrflow-lab-experiments` stays: no crate depends on it, but it is a binary with its own CI test (`provider_compatibility` in `ci-reusable.yml`).
 
 ### 6.3 Component boundaries, measured
 
@@ -253,7 +253,7 @@ Removed, each in the pull request named in 6.8: `rrd-maintenance` (no consumer; 
 
 **`rrflow-mx` is gathered.** Today the agent memory and knowledge behavior is in `rrd-engine` (`engine/knowledge.rs` 378 lines, `memory_engram.rs` 440, `context/` 1,136, `task.rs` 678, `task_assessment.rs` 616, `project_map.rs` 420) and in the contract (`knowledge_tree`, `knowledge`, `memory_context`, `memory_engram`). The crate takes the logic that does not need `RrdEngine` state; the engine keeps a `mx/` folder that calls it.
 
-**The reasoning tree has one definition.** `rrd-contract/src/reasoning_tree.rs` (679 lines) and `rrflow-kernel/src/reasoning_tree.rs` (654) declare the same 22 public items; the contract adds `ReasoningReadStamp`. The contract depends on the kernel only in tests, and one test parses the same JSON into both. The kernel keeps the definition and the contract re-exports it. See 6.9 item 1.
+**The reasoning tree has one definition.** `rrd-contract/src/reasoning_tree.rs` (679 lines) and `rrflow-kernel/src/reasoning_tree.rs` (654) declare the same 22 public items; the contract adds `ReasoningReadStamp`. The contract depends on the kernel only in tests, and one test parses the same JSON into both. The two are not copies: the contract's types identify things with `CanonicalId` and report `ContractError`, and the kernel's use `RuntimeId` and `RuntimeType` and report the kernel `Error`. One definition therefore needs one identifier type first. Package 4 makes the kernel the owner of the identifier and of the tree, and the contract depends on the kernel and re-exports both with its schema derive. See 6.9 item 1.
 
 ### 6.4 The engine pulls each crate by name
 
@@ -324,7 +324,7 @@ One pull request per package. A package is complete when nothing of the old shap
 |---|---|---|
 | 1 | Repair `main` (pull request 511, POAM-094) | the red nightly |
 | 2 | One architecture manifest and one checker (6.11) | the path tables repeated in two test files, four CI scripts, two script tests and a baseline, all of which the kernel move had to edit by hand |
-| 3 | Dead code: `rrd-maintenance`, the empty folders, `rrflow-lab-experiments`, and the 29 files that still say "estate" | unconsumed crates and the retired name |
+| 3 | Dead code: `rrd-maintenance`, the empty folders, and the 29 files that still say "estate" | unconsumed crates and the retired name |
 | 4 | Foundation: `rrd-contract` → `foundation/rrflow-contract`, `rrflow-arrow` → `foundation/`, one reasoning-tree definition | the duplicate type set |
 | 5 | `rrd-lsm` → `storage/rrflow-lsm`; `rrflow-cld` → `storage/` | `persistence/` |
 | 6 | `rrflow-kv` extracted, with the `VolatileStore` rename | the misnamed rrflowMX store |
@@ -343,9 +343,9 @@ Packages 4 to 13 each exceed the 400-line warning because a rename touches every
 
 Each item is settled by reading code at the start of the package that needs it, and the package's journal records the result. None is assumed.
 
-1. The two reasoning-tree files differ in 269 lines. Whether those are derive attributes and documentation or behavior decides whether the kernel definition can serve the public schema unchanged (package 4).
+1. The two reasoning-tree files differ in 269 lines, classified on 2026-11-25 as identifier types, error types, derives and comments. Not yet read: whether `CanonicalId` and `RuntimeId` accept exactly the same values. If they do not, package 4 records each difference and which rule the single type keeps.
 2. Which trace and diagnostic code a released engine needs and which is development-only (packages 2 and 12).
-3. Whether a binary, test or CI lane uses `rrflow-lab-experiments` (package 3).
+3. Settled on 2026-11-25: `rrflow-lab-experiments` has a CI test and stays.
 4. Which rows of `rrd-maintenance` the [context-maintenance record](../reference/context/context-maintenance.md) requires to be covered elsewhere before removal (package 3).
 5. The file-level split of `access/runtime_state.rs` between `rrflow-kv` and `rrflow-tx`, and which engine transaction functions need `RrdEngine` state (packages 6 and 7).
 6. Whether time-series and geospatial capability exist in code, as the system overview already notes.

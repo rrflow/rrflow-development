@@ -17,7 +17,7 @@ Current behavior: the structure record proposed tiers under the `rrd-*` naming r
 - A folder for each of the engine's 54 modules, named for the crate it pulls.
 - One layout inside every crate, a `dev/` folder and feature for development code, and a `lifecycle/` folder for start, serve, pause and stop.
 - Fourteen packages in order, the proof each must give, and one manifest with one checker to enforce the result.
-- Seven things not yet measured, each tied to the package that settles it.
+- Seven things not yet measured when the plan was first written, each tied to the package that settles it. Two were then measured the same day: `rrflow-lab-experiments` has a CI test and stays, and the two reasoning trees differ in identifier and error types, so they are not copies.
 
 ## Measurements
 
