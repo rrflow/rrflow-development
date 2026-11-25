@@ -533,6 +533,126 @@ fn prompt_flights_survive_reopen_and_are_visible_in_the_temporal_graph() {
     assert_eq!(read.flight, launched.flight);
 }
 
+/// A claim in the packet takes a rank and gets no use edge, so the edges'
+/// ranks have a gap. The flight must still read back whole.
+#[test]
+fn a_flight_whose_context_ranks_a_claim_among_records_reads_back_whole() {
+    let (_root, engine) = isolated_engine();
+    let lease = session(&engine, "flight-sparse-rank-session");
+    let note = CanonicalId::new("note").unwrap();
+    let table = |model| DataTableSchema {
+        model,
+        mode: DataSchemaMode::Schemaless,
+        properties: BTreeMap::new(),
+        allow_additional_properties: false,
+    };
+    let record = |name: &str, body: &str| TransactionMutation::PutRecord {
+        reference: DataReference {
+            kind: note.clone(),
+            id: CanonicalId::new(name).unwrap(),
+        },
+        valid_from: 1_100,
+        valid_to: None,
+        properties: BTreeMap::from([("body".into(), QueryValue::String(body.into()))]),
+    };
+    let mutations = vec![
+        TransactionMutation::PutSchema {
+            registry: DataSchemaRegistry {
+                revision: 1,
+                migration: "install sparse rank fixture".into(),
+                organisation: DataEngramOrganisation::default(),
+                tables: BTreeMap::from([
+                    (note.clone(), table(DataLogicalModel::Document)),
+                    (
+                        CanonicalId::new("claim").unwrap(),
+                        table(DataLogicalModel::ReasoningClaim),
+                    ),
+                ]),
+                records: BTreeMap::new(),
+                relations: BTreeMap::new(),
+                events: BTreeMap::new(),
+            },
+        },
+        record("alpha", "Restore the durable session from its token."),
+        record("beta", "Rotate credentials only after session recovery."),
+        TransactionMutation::AssertClaim {
+            subject: CanonicalId::new("project-alpha").unwrap(),
+            predicate: CanonicalId::new("status").unwrap(),
+            object: "session recovery session recovery is operational".into(),
+            valid_from: 1_100,
+            tx_time: 1_100,
+            producer: CanonicalId::new("agent-test").unwrap(),
+            confidence: Some(0.9),
+        },
+    ];
+    let transaction = engine
+        .begin_transaction(
+            &lease.session_id,
+            &lease.token,
+            &BeginTransaction {
+                scope: CanonicalId::new("data").unwrap(),
+                timeout_ms: 1_000,
+            },
+            &mutation_context(
+                &id("flight-sparse-begin"),
+                "request-sparse-begin",
+                "operation-sparse-begin",
+            ),
+            1_050,
+        )
+        .unwrap();
+    engine
+        .commit_transaction(
+            &lease.session_id,
+            &lease.token,
+            &transaction.transaction_id,
+            &id("flight-sparse-commit"),
+            &CommitTransaction {
+                operation_sha256: rrd_contract::transaction_operation_sha256(&mutations),
+                mutations,
+            },
+            1_100,
+            "request-sparse-commit",
+            "operation-sparse-commit",
+        )
+        .unwrap();
+
+    let launched = engine
+        .launch_prompt_flight(
+            &lease.session_id,
+            &lease.token,
+            &id("flight-sparse"),
+            &launch_request("session recovery", PromptFlightContextMode::Pruned),
+            1_300,
+            "request-flight-sparse",
+            "operation-flight-sparse",
+        )
+        .unwrap();
+    let ranks: Vec<u64> = launched.flight.uses.iter().map(|used| used.rank).collect();
+    assert!(!ranks.is_empty(), "the fixture's records are in the packet");
+    assert_ne!(
+        ranks,
+        (1..=ranks.len() as u64).collect::<Vec<_>>(),
+        "the claim takes a rank, so the record ranks have a gap"
+    );
+
+    let read = engine
+        .read_prompt_flight(
+            &lease.session_id,
+            &lease.token,
+            &ReadPromptFlight {
+                scope: INSTANCE_SCOPE.into(),
+                flight_id: launched.flight.record.flight_id.clone(),
+                max_storage_keys: 4_096,
+            },
+            2_000,
+            "request-flight-sparse-read",
+            "operation-flight-sparse-read",
+        )
+        .unwrap();
+    assert_eq!(read.flight, launched.flight);
+}
+
 #[test]
 fn prompt_flight_operations_require_their_exact_grants() {
     let (_root, engine) = isolated_engine();
@@ -809,8 +929,9 @@ fn each_prompt_is_a_graph_that_rrflowql_traverses_and_reads_cost_only_the_flight
             .read_evidence
             .paths
             .iter()
-            .find(|path| path.path == ReadAccessPath::RelationVersions)
-            .map(|path| path.keys_examined)
+            .find(|path| path.path == ReadAccessPath::AdjacencyVersions)
+            .expect("the stored flight has outgoing use edges")
+            .keys_examined
     };
     assert_eq!(relation_path(&before), relation_path(&after));
 }

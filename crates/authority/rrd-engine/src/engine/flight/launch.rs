@@ -413,9 +413,9 @@ impl RrdEngine {
 
     /// Stamped direct reads of one flight. The first read is the row's own
     /// identity history; it fixes the commit cursor and how many edges and
-    /// events that commit wrote. The second read, at the same stamp, names each
-    /// edge by its deterministic identity and each event by its log cursor, so
-    /// the cost is the flight's own size and never the engram's.
+    /// events that commit wrote. At the same stamp, read the flight's outgoing
+    /// use edges and address its events by log cursor. Record ranks may have
+    /// gaps when non-record items occur in the same context packet.
     fn read_flight_versions(
         &self,
         read: &ReadStamp,
@@ -468,10 +468,11 @@ impl RrdEngine {
             .and_then(|cursor| cursor.checked_add(1))
             .ok_or_else(|| flight_storage("event cursor overflows u64"))?;
         let mut sources = Vec::new();
-        for rank in 1..=record.use_count {
-            sources.push(RuntimeVersionedSource::Identity {
-                model: RuntimeLogicalModel::GraphRelation,
-                reference: use_reference(&record.flight_id, rank)?,
+        if record.use_count > 0 {
+            sources.push(RuntimeVersionedSource::Adjacency {
+                relation: use_kind()?,
+                node: reference.clone(),
+                direction: rrd_store::RuntimeAdjacencyDirection::Outgoing,
             });
         }
         for offset in 0..record.event_count {
