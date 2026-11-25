@@ -174,6 +174,7 @@ This implements S6 of the [kernel contract](../roadmap/kernel-contract.md#36-s6-
 1. **Structure:** ordered by the owner on 2026-11-24 ("go") and 2026-11-25. Section 6 is the plan.
 2. **`rrd-cluster`, `rrd-kubernetes` and `pgvector`:** decided 2026-11-13. They are product scope for the shippin panel and for synchronizing with the cloud offering, comparable to SurrealDB Cloud or ArangoDB's managed service and backed by shippinAI. They move to `crates/cloud/` under K15.
 3. **Limits:** 800 lines for Rust and 400 for TS/TSX are the proposed caps. The default is these values.
+4. **One repository:** decided 2026-11-25. The storage engines and foundation crates stay in this repository for now, each defined as a clearly bounded workspace crate. Section 6.12 is the rule that keeps each one able to leave later.
 
 ## 6. Alignment plan of 2026-11-25
 
@@ -350,6 +351,9 @@ Each item is settled by reading code at the start of the package that needs it, 
 5. The file-level split of `access/runtime_state.rs` between `rrflow-kv` and `rrflow-tx`, and which engine transaction functions need `RrdEngine` state (packages 6 and 7).
 6. Whether time-series and geospatial capability exist in code, as the system overview already notes.
 7. The module graph in 6.3 comes from a text scan of `crate::` and `super::` paths. It misses glob imports. Package 2 replaces it with a graph from the compiler.
+8. Whether `RrflowKvStore` and `StorageEngine` land in `rrflow-kv`. If they do, the `rrflow-cld` test of 6.12 conforms once it names `rrflow-kv`; if not, the test moves to `rrflow-db` (package 6).
+9. Which of the kernel product types that `rrd-store` uses are needed by the `rrflow-kv` part, and so whether `rrflow-kernel` as a whole is a fit dependency for a standalone key-value store or its `digest` module must be separable (package 6).
+10. Rule 3 of 6.12 has not been run for any crate (package 2).
 
 ### 6.10 Proof of no regression, every package
 
@@ -367,6 +371,30 @@ One file, `crates/architecture.toml`, is the only place that lists each crate's 
 - an engine folder importing another component's crate directly;
 - a module named `utils`, `common`, `helpers` or `misc`; a `mod.rs`; a `#[path]`;
 - a file over its limit, or `lib.rs` holding logic;
-- development code outside `dev/`, or `dev/` code reachable without the `dev` feature.
+- development code outside `dev/`, or `dev/` code reachable without the `dev` feature;
+- a standalone crate breaking a rule of 6.12, or a first-party dependency declared anywhere but the root manifest.
 
 The existing `workspace_architecture` test and `check_code_shape.py` read the same file instead of their own tables. A violation that exists when a rule lands is recorded with its current measure and may only shrink. Adding a crate, an engine folder or a rule is one edit to the manifest, and the same checker runs in Connectome against the mirrored folder list.
+
+### 6.12 One repository, standalone crates
+
+The owner decided on 2026-11-25 that the storage engines and foundation crates stay in this repository for now. There is one Cargo workspace, one `Cargo.lock` and one CI. A crate that could later become its own repository is marked `standalone` in `crates/architecture.toml` and obeys four rules, each a hard error in the checker:
+
+1. Its first-party dependencies are only other standalone crates.
+2. Its dev-dependencies obey rule 1 as well, so its tests need no product crate.
+3. `cargo test -p <crate> --locked` passes with no other workspace crate's features enabled.
+4. Every first-party dependency in the workspace is declared once, in the root `[workspace.dependencies]`, and consumed with `workspace = true`. Moving a standalone crate out is then one edit: its root entry changes from `path` to `git` with a revision.
+
+| Standalone crate | First-party dependencies today | Measured at `058f459a8` |
+|---|---|---|
+| `rrflow-kernel` | none | conforms to rules 1 and 2 |
+| `rrflow-arrow` | none | conforms to rules 1 and 2 |
+| `rrflow-lsm` | `rrflow-kernel` | conforms; all 7 kernel references are to `digest` (a 249-line module) |
+| `rrflow-cld` | `rrflow-arrow`; dev-dependency `rrd-store` | breaks rule 2: `tests/stamped_history.rs` uses `RrflowKvStore` and `StorageEngine` |
+| `rrflow-kv` | not a crate yet (package 6) | `rrd-store`, which holds it, uses kernel product types (`RuntimeLogicalModel` 18 references, `ScopeId` 14) |
+
+Not standalone: `rrflow-tx`, `rrflow-db` and everything above them. `rrflow-vector` depends on `rrd-store` (8 references, 7 of them its `Error`), so the vector index cannot stand alone today.
+
+Rule 4 is broken widely today: 84 first-party dependency lines name a `path` directly and 18 use `workspace = true`; the root manifest declares only `rrflow-kernel`. Package 2 moves all of them to the root, which changes no code and no `Cargo.lock` entry.
+
+This decision agrees with the rule in `AGENTS.md` that all first-party engine code lives in this repository, so that rule does not change.
