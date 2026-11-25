@@ -404,9 +404,12 @@ mod tests {
         let policy = profile.inventory_policy.compile().unwrap();
         let budget = WorkBudget::new(policy.source.limits.elapsed_ms);
         let mut git = GitInputs::read_for_selected_path(&root, &policy, &budget).unwrap();
+        // Each rewrite changes the file's length. A rewrite of equal length
+        // inside one timestamp step leaves the observation unchanged
+        // (POAM-094); this test owns which error an observed drift maps to.
         let error = git
             .read_optional_after_observation(&root.join(".gitignore"), &budget, || {
-                std::fs::write(directory.path().join(".gitignore"), b"alpha.tmp\n").unwrap();
+                std::fs::write(directory.path().join(".gitignore"), b"alpha.t\n").unwrap();
                 Ok(())
             })
             .unwrap_err();
