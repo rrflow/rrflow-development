@@ -26,11 +26,12 @@ RRFlow — AI governance, reasoning, recall, and context platform
 ├── rrflowQL — multimodal query plans and bounded DataFusion execution
 │   └── one TX read stamp → rrflowDB scan and pushdown traits
 ├── rrflowTX — bitemporal visibility, transaction lifecycle and conflicts
-├── rrflowDB — project catalogue, multimodal records and tier placement
-│   ├── rrflowMX — volatile working context at a read stamp
-│   └── rrflowKV — bounded persistence access
-│       ├── rrflowLSM — WAL, mutable frontier and recoverable versions
-│       └── rrflowCLD — immutable columnar generations behind a backend trait
+├── rrflowDB — multi-model database: catalogue, records and tier placement
+├── rrflowMX — agent memory and knowledge on the same engine as rrflowDB
+├── rrflowKV — embedded, versioned, ACID key-value database beneath both
+│   ├── rrflowLSM — WAL, mutable frontier and recoverable versions
+│   └── rrflowCLD — immutable columnar generations behind a backend trait
+├── rrflowCX — optional connections and distributed services for hosted scale
 │
 ├── RRFlow vector subsystem
 │   └── canonical vectors → filtered candidates → HNSW/quantized indexes
@@ -64,12 +65,14 @@ record links/references versus edges, and current protocol gaps.
 | **canonical runtime log** | The ordered source of truth for committed RRFlow changes from which temporal snapshots are resolved. | Semantic types in `rrflow-kernel`, persistence mapping in `rrd-store`, and durable bytes in rrflowKV. |
 | **rrflowDB** | The pure Rust multimodal database for each project's engram. Its facade owns the catalogue, schema and relationships, exposes scan and pushdown capabilities, and chooses placement for governed knowledge, reasoning state and indexes. PostgreSQL compatibility is a product requirement. | `RrdEngine` composes semantic state and rrflowKV supplies durability. PostgreSQL compatibility and a unified hot/cold scan remain unqualified. [DB capability record](../reference/data/rrflowdb-capability.md) |
 | **rrflowTX** | Under `RrdEngine`, assigns the knowledge cursor and read stamp, enforces valid-time and knowledge-time visibility, coordinates begin/commit/abort and rejects conflicting writes. | Session transactions and semantic commit planning implement parts of this responsibility today. Packaging and scheduling are implementation choices. [Database semantics](../reference/data/database-semantics.md) |
-| **rrflowKV** | Bounded, consistent persistence access beneath rrflowDB. DB owns placement and route selection. TX owns transaction visibility. | `rrd-store` and `rrd-lsm` supply the current durable path. |
+| **rrflowKV** | A low-level, versioned, embedded, ACID-compliant key-value database for Rust (owner, 2026-11-24). It is usable on its own and gives rrflowDB and rrflowMX bounded, consistent persistence. DB owns placement and route selection. TX owns transaction visibility. | `rrd-store` and `rrd-lsm` supply the current durable path. rrflowKV is a module inside `rrd-store`, not yet a crate that can be embedded alone, and it depends on the store's `access` layer in both directions. |
 | **rrflowLSM** | Mutable durable tier behind rrflowKV, responsible for WAL, memtable, immutable segments, flush, compaction and recovery. The design calls for deterministic export of a settled range for CLD publication. Fjall is the capability and performance baseline. | The native `rrd-lsm` implementation has a [capability inventory](../reference/storage/rrflowlsm-fjall-parity.md) and open [configuration gaps](../poam/rrflow-1.0-alpha/poam-077.md). Full parity and superior performance remain unverified. |
 | **rrflowCLD** | Immutable columnar history with source coverage, bounded point reads and projected scans. rrflowDB selects the tier through rrflowKV. The target `ColdStorageBackend` supports Vortex as the primary candidate and Parquet as the archival/reference backend. Both must pass the same acceptance workload before selecting a default. | Generation publication and authenticated readback use the `rrflow-cld` storage crate. Receipts select the reader. Parquet is bundled and Vortex requires its build feature. A combined hot/cold QL scan remains open. [Storage gap](../poam/rrflow-1.0-alpha/poam-090.md) · [S9 lifecycle](../roadmap/kernel-contract.md#39-s9-memory-tiers-and-consolidation) |
-| **rrflowMX** | Volatile, project-scoped working memory for active context and transaction-private scratch. Published cache entries refer to committed snapshots. Focus shifts may discard or refill them while existing readers finish. | The existing `RrflowMxStore` is a process-local MVCC backend behind a mutex. A concurrent focus cache in the installed durable engine remains a target. |
+| **rrflowMX** | The memory and knowledge layer for AI agents (owner, 2026-11-24). It runs on the same engine as rrflowDB and stores persistent knowledge graphs, provenance and temporal facts there. It shares rrflowDB's document, graph, vector, full-text, time-series, geospatial and relational capabilities and is managed through clients such as Connectome. It was never folded into rrflowKV. | No crate or module carries this boundary. Its behavior is spread over `rrd-engine` (`engine/knowledge.rs`, `engine/memory_engram.rs`, `engine/context/`), `rrd-store` (`repository/`, `access/proof_nodes.rs`, `access/semantic_commit/`) and `rrd-engram`. Time-series and geospatial capability have not been verified in code. The type named `RrflowMxStore` is the volatile storage profile below, not this layer. |
+| **volatile storage profile** | The non-durable implementation of the semantic storage port, used for conformance and volatile execution. Records written before 2026-11-24 call this rrflowMX. | `RrflowMxStore` in `rrd-store/src/engine.rs`, a process-local MVCC backend behind a mutex. It keeps that type name until a rename package lands. |
+| **rrflowCX** | Connections and distributed services (owner, 2026-11-24): the optional layer that lets RRFlow scale onto the hosted offering with free and paid tiers. It is never required for local readiness and follows the internal Connectome build and developer tools in order. | `rrd-cluster` (replication and transfer, composed by `RrdEngine` behind a feature) and `rrd-kubernetes` (operator, no consumer yet). Neither is named or grouped as rrflowCX. [Structure record](code-structure-and-conventions.md) |
 | **RRFlow temporal graph** | Typed records and relations resolved from the canonical log at one runtime read stamp and valid-time coordinate; never a separate graph database. | Kernel graph values, persistence adjacency, native query operators, and `RrdEngine` authorization. |
-| **RRFlow memory** | Durable temporal claims, records, relations, schemas, vectors, and evidence owned by the same engine; never a separate memory store. The "memory database" is rrflowDB itself. | rrflowDB semantic data composed through `RrdEngine`. |
+| **RRFlow memory** | Durable temporal claims, records, relations, schemas, vectors, and evidence owned by the same engine; never a separate memory store. rrflowMX is the layer that presents it to agents, on the same engine and storage as rrflowDB. | rrflowDB semantic data composed through `RrdEngine`. |
 | **RRO** | Reason Ready Object: one persisted, versioned unit of knowledge the engine reasons over, such as a record, relation, claim, vector, or reasoning node, read at one stamp with its evidence. The abbreviation names no component, role, or provisioning path. | Kernel values in `rrflow-kernel`; persistence through `rrd-store`; no type carries this name. |
 | **RROFLOW** | The recursive self-improvement configuration of RRFlow: committed reasoning outcomes, verdicts, and corrections propose better rules, exemplars, claims or model candidates; each promotion is an authorized, versioned, reversible engine change, never an automatic hook. | Unimplemented. The [learning contract](../reference/inference/learning/controller-training.md) binds G-06 candidate qualification and I-03/I-07 governed improvement; Python experiments cannot own runtime state or promotion. |
 | **rrflowQL** | RRFlow Query Language: syntax, AST, binding, logical and physical planning, and execution. In the owner's terms it carries "the planning and reasoning graphs" (2026-11-11): the engine plans, runs and replays reasoning through rrflowQL, and the graphs themselves are rrflowDB data families. | `rrd-query`. Today context assembly bypasses it ([one-engine joins plan](../roadmap/one-engine-joins-engineering-plan.md), J3 to J6). |
@@ -102,7 +105,7 @@ record links/references versus edges, and current protocol gaps.
 
 Product documentation uses the exact spellings **RRFlow**, **RRD**,
 **`RrdEngine`**, **rrflowDB**, **rrflowKV**, **rrflowLSM**, **rrflowCLD**,
-**rrflowMX**, **rrflowTX**, **rrflowQL**, **RRO**, **RROFLOW**, **LFG**, and **SWAG**.
+**rrflowMX**, **rrflowCX**, **rrflowTX**, **rrflowQL**, **RRO**, **RROFLOW**, **LFG**, and **SWAG**.
 Rust package names remain `rrd-*` for internal daemon/runtime boundaries and
 `rrflow-*` for outward product adapters.
 
@@ -149,6 +152,27 @@ execution path. An upstream dependency namespace that happens to contain the
 word `legacy` is likewise not an RRFlow surface, but it must remain isolated
 behind its owning adapter.
 
+## Owner definitions of 2026-11-24
+
+The repository owner restated four components on 2026-11-24, and this record
+now carries those meanings: rrflowKV is a standalone embedded key-value
+database, rrflowMX is the agent memory and knowledge layer, rrflowCX is the
+connections and distributed-services layer, and rrflowDB remains the
+multi-model database. The owner also ruled that no new code is written until
+the existing code is aligned to this map without regression.
+
+Before that date this record and its dependants used rrflowMX for the volatile
+storage profile. The following records still do and are corrected with the
+package that renames `RrflowMxStore`: the root [README](../../README.md), the
+[alpha objectives](../objectives/rrflow-1.0-alpha.md) (OBJ-03), the
+[instance topology](instance-topology.md), the
+[engine data flow](engine-data-flow.md), the
+[kernel contract](../roadmap/kernel-contract.md),
+[database semantics](../reference/data/database-semantics.md) and the
+[deployment profiles](../reference/deployment/modes.md). Read "rrflowMX" in
+those records as the volatile storage profile until then. No objective,
+roadmap or POA&M status changes with this correction.
+
 ## Persistence and memory boundary
 
 rrflowDB is the database; a persistent project engram is the governed data it
@@ -174,7 +198,7 @@ mutable tier inside a persistent rrflowDB instance. The pure Rust identity is
 a database-engine requirement, not an audited claim that every optional adapter
 or transitive platform dependency is implemented in Rust.
 
-The target durable instance includes an rrflowMX working set with a lock-free
+The target durable instance includes a volatile working set with a lock-free
 read path. Measure resident reads and first reads after a focus change
 separately. Sub-millisecond resident access is a target to demonstrate under
 concurrent promotion and eviction on declared hardware. rrflowDB can
