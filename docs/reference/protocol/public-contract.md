@@ -96,7 +96,7 @@ binds it with `x-rrd-signal-catalogue-sha256`. The
 [generated signal reference](signal-catalogue.md) and five SDK constants are
 derived from those fields. They expose stable diagnostic, trace, and metric
 identity for tooling; they neither activate telemetry nor report runtime state.
-`crates/authority/rrd-engine/kernel/src/telemetry.rs` remains the sole semantic owner. Its
+`crates/foundation/rrflow-kernel/src/telemetry.rs` remains the sole semantic owner. Its
 test-verified golden projection drives the private generated contract source;
 the focused parity test compares OpenAPI back to the live kernel value.
 
@@ -269,7 +269,7 @@ D-01 engram/configuration slice.
   `crates/transport/rrd-contract/src/lib.rs`
 - Installed identity, deployment, and effective-configuration contract:
   `crates/transport/rrd-contract/src/deployment.rs`
-- Signal semantic owner: `crates/authority/rrd-engine/kernel/src/telemetry.rs`
+- Signal semantic owner: `crates/foundation/rrflow-kernel/src/telemetry.rs`
 - Private generated contract projection:
   `crates/transport/rrd-contract/src/generated/signal_catalogue.rs`
 - Generated signal reference: `docs/reference/protocol/signal-catalogue.md`

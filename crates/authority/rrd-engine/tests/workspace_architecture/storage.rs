@@ -372,11 +372,11 @@ pub(super) fn schema_catalogue_has_one_explicit_logical_model_authority() {
     let metadata = workspace_metadata();
     let core_schema = module_source(
         &metadata.root,
-        "crates/authority/rrd-engine/kernel/src/schema.rs",
+        "crates/foundation/rrflow-kernel/src/schema.rs",
     );
     let core_runtime = module_source(
         &metadata.root,
-        "crates/authority/rrd-engine/kernel/src/runtime.rs",
+        "crates/foundation/rrflow-kernel/src/runtime.rs",
     );
     let public_contract = module_source(&metadata.root, "crates/transport/rrd-contract/src/lib.rs");
 
@@ -430,7 +430,7 @@ pub(super) fn vector_writes_require_one_canonical_collection_address() {
     let required_address_sources = [
         (
             "kernel runtime vector",
-            "crates/authority/rrd-engine/kernel/src/data.rs",
+            "crates/foundation/rrflow-kernel/src/data.rs",
             "pub collection: VectorCollectionAddress,",
         ),
         (
@@ -497,7 +497,7 @@ pub(super) fn vector_writes_require_one_canonical_collection_address() {
 
     let runtime = module_source(
         &metadata.root,
-        "crates/authority/rrd-engine/kernel/src/runtime.rs",
+        "crates/foundation/rrflow-kernel/src/runtime.rs",
     );
     for required in [
         "text(out, &vector.collection.collection_id);",

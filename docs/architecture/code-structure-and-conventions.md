@@ -12,7 +12,7 @@ The owner's words of 2026-11-13: "files that are far too long need to be clearly
 | Area | Measured |
 |---|---|
 | Engine size | 30 crates, 787 `.rs` files, about 204k lines |
-| Long engine files | 61 non-test files over 1,000 lines and 147 over 500. The largest are `rrd-contract/src/lib.rs` (7,669 lines, 261 public types, an 850-line `endpoint_catalogue()`), `rrd-lsm/src/database.rs` (3,056), `rrd-engine/kernel/src/runtime.rs` (2,825) and `rrd-lsm/src/segment/mod.rs` (2,802) |
+| Long engine files | 61 non-test files over 1,000 lines and 147 over 500. The largest are `rrd-contract/src/lib.rs` (7,669 lines, 261 public types, an 850-line `endpoint_catalogue()`), `rrd-lsm/src/database.rs` (3,056), `rrflow-kernel/src/runtime.rs` (2,825) and `rrd-lsm/src/segment/mod.rs` (2,802) |
 | Engine lint and layout rules | No `clippy.toml`, `rustfmt.toml`, `deny.toml` or `[workspace.lints]`; `too_many_arguments` allowed 132 times. `workspace_architecture.rs` enforces the package-to-path map, dependency sets for 7 crates, forbidden edges and vocabulary, but nothing on file size, module style, errors or tier order |
 | Engine module, error and naming patterns | Both `mod.rs` and file-named modules, plus 23 `#[path]` attributes. Errors are hand-written in five styles, with about 125 `Result<_, String>` and 109 `Box<dyn Error>` signatures. About 35 SHA-256 validators and 13 hand-written hex encoders sit beside `rrflow-kernel::digest`. "engram" appears 3,100 times and "engram" 115, with miscased renames such as `InstalledengramRecord` |
 | Engine layering | Group directories do not match dependency tiers: `transport/` holds both the lowest crate (`rrd-contract`) and the highest (`rrd-server`). `rrd-maintenance` and `rrd-kubernetes` have no consumers |
@@ -74,7 +74,7 @@ The owner's words of 2026-11-13: "files that are far too long need to be clearly
 
    Proof: the OpenAPI digest constant is unchanged, every SDK projection regenerates with no diff, and all `rrd-contract` tests pass untouched.
 2. **`rrd-lsm/src/database.rs`** → `database/{options, failpoints, open, transactions, reads, compaction, gc, snapshot}.rs`.
-3. **`rrd-engine/kernel/src/runtime.rs`**, **`rrd-lsm/src/segment/mod.rs`**, **`rrd-engine/kernel/src/trace.rs`**, **`rrd-engine/src/engine/installation.rs`**, **`rrd-store/src/backup.rs`**, **`rrd-store/src/rrflow_kv.rs`** and **`rrd-vector/src/hnsw.rs`**, by the split points recorded in the 2026-11-13 survey.
+3. **`rrflow-kernel/src/runtime.rs`**, **`rrd-lsm/src/segment/mod.rs`**, **`rrflow-kernel/src/trace.rs`**, **`rrd-engine/src/engine/installation.rs`**, **`rrd-store/src/backup.rs`**, **`rrd-store/src/rrflow_kv.rs`** and **`rrd-vector/src/hnsw.rs`**, by the split points recorded in the 2026-11-13 survey.
 4. The remaining files on the ratchet list, largest first.
 
 ## 3. Connectome rules

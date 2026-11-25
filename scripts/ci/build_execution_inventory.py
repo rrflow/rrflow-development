@@ -187,7 +187,7 @@ PACKAGE_GATES: dict[str, tuple[str, ...]] = {
 
 FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
     "Cargo.toml": ("H-05", "J-01", "J-02", "J-03", "J-04", "J-05"),
-    "crates/authority/rrd-engine/kernel/src/claim.rs": (
+    "crates/foundation/rrflow-kernel/src/claim.rs": (
         "C-03",
         "G-02",
         "G-04",
@@ -195,14 +195,14 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "H-05",
         "J-01",
     ),
-    "crates/authority/rrd-engine/kernel/src/runtime.rs": (
+    "crates/foundation/rrflow-kernel/src/runtime.rs": (
         "C-02",
         "C-03",
         "H-05",
         "I-01",
         "J-01",
     ),
-    "crates/authority/rrd-engine/kernel/src/reasoning_tree.rs": (
+    "crates/foundation/rrflow-kernel/src/reasoning_tree.rs": (
         "B-03",
         "G-01",
         "G-02",
@@ -210,8 +210,8 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "H-01",
         "H-05",
     ),
-    "crates/authority/rrd-engine/kernel/src/trace.rs": ("C-04", "H-05"),
-    "crates/authority/rrd-engine/kernel/src/schema.rs": (
+    "crates/foundation/rrflow-kernel/src/trace.rs": ("C-04", "H-05"),
+    "crates/foundation/rrflow-kernel/src/schema.rs": (
         "C-01",
         "C-02",
         "C-03",
@@ -221,7 +221,7 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "H-12",
         "I-01",
     ),
-    "crates/authority/rrd-engine/kernel/tests/golden.rs": ("C-01", "J-01"),
+    "crates/foundation/rrflow-kernel/tests/golden.rs": ("C-01", "J-01"),
     "crates/persistence/rrd-lsm/src/database.rs": (
         "C-02",
         "C-04",
@@ -632,7 +632,7 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
 }
 
 REMOVE_OR_REWRITE = {
-    "crates/authority/rrd-engine/kernel/src/claim.rs": "derive any producer attribution from the authenticated principal and same-stamp provider representation; an arbitrary actor string cannot authorize, resolve a seat, or persist routed work",
+    "crates/foundation/rrflow-kernel/src/claim.rs": "derive any producer attribution from the authenticated principal and same-stamp provider representation; an arbitrary actor string cannot authorize, resolve a seat, or persist routed work",
     "crates/transport/rrd-contract/src/memory_engram.rs": "rename the ambiguous MemoryEngram contract directly to canonical seat and provider-representation vocabulary while preserving validation, subject-digest redaction, and temporal relation semantics; leave no alias",
     "crates/authority/rrd-engine/src/engine/memory_engram.rs": "move seat planning and commit into one authenticated engine operation, consume the installed specialization, and replace broad snapshot reconstruction with canonical native graph/index access; leave no old module or type alias",
     "crates/authority/rrd-engine/src/operator.rs": "bind claim attribution to canonical authenticated identity and representation semantics rather than accepting Producer.actor as sufficient identity",
@@ -690,7 +690,7 @@ C04_DIRECT_READ_PATHS = {
     "crates/authority/rrd-engine/tests/direct_read_source_closure.rs",
     "crates/authority/rrd-engine/tests/engine_authority.rs",
     "crates/authority/rrd-engine/tests/runtime_query_trace.rs",
-    "crates/authority/rrd-engine/kernel/src/trace.rs",
+    "crates/foundation/rrflow-kernel/src/trace.rs",
     "crates/transport/rrd-client/tests/real_server/main.rs",
     "crates/transport/rrd-contract/fixtures/router-contract-v1.json",
     "crates/transport/rrd-contract/fixtures/websocket-protocol-v1.json",
@@ -849,8 +849,8 @@ PLANNED_PATHS: dict[str, tuple[str, ...]] = {
         "KB-08",
         "J-01",
     ),
-    "crates/authority/rrd-engine/kernel/src/telemetry.rs": ("H-05",),
-    "crates/authority/rrd-engine/kernel/tests/telemetry_contract.rs": ("H-05", "J-02"),
+    "crates/foundation/rrflow-kernel/src/telemetry.rs": ("H-05",),
+    "crates/foundation/rrflow-kernel/tests/telemetry_contract.rs": ("H-05", "J-02"),
     "crates/transport/rrd-contract/src/observability.rs": ("H-05",),
     "crates/transport/rrd-contract/fixtures/observability-v1.json": ("H-05",),
     "crates/transport/rrd-contract/tests/observability_contract.rs": (
