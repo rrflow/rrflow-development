@@ -33,7 +33,7 @@ An agent or a person meeting a project word has no single place that says what i
 
 ## Owning gates
 
-Kernel package K14 names the lexicon; Gate H item H-09 names a baseline lexicon among the prompt graph families.
+H-09 owns the baseline lexicon among the prompt graph families. Kernel package K14 also names the lexicon.
 
 Roadmap owner: [Gate H](../../roadmap/rrflow-1.0/gate-h.md).
 
