@@ -1,6 +1,6 @@
 # Linux supervisor tests run at the product's 512 MiB limit and fail on a dead child
 
-**Status:** repair evidence for the last open failure of the 2026-11-23 nightly
+**Status:** active repair evidence for the last open failure of the 2026-11-23 nightly
 **Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/repository/supervisor-test-limit-512-20261124`
 **Owner:** [CI and runner operations](../../../operations/ci.md) and [Gate C, C-07](../../../roadmap/rrflow-1.0/gate-c.md); alarm [issue 505](https://github.com/rrflow/rrflow-development/issues/505). Follows the [nightly matrix repair](nightly-matrix-repair-20261124.md).
 
