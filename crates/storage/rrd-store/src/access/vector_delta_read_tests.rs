@@ -2,7 +2,7 @@
 //! request's budget and checked against the authenticated versions they name.
 
 use super::*;
-use crate::{RrflowKvStore, RrflowMxStore, StorageEngine};
+use crate::{Repositories, RrflowKvStore, RrflowMxStore, StorageEngine};
 use rrflow_kernel::{
     RuntimeCommit, RuntimeRecord, RuntimeRetirement, RuntimeSchemaRegistry, RuntimeTableSchema,
     RuntimeVector, ScopeId, VectorCollectionAddress, VectorValue,

@@ -1,5 +1,6 @@
 //! Capturing, retaining, validating and restoring catalogue manifests.
 
+use crate::Repositories;
 use super::*;
 
 #[derive(Default)]

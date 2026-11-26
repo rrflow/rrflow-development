@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use rrd_store::{
+use rrd_store::{Repositories, 
     Error, RrflowKvStore, RrflowMxStore, RuntimeReadAccessPath, RuntimeReadBudget,
     RuntimeReadEvidence, RuntimeVersionedSource, StorageEngine,
 };

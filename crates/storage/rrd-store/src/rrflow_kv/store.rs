@@ -1,5 +1,6 @@
 //! Creating, opening and maintaining an rrflowKV store.
 
+use crate::Repositories;
 use super::*;
 
 /// Read-only projection of the formats owned by the initial rrflowKV writer.

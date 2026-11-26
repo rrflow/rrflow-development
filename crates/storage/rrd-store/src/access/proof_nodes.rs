@@ -60,6 +60,7 @@ impl ProofNodes {
 
 #[cfg(test)]
 mod tests {
+    use crate::Repositories;
     use super::*;
     use std::cell::Cell;
 

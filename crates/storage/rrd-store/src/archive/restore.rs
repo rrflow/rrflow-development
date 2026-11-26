@@ -5,7 +5,7 @@ use super::format::{
 };
 use super::receipt::{load_receipt, remove_receipt, restore_paths, write_receipt, RestoreReceipt};
 use crate::filesystem::{AnchorInput, AnchoredPath};
-use crate::{Error, Result, RrflowKvStore, StorageEngine};
+use crate::{Repositories, Error, Result, RrflowKvStore, StorageEngine};
 use rrflow_kernel::{RuntimeCommitOutcome, RuntimeMutation};
 
 pub fn restore_logical_archive_to_new_root(

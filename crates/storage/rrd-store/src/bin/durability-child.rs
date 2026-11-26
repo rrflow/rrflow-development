@@ -8,7 +8,7 @@
 //! durability-child <db-path> <count> <flush|noflush|rrflow-kv-transaction|rrflow-kv-lock>
 //! ```
 
-use rrd_store::{ClaimBatchWriter, ClaimBatchWriterConfig, RrflowKvStore, StorageEngine};
+use rrd_store::{Repositories, ClaimBatchWriter, ClaimBatchWriterConfig, RrflowKvStore, StorageEngine};
 use rrflow_kernel::{
     Claim, DataTransaction, GeoPoint, GeoValue, Predicate, Producer, RuntimeCommit, RuntimeEvent,
     RuntimeEventSchema, RuntimeGeo, RuntimeLogicalModel, RuntimeMutation, RuntimeProperties,

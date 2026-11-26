@@ -1,3 +1,4 @@
+use crate::Repositories;
 use super::*;
 use rrflow_kernel::{RuntimeCommit, RuntimeSchemaRegistry, ScopeId};
 

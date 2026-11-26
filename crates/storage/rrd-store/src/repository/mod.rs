@@ -23,3 +23,55 @@ pub use function::FunctionCatalogueRepository;
 pub use invocation::InvocationRepository;
 pub use projection::ProjectionRepository;
 pub use runtime::{RuntimeDataSnapshotRead, RuntimeRepository};
+
+use crate::StorageEngine;
+
+/// The semantic repositories over a storage port.
+///
+/// The port ([`StorageEngine`]) opens physical transactions and knows nothing
+/// above them. This trait is implemented once for every port, so each backend
+/// runs the same repository code and none can supply its own.
+pub trait Repositories {
+    fn claims(&self) -> ClaimRepository<'_>;
+    fn control(&self) -> ControlRepository<'_>;
+    fn function_catalogue(&self) -> FunctionCatalogueRepository<'_>;
+    fn projections(&self) -> ProjectionRepository<'_>;
+    fn runtime(&self) -> RuntimeRepository<'_>;
+    fn invocations(&self) -> InvocationRepository<'_>;
+}
+
+macro_rules! repositories_over {
+    () => {
+        fn claims(&self) -> ClaimRepository<'_> {
+            ClaimRepository::new(self)
+        }
+
+        fn control(&self) -> ControlRepository<'_> {
+            ControlRepository::new(self)
+        }
+
+        fn function_catalogue(&self) -> FunctionCatalogueRepository<'_> {
+            FunctionCatalogueRepository::new(self)
+        }
+
+        fn projections(&self) -> ProjectionRepository<'_> {
+            ProjectionRepository::new(self)
+        }
+
+        fn runtime(&self) -> RuntimeRepository<'_> {
+            RuntimeRepository::new(self)
+        }
+
+        fn invocations(&self) -> InvocationRepository<'_> {
+            InvocationRepository::new(self)
+        }
+    };
+}
+
+impl<T: StorageEngine> Repositories for T {
+    repositories_over!();
+}
+
+impl Repositories for dyn StorageEngine + '_ {
+    repositories_over!();
+}

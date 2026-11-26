@@ -1,5 +1,5 @@
 use super::*;
-use crate::{DatabaseOptions, RrflowKvStore, RrflowMxStore};
+use crate::{Repositories, DatabaseOptions, RrflowKvStore, RrflowMxStore};
 
 fn seed(store: &dyn StorageEngine) -> Vec<ControlJournalEntry> {
     (1..=3)

@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::sync::{Arc, Barrier};
 use std::thread;
 
-use rrd_store::{Error, RrflowKvStore, RrflowMxStore, StorageEngine};
+use rrd_store::{Repositories, Error, RrflowKvStore, RrflowMxStore, StorageEngine};
 use rrflow_kernel::{
     DataTransaction, ReadStamp, RuntimeCommit, RuntimeEvent, RuntimeEventSchema,
     RuntimeGraphSnapshot, RuntimeLogicalModel, RuntimeMutation, RuntimeProperties, RuntimeRecord,

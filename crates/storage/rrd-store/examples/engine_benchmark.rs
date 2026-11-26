@@ -5,7 +5,7 @@
 //! correctness, throughput, latency, recovery, memory, maintenance, and
 //! footprint measurements. A single machine run is not a universal claim.
 
-use rrd_store::{
+use rrd_store::{Repositories, 
     measure_storage_footprint, FootprintBytes, RrflowKvStore, StorageEngine, StorageFootprint,
 };
 use rrflow_kernel::{Claim, Predicate, Producer, Subject};

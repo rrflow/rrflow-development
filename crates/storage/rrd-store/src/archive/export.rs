@@ -8,7 +8,7 @@ use super::receipt::{
     ExportReceipt,
 };
 use crate::filesystem::AnchorInput;
-use crate::{Error, Result, StorageEngine};
+use crate::{Repositories, Error, Result, StorageEngine};
 use rrflow_kernel::{AuditEnvelope, Claim, RuntimeChange, RuntimeCommit, RuntimeMutation};
 use std::collections::VecDeque;
 
@@ -589,7 +589,7 @@ fn archive_io(error: std::io::Error) -> Error {
 #[cfg(test)]
 mod checkpoint_tests {
     use super::*;
-    use crate::RrflowKvStore;
+    use crate::{Repositories, RrflowKvStore};
     use rrflow_kernel::{Predicate, Producer, ScopeId, Subject};
     use std::path::Path;
 

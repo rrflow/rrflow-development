@@ -1,5 +1,6 @@
 //! Backup catalogue, entry, manifest, prune and restore-progress types and limits.
 
+use crate::Repositories;
 use super::*;
 
 /// Version 2 adds the control-journal archive: an application-complete backup

@@ -1,5 +1,6 @@
 //! Retaining archives, content-addressed files and catalogue entries.
 
+use crate::Repositories;
 use super::*;
 
 pub(super) fn load_control_archive_for_entry(

@@ -93,7 +93,7 @@ pub use projection::{
 };
 pub use repository::{
     ClaimRepository, ControlRepository, FunctionCatalogueRepository, InvocationRepository,
-    ProjectionRepository, RuntimeDataSnapshotRead, RuntimeRepository,
+    ProjectionRepository, Repositories, RuntimeDataSnapshotRead, RuntimeRepository,
 };
 pub use rrflow_kernel::{
     DataTransaction, DataTransactionView, ReadStamp, RetentionPin, RetentionPinId,

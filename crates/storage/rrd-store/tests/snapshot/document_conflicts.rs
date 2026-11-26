@@ -1,5 +1,5 @@
 use super::*;
-use rrd_store::ControlTransition;
+use rrd_store::{Repositories, ControlTransition};
 use rrflow_kernel::{RuntimePropertySchema, RuntimeRetirement, RuntimeValue, RuntimeValueType};
 
 fn put(read: &ReadStamp, id: &str, valid_from: u64, code: Option<&str>) -> DataTransaction {

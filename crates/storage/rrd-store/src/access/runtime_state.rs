@@ -709,7 +709,7 @@ fn catalog_revision_in_effect(
 #[cfg(test)]
 mod cold_history_authentication_tests {
     use super::*;
-    use crate::{Durability, RrflowKvStore, StorageEngine};
+    use crate::{Repositories, Durability, RrflowKvStore, StorageEngine};
     use rrflow_kernel::{
         RuntimeCommit, RuntimeLogicalModel, RuntimeRecord, RuntimeRef, RuntimeTableSchema,
         RuntimeType,

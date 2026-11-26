@@ -201,12 +201,6 @@ impl PhysicalStoreEvidence {
 
 pub trait StorageEngine: Send + Sync {
     fn begin_transaction(&self) -> Result<Box<dyn StorageTransaction + '_>>;
-    fn claims(&self) -> crate::ClaimRepository<'_>;
-    fn control(&self) -> crate::ControlRepository<'_>;
-    fn function_catalogue(&self) -> crate::FunctionCatalogueRepository<'_>;
-    fn projections(&self) -> crate::ProjectionRepository<'_>;
-    fn runtime(&self) -> crate::RuntimeRepository<'_>;
-    fn invocations(&self) -> crate::InvocationRepository<'_>;
 
     fn physical_store_evidence(&self) -> Result<PhysicalStoreEvidence> {
         Ok(PhysicalStoreEvidence::logical_only("unspecified"))
@@ -240,16 +234,6 @@ struct RrflowMxTransactionVersion {
 impl RrflowMxStore {
     pub fn new() -> Self {
         Self::default()
-    }
-
-    /// Observe calls recorded, for tests that assert telemetry flowed.
-    pub fn observe_count(&self) -> u64 {
-        u64::try_from(
-            self.claims()
-                .access_count()
-                .expect("rrflowMX access observations remain readable"),
-        )
-        .expect("rrflowMX access count fits u64")
     }
 }
 
@@ -516,30 +500,6 @@ impl StorageEngine for RrflowMxStore {
         }))
     }
 
-    fn claims(&self) -> crate::ClaimRepository<'_> {
-        crate::ClaimRepository::new(self)
-    }
-
-    fn control(&self) -> crate::ControlRepository<'_> {
-        crate::ControlRepository::new(self)
-    }
-
-    fn function_catalogue(&self) -> crate::FunctionCatalogueRepository<'_> {
-        crate::FunctionCatalogueRepository::new(self)
-    }
-
-    fn projections(&self) -> crate::ProjectionRepository<'_> {
-        crate::ProjectionRepository::new(self)
-    }
-
-    fn runtime(&self) -> crate::RuntimeRepository<'_> {
-        crate::RuntimeRepository::new(self)
-    }
-
-    fn invocations(&self) -> crate::InvocationRepository<'_> {
-        crate::InvocationRepository::new(self)
-    }
-
     fn physical_store_evidence(&self) -> Result<PhysicalStoreEvidence> {
         Ok(PhysicalStoreEvidence::logical_only("rrflow_mx"))
     }
@@ -589,30 +549,6 @@ impl StorageProfile {
 impl StorageEngine for StorageProfile {
     fn begin_transaction(&self) -> Result<Box<dyn StorageTransaction + '_>> {
         self.engine().begin_transaction()
-    }
-
-    fn claims(&self) -> crate::ClaimRepository<'_> {
-        crate::ClaimRepository::new(self)
-    }
-
-    fn control(&self) -> crate::ControlRepository<'_> {
-        crate::ControlRepository::new(self)
-    }
-
-    fn function_catalogue(&self) -> crate::FunctionCatalogueRepository<'_> {
-        crate::FunctionCatalogueRepository::new(self)
-    }
-
-    fn projections(&self) -> crate::ProjectionRepository<'_> {
-        crate::ProjectionRepository::new(self)
-    }
-
-    fn runtime(&self) -> crate::RuntimeRepository<'_> {
-        crate::RuntimeRepository::new(self)
-    }
-
-    fn invocations(&self) -> crate::InvocationRepository<'_> {
-        crate::InvocationRepository::new(self)
     }
 
     fn physical_store_evidence(&self) -> Result<PhysicalStoreEvidence> {

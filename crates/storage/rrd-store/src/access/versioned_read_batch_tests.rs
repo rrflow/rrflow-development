@@ -2,7 +2,7 @@
 //! it returns and what it proves must not depend on where a batch ends.
 
 use super::*;
-use crate::{RrflowKvStore, RrflowMxStore, StorageEngine};
+use crate::{Repositories, RrflowKvStore, RrflowMxStore, StorageEngine};
 use rrflow_kernel::{
     RuntimeCommit, RuntimeRecord, RuntimeSchemaRegistry, RuntimeTableSchema, RuntimeVector,
     ScopeId, VectorCollectionAddress, VectorValue,

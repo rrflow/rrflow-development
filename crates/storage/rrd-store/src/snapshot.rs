@@ -104,24 +104,6 @@ impl StorageEngine for SnapshotStore<'_> {
     fn begin_transaction(&self) -> Result<Box<dyn StorageTransaction + '_>> {
         Ok(Box::new(SnapshotRead { view: self }))
     }
-    fn claims(&self) -> crate::ClaimRepository<'_> {
-        crate::ClaimRepository::new(self)
-    }
-    fn control(&self) -> crate::ControlRepository<'_> {
-        crate::ControlRepository::new(self)
-    }
-    fn function_catalogue(&self) -> crate::FunctionCatalogueRepository<'_> {
-        crate::FunctionCatalogueRepository::new(self)
-    }
-    fn projections(&self) -> crate::ProjectionRepository<'_> {
-        crate::ProjectionRepository::new(self)
-    }
-    fn runtime(&self) -> crate::RuntimeRepository<'_> {
-        crate::RuntimeRepository::new(self)
-    }
-    fn invocations(&self) -> crate::InvocationRepository<'_> {
-        crate::InvocationRepository::new(self)
-    }
 }
 
 #[cfg(test)]
