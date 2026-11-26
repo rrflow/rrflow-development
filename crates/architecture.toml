@@ -1,0 +1,269 @@
+# The workspace's architecture: every crate's tier, folder, name and standing, and the
+# code-shape limits. This is the only hand-written list of where a crate sits.
+#
+# Owner: docs/architecture/code-structure-and-conventions.md, sections 6.2, 6.11 and 6.12.
+# Read by: scripts/ci/check_architecture.py (the checker), scripts/ci/check_code_shape.py
+# (the limits and the digest owner) and the `workspace_architecture` test of `rrd-engine`.
+#
+# Rules the checker enforces as hard errors:
+#   - every workspace member is listed here once, and sits at `<folder>/<name>`;
+#   - a crate's normal and build dependencies are in a lower tier, or in its own tier and
+#     listed above it in this file;
+#   - an evaluation crate is used by a product crate only in its tests;
+#   - a crate name is `rrflow-<name>`, or one of `rules.daemon_crates`;
+#   - a `standalone` crate depends, in every dependency kind, only on standalone crates;
+#   - no crate depends on a crate marked `retire`;
+#   - no source module is named one of `rules.banned_module_names`.
+#
+# A crate that does not yet have its target name or folder records the target here
+# (`target_name`, `target_folder`). That record is the ratchet: it must be removed when the
+# crate reaches its target, and a crate without a record must already conform.
+
+version = 1
+
+[limits]
+entry = 200
+source = 800
+harness = 1500
+
+[rules]
+component_prefix = "rrflow-"
+daemon_crates = ["rrd-contract", "rrd-engine", "rrd-server", "rrd-client"]
+banned_module_names = ["utils", "common", "helpers", "misc"]
+digest_owner = { crate = "rrflow-kernel", file = "src/digest.rs" }
+
+[[tier]]
+id = 0
+folders = ["crates/foundation"]
+
+[[tier]]
+id = 1
+folders = ["crates/storage"]
+
+[[tier]]
+id = 2
+folders = ["crates/compute"]
+
+[[tier]]
+id = 3
+folders = ["crates/knowledge", "crates/governance", "crates/cloud"]
+
+[[tier]]
+id = 4
+folders = ["crates/engine"]
+
+[[tier]]
+id = 5
+folders = ["crates/interfaces", "crates/cloud"]
+
+# Tier 0: foundation.
+
+[[crate]]
+name = "rrflow-kernel"
+tier = 0
+folder = "crates/foundation"
+standalone = true
+
+[[crate]]
+name = "rrd-contract"
+tier = 0
+folder = "crates/transport"
+target_folder = "crates/foundation"
+
+[[crate]]
+name = "rrflow-arrow"
+tier = 0
+folder = "crates/compute"
+target_folder = "crates/foundation"
+standalone = true
+
+# Tier 1: storage. rrflowLSM, rrflowCLD, then the store that becomes rrflowKV, rrflowTX and rrflowDB.
+
+[[crate]]
+name = "rrd-lsm"
+tier = 1
+folder = "crates/persistence"
+target_name = "rrflow-lsm"
+target_folder = "crates/storage"
+standalone = true
+
+[[crate]]
+name = "rrflow-cld"
+tier = 1
+folder = "crates/persistence"
+target_folder = "crates/storage"
+standalone = true
+# tests/stamped_history.rs opens the store; it moves with the rrflowKV extraction.
+standalone_exceptions = ["dev:rrd-store"]
+
+[[crate]]
+name = "rrd-store"
+tier = 1
+folder = "crates/persistence"
+target_name = "rrflow-db"
+target_folder = "crates/storage"
+
+# Tier 2: compute.
+
+[[crate]]
+name = "rrd-query"
+tier = 2
+folder = "crates/compute"
+target_name = "rrflow-ql"
+
+[[crate]]
+name = "rrd-vector"
+tier = 2
+folder = "crates/compute"
+target_name = "rrflow-vector"
+
+[[crate]]
+name = "rrd-inference"
+tier = 2
+folder = "crates/compute"
+target_name = "rrflow-inference"
+
+[[crate]]
+name = "rrd-attunement"
+tier = 2
+folder = "crates/compute"
+target_name = "rrflow-attunement"
+
+# Tier 3: knowledge, governance and cloud.
+
+[[crate]]
+name = "rrd-engram"
+tier = 3
+folder = "crates/authority"
+target_name = "rrflow-engram"
+target_folder = "crates/knowledge"
+
+[[crate]]
+name = "rrd-operator-knowledge"
+tier = 3
+folder = "crates/operations"
+target_name = "rrflow-operator-knowledge"
+target_folder = "crates/knowledge"
+
+[[crate]]
+name = "rrd-security"
+tier = 3
+folder = "crates/authority"
+target_name = "rrflow-security"
+target_folder = "crates/governance"
+
+[[crate]]
+name = "rrd-observation"
+tier = 3
+folder = "crates/operations"
+target_name = "rrflow-observation"
+target_folder = "crates/governance"
+
+[[crate]]
+name = "rrd-cluster"
+tier = 3
+folder = "crates/operations"
+target_name = "rrflow-cx"
+target_folder = "crates/cloud"
+
+[[crate]]
+name = "rrd-maintenance"
+tier = 3
+folder = "crates/operations"
+# No crate uses it; it is removed with the dead code.
+retire = true
+
+# Tier 4: the engine the daemon runs.
+
+[[crate]]
+name = "rrd-engine"
+tier = 4
+folder = "crates/authority"
+target_folder = "crates/engine"
+
+# Tier 5: interfaces.
+
+[[crate]]
+name = "rrd-client"
+tier = 5
+folder = "crates/transport"
+target_folder = "crates/interfaces"
+
+[[crate]]
+name = "rrd-server"
+tier = 5
+folder = "crates/transport"
+target_folder = "crates/interfaces"
+
+[[crate]]
+name = "rrflow-cli"
+tier = 5
+folder = "crates/adapters"
+target_folder = "crates/interfaces"
+
+[[crate]]
+name = "rrflow-mcp"
+tier = 5
+folder = "crates/adapters"
+target_folder = "crates/interfaces"
+
+[[crate]]
+name = "rrflow-edge"
+tier = 5
+folder = "crates/adapters"
+target_folder = "crates/interfaces"
+
+[[crate]]
+name = "rrd-kubernetes"
+tier = 5
+folder = "crates/operations"
+target_name = "rrflow-cx-operator"
+target_folder = "crates/cloud"
+
+# Evaluation: measures the product from outside. The order among RRFlow Lab's own crates
+# is owned by the `workspace_architecture` test.
+
+[[crate]]
+name = "rrflow-evaluation-core"
+tier = "evaluation"
+folder = "crates/evaluation"
+
+[[crate]]
+name = "rrflow-lab-systems"
+tier = "evaluation"
+folder = "crates/evaluation/lab"
+
+[[crate]]
+name = "rrflow-lab-datasets"
+tier = "evaluation"
+folder = "crates/evaluation/lab"
+
+[[crate]]
+name = "rrflow-lab-benchmarks"
+tier = "evaluation"
+folder = "crates/evaluation/lab"
+
+[[crate]]
+name = "rrflow-lab-evals"
+tier = "evaluation"
+folder = "crates/evaluation/lab"
+
+[[crate]]
+name = "rrflow-lab-definitions"
+tier = "evaluation"
+folder = "crates/evaluation/lab"
+
+[[crate]]
+name = "rrflow-lab"
+tier = "evaluation"
+folder = "crates/evaluation/lab"
+
+[[crate]]
+name = "rrflow-lab-experiments"
+tier = "evaluation"
+folder = "crates/evaluation/lab"
+
+[[crate]]
+name = "rrflow-qualification-storage"
+tier = "evaluation"
+folder = "crates/evaluation/qualification"
