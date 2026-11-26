@@ -1,6 +1,6 @@
 use crate::contract::invalid;
 use crate::{EmbeddingModelBinding, ScoreMetric, SearchMode, SearchRequest};
-use rrflow_kernel::{ProjectionId, ProjectionStamp, ProjectionState, Result};
+use rrflow_core::{ProjectionId, ProjectionStamp, ProjectionState, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 
@@ -127,7 +127,7 @@ impl VectorPlanner {
         let approximation_requested = request.mode != SearchMode::Exact;
         let exact_scan = CandidatePath {
             stamp: ProjectionStamp {
-                contract_version: rrflow_kernel::DATA_RUNTIME_CONTRACT_VERSION,
+                contract_version: rrflow_core::DATA_RUNTIME_CONTRACT_VERSION,
                 id: ProjectionId::new(EXACT_SCAN_PROJECTION_ID)?,
                 generation: 1,
                 source_cursor: required_source_cursor,
@@ -182,7 +182,7 @@ impl VectorPlanner {
             accepted
                 .into_iter()
                 .next()
-                .ok_or_else(|| rrflow_kernel::Error::InvalidRuntime {
+                .ok_or_else(|| rrflow_core::Error::InvalidRuntime {
                     reason: "no vector access path satisfies the request contract".into(),
                 })?;
         let exact_rerank = match request.mode {
@@ -273,7 +273,7 @@ fn reject_reasons(
 mod tests {
     use super::*;
     use crate::{FilterCondition, FilterExpression, FilterOperator, VectorQuery};
-    use rrflow_kernel::{ReadStamp, RuntimeValue, ScopeId};
+    use rrflow_core::{ReadStamp, RuntimeValue, ScopeId};
 
     fn request(mode: SearchMode) -> SearchRequest {
         let scope = ScopeId::new("instance:planner").unwrap();
@@ -303,7 +303,7 @@ mod tests {
     fn path(cursor: u64, properties: &[&str], state: ProjectionState) -> CandidatePath {
         CandidatePath {
             stamp: ProjectionStamp {
-                contract_version: rrflow_kernel::DATA_RUNTIME_CONTRACT_VERSION,
+                contract_version: rrflow_core::DATA_RUNTIME_CONTRACT_VERSION,
                 id: ProjectionId::new(format!("vector-hnsw-{cursor}")).unwrap(),
                 generation: 1,
                 source_cursor: cursor,

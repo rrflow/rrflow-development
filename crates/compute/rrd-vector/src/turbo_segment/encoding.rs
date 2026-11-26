@@ -65,14 +65,14 @@ pub(super) fn encode_candidate(
     ))
 }
 
-pub(super) fn runtime_error(reason: impl Into<String>) -> rrflow_kernel::Error {
-    rrflow_kernel::Error::InvalidRuntime {
+pub(super) fn runtime_error(reason: impl Into<String>) -> rrflow_core::Error {
+    rrflow_core::Error::InvalidRuntime {
         reason: reason.into(),
     }
 }
 
 pub(super) fn encode_json<T: Serialize>(value: &T) -> Result<Vec<u8>> {
-    serde_json::to_vec(value).map_err(|error| rrflow_kernel::Error::InvalidRuntime {
+    serde_json::to_vec(value).map_err(|error| rrflow_core::Error::InvalidRuntime {
         reason: format!("TurboQuant artifact cannot be encoded: {error}"),
     })
 }
@@ -90,11 +90,11 @@ pub(super) fn encode_artifact(
     artifact_digest: &str,
 ) -> Result<Vec<u8>> {
     let header_len =
-        u32::try_from(header.len()).map_err(|_| rrflow_kernel::Error::InvalidRuntime {
+        u32::try_from(header.len()).map_err(|_| rrflow_core::Error::InvalidRuntime {
             reason: "TurboQuant header exceeds u32".into(),
         })?;
     let payload_len =
-        u64::try_from(payload.len()).map_err(|_| rrflow_kernel::Error::InvalidRuntime {
+        u64::try_from(payload.len()).map_err(|_| rrflow_core::Error::InvalidRuntime {
             reason: "TurboQuant payload exceeds u64".into(),
         })?;
     let mut bytes = Vec::with_capacity(HEADER_PREFIX_BYTES + header.len() + payload.len());

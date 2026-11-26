@@ -75,7 +75,7 @@ pub(super) async fn verify_parquet_export(
         assert_eq!(row.identity, expected.identity);
         assert_eq!(
             row.values.get("object").unwrap(),
-            &rrflow_kernel::RuntimeValue::String(match &expected.values["object"] {
+            &rrflow_core::RuntimeValue::String(match &expected.values["object"] {
                 QueryValue::String(value) => value.clone(),
                 other => panic!("unexpected fixture object: {other:?}"),
             })

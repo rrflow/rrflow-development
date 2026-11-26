@@ -1,4 +1,5 @@
 use super::*;
+use rrd_store::Repositories;
 
 #[test]
 fn catalogue_mutation_advances_the_transaction_read_stamp() {

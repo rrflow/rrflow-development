@@ -12,7 +12,7 @@
 //! A deployment re-measures on its own hardware and replaces them.
 
 use crate::{QuantizationMethod, TurboQuantEstimator};
-use rrflow_kernel::Result;
+use rrflow_core::Result;
 use serde::{Deserialize, Serialize};
 
 /// The measured cost of one candidate at `dimensions`.
@@ -81,7 +81,7 @@ impl VectorCostModel {
                     .iter()
                     .any(|point| point.dimensions == 0 || !(1..=100_000).contains(&point.per_mille))
             {
-                return Err(rrflow_kernel::Error::InvalidRuntime {
+                return Err(rrflow_core::Error::InvalidRuntime {
                     reason: "a vector cost curve needs ascending dimensions and per-mille costs in 1..=100000"
                         .into(),
                 });

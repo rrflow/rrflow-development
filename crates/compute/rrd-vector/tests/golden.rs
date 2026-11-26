@@ -3,7 +3,7 @@ use rrd_vector::{
     ImmutableVectorSegment, ScoreMetric, SearchMode, SearchRequest, VectorCandidate, VectorQuery,
     VectorSegmentConfig,
 };
-use rrflow_kernel::{
+use rrflow_core::{
     ProjectionId, ReadStamp, RuntimeProperties, RuntimeRef, RuntimeValue, RuntimeVector, ScopeId,
     VectorCollectionAddress, VectorValue,
 };

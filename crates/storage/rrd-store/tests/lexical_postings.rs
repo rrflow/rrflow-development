@@ -2,11 +2,11 @@
 //! rebuild over the current documents answers, through backfill, update,
 //! retirement and reopen, on both storage profiles.
 use rrd_store::lexical::{analyze, bm25_contribution, Bm25Config, Bm25Identifiers};
-use rrd_store::{Repositories, 
+use rrd_store::{
     ControlTransition, IndexCommitBindingDefinition, IndexCommitBindingKind, LexicalQuery,
-    LexicalSearch, RrflowKvStore, RrflowMxStore, StorageEngine,
+    LexicalSearch, Repositories, RrflowKvStore, RrflowMxStore, StorageEngine,
 };
-use rrflow_kernel::{
+use rrflow_core::{
     digest, ProjectionId, RuntimeCommit, RuntimeLogicalModel, RuntimeMutation,
     RuntimePropertySchema, RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeRetirement,
     RuntimeSchemaRegistry, RuntimeType, RuntimeValue, RuntimeValueType, ScopeId,

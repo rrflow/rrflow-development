@@ -1,6 +1,7 @@
 //! Bounded delivery records in the existing atomic control store.
 use super::*;
 use rrd_contract::{AttunementReadResult, TaskAttemptView};
+use rrd_store::Repositories;
 use std::io::Write;
 
 // Match the canonical control store's per-value bound.

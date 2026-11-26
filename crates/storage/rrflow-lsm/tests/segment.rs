@@ -281,7 +281,7 @@ fn sparse_segment_matches_the_memtable_for_point_range_and_mvcc_reads() {
 
 fn rewrite_checksum(bytes: &mut Vec<u8>) {
     bytes.truncate(bytes.len() - 64);
-    bytes.extend_from_slice(rrflow_kernel::digest::sha256_hex(bytes).as_bytes());
+    bytes.extend_from_slice(rrflow_core::digest::sha256_hex(bytes).as_bytes());
 }
 
 fn first_page_descriptor(bytes: &[u8]) -> usize {

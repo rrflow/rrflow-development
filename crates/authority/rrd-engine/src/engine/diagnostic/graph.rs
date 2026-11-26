@@ -1,6 +1,7 @@
 //! Diagnostic graph, records, runtime changes, vector artifacts and public graph projections.
 
 use super::*;
+use rrd_store::Repositories;
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn diagnostic_graph(

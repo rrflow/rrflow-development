@@ -1,4 +1,5 @@
 use super::*;
+use rrd_store::Repositories;
 
 #[test]
 fn selected_supported_effects_finish_replay_and_reopen_without_fixed_verify() {

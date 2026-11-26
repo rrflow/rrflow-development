@@ -1,6 +1,7 @@
 //! Installation identity seeds, actions, sealed-preview and target validation.
 
 use super::*;
+use rrd_store::Repositories;
 
 pub(super) fn installation_identity_seed(
     installation_identity: &str,

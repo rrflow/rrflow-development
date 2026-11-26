@@ -1,5 +1,5 @@
-use rrd_store::{RrflowKvStore, StorageEngine};
-use rrflow_kernel::{Claim, Predicate, Producer, ScopeId, Subject};
+use rrd_store::{Repositories, RrflowKvStore, StorageEngine};
+use rrflow_core::{Claim, Predicate, Producer, ScopeId, Subject};
 
 fn claim(object: &str) -> Claim {
     Claim::new(

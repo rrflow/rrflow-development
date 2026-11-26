@@ -7,7 +7,7 @@ publish.workspace = true
 description = "Pure deterministic source inventory proposals for RRFlow."
 
 [dependencies]
-rrflow-kernel = { workspace = true }
+rrflow-core = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 gix-index = { version = "=0.58.0", default-features = false, features = ["sha1", "sha256"] }

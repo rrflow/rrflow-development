@@ -5,6 +5,7 @@ use rrd_contract::{
     ResolveSeatIdentity, ResolvedMemoryWarp, SeatIdentity, MEMORY_PROVIDER_IDENTITY_KIND,
     MEMORY_REPRESENTS_KIND, MEMORY_SEAT_KIND,
 };
+use rrd_store::Repositories;
 use std::collections::BTreeSet;
 
 impl RrdEngine {

@@ -1,4 +1,5 @@
 use super::*;
+use rrd_store::Repositories;
 
 impl RrdEngine {
     pub fn create_session(

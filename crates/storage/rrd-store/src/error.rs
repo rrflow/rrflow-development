@@ -73,7 +73,7 @@ pub enum Error {
     /// Claim encoding or decoding failed.
     Codec(String),
     /// Propagated from the kernel.
-    Kernel(rrflow_kernel::Error),
+    Kernel(rrflow_core::Error),
     /// Sequence allocation overflowed. Reported rather than saturated, so that
     /// overflow cannot degrade into silent key reuse. `SPEC.md` §11 correction 2.
     SequenceOverflow,
@@ -368,8 +368,8 @@ impl From<rrflow_lsm::Error> for Error {
     }
 }
 
-impl From<rrflow_kernel::Error> for Error {
-    fn from(value: rrflow_kernel::Error) -> Self {
+impl From<rrflow_core::Error> for Error {
+    fn from(value: rrflow_core::Error) -> Self {
         Error::Kernel(value)
     }
 }

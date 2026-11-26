@@ -1,5 +1,6 @@
 use super::*;
 use rrd_contract::{ResumeTaskBudget, TaskBudgetView};
+use rrd_store::Repositories;
 
 impl RrdEngine {
     /// Resume only known-completed stopped work under its original allowance.

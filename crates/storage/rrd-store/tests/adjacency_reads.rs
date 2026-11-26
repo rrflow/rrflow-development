@@ -5,10 +5,10 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use rrd_store::{
-    Error, RrflowKvStore, RrflowMxStore, RuntimeAdjacencyDirection, RuntimeReadAccessPath,
-    RuntimeReadBudget, RuntimeVersionedSource, StorageEngine,
+    Error, Repositories, RrflowKvStore, RrflowMxStore, RuntimeAdjacencyDirection,
+    RuntimeReadAccessPath, RuntimeReadBudget, RuntimeVersionedSource, StorageEngine,
 };
-use rrflow_kernel::{
+use rrflow_core::{
     ReadStamp, RuntimeChange, RuntimeCommit, RuntimeLogicalModel, RuntimeMutation,
     RuntimeProperties, RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeRelation,
     RuntimeRelationSchema, RuntimeRetirement, RuntimeSchemaRegistry, RuntimeType, ScopeId,

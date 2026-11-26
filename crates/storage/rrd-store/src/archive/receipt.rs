@@ -1,7 +1,7 @@
 use super::format::{ArchiveHeader, PrefixInventory};
 use crate::filesystem::AnchoredPath;
 use crate::{Error, Result};
-use rrflow_kernel::digest;
+use rrflow_core::digest;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use std::sync::atomic::{AtomicU64, Ordering};

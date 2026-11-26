@@ -2,7 +2,7 @@
 use bytes::Bytes;
 use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
 use rrflow_cld::{export_parquet, record_batch_to_rows, QueryRow, WriteLimits};
-use rrflow_kernel::RuntimeValue;
+use rrflow_core::RuntimeValue;
 use std::{
     collections::BTreeMap,
     time::{Duration, Instant},

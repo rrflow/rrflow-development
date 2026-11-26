@@ -337,7 +337,7 @@ fn installed_redacted_transaction_capture_survives_restart() {
     let credential = RrdEngine::read_installed_api_key(&engram.project).unwrap();
     let begin_options = options("private-redacted-begin");
     let begin_digest =
-        rrflow_kernel::digest::sha256_hex(begin_options.request_id.as_str().as_bytes());
+        rrflow_core::digest::sha256_hex(begin_options.request_id.as_str().as_bytes());
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
@@ -448,7 +448,7 @@ fn expected(cycle: usize) -> BTreeMap<String, String> {
             (
                 format!(
                     "claim:{}",
-                    rrflow_kernel::digest::sha256_hex(
+                    rrflow_core::digest::sha256_hex(
                         format!("rrd-context-claim-v1\0reopen-{cycle}-{part}\0reopen").as_bytes()
                     )
                 ),

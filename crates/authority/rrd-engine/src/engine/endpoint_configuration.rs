@@ -5,6 +5,7 @@ use rrd_contract::{
     PreviewEndpointConfiguration, ENDPOINT_CONFIGURATION_PREVIEW_TTL_MS,
     ENDPOINT_CONFIGURATION_VERSION,
 };
+use rrd_store::Repositories;
 
 impl RrdEngine {
     fn endpoint_configuration_identity(&self) -> Result<InstalledEngramIdentity> {

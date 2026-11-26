@@ -2,7 +2,7 @@ use crate::access::runtime_state::{checked_key, put_sequence, read_sequence, sca
 use crate::invocation::{Invocation, InvocationInput};
 use crate::keyspaces::{self, Durability};
 use crate::{Error, Result, StorageEngine};
-use rrflow_kernel::Millis;
+use rrflow_core::Millis;
 
 /// Durable operator-invocation receipts over the shared transaction port.
 pub struct InvocationRepository<'a> {

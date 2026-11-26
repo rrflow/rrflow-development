@@ -1,9 +1,9 @@
 use rrd_store::{
     ControlTransition, Error, IndexCommitBindingDefinition, IndexCommitBindingKind,
-    IndexSourceDelta, RrflowKvStore, RrflowMxStore, RuntimeReadBudget, StorageEngine,
+    IndexSourceDelta, Repositories, RrflowKvStore, RrflowMxStore, RuntimeReadBudget, StorageEngine,
     VectorSourceAddress, VectorSourceDelta,
 };
-use rrflow_kernel::{
+use rrflow_core::{
     digest, DataTransaction, ProjectionId, RuntimeCommit, RuntimeLogicalModel, RuntimeMutation,
     RuntimePropertySchema, RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeRetirement,
     RuntimeSchemaRegistry, RuntimeTableSchema, RuntimeType, RuntimeValue, RuntimeValueType,
@@ -139,7 +139,7 @@ fn commit_at_read(
     engine: &dyn StorageEngine,
     at: u64,
     mutations: Vec<RuntimeMutation>,
-) -> rrd_store::Result<rrflow_kernel::RuntimeCommitOutcome> {
+) -> rrd_store::Result<rrflow_core::RuntimeCommitOutcome> {
     let read = engine.runtime().read_stamp(&scope())?;
     engine
         .runtime()

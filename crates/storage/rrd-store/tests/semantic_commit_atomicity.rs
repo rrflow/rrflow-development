@@ -1,8 +1,8 @@
 use rrd_store::{
-    Error, FunctionInvocationReceiptRecord, RrflowKvStore, RrflowMxStore, StorageEngine,
-    FUNCTION_INVOCATION_RECEIPT_FORMAT_VERSION,
+    Error, FunctionInvocationReceiptRecord, Repositories, RrflowKvStore, RrflowMxStore,
+    StorageEngine, FUNCTION_INVOCATION_RECEIPT_FORMAT_VERSION,
 };
-use rrflow_kernel::{
+use rrflow_core::{
     digest, DataTransaction, RuntimeCommit, RuntimeLogicalModel, RuntimeMutation,
     RuntimeProperties, RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeRelation,
     RuntimeRelationSchema, RuntimeSchemaRegistry, RuntimeType, ScopeId,
@@ -49,13 +49,13 @@ fn reject_plan(
     assert_eq!((seeded.records, seeded.relations), (2, 1));
     let before = physical_rows(storage);
     let claim = |index: usize, object: String| {
-        rrflow_kernel::Claim::new(
-            rrflow_kernel::Subject::new(format!("admission-{index}")).unwrap(),
-            rrflow_kernel::Predicate::new("contains").unwrap(),
+        rrflow_core::Claim::new(
+            rrflow_core::Subject::new(format!("admission-{index}")).unwrap(),
+            rrflow_core::Predicate::new("contains").unwrap(),
             object,
             200,
             200,
-            rrflow_kernel::Producer {
+            rrflow_core::Producer {
                 actor: "admission-oracle".into(),
                 on_behalf_of: None,
                 session: None,

@@ -6,8 +6,8 @@ use rrd_cluster::{
 };
 use rrd_contract::CanonicalId;
 use rrd_engine::RrdEngine;
-use rrd_store::{RrflowKvStore, StorageEngine};
-use rrflow_kernel::digest;
+use rrd_store::{Repositories, RrflowKvStore};
+use rrflow_core::digest;
 use std::collections::{BTreeMap, BTreeSet};
 
 fn node(index: u8) -> PlacementNode {

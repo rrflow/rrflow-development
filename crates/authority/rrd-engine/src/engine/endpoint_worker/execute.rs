@@ -1,6 +1,7 @@
 //! Executing a task worker: selection, context, source readback, the model call and the draft.
 
 use super::*;
+use rrd_store::Repositories;
 
 impl RrdEngine {
     pub(in crate::engine) fn authorize_worker_source_readback(

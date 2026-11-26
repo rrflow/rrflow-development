@@ -9,7 +9,7 @@ use crate::{
     VectorCandidate, VectorQuery,
 };
 use memmap2::{Mmap, MmapOptions};
-use rrflow_kernel::{
+use rrflow_core::{
     digest, ProjectionId, ProjectionStamp, ProjectionState, Result, RuntimeProperties, RuntimeRef,
     ScopeId, VectorCollectionAddress, VectorValue, DATA_RUNTIME_CONTRACT_VERSION,
 };

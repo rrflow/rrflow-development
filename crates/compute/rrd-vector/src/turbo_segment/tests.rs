@@ -1,6 +1,6 @@
 use super::*;
 use crate::{FilterCondition, FilterExpression, FilterOperator, SearchMode};
-use rrflow_kernel::{ReadStamp, RuntimeValue, RuntimeVector, VectorValue};
+use rrflow_core::{ReadStamp, RuntimeValue, RuntimeVector, VectorValue};
 
 fn config(scope: &ScopeId) -> TurboQuantSegmentConfig {
     TurboQuantSegmentConfig {

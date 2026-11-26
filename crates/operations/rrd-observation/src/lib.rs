@@ -3,7 +3,7 @@ use rrd_contract::{
     EndpointBinding, EndpointLocator, ObservationDeliveryDisposition, ObservationExportPolicy,
     MAX_OBSERVATION_EVENT_BYTES,
 };
-use rrflow_kernel::digest::sha256_hex;
+use rrflow_core::digest::sha256_hex;
 use serde::{Deserialize, Serialize};
 use std::io::Read;
 use std::net::IpAddr;

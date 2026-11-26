@@ -2,8 +2,8 @@ use std::collections::BTreeMap;
 use std::sync::{Arc, Barrier};
 use std::thread;
 
-use rrd_store::{Repositories, Error, RrflowKvStore, RrflowMxStore, StorageEngine};
-use rrflow_kernel::{
+use rrd_store::{Error, Repositories, RrflowKvStore, RrflowMxStore, StorageEngine};
+use rrflow_core::{
     DataTransaction, ReadStamp, RuntimeCommit, RuntimeEvent, RuntimeEventSchema,
     RuntimeGraphSnapshot, RuntimeLogicalModel, RuntimeMutation, RuntimeProperties, RuntimeRecord,
     RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry, RuntimeType, ScopeId,
@@ -178,11 +178,11 @@ fn assert_historical_authenticated_point_read(engine: &dyn StorageEngine) {
         .unwrap()
         .snapshot;
     assert!(data_preview.contains(
-        rrflow_kernel::RuntimeLogicalModel::Relational,
+        rrflow_core::RuntimeLogicalModel::Relational,
         &RuntimeRef::new("item", "preview-only").unwrap(),
     ));
     assert!(!data_preview.contains(
-        rrflow_kernel::RuntimeLogicalModel::Relational,
+        rrflow_core::RuntimeLogicalModel::Relational,
         &RuntimeRef::new("item", "later").unwrap(),
     ));
 

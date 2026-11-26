@@ -15,11 +15,11 @@ from workspace_packages import member_directories
 METADATA = {
     "workspace_members": ["core", "lsm", "engine", "cli", "eval", "lab"],
     "packages": [
-        {"id": "core", "name": "rrflow-kernel", "dependencies": []},
-        {"id": "lsm", "name": "rrflow-lsm", "dependencies": [{"name": "rrflow-kernel"}]},
-        {"id": "engine", "name": "rrd-engine", "dependencies": [{"name": "rrflow-kernel"}, {"name": "rrflow-lsm"}]},
+        {"id": "core", "name": "rrflow-core", "dependencies": []},
+        {"id": "lsm", "name": "rrflow-lsm", "dependencies": [{"name": "rrflow-core"}]},
+        {"id": "engine", "name": "rrd-engine", "dependencies": [{"name": "rrflow-core"}, {"name": "rrflow-lsm"}]},
         {"id": "cli", "name": "rrflow-cli", "dependencies": [{"name": "rrd-engine"}, {"name": "serde"}]},
-        {"id": "eval", "name": "rrflow-eval", "dependencies": [{"name": "rrflow-kernel"}]},
+        {"id": "eval", "name": "rrflow-eval", "dependencies": [{"name": "rrflow-core"}]},
         {"id": "lab", "name": "rrflow-lab-core", "dependencies": []},
     ],
 }
@@ -44,7 +44,7 @@ class LaneSelectionTests(unittest.TestCase):
         listed = ", ".join(f'"crates/{group}/{crate}"' for group, crate in members)
         kernel = "crates/authority/rrd-engine/kernel"
         (self.root / kernel).mkdir()
-        (self.root / kernel / "Cargo.toml").write_text('[package]\nname = "rrflow-kernel"\n', encoding="utf-8")
+        (self.root / kernel / "Cargo.toml").write_text('[package]\nname = "rrflow-core"\n', encoding="utf-8")
         listed += f', "{kernel}"'
         (self.root / "Cargo.toml").write_text(f"[workspace]\nmembers = [{listed}]\n", encoding="utf-8")
 
@@ -210,8 +210,8 @@ class LaneSelectionTests(unittest.TestCase):
 
     def test_dependents_close_over_the_workspace_only(self):
         graph = workspace_graph(METADATA)
-        self.assertEqual(with_dependents({"rrflow-kernel"}, graph),
-                         {"rrflow-kernel", "rrflow-lsm", "rrd-engine", "rrflow-cli", "rrflow-eval"})
+        self.assertEqual(with_dependents({"rrflow-core"}, graph),
+                         {"rrflow-core", "rrflow-lsm", "rrd-engine", "rrflow-cli", "rrflow-eval"})
         self.assertEqual(with_dependents({"rrflow-cli"}, graph), {"rrflow-cli"})
         self.assertNotIn("serde", graph)
 

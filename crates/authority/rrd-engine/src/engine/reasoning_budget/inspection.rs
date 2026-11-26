@@ -1,6 +1,7 @@
 //! Task assessment records, task embeddings, budget inspection and LFG advisory checkpoints.
 
 use super::*;
+use rrd_store::Repositories;
 
 impl RrdEngine {
     pub(in super::super) fn read_task_assessment_record(

@@ -7,7 +7,7 @@ members = [
     "crates/authority/rrd-security",
     "crates/authority/rrd-engine",
     "crates/transport/rrd-server",
-    "crates/foundation/rrflow-kernel",
+    "crates/core",
     "crates/compute/rrd-query",
     "crates/compute/rrflow-arrow",
     "crates/storage/rrflow-cld",
@@ -66,7 +66,7 @@ rrd-vector = { path = "crates/compute/rrd-vector" }
 rrflow-arrow = { path = "crates/compute/rrflow-arrow" }
 rrflow-cld = { path = "crates/storage/rrflow-cld" }
 rrflow-evaluation-core = { path = "crates/evaluation/rrflow-evaluation-core" }
-rrflow-kernel = { path = "crates/foundation/rrflow-kernel" }
+rrflow-core = { path = "crates/core" }
 rrflow-lab-benchmarks = { path = "crates/evaluation/lab/rrflow-lab-benchmarks" }
 rrflow-lab-datasets = { path = "crates/evaluation/lab/rrflow-lab-datasets" }
 rrflow-lab-definitions = { path = "crates/evaluation/lab/rrflow-lab-definitions" }
@@ -78,7 +78,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["float_roundtrip"] }
 toml = "0.8"
 # Step T: spans at subsystem boundaries, zero-cost with no subscriber
-# installed. The kernel (rrflow-kernel) stays out: serde and pure hashing only.
+# installed. The kernel (rrflow-core) stays out: serde and pure hashing only.
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 unicode-normalization = "0.1"

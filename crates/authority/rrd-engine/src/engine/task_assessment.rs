@@ -13,6 +13,7 @@ use rrd_contract::{
 };
 use rrd_inference::endpoint_chat::{ChatMessage, ChatRole, ModelChatRequest, PreparedModelChat};
 use rrd_inference::{EmbeddingCancellation, NetworkPolicy};
+use rrd_store::Repositories;
 
 struct AssessmentAuthority {
     guards: Vec<(AttemptAuthorityGuard, TaskAttemptInvalidation)>,

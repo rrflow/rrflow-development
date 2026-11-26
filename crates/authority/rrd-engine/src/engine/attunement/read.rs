@@ -1,6 +1,7 @@
 //! Reading attunement jobs, details and receipts.
 
 use super::*;
+use rrd_store::Repositories;
 
 impl RrdEngine {
     /// Read the installed job through current engram authorization.

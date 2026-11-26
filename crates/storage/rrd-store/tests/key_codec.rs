@@ -1,7 +1,7 @@
 //! Black-box evidence that rrflowKV persists the C-01 typed-key format.
 
-use rrd_store::{RrflowKvStore, StorageEngine};
-use rrflow_kernel::{Claim, Predicate, Producer, Subject};
+use rrd_store::{Repositories, RrflowKvStore};
+use rrflow_core::{Claim, Predicate, Producer, Subject};
 use rrflow_lsm::Database;
 
 const FORMAT: u64 = u64::from_be_bytes(*b"RRKV0001");

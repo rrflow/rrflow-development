@@ -1,4 +1,5 @@
 use super::*;
+use rrd_store::Repositories;
 
 #[test]
 fn inline_session_retention_persists_a_reader_fence_and_rejects_unknown_formats() {

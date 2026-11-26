@@ -76,7 +76,7 @@ pub struct ActivityEvidence {
     pub heartbeat_at: Option<u64>,
 }
 
-pub struct EngramRepository<'a, E: StorageEngine + ?Sized> {
+pub struct EngramRepository<'a, E: Repositories + ?Sized> {
     pub(super) engine: &'a E,
     pub(super) engram_id: CanonicalId,
     pub(super) key: String,

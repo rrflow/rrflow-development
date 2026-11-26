@@ -2,7 +2,7 @@ use rrd_vector::{
     search_exact_ref, FilterCondition, FilterExpression, FilterOperator, HnswConfig, HnswIndex,
     HnswKernel, ScoreMetric, SearchMode, SearchRequest, VectorCandidate, VectorQuery,
 };
-use rrflow_kernel::{
+use rrflow_core::{
     ProjectionId, ReadStamp, RuntimeProperties, RuntimeRef, RuntimeValue, RuntimeVector, ScopeId,
     VectorCollectionAddress, VectorValue,
 };

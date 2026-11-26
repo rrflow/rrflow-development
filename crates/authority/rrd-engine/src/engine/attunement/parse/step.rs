@@ -13,6 +13,7 @@ use rrd_attunement::inventory::{Entry, EntryKind};
 use rrd_attunement::parse::{parser_revision, ParseLimits};
 use rrd_attunement::worker::{WorkerRequest, WORKER_PROTOCOL_VERSION};
 use rrd_contract::SourceParsePolicy;
+use rrd_store::Repositories;
 use std::collections::BTreeMap;
 use std::time::Duration;
 

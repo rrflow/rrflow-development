@@ -1,6 +1,7 @@
 //! Controlling an attunement job: start, step, pause, resume, cancel and connect.
 
 use super::*;
+use rrd_store::Repositories;
 
 impl RrdEngine {
     /// One finite, explicitly authorized transition. The job and its immutable

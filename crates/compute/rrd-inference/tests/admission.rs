@@ -2,7 +2,7 @@ use rrd_inference::{
     EmbeddingBackend, EmbeddingBackendDescriptor, EmbeddingBackendRegistry, EmbeddingDispatchError,
     EmbeddingRequest, FeatureHashBackend, NetworkPolicy,
 };
-use rrflow_kernel::{digest, Error, RuntimeId, VectorValue};
+use rrflow_core::{digest, Error, RuntimeId, VectorValue};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Barrier};
 
@@ -145,7 +145,7 @@ impl EmbeddingBackend for FaultBackend {
     fn descriptor(&self) -> &EmbeddingBackendDescriptor {
         &self.descriptor
     }
-    fn embed(&mut self, request: &EmbeddingRequest) -> rrflow_kernel::Result<VectorValue> {
+    fn embed(&mut self, request: &EmbeddingRequest) -> rrflow_core::Result<VectorValue> {
         self.calls.fetch_add(1, Ordering::SeqCst);
         match self.failure {
             Failure::Healthy => self.inner.embed(request),

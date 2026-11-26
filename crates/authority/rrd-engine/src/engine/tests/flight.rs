@@ -6,6 +6,7 @@ use rrd_contract::{
     QueryBudget, QueryValue, ReadAccessPath, ReadDataSnapshot, ReadPromptFlight,
     PROMPT_FLIGHT_EVENT_KIND, PROMPT_FLIGHT_KIND, PROMPT_FLIGHT_USE_KIND,
 };
+use rrd_store::Repositories;
 use std::collections::{BTreeMap, BTreeSet};
 
 const INSTANCE_SCOPE: &str = "instance:test-instance";

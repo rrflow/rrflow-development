@@ -1,4 +1,5 @@
 use super::*;
+use rrd_store::Repositories;
 
 impl RrdEngine {
     /// Installs one executable adapter into this process authority. Exact

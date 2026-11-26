@@ -1,6 +1,6 @@
 //! Operator invocation audit records.
 
-use rrflow_kernel::Millis;
+use rrflow_core::Millis;
 use serde::{Deserialize, Serialize};
 
 /// What caused an invocation.

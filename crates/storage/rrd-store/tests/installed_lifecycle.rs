@@ -1,5 +1,5 @@
-use rrd_store::{Repositories, ControlTransition, RrflowKvInspector, RrflowKvStore, StorageEngine};
-use rrflow_kernel::{Claim, Predicate, Producer, RuntimeCommit, RuntimeMutation, ScopeId, Subject};
+use rrd_store::{ControlTransition, Repositories, RrflowKvInspector, RrflowKvStore, StorageEngine};
+use rrflow_core::{Claim, Predicate, Producer, RuntimeCommit, RuntimeMutation, ScopeId, Subject};
 
 fn bootstrap_commit() -> RuntimeCommit {
     RuntimeCommit {
@@ -121,8 +121,8 @@ fn physical_rows(store: &dyn StorageEngine) -> Vec<(Vec<u8>, Vec<u8>)> {
     rows
 }
 
-fn checkpoint_commit(store: &dyn StorageEngine) -> rrflow_kernel::ReadStamp {
-    use rrflow_kernel::{
+fn checkpoint_commit(store: &dyn StorageEngine) -> rrflow_core::ReadStamp {
+    use rrflow_core::{
         RuntimeLogicalModel, RuntimeRecordSchema, RuntimeSchemaRegistry, RuntimeType,
     };
     let mut commit = bootstrap_commit();
@@ -138,11 +138,11 @@ fn checkpoint_commit(store: &dyn StorageEngine) -> rrflow_kernel::ReadStamp {
         .mutations
         .insert(0, RuntimeMutation::Schema { registry });
     commit.mutations.push(RuntimeMutation::Record {
-        record: rrflow_kernel::RuntimeRecord {
-            reference: rrflow_kernel::RuntimeRef::new("file", "src-lib.rs").unwrap(),
+        record: rrflow_core::RuntimeRecord {
+            reference: rrflow_core::RuntimeRef::new("file", "src-lib.rs").unwrap(),
             valid_from: 100,
             valid_to: None,
-            properties: rrflow_kernel::RuntimeProperties::new(),
+            properties: rrflow_core::RuntimeProperties::new(),
         },
     });
     let prior = store.runtime().read_stamp(&commit.scope).unwrap();
@@ -165,7 +165,7 @@ fn checkpoint_commit(store: &dyn StorageEngine) -> rrflow_kernel::ReadStamp {
     assert_eq!(outcome.last_cursor, commit.mutations.len() as u64);
     assert_eq!(entries.len(), 1);
     assert_eq!(staged, store.runtime().read_stamp(&commit.scope).unwrap());
-    let stored: rrflow_kernel::ReadStamp = serde_json::from_slice(
+    let stored: rrflow_core::ReadStamp = serde_json::from_slice(
         &store
             .control()
             .get("server/state/install/record")
@@ -245,7 +245,7 @@ fn checkpoint_and_resulting_runtime_stamp_share_one_wal_frame_and_reopen() {
     let reopened = RrflowKvStore::open_existing(&root).unwrap();
     let actual = reopened.runtime().read_stamp(&expected.scope).unwrap();
     assert_eq!(actual, expected);
-    let checkpoint: rrflow_kernel::ReadStamp = serde_json::from_slice(
+    let checkpoint: rrflow_core::ReadStamp = serde_json::from_slice(
         &reopened
             .control()
             .get("server/state/install/record")
@@ -263,7 +263,7 @@ fn checkpoint_and_resulting_runtime_stamp_share_one_wal_frame_and_reopen() {
 #[test]
 fn selection_event_and_checkpoint_are_stamped_together_across_reopen() {
     use rrd_store::{Error, RuntimeReadBudget, RuntimeVersionedSource};
-    use rrflow_kernel::{
+    use rrflow_core::{
         RuntimeEvent, RuntimeEventSchema, RuntimeLogicalModel, RuntimeProperties,
         RuntimeSchemaRegistry, RuntimeType, RuntimeValue,
     };
@@ -364,7 +364,7 @@ fn selection_event_and_checkpoint_are_stamped_together_across_reopen() {
     drop(store);
 
     let reopened = RrflowKvStore::open_existing(&root).unwrap();
-    let saved: rrflow_kernel::ReadStamp = serde_json::from_slice(
+    let saved: rrflow_core::ReadStamp = serde_json::from_slice(
         &reopened
             .control()
             .get("server/state/install/record")
@@ -377,7 +377,7 @@ fn selection_event_and_checkpoint_are_stamped_together_across_reopen() {
     let source = RuntimeVersionedSource::Events {
         kind: Some(event_kind),
     };
-    let values = |read: &rrflow_kernel::ReadStamp| {
+    let values = |read: &rrflow_core::ReadStamp| {
         reopened
             .runtime()
             .read_versioned(

@@ -18,8 +18,8 @@ use crate::{
     LogicalArchiveInventory, LogicalRestoreReport, Result, RrflowKvStore, StorageEngine,
     CONTROL_ARCHIVE_VERSION,
 };
-use rrflow_kernel::digest;
-use rrflow_kernel::{ObjectReference, RuntimeMutation, ScopeId};
+use rrflow_core::digest;
+use rrflow_core::{ObjectReference, RuntimeMutation, ScopeId};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use std::io::{Read, Write};

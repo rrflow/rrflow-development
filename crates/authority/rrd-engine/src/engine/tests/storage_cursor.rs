@@ -5,6 +5,7 @@ use crate::kernel::{
 };
 use crate::ServiceErrorKind;
 use rrd_contract::{InspectStorageCursor, StorageCursorAction};
+use rrd_store::Repositories;
 
 #[test]
 fn physical_cursor_denial_is_resource_exhausted_and_retry_releases_owners() {

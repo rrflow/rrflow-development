@@ -481,8 +481,8 @@ pub(super) fn read_u64(bytes: &[u8], offset: usize) -> Result<u64> {
         .ok_or_else(|| runtime_error("quantized u64 header read is out of bounds"))
 }
 
-pub(super) fn runtime_error(reason: impl Into<String>) -> rrflow_kernel::Error {
-    rrflow_kernel::Error::InvalidRuntime {
+pub(super) fn runtime_error(reason: impl Into<String>) -> rrflow_core::Error {
+    rrflow_core::Error::InvalidRuntime {
         reason: reason.into(),
     }
 }

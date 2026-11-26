@@ -8,8 +8,8 @@ use rrd_inference::{
     EmbeddingSourceSnapshot, ExecutionTarget, FeatureHashBackend, InferenceTrustBoundary,
     NetworkPolicy, NetworkRequirement, RouterModelArtifacts, EMBEDDING_CONTRACT_VERSION,
 };
-use rrd_store::{RrflowMxStore, StorageEngine};
-use rrflow_kernel::{
+use rrd_store::{Repositories, RrflowMxStore};
+use rrflow_core::{
     digest, ReadStamp, RuntimeCommit, RuntimeId, RuntimeLogicalModel, RuntimeMutation,
     RuntimeProperties, RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry,
     RuntimeTableSchema, RuntimeType, RuntimeValue, ScopeId, VectorCollectionAddress, VectorValue,
@@ -44,7 +44,7 @@ struct SequenceReader {
 }
 
 impl EmbeddingSourceReader for SequenceReader {
-    fn read(&mut self, _source: &RuntimeRef) -> rrflow_kernel::Result<EmbeddingSourceSnapshot> {
+    fn read(&mut self, _source: &RuntimeRef) -> rrflow_core::Result<EmbeddingSourceSnapshot> {
         let snapshot = self.snapshots[self.reads.min(self.snapshots.len() - 1)].clone();
         self.reads += 1;
         Ok(snapshot)
@@ -147,7 +147,7 @@ impl EmbeddingBackend for CountingBackend {
         &self.descriptor
     }
 
-    fn embed(&mut self, _request: &EmbeddingRequest) -> rrflow_kernel::Result<VectorValue> {
+    fn embed(&mut self, _request: &EmbeddingRequest) -> rrflow_core::Result<VectorValue> {
         self.calls.fetch_add(1, Ordering::SeqCst);
         let mut values = vec![0.0; self.descriptor.model.dimensions as usize];
         values[0] = 1.0;
@@ -213,7 +213,7 @@ impl EmbeddingBackend for MalformedBackend {
         &self.descriptor
     }
 
-    fn embed(&mut self, _request: &EmbeddingRequest) -> rrflow_kernel::Result<VectorValue> {
+    fn embed(&mut self, _request: &EmbeddingRequest) -> rrflow_core::Result<VectorValue> {
         Ok(VectorValue::Dense {
             values: vec![1.0, 0.0],
         })

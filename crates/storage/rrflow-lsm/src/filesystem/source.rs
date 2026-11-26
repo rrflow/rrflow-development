@@ -80,7 +80,7 @@ impl SourceObservation {
             self.kind,
         ))
         .map_err(io::Error::other)?;
-        Ok(rrflow_kernel::digest::sha256_hex(&bytes))
+        Ok(rrflow_core::digest::sha256_hex(&bytes))
     }
 
     /// Observed POSIX execute-mode bits. Windows has no POSIX execute bit;
@@ -101,7 +101,7 @@ impl SourceObservation {
     pub fn revision_sha256(&self) -> io::Result<String> {
         let bytes = serde_json::to_vec(&("rrflow-source-observation-v1", self))
             .map_err(io::Error::other)?;
-        Ok(rrflow_kernel::digest::sha256_hex(&bytes))
+        Ok(rrflow_core::digest::sha256_hex(&bytes))
     }
 
     /// Conservative timestamp-age predicate only. The engine supplies a known

@@ -4,8 +4,8 @@ use crate::projection::{
     difference, CurrentProjection, GroundedStamp, GroundingReport, ProjectionStatus,
     RebuildOutcome, CURRENT_PROJECTION,
 };
-use crate::{Repositories, Error, Result, StorageEngine};
-use rrflow_kernel::Millis;
+use crate::{Error, Repositories, Result, StorageEngine};
+use rrflow_core::Millis;
 
 /// Derived claim projections. Authoritative claims are always read through
 /// [`crate::ClaimRepository`]; projection bytes never become source truth.

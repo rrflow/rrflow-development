@@ -6,7 +6,7 @@ use crate::engine::token_key::{read_api_key_document, read_token_key};
 use crate::kernel::digest;
 use crate::InstallationPreview;
 use rrd_contract::{InstallationManagedPathKind, InstallationTargetKind};
-use rrd_store::ControlTransition;
+use rrd_store::{ControlTransition, Repositories};
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};

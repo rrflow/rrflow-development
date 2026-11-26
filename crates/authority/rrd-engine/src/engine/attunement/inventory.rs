@@ -2,6 +2,7 @@
 use super::*;
 use crate::engine::transaction_admission::TransactionPermit;
 use rrd_attunement::inventory::{Proposal, SourceScope};
+use rrd_store::Repositories;
 mod publication;
 mod records;
 mod reuse;

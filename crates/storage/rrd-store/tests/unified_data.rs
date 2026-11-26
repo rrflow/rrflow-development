@@ -1,10 +1,10 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use rrd_store::{Repositories, 
-    DataRuntime, DataRuntimeStep, Error, LocalObjectStore, RrflowKvStore, RrflowMxStore,
-    StorageEngine,
+use rrd_store::{
+    DataRuntime, DataRuntimeStep, Error, LocalObjectStore, Repositories, RrflowKvStore,
+    RrflowMxStore, StorageEngine,
 };
-use rrflow_kernel::{
+use rrflow_core::{
     Claim, DataTransaction, EmbeddingProvenance, GeoPoint, GeoValue, Predicate, Producer,
     RuntimeCommit, RuntimeEvent, RuntimeEventSchema, RuntimeGeo, RuntimeLogicalModel,
     RuntimeMutation, RuntimeProperties, RuntimeRecord, RuntimeRecordSchema, RuntimeRef,
@@ -91,7 +91,7 @@ fn bootstrap(engine: &dyn StorageEngine, scope: &ScopeId) -> u64 {
         .last_cursor
 }
 
-fn unified_mutations(object: rrflow_kernel::ObjectReference) -> Vec<RuntimeMutation> {
+fn unified_mutations(object: rrflow_core::ObjectReference) -> Vec<RuntimeMutation> {
     let subject = RuntimeRef::new("entity", "a").unwrap();
     vec![
         RuntimeMutation::Claim {

@@ -13,7 +13,7 @@ use rrd_security::{
 };
 use rrd_server::RrdHttpServer;
 use rrd_store::RrflowKvStore;
-use rrflow_kernel::digest;
+use rrflow_core::digest;
 use serde_json::Value;
 use std::{collections::BTreeMap, net::SocketAddr, time::Duration};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};

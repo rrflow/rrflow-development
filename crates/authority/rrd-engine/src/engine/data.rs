@@ -1,6 +1,6 @@
 use super::*;
 use rrd_contract::{DataSchemaSnapshot, ReadDataSchema};
-use rrd_store::{RuntimeReadBudget, RuntimeVersionedSource};
+use rrd_store::{Repositories, RuntimeReadBudget, RuntimeVersionedSource};
 
 impl RrdEngine {
     /// Read the native catalogue at one authenticated stamp without scanning

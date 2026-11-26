@@ -1,6 +1,7 @@
 //! The Rust client negotiates, authenticates, queries and reads audit against a real server.
 
 use super::*;
+use rrd_store::Repositories;
 
 #[tokio::test]
 pub(super) async fn rust_client_negotiates_authenticates_queries_and_reads_audit() {

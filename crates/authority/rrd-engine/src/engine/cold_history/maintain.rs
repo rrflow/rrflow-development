@@ -1,6 +1,7 @@
 //! Maintaining and reading cold history.
 
 use super::*;
+use rrd_store::Repositories;
 
 impl RrdEngine {
     /// Read engine-owned cold-history status or one authenticated generation.

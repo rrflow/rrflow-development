@@ -1,6 +1,6 @@
 use crate::filesystem::{AnchoredPath, OpenOptions};
 use crate::{Error, Manifest, Result, Segment, SegmentDescriptor};
-use rrflow_kernel::digest;
+use rrflow_core::digest;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fs::File;

@@ -1,4 +1,5 @@
 use super::*;
+use rrd_store::Repositories;
 
 #[derive(Debug)]
 struct FusionCandidate {

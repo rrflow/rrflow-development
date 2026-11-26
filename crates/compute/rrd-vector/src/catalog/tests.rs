@@ -1,6 +1,6 @@
 use super::*;
 use crate::{ScoreMetric, VectorSegmentConfig};
-use rrflow_kernel::{ObjectReceipt, ScopeId, DATA_RUNTIME_CONTRACT_VERSION};
+use rrflow_core::{ObjectReceipt, ScopeId, DATA_RUNTIME_CONTRACT_VERSION};
 use std::collections::BTreeSet;
 
 fn segment(id: &str, generation: u64, cursor: u64) -> SegmentDescriptor {

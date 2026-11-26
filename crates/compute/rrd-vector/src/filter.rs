@@ -1,5 +1,5 @@
 use crate::contract::invalid;
-use rrflow_kernel::{Result, RuntimeProperties, RuntimeValue};
+use rrflow_core::{Result, RuntimeProperties, RuntimeValue};
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 
@@ -135,7 +135,7 @@ impl FilterCondition {
                 let upper = lt.as_ref().or(lte.as_ref());
                 if let (Some(lower), Some(upper)) = (lower, upper) {
                     let ordering = compare_values(lower, upper).ok_or_else(|| {
-                        rrflow_kernel::Error::InvalidRuntime {
+                        rrflow_core::Error::InvalidRuntime {
                             reason: "vector range bounds use incompatible value types".into(),
                         }
                     })?;

@@ -1,6 +1,7 @@
 //! Assembling context at a read stamp: seed, lexical, vector and graph stages, then fusion.
 
 use super::*;
+use rrd_store::Repositories;
 
 impl RrdEngine {
     /// Resolves a bounded context packet from authenticated semantic versions.

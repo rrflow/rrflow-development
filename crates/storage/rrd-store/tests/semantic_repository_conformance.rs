@@ -1,13 +1,13 @@
-use rrd_store::{Repositories, ControlTransition, RrflowKvStore, StorageEngine, StorageProfile};
-use rrflow_kernel::{
+use rrd_store::{ControlTransition, Repositories, RrflowKvStore, StorageEngine, StorageProfile};
+use rrflow_core::{
     Claim, Producer, RuntimeCommit, RuntimeLogicalModel, RuntimeMutation, RuntimeProperties,
     RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry, RuntimeType, ScopeId,
 };
 
 fn exercise(storage: &dyn StorageEngine) -> (u64, u64, String, usize) {
     let claim = Claim::new(
-        rrflow_kernel::Subject::new("file-src-lib.rs").unwrap(),
-        rrflow_kernel::Predicate::new("language").unwrap(),
+        rrflow_core::Subject::new("file-src-lib.rs").unwrap(),
+        rrflow_core::Predicate::new("language").unwrap(),
         "rust",
         10,
         10,

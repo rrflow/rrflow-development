@@ -27,7 +27,7 @@ use rrd_store::{
     rrflow_kv_snapshot_artifact_view, rrflow_kv_snapshot_object_references, Error as StoreError,
     LocalObjectStore,
 };
-use rrflow_kernel::{
+use rrflow_core::{
     digest::sha256_hex, ObjectReference, ReadStamp, RuntimeCommit, RuntimeCommitOutcome,
     RuntimeSchemaRegistry, ScopeId,
 };

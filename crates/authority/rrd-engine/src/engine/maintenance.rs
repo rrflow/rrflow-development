@@ -37,7 +37,7 @@ impl RrdEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rrd_store::{Durability, StorageEngine};
+    use rrd_store::{Durability, Repositories, StorageEngine};
 
     #[test]
     fn idle_maintenance_engine_preserves_logical_cursors_and_mutable_acknowledgements() {

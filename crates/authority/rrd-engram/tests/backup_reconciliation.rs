@@ -7,7 +7,7 @@ use rrd_engram::{
     ScheduleBackup, SetDesired,
 };
 use rrd_store::{RrflowKvStore, StorageEngine};
-use rrflow_kernel::digest;
+use rrflow_core::digest;
 use std::fs;
 use std::path::PathBuf;
 

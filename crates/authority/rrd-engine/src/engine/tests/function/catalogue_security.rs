@@ -1,6 +1,7 @@
 //! Catalogue identity lineage and exact security actions.
 
 use super::*;
+use rrd_store::Repositories;
 
 #[test]
 pub(super) fn catalogue_identity_lineage_cannot_reset_after_an_inactive_membership() {

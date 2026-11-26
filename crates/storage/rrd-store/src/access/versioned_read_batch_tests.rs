@@ -3,7 +3,7 @@
 
 use super::*;
 use crate::{Repositories, RrflowKvStore, RrflowMxStore, StorageEngine};
-use rrflow_kernel::{
+use rrflow_core::{
     RuntimeCommit, RuntimeRecord, RuntimeSchemaRegistry, RuntimeTableSchema, RuntimeVector,
     ScopeId, VectorCollectionAddress, VectorValue,
 };

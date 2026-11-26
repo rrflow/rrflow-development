@@ -6,7 +6,7 @@
 
 use crate::kernel::{RuntimeCommit, RuntimeMutation};
 use crate::RrdEngine;
-use rrd_store::StorageEngine as _;
+use rrd_store::Repositories;
 use std::path::Path;
 
 pub use crate::kernel::{

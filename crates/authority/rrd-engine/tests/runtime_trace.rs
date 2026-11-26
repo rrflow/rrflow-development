@@ -1,6 +1,6 @@
 use rrd_engine::{install_runtime_trace_contract, record_runtime_trace, TraceIdentity};
-use rrd_store::{RrflowKvStore, RrflowMxStore, StorageEngine};
-use rrflow_kernel::{
+use rrd_store::{Repositories, RrflowKvStore, RrflowMxStore, StorageEngine};
+use rrflow_core::{
     RuntimeLogicalModel, RuntimeMutation, RuntimeProperties, RuntimeSchemaRegistry,
     RuntimeTraceEvent, RuntimeType, ScopeId, TraceBoundary, TraceDataClass, TraceOperation,
     TraceOutcome,
@@ -24,10 +24,10 @@ fn phases<E: StorageEngine>(store: &E) -> Vec<(String, String)> {
         .into_iter()
         .filter_map(|change| match change.mutation {
             RuntimeMutation::Event { event } if event.kind.as_str() == "runtime_trace" => {
-                let rrflow_kernel::RuntimeValue::String(phase) = &event.properties["phase"] else {
+                let rrflow_core::RuntimeValue::String(phase) = &event.properties["phase"] else {
                     panic!("trace phase has the wrong type")
                 };
-                let rrflow_kernel::RuntimeValue::String(outcome) = &event.properties["outcome"]
+                let rrflow_core::RuntimeValue::String(outcome) = &event.properties["outcome"]
                 else {
                     panic!("trace outcome has the wrong type")
                 };
@@ -132,12 +132,12 @@ fn conflicting_trace_schema_is_repaired_atomically_with_the_first_event() {
         .define_event_table(
             RuntimeType::new("runtime_trace").unwrap(),
             RuntimeLogicalModel::Event,
-            rrflow_kernel::RuntimeEventSchema::default(),
+            rrflow_core::RuntimeEventSchema::default(),
         )
         .unwrap();
     store
         .runtime()
-        .commit(&rrflow_kernel::RuntimeCommit {
+        .commit(&rrflow_core::RuntimeCommit {
             scope: scope.clone(),
             at: 1,
             actor: "test:fixture".into(),

@@ -1,6 +1,7 @@
 //! Ensuring, listing and deleting vector collections and payload indexes.
 
 use super::*;
+use rrd_store::Repositories;
 
 impl RrdEngine {
     pub fn ensure_vector_collection(

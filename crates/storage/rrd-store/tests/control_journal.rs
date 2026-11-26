@@ -1,4 +1,6 @@
-use rrd_store::{Repositories, ControlTransition, Error, RrflowKvStore, RrflowMxStore, StorageEngine};
+use rrd_store::{
+    ControlTransition, Error, Repositories, RrflowKvStore, RrflowMxStore, StorageEngine,
+};
 use std::sync::{Arc, Barrier};
 
 fn transition(expected: Option<&[u8]>, replacement: Option<&[u8]>, at: u64) -> ControlTransition {

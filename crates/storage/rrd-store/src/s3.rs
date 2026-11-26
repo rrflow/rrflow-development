@@ -10,7 +10,7 @@ use crate::{
     Error, ImmutableObjectStore, ObjectInventory, ObjectInventoryEntry, ObjectInventoryState,
     Result, VerifiedObject,
 };
-use rrflow_kernel::{digest, ObjectReceipt, ObjectReference};
+use rrflow_core::{digest, ObjectReceipt, ObjectReference};
 use std::collections::{BTreeMap, BTreeSet};
 use std::io::{Cursor, Read};
 

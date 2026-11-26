@@ -1,7 +1,7 @@
 //! Creating logical and application-complete backups.
 
-use crate::Repositories;
 use super::*;
+use crate::Repositories;
 
 /// Creates or reuses a content-addressed archive and atomically adds its
 /// coverage record to the catalogue.

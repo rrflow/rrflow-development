@@ -1,6 +1,6 @@
 use super::*;
 use crate::{Repositories, RuntimeReadAccessPath, RuntimeReadBudget, RuntimeVersionedSource};
-use rrflow_kernel::{DataTransaction, ReadStamp, RuntimeDataSnapshot, RuntimeReferentialAction};
+use rrflow_core::{DataTransaction, ReadStamp, RuntimeDataSnapshot, RuntimeReferentialAction};
 
 fn resolved_cascade(storage: &dyn StorageEngine) -> (ReadStamp, ReadStamp) {
     let fixture = commit_fixture(storage);
@@ -134,7 +134,7 @@ fn cascade_is_canonical_bounded_atomic_and_preserves_both_times_after_reopen() {
 #[test]
 fn same_batch_schema_future_relation_and_endpoint_retirement_resolve_once() {
     let storage = RrflowMxStore::new();
-    let scope = rrflow_kernel::ScopeId::new("project:batch-cascade").unwrap();
+    let scope = rrflow_core::ScopeId::new("project:batch-cascade").unwrap();
     let read = storage.runtime().read_stamp(&scope).unwrap();
     let mut registry = schema();
     registry

@@ -1,6 +1,7 @@
 //! Diagnostic models, retention, indexes, collections, audit and sections.
 
 use super::*;
+use rrd_store::Repositories;
 
 pub(super) fn diagnostic_models(
     scope: &str,

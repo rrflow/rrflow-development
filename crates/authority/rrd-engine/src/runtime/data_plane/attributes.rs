@@ -1,6 +1,7 @@
 //! Vector and embedding trace attributes, error classes and trace-only rebase.
 
 use super::*;
+use rrd_store::Repositories;
 
 pub(super) fn vector_request_attributes(
     request: &SearchRequest,

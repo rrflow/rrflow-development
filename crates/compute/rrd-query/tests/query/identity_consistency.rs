@@ -1,4 +1,5 @@
 use super::*;
+use rrd_store::Repositories;
 
 #[test]
 fn series_identity_uses_sample_table_and_id_through_reopen() {

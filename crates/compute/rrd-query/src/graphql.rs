@@ -17,7 +17,7 @@ use async_graphql_parser::types::{
 };
 use async_graphql_parser::{parse_query, Positioned};
 use async_graphql_value::{ConstValue, Value};
-use rrflow_kernel::{
+use rrflow_core::{
     digest, Predicate, ReadStamp, RuntimeId, RuntimeRef, RuntimeType, RuntimeValue,
     RuntimeValueType,
 };

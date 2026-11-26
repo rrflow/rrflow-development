@@ -11,7 +11,7 @@ use rrd_engine::RrdEngine;
 use rrd_security::{Action, Principal, PrincipalKind, ResourceGrant, SecurityRepository};
 use rrd_server::RrdHttpServer;
 use rrd_store::RrflowKvStore;
-use rrflow_kernel::digest;
+use rrflow_core::digest;
 use std::path::Path;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 

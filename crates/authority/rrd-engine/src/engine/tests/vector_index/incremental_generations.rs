@@ -8,7 +8,7 @@
 use super::*;
 use crate::engine::vector::{read_vector_versions, source_history};
 use rrd_contract::{BuildVectorQuantizationArtifactResult, SessionLease, VectorSearchResult};
-use rrd_store::{DataRuntimeAccess, ImmutableObjectStore};
+use rrd_store::{DataRuntimeAccess, ImmutableObjectStore, Repositories};
 use std::collections::BTreeSet;
 
 const DIMENSIONS: usize = 16;

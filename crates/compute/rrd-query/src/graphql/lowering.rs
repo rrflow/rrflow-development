@@ -200,7 +200,7 @@ pub(super) fn source_definition(
     family: GraphqlSourceFamily,
     kind: Option<&str>,
     source: Source,
-    registry: &rrflow_kernel::RuntimeSchemaRegistry,
+    registry: &rrflow_core::RuntimeSchemaRegistry,
 ) -> Result<GraphqlSourceDefinition> {
     let fields = fields_for_source(&source, registry)?
         .into_iter()

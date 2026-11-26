@@ -17,7 +17,7 @@ use super::super::keyspaces::{self, Space};
 use super::runtime_state::{checked_key, get_json, scan_space_bounded, AccessRead};
 use crate::lexical::{analyze, bm25_contribution, Bm25Config};
 use crate::{Error, Result, StorageTransaction};
-use rrflow_kernel::{ProjectionId, RuntimeRecord, RuntimeRef, RuntimeValue, ScopeId};
+use rrflow_core::{ProjectionId, RuntimeRecord, RuntimeRef, RuntimeValue, ScopeId};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 

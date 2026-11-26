@@ -1,6 +1,7 @@
 //! Inventory checkpoints, batches, bounds, interruptions and partial recovery.
 
 use super::*;
+use rrd_store::Repositories;
 
 #[test]
 pub(super) fn inventory_checkpoint_and_source_records_commit_reopen_and_replan_together() {

@@ -4,6 +4,7 @@ use crate::kernel::{
 };
 use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
 use rrd_contract::ColdHistoryCompression;
+use rrd_store::Repositories;
 
 /// A test child parks here when its environment names this checkpoint, so its
 /// parent can kill it at exactly this point of a publication.

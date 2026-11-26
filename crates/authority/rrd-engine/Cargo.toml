@@ -54,7 +54,7 @@ rrd-attunement = { workspace = true, optional = true }
 rrd-contract = { workspace = true, optional = true }
 rrd-engram = { workspace = true, optional = true }
 rrd-security = { workspace = true, optional = true }
-rrflow-kernel.workspace = true
+rrflow-core.workspace = true
 rrd-query = { workspace = true, optional = true }
 rrd-store = { workspace = true, optional = true }
 rrd-vector = { workspace = true, optional = true }

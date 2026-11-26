@@ -122,7 +122,7 @@ impl<'a> RuntimeRepository<'a> {
         self.snapshots(now)?
             .iter()
             .map(RetentionPin::from_snapshot)
-            .collect::<rrflow_kernel::Result<Vec<_>>>()
+            .collect::<rrflow_core::Result<Vec<_>>>()
             .map_err(Error::from)
     }
 
@@ -230,7 +230,7 @@ impl<'a> RuntimeRepository<'a> {
         read: &ReadStamp,
         valid_at: Millis,
         max_keys: usize,
-        excluded: &std::collections::BTreeSet<rrflow_kernel::RuntimeType>,
+        excluded: &std::collections::BTreeSet<rrflow_core::RuntimeType>,
         identities: &[RuntimeVersionedSource],
     ) -> Result<RuntimeDataSnapshotRead> {
         if identities

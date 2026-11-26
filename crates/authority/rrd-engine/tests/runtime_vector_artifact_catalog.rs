@@ -2,12 +2,14 @@ use rrd_engine::{
     publish_traced_vector_artifact, publish_traced_vector_artifact_with_evidence,
     reopen_vector_runtime, reopen_vector_runtime_metadata, vector_artifact_catalog_entries,
 };
-use rrd_store::{DataRuntime, LocalObjectStore, RrflowKvStore, RrflowMxStore, StorageEngine};
+use rrd_store::{
+    DataRuntime, LocalObjectStore, Repositories, RrflowKvStore, RrflowMxStore, StorageEngine,
+};
 use rrd_vector::{
     HnswConfig, HnswIndex, ScoreMetric, TurboQuantBits, TurboQuantSegment, TurboQuantSegmentConfig,
     VectorCandidate, VectorRuntime, VECTOR_ARTIFACT_RECORD_TYPE,
 };
-use rrflow_kernel::{
+use rrflow_core::{
     ProjectionId, RuntimeMutation, RuntimeProperties, RuntimeRef, RuntimeValue, RuntimeVector,
     ScopeId, VectorCollectionAddress, VectorValue,
 };
@@ -334,7 +336,7 @@ fn rrflow_kv_reopen_reconstructs_catalog_and_missing_bytes_fail_closed() {
     let reopened = reopen_vector_runtime(&reopened_data, &scope(), canonical.clone()).unwrap();
     assert_eq!(reopened.catalog().revision, 1);
 
-    let key = rrflow_kernel::ObjectReference::canonical_key(&object_sha).unwrap();
+    let key = rrflow_core::ObjectReference::canonical_key(&object_sha).unwrap();
     std::fs::remove_file(object_path.join(key)).unwrap();
     let error = reopen_vector_runtime(&reopened_data, &scope(), canonical)
         .unwrap_err()

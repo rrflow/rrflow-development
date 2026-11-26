@@ -1,7 +1,7 @@
 //! Replaying, verifying and retaining the control journal.
 
-use crate::Repositories;
 use super::*;
+use crate::Repositories;
 
 /// Applies the archived entries after the recorded progress. `stop_after`
 /// ends the replay early without the completion marker; it exists so a test

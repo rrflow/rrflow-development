@@ -1,6 +1,7 @@
 //! The commit-time BM25 stage over persistent postings.
 
 use super::*;
+use rrd_store::Repositories;
 
 /// What the commit-maintained BM25 indexes answered for a context request.
 #[derive(Default)]

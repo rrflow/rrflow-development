@@ -1,5 +1,5 @@
 use rrd_cluster::*;
-use rrflow_kernel::{ObjectReceipt, ObjectReference, ReadStamp, RuntimeRef, ScopeId};
+use rrflow_core::{ObjectReceipt, ObjectReference, ReadStamp, RuntimeRef, ScopeId};
 use std::collections::{BTreeMap, BTreeSet};
 
 fn node(value: &str) -> NodeId {
@@ -125,7 +125,7 @@ fn transfer_is_grounded_snapshot_plus_contiguous_wal_delta() {
 fn artifact_manifest_binds_project_read_plan_objects_and_receipt() {
     let scope = ScopeId::new("instance:cluster-artifacts").unwrap();
     let bytes = b"artifact";
-    let sha256 = rrflow_kernel::digest::sha256_hex(bytes);
+    let sha256 = rrflow_core::digest::sha256_hex(bytes);
     let object = ObjectReference::for_bytes(
         "artifact-one",
         Some(RuntimeRef::new("document", "one").unwrap()),
@@ -198,7 +198,7 @@ fn artifact_manifest_binds_project_read_plan_objects_and_receipt() {
         ArtifactTransferObservation::failed(&manifest, 2, 21, 500, "secret failure").unwrap();
     assert_eq!(
         failed.error_digest,
-        Some(rrflow_kernel::digest::sha256_hex(b"secret failure"))
+        Some(rrflow_core::digest::sha256_hex(b"secret failure"))
     );
     assert!(!serde_json::to_string(&failed)
         .unwrap()
@@ -208,19 +208,13 @@ fn artifact_manifest_binds_project_read_plan_objects_and_receipt() {
     let completed_trace = artifact_transfer_trace_event(&completed).unwrap();
     let failed_trace = artifact_transfer_trace_event(&failed).unwrap();
     assert_eq!(prepared_trace.name, "cluster.artifact_transfer");
-    assert_eq!(
-        prepared_trace.boundary,
-        rrflow_kernel::TraceBoundary::Adapter
-    );
+    assert_eq!(prepared_trace.boundary, rrflow_core::TraceBoundary::Adapter);
     assert_eq!(prepared_trace.trace_id, completed_trace.trace_id);
     assert_eq!(prepared_trace.span_id, completed_trace.span_id);
     assert_eq!(progress_trace.name, "cluster.artifact_chunk");
-    assert_eq!(
-        progress_trace.boundary,
-        rrflow_kernel::TraceBoundary::Adapter
-    );
+    assert_eq!(progress_trace.boundary, rrflow_core::TraceBoundary::Adapter);
     assert_eq!(progress_trace.parent_span_id, Some(prepared_trace.span_id));
-    assert_eq!(failed_trace.outcome, rrflow_kernel::TraceOutcome::Error);
+    assert_eq!(failed_trace.outcome, rrflow_core::TraceOutcome::Error);
     assert!(!serde_json::to_string(&failed_trace)
         .unwrap()
         .contains("secret failure"));

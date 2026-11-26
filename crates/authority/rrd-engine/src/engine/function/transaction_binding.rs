@@ -3,6 +3,7 @@ use super::super::*;
 use super::execution::{
     encode_receipt_record, execute_definition, invocation_id, json_to_query_value,
 };
+use rrd_store::Repositories;
 
 pub(in crate::engine) struct PreparedTransactionFunctions {
     pub commit: RuntimeCommit,

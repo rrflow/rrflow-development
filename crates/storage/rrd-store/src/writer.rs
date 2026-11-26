@@ -49,8 +49,8 @@
 //! no async runtime.
 
 use crate::error::{Error, Result};
-use crate::{Repositories, RrflowKvStore, StorageEngine};
-use rrflow_kernel::Claim;
+use crate::{Repositories, RrflowKvStore};
+use rrflow_core::Claim;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread::JoinHandle;

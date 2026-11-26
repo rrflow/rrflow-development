@@ -72,7 +72,7 @@ macro_rules! string_id {
         impl $name {
             pub fn new(value: impl Into<String>) -> Result<Self> {
                 let value = value.into();
-                if let Some(problem) = rrflow_kernel::ident::canonical_id_problem(&value) {
+                if let Some(problem) = rrflow_core::ident::canonical_id_problem(&value) {
                     return Err(ClusterError::Invalid(format!(
                         "{} {value:?} is invalid: {problem}",
                         $label

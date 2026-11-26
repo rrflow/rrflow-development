@@ -40,8 +40,7 @@ pub(super) fn loopback_worker_profile(
         .max_concurrency;
     let service_id = rrd_contract::CanonicalId::new("controlled-loopback-worker").unwrap();
     let binding_id = rrd_contract::CanonicalId::new("controlled-loopback-binding").unwrap();
-    let manifest_sha256 =
-        rrflow_kernel::digest::sha256_hex(b"controlled loopback endpoint fixture");
+    let manifest_sha256 = rrflow_core::digest::sha256_hex(b"controlled loopback endpoint fixture");
     for binding in &mut bindings {
         binding.id = binding_id.clone();
         binding.endpoint = rrd_contract::EndpointLocator::Url {
@@ -93,7 +92,7 @@ pub(super) fn loopback_worker_profile(
             maximum_concurrent_calls: 1,
             bindings: vec![rrd_contract::EndpointWorkerBinding {
                 binding_id: worker_binding,
-                protocol_evidence_sha256: rrflow_kernel::digest::sha256_hex(
+                protocol_evidence_sha256: rrflow_core::digest::sha256_hex(
                     b"controlled loopback protocol fixture; no model or quality claim",
                 ),
                 adapter: rrd_contract::EndpointWorkerAdapter::default(),
@@ -546,7 +545,7 @@ pub(super) fn worker_request(
         attempt_id: rrd_contract::CorrelationId::new(format!("source-choice-worker-{suffix}"))
             .unwrap(),
         selection_attempt_id: proposal.attempt_id.clone(),
-        expected_selection_sha256: rrflow_kernel::digest::sha256_hex(
+        expected_selection_sha256: rrflow_core::digest::sha256_hex(
             &serde_json::to_vec(proposal).unwrap(),
         ),
         expected_task_sha256: proposal.task_sha256.clone(),

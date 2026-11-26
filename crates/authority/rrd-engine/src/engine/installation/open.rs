@@ -1,6 +1,7 @@
 //! Opening and inspecting an installed engram and its operator key.
 
 use super::*;
+use rrd_store::Repositories;
 
 impl RrdEngine {
     pub fn open_installed(project: &Path, executable: &Path) -> Result<Self> {

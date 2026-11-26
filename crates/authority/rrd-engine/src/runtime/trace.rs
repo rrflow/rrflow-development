@@ -1,7 +1,7 @@
 //! Conflict-safe persistence bridge for durable runtime traces.
 //!
 //! Process-local `tracing` spans are diagnostics. This module commits the
-//! portable `rrflow-kernel` trace contract into the authoritative scoped runtime
+//! portable `rrflow-core` trace contract into the authoritative scoped runtime
 //! log. Schema installation and the event share one cursor CAS, and bounded
 //! retries rebase only on an observed concurrent winner.
 
@@ -10,7 +10,7 @@ use crate::kernel::{
     RuntimeTraceEvent, RuntimeValue, ScopeId, SpanId, TraceAttribute, TraceBoundary,
     TraceDataClass, TraceId, TraceLink, TraceOutcome,
 };
-use rrd_store::{Error, StorageEngine};
+use rrd_store::{Error, Repositories, StorageEngine};
 use std::time::Instant;
 
 const TRACE_COMMIT_RETRIES: usize = 16;

@@ -104,19 +104,19 @@ const ALLOWED_USES: &[AllowedUse] = &[
         operation: "exact vector candidate oracle",
     },
     AllowedUse {
-        path: "crates/foundation/rrflow-kernel/src/runtime/tests.rs",
+        path: "crates/core/src/runtime/tests.rs",
         kind: SensitiveReadUse::DataSnapshotReducer,
         count: 1,
         operation: "kernel data reducer missing-table rejection self-test",
     },
     AllowedUse {
-        path: "crates/foundation/rrflow-kernel/src/runtime/tests.rs",
+        path: "crates/core/src/runtime/tests.rs",
         kind: SensitiveReadUse::GraphSnapshotReducer,
         count: 1,
         operation: "kernel graph reducer self-test",
     },
     AllowedUse {
-        path: "crates/foundation/rrflow-kernel/src/runtime/referential/tests.rs",
+        path: "crates/core/src/runtime/referential/tests.rs",
         kind: SensitiveReadUse::GraphSnapshotReducer,
         count: 5,
         operation: "interval sweep and before/after CASCADE compared to the graph reducer",

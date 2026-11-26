@@ -5,7 +5,7 @@
 //! Cross-platform bitwise reproducibility requires native qualification.
 
 use crate::contract::invalid;
-use rrflow_kernel::Result;
+use rrflow_core::Result;
 
 /// Padded dimensions the dense projection accepts at most: 4096 × 4096
 /// entries, 64 MiB of `f32`.

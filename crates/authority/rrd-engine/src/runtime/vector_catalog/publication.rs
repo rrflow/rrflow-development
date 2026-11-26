@@ -1,6 +1,7 @@
 //! Vector artifact publication, bindings, runtime manifests and reopening the vector runtime.
 
 use super::*;
+use rrd_store::Repositories;
 
 pub(super) const CATALOGUE_MAX_KEYS: u64 = 100_000;
 pub(super) const PUBLICATION_RETRIES: usize = 16;

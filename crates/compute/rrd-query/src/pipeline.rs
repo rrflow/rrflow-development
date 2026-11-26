@@ -3,7 +3,7 @@ use crate::{
     Query, QueryExecution, Result,
 };
 use rrd_store::{RuntimeReadBudget, RuntimeReadEvidence, StorageEngine};
-use rrflow_kernel::ReadStamp;
+use rrflow_core::ReadStamp;
 
 #[path = "pipeline/evidence.rs"]
 mod evidence;

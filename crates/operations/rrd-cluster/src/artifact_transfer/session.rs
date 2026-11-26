@@ -1,6 +1,7 @@
 //! Transfer session policy, inventory, telemetry and state, and preparing and running transfers.
 
 use super::*;
+use rrd_store::Repositories;
 
 pub(super) const REPLAY_PAGE: usize = 4_096;
 pub(super) const TRANSFER_SESSION_DIRECTORY: &str = "transfer-sessions-v1";

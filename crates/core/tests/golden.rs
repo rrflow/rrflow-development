@@ -4,11 +4,11 @@
 //! vectors belong to `rrd-store`, not the kernel. The fixture is checked in;
 //! this test regenerates every semantic vector and fails on drift.
 //!
-//! Regenerate deliberately with `GOLDEN_WRITE=1 cargo test -p rrflow-kernel
+//! Regenerate deliberately with `GOLDEN_WRITE=1 cargo test -p rrflow-core
 //! --test golden` — and treat a diff in the fixture as what it is: a wire
 //! format change that the canonical RRFlow storage boundary must review.
 
-use rrflow_kernel::{
+use rrflow_core::{
     AuditDecision, AuditEnvelope, Claim, DataTransaction, Predicate, Producer, ProjectionId,
     ProjectionStamp, ProjectionState, ReadStamp, RetentionPin, RuntimeCommit, RuntimeEvent,
     RuntimeGraphSnapshot, RuntimeMutation, RuntimeProperties, RuntimeType, ScopeId, SnapshotHandle,

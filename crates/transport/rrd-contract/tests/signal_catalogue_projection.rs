@@ -1,4 +1,4 @@
-use rrflow_kernel::{signal_catalogue, signal_catalogue_sha256};
+use rrflow_core::{signal_catalogue, signal_catalogue_sha256};
 use serde_json::Value;
 use std::collections::BTreeSet;
 

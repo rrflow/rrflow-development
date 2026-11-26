@@ -5,6 +5,7 @@ use rrd_contract::{
     ReadTask, TaskStatus, PROMPT_FLIGHT_KIND, PROMPT_FLIGHT_USE_KIND, TASK_INCLUDES_KIND,
     TASK_KIND,
 };
+use rrd_store::Repositories;
 use std::collections::{BTreeMap, BTreeSet};
 
 const INSTANCE_SCOPE: &str = "instance:test-instance";

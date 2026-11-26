@@ -5,7 +5,7 @@ use rrd_engram::{
     AuthorityStatus, DesiredPhase, DesiredTarget, EngramRepository, Error, MutationContext,
     SetDesired,
 };
-use rrd_store::{RrflowKvStore, StorageEngine};
+use rrd_store::{Repositories, RrflowKvStore};
 
 fn id(value: &str) -> CanonicalId {
     CanonicalId::new(value).unwrap()

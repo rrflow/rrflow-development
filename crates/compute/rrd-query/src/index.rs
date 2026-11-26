@@ -5,10 +5,10 @@ use crate::{
 use crate::{CursorExpr, Filter, Projection, Query, Source, TemporalSelector, TimeExpr};
 use rrd_store::{
     ControlTransition, Durability, IndexCommitBindingDefinition, IndexCommitBindingKind,
-    RuntimeReadBudget, StorageEngine,
+    Repositories, RuntimeReadBudget, StorageEngine,
 };
-use rrflow_kernel::result_identity::RESULT_IDENTITY_VERSION;
-use rrflow_kernel::{
+use rrflow_core::result_identity::RESULT_IDENTITY_VERSION;
+use rrflow_core::{
     digest, ProjectionId, ProjectionStamp, ProjectionState, RuntimeValue, ScopeId,
     DATA_RUNTIME_CONTRACT_VERSION,
 };

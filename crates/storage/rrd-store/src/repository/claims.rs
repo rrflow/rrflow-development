@@ -5,7 +5,7 @@ use crate::gc::{build_report, RemovalReport, Tally};
 use crate::key_codec::{prefix_end, KeyCodec};
 use crate::keyspaces::{self, Durability};
 use crate::{AppendOutcome, Error, IdempotentAppendOutcome, Result, StorageEngine};
-use rrflow_kernel::{resolve_as_of, Claim, ClaimSource, Millis, Predicate, Reader, Subject};
+use rrflow_core::{resolve_as_of, Claim, ClaimSource, Millis, Predicate, Reader, Subject};
 use std::collections::BTreeMap;
 
 /// Temporal-claim and access-observation repository shared byte-for-byte by
@@ -153,7 +153,7 @@ impl<'a> ClaimRepository<'a> {
         let previous = resolve_as_of(&candidates, claim.valid_from).cloned();
         match previous {
             Some(previous) if previous.valid_from < claim.valid_from => {
-                self.append_batch(&rrflow_kernel::supersede(&previous, claim.clone())?)
+                self.append_batch(&rrflow_core::supersede(&previous, claim.clone())?)
             }
             _ => self.append_batch(std::slice::from_ref(claim)),
         }

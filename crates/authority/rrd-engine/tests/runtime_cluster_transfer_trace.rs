@@ -4,8 +4,10 @@ use rrd_cluster::{
     CLUSTER_CONTRACT_VERSION,
 };
 use rrd_engine::{execute_traced_artifact_transfer, DurableArtifactTransferObserver};
-use rrd_store::{DataRuntime, LocalObjectStore, RrflowKvStore, RrflowMxStore, StorageEngine};
-use rrflow_kernel::{
+use rrd_store::{
+    DataRuntime, LocalObjectStore, Repositories, RrflowKvStore, RrflowMxStore, StorageEngine,
+};
+use rrflow_core::{
     DataTransaction, RuntimeCommit, RuntimeLogicalModel, RuntimeMutation, RuntimeSchemaRegistry,
     RuntimeTableSchema, RuntimeType, RuntimeValue, ScopeId,
 };

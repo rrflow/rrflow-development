@@ -1,6 +1,7 @@
 //! Typed, retained assessments across unrelated advances and lost responses.
 
 use super::*;
+use rrd_store::Repositories;
 
 #[test]
 pub(super) fn controlled_assessment_is_typed_retained_and_currently_authorized_on_readback() {

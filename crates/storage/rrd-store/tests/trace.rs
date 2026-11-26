@@ -1,5 +1,5 @@
 use rrd_store::{Repositories, RrflowKvStore, RrflowMxStore, StorageEngine};
-use rrflow_kernel::{
+use rrflow_core::{
     RuntimeCommit, RuntimeLogicalModel, RuntimeMutation, RuntimeProperties, RuntimeSchemaRegistry,
     RuntimeTraceEvent, RuntimeType, RuntimeValue, ScopeId, SpanId, TraceAttribute, TraceBoundary,
     TraceDataClass, TraceId, TraceLink, TraceOperation, TraceOutcome,

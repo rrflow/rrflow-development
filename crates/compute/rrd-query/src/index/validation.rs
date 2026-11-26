@@ -1,6 +1,7 @@
 //! Entry, field and analytics validation, commit bindings and maintenance evidence.
 
 use super::*;
+use rrd_store::Repositories;
 
 pub(super) fn validate_index_entry(id: &ProjectionId, entry: &IndexEntry) -> Result<()> {
     entry.definition.validate()?;
@@ -77,7 +78,7 @@ pub(super) fn validate_fields(catalogue: &Catalog, definition: &IndexDefinition)
         let field = &definition.fields[0];
         let accepted =
             super::super::plan::field_types_for_bound_source(&bound.source, catalogue, field)?;
-        if !accepted.contains(&rrflow_kernel::RuntimeValueType::String) {
+        if !accepted.contains(&rrflow_core::RuntimeValueType::String) {
             return Err(Error::Catalog(format!(
                 "BM25 field {field:?} is not a string field"
             )));

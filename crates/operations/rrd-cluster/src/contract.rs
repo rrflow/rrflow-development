@@ -1,4 +1,4 @@
-use rrflow_kernel::{
+use rrflow_core::{
     digest::sha256_hex, ObjectReceipt, ObjectReference, ReadStamp, RuntimeRef, ScopeId,
 };
 use serde::{Deserialize, Serialize};

@@ -1,6 +1,7 @@
 //! Launching, reading and listing prompt flights.
 
 use super::*;
+use rrd_store::Repositories;
 
 /// Launch attempts before a persistent cursor race is reported as a conflict.
 pub(super) const MAX_FLIGHT_COMMIT_ATTEMPTS: u8 = 3;

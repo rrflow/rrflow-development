@@ -9,9 +9,9 @@
 //! cargo run --release -p rrd-store --example ground_cost -- <dir> [claims]
 //! ```
 
-use rrd_store::{Repositories, StorageEngine};
+use rrd_store::Repositories;
 use rrd_store::{GroundingReport, RrflowKvStore};
-use rrflow_kernel::{Claim, Predicate, Producer, Subject};
+use rrflow_core::{Claim, Predicate, Producer, Subject};
 use std::time::Instant;
 
 fn main() {

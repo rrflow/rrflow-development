@@ -1,6 +1,7 @@
 //! Restore tests: recovery into a verified target, carried control state and staged, resumable publication.
 
 use super::*;
+use rrd_store::Repositories;
 
 pub(super) struct InstalledEngram {
     _project: tempfile::TempDir,

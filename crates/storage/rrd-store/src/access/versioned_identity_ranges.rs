@@ -1,5 +1,5 @@
 use super::*;
-use rrflow_kernel::{RuntimeCommit, RuntimeProperties, RuntimeRecord, ScopeId};
+use rrflow_core::{RuntimeCommit, RuntimeProperties, RuntimeRecord, ScopeId};
 
 fn interval(lower: Bound<&str>, upper: Bound<&str>) -> RuntimeVersionedSource {
     RuntimeVersionedSource::IdentityRange {

@@ -9,7 +9,7 @@ use crate::error::{Error, Result};
 use crate::key_codec::{
     CatalogueSubfamily, DecodedKeyPart, KeyAddress, KeyCodec, KeyFamily, KeyPart,
 };
-use rrflow_kernel::{
+use rrflow_core::{
     Millis, Predicate, ProjectionFamily, ProjectionId, ProjectionWork, Reader, RuntimeEvent,
     RuntimeRef, RuntimeRelation, RuntimeValue, ScopeId, Subject,
 };

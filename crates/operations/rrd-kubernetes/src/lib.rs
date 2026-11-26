@@ -6,7 +6,7 @@
 //! pods as a distributed database.
 
 use kube::{CustomResource, CustomResourceExt};
-use rrflow_kernel::digest;
+use rrflow_core::digest;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};

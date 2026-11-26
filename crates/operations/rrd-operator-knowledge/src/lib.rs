@@ -6,7 +6,7 @@
 //! system.
 
 use rrd_vector::{EmbeddingModelBinding, ScoreMetric, SearchMode, SearchRequest, VectorRuntime};
-use rrflow_kernel::{
+use rrflow_core::{
     digest, Error, ProjectionFamily, ProjectionStamp, ProjectionState, ProjectionWork, Result,
     ScopeId,
 };

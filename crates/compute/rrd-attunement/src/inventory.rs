@@ -5,7 +5,7 @@
 //! engine must revalidate the observed source boundary and atomically publish
 //! entries, containment, change set and checkpoint before calling it a snapshot.
 
-use rrflow_kernel::digest::{sha256_hex, Sha256};
+use rrflow_core::digest::{sha256_hex, Sha256};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fmt;

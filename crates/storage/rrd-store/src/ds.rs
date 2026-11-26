@@ -4,8 +4,8 @@
 //! their references, audit envelope, and projection work become visible in one
 //! engine transaction. Failed commits leave explicit orphans for later GC.
 
-use crate::{Repositories, Error, ImmutableObjectStore, Result, StorageEngine};
-use rrflow_kernel::{
+use crate::{Error, ImmutableObjectStore, Repositories, Result, StorageEngine};
+use rrflow_core::{
     DataTransaction, ObjectReference, RuntimeCommitOutcome, RuntimeMutation, RuntimeRef,
 };
 

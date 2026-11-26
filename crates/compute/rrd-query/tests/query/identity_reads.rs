@@ -1,4 +1,5 @@
 use super::*;
+use rrd_store::Repositories;
 
 fn run<E: StorageEngine>(engine: &E, text: &str, keys: u64) -> rrd_query::QueryExecution {
     let catalog = fixture_catalog(engine);

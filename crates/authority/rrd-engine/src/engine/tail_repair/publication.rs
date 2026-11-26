@@ -7,7 +7,7 @@ use crate::engine::token_key::{
     create_private_directory_anchored, read_private_anchored, write_private_anchored,
 };
 use rrd_store::filesystem::{AnchoredPath, OpenOptions};
-use rrd_store::RrflowKvInspector;
+use rrd_store::{Repositories, RrflowKvInspector};
 use std::io::{Read, Write};
 
 const AUDIT_FILE: &str = "RRD.REPAIR.json";

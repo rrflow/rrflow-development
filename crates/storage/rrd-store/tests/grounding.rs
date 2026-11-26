@@ -1,13 +1,13 @@
 //! Adapter conformance against the grounding reference.
 //!
 //! `SPEC.md` §8.3 and §12: a substrate adapter is correct if and only if it
-//! returns what [`rrflow_kernel::reference::MemoryClaims`] returns for the same
+//! returns what [`rrflow_core::reference::MemoryClaims`] returns for the same
 //! claims. These tests are that differential, not an independent set of
 //! hand-written expectations.
 
-use rrd_store::{RrflowKvStore, StorageEngine};
-use rrflow_kernel::reference::MemoryClaims;
-use rrflow_kernel::{Claim, ClaimReader, Predicate, Producer, Subject};
+use rrd_store::{Repositories, RrflowKvStore};
+use rrflow_core::reference::MemoryClaims;
+use rrflow_core::{Claim, ClaimReader, Predicate, Producer, Subject};
 
 fn producer() -> Producer {
     Producer {
@@ -236,7 +236,7 @@ fn access_records_are_written_without_blocking_reads() {
         store
             .claims()
             .observe(
-                &rrflow_kernel::Reader::new("agent:clyffy").unwrap(),
+                &rrflow_core::Reader::new("agent:clyffy").unwrap(),
                 &subject,
                 &predicate,
                 1000 + i,

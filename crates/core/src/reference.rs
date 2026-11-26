@@ -2,7 +2,7 @@
 //!
 //! This implementation serves two functions:
 //!
-//! 1. It allows `rrflow-kernel` to verify semantic resolution independently of any
+//! 1. It allows `rrflow-core` to verify semantic resolution independently of any
 //!    physical key codec or substrate, satisfying the modularity criterion in
 //!    `SPEC.md` §5.
 //! 2. It is the grounding reference of `SPEC.md` §8.3. A substrate adapter is

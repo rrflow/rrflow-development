@@ -1,6 +1,7 @@
 //! Traced embedding execution, the durable embedding backend and traced vector search.
 
 use super::*;
+use rrd_store::Repositories;
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct TracedVectorSearch {

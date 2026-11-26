@@ -25,7 +25,7 @@
 //!    crash could silently forget would defeat the detection.
 
 use crate::error::{Error, Result};
-use rrflow_kernel::{Claim, Millis, Predicate, Subject};
+use rrflow_core::{Claim, Millis, Predicate, Subject};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 

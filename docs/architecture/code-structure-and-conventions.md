@@ -12,9 +12,9 @@ The owner's words of 2026-11-13: "files that are far too long need to be clearly
 | Area | Measured |
 |---|---|
 | Engine size | 30 crates, 787 `.rs` files, about 204k lines |
-| Long engine files | 61 non-test files over 1,000 lines and 147 over 500. The largest are `rrd-contract/src/lib.rs` (7,669 lines, 261 public types, an 850-line `endpoint_catalogue()`), `rrflow-lsm/src/database.rs` (3,056), `rrflow-kernel/src/runtime.rs` (2,825) and `rrflow-lsm/src/segment/mod.rs` (2,802) |
+| Long engine files | 61 non-test files over 1,000 lines and 147 over 500. The largest are `rrd-contract/src/lib.rs` (7,669 lines, 261 public types, an 850-line `endpoint_catalogue()`), `rrflow-lsm/src/database.rs` (3,056), `rrflow-core/src/runtime.rs` (2,825) and `rrflow-lsm/src/segment/mod.rs` (2,802) |
 | Engine lint and layout rules | No `clippy.toml`, `rustfmt.toml`, `deny.toml` or `[workspace.lints]`; `too_many_arguments` allowed 132 times. `workspace_architecture.rs` enforces the package-to-path map, dependency sets for 7 crates, forbidden edges and vocabulary, but nothing on file size, module style, errors or tier order |
-| Engine module, error and naming patterns | Both `mod.rs` and file-named modules, plus 23 `#[path]` attributes. Errors are hand-written in five styles, with about 125 `Result<_, String>` and 109 `Box<dyn Error>` signatures. About 35 SHA-256 validators and 13 hand-written hex encoders sit beside `rrflow-kernel::digest`. "engram" appears 3,100 times and "engram" 115, with miscased renames such as `InstalledengramRecord` |
+| Engine module, error and naming patterns | Both `mod.rs` and file-named modules, plus 23 `#[path]` attributes. Errors are hand-written in five styles, with about 125 `Result<_, String>` and 109 `Box<dyn Error>` signatures. About 35 SHA-256 validators and 13 hand-written hex encoders sit beside `rrflow-core::digest`. "engram" appears 3,100 times and "engram" 115, with miscased renames such as `InstalledengramRecord` |
 | Engine layering | Group directories do not match dependency tiers: `transport/` holds both the lowest crate (`rrd-contract`) and the highest (`rrd-server`). `rrd-maintenance` and `rrd-kubernetes` have no consumers |
 | Connectome size | 406 TS/TSX files (67,686 lines) and 41 Rust files (18,064 lines) |
 | Connectome layout | Five organizing schemes at once: layer folders, `screens/{pages,views}`, a half-built `shell/shared/spokes`, the `rrflow/` client, and workspace areas. Modals live in 3 places, stores in 2, components in 3 and connection logic in 4. 45 imports break the written spoke rules |
@@ -31,7 +31,7 @@ The owner's words of 2026-11-13: "files that are far too long need to be clearly
 | R3 | File-named modules (`foo.rs` with `foo/`). No new `mod.rs` and no `#[path]` | Rust 2018 module idiom | the same check, with the 10 `mod.rs` files and 23 `#[path]` attributes on the ratchet list |
 | R4 | Crates form declared tiers, and a crate depends only on lower tiers | layered architecture, as in rustc's own crate graph | one tier table in `workspace_architecture.rs`; every edge checked, not just 7 crates |
 | R5 | One `Error` enum per library crate in `error.rs` (`thiserror`), with `pub type Result<T>`. No `Result<_, String>` or `Box<dyn Error>` in library crates | Rust API guidelines C-GOOD-ERR | a source check on the ratchet: counts may only fall |
-| R6 | One digest type: `Sha256Digest` (validated lowercase hex), with one encoder and one validator, in a tier-0 crate both `rrflow-kernel` and `rrd-contract` use | one owner per concept | the check refuses `Sha256::new` and hex encoders outside that crate |
+| R6 | One digest type: `Sha256Digest` (validated lowercase hex), with one encoder and one validator, in a tier-0 crate both `rrflow-core` and `rrd-contract` use | one owner per concept | the check refuses `Sha256::new` and hex encoders outside that crate |
 | R7 | Configuration naming: `Options` for constructor inputs, `Settings` only for S1 settings, `Policy` for rules, `Limits` for caps. One `open(path, Options)` instead of `open_with_*` and `create_with_*` fan-out. More than three optional inputs means an options struct | builder and options patterns of the API guidelines | `too_many_arguments` stops being allowed: its 132 escapes go on the ratchet |
 | R8 | `[workspace.lints]`: `unsafe_code` denied outside named crates, `clippy::undocumented_unsafe_blocks`, `unreachable_pub`, `missing_debug_implementations`; `cargo-deny` for licences and advisories | standard workspace hygiene | CI clippy and `cargo deny check` |
 | R9 | Tests: unit tests in a sibling `tests.rs` (`#[cfg(test)] mod tests;`); integration and public-API tests in `tests/`. `rrd-engine/src/engine/tests/` (42.8k lines inside the crate) moves to `tests/` wherever it uses the public API | Cargo conventions | the shape check |
@@ -63,7 +63,7 @@ The owner's words of 2026-11-13: "files that are far too long need to be clearly
 
    Proof: the OpenAPI digest constant is unchanged, every SDK projection regenerates with no diff, and all `rrd-contract` tests pass untouched.
 2. **`rrflow-lsm/src/database.rs`** → `database/{options, failpoints, open, transactions, reads, compaction, gc, snapshot}.rs`.
-3. **`rrflow-kernel/src/runtime.rs`**, **`rrflow-lsm/src/segment/mod.rs`**, **`rrflow-kernel/src/trace.rs`**, **`rrd-engine/src/engine/installation.rs`**, **`rrd-store/src/backup.rs`**, **`rrd-store/src/rrflow_kv.rs`** and **`rrd-vector/src/hnsw.rs`**, by the split points recorded in the 2026-11-13 survey.
+3. **`rrflow-core/src/runtime.rs`**, **`rrflow-lsm/src/segment/mod.rs`**, **`rrflow-core/src/trace.rs`**, **`rrd-engine/src/engine/installation.rs`**, **`rrd-store/src/backup.rs`**, **`rrd-store/src/rrflow_kv.rs`** and **`rrd-vector/src/hnsw.rs`**, by the split points recorded in the 2026-11-13 survey.
 4. The remaining files on the ratchet list, largest first.
 
 ## 3. Connectome rules
@@ -204,7 +204,7 @@ A crate depends only on crates in a lower tier, or in its own tier where the tab
 
 | Tier | Folder | Crate today | Target crate | Lines today |
 |---|---|---|---|---|
-| 0 | `crates/foundation/` | `rrflow-kernel` | `rrflow-kernel` | 13,631 |
+| 0 | `crates/foundation/` | `rrflow-core` | `rrflow-core` | 13,631 |
 | 0 | | `transport/rrd-contract` | `rrd-contract` | 37,718 |
 | 0 | | `compute/rrflow-arrow` | `rrflow-arrow` | 624 |
 | 1 | `crates/storage/` | `storage/rrflow-lsm` | `rrflow-lsm` | 39,473 |
@@ -255,7 +255,7 @@ Removed, each in the pull request named in 6.8: `rrd-maintenance` (no consumer; 
 
 **`rrflow-mx` is gathered.** Today the agent memory and knowledge behavior is in `rrd-engine` (`engine/knowledge.rs` 378 lines, `memory_engram.rs` 440, `context/` 1,136, `task.rs` 678, `task_assessment.rs` 616, `project_map.rs` 420) and in the contract (`knowledge_tree`, `knowledge`, `memory_context`, `memory_engram`). The crate takes the logic that does not need `RrdEngine` state; the engine keeps a `mx/` folder that calls it.
 
-**The reasoning tree has one definition.** `rrd-contract/src/reasoning_tree.rs` (679 lines) and `rrflow-kernel/src/reasoning_tree.rs` (654) declare the same 22 public items; the contract adds `ReasoningReadStamp`. The contract depends on the kernel only in tests, and one test parses the same JSON into both. The two are not copies: the contract's types identify things with `CanonicalId` and report `ContractError`, and the kernel's use `RuntimeId` and `RuntimeType` and report the kernel `Error`. One definition therefore needs one identifier type first. Package 4 makes the kernel the owner of the identifier and of the tree, and the contract depends on the kernel and re-exports both with its schema derive. See 6.9 item 1.
+**The reasoning tree has one definition.** `rrd-contract/src/reasoning_tree.rs` (679 lines) and `rrflow-core/src/reasoning_tree.rs` (654) declare the same 22 public items; the contract adds `ReasoningReadStamp`. The contract depends on the kernel only in tests, and one test parses the same JSON into both. The two are not copies: the contract's types identify things with `CanonicalId` and report `ContractError`, and the kernel's use `RuntimeId` and `RuntimeType` and report the kernel `Error`. One definition therefore needs one identifier type first. Package 4 makes the kernel the owner of the identifier and of the tree, and the contract depends on the kernel and re-exports both with its schema derive. See 6.9 item 1.
 
 ### 6.4 The engine pulls each crate by name
 
@@ -314,7 +314,7 @@ Alignment moves the existing start, serve, register and stop code into `lifecycl
 
 ### 6.7 Development, trace and debug code
 
-Measured today: trace and inspection code is in `rrflow-kernel/src/trace/` (2,569 lines) and `telemetry.rs` (797), `rrd-engine` `diagnostic/` (1,345), `flight/` (1,595) and `runtime/trace.rs`, and `rrd-observation` (582). No crate has a `dev` or internal-build feature; the features are `full`, `edge`, `crash-test`, `cld-parquet`, `cld-vortex` and `cluster-transfer`.
+Measured today: trace and inspection code is in `rrflow-core/src/trace/` (2,569 lines) and `telemetry.rs` (797), `rrd-engine` `diagnostic/` (1,345), `flight/` (1,595) and `runtime/trace.rs`, and `rrd-observation` (582). No crate has a `dev` or internal-build feature; the features are `full`, `edge`, `crash-test`, `cld-parquet`, `cld-vortex` and `cluster-transfer`.
 
 Target: each crate's development-only code is in its `dev/` folder behind a `dev` feature, and one workspace feature on `rrflow-cli` turns them all on for the internal build. Code that a released engine needs (the audit chain, the public diagnostic operations) is not development code and stays in its feature folder. See 6.9 item 2.
 
@@ -355,7 +355,7 @@ Each item is settled by reading code at the start of the package that needs it, 
 6. Whether time-series and geospatial capability exist in code, as the system overview already notes.
 7. The module graph in 6.3 comes from a text scan of `crate::` and `super::` paths. It misses glob imports. A graph from the compiler replaces it before the store is split (package 6); package 2 did not build it.
 8. Whether `RrflowKvStore` and `StorageEngine` land in `rrflow-kv`. If they do, the `rrflow-cld` test of 6.12 conforms once it names `rrflow-kv`; if not, the test moves to `rrflow-db` (package 6).
-9. Which of the kernel product types that `rrd-store` uses are needed by the `rrflow-kv` part, and so whether `rrflow-kernel` as a whole is a fit dependency for a standalone key-value store or its `digest` module must be separable (package 6).
+9. Which of the kernel product types that `rrd-store` uses are needed by the `rrflow-kv` part, and so whether `rrflow-core` as a whole is a fit dependency for a standalone key-value store or its `digest` module must be separable (package 6).
 10. Rule 3 of 6.12 is not a CI job. It was run by hand on 2026-11-25 for the four standalone crates and all passed; `rrflow-cld` still builds `rrd-store` for one test. The result is in the [architecture manifest journal](../evidence/change-journals/repository/architecture-manifest-20261125.md).
 11. Which record owns the ACID proof and the SurrealDB capability map that gate package 14. OBJ-10 names SurrealDB as a measured baseline "where the compared capability exists" but lists no capabilities; Connectome's 348-capability parity list covers the UI client, not the engine. The owning record is found or written before package 13 merges.
 
@@ -396,14 +396,14 @@ The owner decided on 2026-11-25 that the storage engines and foundation crates s
 
 | Standalone crate | First-party dependencies today | Measured at `058f459a8` |
 |---|---|---|
-| `rrflow-kernel` | none | conforms to rules 1 and 2 |
-| `rrflow-arrow` | `rrflow-kernel` | conforms to rules 1 and 2 |
-| `rrflow-lsm` | `rrflow-kernel` | conforms; all 7 kernel references are to `digest` (a 249-line module) |
-| `rrflow-cld` | `rrflow-arrow`, `rrflow-kernel`; dev-dependency `rrd-store` | breaks rule 2: `tests/stamped_history.rs` uses `RrflowKvStore` and `StorageEngine` |
+| `rrflow-core` | none | conforms to rules 1 and 2 |
+| `rrflow-arrow` | `rrflow-core` | conforms to rules 1 and 2 |
+| `rrflow-lsm` | `rrflow-core` | conforms; all 7 kernel references are to `digest` (a 249-line module) |
+| `rrflow-cld` | `rrflow-arrow`, `rrflow-core`; dev-dependency `rrd-store` | breaks rule 2: `tests/stamped_history.rs` uses `RrflowKvStore` and `StorageEngine` |
 | `rrflow-kv` | not a crate yet (package 6) | `rrd-store`, which holds it, uses kernel product types (`RuntimeLogicalModel` 18 references, `ScopeId` 14) |
 
 Not standalone: `rrflow-tx`, `rrflow-db` and everything above them. `rrflow-vector` depends on `rrd-store` (8 references, 7 of them its `Error`), so the vector index cannot stand alone today.
 
-Rule 4 holds since 2026-11-25: the root manifest declares all 25 first-party crates that another crate depends on, every member names them with `workspace = true`, and the `workspace_architecture` test `first_party_dependencies_are_declared_once_in_the_root_manifest` fails on a direct path. Before that, 84 dependency lines named a `path` and the root declared only `rrflow-kernel`. The resolved dependency graph and `Cargo.lock` did not change.
+Rule 4 holds since 2026-11-25: the root manifest declares all 25 first-party crates that another crate depends on, every member names them with `workspace = true`, and the `workspace_architecture` test `first_party_dependencies_are_declared_once_in_the_root_manifest` fails on a direct path. Before that, 84 dependency lines named a `path` and the root declared only `rrflow-core`. The resolved dependency graph and `Cargo.lock` did not change.
 
 This decision agrees with the rule in `AGENTS.md` that all first-party engine code lives in this repository, so that rule does not change.

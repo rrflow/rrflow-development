@@ -6,10 +6,10 @@ use rrd_query::{
     parse, ComparisonOperator, CursorExpr, Projection, Query, Source, TemporalSelector, TimeExpr,
 };
 use rrd_store::{
-    RrflowKvStore, RrflowMxStore, RuntimeReadAccessPath, RuntimeReadBudget, RuntimeVersionedSource,
-    StorageEngine,
+    Repositories, RrflowKvStore, RrflowMxStore, RuntimeReadAccessPath, RuntimeReadBudget,
+    RuntimeVersionedSource, StorageEngine,
 };
-use rrflow_kernel::{
+use rrflow_core::{
     Claim, GeoPoint, GeoValue, Predicate, Producer, RuntimeCommit, RuntimeEvent,
     RuntimeEventSchema, RuntimeGeo, RuntimeGraphSnapshot, RuntimeLogicalModel, RuntimeMutation,
     RuntimeProperties, RuntimePropertySchema, RuntimeRecord, RuntimeRecordSchema, RuntimeRef,
@@ -80,8 +80,8 @@ fn schema() -> RuntimeMutation {
             RuntimeRelationSchema {
                 from: BTreeSet::from([document_kind.clone()]),
                 to: BTreeSet::from([document_kind.clone()]),
-                on_delete_from: Some(rrflow_kernel::RuntimeReferentialAction::Cascade),
-                on_delete_to: Some(rrflow_kernel::RuntimeReferentialAction::Cascade),
+                on_delete_from: Some(rrflow_core::RuntimeReferentialAction::Cascade),
+                on_delete_to: Some(rrflow_core::RuntimeReferentialAction::Cascade),
                 properties: BTreeMap::from([(
                     "strength".into(),
                     RuntimePropertySchema::required(RuntimeValueType::String),
@@ -829,7 +829,7 @@ fn all_source_families_execute_at_explicit_time() {
     let engine = RrflowMxStore::new();
     engine.runtime().commit(&fixture_commit()).unwrap();
     let catalog = fixture_catalog(&engine);
-    let claim_identity = rrflow_kernel::result_identity::claim(
+    let claim_identity = rrflow_core::result_identity::claim(
         &Subject::new("document-a").unwrap(),
         &Predicate::new("status").unwrap(),
     );

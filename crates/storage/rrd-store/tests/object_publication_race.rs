@@ -1,5 +1,5 @@
 use rrd_store::{LocalObjectStore, ObjectStep};
-use rrflow_kernel::{digest, ObjectReference};
+use rrflow_core::{digest, ObjectReference};
 use std::collections::BTreeSet;
 use std::path::Path;
 use std::process::{Command, Stdio};

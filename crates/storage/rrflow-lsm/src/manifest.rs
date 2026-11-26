@@ -10,7 +10,7 @@ use crate::filesystem::{AnchoredPath, OpenOptions};
 
 use crate::{Error, Result};
 
-use rrflow_kernel::digest;
+use rrflow_core::digest;
 
 use serde::{Deserialize, Serialize};
 

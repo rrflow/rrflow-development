@@ -1,6 +1,7 @@
 //! Replan tests: staleness, fencing, competing acceptances, crash replay and principal-scoped receipts.
 
 use super::*;
+use rrd_store::Repositories;
 
 #[test]
 fn stale_attunement_can_be_replanned_without_reinstalling_or_losing_receipts() {

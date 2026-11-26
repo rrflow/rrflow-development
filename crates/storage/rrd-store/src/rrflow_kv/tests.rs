@@ -1,6 +1,6 @@
-use crate::Repositories;
 use super::*;
-use rrflow_kernel::{
+use crate::Repositories;
+use rrflow_core::{
     digest, Claim, DataTransaction, ObjectReceipt, Predicate, Producer, ProjectionId, RuntimeEvent,
     RuntimeEventSchema, RuntimeLogicalModel, RuntimeMutation, RuntimeProperties,
     RuntimePropertySchema, RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeRelation,
@@ -345,8 +345,8 @@ fn reconciliation_evidence_attributes_actual_io_backend() {
 
 fn claim() -> Claim {
     Claim::new(
-        rrflow_kernel::Subject::new("test-subject").unwrap(),
-        rrflow_kernel::Predicate::new("test-predicate").unwrap(),
+        rrflow_core::Subject::new("test-subject").unwrap(),
+        rrflow_core::Predicate::new("test-predicate").unwrap(),
         "test-value",
         10,
         11,
@@ -892,7 +892,7 @@ fn snapshot_object_closure_denies_foreign_project_references() {
     let first_scope = ScopeId::new("project:first").unwrap();
     let second_scope = ScopeId::new("project:second").unwrap();
     let object = |id: &str, bytes: &[u8]| {
-        let sha256 = rrflow_kernel::digest::sha256_hex(bytes);
+        let sha256 = rrflow_core::digest::sha256_hex(bytes);
         ObjectReference::for_bytes(
             id,
             None,

@@ -3,6 +3,7 @@ use rrd_contract::{
     AttunementJobPage, AttunementSourceVerification, ListAttunementJobs,
     ATTUNEMENT_CONTRACT_VERSION,
 };
+use rrd_store::Repositories;
 
 fn request(after_job_id: Option<CanonicalId>, limit: u16) -> ListAttunementJobs {
     ListAttunementJobs {

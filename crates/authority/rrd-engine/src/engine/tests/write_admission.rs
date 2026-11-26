@@ -1,5 +1,5 @@
 use super::*;
-use rrd_store::RrflowKvStore;
+use rrd_store::{Repositories, RrflowKvStore};
 
 #[test]
 fn projected_read_denial_preserves_durable_uncertainty_and_read_pressure() {

@@ -26,8 +26,8 @@ use rrd_security::{
 };
 use rrd_server::RrdHttpServer;
 use rrd_server::RrdMutualTlsServerConfig;
-use rrd_store::{RrflowKvStore, StorageEngine};
-use rrflow_kernel::{
+use rrd_store::{Repositories, RrflowKvStore};
+use rrflow_core::{
     digest, RuntimeCommit, RuntimeLogicalModel, RuntimeProperties, RuntimePropertySchema,
     RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeType, RuntimeValue, RuntimeValueType,
     ScopeId,
@@ -124,8 +124,8 @@ fn seed(engine: &RrflowKvStore, scope: &str) {
             actor: "rrd-client-fixture".into(),
             expected_cursor: read.commit_cursor,
             mutations: vec![
-                rrflow_kernel::RuntimeMutation::Schema { registry },
-                rrflow_kernel::RuntimeMutation::Record {
+                rrflow_core::RuntimeMutation::Schema { registry },
+                rrflow_core::RuntimeMutation::Record {
                     record: RuntimeRecord {
                         reference: RuntimeRef::new("document", "alpha").unwrap(),
                         valid_from: 100,

@@ -3,7 +3,7 @@
 //! their authenticated commit identity, never a second copy of their contents.
 use super::*;
 use rrd_attunement::inventory::EntryKind;
-use rrd_store::{RuntimeReadBudget, RuntimeVersionedSource};
+use rrd_store::{Repositories, RuntimeReadBudget, RuntimeVersionedSource};
 use std::collections::{BTreeMap, BTreeSet};
 
 pub(super) const SNAPSHOT: &str = "source-tree-snapshot";

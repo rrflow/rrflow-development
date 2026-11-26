@@ -15,8 +15,8 @@
 //! cargo run --release -p rrd-store --example sparse_latency -- <path-on-ext4>
 //! ```
 
-use rrd_store::{ClaimBatchWriter, ClaimBatchWriterConfig, RrflowKvStore, StorageEngine};
-use rrflow_kernel::{Claim, Predicate, Producer, Subject};
+use rrd_store::{ClaimBatchWriter, ClaimBatchWriterConfig, Repositories, RrflowKvStore};
+use rrflow_core::{Claim, Predicate, Producer, Subject};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 

@@ -5,7 +5,7 @@
 //! in for a digest of the current working file's content.
 
 use gix_index::hash;
-use rrflow_kernel::digest::sha256_hex;
+use rrflow_core::digest::sha256_hex;
 use serde::Serialize;
 use std::{collections::BTreeMap, fmt};
 

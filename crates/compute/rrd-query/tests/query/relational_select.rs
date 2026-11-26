@@ -1,4 +1,5 @@
 use super::*;
+use rrd_store::Repositories;
 
 #[test]
 fn select_joins_relationships_at_one_stamp_and_survives_reopen() {

@@ -1,6 +1,7 @@
 //! Loading each read path's rows within the budget.
 
 use super::*;
+use rrd_store::Repositories;
 
 impl ReadPath {
     pub(super) fn from_plan(plan: &PhysicalPlan, shape: &PlanShape) -> Result<Self> {
@@ -170,7 +171,7 @@ impl ReadPath {
     pub(super) fn load<E: StorageEngine>(
         &self,
         engine: &E,
-        stamp: &rrflow_kernel::ReadStamp,
+        stamp: &rrflow_core::ReadStamp,
         shape: &PlanShape,
         budget: RuntimeReadBudget,
     ) -> Result<LoadedAccess> {
@@ -304,7 +305,7 @@ impl ReadPath {
                 .projections()
                 .get(&name)?
                 .ok_or_else(|| Error::Integrity(format!("index artifact {id} is missing")))?;
-            if rrflow_kernel::digest::sha256_hex(&bytes) != *artifact_digest {
+            if rrflow_core::digest::sha256_hex(&bytes) != *artifact_digest {
                 return Err(Error::Integrity(format!(
                     "index artifact {id} digest does not verify"
                 )));
@@ -347,7 +348,7 @@ impl ReadPath {
         }
 
         struct LoadedIndexArtifact {
-            scope: rrflow_kernel::ScopeId,
+            scope: rrflow_core::ScopeId,
             definition: IndexDefinition,
             generation: u64,
             source_cursor: u64,
@@ -364,7 +365,7 @@ impl ReadPath {
         struct IndexArtifactEnvelope<'a> {
             contract_version: u16,
             result_identity_version: u16,
-            scope: rrflow_kernel::ScopeId,
+            scope: rrflow_core::ScopeId,
             definition: IndexDefinition,
             generation: u64,
             source_cursor: u64,
@@ -574,24 +575,22 @@ impl ReadPath {
                             // outside this adjacency must still govern visibility.
                             changes
                                 .iter()
-                                .filter_map(|change| {
-                                    match &change.mutation {
+                                .filter_map(|change| match &change.mutation {
                                     RuntimeMutation::Relation { relation } => {
                                         Some(relation.reference.clone())
                                     }
                                     RuntimeMutation::Retire { retirement }
                                         if retirement.model
-                                            == rrflow_kernel::RuntimeLogicalModel::GraphRelation =>
+                                            == rrflow_core::RuntimeLogicalModel::GraphRelation =>
                                     {
                                         Some(retirement.reference.clone())
                                     }
                                     _ => None,
-                                }
                                 })
                                 .collect::<std::collections::BTreeSet<_>>()
                                 .into_iter()
                                 .map(|reference| RuntimeVersionedSource::Identity {
-                                    model: rrflow_kernel::RuntimeLogicalModel::GraphRelation,
+                                    model: rrflow_core::RuntimeLogicalModel::GraphRelation,
                                     reference,
                                 })
                                 .collect()

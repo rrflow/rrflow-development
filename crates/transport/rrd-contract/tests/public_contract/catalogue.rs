@@ -205,8 +205,8 @@ pub(super) fn openapi_is_derived_from_every_catalogue_operation_and_wire_type() 
 pub(super) fn canonical_id_agrees_with_the_kernel_grammar() {
     let mut values = vec![
         String::new(),
-        "a".repeat(rrflow_kernel::ident::MAX_CANONICAL_ID_BYTES),
-        "a".repeat(rrflow_kernel::ident::MAX_CANONICAL_ID_BYTES + 1),
+        "a".repeat(rrflow_core::ident::MAX_CANONICAL_ID_BYTES),
+        "a".repeat(rrflow_core::ident::MAX_CANONICAL_ID_BYTES + 1),
     ];
     for byte in 0..=u8::MAX {
         let character = char::from(byte);
@@ -216,12 +216,12 @@ pub(super) fn canonical_id_agrees_with_the_kernel_grammar() {
     }
     assert_eq!(
         rrd_contract::MAX_ID_BYTES,
-        rrflow_kernel::ident::MAX_CANONICAL_ID_BYTES
+        rrflow_core::ident::MAX_CANONICAL_ID_BYTES
     );
     for value in values {
         assert_eq!(
             rrd_contract::CanonicalId::new(value.clone()).is_ok(),
-            rrflow_kernel::ident::canonical_id_problem(&value).is_none(),
+            rrflow_core::ident::canonical_id_problem(&value).is_none(),
             "the two grammars disagree on {value:?}"
         );
     }

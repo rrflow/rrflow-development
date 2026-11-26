@@ -1,6 +1,7 @@
 //! Seeded query fixtures and the deployment conformance corpus.
 
 use super::*;
+use rrd_store::Repositories;
 
 pub(super) fn seed_query_fixture(root: &Path) {
     let engine = RrflowKvStore::open(root).unwrap();

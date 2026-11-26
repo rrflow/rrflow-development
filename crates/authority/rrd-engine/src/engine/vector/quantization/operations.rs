@@ -1,6 +1,7 @@
 //! Engine vector quantization operations and admission.
 
 use super::*;
+use rrd_store::Repositories;
 
 /// How one lifecycle mutation proceeds once its key and digest are known.
 pub(super) enum QuantizationAdmission {

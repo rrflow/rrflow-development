@@ -4,7 +4,7 @@
 //! authorized or committed. The caller must bind the supplied source identity
 //! and digest to an accepted Inventory checkpoint before publishing anything.
 
-use rrflow_kernel::digest::sha256_hex;
+use rrflow_core::digest::sha256_hex;
 use serde::{Deserialize, Serialize};
 use std::time::{Duration, Instant};
 use tree_sitter::{Language, Parser, Tree};

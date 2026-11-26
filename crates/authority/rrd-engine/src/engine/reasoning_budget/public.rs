@@ -5,6 +5,7 @@ use rrd_contract::{
     TaskBudgetView,
 };
 use rrd_inference::EmbeddingBackend;
+use rrd_store::Repositories;
 
 fn contract(error: rrd_contract::ContractError) -> ServiceError {
     ServiceError::Contract(error.to_string())

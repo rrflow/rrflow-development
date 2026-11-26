@@ -9,6 +9,7 @@ use rrd_contract::{
     KnowledgePathBinding, KnowledgeTreeCatalogue, ListKnowledgeTrees, ReplaceKnowledgeTrees,
     ReplaceKnowledgeTreesResult,
 };
+use rrd_store::Repositories;
 
 const KNOWLEDGE_STATE_FORMAT: u16 = 1;
 const MAX_KNOWLEDGE_REPLACEMENTS: u64 = 100_000;

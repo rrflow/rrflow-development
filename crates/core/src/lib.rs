@@ -1,4 +1,4 @@
-//! # rrflow-kernel
+//! # rrflow-core
 //!
 //! The rrflow kernel: semantic identities, bi-temporal claims, and supersession.
 //!

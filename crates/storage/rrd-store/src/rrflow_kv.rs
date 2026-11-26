@@ -13,7 +13,7 @@ use crate::key_codec::prefix_end;
 use crate::key_codec::KeyCodec;
 use crate::keyspaces::{self, Durability};
 use crate::transaction::{StorageTransaction, TransactionCommit, TransactionRollback};
-use rrflow_kernel::{
+use rrflow_core::{
     AuditEnvelope, Millis, ObjectReference, ReadStamp, RuntimeCommit, RuntimeCommitOutcome,
     RuntimeLogAccumulator, RuntimeSchemaRegistry, ScopeId, SnapshotHandle, SnapshotId,
 };

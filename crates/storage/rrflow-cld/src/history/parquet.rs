@@ -165,7 +165,7 @@ fn decode_cold_history_page_with_clock(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rrflow_kernel::{RuntimeReadValidation, ScopeId};
+    use rrflow_core::{RuntimeReadValidation, ScopeId};
     use std::time::Duration;
     #[test]
     fn empty_artifact_cannot_finish_after_deadline() {
@@ -201,7 +201,7 @@ mod tests {
             requested_after: 0,
             through_cursor: 0,
             rows: 0,
-            artifact_sha256: rrflow_kernel::digest::sha256_hex(&encoded),
+            artifact_sha256: rrflow_core::digest::sha256_hex(&encoded),
         };
         let limits = ColdHistoryReadLimits {
             max_rows: 1,

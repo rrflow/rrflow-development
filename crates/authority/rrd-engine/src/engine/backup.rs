@@ -1,5 +1,6 @@
 use super::*;
 use rrd_store::filesystem::AnchoredPath;
+use rrd_store::Repositories;
 
 const BACKUP_OPERATION_FORMAT: u16 = 1;
 

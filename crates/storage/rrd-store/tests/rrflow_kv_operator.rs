@@ -1,5 +1,5 @@
-use rrd_store::{Repositories, InvocationInput, Outcome, RrflowKvStore, StorageEngine, Trigger};
-use rrflow_kernel::{Claim, ClaimReader, Predicate, Producer, Reader, Subject};
+use rrd_store::{InvocationInput, Outcome, Repositories, RrflowKvStore, StorageEngine, Trigger};
+use rrflow_core::{Claim, ClaimReader, Predicate, Producer, Reader, Subject};
 use rrflow_lsm::{
     DatabaseOptions, MaintenancePolicy, DEFAULT_MEMTABLE_MAX_VERSIONS,
     DEFAULT_WAL_PAYLOAD_MAX_BYTES,

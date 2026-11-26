@@ -3,7 +3,7 @@ use rrd_vector::{
     HnswMaintenanceKind, ScoreMetric, SearchMode, SearchRequest, VectorCandidate, VectorQuery,
     VectorRuntime,
 };
-use rrflow_kernel::{
+use rrflow_core::{
     ProjectionId, ReadStamp, RuntimeProperties, RuntimeRef, RuntimeValue, RuntimeVector, ScopeId,
     VectorCollectionAddress, VectorValue,
 };

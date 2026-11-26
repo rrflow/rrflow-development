@@ -1,6 +1,6 @@
 use crate::contract::invalid;
 use crate::ScoreMetric;
-use rrflow_kernel::Result;
+use rrflow_core::Result;
 use serde::{Deserialize, Serialize};
 
 /// Reference per-vector symmetric 8-bit encoding.

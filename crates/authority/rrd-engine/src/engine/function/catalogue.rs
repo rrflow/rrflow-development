@@ -4,7 +4,7 @@ use base64::Engine as _;
 use rrd_store::{
     FunctionArtifactMediaTypeRecord, FunctionArtifactRecord, FunctionCatalogueMembershipRecord,
     FunctionCataloguePublication, FunctionCatalogueSnapshot, FunctionDefinitionRecord,
-    TransactionFunctionBindingRecord, FUNCTION_CATALOGUE_STATE_FORMAT_VERSION,
+    Repositories, TransactionFunctionBindingRecord, FUNCTION_CATALOGUE_STATE_FORMAT_VERSION,
 };
 
 impl RrdEngine {

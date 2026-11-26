@@ -1,5 +1,5 @@
 use super::*;
-use rrflow_kernel::{RuntimeCommit, RuntimeProperties, RuntimeRecord, RuntimeRetirement};
+use rrflow_core::{RuntimeCommit, RuntimeProperties, RuntimeRecord, RuntimeRetirement};
 
 fn scope() -> ScopeId {
     ScopeId::new("project:graph-reduction").unwrap()

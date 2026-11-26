@@ -1,6 +1,7 @@
 //! Attunement detail, connect failures, competing workers, expiry, cancel and control encoding.
 
 use super::*;
+use rrd_store::Repositories;
 
 #[test]
 pub(super) fn attunement_detail_reports_failure_and_does_not_claim_source_verification() {

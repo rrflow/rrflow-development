@@ -52,8 +52,8 @@ pub use recovery::{
 };
 
 use rrd_contract::CanonicalId;
-use rrd_store::{ControlTransition, StorageEngine};
-use rrflow_kernel::digest;
+use rrd_store::{ControlTransition, Repositories};
+use rrflow_core::digest;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fmt;

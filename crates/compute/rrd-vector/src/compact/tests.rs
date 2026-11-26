@@ -1,5 +1,5 @@
 use super::*;
-use rrflow_kernel::{ProjectionId, ScopeId};
+use rrflow_core::{ProjectionId, ScopeId};
 use std::collections::BTreeSet;
 
 #[test]

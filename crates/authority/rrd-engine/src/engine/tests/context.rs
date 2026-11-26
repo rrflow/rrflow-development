@@ -8,6 +8,7 @@ use rrd_contract::{
     QueryValue, ReadAccessPath, VectorEmbeddingModel, VectorMemoryTier, VectorSearchMetric,
     VectorValueKind,
 };
+use rrd_store::Repositories;
 use std::collections::BTreeMap;
 
 fn reference(kind: &str, id: &str) -> DataReference {

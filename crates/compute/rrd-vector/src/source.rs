@@ -2,7 +2,7 @@
 //! holds of each identity's complete vector history.
 
 use crate::VectorCandidate;
-use rrflow_kernel::RuntimeRef;
+use rrflow_core::RuntimeRef;
 use std::collections::BTreeMap;
 
 /// What a generation for one source holds and the cursor it covers.
@@ -93,7 +93,7 @@ pub fn source_history(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rrflow_kernel::{
+    use rrflow_core::{
         RuntimeProperties, RuntimeVector, ScopeId, VectorCollectionAddress, VectorValue,
     };
 

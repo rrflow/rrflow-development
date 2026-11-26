@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use rrd_store::{Repositories, RrflowKvStore, RrflowMxStore, StorageEngine};
-use rrflow_kernel::{
+use rrflow_core::{
     digest, GeoPoint, GeoValue, ObjectReceipt, ObjectReference, RuntimeCommit, RuntimeDomainSchema,
     RuntimeEvent, RuntimeEventSchema, RuntimeGeo, RuntimeLogicalModel, RuntimeMutation,
     RuntimeProperties, RuntimePropertySchema, RuntimeRecord, RuntimeRecordSchema, RuntimeRef,
@@ -451,7 +451,7 @@ fn unified_catalogue_survives_rrflow_kv_reopen() {
     );
 }
 
-fn exercise_crud(engine: &dyn StorageEngine) -> (ScopeId, u64, rrflow_kernel::RuntimeDataSnapshot) {
+fn exercise_crud(engine: &dyn StorageEngine) -> (ScopeId, u64, rrflow_core::RuntimeDataSnapshot) {
     let (scope, cursor) = exercise(engine);
     let mut updated_vector = vector(Some(101));
     updated_vector.valid_from = 103;

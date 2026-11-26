@@ -1,6 +1,7 @@
 //! Building and transitioning quantization artifacts and their catalogue records.
 
 use super::*;
+use rrd_store::Repositories;
 
 /// Publishes immutable quantized bytes in `ready` state without changing the
 /// planner. Activation is a separate authenticated lifecycle operation.

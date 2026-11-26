@@ -11,7 +11,7 @@ RULES = {
     "daemon_crates": ["rrd-engine"],
     "banned_module_names": ["utils", "common", "helpers", "misc"],
 }
-TIERS = [{"id": 0, "folders": ["crates/foundation"]}, {"id": 1, "folders": ["crates/storage"]}, {"id": 4, "folders": ["crates/engine"]}]
+TIERS = [{"id": 0, "folders": ["crates/core"]}, {"id": 1, "folders": ["crates/storage"]}, {"id": 4, "folders": ["crates/engine"]}]
 
 
 def manifest(*crates: dict) -> dict:
@@ -22,15 +22,15 @@ def member(directory: str, normal=(), build=(), dev=()) -> Member:
     return Member(directory, {"normal": set(normal), "build": set(build), "dev": set(dev)})
 
 
-KERNEL = {"name": "rrflow-kernel", "tier": 0, "folder": "crates/foundation", "standalone": True}
+KERNEL = {"name": "rrflow-core", "tier": 0, "folder": "crates/core", "standalone": True}
 LSM = {"name": "rrflow-lsm", "tier": 1, "folder": "crates/storage", "standalone": True}
 KV = {"name": "rrflow-kv", "tier": 1, "folder": "crates/storage"}
 ENGINE = {"name": "rrd-engine", "tier": 4, "folder": "crates/engine"}
 LAB = {"name": "rrflow-lab", "tier": "evaluation", "folder": "crates/evaluation/lab"}
 MEMBERS = {
-    "rrflow-kernel": member("crates/foundation/rrflow-kernel"),
-    "rrflow-lsm": member("crates/storage/rrflow-lsm", normal=["rrflow-kernel"]),
-    "rrflow-kv": member("crates/storage/rrflow-kv", normal=["rrflow-lsm", "rrflow-kernel"]),
+    "rrflow-core": member("crates/core"),
+    "rrflow-lsm": member("crates/storage/rrflow-lsm", normal=["rrflow-core"]),
+    "rrflow-kv": member("crates/storage/rrflow-kv", normal=["rrflow-lsm", "rrflow-core"]),
     "rrd-engine": member("crates/engine/rrd-engine", normal=["rrflow-kv"], dev=["rrflow-lab"]),
     "rrflow-lab": member("crates/evaluation/lab/rrflow-lab", normal=["rrd-engine"]),
 }
@@ -58,7 +58,7 @@ class CrateRuleTests(unittest.TestCase):
         self.assert_one(self.problems(members=members), "rrflow-lab: listed in")
 
     def test_a_crate_outside_its_recorded_folder_fails(self):
-        moved = member("crates/compute/rrflow-kv", normal=["rrflow-lsm", "rrflow-kernel"])
+        moved = member("crates/compute/rrflow-kv", normal=["rrflow-lsm", "rrflow-core"])
         self.assert_one(self.problems(rrflow_kv=moved), "is at crates/compute/rrflow-kv")
 
     def test_a_dependency_on_a_higher_tier_fails(self):
@@ -72,7 +72,7 @@ class CrateRuleTests(unittest.TestCase):
         self.assertEqual(self.problems(rrflow_kv=dev), [])
 
     def test_a_same_tier_dependency_must_be_listed_above(self):
-        backwards = member("crates/storage/rrflow-lsm", normal=["rrflow-kernel", "rrflow-kv"])
+        backwards = member("crates/storage/rrflow-lsm", normal=["rrflow-core", "rrflow-kv"])
         problems = self.problems(rrflow_lsm=backwards)
         self.assertTrue(any("lists below it" in problem for problem in problems), problems)
 
@@ -102,7 +102,7 @@ class CrateRuleTests(unittest.TestCase):
         self.assert_one(self.problems(crates=(KERNEL, LSM, {**KV, "target_name": "rrflow-kv"}, ENGINE, LAB)), "remove `target_name`")
 
     def test_a_standalone_crate_depends_only_on_standalone_crates_in_every_kind(self):
-        lsm = member("crates/storage/rrflow-lsm", normal=["rrflow-kernel"], dev=["rrflow-kv"])
+        lsm = member("crates/storage/rrflow-lsm", normal=["rrflow-core"], dev=["rrflow-kv"])
         self.assert_one(self.problems(rrflow_lsm=lsm), "dev dependency on rrflow-kv")
         excepted = {**LSM, "standalone_exceptions": ["dev:rrflow-kv"]}
         self.assertEqual(self.problems(crates=(KERNEL, excepted, KV, ENGINE, LAB), rrflow_lsm=lsm), [])

@@ -381,7 +381,7 @@ impl IndexMutationContext {
     }
 }
 
-pub struct IndexCatalogueRepository<'a, E: StorageEngine + ?Sized> {
+pub struct IndexCatalogueRepository<'a, E: Repositories + ?Sized> {
     pub(super) engine: &'a E,
     pub(super) scope: ScopeId,
     pub(super) key: String,

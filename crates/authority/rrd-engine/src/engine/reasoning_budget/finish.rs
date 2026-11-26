@@ -1,6 +1,7 @@
 //! Finishing task attempts and settling their reservations.
 
 use super::*;
+use rrd_store::Repositories;
 
 impl RrdEngine {
     pub(super) fn finish_task_attempt(

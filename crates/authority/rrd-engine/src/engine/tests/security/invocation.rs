@@ -1,6 +1,7 @@
 //! Audit reads, overlapping invocations, policy grants and audited engine invocation.
 
 use super::*;
+use rrd_store::Repositories;
 
 #[test]
 pub(super) fn audit_read_and_export_return_the_same_bounded_prefix_at_every_page_size() {

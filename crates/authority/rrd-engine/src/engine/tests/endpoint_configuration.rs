@@ -5,6 +5,7 @@ use rrd_contract::{
     EndpointProfileInput, InstalledEngramIdentity, PreviewEndpointConfiguration, SessionLease,
     WorkloadClass,
 };
+use rrd_store::Repositories;
 
 fn bind(engine: &mut RrdEngine, project: &str) {
     engine.installed_engram = Some(InstalledEngramIdentity {

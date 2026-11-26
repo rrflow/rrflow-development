@@ -1,5 +1,5 @@
 use crate::FilterExpression;
-use rrflow_kernel::{
+use rrflow_core::{
     digest, Error, Millis, ReadStamp, Result, RuntimeProperties, RuntimeRef, RuntimeVector,
     ScopeId, VectorValue,
 };

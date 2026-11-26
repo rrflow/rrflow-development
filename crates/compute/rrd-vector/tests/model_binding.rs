@@ -2,7 +2,7 @@ use rrd_vector::{
     search_exact, CompactDenseSegment, EmbeddingModelBinding, ScoreMetric, SearchMode,
     SearchRequest, VectorCandidate, VectorQuery, VectorSegmentConfig,
 };
-use rrflow_kernel::{
+use rrflow_core::{
     EmbeddingProvenance, ProjectionId, ReadStamp, RuntimeProperties, RuntimeRef, RuntimeVector,
     ScopeId, VectorCollectionAddress, VectorNormalization, VectorValue,
 };

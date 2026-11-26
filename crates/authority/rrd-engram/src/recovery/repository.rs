@@ -2,7 +2,7 @@
 
 use super::*;
 
-impl<'a, E: StorageEngine + ?Sized> EngramRepository<'a, E> {
+impl<'a, E: Repositories + ?Sized> EngramRepository<'a, E> {
     pub fn set_recovery_policy(
         &self,
         request: &SetRecoveryPolicy,

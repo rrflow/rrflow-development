@@ -1,6 +1,8 @@
 use crate::{Error, IndexCatalogue, IndexCatalogueRepository, Query, Result, Source};
-use rrd_store::{RuntimeReadBudget, RuntimeReadEvidence, RuntimeVersionedSource, StorageEngine};
-use rrflow_kernel::{
+use rrd_store::{
+    Repositories, RuntimeReadBudget, RuntimeReadEvidence, RuntimeVersionedSource, StorageEngine,
+};
+use rrflow_core::{
     Predicate, ReadStamp, RuntimeLogicalModel, RuntimeMutation, RuntimeRef, RuntimeSchemaRegistry,
     RuntimeType, ScopeId,
 };
@@ -124,7 +126,7 @@ impl SourceWatermarks {
                         .entry(retirement.reference.kind.clone())
                         .or_default()
                         .push(cursor);
-                } else if retirement.model == rrflow_kernel::RuntimeLogicalModel::GraphRelation {
+                } else if retirement.model == rrflow_core::RuntimeLogicalModel::GraphRelation {
                     self.relations
                         .insert(retirement.reference.kind.clone(), cursor);
                     self.relation_history
@@ -138,12 +140,12 @@ impl SourceWatermarks {
                         .entry(retirement.reference.kind.clone())
                         .or_default()
                         .push(cursor);
-                } else if retirement.model == rrflow_kernel::RuntimeLogicalModel::TimeSeries {
+                } else if retirement.model == rrflow_core::RuntimeLogicalModel::TimeSeries {
                     if let Some(kind) = self.series_targets.get(&retirement.reference).cloned() {
                         self.series.insert(kind.clone(), cursor);
                         self.series_history.entry(kind).or_default().push(cursor);
                     }
-                } else if retirement.model == rrflow_kernel::RuntimeLogicalModel::Geo {
+                } else if retirement.model == rrflow_core::RuntimeLogicalModel::Geo {
                     self.geo.insert(retirement.reference.kind.clone(), cursor);
                     self.geo_history
                         .entry(retirement.reference.kind.clone())

@@ -1,11 +1,11 @@
 use rrd_store::{
     export_logical_archive, inspect_logical_archive, restore_logical_archive_to_new_root,
-    ControlTransition, RrflowKvStore, StorageEngine,
+    ControlTransition, Repositories, RrflowKvStore,
 };
-use rrflow_kernel::{
+use rrflow_core::{
     Claim, DataTransaction, Predicate, Producer, RuntimeCommit, RuntimeMutation, ScopeId, Subject,
 };
-use rrflow_kernel::{
+use rrflow_core::{
     RuntimeEventSchema, RuntimeLogicalModel, RuntimeRecord, RuntimeRef, RuntimeSchemaRegistry,
     RuntimeTableSchema, RuntimeType,
 };

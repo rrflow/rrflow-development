@@ -6,6 +6,7 @@ use rrd_contract::{
     KnowledgeTreeCatalogue, ListKnowledgeTrees, ReplaceKnowledgeTrees, SessionLease,
     StorageProfileKind, WorkloadClass, DEPLOYMENT_PROFILE_CONTRACT_VERSION,
 };
+use rrd_store::Repositories;
 use std::path::Path;
 use std::sync::{Arc, Barrier};
 

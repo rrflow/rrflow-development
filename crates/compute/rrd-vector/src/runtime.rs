@@ -7,7 +7,7 @@ use crate::{
     SearchPlan, SearchRequest, TurboQuantSegment, VectorCandidate, VectorCatalog, VectorCostModel,
     VectorPlanner, VectorProjectionDescriptor,
 };
-use rrflow_kernel::{
+use rrflow_core::{
     digest, Error, ProjectionId, ProjectionStamp, ProjectionState, Result,
     DATA_RUNTIME_CONTRACT_VERSION,
 };

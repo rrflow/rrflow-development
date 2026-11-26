@@ -111,7 +111,7 @@ pub(super) fn attunement_proposals_have_no_runtime_or_store_dependency() {
     assert_exact(
         &metadata.packages["rrd-attunement"].all,
         names(&[
-            "rrflow-kernel",
+            "rrflow-core",
             "serde",
             "serde_json",
             "gix-index",
@@ -141,7 +141,7 @@ pub(super) fn engine_has_exact_composition() {
             "rrd-engram",
             "rrd-security",
             "rrd-cluster",
-            "rrflow-kernel",
+            "rrflow-core",
             "rrd-inference",
             "rrd-observation",
             "rrd-operator-knowledge",
@@ -171,7 +171,7 @@ pub(super) fn observation_transport_has_no_authority_or_storage_dependency() {
         &metadata.packages["rrd-observation"].all,
         names(&[
             "rrd-contract",
-            "rrflow-kernel",
+            "rrflow-core",
             "serde",
             "serde_json",
             "chrono",
@@ -384,7 +384,7 @@ pub(super) fn first_party_dependencies_are_declared_once_in_the_root_manifest() 
 pub(super) fn components_below_the_engine_come_from_the_architecture_manifest() {
     let metadata = workspace_metadata();
     let components = metadata.components_below_the_engine();
-    for expected in ["rrflow-kernel", "rrflow-lsm", "rrflow-cld", "rrd-store"] {
+    for expected in ["rrflow-core", "rrflow-lsm", "rrflow-cld", "rrd-store"] {
         assert!(
             components.contains(expected),
             "{expected} must be a component below the engine"

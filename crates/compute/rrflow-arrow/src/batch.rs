@@ -5,7 +5,7 @@ use arrow_array::{
     Array, ArrayRef, BinaryArray, BooleanArray, Int64Array, RecordBatch, StringArray, UInt64Array,
 };
 use arrow_schema::{DataType, Field, Schema, SchemaRef};
-use rrflow_kernel::{RuntimeValue, RuntimeValueType};
+use rrflow_core::{RuntimeValue, RuntimeValueType};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::sync::Arc;
 

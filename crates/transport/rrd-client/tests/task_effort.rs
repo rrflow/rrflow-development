@@ -8,7 +8,7 @@ use rrd_security::{
 };
 use rrd_server::RrdHttpServer;
 use rrd_store::RrflowKvStore;
-use rrflow_kernel::digest;
+use rrflow_core::digest;
 use std::collections::BTreeMap;
 
 fn mutation(id: &str) -> RequestOptions {

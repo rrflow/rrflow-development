@@ -293,12 +293,12 @@ pub(super) fn alpha_storage_closure_has_one_required_physical_dependency_and_cur
     );
     assert_exact(
         production_workspace_dependencies(&metadata, "rrflow-cld"),
-        names(&["rrflow-kernel", "rrflow-arrow"]),
+        names(&["rrflow-core", "rrflow-arrow"]),
         "CLD must compile without QL, TX or a concrete hot store",
     );
     assert_exact(
         production_workspace_dependencies(&metadata, "rrflow-arrow"),
-        names(&["rrflow-kernel"]),
+        names(&["rrflow-core"]),
         "shared Arrow interchange must remain format-independent",
     );
     assert!(
@@ -392,11 +392,11 @@ pub(super) fn schema_catalogue_has_one_explicit_logical_model_authority() {
     let metadata = workspace_metadata();
     let core_schema = module_source(
         &metadata.root,
-        metadata.in_crate("rrflow-kernel", "src/schema.rs"),
+        metadata.in_crate("rrflow-core", "src/schema.rs"),
     );
     let core_runtime = module_source(
         &metadata.root,
-        metadata.in_crate("rrflow-kernel", "src/runtime.rs"),
+        metadata.in_crate("rrflow-core", "src/runtime.rs"),
     );
     let public_contract = module_source(
         &metadata.root,
@@ -453,7 +453,7 @@ pub(super) fn vector_writes_require_one_canonical_collection_address() {
     let required_address_sources = [
         (
             "kernel runtime vector",
-            metadata.in_crate("rrflow-kernel", "src/data.rs"),
+            metadata.in_crate("rrflow-core", "src/data.rs"),
             "pub collection: VectorCollectionAddress,",
         ),
         (
@@ -523,7 +523,7 @@ pub(super) fn vector_writes_require_one_canonical_collection_address() {
 
     let runtime = module_source(
         &metadata.root,
-        metadata.in_crate("rrflow-kernel", "src/runtime.rs"),
+        metadata.in_crate("rrflow-core", "src/runtime.rs"),
     );
     for required in [
         "text(out, &vector.collection.collection_id);",

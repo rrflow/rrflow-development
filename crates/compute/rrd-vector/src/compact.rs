@@ -8,7 +8,7 @@ use crate::contract::invalid;
 use crate::exact::validate_candidate_versions;
 use crate::{ScoreMetric, SearchHit, SearchRequest, VectorCandidate, VectorSegmentConfig};
 use memmap2::{Mmap, MmapOptions};
-use rrflow_kernel::{
+use rrflow_core::{
     digest, EmbeddingProvenance, ProjectionStamp, ProjectionState, Result, RuntimeCommit,
     RuntimeMutation, RuntimeProperties, RuntimeRef, RuntimeVector, VectorCollectionAddress,
     VectorValue, DATA_RUNTIME_CONTRACT_VERSION,

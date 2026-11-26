@@ -1,6 +1,6 @@
-use rrd_store::{RrflowKvStore, RrflowMxStore, StorageEngine};
+use rrd_store::{Repositories, RrflowKvStore, RrflowMxStore, StorageEngine};
 use rrd_vector::{search_changes_exact, ScoreMetric, SearchMode, SearchRequest, VectorQuery};
-use rrflow_kernel::{
+use rrflow_core::{
     ReadStamp, RuntimeCommit, RuntimeLogicalModel, RuntimeMutation, RuntimeProperties,
     RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry, RuntimeTableSchema,
     RuntimeType, RuntimeValue, RuntimeVector, ScopeId, VectorCollectionAddress, VectorValue,

@@ -3,7 +3,7 @@ use rrd_engram::{
     ActivityClass, ActivityEvidence, DesiredPhase, DesiredTarget, EngramRepository, Error,
     LeaseRequest, MutationContext, OperationState, ReceiptBoundary, ReceiptRequest, SetDesired,
 };
-use rrd_store::{RrflowKvStore, RrflowMxStore, StorageEngine};
+use rrd_store::{Repositories, RrflowKvStore, RrflowMxStore};
 
 fn id(value: &str) -> CanonicalId {
     CanonicalId::new(value).unwrap()

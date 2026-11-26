@@ -2,6 +2,7 @@
 //! Both physical placements use the same control transaction and journal.
 
 use super::*;
+use rrd_store::Repositories;
 
 const TERMINAL_TRANSACTION_FORMAT: u16 = 1;
 

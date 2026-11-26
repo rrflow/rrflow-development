@@ -32,7 +32,7 @@ bytes = "1"
 parquet = { version = "=59.2.0", default-features = false, features = ["arrow"] }
 rrd-query = { workspace = true }
 tempfile = "3"
-rrflow-kernel = { workspace = true }
+rrflow-core = { workspace = true }
 rrd-store = { workspace = true }
 rrd-security = { workspace = true }
 rrd-engram = { workspace = true }

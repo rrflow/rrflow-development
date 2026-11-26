@@ -7,10 +7,10 @@
 #![cfg(feature = "fjall-baseline")]
 
 use rrd_store::{
-    Durability, Error, FjallBaselineStore, GroundingReport, RrflowKvStore, RrflowMxStore,
-    StorageEngine,
+    Durability, Error, FjallBaselineStore, GroundingReport, Repositories, RrflowKvStore,
+    RrflowMxStore, StorageEngine,
 };
-use rrflow_kernel::{Claim, Predicate, Producer, Subject};
+use rrflow_core::{Claim, Predicate, Producer, Subject};
 
 fn claim(subject: &str, predicate: &str, object: &str, from: u64) -> Claim {
     Claim::new(

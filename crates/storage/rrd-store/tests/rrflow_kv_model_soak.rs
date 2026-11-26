@@ -3,7 +3,7 @@
 //! This intentionally exercises raw put/update/delete semantics: the typed
 //! runtime contract does not yet define referentially safe entity deletion.
 
-use rrflow_kernel::digest::Sha256;
+use rrflow_core::digest::Sha256;
 use rrflow_lsm::{Database, Durability, Mutation, WriteBatch};
 use std::collections::BTreeMap;
 

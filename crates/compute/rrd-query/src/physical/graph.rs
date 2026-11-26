@@ -13,8 +13,8 @@ use crate::catalog::version_source_covers;
 use crate::execute::{active_graph_values, string, QueryRow};
 use crate::{Source, TraversalDirection};
 use rrd_store::{RuntimeAdjacencyDirection, RuntimeVersionedSource};
-use rrflow_kernel::result_identity::{self, ResultIdentityFamily};
-use rrflow_kernel::{
+use rrflow_core::result_identity::{self, ResultIdentityFamily};
+use rrflow_core::{
     RuntimeChange, RuntimeLogicalModel, RuntimeMutation, RuntimeRef, RuntimeRelation, RuntimeType,
     RuntimeValue, ScopeId,
 };

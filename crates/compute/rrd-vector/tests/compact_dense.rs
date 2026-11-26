@@ -3,7 +3,7 @@ use rrd_vector::{
     SearchMode, SearchRequest, VectorCandidate, VectorQuery, VectorSegmentConfig,
     COMPACT_DENSE_FORMAT_VERSION,
 };
-use rrflow_kernel::{
+use rrflow_core::{
     digest, ProjectionId, ReadStamp, RuntimeProperties, RuntimeRef, RuntimeValue, RuntimeVector,
     ScopeId, VectorCollectionAddress, VectorValue,
 };

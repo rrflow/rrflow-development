@@ -4,8 +4,8 @@ use rrd_engram::{
     EngramDriver, EngramRepository, MutationContext, ObservedPhase, OperationState,
     ReconcileBoundary, ReconcileOutcome, Reconciler, SetDesired,
 };
-use rrd_store::{RrflowKvStore, StorageEngine};
-use rrflow_kernel::digest;
+use rrd_store::{Repositories, RrflowKvStore};
+use rrflow_core::digest;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};

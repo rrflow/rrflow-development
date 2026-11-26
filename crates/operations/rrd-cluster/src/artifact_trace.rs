@@ -1,7 +1,7 @@
 //! Canonical privacy-bounded trace projection for artifact transport events.
 
 use crate::{ArtifactTransferObservation, ArtifactTransferObservationPhase, ClusterError, Result};
-use rrflow_kernel::{
+use rrflow_core::{
     digest::sha256_hex, RuntimeProperties, RuntimeTraceEvent, RuntimeValue, SnapshotId, SpanId,
     TraceBoundary, TraceDataClass, TraceId, TraceLink, TraceOutcome,
 };

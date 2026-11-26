@@ -1,6 +1,6 @@
 use super::*;
 use crate::{QueryFieldTypes, QueryRow};
-use rrflow_kernel::{RuntimeMutation, RuntimeValue, RuntimeValueType};
+use rrflow_core::{RuntimeMutation, RuntimeValue, RuntimeValueType};
 use std::{
     collections::BTreeMap,
     io::{self, Write},

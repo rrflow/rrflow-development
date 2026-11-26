@@ -2,9 +2,9 @@
 //! committed (POAM-065): measurement stages the same writes, reports what the
 //! payload ceiling admits, and leaves no state behind.
 use rrd_store::{
-    ControlTransition, Error, RrflowKvStore, StorageEngine, PHYSICAL_BATCH_PAYLOAD_BYTES,
+    ControlTransition, Error, Repositories, RrflowKvStore, PHYSICAL_BATCH_PAYLOAD_BYTES,
 };
-use rrflow_kernel::{Claim, Predicate, Producer, RuntimeCommit, RuntimeMutation, ScopeId, Subject};
+use rrflow_core::{Claim, Predicate, Producer, RuntimeCommit, RuntimeMutation, ScopeId, Subject};
 
 fn commit(scope: &ScopeId, cursor: u64, claims: usize) -> RuntimeCommit {
     RuntimeCommit {

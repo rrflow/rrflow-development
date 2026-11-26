@@ -1,4 +1,5 @@
 use super::*;
+use rrd_store::Repositories;
 
 const SUBSCRIPTION_STATE_FORMAT: u16 = 1;
 

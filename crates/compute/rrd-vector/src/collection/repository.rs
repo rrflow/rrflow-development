@@ -1,6 +1,7 @@
 //! The vector collection repository and its operation budgets.
 
 use super::*;
+use rrd_store::Repositories;
 
 impl<'a, E: StorageEngine> VectorCollectionRepository<'a, E> {
     pub fn new(engine: &'a E, scope: ScopeId) -> Self {

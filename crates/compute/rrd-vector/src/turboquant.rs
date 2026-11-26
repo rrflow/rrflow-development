@@ -19,7 +19,7 @@
 use crate::contract::invalid;
 use crate::qjl::QjlProjection;
 use crate::{QuantizedKernel, ScoreMetric};
-use rrflow_kernel::Result;
+use rrflow_core::Result;
 use serde::{Deserialize, Serialize};
 
 mod codes;

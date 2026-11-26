@@ -1,6 +1,6 @@
 use super::*;
 use crate::SearchMode;
-use rrflow_kernel::{ReadStamp, RuntimeVector};
+use rrflow_core::{ReadStamp, RuntimeVector};
 use std::io::Write;
 
 fn candidate(scope: &ScopeId, id: usize, values: Vec<f32>) -> VectorCandidate {

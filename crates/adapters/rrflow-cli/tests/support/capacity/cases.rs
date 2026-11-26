@@ -173,7 +173,7 @@ pub(super) fn requested_values(request: &CommitTransaction) -> BTreeMap<String, 
             (
                 format!(
                     "claim:{}",
-                    rrflow_kernel::digest::sha256_hex(
+                    rrflow_core::digest::sha256_hex(
                         format!("rrd-context-claim-v1\0{subject}\0{predicate}").as_bytes()
                     )
                 ),

@@ -1,5 +1,6 @@
 use super::*;
 use rrd_contract::ProjectConfiguration;
+use rrd_store::Repositories;
 
 impl RrdEngine {
     fn project_policy_key(&self, suffix: &str) -> String {

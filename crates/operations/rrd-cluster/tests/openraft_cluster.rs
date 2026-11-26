@@ -13,8 +13,8 @@ use rrd_cluster::{
     RrdRaftStorageLifecycle, RrdRaftStore, RrdRaftTypeConfig, ShardId, ShardPlacement, ZoneId,
     CLUSTER_CONTRACT_VERSION,
 };
-use rrd_store::{RrflowKvStore, StorageEngine};
-use rrflow_kernel::{
+use rrd_store::{Repositories, RrflowKvStore};
+use rrflow_core::{
     RuntimeCommit, RuntimeLogicalModel, RuntimeMutation, RuntimeRecordSchema,
     RuntimeSchemaRegistry, RuntimeType, ScopeId,
 };

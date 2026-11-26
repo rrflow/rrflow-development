@@ -13,7 +13,7 @@ use super::vector::{VectorSourceAddress, VectorSourceDelta, VectorSourceVersion}
 use crate::key_codec::{prefix_end, KeyCodec};
 use crate::keyspaces::{self, Space};
 use crate::{Error, Result};
-use rrflow_kernel::{
+use rrflow_core::{
     Predicate, ReadStamp, RuntimeChange, RuntimeId, RuntimeLogAccumulator, RuntimeLogicalModel,
     RuntimeMutation, RuntimeReadValidation, RuntimeRef, RuntimeType,
 };

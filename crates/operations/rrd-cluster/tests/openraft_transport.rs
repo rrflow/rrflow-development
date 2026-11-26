@@ -17,7 +17,7 @@ use rrd_cluster::{
     ShardPlacement, ZoneId, CLUSTER_CONTRACT_VERSION,
 };
 use rrd_store::LocalObjectStore;
-use rrflow_kernel::{
+use rrflow_core::{
     ObjectReference, RuntimeCommit, RuntimeLogicalModel, RuntimeMutation, RuntimeRecordSchema,
     RuntimeSchemaRegistry, RuntimeTableSchema, RuntimeTraceEvent, RuntimeType, ScopeId, SpanId,
     TraceBoundary, TraceDataClass, TraceId, TraceOperation, TraceOutcome,

@@ -139,7 +139,7 @@ pub struct BackupFailRequest {
     pub error: String,
 }
 
-impl<'a, E: StorageEngine + ?Sized> EngramRepository<'a, E> {
+impl<'a, E: Repositories + ?Sized> EngramRepository<'a, E> {
     pub fn schedule_backup(&self, request: &ScheduleBackup) -> Result<BackupScheduleOutcome> {
         validate_context(&request.context)?;
         validate_ascii_key(&request.idempotency_key, "backup idempotency key")?;

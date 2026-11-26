@@ -5,8 +5,8 @@
 //! corrected. The sequence watermark counted both claims while only one existed,
 //! so any sequence-derived reconstruction would have been wrong.
 
-use rrd_store::{RrflowKvStore, StorageEngine};
-use rrflow_kernel::{Claim, ClaimReader, Predicate, Producer, Subject};
+use rrd_store::{Repositories, RrflowKvStore};
+use rrflow_core::{Claim, ClaimReader, Predicate, Producer, Subject};
 
 fn producer() -> Producer {
     Producer {

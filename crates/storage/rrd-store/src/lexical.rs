@@ -4,7 +4,7 @@
 //! time and at read time.
 
 use crate::{Error, Result};
-use rrflow_kernel::digest;
+use rrflow_core::digest;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use unicode_normalization::{char::is_combining_mark, UnicodeNormalization};

@@ -1,4 +1,5 @@
 use super::*;
+use rrd_store::Repositories;
 
 #[test]
 fn commit_reopens_replays_and_does_not_duplicate_claims() {

@@ -1,4 +1,5 @@
 use super::*;
+use rrd_store::Repositories;
 
 fn run<E: StorageEngine>(engine: &E, filter: &str, keys: u64) -> rrd_query::QueryExecution {
     let text = format!("FROM record:document AT VALID 100 KNOWN HEAD WHERE {filter} PROJECT *");

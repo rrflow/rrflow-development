@@ -67,7 +67,7 @@
    "crates/authority/rrd-engine": 108,
    "crates/compute/rrd-query": 1,
    "crates/compute/rrd-vector": 2,
-   "crates/foundation/rrflow-kernel": 6,
+   "crates/core": 6,
    "crates/storage/rrd-store": 1,
    "crates/transport/rrd-client": 2,
    "crates/transport/rrd-contract": 1,

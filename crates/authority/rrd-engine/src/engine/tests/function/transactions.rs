@@ -1,6 +1,7 @@
 //! Transaction binding effects, retries, prepared receipts and lost acknowledgements.
 
 use super::*;
+use rrd_store::Repositories;
 
 #[test]
 pub(super) fn transaction_binding_effects_commit_atomically_and_failures_leave_data_unchanged() {

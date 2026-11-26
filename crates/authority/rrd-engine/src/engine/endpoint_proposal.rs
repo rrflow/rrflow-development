@@ -16,6 +16,7 @@ use rrd_inference::endpoint_chat::{
 };
 use rrd_inference::lfg_transport::{LfgTransportConfig, PreparedLfgObservation};
 use rrd_inference::{EmbeddingCancellation, NetworkPolicy};
+use rrd_store::Repositories;
 pub(super) mod capacity;
 use capacity::CapacityLease;
 

@@ -1,4 +1,4 @@
-use rrflow_kernel::{
+use rrflow_core::{
     ReadStamp, ReasoningActiveCursor, RuntimeId, RuntimeProperties, RuntimeTraceEvent,
     RuntimeValue, ScopeId, SpanId, TraceBoundary, TraceDataClass, TraceId, TraceLink,
     TraceOperation, REASONING_TREE_CONTRACT_VERSION,

@@ -1,4 +1,5 @@
 use super::*;
+use rrd_store::Repositories;
 
 fn assert_tree_excludes(root: &std::path::Path, secrets: &[&str]) {
     let mut pending = vec![root.to_path_buf()];

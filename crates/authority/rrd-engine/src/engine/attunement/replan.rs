@@ -1,6 +1,7 @@
 //! Replanning an attunement job: receipts, generations, preview and acceptance.
 
 use super::*;
+use rrd_store::Repositories;
 
 impl RrdEngine {
     pub(super) fn validate_replan_receipt(

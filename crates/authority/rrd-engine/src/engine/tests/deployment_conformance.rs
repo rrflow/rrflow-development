@@ -1,5 +1,6 @@
 use super::*;
 use crate::ServiceErrorKind;
+use rrd_store::Repositories;
 use std::collections::BTreeMap;
 
 use rrd_contract::{

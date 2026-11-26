@@ -1,6 +1,7 @@
 //! Applying a restore publication stage by stage.
 
 use super::*;
+use rrd_store::Repositories;
 
 impl RrdEngine {
     /// Applies one previewed publication plan after its digest is accepted.

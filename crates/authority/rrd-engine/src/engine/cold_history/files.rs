@@ -1,6 +1,7 @@
 //! Encoding, digests, transitions and verified file publication.
 
 use super::*;
+use rrd_store::Repositories;
 
 /// Background publication is no client invocation; these name its gate reservation.
 pub(super) const COLD_REQUEST_ID: &str = "cold-history-maintenance";

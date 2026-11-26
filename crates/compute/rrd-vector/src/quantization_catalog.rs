@@ -2,7 +2,7 @@
 
 use crate::contract::invalid;
 use crate::{VectorArtifact, VectorArtifactKind, VectorProjectionDescriptor};
-use rrflow_kernel::{
+use rrflow_core::{
     digest, ObjectReference, ProjectionId, ProjectionState, Result, RuntimeRef, ScopeId,
 };
 use serde::{Deserialize, Serialize};
@@ -160,7 +160,7 @@ impl QuantizationArtifactEntry {
             &self.object,
             self.built_at,
         ))
-        .map_err(|error| rrflow_kernel::Error::InvalidRuntime {
+        .map_err(|error| rrflow_core::Error::InvalidRuntime {
             reason: format!("quantization artifact identity cannot be encoded: {error}"),
         })
     }
@@ -283,7 +283,7 @@ impl QuantizationLifecycleEvent {
                 &operation.operation_sha256,
             )),
         }
-        .map_err(|error| rrflow_kernel::Error::InvalidRuntime {
+        .map_err(|error| rrflow_core::Error::InvalidRuntime {
             reason: format!("quantization lifecycle event cannot be encoded: {error}"),
         })
     }
@@ -353,7 +353,7 @@ impl QuantizationArtifactCatalogue {
         QuantizationLifecycleEvent::new(
             self.revision
                 .checked_add(1)
-                .ok_or_else(|| rrflow_kernel::Error::InvalidRuntime {
+                .ok_or_else(|| rrflow_core::Error::InvalidRuntime {
                     reason: "quantization lifecycle revision overflowed".into(),
                 })?,
             projection_id,
@@ -388,11 +388,12 @@ impl QuantizationArtifactCatalogue {
         let key = (event.projection_id.clone(), event.generation);
         match event.action {
             QuantizationLifecycleAction::Build => {
-                let artifact = self.artifacts.get(&key).ok_or_else(|| {
-                    rrflow_kernel::Error::InvalidRuntime {
-                        reason: "quantization build event has no immutable artifact".into(),
-                    }
-                })?;
+                let artifact =
+                    self.artifacts
+                        .get(&key)
+                        .ok_or_else(|| rrflow_core::Error::InvalidRuntime {
+                            reason: "quantization build event has no immutable artifact".into(),
+                        })?;
                 if artifact.state != QuantizationArtifactState::Ready {
                     return invalid("quantization artifact build is not in ready state");
                 }
@@ -415,11 +416,12 @@ impl QuantizationArtifactCatalogue {
                 if !self.built.contains(&key) {
                     return invalid("quantization artifact must be built before activation");
                 }
-                let target = self.artifacts.get(&key).ok_or_else(|| {
-                    rrflow_kernel::Error::InvalidRuntime {
-                        reason: "quantization activation target is absent".into(),
-                    }
-                })?;
+                let target =
+                    self.artifacts
+                        .get(&key)
+                        .ok_or_else(|| rrflow_core::Error::InvalidRuntime {
+                            reason: "quantization activation target is absent".into(),
+                        })?;
                 if target.state != QuantizationArtifactState::Ready {
                     return invalid("only a ready quantization artifact can be activated");
                 }
@@ -450,7 +452,7 @@ impl QuantizationArtifactCatalogue {
                     return invalid("quantization artifact must be built before retirement");
                 }
                 let target = self.artifacts.get_mut(&key).ok_or_else(|| {
-                    rrflow_kernel::Error::InvalidRuntime {
+                    rrflow_core::Error::InvalidRuntime {
                         reason: "quantization retirement target is absent".into(),
                     }
                 })?;

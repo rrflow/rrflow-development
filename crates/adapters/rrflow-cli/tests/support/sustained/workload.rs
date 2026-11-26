@@ -62,11 +62,11 @@ fn slow_write_phase_trace_is_bounded_and_private() {
         600,
         WriteTraceOutcome::Accepted,
     );
-    assert!(line.contains(&rrflow_kernel::digest::sha256_hex(b"load-secret")));
+    assert!(line.contains(&rrflow_core::digest::sha256_hex(b"load-secret")));
     let actual = options(begin_id);
     assert!(line.contains(&format!(
         "begin_request_sha256={}",
-        rrflow_kernel::digest::sha256_hex(actual.request_id.as_str().as_bytes())
+        rrflow_core::digest::sha256_hex(actual.request_id.as_str().as_bytes())
     )));
     assert!(line.contains("begin_ns=123 commit_ns=456 total_ns=600 outcome=accepted"));
     assert!(!line.contains("load-secret"));
@@ -118,8 +118,8 @@ fn format_write_trace(
     };
     format!(
         "c07_write_phase_trace request_sha256={} begin_ns={begin_ns} commit_ns={commit_ns} total_ns={total_ns} outcome={outcome} begin_request_sha256={}",
-        rrflow_kernel::digest::sha256_hex(key.as_bytes()),
-        rrflow_kernel::digest::sha256_hex(begin_request_id.as_bytes())
+        rrflow_core::digest::sha256_hex(key.as_bytes()),
+        rrflow_core::digest::sha256_hex(begin_request_id.as_bytes())
     )
 }
 
@@ -298,7 +298,7 @@ pub(super) fn runtime_conflict_trace(
         .ok()?;
     Some(format!(
         "c07_runtime_conflict_trace request_sha256={} read_cursor={} expected_cursor={} actual_cursor={}",
-        rrflow_kernel::digest::sha256_hex(key.as_bytes()), read_cursor, expected_number, actual_number
+        rrflow_core::digest::sha256_hex(key.as_bytes()), read_cursor, expected_number, actual_number
     ))
 }
 
@@ -538,7 +538,7 @@ fn runtime_conflict_trace_is_closed_correlatable_and_bounded() {
     let counter = AtomicUsize::new(0);
     let line = runtime_conflict_trace(&valid, "synthetic-secret-key", 7, &counter).unwrap();
     assert!(line.contains("read_cursor=7 expected_cursor=7 actual_cursor=9"));
-    assert!(line.contains(&rrflow_kernel::digest::sha256_hex(b"synthetic-secret-key")));
+    assert!(line.contains(&rrflow_core::digest::sha256_hex(b"synthetic-secret-key")));
     assert!(!line.contains("synthetic-secret-key"));
     for invalid in [
         "StorageConflict(\"runtime commit conflict: expected cursor 07, actual cursor 9\")",

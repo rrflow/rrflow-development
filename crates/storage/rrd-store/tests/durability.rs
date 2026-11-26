@@ -12,8 +12,8 @@
 //! `SyncAll` never reaches a disk and the result would be meaningless, so the
 //! database is placed beside the compiled binary in the target directory.
 
-use rrd_store::{RrflowKvStore, StorageEngine};
-use rrflow_kernel::{RuntimeMutation, ScopeId};
+use rrd_store::{Repositories, RrflowKvStore};
+use rrflow_core::{RuntimeMutation, ScopeId};
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};

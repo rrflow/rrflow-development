@@ -1,6 +1,7 @@
 //! Executing a traced rrflowQL query and linking its storage evidence.
 
 use super::*;
+use rrd_store::Repositories;
 
 pub(super) const MAX_QUERY_BYTES: usize = 64 * 1024;
 pub(super) const MAX_QUERY_PARAMETERS: usize = 128;

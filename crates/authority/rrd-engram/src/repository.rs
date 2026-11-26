@@ -2,7 +2,7 @@
 
 use super::*;
 
-impl<'a, E: StorageEngine + ?Sized> EngramRepository<'a, E> {
+impl<'a, E: Repositories + ?Sized> EngramRepository<'a, E> {
     pub fn new(engine: &'a E, engram_id: CanonicalId) -> Self {
         let key = format!("server/state/engram/{engram_id}/document");
         Self {

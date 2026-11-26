@@ -1,6 +1,7 @@
 //! Authenticated rrflowQL queries, changefeed follow, managed backup and restore.
 
 use super::*;
+use rrd_store::Repositories;
 
 #[test]
 pub(super) fn authenticated_query_exposes_exact_rrflowql_rrd_query_executor_contract() {
@@ -203,7 +204,7 @@ pub(super) fn bounded_changefeed_follow_wakes_on_a_commit_and_times_out_at_the_s
             "query": "FROM record:document AT VALID 100 KNOWN HEAD PROJECT title",
             "parameters": {},
             "after_cursor": 3,
-            "result_identity_version": rrflow_kernel::result_identity::RESULT_IDENTITY_VERSION,
+            "result_identity_version": rrflow_core::result_identity::RESULT_IDENTITY_VERSION,
             "budget": {
                 "max_storage_keys": 100,
                 "max_rows": 10,
@@ -301,7 +302,7 @@ pub(super) fn bounded_changefeed_follow_wakes_on_a_commit_and_times_out_at_the_s
             "query": "FROM record:document AT VALID 100 KNOWN HEAD PROJECT title",
             "parameters": {},
             "after_cursor": 4,
-            "result_identity_version": rrflow_kernel::result_identity::RESULT_IDENTITY_VERSION,
+            "result_identity_version": rrflow_core::result_identity::RESULT_IDENTITY_VERSION,
             "budget": {
                 "max_storage_keys": 100,
                 "max_rows": 10,

@@ -1,6 +1,7 @@
 //! Discover the existing installed job lineage without scanning unrelated state.
 use super::*;
 use rrd_contract::{AttunementJobPage, AttunementJobSummary, ListAttunementJobs};
+use rrd_store::Repositories;
 
 impl RrdEngine {
     #[allow(clippy::too_many_arguments)]

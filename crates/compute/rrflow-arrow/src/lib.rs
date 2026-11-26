@@ -1,5 +1,5 @@
 //! Format-independent interchange between RRFlow planners and storage codecs.
-use rrflow_kernel::{RuntimeValue, RuntimeValueType};
+use rrflow_core::{RuntimeValue, RuntimeValueType};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 

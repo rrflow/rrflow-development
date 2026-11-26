@@ -4,7 +4,7 @@ use crate::{
     search_exact_ref, AccessPathKind, CandidatePath, EmbeddingModelBinding, ScoreMetric, SearchHit,
     SearchRequest, VectorCandidate,
 };
-use rrflow_kernel::{
+use rrflow_core::{
     digest, ProjectionId, ProjectionStamp, ProjectionState, Result, ScopeId,
     DATA_RUNTIME_CONTRACT_VERSION,
 };
@@ -54,7 +54,7 @@ impl VectorSegmentConfig {
     pub fn digest(&self) -> Result<String> {
         self.validate()?;
         let bytes =
-            serde_json::to_vec(self).map_err(|error| rrflow_kernel::Error::InvalidRuntime {
+            serde_json::to_vec(self).map_err(|error| rrflow_core::Error::InvalidRuntime {
                 reason: format!("vector segment configuration cannot be encoded: {error}"),
             })?;
         Ok(digest::sha256_hex(&bytes))
@@ -196,11 +196,10 @@ impl ImmutableVectorSegment {
         if bytes.len() > MAX_VECTOR_SEGMENT_BYTES {
             return invalid("encoded vector segment exceeds the 1 GiB safety limit");
         }
-        let envelope: SegmentEnvelope = serde_json::from_slice(bytes).map_err(|error| {
-            rrflow_kernel::Error::InvalidRuntime {
+        let envelope: SegmentEnvelope =
+            serde_json::from_slice(bytes).map_err(|error| rrflow_core::Error::InvalidRuntime {
                 reason: format!("vector segment cannot be decoded: {error}"),
-            }
-        })?;
+            })?;
         if envelope.magic != VECTOR_SEGMENT_MAGIC
             || envelope.format_version != VECTOR_SEGMENT_FORMAT_VERSION
         {
@@ -296,7 +295,7 @@ impl ImmutableVectorSegment {
 }
 
 fn encode_json<T: Serialize>(value: &T) -> Result<Vec<u8>> {
-    serde_json::to_vec(value).map_err(|error| rrflow_kernel::Error::InvalidRuntime {
+    serde_json::to_vec(value).map_err(|error| rrflow_core::Error::InvalidRuntime {
         reason: format!("vector segment cannot be encoded: {error}"),
     })
 }
@@ -305,7 +304,7 @@ fn encode_json<T: Serialize>(value: &T) -> Result<Vec<u8>> {
 mod tests {
     use super::*;
     use crate::{SearchMode, VectorQuery};
-    use rrflow_kernel::{
+    use rrflow_core::{
         ReadStamp, RuntimeProperties, RuntimeRef, RuntimeVector, VectorCollectionAddress,
         VectorValue,
     };

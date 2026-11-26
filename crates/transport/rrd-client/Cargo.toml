@@ -28,7 +28,7 @@ rrd-engine = { workspace = true, features = ["default"] }
 rrd-engram = { workspace = true }
 rrd-security = { workspace = true }
 rrd-server = { workspace = true }
-rrflow-kernel = { workspace = true }
+rrflow-core = { workspace = true }
 rrd-store = { workspace = true }
 tempfile = "3"
 rcgen = "0.14"

@@ -30,11 +30,11 @@ harness = 1500
 component_prefix = "rrflow-"
 daemon_crates = ["rrd-contract", "rrd-engine", "rrd-server", "rrd-client"]
 banned_module_names = ["utils", "common", "helpers", "misc"]
-digest_owner = { crate = "rrflow-kernel", file = "src/digest.rs" }
+digest_owner = { crate = "rrflow-core", file = "src/digest.rs" }
 
 [[tier]]
 id = 0
-folders = ["crates/foundation"]
+folders = ["crates/core"]
 
 [[tier]]
 id = 1
@@ -59,22 +59,22 @@ folders = ["crates/interfaces", "crates/cloud"]
 # Tier 0: foundation.
 
 [[crate]]
-name = "rrflow-kernel"
+name = "rrflow-core"
 tier = 0
-folder = "crates/foundation"
+folder = "crates/core"
 standalone = true
 
 [[crate]]
 name = "rrd-contract"
 tier = 0
 folder = "crates/transport"
-target_folder = "crates/foundation"
+target_folder = "crates/core"
 
 [[crate]]
 name = "rrflow-arrow"
 tier = 0
 folder = "crates/compute"
-target_folder = "crates/foundation"
+target_folder = "crates/core"
 standalone = true
 
 # Tier 1: storage. rrflowLSM, rrflowCLD, then the store that becomes rrflowKV, rrflowTX and rrflowDB.

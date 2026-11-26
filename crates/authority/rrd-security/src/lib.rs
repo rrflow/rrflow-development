@@ -13,7 +13,7 @@ use base64::Engine as _;
 use hmac::{Hmac, KeyInit, Mac};
 use rrd_contract::{CanonicalId, ResourceId, ResourceKind, ResourcePath};
 use rrd_store::{ControlJournalEntry, ControlTransition, StorageEngine};
-use rrflow_kernel::{digest, RuntimeValue};
+use rrflow_core::{digest, RuntimeValue};
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 use std::collections::{BTreeMap, BTreeSet};

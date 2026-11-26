@@ -1,6 +1,7 @@
 //! The vector artifact catalog: entries, records and schema.
 
 use super::*;
+use rrd_store::Repositories;
 
 /// Returns the typed, atomically bound catalog in revision order without
 /// reading potentially large artifact bodies. This is the safe inspection

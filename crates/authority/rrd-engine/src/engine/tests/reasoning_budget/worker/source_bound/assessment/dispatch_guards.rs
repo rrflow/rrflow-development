@@ -1,6 +1,7 @@
 //! Choice scoring, abstention and the guards that deny or withhold assessment output.
 
 use super::*;
+use rrd_store::Repositories;
 
 #[test]
 pub(super) fn engine_executes_choice_score_and_evidence_limited_abstention() {

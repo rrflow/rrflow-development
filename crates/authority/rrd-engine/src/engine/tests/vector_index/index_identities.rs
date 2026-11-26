@@ -4,6 +4,7 @@
 use super::*;
 use crate::kernel::{ProjectionId, ScopeId};
 use rrd_contract::{ChangeMutationSnapshot, ReadChangefeed, SessionLease};
+use rrd_store::Repositories;
 use std::collections::BTreeSet;
 
 fn scope() -> String {

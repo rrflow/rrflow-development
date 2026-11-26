@@ -12,7 +12,7 @@ path = "src/commands/rrd-deployment-catalog.rs"
 
 [dependencies]
 rrd-contract = { workspace = true }
-rrflow-kernel = { workspace = true }
+rrflow-core = { workspace = true }
 rrd-store = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

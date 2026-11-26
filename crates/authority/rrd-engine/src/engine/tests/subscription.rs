@@ -9,6 +9,7 @@ use rrd_contract::{
     SubscriptionLeaseCoordinate, SubscriptionPoll, SubscriptionResume, SubscriptionStatus,
     SubscriptionStream,
 };
+use rrd_store::Repositories;
 use std::collections::BTreeMap;
 
 fn commit_claim(engine: &RrdEngine, lease: &rrd_contract::SessionLease, suffix: &str, now: u64) {

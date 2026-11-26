@@ -2,8 +2,8 @@ use rrd_query::{
     bind, bind_graphql, derive_graphql_schema, lower_graphql, parse, Catalog, ExecutionBudget,
     GraphqlRequest, Parameters, Source, TraversalDirection,
 };
-use rrd_store::{RrflowMxStore, RuntimeReadBudget, StorageEngine};
-use rrflow_kernel::{
+use rrd_store::{Repositories, RrflowMxStore, RuntimeReadBudget};
+use rrflow_core::{
     digest, Predicate, RuntimeCommit, RuntimeEvent, RuntimeEventSchema, RuntimeLogicalModel,
     RuntimeMutation, RuntimeProperties, RuntimePropertySchema, RuntimeRecord, RuntimeRecordSchema,
     RuntimeRef, RuntimeRelation, RuntimeRelationSchema, RuntimeSchemaRegistry, RuntimeType,

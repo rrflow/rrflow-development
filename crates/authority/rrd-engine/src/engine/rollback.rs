@@ -1,4 +1,5 @@
 use super::*;
+use rrd_store::Repositories;
 
 impl RrdEngine {
     /// Builds a deterministic forward-only compensation plan from the

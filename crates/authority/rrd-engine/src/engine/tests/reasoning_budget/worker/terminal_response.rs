@@ -1,5 +1,6 @@
 //! Controlled wire faults exercise durable engine state, not model quality.
 use super::*;
+use rrd_store::Repositories;
 
 #[test]
 fn rejected_terminal_response_releases_capacity_but_lost_response_does_not() {

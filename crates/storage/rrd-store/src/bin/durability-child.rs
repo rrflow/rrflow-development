@@ -8,8 +8,8 @@
 //! durability-child <db-path> <count> <flush|noflush|rrflow-kv-transaction|rrflow-kv-lock>
 //! ```
 
-use rrd_store::{Repositories, ClaimBatchWriter, ClaimBatchWriterConfig, RrflowKvStore, StorageEngine};
-use rrflow_kernel::{
+use rrd_store::{ClaimBatchWriter, ClaimBatchWriterConfig, Repositories, RrflowKvStore};
+use rrflow_core::{
     Claim, DataTransaction, GeoPoint, GeoValue, Predicate, Producer, RuntimeCommit, RuntimeEvent,
     RuntimeEventSchema, RuntimeGeo, RuntimeLogicalModel, RuntimeMutation, RuntimeProperties,
     RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeRelation, RuntimeRelationSchema,
@@ -186,7 +186,7 @@ fn rrflow_kv_mixed_family_mutations() -> Vec<RuntimeMutation> {
             vector: RuntimeVector {
                 reference: RuntimeRef::new("embedding", "a-title").unwrap(),
                 subject: a.clone(),
-                collection: rrflow_kernel::VectorCollectionAddress {
+                collection: rrflow_core::VectorCollectionAddress {
                     collection_id: "documents".into(),
                     vector_name: "title".into(),
                 },

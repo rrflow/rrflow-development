@@ -1,7 +1,7 @@
 //! Backup catalogue, entry, manifest, prune and restore-progress types and limits.
 
-use crate::Repositories;
 use super::*;
+use crate::Repositories;
 
 /// Version 2 adds the control-journal archive: an application-complete backup
 /// carries the engram's control state (installed record, configuration,

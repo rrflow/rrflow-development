@@ -2,9 +2,9 @@
 //! halts and quarantines; a matching projection emits `grounded` with a
 //! digest; a crash mid-rebuild replays the interval rather than skipping it.
 
-use rrd_store::StorageEngine;
+use rrd_store::Repositories;
 use rrd_store::{Error, GroundingReport, ProjectionStatus, RrflowKvStore, CURRENT_PROJECTION};
-use rrflow_kernel::{Claim, Predicate, Producer, Subject};
+use rrflow_core::{Claim, Predicate, Producer, Subject};
 
 fn claim(subject: &str, predicate: &str, object: &str, from: u64) -> Claim {
     Claim::new(

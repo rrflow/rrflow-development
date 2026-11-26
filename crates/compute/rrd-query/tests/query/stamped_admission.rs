@@ -1,4 +1,5 @@
 use super::*;
+use rrd_store::Repositories;
 
 fn grow<E: StorageEngine>(engine: &E) {
     let first = engine

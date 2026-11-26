@@ -1,11 +1,11 @@
-use rrd_store::{Repositories, 
+use rrd_store::{
     control_restore_progress, create_application_backup, create_logical_backup,
     load_backup_catalogue, prune_backup_catalogue, restore_catalogued_backup,
     verify_backup_catalogue, verify_restored_backup_objects, BackupCoverage, BackupPrunePlan,
-    ControlTransition, DataRuntime, LocalObjectStore, RrflowKvStore, StorageEngine,
+    ControlTransition, DataRuntime, LocalObjectStore, Repositories, RrflowKvStore, StorageEngine,
     BACKUP_CATALOGUE_VERSION,
 };
-use rrflow_kernel::{
+use rrflow_core::{
     Claim, DataTransaction, Predicate, Producer, RuntimeCommit, RuntimeLogicalModel,
     RuntimeMutation, RuntimeProperties, RuntimeRecord, RuntimeRecordSchema, RuntimeRef,
     RuntimeSchemaRegistry, RuntimeTableSchema, RuntimeType, ScopeId, Subject,

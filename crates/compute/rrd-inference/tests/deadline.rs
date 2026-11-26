@@ -2,7 +2,7 @@ use rrd_inference::{
     EmbeddingBackend, EmbeddingBackendDescriptor, EmbeddingBackendRegistry, EmbeddingDispatchError,
     EmbeddingRequest, FeatureHashBackend, NetworkPolicy,
 };
-use rrflow_kernel::{digest, RuntimeId, VectorValue};
+use rrflow_core::{digest, RuntimeId, VectorValue};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{mpsc, Arc};
 use std::time::{Duration, Instant};
@@ -30,7 +30,7 @@ impl EmbeddingBackend for Controlled {
     fn descriptor(&self) -> &EmbeddingBackendDescriptor {
         self.inner.descriptor()
     }
-    fn embed(&mut self, request: &EmbeddingRequest) -> rrflow_kernel::Result<VectorValue> {
+    fn embed(&mut self, request: &EmbeddingRequest) -> rrflow_core::Result<VectorValue> {
         self.calls.fetch_add(1, Ordering::SeqCst);
         let _ = self.entered.send(());
         self.release.recv_timeout(Duration::from_secs(5)).unwrap();

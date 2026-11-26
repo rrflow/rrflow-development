@@ -1,6 +1,7 @@
 //! Replans after progress, repeated step plans and receipt readback.
 
 use super::*;
+use rrd_store::Repositories;
 
 pub(super) fn selected_plan_replans_after_progress_and_reopens(git: bool) {
     let configured = |phase, name: &str| crate::AttunementProposalStep {

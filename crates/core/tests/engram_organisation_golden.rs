@@ -1,6 +1,6 @@
 //! Frozen canonical identities of an organised schema registry (H-11a).
 
-use rrflow_kernel::{
+use rrflow_core::{
     RuntimeCategorySchema, RuntimeCategoryTargets, RuntimeCommit, RuntimeDomainSchema,
     RuntimeLogicalModel, RuntimeMutation, RuntimeSchemaRegistry, RuntimeTableSchema,
     RuntimeTagCardinality, RuntimeTagRef, RuntimeTagSchema, RuntimeType, ScopeId,

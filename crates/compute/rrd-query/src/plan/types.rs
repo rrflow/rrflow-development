@@ -48,7 +48,7 @@ pub struct BoundCommitIndex {
     pub id: ProjectionId,
     pub kind: IndexKind,
     pub fields: Vec<String>,
-    pub model: rrflow_kernel::RuntimeLogicalModel,
+    pub model: rrflow_core::RuntimeLogicalModel,
 }
 
 /// What a commit-bound index is asked for.
@@ -160,7 +160,7 @@ pub enum PhysicalOperator {
     CommitIndexRead {
         id: ProjectionId,
         probe: CommitIndexProbe,
-        model: rrflow_kernel::RuntimeLogicalModel,
+        model: rrflow_core::RuntimeLogicalModel,
         fallback: Vec<RuntimeVersionedSource>,
         exact: bool,
         stable_order: String,

@@ -3,6 +3,7 @@ use rrd_cluster::{
     ClusterId, DistributedAuthorityCatalogue, LogicalTableId, NodeId, ReadConsistency,
     ReplicaObservation, RouteEvidence, ShardId, ShardReadStamp, METADATA_SHARD_ID,
 };
+use rrd_store::Repositories;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct PreparedDistributedAuthority {

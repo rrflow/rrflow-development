@@ -90,7 +90,7 @@ pub(super) fn combine(
 mod tests {
     use super::*;
     use rrd_store::{RuntimeReadAccessPath, RuntimeReadPathEvidence};
-    use rrflow_kernel::RuntimeReadValidation;
+    use rrflow_core::RuntimeReadValidation;
 
     fn evidence(keys: u64) -> RuntimeReadEvidence {
         RuntimeReadEvidence {

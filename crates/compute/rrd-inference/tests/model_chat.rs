@@ -68,7 +68,7 @@ fn configured_generation_parameters_are_explicit_and_content_is_not_a_route_choi
     assert_eq!(observed.content, content);
     assert_eq!(
         observed.content_sha256,
-        rrflow_kernel::digest::sha256_hex(content.as_bytes())
+        rrflow_core::digest::sha256_hex(content.as_bytes())
     );
     assert!(observed.usage.is_none());
     assert!(observed.elapsed_ms.is_none());
@@ -295,11 +295,11 @@ fn loopback_transport_records_exact_draft_and_wire_without_selector_decoding() {
     assert_eq!(result.response_bytes, expected_response);
     assert_eq!(
         result.response_sha256,
-        rrflow_kernel::digest::sha256_hex(&expected_response)
+        rrflow_core::digest::sha256_hex(&expected_response)
     );
     assert_eq!(
         result.request_sha256,
-        rrflow_kernel::digest::sha256_hex(prepared.request_bytes())
+        rrflow_core::digest::sha256_hex(prepared.request_bytes())
     );
     assert_eq!(result.configuration_sha256, configuration.sha256().unwrap());
     assert_eq!(result.http_status, Some(200));

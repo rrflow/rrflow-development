@@ -9,6 +9,7 @@ use crate::engine::reasoning_budget::{
 };
 use crate::engine::{operation_digest, Result};
 use rrd_contract::{ReadTaskAttempt, TaskAttemptInvalidation, TaskAttemptStatus};
+use rrd_store::Repositories;
 
 fn context(lease: &SessionLease) -> EngineControlContext<'_> {
     EngineControlContext {

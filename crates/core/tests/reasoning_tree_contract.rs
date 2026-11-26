@@ -1,4 +1,4 @@
-use rrflow_kernel::{
+use rrflow_core::{
     ReadStamp, ReasoningActiveCursor, ReasoningCondition, ReasoningConditionEvaluation,
     ReasoningConditionPredicate, ReasoningCursorAdvance, ReasoningDecisionEvidence, ReasoningEdge,
     ReasoningEvidence, ReasoningNode, ReasoningRecipe, ReasoningRecipeSelection, ReasoningTree,

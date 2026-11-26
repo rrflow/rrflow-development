@@ -5,8 +5,8 @@
 //! that protects the source cut.
 
 use rrd_contract::CanonicalId;
-use rrd_store::StorageEngine;
-use rrflow_kernel::{
+use rrd_store::Repositories;
+use rrflow_core::{
     digest, RuntimeCommit, RuntimeEvent, RuntimeEventSchema, RuntimeLogicalModel, RuntimeMutation,
     RuntimeProperties, RuntimePropertySchema, RuntimeRecord, RuntimeRecordSchema, RuntimeRef,
     RuntimeSchemaRegistry, RuntimeType, RuntimeValue, RuntimeValueType, ScopeId,
@@ -623,13 +623,13 @@ pub struct MaintenanceEvent {
     pub state_sha256: String,
 }
 
-pub struct MaintenanceRepository<'a, E: StorageEngine + ?Sized> {
+pub struct MaintenanceRepository<'a, E: Repositories + ?Sized> {
     engine: &'a E,
     instance_id: String,
     scope: ScopeId,
 }
 
-impl<'a, E: StorageEngine + ?Sized> MaintenanceRepository<'a, E> {
+impl<'a, E: Repositories + ?Sized> MaintenanceRepository<'a, E> {
     pub fn new(engine: &'a E, instance_id: impl Into<String>) -> Result<Self> {
         let instance_id = instance_id.into();
         text_field("instance_id", &instance_id, false)?;

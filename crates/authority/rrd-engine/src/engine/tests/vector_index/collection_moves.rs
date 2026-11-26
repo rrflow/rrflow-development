@@ -11,6 +11,7 @@ use rrd_contract::{
     RetrievalResultShape, RetrievalVectorExample, ScrollVectorPoints, SessionLease,
     VectorSearchResult,
 };
+use rrd_store::Repositories;
 use std::collections::BTreeSet;
 
 const DIMENSIONS: usize = 4;

@@ -20,7 +20,7 @@ pub(super) fn bound_version_sources(
                     // An arbitrary comparison string need not be a valid
                     // runtime ID. Preserve its existing empty-result behavior.
                     if let Ok(reference) =
-                        rrflow_kernel::RuntimeRef::parse(kind.to_string(), id.clone())
+                        rrflow_core::RuntimeRef::parse(kind.to_string(), id.clone())
                     {
                         let model = schema
                             .logical_model(kind)
@@ -55,7 +55,7 @@ pub(super) fn bound_version_sources(
                 }
                 return Ok(vec![RuntimeVersionedSource::Identity {
                     model,
-                    reference: rrflow_kernel::RuntimeRef::event(kind.clone(), cursor),
+                    reference: rrflow_core::RuntimeRef::event(kind.clone(), cursor),
                 }]);
             }
         }
@@ -128,7 +128,7 @@ pub(super) fn bound_adjacency_source(
                 .then(|| allowed.first().expect("one allowed endpoint kind").as_str())
         });
         let Some(node_kind) = node_kind else { continue };
-        let Ok(node) = rrflow_kernel::RuntimeRef::parse(node_kind, id) else {
+        let Ok(node) = rrflow_core::RuntimeRef::parse(node_kind, id) else {
             continue;
         };
         return Some(RuntimeVersionedSource::Adjacency {
@@ -155,7 +155,7 @@ pub(super) fn bound_identity_range(
         let RuntimeValue::String(value) = &filter.value else {
             continue;
         };
-        let Ok(id) = rrflow_kernel::RuntimeId::parse(value.clone()) else {
+        let Ok(id) = rrflow_core::RuntimeId::parse(value.clone()) else {
             continue;
         };
         match filter.comparison {
@@ -215,7 +215,7 @@ impl PhysicalPlan {
             )));
         }
         if self.logical.result_identity_version
-            != rrflow_kernel::result_identity::RESULT_IDENTITY_VERSION
+            != rrflow_core::result_identity::RESULT_IDENTITY_VERSION
         {
             return Err(Error::Integrity(
                 "physical plan has an unsupported result identity version".into(),

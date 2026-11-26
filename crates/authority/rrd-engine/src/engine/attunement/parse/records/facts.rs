@@ -1,6 +1,7 @@
 //! Parse fact record kinds, file state, identities and registration.
 
 use super::*;
+use rrd_store::Repositories;
 
 pub(super) const STATE: &str = "source-parse";
 pub(super) const SYMBOL: &str = "source-symbol";

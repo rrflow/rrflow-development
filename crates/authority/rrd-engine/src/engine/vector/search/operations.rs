@@ -1,6 +1,7 @@
 //! Engine vector search operations.
 
 use super::*;
+use rrd_store::Repositories;
 
 impl RrdEngine {
     pub fn search_vectors(

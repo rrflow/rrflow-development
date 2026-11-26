@@ -3,7 +3,7 @@ use crate::{
     HnswConfig, ScoreMetric, SearchMode, TurboQuantBits, TurboQuantSegmentConfig, VectorQuery,
     VectorSegmentConfig,
 };
-use rrflow_kernel::{
+use rrflow_core::{
     ReadStamp, RuntimeProperties, RuntimeRef, RuntimeVector, ScopeId, VectorCollectionAddress,
     VectorValue,
 };

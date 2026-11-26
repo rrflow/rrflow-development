@@ -1,5 +1,6 @@
 //! Close schema-derived relation effects before intent and receipt publication.
 use super::*;
+use rrd_store::Repositories;
 
 impl RrdEngine {
     pub(in crate::engine) fn resolve_transaction_relation_actions(

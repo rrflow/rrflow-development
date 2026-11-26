@@ -3,9 +3,9 @@
 //! valid time its current entries cannot answer.
 use rrd_store::{
     ControlTransition, IndexCommitBindingDefinition, IndexCommitBindingKind, IndexLookup,
-    RrflowKvStore, RrflowMxStore, StorageEngine,
+    Repositories, RrflowKvStore, RrflowMxStore, StorageEngine,
 };
-use rrflow_kernel::{
+use rrflow_core::{
     digest, ProjectionId, RuntimeCommit, RuntimeLogicalModel, RuntimeMutation,
     RuntimePropertySchema, RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeRetirement,
     RuntimeSchemaRegistry, RuntimeType, RuntimeValue, RuntimeValueType, ScopeId,

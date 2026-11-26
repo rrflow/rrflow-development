@@ -4,7 +4,7 @@ use rrd_operator_knowledge::{
     OPERATOR_KNOWLEDGE_CONTRACT_VERSION,
 };
 use rrd_vector::{EmbeddingModelBinding, ScoreMetric, SearchMode, SearchRequest, VectorQuery};
-use rrflow_kernel::{
+use rrflow_core::{
     ProjectionId, ProjectionStamp, ProjectionState, ReadStamp, ScopeId,
     DATA_RUNTIME_CONTRACT_VERSION,
 };

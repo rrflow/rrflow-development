@@ -2,6 +2,7 @@
 //! Unknown remote execution keeps its entry; reopening never frees a permit.
 use super::*;
 use crate::engine::reasoning_budget::AttemptControlWrite;
+use rrd_store::Repositories;
 
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]

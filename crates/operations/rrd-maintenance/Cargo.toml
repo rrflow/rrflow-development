@@ -11,7 +11,7 @@ rrd-contract = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = "2"
-rrflow-kernel = { workspace = true }
+rrflow-core = { workspace = true }
 rrd-store = { workspace = true }
 
 [dev-dependencies]

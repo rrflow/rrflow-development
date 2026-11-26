@@ -4,6 +4,7 @@ use rrd_contract::{
     ApplyObservationSourceConfiguration, InstallationTargetKind, ObservationContentScope,
     ObservationSourceBinding, ObservationTransport, PreviewObservationSourceConfiguration,
 };
+use rrd_store::Repositories;
 use std::path::Path;
 
 #[test]

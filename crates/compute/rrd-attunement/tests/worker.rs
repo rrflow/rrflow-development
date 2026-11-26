@@ -2,7 +2,7 @@ use rrd_attunement::parse::ParseLimits;
 use rrd_attunement::worker::{
     read_response, run_worker, validate_response, write_request, WorkerRequest, WorkerResponse,
 };
-use rrflow_kernel::digest::sha256_hex;
+use rrflow_core::digest::sha256_hex;
 use std::io::Cursor;
 
 fn request(source: &[u8]) -> WorkerRequest {

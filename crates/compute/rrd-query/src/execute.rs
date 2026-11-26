@@ -7,8 +7,8 @@ use crate::{
 };
 use crate::{Join, Projection, Source};
 use rrd_store::{RuntimeReadBudget, RuntimeReadEvidence, RuntimeVersionedSource, StorageEngine};
-use rrflow_kernel::result_identity::{self, ResultIdentityFamily, RESULT_IDENTITY_VERSION};
-use rrflow_kernel::{
+use rrflow_core::result_identity::{self, ResultIdentityFamily, RESULT_IDENTITY_VERSION};
+use rrflow_core::{
     resolve_as_of, Claim, GeoValue, RuntimeChange, RuntimeGeo, RuntimeMutation, RuntimeRecord,
     RuntimeRelation, RuntimeValue, SeriesValue,
 };

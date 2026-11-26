@@ -5,8 +5,8 @@ use crate::{
     Result,
 };
 use rrd_contract::CanonicalId;
-use rrd_store::StorageEngine;
-use rrflow_kernel::digest;
+use rrd_store::Repositories;
+use rrflow_core::digest;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -63,7 +63,7 @@ pub enum BackupReconcileOutcome {
     },
 }
 
-pub struct BackupReconciler<'a, E: StorageEngine + ?Sized, D: EngramBackupDriver> {
+pub struct BackupReconciler<'a, E: Repositories + ?Sized, D: EngramBackupDriver> {
     repository: EngramRepository<'a, E>,
     engram_id: CanonicalId,
     worker: CanonicalId,
@@ -71,7 +71,7 @@ pub struct BackupReconciler<'a, E: StorageEngine + ?Sized, D: EngramBackupDriver
     driver: D,
 }
 
-impl<'a, E: StorageEngine + ?Sized, D: EngramBackupDriver> BackupReconciler<'a, E, D> {
+impl<'a, E: Repositories + ?Sized, D: EngramBackupDriver> BackupReconciler<'a, E, D> {
     pub fn new(
         engine: &'a E,
         engram_id: CanonicalId,

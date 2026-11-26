@@ -63,7 +63,7 @@ Run the existing characterization commands before the first relevant edit:
 
 ```text
 cargo test --locked -p rrd-contract --test reasoning_tree_contract
-cargo test --locked -p rrflow-kernel --test reasoning_tree_contract
+cargo test --locked -p rrflow-core --test reasoning_tree_contract
 cargo test --locked -p rrd-engine --lib overlapping_invocation
 cargo test --locked -p rrd-inference
 ```

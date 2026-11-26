@@ -1,4 +1,5 @@
 use super::*;
+use rrd_store::Repositories;
 
 fn bound<E: StorageEngine>(
     engine: &E,

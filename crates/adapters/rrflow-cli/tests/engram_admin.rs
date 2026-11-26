@@ -4,7 +4,7 @@ use rrd_engram::{
     ObservationRequest, ObservedPhase, ReceiptBoundary, ReceiptRequest,
     LOCAL_OPERATOR_POLICY_FORMAT,
 };
-use rrd_store::{RrflowKvStore, StorageEngine};
+use rrd_store::{Repositories, RrflowKvStore};
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;

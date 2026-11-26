@@ -336,7 +336,7 @@ pub(crate) fn validate_data_schema(registry: &DataSchemaRegistry) -> Result<()> 
     validate_data_organisation(registry)
 }
 
-/// Public-boundary checks of the engram organisation. `rrflow-kernel` repeats them
+/// Public-boundary checks of the engram organisation. `rrflow-core` repeats them
 /// as the authority at commit; an engine parity test keeps the two aligned.
 pub(crate) fn validate_data_organisation(registry: &DataSchemaRegistry) -> Result<()> {
     let organisation = &registry.organisation;

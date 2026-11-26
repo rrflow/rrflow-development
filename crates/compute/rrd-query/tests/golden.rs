@@ -1,7 +1,7 @@
 use rrd_query::parse;
 use rrd_query::{bind, plan, Catalog, ExecutionBudget, Parameters, Source, TraversalDirection};
-use rrd_store::{RrflowMxStore, RuntimeReadBudget, StorageEngine};
-use rrflow_kernel::{
+use rrd_store::{Repositories, RrflowMxStore, RuntimeReadBudget};
+use rrflow_core::{
     RuntimeCommit, RuntimeEvent, RuntimeEventSchema, RuntimeLogicalModel, RuntimeMutation,
     RuntimeProperties, RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeRelation,
     RuntimeRelationSchema, RuntimeSchemaRegistry, RuntimeType, ScopeId,

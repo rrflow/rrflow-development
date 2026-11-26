@@ -19,8 +19,8 @@ use rrd_engram::{
     LocalOperatorPolicy, MutationContext, ObservationRequest, ObservedPhase, ReceiptBoundary,
     ReceiptRequest, ScheduleBackup, SetDesired, SetRecoveryPolicy, LOCAL_OPERATOR_POLICY_FORMAT,
 };
-use rrd_store::StorageEngine;
-use rrflow_kernel::{digest, Claim, Predicate, Producer, Subject};
+use rrd_store::Repositories;
+use rrflow_core::{digest, Claim, Predicate, Producer, Subject};
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;

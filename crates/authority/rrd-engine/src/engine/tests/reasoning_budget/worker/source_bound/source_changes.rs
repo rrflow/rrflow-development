@@ -1,6 +1,7 @@
 //! Head, index, ignore-rule and staging changes around a selected source.
 
 use super::*;
+use rrd_store::Repositories;
 
 #[test]
 pub(super) fn unrelated_accepted_head_advance_before_dispatch_keeps_selected_worker_source() {

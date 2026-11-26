@@ -5,12 +5,12 @@ use rrd_operator_knowledge::{
     OperatorSearchControls, OperatorSearchRequest, OperatorSourceRevision, OperatorSyncWork,
     ReferenceOperatorAdapter, ReferenceOperatorWriter, OPERATOR_KNOWLEDGE_CONTRACT_VERSION,
 };
-use rrd_store::{RrflowKvStore, RrflowMxStore, StorageEngine};
+use rrd_store::{Repositories, RrflowKvStore, RrflowMxStore, StorageEngine};
 use rrd_vector::{
     EmbeddingModelBinding, ScoreMetric, SearchMode, SearchRequest, VectorCandidate, VectorQuery,
     VectorRuntime,
 };
-use rrflow_kernel::{
+use rrflow_core::{
     digest, EmbeddingProvenance, ProjectionStamp, ProjectionState, RuntimeCommit,
     RuntimeLogicalModel, RuntimeMutation, RuntimeProperties, RuntimeRecord, RuntimeRecordSchema,
     RuntimeRef, RuntimeSchemaRegistry, RuntimeTableSchema, RuntimeType, RuntimeValue,
@@ -144,7 +144,7 @@ fn knowledge(installed: &InstalledEngramIdentity) -> OperatorKnowledgeBinding {
         dimensions: 3,
         projection: ProjectionStamp {
             contract_version: DATA_RUNTIME_CONTRACT_VERSION,
-            id: rrflow_kernel::ProjectionId::new("operator-pgvector-knowledge").unwrap(),
+            id: rrflow_core::ProjectionId::new("operator-pgvector-knowledge").unwrap(),
             generation: 1,
             source_cursor: 7,
             config_digest: "22".repeat(32),

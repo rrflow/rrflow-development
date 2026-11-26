@@ -60,7 +60,7 @@ pub(super) fn record(observation: Observation<'_>) {
 }
 
 fn format_record(observation: &Observation<'_>) -> String {
-    let request_sha256 = rrflow_kernel::digest::sha256_hex(observation.request_id.as_bytes());
+    let request_sha256 = rrflow_core::digest::sha256_hex(observation.request_id.as_bytes());
     format!(
             "c07_sample_phase_trace request_sha256={} pid={} elapsed_ns={} total_ns={} host_ns={} rpc_ns={} memory_ns={} enforcement_ns={}",
             request_sha256,

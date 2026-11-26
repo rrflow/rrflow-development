@@ -4,8 +4,8 @@ use crate::{
     ReceiptRequest, Result,
 };
 use rrd_contract::CanonicalId;
-use rrd_store::StorageEngine;
-use rrflow_kernel::digest;
+use rrd_store::Repositories;
+use rrflow_core::digest;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -113,7 +113,7 @@ pub enum ReconcileOutcome {
     },
 }
 
-pub struct Reconciler<'a, E: StorageEngine + ?Sized, D: EngramDriver> {
+pub struct Reconciler<'a, E: Repositories + ?Sized, D: EngramDriver> {
     repository: EngramRepository<'a, E>,
     engram_id: CanonicalId,
     worker: CanonicalId,
@@ -121,7 +121,7 @@ pub struct Reconciler<'a, E: StorageEngine + ?Sized, D: EngramDriver> {
     driver: D,
 }
 
-impl<'a, E: StorageEngine + ?Sized, D: EngramDriver> Reconciler<'a, E, D> {
+impl<'a, E: Repositories + ?Sized, D: EngramDriver> Reconciler<'a, E, D> {
     pub fn new(
         engine: &'a E,
         engram_id: CanonicalId,

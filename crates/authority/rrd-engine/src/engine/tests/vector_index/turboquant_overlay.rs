@@ -4,6 +4,7 @@
 
 use super::*;
 use rrd_contract::{SessionLease, VectorSearchResult};
+use rrd_store::Repositories;
 
 const DIMENSIONS: usize = 16;
 const DOCUMENTS: usize = 12;

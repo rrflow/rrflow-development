@@ -12,7 +12,7 @@ use rrd_operator_knowledge::{
     OperatorKnowledgeWriter, OperatorSearchRequest, OperatorSearchResult, OperatorSyncOperation,
     OperatorSyncReceipt, OperatorSyncWork,
 };
-use rrd_store::StorageEngine;
+use rrd_store::{Repositories, StorageEngine};
 
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 pub struct TracedOperatorSearch {

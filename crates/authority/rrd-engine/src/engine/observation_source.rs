@@ -5,6 +5,7 @@ use rrd_contract::{
     ObservationSourceConfigurationPlan, PreviewObservationSourceConfiguration,
     OBSERVATION_SOURCE_CONFIGURATION_VERSION, OBSERVATION_SOURCE_PREVIEW_TTL_MS,
 };
+use rrd_store::Repositories;
 
 impl RrdEngine {
     fn observation_source_identity(&self) -> Result<InstalledEngramIdentity> {

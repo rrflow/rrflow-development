@@ -14,7 +14,7 @@ use rrd_vector::{
     QuantizedSegmentConfig, ScoreMetric, SearchHit, SearchMode, SearchRequest, TurboQuantBits,
     TurboQuantEstimator, TurboQuantSegment, TurboQuantSegmentConfig, VectorCandidate, VectorQuery,
 };
-use rrflow_kernel::{
+use rrflow_core::{
     ProjectionId, ReadStamp, RuntimeProperties, RuntimeRef, RuntimeVector, ScopeId,
     VectorCollectionAddress, VectorValue,
 };

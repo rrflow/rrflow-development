@@ -42,8 +42,8 @@ impl<'a> RuntimeRepository<'a> {
     pub fn index_lookup(
         &self,
         read: &ReadStamp,
-        index: &rrflow_kernel::ProjectionId,
-        values: &[rrflow_kernel::RuntimeValue],
+        index: &rrflow_core::ProjectionId,
+        values: &[rrflow_core::RuntimeValue],
         valid_at: u64,
         max_entries: usize,
     ) -> Result<crate::IndexLookup> {

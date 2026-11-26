@@ -1,6 +1,7 @@
 //! Remote bind refusal, the standalone daemon and real socket lifecycle.
 
 use super::*;
+use rrd_store::Repositories;
 
 #[test]
 pub(super) fn server_denies_remote_bind_before_opening_a_listener() {

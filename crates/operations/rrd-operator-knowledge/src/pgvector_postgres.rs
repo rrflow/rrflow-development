@@ -10,7 +10,7 @@ use native_tls::{Certificate, TlsConnector};
 use postgres::{config::SslMode, Client, Config, GenericClient, IsolationLevel, Transaction};
 use postgres_native_tls::MakeTlsConnector;
 use rrd_vector::{ScoreMetric, VectorQuery};
-use rrflow_kernel::{digest, Error, Result};
+use rrflow_core::{digest, Error, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};

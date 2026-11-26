@@ -4,7 +4,7 @@ use crate::{
     search_exact, AccessPathKind, CandidatePath, EmbeddingModelBinding, ScoreMetric, SearchHit,
     SearchMode, SearchRequest, VectorCandidate, VectorQuery,
 };
-use rrflow_kernel::{
+use rrflow_core::{
     digest, ProjectionId, ProjectionStamp, ProjectionState, Result, ScopeId, VectorValue,
     DATA_RUNTIME_CONTRACT_VERSION,
 };

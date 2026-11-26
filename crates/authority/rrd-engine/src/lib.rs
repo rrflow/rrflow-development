@@ -5,7 +5,7 @@
 //! constructing those components independently.
 
 /// The temporal values and invariants shared by the engine and its storage ports.
-pub use rrflow_kernel as kernel;
+pub use rrflow_core as kernel;
 
 #[cfg(feature = "full")]
 mod capabilities;

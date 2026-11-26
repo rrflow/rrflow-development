@@ -1,3 +1,4 @@
+use rrd_store::Repositories;
 mod fusion;
 mod shape;
 mod stages;

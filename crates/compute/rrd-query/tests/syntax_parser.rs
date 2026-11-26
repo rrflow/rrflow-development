@@ -2,7 +2,7 @@ use rrd_query::{
     parse, parse_transaction_program, ComparisonOperator, CursorExpr, Filter, Projection, Query,
     Source, TemporalSelector, TimeExpr, TransactionDisposition, ValueExpr,
 };
-use rrflow_kernel::{RuntimeType, RuntimeValue};
+use rrflow_core::{RuntimeType, RuntimeValue};
 
 #[test]
 fn traversal_start_ids_round_trip_exactly_when_quoted() {

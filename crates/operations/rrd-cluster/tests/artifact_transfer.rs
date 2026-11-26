@@ -6,8 +6,8 @@ use rrd_cluster::{
     ArtifactTransferSessionPolicy, NodeId, ReplicaTransferPlan, ShardId, ShardReadStamp,
     ARTIFACT_TRANSFER_CHUNK_MAX_BYTES, CLUSTER_CONTRACT_VERSION,
 };
-use rrd_store::{DataRuntime, LocalObjectStore, RrflowMxStore, StorageEngine};
-use rrflow_kernel::{
+use rrd_store::{DataRuntime, LocalObjectStore, Repositories, RrflowMxStore};
+use rrflow_core::{
     DataTransaction, RuntimeCommit, RuntimeLogicalModel, RuntimeMutation, RuntimeProperties,
     RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry, RuntimeTableSchema,
     RuntimeType, ScopeId,
@@ -212,7 +212,7 @@ fn corruption_missing_source_and_manifest_substitution_fail_closed() {
     assert!(substituted.validate().is_err());
     assert!(transfer_artifacts(source.objects(), &target, &substituted, 20).is_err());
 
-    let key = rrflow_kernel::ObjectReference::canonical_key(&manifest.objects[0].sha256).unwrap();
+    let key = rrflow_core::ObjectReference::canonical_key(&manifest.objects[0].sha256).unwrap();
     std::fs::remove_file(source_path.join(key)).unwrap();
     let error = transfer_artifacts(source.objects(), &target, &manifest, 20)
         .unwrap_err()

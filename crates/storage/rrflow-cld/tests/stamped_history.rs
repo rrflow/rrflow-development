@@ -4,13 +4,13 @@ use bytes::Bytes;
 use parquet::{
     arrow::arrow_reader::ParquetRecordBatchReaderBuilder, basic::Compression as PhysicalCompression,
 };
-use rrd_store::{RrflowKvStore, StorageEngine};
+use rrd_store::{Repositories, RrflowKvStore};
 #[cfg(feature = "cld-parquet")]
 use rrflow_cld::{record_batch_to_rows, Compression, Encoding, ParquetHistory};
 use rrflow_cld::{
     ColdHistoryReadExpectation, ColdHistoryReadLimits, ColdStorageBackend, WriteLimits,
 };
-use rrflow_kernel::{
+use rrflow_core::{
     RuntimeCommit, RuntimeLogicalModel, RuntimeMutation, RuntimeRecord, RuntimeRef,
     RuntimeRetirement, RuntimeSchemaRegistry, RuntimeTableSchema, RuntimeType, RuntimeValue,
     ScopeId,
@@ -126,7 +126,7 @@ fn verify(backend: &dyn ColdStorageBackend) {
         requested_after: page.requested_after,
         through_cursor: page.through_cursor,
         rows: page.changes.len() as u64,
-        artifact_sha256: rrflow_kernel::digest::sha256_hex(&bytes),
+        artifact_sha256: rrflow_core::digest::sha256_hex(&bytes),
     };
     let read_limits = ColdHistoryReadLimits {
         max_rows: 32,
@@ -151,7 +151,7 @@ fn verify(backend: &dyn ColdStorageBackend) {
         requested_after: empty.requested_after,
         through_cursor: empty.through_cursor,
         rows: 0,
-        artifact_sha256: rrflow_kernel::digest::sha256_hex(&empty_artifact.artifact.bytes),
+        artifact_sha256: rrflow_core::digest::sha256_hex(&empty_artifact.artifact.bytes),
     };
     let empty_decoded = backend
         .decode(
@@ -204,7 +204,7 @@ fn verify(backend: &dyn ColdStorageBackend) {
             .as_ref()
             .unwrap();
         assert_eq!(
-            serde_json::from_str::<rrflow_kernel::ReadStamp>(source).unwrap(),
+            serde_json::from_str::<rrflow_core::ReadStamp>(source).unwrap(),
             snapshot.read
         );
         let restored = builder
@@ -215,7 +215,7 @@ fn verify(backend: &dyn ColdStorageBackend) {
                 let RuntimeValue::String(json) = &row.values["change_json"] else {
                     panic!("history value")
                 };
-                serde_json::from_str::<rrflow_kernel::RuntimeChange>(json).unwrap()
+                serde_json::from_str::<rrflow_core::RuntimeChange>(json).unwrap()
             })
             .collect::<Vec<_>>();
         assert_eq!(restored, expected);

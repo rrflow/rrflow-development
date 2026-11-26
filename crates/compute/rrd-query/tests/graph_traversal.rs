@@ -6,6 +6,7 @@
 //! type, in relation-reference order, over the complete authenticated change
 //! log. It shares no code with the native adjacency reader.
 
+use rrd_store::Repositories;
 #[path = "query/transactions.rs"]
 mod transactions;
 
@@ -16,7 +17,7 @@ use rrd_store::{
     RrflowKvStore, RrflowMxStore, RuntimeReadAccessPath, RuntimeReadBudget, RuntimeVersionedSource,
     StorageEngine,
 };
-use rrflow_kernel::{
+use rrflow_core::{
     ReadStamp, RuntimeChange, RuntimeCommit, RuntimeLogicalModel, RuntimeMutation,
     RuntimeProperties, RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeRelation,
     RuntimeRelationSchema, RuntimeRetirement, RuntimeSchemaRegistry, RuntimeType, RuntimeValue,
@@ -157,8 +158,8 @@ fn schema() -> RuntimeSchemaRegistry {
                 RuntimeRelationSchema {
                     from: BTreeSet::from([kind("node")]),
                     to: BTreeSet::from([kind("node")]),
-                    on_delete_from: Some(rrflow_kernel::RuntimeReferentialAction::Cascade),
-                    on_delete_to: Some(rrflow_kernel::RuntimeReferentialAction::Cascade),
+                    on_delete_from: Some(rrflow_core::RuntimeReferentialAction::Cascade),
+                    on_delete_to: Some(rrflow_core::RuntimeReferentialAction::Cascade),
                     allow_additional_properties: true,
                     ..RuntimeRelationSchema::default()
                 },

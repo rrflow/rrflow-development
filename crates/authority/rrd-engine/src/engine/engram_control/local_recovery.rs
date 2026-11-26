@@ -1,6 +1,7 @@
 //! Local recovery authorization, directories, idempotency and control commits.
 
 use super::*;
+use rrd_store::Repositories;
 
 pub(super) fn ensure_direct_directory(root: &Path, child: &str) -> std::result::Result<(), String> {
     let path = root.join(child);

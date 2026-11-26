@@ -3,7 +3,7 @@
 //! This test intentionally exercises only inert semantic descriptors. Runtime
 //! collection, export, and authoritative engine state do not belong here.
 
-use rrflow_kernel::{
+use rrflow_core::{
     signal_catalogue, signal_catalogue_sha256, DiagnosticLevel, MetricAttribute, MetricInstrument,
     MetricKind, MetricUnit, SignalCatalogue, TraceAttribute, TraceBoundary, TraceOperation,
     DEFAULT_METRIC_CARDINALITY_LIMIT, RUNTIME_TRACE_CONTRACT_VERSION, TELEMETRY_CONTRACT_VERSION,

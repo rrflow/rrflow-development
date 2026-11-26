@@ -5,7 +5,7 @@
 //! for an expired version or retirement, so arrival order cannot revive it.
 //! This is disposable query state; the store remains the version authority.
 
-use rrflow_kernel::{
+use rrflow_core::{
     RuntimeChange, RuntimeLogicalModel, RuntimeMutation, RuntimeRecord, RuntimeRef,
     RuntimeRelation, ScopeId,
 };

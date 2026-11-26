@@ -1,7 +1,7 @@
 //! Capturing, retaining, validating and restoring catalogue manifests.
 
-use crate::Repositories;
 use super::*;
+use crate::Repositories;
 
 #[derive(Default)]
 pub(super) struct CatalogueCapture {

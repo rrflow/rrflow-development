@@ -4,7 +4,7 @@ use super::*;
 
 pub(super) fn rows_for_source(
     changes: &[RuntimeChange],
-    scope: &rrflow_kernel::ScopeId,
+    scope: &rrflow_core::ScopeId,
     source: &Source,
     valid_at: u64,
     known_at_cursor: u64,
@@ -61,7 +61,7 @@ pub(super) fn rows_for_source(
                         if &event.kind == kind && change.at <= valid_at =>
                     {
                         let reference =
-                            rrflow_kernel::RuntimeRef::event(event.kind.clone(), change.cursor);
+                            rrflow_core::RuntimeRef::event(event.kind.clone(), change.cursor);
                         active.insert(reference, (change, event));
                     }
                     RuntimeMutation::Retire { retirement }
@@ -121,7 +121,7 @@ pub(super) fn rows_for_source(
                         active.insert(sample.reference.clone(), sample);
                     }
                     RuntimeMutation::Retire { retirement }
-                        if retirement.model == rrflow_kernel::RuntimeLogicalModel::TimeSeries
+                        if retirement.model == rrflow_core::RuntimeLogicalModel::TimeSeries
                             && retirement.effective_at <= valid_at =>
                     {
                         active.remove(&retirement.reference);
@@ -180,12 +180,12 @@ pub(super) fn rows_for_source(
 
 pub(crate) fn active_graph_values<'a>(
     changes: impl IntoIterator<Item = &'a RuntimeChange>,
-    scope: &rrflow_kernel::ScopeId,
+    scope: &rrflow_core::ScopeId,
     valid_at: u64,
     known_at_cursor: u64,
 ) -> (
-    BTreeMap<rrflow_kernel::RuntimeRef, RuntimeRecord>,
-    BTreeMap<rrflow_kernel::RuntimeRef, RuntimeRelation>,
+    BTreeMap<rrflow_core::RuntimeRef, RuntimeRecord>,
+    BTreeMap<rrflow_core::RuntimeRef, RuntimeRelation>,
 ) {
     let mut state =
         crate::physical::graph::state::GraphState::new(scope, valid_at, known_at_cursor);
@@ -197,12 +197,12 @@ pub(crate) fn active_graph_values<'a>(
 
 pub(super) fn geo_rows(
     changes: &[RuntimeChange],
-    scope: &rrflow_kernel::ScopeId,
-    kind: &rrflow_kernel::RuntimeType,
+    scope: &rrflow_core::ScopeId,
+    kind: &rrflow_core::RuntimeType,
     valid_at: u64,
     known_at_cursor: u64,
 ) -> Vec<QueryRow> {
-    let mut active = BTreeMap::<rrflow_kernel::RuntimeRef, (u64, RuntimeGeo)>::new();
+    let mut active = BTreeMap::<rrflow_core::RuntimeRef, (u64, RuntimeGeo)>::new();
     for change in changes
         .iter()
         .filter(|change| change.cursor <= known_at_cursor && &change.scope == scope)
@@ -222,7 +222,7 @@ pub(super) fn geo_rows(
                 }
             }
             RuntimeMutation::Retire { retirement }
-                if retirement.model == rrflow_kernel::RuntimeLogicalModel::Geo
+                if retirement.model == rrflow_core::RuntimeLogicalModel::Geo
                     && &retirement.reference.kind == kind
                     && retirement.effective_at <= valid_at =>
             {
@@ -311,8 +311,8 @@ pub(super) fn insert_geo_value(values: &mut BTreeMap<String, RuntimeValue>, geo:
 
 pub(super) fn claim_rows(
     changes: &[RuntimeChange],
-    scope: &rrflow_kernel::ScopeId,
-    predicate: Option<&rrflow_kernel::Predicate>,
+    scope: &rrflow_core::ScopeId,
+    predicate: Option<&rrflow_core::Predicate>,
     valid_at: u64,
     known_at_cursor: u64,
 ) -> Vec<QueryRow> {

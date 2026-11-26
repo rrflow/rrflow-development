@@ -1,6 +1,6 @@
 use super::*;
 use crate::{Repositories, RrflowKvStore, RrflowMxStore, StorageEngine};
-use rrflow_kernel::{RuntimeLogicalModel, RuntimeRecordSchema, RuntimeRelationSchema, RuntimeType};
+use rrflow_core::{RuntimeLogicalModel, RuntimeRecordSchema, RuntimeRelationSchema, RuntimeType};
 use std::cell::Cell;
 
 struct Counted<'a> {
@@ -66,7 +66,7 @@ fn schema() -> RuntimeSchemaRegistry {
 }
 fn candidate(store: &dyn StorageEngine, mutations: Vec<RuntimeMutation>) -> RuntimeCommit {
     RuntimeCommit {
-        scope: rrflow_kernel::ScopeId::new("constraint-test").unwrap(),
+        scope: rrflow_core::ScopeId::new("constraint-test").unwrap(),
         at: 20,
         actor: "constraint-test".into(),
         expected_cursor: store.runtime().cursor().unwrap(),
@@ -204,7 +204,7 @@ fn relation(id: &str, from: &str, to: &str, start: u64, end: Option<u64>) -> Run
 }
 fn retire(id: &str) -> RuntimeMutation {
     RuntimeMutation::Retire {
-        retirement: rrflow_kernel::RuntimeRetirement {
+        retirement: rrflow_core::RuntimeRetirement {
             model: RuntimeLogicalModel::GraphRelation,
             reference: edge(id, "a", "b").reference,
             effective_at: 15,
@@ -316,8 +316,8 @@ fn unique_records_keep_typed_scope_and_schema_change_oracle() {
             RuntimeRecordSchema {
                 properties: BTreeMap::from([(
                     "code".into(),
-                    rrflow_kernel::RuntimePropertySchema::required(
-                        rrflow_kernel::RuntimeValueType::String,
+                    rrflow_core::RuntimePropertySchema::required(
+                        rrflow_core::RuntimeValueType::String,
                     ),
                 )]),
                 unique_properties: BTreeSet::from(["code".into()]),
@@ -331,7 +331,7 @@ fn unique_records_keep_typed_scope_and_schema_change_oracle() {
         record.reference.kind = unique.clone();
         record.properties.insert(
             "code".into(),
-            rrflow_kernel::RuntimeValue::String(code.into()),
+            rrflow_core::RuntimeValue::String(code.into()),
         );
         RuntimeMutation::Record { record }
     };

@@ -1,6 +1,7 @@
 //! Pruning engram backups and restoring an engram from a backup.
 
 use super::*;
+use rrd_store::Repositories;
 
 impl RrdEngine {
     /// Applies one engram-authorized retention decision through the existing

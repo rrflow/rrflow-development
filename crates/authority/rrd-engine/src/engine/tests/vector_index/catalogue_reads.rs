@@ -1,4 +1,5 @@
 use super::*;
+use rrd_store::Repositories;
 
 fn semantic_counts(evidence: &ReadEvidence) -> (u64, u64, u64) {
     evidence.paths.iter().fold((0, 0, 0), |sum, path| {

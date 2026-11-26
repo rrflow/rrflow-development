@@ -1,6 +1,6 @@
 use rrd_engine::{execute_traced_query, query_parameters_from_json, ExecutionBudget, Parameters};
-use rrd_store::{RrflowKvStore, RrflowMxStore, StorageEngine};
-use rrflow_kernel::{
+use rrd_store::{Repositories, RrflowKvStore, RrflowMxStore, StorageEngine};
+use rrflow_core::{
     RuntimeCommit, RuntimeLogicalModel, RuntimeMutation, RuntimeProperties, RuntimePropertySchema,
     RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry, RuntimeType,
     RuntimeValue, RuntimeValueType, ScopeId,

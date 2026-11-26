@@ -31,7 +31,7 @@ use crate::StorageEngine;
 /// The port ([`StorageEngine`]) opens physical transactions and knows nothing
 /// above them. This trait is implemented once for every port, so each backend
 /// runs the same repository code and none can supply its own.
-pub trait Repositories {
+pub trait Repositories: StorageEngine {
     fn claims(&self) -> ClaimRepository<'_>;
     fn control(&self) -> ControlRepository<'_>;
     fn function_catalogue(&self) -> FunctionCatalogueRepository<'_>;

@@ -1,4 +1,5 @@
 use super::*;
+use rrd_store::Repositories;
 use std::collections::BTreeSet;
 
 const EVENT_KIND: &str = "rrflow-reasoning-budget-event";

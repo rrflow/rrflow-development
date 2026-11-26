@@ -14,7 +14,7 @@ use rrd_contract::{
     CloseTask, ListTasks, OpenTask, ReadTask, TaskPage, TaskReadResult, TaskRecord, TaskResult,
     TaskStatus, PROMPT_FLIGHT_KIND, TASK_FORMAT_VERSION, TASK_INCLUDES_KIND, TASK_KIND,
 };
-use rrd_store::RuntimeVersionedSource;
+use rrd_store::{Repositories, RuntimeVersionedSource};
 use std::collections::BTreeSet;
 
 /// Write attempts before a persistent cursor race is reported as a conflict.

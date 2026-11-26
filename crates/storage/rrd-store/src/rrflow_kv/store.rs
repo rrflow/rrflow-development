@@ -1,7 +1,7 @@
 //! Creating, opening and maintaining an rrflowKV store.
 
-use crate::Repositories;
 use super::*;
+use crate::Repositories;
 
 /// Read-only projection of the formats owned by the initial rrflowKV writer.
 /// Installation can bind these without copying physical-format constants.

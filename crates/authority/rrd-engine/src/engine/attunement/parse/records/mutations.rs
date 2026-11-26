@@ -1,6 +1,7 @@
 //! Each file's fact mutations, schema and index registration, retirement and summary.
 
 use super::*;
+use rrd_store::Repositories;
 
 /// The mutations that make `next` the file's current state: retire every fact
 /// the previous state named that the new one does not, write the new facts with

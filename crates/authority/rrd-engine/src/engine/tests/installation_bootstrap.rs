@@ -3,6 +3,7 @@ use super::*;
 use crate::engine::clock::FixedClock;
 use crate::engine::installation::recovery::InstallApplyStage;
 use rrd_contract::InstallationTargetKind;
+use rrd_store::Repositories;
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 

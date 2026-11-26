@@ -1,6 +1,6 @@
 //! Authenticated, bounded generation codec used by the installed engine.
 use crate::{Error, Result, WriteLimits};
-use rrflow_kernel::{ReadStamp, RuntimeChange, RuntimeChangePage};
+use rrflow_core::{ReadStamp, RuntimeChange, RuntimeChangePage};
 use std::time::Instant;
 
 #[cfg(feature = "cld-parquet")]
@@ -189,7 +189,7 @@ fn admit(
         .stamp
         .validate()
         .map_err(|error| Error::Integrity(error.to_string()))?;
-    if rrflow_kernel::digest::sha256_hex(bytes) != expected.artifact_sha256 {
+    if rrflow_core::digest::sha256_hex(bytes) != expected.artifact_sha256 {
         return Err(Error::Integrity("cold history artifact digest mismatch".into()).into());
     }
     Ok(())

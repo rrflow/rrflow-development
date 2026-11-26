@@ -1,6 +1,6 @@
 //! Frozen portable JSON/canonical identities for the M4 unified data contract.
 
-use rrflow_kernel::{
+use rrflow_core::{
     projection_family, GeoPoint, GeoValue, ObjectReceipt, ObjectReference, ProjectionWork,
     RuntimeCommit, RuntimeGeo, RuntimeMutation, RuntimeProperties, RuntimeRef, RuntimeSeriesSample,
     RuntimeVector, ScopeId, SeriesValue, VectorCollectionAddress, VectorValue,

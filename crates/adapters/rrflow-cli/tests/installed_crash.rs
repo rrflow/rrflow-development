@@ -383,7 +383,7 @@ fn expected(name: &str) -> BTreeMap<String, String> {
             (
                 format!(
                     "claim:{}",
-                    rrflow_kernel::digest::sha256_hex(
+                    rrflow_core::digest::sha256_hex(
                         format!("rrd-context-claim-v1\0crash-{name}-{i}\0crash").as_bytes()
                     )
                 ),

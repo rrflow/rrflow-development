@@ -6,8 +6,8 @@ use rrd_query::{
     bind, execute, parse, plan, Bm25Config, Catalog, ExecutionBudget, IndexCatalogueRepository,
     IndexDefinition, IndexKind, IndexMutationContext, Parameters, QueryRow, Source,
 };
-use rrd_store::{RrflowKvStore, RrflowMxStore, RuntimeReadBudget, StorageEngine};
-use rrflow_kernel::{
+use rrd_store::{Repositories, RrflowKvStore, RrflowMxStore, RuntimeReadBudget, StorageEngine};
+use rrflow_core::{
     ProjectionId, RuntimeCommit, RuntimeLogicalModel, RuntimeMutation, RuntimePropertySchema,
     RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeRetirement, RuntimeSchemaRegistry,
     RuntimeType, RuntimeValue, RuntimeValueType, ScopeId,

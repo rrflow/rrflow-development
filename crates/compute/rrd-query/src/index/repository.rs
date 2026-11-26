@@ -1,6 +1,7 @@
 //! The index catalogue repository: ensure, build, publish and read.
 
 use super::*;
+use rrd_store::Repositories;
 
 impl<'a, E: StorageEngine> IndexCatalogueRepository<'a, E> {
     pub fn new(engine: &'a E, scope: ScopeId) -> Self {
@@ -233,10 +234,10 @@ impl<'a, E: StorageEngine> IndexCatalogueRepository<'a, E> {
                 let documents = rows
                     .iter()
                     .filter_map(|row| match row.values.get(field) {
-                        Some(rrflow_kernel::RuntimeValue::String(text)) => {
+                        Some(rrflow_core::RuntimeValue::String(text)) => {
                             Some(Ok((row.identity.clone(), text.clone())))
                         }
-                        Some(rrflow_kernel::RuntimeValue::Null) | None => None,
+                        Some(rrflow_core::RuntimeValue::Null) | None => None,
                         Some(_) => Some(Err(Error::Catalog(format!(
                             "BM25 field {field:?} produced a non-string value"
                         )))),

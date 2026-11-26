@@ -5,7 +5,7 @@
 
 use crate::lfg_observation::{decode_lfg_observation, ExpectedObservation, LfgObservation};
 use crate::{EmbeddingExecutionControl, NetworkPolicy};
-use rrflow_kernel::digest::sha256_hex;
+use rrflow_core::digest::sha256_hex;
 use serde::Serialize;
 use std::io::{Read, Write};
 use std::net::IpAddr;

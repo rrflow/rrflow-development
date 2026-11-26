@@ -12,8 +12,8 @@ use rrd_cluster::{
     RrdTransportOperation, ShardId, ShardPlacement, ZoneId, CLUSTER_CONTRACT_VERSION,
     RRFLOW_NODE_CONFIG_VERSION, RRFLOW_NODE_CONTROL_VERSION,
 };
-use rrd_store::{LocalObjectStore, RrflowKvStore, StorageEngine};
-use rrflow_kernel::{
+use rrd_store::{LocalObjectStore, Repositories, RrflowKvStore};
+use rrflow_core::{
     ObjectReference, RuntimeChange, RuntimeCommit, RuntimeLogicalModel, RuntimeMutation,
     RuntimeRecordSchema, RuntimeSchemaRegistry, RuntimeTableSchema, RuntimeType, RuntimeValue,
     ScopeId,

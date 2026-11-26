@@ -25,8 +25,8 @@ use openraft::raft::{
 };
 use openraft::{OptionalSend, Raft, Snapshot, Vote};
 use rrd_store::LocalObjectStore;
-use rrflow_kernel::digest::sha256_hex;
-use rrflow_kernel::ScopeId;
+use rrflow_core::digest::sha256_hex;
+use rrflow_core::ScopeId;
 use rustls::client::WebPkiServerVerifier;
 use rustls::pki_types::{CertificateDer, CertificateRevocationListDer, PrivateKeyDer, ServerName};
 use rustls::server::WebPkiClientVerifier;

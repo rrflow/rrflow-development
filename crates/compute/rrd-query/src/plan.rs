@@ -5,7 +5,7 @@ use crate::{
     QUERY_CONTRACT_VERSION,
 };
 use rrd_store::RuntimeVersionedSource;
-use rrflow_kernel::{
+use rrflow_core::{
     digest, ProjectionId, ProjectionState, ReadStamp, RuntimeSchemaRegistry, RuntimeValue,
     RuntimeValueType,
 };

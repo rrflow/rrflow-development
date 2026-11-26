@@ -16,7 +16,7 @@ use super::{read_versioned, schema_at_read, RuntimeReadBudget, RuntimeVersionedS
 use crate::keyspaces::{self, Space};
 use crate::transaction::TransactionWriteSet;
 use crate::{Error, FunctionInvocationReceiptRecord, Result, StorageTransaction};
-use rrflow_kernel::{
+use rrflow_core::{
     projection_family, AuditEnvelope, ProjectionWork, ReadStamp, RuntimeChange, RuntimeCommit,
     RuntimeCommitOutcome, RuntimeDataSnapshot, RuntimeMutation, RuntimeRecord, RuntimeRef,
     RuntimeRelation, RuntimeSchemaRegistry,

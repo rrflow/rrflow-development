@@ -3,6 +3,7 @@
 //! spreads the work over several Steps.
 
 use super::*;
+use rrd_store::Repositories;
 use std::collections::{BTreeMap, BTreeSet};
 
 /// The test's time `offset` milliseconds after its base, on a clock that also

@@ -21,7 +21,7 @@ The project's terms are instead written by hand in five places that no check kee
 | `PLATFORM_TERMS` in `crates/transport/rrd-contract/src/platform.rs` | 25 terms with a role; none of rrflowDB, rrflowKV, rrflowTX, rrflowCX, rrflowQL, rrflowMX | the public contract and its test |
 | `connectome/src/features/runtime/components/glossary.tsx` | 31 terms with plain-language text | the Connectome screens |
 | [Platform vocabulary note](../../history/platform-vocabulary-note.md) | an older term table | history |
-| `rrflow-kernel/src/trace/vocabulary.rs` | trace names | the trace code |
+| `rrflow-core/src/trace/vocabulary.rs` | trace names | the trace code |
 
 One effect was seen on 2026-11-25: the alignment plan retired the `rrd-` prefix although RRD is the owner's name for the running daemon, and the owner had to correct it (pull request 515).
 

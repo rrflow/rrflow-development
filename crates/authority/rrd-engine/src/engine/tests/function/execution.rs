@@ -1,6 +1,7 @@
 //! Bounded, deterministic JavaScript and WebAssembly execution and catalogue batches.
 
 use super::*;
+use rrd_store::Repositories;
 
 #[test]
 pub(super) fn javascript_and_webassembly_are_bounded_deterministic_and_restart_safe() {

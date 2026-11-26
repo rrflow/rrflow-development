@@ -6,7 +6,7 @@
 //! reclamation make that asymmetry explicit.
 
 use crate::{Error, Result};
-use rrflow_kernel::{digest, ObjectReceipt, ObjectReference};
+use rrflow_core::{digest, ObjectReceipt, ObjectReference};
 use rrflow_lsm::filesystem::{AnchoredPath, OpenOptions};
 use std::collections::{BTreeMap, BTreeSet};
 #[cfg(test)]

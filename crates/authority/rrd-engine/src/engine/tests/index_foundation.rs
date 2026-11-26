@@ -5,6 +5,7 @@ use rrd_contract::{
     EnsureQueryIndex, ExecuteQuery, QueryBudget, QueryFullTextConfiguration, QueryIndexKind,
     QueryTextStemmer, QueryValue,
 };
+use rrd_store::Repositories;
 use std::collections::{BTreeMap, BTreeSet};
 
 fn reference(kind: &str, value: &str) -> DataReference {

@@ -23,10 +23,11 @@
 //!   --example storage_comparison -- --trials 5 --operations 16384 --output out.json
 //! ```
 
-use rrd_store::{Repositories, 
-    measure_storage_footprint, FjallBaselineStore, RrflowKvStore, StorageEngine, StorageFootprint,
+use rrd_store::{
+    measure_storage_footprint, FjallBaselineStore, Repositories, RrflowKvStore, StorageEngine,
+    StorageFootprint,
 };
-use rrflow_kernel::{Claim, Predicate, Producer, Subject};
+use rrflow_core::{Claim, Predicate, Producer, Subject};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::hint::black_box;

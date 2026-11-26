@@ -5,6 +5,7 @@
 
 use super::super::inventory::Work;
 use super::*;
+use rrd_store::Repositories;
 
 /// The batch one Step would publish: its records, whether it finishes Parse,
 /// and the summary of every file's state after it.

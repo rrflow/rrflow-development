@@ -330,7 +330,7 @@ impl CollectionMutationContext {
     }
 }
 
-pub struct VectorCollectionRepository<'a, E: StorageEngine + ?Sized> {
+pub struct VectorCollectionRepository<'a, E: Repositories + ?Sized> {
     pub(super) engine: &'a E,
     pub(super) scope: ScopeId,
     pub(super) key: String,

@@ -152,7 +152,7 @@ impl TurboQuantSegmentConfig {
         self.validate()?;
         serde_json::to_vec(self)
             .map(|bytes| digest::sha256_hex(&bytes))
-            .map_err(|error| rrflow_kernel::Error::InvalidRuntime {
+            .map_err(|error| rrflow_core::Error::InvalidRuntime {
                 reason: format!("TurboQuant configuration cannot be encoded: {error}"),
             })
     }

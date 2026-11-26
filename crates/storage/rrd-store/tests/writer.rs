@@ -1,7 +1,7 @@
 //! Group-commit writer behaviour. `SPEC.md` §8.1.
 
-use rrd_store::{Repositories, ClaimBatchWriter, ClaimBatchWriterConfig, RrflowKvStore, StorageEngine};
-use rrflow_kernel::{Claim, ClaimReader, Predicate, Producer, Subject};
+use rrd_store::{ClaimBatchWriter, ClaimBatchWriterConfig, Repositories, RrflowKvStore};
+use rrflow_core::{Claim, ClaimReader, Predicate, Producer, Subject};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 

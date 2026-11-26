@@ -6,8 +6,8 @@ use rrd_engine::RrdEngine;
 use rrd_engram::{EngramRepository, MutationContext};
 use rrd_security::{Principal, PrincipalKind, ResourceGrant, SecurityRepository, SECURITY_FORMAT};
 use rrd_server::RrdHttpServer;
-use rrd_store::{RrflowKvStore, StorageEngine};
-use rrflow_kernel::{
+use rrd_store::{Repositories, RrflowKvStore};
+use rrflow_core::{
     digest, RuntimeCommit, RuntimeLogicalModel, RuntimeMutation, RuntimePropertySchema,
     RuntimeRecordSchema, RuntimeTableSchema, RuntimeType, RuntimeValueType, ScopeId,
 };

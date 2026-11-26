@@ -4,7 +4,7 @@ use rrd_engram::{
     EngramRepository, Error, LeaseRequest, MutationContext, ObservationRequest, ObservedPhase,
     ReceiptBoundary, ReceiptRequest, ScheduleBackup, SetDesired,
 };
-use rrd_store::{RrflowKvStore, RrflowMxStore, StorageEngine};
+use rrd_store::{Repositories, RrflowKvStore, RrflowMxStore, StorageEngine};
 
 fn id(value: &str) -> CanonicalId {
     CanonicalId::new(value).unwrap()

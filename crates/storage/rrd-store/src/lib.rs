@@ -95,7 +95,7 @@ pub use repository::{
     ClaimRepository, ControlRepository, FunctionCatalogueRepository, InvocationRepository,
     ProjectionRepository, Repositories, RuntimeDataSnapshotRead, RuntimeRepository,
 };
-pub use rrflow_kernel::{
+pub use rrflow_core::{
     DataTransaction, DataTransactionView, ReadStamp, RetentionPin, RetentionPinId,
     RuntimeChangePage, RuntimeCommitOutcome, SnapshotHandle, SnapshotId,
 };

@@ -4,9 +4,9 @@
 //! It is written in the transaction that writes the claim, so it cannot diverge
 //! from the watermark.
 
-use rrd_store::{ClaimBatchWriter, ClaimBatchWriterConfig, RrflowKvStore, StorageEngine};
-use rrflow_kernel::reference::MemoryClaims;
-use rrflow_kernel::{Claim, Predicate, Producer, Subject};
+use rrd_store::{ClaimBatchWriter, ClaimBatchWriterConfig, Repositories, RrflowKvStore};
+use rrflow_core::reference::MemoryClaims;
+use rrflow_core::{Claim, Predicate, Producer, Subject};
 use std::sync::Arc;
 
 fn producer() -> Producer {

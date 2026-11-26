@@ -1,4 +1,5 @@
 use super::*;
+use rrd_store::Repositories;
 use std::collections::BTreeSet;
 
 impl RrdEngine {

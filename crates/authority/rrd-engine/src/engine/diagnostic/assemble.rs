@@ -1,6 +1,7 @@
 //! Assembling a diagnostic snapshot at one stamp.
 
 use super::*;
+use rrd_store::Repositories;
 
 pub(super) const MAX_DIAGNOSTIC_ASSEMBLY_ATTEMPTS: u8 = 3;
 

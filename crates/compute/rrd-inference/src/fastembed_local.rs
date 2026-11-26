@@ -7,7 +7,7 @@ use crate::{
     ExecutionTarget, InferenceTrustBoundary, NetworkRequirement,
 };
 use fastembed::{InitOptionsUserDefined, TextEmbedding, TokenizerFiles, UserDefinedEmbeddingModel};
-use rrflow_kernel::{digest, Result, VectorNormalization, VectorValue};
+use rrflow_core::{digest, Result, VectorNormalization, VectorValue};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FastEmbedLocalIdentity {
@@ -61,7 +61,7 @@ impl FastEmbedLocalBackend {
         identity.validate()?;
         let model_digest = fastembed_model_digest(&model, &identity.runtime_config_digest)?;
         let model = TextEmbedding::try_new_from_user_defined(model, options).map_err(|error| {
-            rrflow_kernel::Error::InvalidRuntime {
+            rrflow_core::Error::InvalidRuntime {
                 reason: format!("cannot initialize local FastEmbed model: {error}"),
             }
         })?;
@@ -110,7 +110,7 @@ impl EmbeddingBackend for FastEmbedLocalBackend {
                 return invalid("local FastEmbed backend accepts text or JSON only");
             }
             let text = std::str::from_utf8(&request.bytes).map_err(|_| {
-                rrflow_kernel::Error::InvalidRuntime {
+                rrflow_core::Error::InvalidRuntime {
                     reason: "local FastEmbed input must be UTF-8".into(),
                 }
             })?;
@@ -119,7 +119,7 @@ impl EmbeddingBackend for FastEmbedLocalBackend {
         let output = self
             .model
             .embed(texts, Some(requests.len()))
-            .map_err(|error| rrflow_kernel::Error::InvalidRuntime {
+            .map_err(|error| rrflow_core::Error::InvalidRuntime {
                 reason: format!("local FastEmbed inference failed: {error}"),
             })?;
         Ok(output
@@ -158,7 +158,7 @@ fn append_tokenizer(bytes: &mut Vec<u8>, tokenizer: &TokenizerFiles) -> Result<(
 }
 
 fn append(output: &mut Vec<u8>, value: &[u8]) -> Result<()> {
-    let length = u64::try_from(value.len()).map_err(|_| rrflow_kernel::Error::InvalidRuntime {
+    let length = u64::try_from(value.len()).map_err(|_| rrflow_core::Error::InvalidRuntime {
         reason: "FastEmbed model component length exceeds u64".into(),
     })?;
     output.extend_from_slice(&length.to_be_bytes());

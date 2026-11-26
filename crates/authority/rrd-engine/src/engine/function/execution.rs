@@ -1,5 +1,7 @@
 use super::super::*;
-use rrd_store::{FunctionInvocationReceiptRecord, FUNCTION_INVOCATION_RECEIPT_FORMAT_VERSION};
+use rrd_store::{
+    FunctionInvocationReceiptRecord, Repositories, FUNCTION_INVOCATION_RECEIPT_FORMAT_VERSION,
+};
 
 #[cfg(test)]
 thread_local! {

@@ -4,6 +4,7 @@
 
 use super::*;
 use rrd_contract::{BuildVectorQuantizationArtifactResult, SessionLease};
+use rrd_store::Repositories;
 
 const DIMENSIONS: usize = 8;
 

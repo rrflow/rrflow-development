@@ -1,6 +1,7 @@
 //! The security repository.
 
 use super::*;
+use rrd_store::Repositories;
 
 pub struct SecurityRepository<'a, E> {
     engine: &'a E,

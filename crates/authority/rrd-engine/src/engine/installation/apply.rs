@@ -1,6 +1,7 @@
 //! Applying an installation plan: staging, publication, recovery and the result.
 
 use super::*;
+use rrd_store::Repositories;
 
 impl RrdEngine {
     pub fn apply_installation(

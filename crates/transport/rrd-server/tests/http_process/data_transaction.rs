@@ -1,6 +1,7 @@
 //! Atomic data transactions over HTTP and the authenticated engram read.
 
 use super::*;
+use rrd_store::Repositories;
 
 #[test]
 pub(super) fn data_transaction_atomically_commits_every_public_model_and_replays_after_restart() {

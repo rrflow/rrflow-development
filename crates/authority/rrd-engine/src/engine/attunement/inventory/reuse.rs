@@ -1,6 +1,6 @@
 //! Reuse only equal current authenticated facts, never a prior-head assumption.
 use super::*;
-use rrd_store::{RuntimeReadBudget, RuntimeVersionedSource};
+use rrd_store::{Repositories, RuntimeReadBudget, RuntimeVersionedSource};
 use std::collections::BTreeMap;
 
 pub(super) fn filter(

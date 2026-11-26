@@ -82,7 +82,7 @@ pub(super) fn validate_retirement_targets(
                     commit.scope
                 )));
             }
-            if retirement.model == rrflow_kernel::RuntimeLogicalModel::GraphRelation {
+            if retirement.model == rrflow_core::RuntimeLogicalModel::GraphRelation {
                 let relation = snapshot
                     .relations
                     .into_iter()

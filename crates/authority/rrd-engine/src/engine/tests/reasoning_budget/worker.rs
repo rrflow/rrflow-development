@@ -1,4 +1,5 @@
 //! Admission probes, not model-quality observations or learning records.
+use rrd_store::Repositories;
 mod observation;
 mod resume;
 mod source_bound;

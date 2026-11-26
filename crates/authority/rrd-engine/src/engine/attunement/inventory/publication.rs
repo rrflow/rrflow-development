@@ -1,6 +1,7 @@
 //! Bounded source-observation groups; only the final transaction certifies a
 //! complete snapshot. Progress belongs to the same engine-owned job and phase.
 use super::*;
+use rrd_store::Repositories;
 
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]

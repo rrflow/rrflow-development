@@ -4,7 +4,7 @@ use crate::{
     Result, RouteEvidence, ShardId, ShardPlacement, ShardReadStamp, TenantId, WriteConsistency,
     ZoneId, CLUSTER_CONTRACT_VERSION, METADATA_SHARD_ID,
 };
-use rrflow_kernel::{
+use rrflow_core::{
     digest, RuntimeDataSnapshot, RuntimeLogicalModel, RuntimeMutation, RuntimeProperties,
     RuntimePropertySchema, RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry,
     RuntimeTableSchema, RuntimeType, RuntimeValue, RuntimeValueType, ScopeId,

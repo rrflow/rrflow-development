@@ -1,6 +1,7 @@
 use super::super::token_key::{create_private_directory_anchored, pin_private_directory};
 use super::*;
 use rrd_store::filesystem::AnchoredPath;
+use rrd_store::Repositories;
 
 const HEAD: &str = "server/state/user-configuration/head";
 

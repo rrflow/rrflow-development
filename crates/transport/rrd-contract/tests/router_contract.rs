@@ -36,7 +36,7 @@ fn digest(value: u64) -> String {
 
 fn reasoning_golden() -> ReasoningGolden {
     serde_json::from_str(include_str!(
-        "../../../foundation/rrflow-kernel/tests/fixtures/reasoning-tree-v1.json"
+        "../../../core/tests/fixtures/reasoning-tree-v1.json"
     ))
     .unwrap()
 }

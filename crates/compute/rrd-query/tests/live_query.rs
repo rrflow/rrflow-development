@@ -1,7 +1,7 @@
 use rrd_query::parse;
 use rrd_query::{poll_live_query, Error, LiveQueryBudget, LiveQueryDelta, Parameters};
-use rrd_store::{RrflowKvStore, RrflowMxStore, StorageEngine};
-use rrflow_kernel::{
+use rrd_store::{Repositories, RrflowKvStore, RrflowMxStore, StorageEngine};
+use rrflow_core::{
     RuntimeCommit, RuntimeLogicalModel, RuntimeMutation, RuntimeProperties, RuntimePropertySchema,
     RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry, RuntimeType,
     RuntimeValue, RuntimeValueType, ScopeId,
@@ -84,7 +84,7 @@ fn exercise<E: StorageEngine>(engine: &E) -> LiveQueryDelta {
         &query,
         &Parameters::new(),
         2,
-        Some(rrflow_kernel::result_identity::RESULT_IDENTITY_VERSION),
+        Some(rrflow_core::result_identity::RESULT_IDENTITY_VERSION),
         &LiveQueryBudget::default(),
     )
     .unwrap();
@@ -113,7 +113,7 @@ fn exercise<E: StorageEngine>(engine: &E) -> LiveQueryDelta {
         &open_query,
         &Parameters::new(),
         2,
-        Some(rrflow_kernel::result_identity::RESULT_IDENTITY_VERSION),
+        Some(rrflow_core::result_identity::RESULT_IDENTITY_VERSION),
         &LiveQueryBudget::default(),
     )
     .unwrap();
@@ -126,7 +126,7 @@ fn exercise<E: StorageEngine>(engine: &E) -> LiveQueryDelta {
         &query,
         &Parameters::new(),
         4,
-        Some(rrflow_kernel::result_identity::RESULT_IDENTITY_VERSION),
+        Some(rrflow_core::result_identity::RESULT_IDENTITY_VERSION),
         &LiveQueryBudget::default(),
     )
     .unwrap()
@@ -138,7 +138,7 @@ fn exercise<E: StorageEngine>(engine: &E) -> LiveQueryDelta {
             &query,
             &Parameters::new(),
             2,
-            Some(rrflow_kernel::result_identity::RESULT_IDENTITY_VERSION),
+            Some(rrflow_core::result_identity::RESULT_IDENTITY_VERSION),
             &LiveQueryBudget {
                 max_delta_rows: 1,
                 ..LiveQueryBudget::default()
@@ -206,7 +206,7 @@ fn resume_and_snapshot_contracts_fail_closed() {
     .unwrap();
     assert_eq!(
         initial.result_identity_version,
-        rrflow_kernel::result_identity::RESULT_IDENTITY_VERSION
+        rrflow_core::result_identity::RESULT_IDENTITY_VERSION
     );
     assert!(matches!(
         poll_live_query(
@@ -215,7 +215,7 @@ fn resume_and_snapshot_contracts_fail_closed() {
             &live,
             &Parameters::new(),
             3,
-            Some(rrflow_kernel::result_identity::RESULT_IDENTITY_VERSION),
+            Some(rrflow_core::result_identity::RESULT_IDENTITY_VERSION),
             &LiveQueryBudget::default(),
         ),
         Err(Error::Binding(_))

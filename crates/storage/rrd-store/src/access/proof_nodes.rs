@@ -27,8 +27,8 @@ impl ProofNodes {
         &mut self,
         level: u8,
         index: u64,
-        load: impl FnOnce() -> rrflow_kernel::Result<Option<String>>,
-    ) -> rrflow_kernel::Result<Option<String>> {
+        load: impl FnOnce() -> rrflow_core::Result<Option<String>>,
+    ) -> rrflow_core::Result<Option<String>> {
         // Collisions replace a slot; they cannot alias two node identities.
         // The odd multipliers spread adjacent indices and tree levels.
         let slot = index
@@ -60,8 +60,8 @@ impl ProofNodes {
 
 #[cfg(test)]
 mod tests {
-    use crate::Repositories;
     use super::*;
+    use crate::Repositories;
     use std::cell::Cell;
 
     #[test]
@@ -102,7 +102,7 @@ mod tests {
         let mut nodes = ProofNodes::new();
         assert_eq!(nodes.read(1, 1, || Ok(None)).unwrap(), None);
         assert!(nodes
-            .read(1, 1, || Err(rrflow_kernel::Error::InvalidRuntime {
+            .read(1, 1, || Err(rrflow_core::Error::InvalidRuntime {
                 reason: "backing error".into()
             }))
             .is_err());
@@ -125,7 +125,7 @@ mod tests {
             Durability, RrflowKvStore, RrflowMxStore, RuntimeReadBudget, RuntimeVersionedSource,
             StorageEngine,
         };
-        use rrflow_kernel::{
+        use rrflow_core::{
             RuntimeCommit, RuntimeLogicalModel, RuntimeMutation, RuntimeRecord, RuntimeRef,
             RuntimeSchemaRegistry, RuntimeType, ScopeId,
         };

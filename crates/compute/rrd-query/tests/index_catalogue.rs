@@ -5,10 +5,10 @@ use rrd_query::{
 };
 use rrd_query::{parse, Source};
 use rrd_store::{
-    ControlTransition, Durability, RrflowKvStore, RrflowMxStore, RuntimeReadAccessPath,
-    RuntimeReadBudget, StorageEngine,
+    ControlTransition, Durability, Repositories, RrflowKvStore, RrflowMxStore,
+    RuntimeReadAccessPath, RuntimeReadBudget, StorageEngine,
 };
-use rrflow_kernel::{
+use rrflow_core::{
     digest, DataTransaction, GeoPoint, GeoValue, ProjectionId, ProjectionState, RuntimeCommit,
     RuntimeGeo, RuntimeLogicalModel, RuntimeMutation, RuntimePropertySchema, RuntimeRecord,
     RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry, RuntimeTableSchema, RuntimeType,

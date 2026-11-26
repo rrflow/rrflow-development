@@ -19,7 +19,7 @@ openraft-transport = [
 ]
 
 [dependencies]
-rrflow-kernel = { workspace = true }
+rrflow-core = { workspace = true }
 rrflow-lsm = { workspace = true, optional = true }
 rrd-store = { workspace = true, optional = true }
 serde = { workspace = true }
