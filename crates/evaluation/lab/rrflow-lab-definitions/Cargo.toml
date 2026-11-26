@@ -9,8 +9,8 @@ description = "RRFlow Lab's definition packs: signed, versioned bundles of tests
 [dependencies]
 ed25519-dalek = "=3.0.0"
 getrandom = "0.4"
-rrflow-evaluation-core = { path = "../../rrflow-evaluation-core" }
-rrflow-lab-benchmarks = { path = "../rrflow-lab-benchmarks" }
-rrflow-lab-systems = { path = "../rrflow-lab-systems" }
+rrflow-evaluation-core = { workspace = true }
+rrflow-lab-benchmarks = { workspace = true }
+rrflow-lab-systems = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

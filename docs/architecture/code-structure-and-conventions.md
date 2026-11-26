@@ -400,6 +400,6 @@ The owner decided on 2026-11-25 that the storage engines and foundation crates s
 
 Not standalone: `rrflow-tx`, `rrflow-db` and everything above them. `rrflow-vector` depends on `rrd-store` (8 references, 7 of them its `Error`), so the vector index cannot stand alone today.
 
-Rule 4 is broken widely today: 84 first-party dependency lines name a `path` directly and 18 use `workspace = true`; the root manifest declares only `rrflow-kernel`. Package 2 moves all of them to the root, which changes no code and no `Cargo.lock` entry.
+Rule 4 holds since 2026-11-25: the root manifest declares all 25 first-party crates that another crate depends on, every member names them with `workspace = true`, and the `workspace_architecture` test `first_party_dependencies_are_declared_once_in_the_root_manifest` fails on a direct path. Before that, 84 dependency lines named a `path` and the root declared only `rrflow-kernel`. The resolved dependency graph and `Cargo.lock` did not change.
 
 This decision agrees with the rule in `AGENTS.md` that all first-party engine code lives in this repository, so that rule does not change.

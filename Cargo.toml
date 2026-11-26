@@ -45,7 +45,34 @@ repository = "https://github.com/rrflow/rrflow"
 publish = false
 
 [workspace.dependencies]
+# Every first-party crate is declared here once; members write
+# `workspace = true`. rrd-engine declares no default features here, so a
+# member that wants the full engine names `default`.
+rrd-attunement = { path = "crates/compute/rrd-attunement" }
+rrd-client = { path = "crates/transport/rrd-client" }
+rrd-cluster = { path = "crates/operations/rrd-cluster" }
+rrd-contract = { path = "crates/transport/rrd-contract" }
+rrd-engine = { path = "crates/authority/rrd-engine", default-features = false }
+rrd-engram = { path = "crates/authority/rrd-engram" }
+rrd-inference = { path = "crates/compute/rrd-inference" }
+rrd-lsm = { path = "crates/persistence/rrd-lsm" }
+rrd-observation = { path = "crates/operations/rrd-observation" }
+rrd-operator-knowledge = { path = "crates/operations/rrd-operator-knowledge" }
+rrd-query = { path = "crates/compute/rrd-query" }
+rrd-security = { path = "crates/authority/rrd-security" }
+rrd-server = { path = "crates/transport/rrd-server" }
+rrd-store = { path = "crates/persistence/rrd-store" }
+rrd-vector = { path = "crates/compute/rrd-vector" }
+rrflow-arrow = { path = "crates/compute/rrflow-arrow" }
+rrflow-cld = { path = "crates/persistence/rrflow-cld" }
+rrflow-evaluation-core = { path = "crates/evaluation/rrflow-evaluation-core" }
 rrflow-kernel = { path = "crates/foundation/rrflow-kernel" }
+rrflow-lab-benchmarks = { path = "crates/evaluation/lab/rrflow-lab-benchmarks" }
+rrflow-lab-datasets = { path = "crates/evaluation/lab/rrflow-lab-datasets" }
+rrflow-lab-definitions = { path = "crates/evaluation/lab/rrflow-lab-definitions" }
+rrflow-lab-evals = { path = "crates/evaluation/lab/rrflow-lab-evals" }
+rrflow-lab-systems = { path = "crates/evaluation/lab/rrflow-lab-systems" }
+rrflow-qualification-storage = { path = "crates/evaluation/qualification/rrflow-qualification-storage" }
 serde = { version = "1", features = ["derive"] }
 # A count or digest over a float is checked after the wire, so parsing has to be exact.
 serde_json = { version = "1", features = ["float_roundtrip"] }

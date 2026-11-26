@@ -7,7 +7,7 @@ publish.workspace = true
 description = "RRFlow Lab's datasets: deterministic and imported vector corpora with exact answers, and repository text"
 
 [dependencies]
-rrflow-evaluation-core = { path = "../../rrflow-evaluation-core" }
+rrflow-evaluation-core = { workspace = true }
 schemars = "1.2"
 serde = { workspace = true }
 serde_json = { workspace = true }

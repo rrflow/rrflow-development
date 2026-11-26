@@ -7,7 +7,7 @@ publish.workspace = true
 description = "Stateless bounded observation transport beneath the RRFlow engine."
 
 [dependencies]
-rrd-contract = { path = "../../transport/rrd-contract" }
+rrd-contract = { workspace = true }
 rrflow-kernel = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

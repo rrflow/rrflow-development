@@ -348,3 +348,56 @@ pub(super) fn tracked_and_untracked_text_files_have_no_trailing_horizontal_white
         "tracked or untracked text contains trailing horizontal whitespace: {violations:#?}"
     );
 }
+
+/// A first-party crate is declared once, in the root manifest, with the path
+/// of the member that owns it. A member names it with `workspace = true`, so
+/// moving a crate is one edit and no member holds a path to a sibling.
+#[test]
+pub(super) fn first_party_dependencies_are_declared_once_in_the_root_manifest() {
+    let metadata = workspace_metadata();
+    let mut violations = Vec::new();
+    for (owner, package) in &metadata.packages {
+        let manifest = metadata.root.join(&package.manifest);
+        let source = fs::read_to_string(&manifest).expect("member manifest must be readable");
+        for (index, line) in source.lines().enumerate() {
+            let Some((key, value)) = line.split_once('=') else {
+                continue;
+            };
+            let name = key.trim().split('.').next().unwrap_or_default();
+            if metadata.packages.contains_key(name)
+                && (key.contains(".path") || value.contains("path"))
+            {
+                violations.push(format!("{owner} line {}: {}", index + 1, line.trim()));
+            }
+        }
+    }
+    assert!(
+        violations.is_empty(),
+        "first-party dependencies must use `workspace = true`: {violations:#?}"
+    );
+
+    let root = fs::read_to_string(metadata.root.join("Cargo.toml"))
+        .expect("root manifest must be readable");
+    let used = metadata
+        .dependency_inputs
+        .iter()
+        .filter(|dependency| metadata.packages.contains_key(&dependency.name))
+        .map(|dependency| dependency.name.as_str())
+        .collect::<BTreeSet<_>>();
+    for name in used {
+        let directory = metadata.packages[name]
+            .manifest
+            .parent()
+            .expect("a member manifest has a directory")
+            .to_string_lossy()
+            .replace('\\', "/");
+        let declaration = format!("{name} = {{ path = \"{directory}\"");
+        assert_eq!(
+            root.lines()
+                .filter(|line| line.starts_with(&declaration))
+                .count(),
+            1,
+            "the root manifest must declare {name} once at {directory}"
+        );
+    }
+}

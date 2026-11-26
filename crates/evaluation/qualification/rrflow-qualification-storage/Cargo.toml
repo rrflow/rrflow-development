@@ -8,8 +8,8 @@ publish.workspace = true
 description = "RRFlow's storage release gate: acceptance manifests, results, campaigns and receipts"
 
 [dependencies]
-rrd-contract = { path = "../../../transport/rrd-contract" }
-rrflow-evaluation-core = { path = "../../rrflow-evaluation-core" }
+rrd-contract = { workspace = true }
+rrflow-evaluation-core = { workspace = true }
 schemars = "1.2"
 serde = { workspace = true }
 serde_json = { workspace = true }

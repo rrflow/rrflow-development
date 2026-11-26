@@ -7,7 +7,7 @@ publish.workspace = true
 description = "Supported asynchronous Rust client for the RRD v1 service contract."
 
 [dependencies]
-rrd-contract = { path = "../rrd-contract" }
+rrd-contract = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 bytes = "1"
@@ -21,15 +21,15 @@ tokio = { version = "1", features = ["net", "rt", "sync", "time"] }
 tokio-tungstenite = { version = "0.29", default-features = false, features = ["connect", "rustls-tls-webpki-roots"] }
 
 [build-dependencies]
-rrd-contract = { path = "../rrd-contract" }
+rrd-contract = { workspace = true }
 
 [dev-dependencies]
-rrd-engine = { path = "../../authority/rrd-engine" }
-rrd-engram = { path = "../../authority/rrd-engram" }
-rrd-security = { path = "../../authority/rrd-security" }
-rrd-server = { path = "../rrd-server" }
+rrd-engine = { workspace = true, features = ["default"] }
+rrd-engram = { workspace = true }
+rrd-security = { workspace = true }
+rrd-server = { workspace = true }
 rrflow-kernel = { workspace = true }
-rrd-store = { path = "../../persistence/rrd-store" }
+rrd-store = { workspace = true }
 tempfile = "3"
 rcgen = "0.14"
 tokio = { version = "1", features = ["io-util", "macros", "net", "rt-multi-thread", "sync", "time"] }
