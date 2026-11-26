@@ -1,4 +1,4 @@
-use rrd_store::{
+use rrd_store::{Repositories, 
     control_restore_progress, create_application_backup, create_logical_backup,
     load_backup_catalogue, prune_backup_catalogue, restore_catalogued_backup,
     verify_backup_catalogue, verify_restored_backup_objects, BackupCoverage, BackupPrunePlan,

@@ -1,4 +1,4 @@
-use rrd_store::{
+use rrd_store::{Repositories, 
     export_logical_archive, export_logical_archive_with_progress, inspect_logical_archive,
     restore_logical_archive_to_new_root, restore_logical_archive_to_new_root_with_progress,
     DataRuntime, Error, LocalObjectStore, LogicalArchiveCheckpoint, RrflowKvStore, StorageEngine,

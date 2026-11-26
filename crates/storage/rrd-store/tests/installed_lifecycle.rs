@@ -1,4 +1,4 @@
-use rrd_store::{ControlTransition, RrflowKvInspector, RrflowKvStore, StorageEngine};
+use rrd_store::{Repositories, ControlTransition, RrflowKvInspector, RrflowKvStore, StorageEngine};
 use rrflow_kernel::{Claim, Predicate, Producer, RuntimeCommit, RuntimeMutation, ScopeId, Subject};
 
 fn bootstrap_commit() -> RuntimeCommit {

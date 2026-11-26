@@ -23,7 +23,7 @@
 //!   --example storage_comparison -- --trials 5 --operations 16384 --output out.json
 //! ```
 
-use rrd_store::{
+use rrd_store::{Repositories, 
     measure_storage_footprint, FjallBaselineStore, RrflowKvStore, StorageEngine, StorageFootprint,
 };
 use rrflow_kernel::{Claim, Predicate, Producer, Subject};

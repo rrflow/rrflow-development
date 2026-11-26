@@ -1,4 +1,4 @@
-use rrd_store::{Error, RrflowKvStore, RrflowMxStore, StorageEngine};
+use rrd_store::{Repositories, Error, RrflowKvStore, RrflowMxStore, StorageEngine};
 use rrflow_kernel::{
     Claim, Predicate, Producer, RuntimeCommit, RuntimeLogicalModel, RuntimeMutation,
     RuntimeProperties, RuntimePropertySchema, RuntimeRecord, RuntimeRecordSchema, RuntimeRef,

@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use rrd_store::{RrflowKvStore, RrflowMxStore, StorageEngine};
+use rrd_store::{Repositories, RrflowKvStore, RrflowMxStore, StorageEngine};
 use rrflow_kernel::{
     digest, GeoPoint, GeoValue, ObjectReceipt, ObjectReference, RuntimeCommit, RuntimeDomainSchema,
     RuntimeEvent, RuntimeEventSchema, RuntimeGeo, RuntimeLogicalModel, RuntimeMutation,
