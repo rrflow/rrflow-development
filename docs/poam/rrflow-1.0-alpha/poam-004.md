@@ -24,7 +24,7 @@ semantics, shared request-budget enforcement, or borrowed `RecordBatch` lifetime
 full analytical path.
 
 The bounded query-result writer lives in
-[`rrflow-cld/src/interchange.rs`](../../../crates/persistence/rrflow-cld/src/interchange.rs).
+[`rrflow-cld/src/interchange.rs`](../../../crates/storage/rrflow-cld/src/interchange.rs).
 For background history, the installed engine publishes derived generations
 through the CLD storage trait and authenticates bounded readback against
 each generation's receipt. This does not reclaim the

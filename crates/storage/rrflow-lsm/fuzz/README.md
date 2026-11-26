@@ -1,0 +1,33 @@
+# rrflowKV fuzz qualification
+
+This nested, development-only Cargo project exercises the public `rrflow-lsm`
+surface without joining RRFlow's product workspace or changing its dependency
+closure. It requires a Rust nightly toolchain and `cargo-fuzz`; neither is a
+runtime or distribution dependency.
+
+List and compile both targets:
+
+```text
+cargo +nightly fuzz list --fuzz-dir crates/storage/rrflow-lsm/fuzz
+cargo +nightly fuzz check --fuzz-dir crates/storage/rrflow-lsm/fuzz
+```
+
+Run bounded reproducible qualification from the repository root:
+
+```text
+cargo +nightly fuzz run --fuzz-dir crates/storage/rrflow-lsm/fuzz projected-read-state-machine crates/storage/rrflow-lsm/fuzz/corpus/projected_read_state_machine -- -runs=512 -max_len=256 -timeout=10
+cargo +nightly fuzz run --fuzz-dir crates/storage/rrflow-lsm/fuzz segment-v6-open crates/storage/rrflow-lsm/fuzz/corpus/segment_v6_open -- -runs=4096 -max_len=256 -timeout=10
+```
+
+The state-machine target reuses the stable suite's independent MVCC oracle.
+Every panic includes a replay coordinate derived from the input. The segment
+target mutates the checked-in authenticated v6 fixture, including blind byte
+damage plus checksum-rewritten policy, descriptor, stored-page, and LZ4-block
+cases, and accepts only a fully usable segment or a typed `rrflow-lsm` error.
+
+Generated corpus growth, minimized crash artifacts, coverage, and target
+output remain ignored. The named seed files are reviewed and tracked. A crash
+artifact must be reproduced with the command printed by libFuzzer before any
+production repair is planned; it must never be deleted or treated as a clean
+run. Target compilation, an empty corpus, zero executions, or one bounded run
+does not prove absence of defects or complete C-06/C-07 qualification.

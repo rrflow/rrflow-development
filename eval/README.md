@@ -88,7 +88,7 @@ errors report position/category without echoing rejected contents.
 
 The manifest embeds the existing public `EngramConfiguration` and
 `DiagnosticStorageSnapshot` types. Its six effective settings are mechanical
-projections to their `rrd-lsm` owners: WAL/version soft flush targets, cache
+projections to their `rrflow-lsm` owners: WAL/version soft flush targets, cache
 capacity, maximum I/O request bytes, L0 trigger and compaction output target.
 No private storage dependency or duplicate operation model is introduced.
 The installed engine has no storage reconfiguration capability yet; output

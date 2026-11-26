@@ -23,7 +23,7 @@
     {
       "change_rule": "no_installed_storage_reconfiguration_capability",
       "kind": "soft_flush_target",
-      "owner": "rrd_lsm::MaintenancePolicy.wal_payload_max_bytes",
+      "owner": "rrflow_lsm::MaintenancePolicy.wal_payload_max_bytes",
       "scope": "engram_process",
       "source": "DiagnosticStorageSnapshot.rrflow_kv.write_ahead_log.payload_max_bytes",
       "unit": "bytes",
@@ -32,7 +32,7 @@
     {
       "change_rule": "no_installed_storage_reconfiguration_capability",
       "kind": "soft_flush_target",
-      "owner": "rrd_lsm::MaintenancePolicy.memtable_max_versions",
+      "owner": "rrflow_lsm::MaintenancePolicy.memtable_max_versions",
       "scope": "engram_process",
       "source": "DiagnosticStorageSnapshot.rrflow_kv.memtable.max_versions",
       "unit": "versions",
@@ -41,7 +41,7 @@
     {
       "change_rule": "no_installed_storage_reconfiguration_capability",
       "kind": "cache_capacity",
-      "owner": "rrd_lsm::DatabaseOptions.page_cache_bytes",
+      "owner": "rrflow_lsm::DatabaseOptions.page_cache_bytes",
       "scope": "engram_process",
       "source": "DiagnosticStorageSnapshot.rrflow_kv.page_cache.capacity_bytes",
       "unit": "bytes",
@@ -50,7 +50,7 @@
     {
       "change_rule": "no_installed_storage_reconfiguration_capability",
       "kind": "io_request_bound",
-      "owner": "rrd_lsm::SegmentIoPolicy.max_request_bytes",
+      "owner": "rrflow_lsm::SegmentIoPolicy.max_request_bytes",
       "scope": "engram_process",
       "source": "DiagnosticStorageSnapshot.rrflow_kv.segment_io.max_request_bytes",
       "unit": "bytes",
@@ -59,7 +59,7 @@
     {
       "change_rule": "no_installed_storage_reconfiguration_capability",
       "kind": "compaction_trigger",
-      "owner": "rrd_lsm::CompactionPolicy.l0_compaction_trigger",
+      "owner": "rrflow_lsm::CompactionPolicy.l0_compaction_trigger",
       "scope": "engram_process",
       "source": "DiagnosticStorageSnapshot.rrflow_kv.segment_set.l0_compaction_trigger",
       "unit": "segments",
@@ -68,7 +68,7 @@
     {
       "change_rule": "no_installed_storage_reconfiguration_capability",
       "kind": "output_target",
-      "owner": "rrd_lsm::CompactionPolicy.target_segment_bytes",
+      "owner": "rrflow_lsm::CompactionPolicy.target_segment_bytes",
       "scope": "engram_process",
       "source": "DiagnosticStorageSnapshot.rrflow_kv.segment_set.compaction_target_segment_bytes",
       "unit": "bytes",

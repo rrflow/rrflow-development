@@ -80,18 +80,15 @@ standalone = true
 # Tier 1: storage. rrflowLSM, rrflowCLD, then the store that becomes rrflowKV, rrflowTX and rrflowDB.
 
 [[crate]]
-name = "rrd-lsm"
+name = "rrflow-lsm"
 tier = 1
-folder = "crates/persistence"
-target_name = "rrflow-lsm"
-target_folder = "crates/storage"
+folder = "crates/storage"
 standalone = true
 
 [[crate]]
 name = "rrflow-cld"
 tier = 1
-folder = "crates/persistence"
-target_folder = "crates/storage"
+folder = "crates/storage"
 standalone = true
 # tests/stamped_history.rs opens the store; it moves with the rrflowKV extraction.
 standalone_exceptions = ["dev:rrd-store"]
@@ -99,9 +96,8 @@ standalone_exceptions = ["dev:rrd-store"]
 [[crate]]
 name = "rrd-store"
 tier = 1
-folder = "crates/persistence"
+folder = "crates/storage"
 target_name = "rrflow-db"
-target_folder = "crates/storage"
 
 # Tier 2: compute.
 

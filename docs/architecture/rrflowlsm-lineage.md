@@ -24,7 +24,7 @@ that exist are the `rrd-*` ones below.
 | Earlier | Now | Read on 2026-11-17 |
 |---|---|---|
 | Vyrm (the engine) | RRFlow (Reason Ready Flow) with RRD (Reason Ready Daemon) | the old ledger's product map, against the current workspace |
-| `vyrm-kv` | **rrflowLSM**, crate `persistence/rrd-lsm` | **verified**: format, magics, versions (below) |
+| `vyrm-kv` | **rrflowLSM**, crate `storage/rrflow-lsm` | **verified**: format, magics, versions (below) |
 | VyrmQL, `vyrm-ql` | rrflowQL, crate `compute/rrd-query` | **verified** by capability: tokenizer, planner modes, filter algebra |
 | `vyrm-vector` | crate `compute/rrd-vector` | **verified** by capability: HNSW, TurboQuant, sparse, MaxSim, payload indexes |
 | VyrmMX (`vyrm-mx`) | folded into the one query contract | decision 2026-11-14; the test oracle remains |

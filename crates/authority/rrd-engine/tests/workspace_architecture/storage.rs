@@ -161,7 +161,7 @@ pub(super) fn alpha_storage_closure_has_one_required_physical_dependency_and_cur
     let lsm_edges = metadata
         .dependency_inputs
         .iter()
-        .filter(|dependency| dependency.name == "rrd-lsm")
+        .filter(|dependency| dependency.name == "rrflow-lsm")
         .map(|dependency| {
             (
                 dependency.owner.as_str(),
@@ -176,7 +176,7 @@ pub(super) fn alpha_storage_closure_has_one_required_physical_dependency_and_cur
             ("rrd-cluster", "normal", true),
             ("rrd-store", "normal", false),
         ],
-        "rrd-lsm must have one required alpha owner; the only optional edge is the unavailable post-alpha cluster adapter"
+        "rrflow-lsm must have one required alpha owner; the only optional edge is the unavailable post-alpha cluster adapter"
     );
 
     let required_lsm_owners = lsm_edges
@@ -302,48 +302,56 @@ pub(super) fn alpha_storage_closure_has_one_required_physical_dependency_and_cur
         "shared Arrow interchange must remain format-independent",
     );
     assert!(
-        forbidden_edges(&metadata, "rrd-query", &names(&["rrflow-cld", "rrd-lsm"])).is_empty(),
+        forbidden_edges(
+            &metadata,
+            "rrd-query",
+            &names(&["rrflow-cld", "rrflow-lsm"])
+        )
+        .is_empty(),
         "QL must access storage through its port"
     );
 
     let lsm_lz4 = metadata
         .dependency_inputs
         .iter()
-        .find(|dependency| dependency.owner == "rrd-lsm" && dependency.name == "lz4_flex")
-        .expect("rrd-lsm must declare its production LZ4 block codec");
+        .find(|dependency| dependency.owner == "rrflow-lsm" && dependency.name == "lz4_flex")
+        .expect("rrflow-lsm must declare its production LZ4 block codec");
     assert_eq!(lsm_lz4.kind, "normal");
     assert!(!lsm_lz4.optional);
     assert_exact(
         &lsm_lz4.features,
         names(&["checked-decode", "safe-decode", "safe-encode", "std"]),
-        "rrd-lsm production LZ4 safety features",
+        "rrflow-lsm production LZ4 safety features",
     );
     let lsm_zstd = metadata
         .dependency_inputs
         .iter()
-        .find(|dependency| dependency.owner == "rrd-lsm" && dependency.name == "zstd")
-        .expect("rrd-lsm must retain Zstd only as a physical-policy lab candidate");
+        .find(|dependency| dependency.owner == "rrflow-lsm" && dependency.name == "zstd")
+        .expect("rrflow-lsm must retain Zstd only as a physical-policy lab candidate");
     assert!(lsm_zstd.optional);
     assert!(
-        metadata.packages["rrd-lsm"]
+        metadata.packages["rrflow-lsm"]
             .features
             .get("physical-policy-lab")
             .is_some_and(|features| features.contains("dep:zstd")),
-        "Zstd must remain gated behind rrd-lsm's physical-policy lab"
+        "Zstd must remain gated behind rrflow-lsm's physical-policy lab"
     );
 
-    let batch = module_source(&metadata.root, metadata.in_crate("rrd-lsm", "src/batch.rs"));
+    let batch = module_source(
+        &metadata.root,
+        metadata.in_crate("rrflow-lsm", "src/batch.rs"),
+    );
     let manifest = module_source(
         &metadata.root,
-        metadata.in_crate("rrd-lsm", "src/manifest.rs"),
+        metadata.in_crate("rrflow-lsm", "src/manifest.rs"),
     );
     let segment_module = module_source(
         &metadata.root,
-        metadata.in_crate("rrd-lsm", "src/segment.rs"),
+        metadata.in_crate("rrflow-lsm", "src/segment.rs"),
     );
     let segment_format = module_source(
         &metadata.root,
-        metadata.in_crate("rrd-lsm", "src/segment/format.rs"),
+        metadata.in_crate("rrflow-lsm", "src/segment/format.rs"),
     );
     let segment = format!("{segment_module}\n{segment_format}");
     let vector_catalog = module_source(
@@ -658,7 +666,7 @@ pub(super) fn storage_semantics_use_repositories_over_one_transaction_port() {
             "semantic repository {name} does not consume the shared transaction port"
         );
         for forbidden in [
-            "rrd_lsm::",
+            "rrflow_lsm::",
             "RrflowKvStore",
             "RrflowMxStore",
             "write_owned(",

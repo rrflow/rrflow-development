@@ -34,7 +34,7 @@ This is a boundary review, not a whole-file or repository-wide review.
 describes document, relation and index changes under the same transaction;
 its [v4 transaction API](https://github.com/surrealdb/surrealdb/blob/v4.0.0/surrealdb/kvs/src/api.rs)
 also distinguishes a committed-but-not-yet-synced path from durability. The
-same repository's [runtime commit owner](../../../../crates/persistence/rrd-store/src/repository/runtime.rs)
+same repository's [runtime commit owner](../../../../crates/storage/rrd-store/src/repository/runtime.rs)
 composes semantic and control transitions in one transaction. That code is a
 real foundation, not proof that a multi-transaction project refresh is atomic:
 the existing [#252](https://github.com/rrflow/rrflow-development/pull/252)

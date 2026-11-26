@@ -182,7 +182,7 @@ upper layer.
 
 ## Current executable evidence
 
-`crates/persistence/rrd-lsm/tests/tiered_io.rs` proves exact read equality
+`crates/storage/rrflow-lsm/tests/tiered_io.rs` proves exact read equality
 between mmap and bounded modes for none and adaptive-LZ4 segments, distinct raw
 borrowed-versus-compressed-owned page evidence, byte/request/cache/decompression
 accounting, and actual io_uring or an explicit measured fallback on the

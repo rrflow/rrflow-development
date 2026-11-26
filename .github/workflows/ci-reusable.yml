@@ -114,7 +114,7 @@ jobs:
           save-if: ${{ github.event_name != 'merge_group' }}
       - name: Test native storage and recovery
         run: |
-          cargo test -p rrd-lsm --test filesystem --test manifest --locked
+          cargo test -p rrflow-lsm --test filesystem --test manifest --locked
           cargo test -p rrd-store --test installed_lifecycle --test semantic_commit_atomicity --locked
       - name: Test source inventory and Git admission components
         run: cargo test -p rrd-attunement --locked
@@ -142,11 +142,11 @@ jobs:
           cache-on-failure: true
           save-if: ${{ github.event_name != 'merge_group' }}
       - name: Test native filesystem containment and publication
-        run: cargo test -p rrd-lsm --test filesystem --test manifest --locked
+        run: cargo test -p rrflow-lsm --test filesystem --test manifest --locked
       - name: Test encoded admission accounting boundaries
-        run: cargo test -p rrd-lsm --lib admission_tests --locked
+        run: cargo test -p rrflow-lsm --lib admission_tests --locked
       - name: Test native staged write admission
-        run: cargo test -p rrd-lsm --test write_admission --locked
+        run: cargo test -p rrflow-lsm --test write_admission --locked
       - name: Test composed store admission and semantic atomicity
         run: cargo test -p rrd-store --test write_admission --test semantic_commit_atomicity --locked
       - name: Test engine rejected-commit recovery and reuse
@@ -159,33 +159,33 @@ jobs:
         run: cargo test -p rrd-store --test logical_archive_resilience --test backup_catalogue configured_ --locked
       - name: Test hard mutable admission and bounded WAL materialization
         timeout-minutes: 5
-        run: cargo test -p rrd-lsm --test mutable_limits --locked
+        run: cargo test -p rrflow-lsm --test mutable_limits --locked
       - name: Test projected read admission and mixed generations
-        run: cargo test -p rrd-lsm --test projected_lifetime --locked
+        run: cargo test -p rrflow-lsm --test projected_lifetime --locked
       - name: Test terminal projected source ownership
-        run: cargo test -p rrd-lsm --lib reader::lifetime_tests --locked
+        run: cargo test -p rrflow-lsm --lib reader::lifetime_tests --locked
       - name: Test retained projected output admission and release
         timeout-minutes: 5
-        run: cargo test -p rrd-lsm --test projected_output_limits --locked
+        run: cargo test -p rrflow-lsm --test projected_output_limits --locked
       - name: Test retained native store inspection cursors
         timeout-minutes: 5
         run: cargo test -p rrd-store --test storage_inspection --locked
       - name: Test output reservation arithmetic and partial release
         timeout-minutes: 5
-        run: cargo test -p rrd-lsm --lib segment::output::tests --locked
+        run: cargo test -p rrflow-lsm --lib segment::output::tests --locked
 
       - name: Test overlapping reader checkpoint and reclamation histories
         timeout-minutes: 5
-        run: cargo test -p rrd-lsm --test projected_read_adversarial interleaved --locked -- --nocapture
+        run: cargo test -p rrflow-lsm --test projected_read_adversarial interleaved --locked -- --nocapture
       - name: Test honest bounded native write diagnostics
         timeout-minutes: 5
-        run: cargo test -p rrd-lsm --test write_diagnostics --locked
+        run: cargo test -p rrflow-lsm --test write_diagnostics --locked
       - name: Test store diagnostic timing and durable readback
         timeout-minutes: 5
         run: cargo test -p rrd-store --test rrflow_kv_operator --locked
       - name: Test bounded storage I/O model and compound recovery
         timeout-minutes: 5
-        run: cargo test -p rrd-lsm --lib fault_io --locked -- --nocapture
+        run: cargo test -p rrflow-lsm --lib fault_io --locked -- --nocapture
       - name: Qualify bind-mount denial in a private native namespace
         run: python3 scripts/ci/run_filesystem_containment.py
       - name: Test the real install, serve, authenticate, stop, reopen lifecycle
@@ -252,11 +252,11 @@ jobs:
       - name: Test SDK harness native manifest privacy
         run: python -m unittest discover -s scripts/ci -p test_sdk_private_manifest.py -v
       - name: Test native filesystem containment and publication
-        run: cargo test -p rrd-lsm --test filesystem --test manifest --locked
+        run: cargo test -p rrflow-lsm --test filesystem --test manifest --locked
       - name: Test encoded admission accounting boundaries
-        run: cargo test -p rrd-lsm --lib admission_tests --locked
+        run: cargo test -p rrflow-lsm --lib admission_tests --locked
       - name: Test native staged write admission
-        run: cargo test -p rrd-lsm --test write_admission --locked
+        run: cargo test -p rrflow-lsm --test write_admission --locked
       - name: Test composed store admission and semantic atomicity
         run: cargo test -p rrd-store --test write_admission --test semantic_commit_atomicity --locked
       - name: Test engine rejected-commit recovery and reuse
@@ -269,33 +269,33 @@ jobs:
         run: cargo test -p rrd-store --test logical_archive_resilience --test backup_catalogue configured_ --locked
       - name: Test hard mutable admission and bounded WAL materialization
         timeout-minutes: 5
-        run: cargo test -p rrd-lsm --test mutable_limits --locked
+        run: cargo test -p rrflow-lsm --test mutable_limits --locked
       - name: Test projected read admission and mixed generations
-        run: cargo test -p rrd-lsm --test projected_lifetime --locked
+        run: cargo test -p rrflow-lsm --test projected_lifetime --locked
       - name: Test terminal projected source ownership
-        run: cargo test -p rrd-lsm --lib reader::lifetime_tests --locked
+        run: cargo test -p rrflow-lsm --lib reader::lifetime_tests --locked
       - name: Test retained projected output admission and release
         timeout-minutes: 5
-        run: cargo test -p rrd-lsm --test projected_output_limits --locked
+        run: cargo test -p rrflow-lsm --test projected_output_limits --locked
       - name: Test retained native store inspection cursors
         timeout-minutes: 5
         run: cargo test -p rrd-store --test storage_inspection --locked
       - name: Test output reservation arithmetic and partial release
         timeout-minutes: 5
-        run: cargo test -p rrd-lsm --lib segment::output::tests --locked
+        run: cargo test -p rrflow-lsm --lib segment::output::tests --locked
 
       - name: Test overlapping reader checkpoint and reclamation histories
         timeout-minutes: 5
-        run: cargo test -p rrd-lsm --test projected_read_adversarial interleaved --locked -- --nocapture
+        run: cargo test -p rrflow-lsm --test projected_read_adversarial interleaved --locked -- --nocapture
       - name: Test honest bounded native write diagnostics
         timeout-minutes: 5
-        run: cargo test -p rrd-lsm --test write_diagnostics --locked
+        run: cargo test -p rrflow-lsm --test write_diagnostics --locked
       - name: Test store diagnostic timing and durable readback
         timeout-minutes: 5
         run: cargo test -p rrd-store --test rrflow_kv_operator --locked
       - name: Test bounded storage I/O model and compound recovery
         timeout-minutes: 5
-        run: cargo test -p rrd-lsm --lib fault_io --locked -- --nocapture
+        run: cargo test -p rrflow-lsm --lib fault_io --locked -- --nocapture
       - name: Test native installation, bootstrap, ancestor replacement and process recovery
         run: cargo test -p rrd-engine --lib installation --locked -- --nocapture
       - name: Qualify native macOS mounted-volume denial
@@ -478,7 +478,7 @@ jobs:
       matrix:
         include:
           - name: kernel-storage
-            packages: "-p rrflow-kernel -p rrflow-cld -p rrd-lsm -p rrd-store -p rrd-maintenance"
+            packages: "-p rrflow-kernel -p rrflow-cld -p rrflow-lsm -p rrd-store -p rrd-maintenance"
           - name: query-retrieval
             packages: "-p rrflow-arrow -p rrd-query -p rrd-vector -p rrd-inference -p rrd-attunement -p rrd-operator-knowledge"
           - name: engine-authority
@@ -611,7 +611,7 @@ jobs:
           - rrd-cluster
           - rrd-engine
           - rrd-inference
-          - rrd-lsm
+          - rrflow-lsm
           - rrd-store
           - rrflow-cld
           - rrflow-cli
@@ -897,7 +897,7 @@ jobs:
       - name: Test native capacity ownership and WAL observation
         run: |
           python scripts/ci/test_native_capacity.py
-          cargo test -p rrd-lsm --test installed_wal_selection --features crash-test --locked
+          cargo test -p rrflow-lsm --test installed_wal_selection --features crash-test --locked
       - name: Test exact installed domain boundaries and compound recovery
         timeout-minutes: 20
         run: cargo test -p rrflow-cli --test installed_crash --features crash-test --locked -- --nocapture --test-threads=2 --skip publication_and_reclamation

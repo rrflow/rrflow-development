@@ -5747,9 +5747,9 @@ version = "1.0.0"
 dependencies = [
  "openraft",
  "rcgen",
- "rrd-lsm",
  "rrd-store",
  "rrflow-kernel",
+ "rrflow-lsm",
  "rustls",
  "serde",
  "serde_json",
@@ -5852,28 +5852,6 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
-]
-
-[[package]]
-name = "rrd-lsm"
-version = "1.0.0"
-dependencies = [
- "arrow-buffer",
- "cap-fs-ext",
- "cap-primitives",
- "crc32c",
- "io-uring",
- "libc",
- "lz4_flex 0.14.0",
- "memmap2",
- "ring",
- "rrflow-kernel",
- "serde",
- "serde_json",
- "tempfile",
- "tracing",
- "windows-sys 0.61.2",
- "zstd",
 ]
 
 [[package]]
@@ -5985,8 +5963,8 @@ name = "rrd-store"
 version = "1.0.0"
 dependencies = [
  "fjall",
- "rrd-lsm",
  "rrflow-kernel",
+ "rrflow-lsm",
  "serde",
  "serde_json",
  "sha2",
@@ -6181,6 +6159,28 @@ dependencies = [
  "serde_json",
  "tokio",
  "ureq",
+]
+
+[[package]]
+name = "rrflow-lsm"
+version = "1.0.0"
+dependencies = [
+ "arrow-buffer",
+ "cap-fs-ext",
+ "cap-primitives",
+ "crc32c",
+ "io-uring",
+ "libc",
+ "lz4_flex 0.14.0",
+ "memmap2",
+ "ring",
+ "rrflow-kernel",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tracing",
+ "windows-sys 0.61.2",
+ "zstd",
 ]
 
 [[package]]

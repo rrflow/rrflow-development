@@ -16,8 +16,8 @@ METADATA = {
     "workspace_members": ["core", "lsm", "engine", "cli", "eval", "lab"],
     "packages": [
         {"id": "core", "name": "rrflow-kernel", "dependencies": []},
-        {"id": "lsm", "name": "rrd-lsm", "dependencies": [{"name": "rrflow-kernel"}]},
-        {"id": "engine", "name": "rrd-engine", "dependencies": [{"name": "rrflow-kernel"}, {"name": "rrd-lsm"}]},
+        {"id": "lsm", "name": "rrflow-lsm", "dependencies": [{"name": "rrflow-kernel"}]},
+        {"id": "engine", "name": "rrd-engine", "dependencies": [{"name": "rrflow-kernel"}, {"name": "rrflow-lsm"}]},
         {"id": "cli", "name": "rrflow-cli", "dependencies": [{"name": "rrd-engine"}, {"name": "serde"}]},
         {"id": "eval", "name": "rrflow-eval", "dependencies": [{"name": "rrflow-kernel"}]},
         {"id": "lab", "name": "rrflow-lab-core", "dependencies": []},
@@ -30,7 +30,7 @@ class LaneSelectionTests(unittest.TestCase):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name)
-        members = [("persistence", "rrd-lsm"), ("authority", "rrd-engine"),
+        members = [("storage", "rrflow-lsm"), ("authority", "rrd-engine"),
                    ("adapters", "rrflow-cli"), ("evaluation", "rrflow-eval"), ("transport", "rrd-contract"),
                    ("evaluation/lab", "rrflow-lab-core")]
         for group, crate in members:
@@ -99,13 +99,13 @@ class LaneSelectionTests(unittest.TestCase):
         self.assertIn("-p rrflow-qualification-storage", result["packages"])
         self.assertNotIn("rrflow-qualification-storage", result["dependents"])
         # A crate that pins nothing selects nothing extra.
-        self.assertEqual(self.lanes("crates/persistence/rrd-lsm/src/lib.rs")[1], "-p rrd-lsm")
+        self.assertEqual(self.lanes("crates/storage/rrflow-lsm/src/lib.rs")[1], "-p rrflow-lsm")
 
     def test_a_crate_whose_tests_run_a_workspace_binary_has_it_built_first(self):
         result = select(["crates/transport/rrd-server/src/http/maintenance.rs"],
                         metadata=METADATA, root=ROOT)
         self.assertEqual(result["binaries"], "-p rrflow-cli --bin rrd-engram-controller")
-        self.assertEqual(select(["crates/persistence/rrd-lsm/src/lib.rs"], metadata=METADATA,
+        self.assertEqual(select(["crates/storage/rrflow-lsm/src/lib.rs"], metadata=METADATA,
                                 root=self.root)["binaries"], "")
 
     def test_every_test_that_runs_a_workspace_binary_is_declared(self):
@@ -142,7 +142,7 @@ class LaneSelectionTests(unittest.TestCase):
     def test_no_changed_path_selects_the_full_matrix(self):
         # The full matrix is release qualification: nightly and on demand only.
         for path in (
-            "crates/persistence/rrd-lsm/src/database.rs",
+            "crates/storage/rrflow-lsm/src/database.rs",
             "crates/authority/rrd-engine/kernel/src/lib.rs",
             "crates/adapters/rrflow-cli/src/main.rs",
             "crates/authority/rrd-engine/src/engine/transaction.rs",
@@ -161,10 +161,10 @@ class LaneSelectionTests(unittest.TestCase):
                 self.assertNotIn("full", self.lanes(path, "docs/README.md")[0], path)
 
     def test_durable_engine_and_storage_edits_test_their_crate(self):
-        selected, packages = self.lanes("crates/persistence/rrd-lsm/src/database.rs")
+        selected, packages = self.lanes("crates/storage/rrflow-lsm/src/database.rs")
         self.assertEqual(selected, {"engine"})
-        self.assertEqual(packages, "-p rrd-lsm")
-        self.assertEqual(self.dependents("crates/persistence/rrd-lsm/src/database.rs"), "-p rrd-engine -p rrflow-cli")
+        self.assertEqual(packages, "-p rrflow-lsm")
+        self.assertEqual(self.dependents("crates/storage/rrflow-lsm/src/database.rs"), "-p rrd-engine -p rrflow-cli")
         selected, packages = self.lanes("crates/authority/rrd-engine/src/engine/transaction.rs",
                                         "crates/authority/rrd-engine/src/engine/tests/recovery.rs")
         self.assertEqual(selected, {"engine"})
@@ -206,12 +206,12 @@ class LaneSelectionTests(unittest.TestCase):
     def test_only_a_forced_selection_is_the_full_matrix(self):
         self.assertEqual(self.lanes()[0], set())
         self.assertEqual(self.lanes("README.md", force_full=True)[0], {"full"})
-        self.assertEqual(self.lanes("crates/persistence/rrd-lsm/src/lib.rs", force_full=True), ({"full"}, ""))
+        self.assertEqual(self.lanes("crates/storage/rrflow-lsm/src/lib.rs", force_full=True), ({"full"}, ""))
 
     def test_dependents_close_over_the_workspace_only(self):
         graph = workspace_graph(METADATA)
         self.assertEqual(with_dependents({"rrflow-kernel"}, graph),
-                         {"rrflow-kernel", "rrd-lsm", "rrd-engine", "rrflow-cli", "rrflow-eval"})
+                         {"rrflow-kernel", "rrflow-lsm", "rrd-engine", "rrflow-cli", "rrflow-eval"})
         self.assertEqual(with_dependents({"rrflow-cli"}, graph), {"rrflow-cli"})
         self.assertNotIn("serde", graph)
 

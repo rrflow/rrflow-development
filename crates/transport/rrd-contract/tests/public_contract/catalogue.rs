@@ -649,7 +649,7 @@ pub(super) fn lifecycle_health_and_preview_payloads_are_bounded_and_strict() {
         observed_at_unix_ms: 1,
         claim_sequence: 2,
         runtime_cursor: 3,
-        backend: CanonicalId::new("rrd-lsm").unwrap(),
+        backend: CanonicalId::new("rrflow-lsm").unwrap(),
     }
     .validate()
     .unwrap();

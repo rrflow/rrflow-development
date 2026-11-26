@@ -17,7 +17,7 @@ Read on 2026-11-20 at `33159f8e2`. The original [reference-module direction](../
 - rrflowCLD has no storage-tier home and no format of its own, so there is nothing native to compare Parquet or Vortex against.
 - Vortex is named nowhere.
 
-The November 22 ownership change moves the codec, columnar port, physical adapters and their workloads into `crates/persistence/rrflow-cld`. Publication and receipt-directed readback use its `ColdStorageBackend` trait. [Candidate evidence](../../evidence/change-journals/gate-f/cld-storage-owner.md) records acceptance and remaining gaps.
+The November 22 ownership change moves the codec, columnar port, physical adapters and their workloads into `crates/storage/rrflow-cld`. Publication and receipt-directed readback use its `ColdStorageBackend` trait. [Candidate evidence](../../evidence/change-journals/gate-f/cld-storage-owner.md) records acceptance and remaining gaps.
 
 The [database semantics audit](../../reference/data/database-semantics.md) at
 `b7def0fc7` confirms authenticated, bounded Parquet generation readback with

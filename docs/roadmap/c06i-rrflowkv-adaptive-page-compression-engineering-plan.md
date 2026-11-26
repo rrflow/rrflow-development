@@ -75,7 +75,7 @@ writes through a `DataSink` directly to disk.
 
 ## Public writer policy
 
-Add one canonical type in `segment/format.rs` and re-export it from `rrd-lsm`:
+Add one canonical type in `segment/format.rs` and re-export it from `rrflow-lsm`:
 
 ```rust
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -216,7 +216,7 @@ safety.
 ## Codec dependency
 
 Promote exact `lz4_flex = 0.14.0` from a laboratory-only optional edge to the
-normal `rrd-lsm` dependency with:
+normal `rrflow-lsm` dependency with:
 
 ```toml
 lz4_flex = { version = "=0.14.0", default-features = false,
@@ -314,7 +314,7 @@ bytes borrowed, allocation capacity incurred, bytes copied, and logical bytes
 decompressed. Compressed loads must make `bytes_decompressed` nonzero; cache
 hits must not claim a second read, allocation, copy, or decompression.
 
-The existing `rrd_lsm::open` and `rrflow_kv.open` events add only aggregated
+The existing `rrflow_lsm::open` and `rrflow_kv.open` events add only aggregated
 numeric counts/bytes. Segment-write traces add the configured policy kind,
 threshold, counts, stored/logical page bytes, and scratch high-water mark.
 Error messages identify format field or page ordinal/kind but never data.
@@ -400,21 +400,21 @@ plan before that path changes.
 
 | Path | Exact responsibility |
 |---|---|
-| `crates/persistence/rrd-lsm/Cargo.toml`, root `Cargo.lock` | promote safe checked LZ4 block support; retain Zstandard as laboratory-only |
-| `rrd-lsm/src/segment/format.rs` | policy type/default/validation; v6 identity; header and descriptor bytes; adaptive selection; stored-byte digest; logical envelope |
-| `rrd-lsm/src/segment.rs` | policy propagation; stored-page acquisition; checksum-before-decode; owned aligned decode; cache charge; open/write evidence |
-| `rrd-lsm/src/segment/reader.rs` | retain request-before-load logical budgets; make existing decompression/allocation counters exact; no query semantic change |
-| `rrd-lsm/src/database.rs` | `DatabaseOptions` policy; flush/compaction propagation; accessors and low-cardinality traces |
-| `rrd-lsm/src/lib.rs` | one public policy/default/evidence export surface |
-| `rrd-lsm/src/segment/physical_policy_lab.rs`, `examples/rrflowkv_physical_policy.rs` | compare real v6 none/adaptive output and publish clean integration evidence; keep Zstandard candidate-only |
-| `rrd-lsm/tests/segment.rs` | exact v6 vector, threshold boundaries, mixed codecs, checksum-rewritten corruption, decode bounds, evidence |
-| `rrd-lsm/tests/hybrid_segment.rs` | none/adaptive differential across semantic families, MVCC, reopen, protected compaction |
-| `rrd-lsm/tests/tiered_io.rs` | raw mmap borrowing versus compressed owned decode across I/O modes |
-| `rrd-lsm/tests/snapshot_memory.rs` | decoded cache residency and bounded reopen/read RSS evidence |
-| `rrd-lsm/tests/manifest.rs`, `tests/snapshot_bundle.rs` | current segment identity through manifest and snapshot install; corruption and failure boundaries |
-| `rrd-lsm/tests/support/projected_read_model.rs` and its stable/stress consumers | policy-parameterized independent semantic differential; preserve the restored shared oracle |
-| `rrd-lsm/fuzz/Cargo.toml`, `fuzz/README.md`, target/corpus | direct v6 rename and bounded codec/length/digest mutation coverage |
-| `crates/persistence/rrd-store/src/rrflow_kv.rs`, `tests/rrflow_kv_open.rs` | propagate open evidence and prove startup/query accounting remain distinct |
+| `crates/storage/rrflow-lsm/Cargo.toml`, root `Cargo.lock` | promote safe checked LZ4 block support; retain Zstandard as laboratory-only |
+| `rrflow-lsm/src/segment/format.rs` | policy type/default/validation; v6 identity; header and descriptor bytes; adaptive selection; stored-byte digest; logical envelope |
+| `rrflow-lsm/src/segment.rs` | policy propagation; stored-page acquisition; checksum-before-decode; owned aligned decode; cache charge; open/write evidence |
+| `rrflow-lsm/src/segment/reader.rs` | retain request-before-load logical budgets; make existing decompression/allocation counters exact; no query semantic change |
+| `rrflow-lsm/src/database.rs` | `DatabaseOptions` policy; flush/compaction propagation; accessors and low-cardinality traces |
+| `rrflow-lsm/src/lib.rs` | one public policy/default/evidence export surface |
+| `rrflow-lsm/src/segment/physical_policy_lab.rs`, `examples/rrflowkv_physical_policy.rs` | compare real v6 none/adaptive output and publish clean integration evidence; keep Zstandard candidate-only |
+| `rrflow-lsm/tests/segment.rs` | exact v6 vector, threshold boundaries, mixed codecs, checksum-rewritten corruption, decode bounds, evidence |
+| `rrflow-lsm/tests/hybrid_segment.rs` | none/adaptive differential across semantic families, MVCC, reopen, protected compaction |
+| `rrflow-lsm/tests/tiered_io.rs` | raw mmap borrowing versus compressed owned decode across I/O modes |
+| `rrflow-lsm/tests/snapshot_memory.rs` | decoded cache residency and bounded reopen/read RSS evidence |
+| `rrflow-lsm/tests/manifest.rs`, `tests/snapshot_bundle.rs` | current segment identity through manifest and snapshot install; corruption and failure boundaries |
+| `rrflow-lsm/tests/support/projected_read_model.rs` and its stable/stress consumers | policy-parameterized independent semantic differential; preserve the restored shared oracle |
+| `rrflow-lsm/fuzz/Cargo.toml`, `fuzz/README.md`, target/corpus | direct v6 rename and bounded codec/length/digest mutation coverage |
+| `crates/storage/rrd-store/src/rrflow_kv.rs`, `tests/rrflow_kv_open.rs` | propagate open evidence and prove startup/query accounting remain distinct |
 | `crates/authority/rrd-engine/tests/workspace_architecture.rs` | require v6 identity, one production LZ4 codec, no prior reader, no default Zstandard |
 | current-format, benchmark, architecture-flow, test-plan, POA&M, roadmap-supporting records | state actual v6 behavior/evidence and remaining C-06/F/J gaps without changing canonical status early |
 | new C-06i evidence JSON and evidence index | clean revision-bound none/adaptive integration observations and limitations |
@@ -483,16 +483,16 @@ The fixed-machine evidence passes only if:
 
 ```bash
 python3 scripts/ci/check_change_plan.py
-cargo test -p rrd-lsm --test segment <focused-v6-test> --locked -- --exact
-cargo test -p rrd-lsm --test hybrid_segment \
+cargo test -p rrflow-lsm --test segment <focused-v6-test> --locked -- --exact
+cargo test -p rrflow-lsm --test hybrid_segment \
   none_and_adaptive_lz4_match_the_independent_mvcc_model --locked -- --exact
-cargo test -p rrd-lsm --test tiered_io --locked
-cargo test -p rrd-lsm --test manifest --test snapshot_bundle --locked
+cargo test -p rrflow-lsm --test tiered_io --locked
+cargo test -p rrflow-lsm --test manifest --test snapshot_bundle --locked
 cargo test -p rrd-store --test rrflow_kv_open --locked
-cargo test -p rrd-lsm --all-targets --all-features --locked
-cargo clippy -p rrd-lsm --all-targets --all-features --locked -- -D warnings
+cargo test -p rrflow-lsm --all-targets --all-features --locked
+cargo clippy -p rrflow-lsm --all-targets --all-features --locked -- -D warnings
 cargo clippy -p rrd-store --all-targets --locked -- -D warnings
-cargo +nightly fuzz run --fuzz-dir crates/persistence/rrd-lsm/fuzz \
+cargo +nightly fuzz run --fuzz-dir crates/storage/rrflow-lsm/fuzz \
   segment-v6-open -- -runs=4096 -max_len=256 -timeout=10
 cargo test -p rrd-engine --test workspace_architecture --locked
 cargo check --workspace --all-targets --locked
@@ -508,7 +508,7 @@ git diff --check
 The retained release-profile integration command is:
 
 ```bash
-cargo run --release --locked -p rrd-lsm \
+cargo run --release --locked -p rrflow-lsm \
   --features physical-policy-lab \
   --example rrflowkv-physical-policy -- \
   --output docs/evidence/c06i-rrflowkv-adaptive-page-compression-linux-x86_64.json

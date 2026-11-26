@@ -853,11 +853,11 @@ def main() -> int:
         failures.append("the engine data-flow owner has no durable coordinate")
     if (ROOT / "docs" / "rrd-arrow-datafusion-bm25-plan.md").exists():
         failures.append("the superseded Q1-Q4 query plan remains active and flat")
-    if (ROOT / "docs" / "rrd-lsm-format.md").exists():
+    if (ROOT / "docs" / "rrflow-lsm-format.md").exists():
         failures.append(
             "the rrflowKV physical-format reference remains active and flat"
         )
-    if (ROOT / "docs" / "rrd-lsm-benchmark.md").exists():
+    if (ROOT / "docs" / "rrflow-lsm-benchmark.md").exists():
         failures.append(
             "the mixed-purpose rrflowKV benchmark note remains active and flat"
         )

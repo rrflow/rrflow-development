@@ -335,7 +335,7 @@ an external manifest is supplied; its presence is not a normal-run proof.
 - Current static composition and recovery operations:
   `crates/authority/rrd-engine/src/engine/engram_control.rs`
 - Generic control-value/journal persistence:
-  `crates/persistence/rrd-store/src/control.rs`
+  `crates/storage/rrd-store/src/control.rs`
 - Current public read:
   `crates/authority/rrd-engine/src/engine/engram.rs` and
   `crates/transport/rrd-server/src/http/handlers/data.rs`

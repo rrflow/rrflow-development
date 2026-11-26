@@ -20,8 +20,8 @@ A code read at `de435238` on 2026-11-11 found these gaps.
 - It has no vector, BM25, fusion, embedding or graph section.
 
 **Several values are hardcoded:**
-- LSM compaction trigger, target size and levels (`crates/persistence/rrd-lsm/src/database.rs:29-32`);
-- segment row groups and compression (`crates/persistence/rrd-lsm/src/segment/format.rs:19-30`);
+- LSM compaction trigger, target size and levels (`crates/storage/rrflow-lsm/src/database.rs:29-32`);
+- segment row groups and compression (`crates/storage/rrflow-lsm/src/segment/format.rs:19-30`);
 - vector residency (`crates/authority/rrd-engine/src/runtime/vector_residency.rs:16-17`);
 - context fusion constants ([POAM-052](poam-052.md)).
 

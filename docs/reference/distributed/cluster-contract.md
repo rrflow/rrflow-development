@@ -60,7 +60,7 @@ transfer a snapshot closure, and report observations. It may not:
 
 - expose a public raw mutation or `RuntimeCommit` endpoint;
 - authenticate or authorize application work independently;
-- open `RrflowKvStore`, `rrd_lsm::Database`, or an object store from a
+- open `RrflowKvStore`, `rrflow_lsm::Database`, or an object store from a
   caller-selected path as its semantic authority;
 - create a cluster-owned tenant, table, schema, project scope, event family,
   trace lane, job repository, or monolithic topology document;
@@ -314,7 +314,7 @@ an explicit preserve/replace boundary:
 |---|---|---|
 | `contract.rs` | Placement epochs, odd voter/quorum and zone validation, explicit read modes, shard stamps, partial-order vectors, route evidence, transfer bounds, reshard cutover, and cross-shard denial. | Loose parallel cluster/node/zone/region/tenant/table IDs, free-form scope, `enforce_m7`, and permissive/defaulted serialized shapes. |
 | `authority.rs` | Deterministic placement and capacity/failure-domain validation. | `DistributedAuthorityCatalogue`, its cluster-owned tenant/table hierarchy, one 4 MiB JSON topology record, self-installed schema, private scope, and direct-store commits. Placement becomes typed engine-owned records/relations and pure proposals. |
-| `openraft_adapter.rs` | OpenRaft storage conformance, monotonic votes, log-hole rejection, shard binding, idempotency, membership/epoch checks, bounded file snapshots, corruption/stale denial, and separation of node-local Raft metadata. | Direct `rrd_lsm`/`rrd_store` semantic application, raw probe/runtime commands, defaulted old state, pre-1.0 snapshot readers, hardcoded private key domains, and arbitrary-root openers. Inject the engine apply/snapshot ports. |
+| `openraft_adapter.rs` | OpenRaft storage conformance, monotonic votes, log-hole rejection, shard binding, idempotency, membership/epoch checks, bounded file snapshots, corruption/stale denial, and separation of node-local Raft metadata. | Direct `rrflow_lsm`/`rrd_store` semantic application, raw probe/runtime commands, defaulted old state, pre-1.0 snapshot readers, hardcoded private key domains, and arbitrary-root openers. Inject the engine apply/snapshot ports. |
 | `transport.rs` | Mutual identity, envelope/digest/source binding, revocation/rotation, bounded frames/deadlines/admission, and resumable transfer mechanics. | Raw `RuntimeCommit` RPC, project-scope-only authorization, direct state-machine/object-store access, and identity derived outside installation. |
 | `node_runtime.rs` and `rrd-cluster-node` | Bounded config/control decoding, correlated status, readiness after validation, wait-at-least behavior, storage release, and controlled shutdown. | Caller-authored roots/cert paths/project scopes, independent initialization/membership authority, raw probe/runtime-commit control, fabricated actors, and private config/control version lineage. Startup consumes the installed descriptor and immutable effect plans only. |
 | `artifact_transfer.rs` | Digest/length closure, exact-offset resume, idempotent receipts, peer binding, chunk/session/quota bounds, safe concurrency, containment, and stale/receipt GC behavior. | Cursor-zero semantic replay, direct `StorageEngine`, and `transfer-sessions-v1` JSON/marker state as durable authority. Use engine-issued closure plus engine job/effect records; leave only bounded staging local. |

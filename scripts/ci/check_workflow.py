@@ -189,7 +189,7 @@ def verify_linux_arm64_ci(caller: str, reusable: str) -> None:
         'test "$RUNNER_ARCH" = ARM64',
         'test "$(uname -m)" = aarch64',
         "host: aarch64-unknown-linux-gnu",
-        "cargo test -p rrd-lsm --test filesystem --test manifest --locked",
+        "cargo test -p rrflow-lsm --test filesystem --test manifest --locked",
         "cargo test -p rrd-store --test installed_lifecycle --test semantic_commit_atomicity --locked",
         "cargo test -p rrd-attunement --locked",
         "cargo test -p rrflow-cli --test installed_lifecycle --locked -- --nocapture",
@@ -520,7 +520,7 @@ def optional_feature_packages() -> set[str]:
             features.remove("crash-test")
         if features:
             packages.add(document["package"]["name"])
-    require(diagnostic_packages == {"rrd-lsm", "rrd-store", "rrd-engine", "rrflow-cli"},
+    require(diagnostic_packages == {"rrflow-lsm", "rrd-store", "rrd-engine", "rrflow-cli"},
             "diagnostic feature must remain within its four-crate composition")
     return packages
 
@@ -1244,8 +1244,8 @@ def main() -> None:
 
     for job in ["topology-smoke", "engram-portability"]:
         for command in [
-            "cargo test -p rrd-lsm --lib admission_tests --locked",
-            "cargo test -p rrd-lsm --test write_admission --locked",
+            "cargo test -p rrflow-lsm --lib admission_tests --locked",
+            "cargo test -p rrflow-lsm --test write_admission --locked",
             "cargo test -p rrd-store --test write_admission --test semantic_commit_atomicity --locked",
             "cargo test -p rrd-engine --lib engine::tests::write_admission --locked",
         ]:
@@ -1257,16 +1257,16 @@ def main() -> None:
             f"{job} must exercise the installed primary executable lifecycle",
         )
         for command in [
-            "cargo test -p rrd-lsm --test mutable_limits --locked",
+            "cargo test -p rrflow-lsm --test mutable_limits --locked",
             "cargo test -p rrd-store --test mutable_admission --locked",
             "cargo test -p rrd-store --test logical_archive_resilience --test backup_catalogue configured_ --locked",
-            "cargo test -p rrd-lsm --test write_diagnostics --locked",
+            "cargo test -p rrflow-lsm --test write_diagnostics --locked",
             "cargo test -p rrd-store --test rrflow_kv_operator --locked",
-            "cargo test -p rrd-lsm --test projected_lifetime --locked",
-            "cargo test -p rrd-lsm --lib reader::lifetime_tests --locked",
-            "cargo test -p rrd-lsm --test projected_output_limits --locked",
-            "cargo test -p rrd-lsm --lib segment::output::tests --locked",
-            "cargo test -p rrd-lsm --test projected_read_adversarial interleaved --locked -- --nocapture",
+            "cargo test -p rrflow-lsm --test projected_lifetime --locked",
+            "cargo test -p rrflow-lsm --lib reader::lifetime_tests --locked",
+            "cargo test -p rrflow-lsm --test projected_output_limits --locked",
+            "cargo test -p rrflow-lsm --lib segment::output::tests --locked",
+            "cargo test -p rrflow-lsm --test projected_read_adversarial interleaved --locked -- --nocapture",
         ]:
             require(jobs[job].count(command) == 1, f"{job} must qualify native storage ownership and admission once: {command}")
     reopen = jobs["installed-reopen"]

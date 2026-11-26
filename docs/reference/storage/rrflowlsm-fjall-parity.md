@@ -6,9 +6,9 @@
 
 Owner, 2026-11-19: "we need to be able to continue to optimize and ensure it has all of the capabilities of fjall first". The [engine baselines direction](../../roadmap/engine-baselines-owner-direction-20261119.md) names Fjall as the baseline rrflowLSM must capture and then beat.
 
-**How this was read.** Fjall `3.1.8` and its tree crate `lsm-tree 3.1.8` were read from their published source, against `crates/persistence/rrd-lsm` at `main` `b63f7d447`. A row is **has** when rrflowLSM offers the capability, **partial** when it offers part or offers it one layer up in `rrd-store`, and **absent** when nothing was found. Tests were matched by name; their bodies were not each read. A row changes state only in the pull request that adds the capability and its test.
+**How this was read.** Fjall `3.1.8` and its tree crate `lsm-tree 3.1.8` were read from their published source, against `crates/storage/rrflow-lsm` at `main` `b63f7d447`. A row is **has** when rrflowLSM offers the capability, **partial** when it offers part or offers it one layer up in `rrd-store`, and **absent** when nothing was found. Tests were matched by name; their bodies were not each read. A row changes state only in the pull request that adds the capability and its test.
 
-Paths under "Where" are relative to `crates/persistence/rrd-lsm/src/` unless they start with `rrd-store`.
+Paths under "Where" are relative to `crates/storage/rrflow-lsm/src/` unless they start with `rrd-store`.
 
 ## Keyspaces
 
@@ -165,7 +165,7 @@ Causes of the read loss. The first two were confirmed by a test and fixed; that 
 Each line is one package with its own test, and each is measured with the comparison before and after.
 
 1. The read path (no format change). Done: seek within the group and stop at the range end. Done: a constant-time cache hit. Open: the read and memory losses at one million claims, to be profiled; and one lock taken once per page lookup, which matters once readers run concurrently.
-2. The small read and write operations. Done on 2026-11-20 ([journal](../../evidence/change-journals/gate-c/rrflowlsm-small-operations-20261120.md)): rows 22, 26, 27 and 29, the first key of 33 and is-empty of 34, in `rrd-lsm`. Open: rows 9, 77 and 81. Contains, size-of, reverse scan and take are offered through the `rrd-store` transaction port and compared with Fjall line for line since 2026-11-20 ([journal](../../evidence/change-journals/gate-c/store-port-fjall-operations-20261120.md)).
+2. The small read and write operations. Done on 2026-11-20 ([journal](../../evidence/change-journals/gate-c/rrflowlsm-small-operations-20261120.md)): rows 22, 26, 27 and 29, the first key of 33 and is-empty of 34, in `rrflow-lsm`. Open: rows 9, 77 and 81. Contains, size-of, reverse scan and take are offered through the `rrd-store` transaction port and compared with Fjall line for line since 2026-11-20 ([journal](../../evidence/change-journals/gate-c/store-port-fjall-operations-20261120.md)).
 3. Row 31 reverse iteration: done on 2026-11-20 ([journal](../../evidence/change-journals/gate-c/rrflowlsm-reverse-iteration-20261120.md)), with the last key of row 33. Open: rows 32 and 35 and a length for row 34.
 4. Deletes. Done on 2026-11-20 ([journal](../../evidence/change-journals/gate-c/rrflowlsm-clear-and-drop-range-20261120.md)): rows 42 and 43, as manifest operations with no format change. Open: row 41, with the segment-format revision.
 5. One segment-format revision: rows 57, 59, 61, 62, 63, 66 and 67.

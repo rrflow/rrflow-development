@@ -10,8 +10,8 @@ members = [
     "crates/foundation/rrflow-kernel",
     "crates/compute/rrd-query",
     "crates/compute/rrflow-arrow",
-    "crates/persistence/rrflow-cld",
-    "crates/persistence/rrd-store",
+    "crates/storage/rrflow-cld",
+    "crates/storage/rrd-store",
     "crates/compute/rrd-vector",
     "crates/operations/rrd-operator-knowledge",
     "crates/operations/rrd-observation",
@@ -21,7 +21,7 @@ members = [
     "crates/operations/rrd-cluster",
     "crates/operations/rrd-kubernetes",
     "crates/operations/rrd-maintenance",
-    "crates/persistence/rrd-lsm",
+    "crates/storage/rrflow-lsm",
     "crates/adapters/rrflow-cli",
     "crates/adapters/rrflow-mcp",
     "crates/evaluation/rrflow-evaluation-core",
@@ -55,16 +55,16 @@ rrd-contract = { path = "crates/transport/rrd-contract" }
 rrd-engine = { path = "crates/authority/rrd-engine", default-features = false }
 rrd-engram = { path = "crates/authority/rrd-engram" }
 rrd-inference = { path = "crates/compute/rrd-inference" }
-rrd-lsm = { path = "crates/persistence/rrd-lsm" }
+rrflow-lsm = { path = "crates/storage/rrflow-lsm" }
 rrd-observation = { path = "crates/operations/rrd-observation" }
 rrd-operator-knowledge = { path = "crates/operations/rrd-operator-knowledge" }
 rrd-query = { path = "crates/compute/rrd-query" }
 rrd-security = { path = "crates/authority/rrd-security" }
 rrd-server = { path = "crates/transport/rrd-server" }
-rrd-store = { path = "crates/persistence/rrd-store" }
+rrd-store = { path = "crates/storage/rrd-store" }
 rrd-vector = { path = "crates/compute/rrd-vector" }
 rrflow-arrow = { path = "crates/compute/rrflow-arrow" }
-rrflow-cld = { path = "crates/persistence/rrflow-cld" }
+rrflow-cld = { path = "crates/storage/rrflow-cld" }
 rrflow-evaluation-core = { path = "crates/evaluation/rrflow-evaluation-core" }
 rrflow-kernel = { path = "crates/foundation/rrflow-kernel" }
 rrflow-lab-benchmarks = { path = "crates/evaluation/lab/rrflow-lab-benchmarks" }

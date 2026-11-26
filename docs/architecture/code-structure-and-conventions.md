@@ -12,7 +12,7 @@ The owner's words of 2026-11-13: "files that are far too long need to be clearly
 | Area | Measured |
 |---|---|
 | Engine size | 30 crates, 787 `.rs` files, about 204k lines |
-| Long engine files | 61 non-test files over 1,000 lines and 147 over 500. The largest are `rrd-contract/src/lib.rs` (7,669 lines, 261 public types, an 850-line `endpoint_catalogue()`), `rrd-lsm/src/database.rs` (3,056), `rrflow-kernel/src/runtime.rs` (2,825) and `rrd-lsm/src/segment/mod.rs` (2,802) |
+| Long engine files | 61 non-test files over 1,000 lines and 147 over 500. The largest are `rrd-contract/src/lib.rs` (7,669 lines, 261 public types, an 850-line `endpoint_catalogue()`), `rrflow-lsm/src/database.rs` (3,056), `rrflow-kernel/src/runtime.rs` (2,825) and `rrflow-lsm/src/segment/mod.rs` (2,802) |
 | Engine lint and layout rules | No `clippy.toml`, `rustfmt.toml`, `deny.toml` or `[workspace.lints]`; `too_many_arguments` allowed 132 times. `workspace_architecture.rs` enforces the package-to-path map, dependency sets for 7 crates, forbidden edges and vocabulary, but nothing on file size, module style, errors or tier order |
 | Engine module, error and naming patterns | Both `mod.rs` and file-named modules, plus 23 `#[path]` attributes. Errors are hand-written in five styles, with about 125 `Result<_, String>` and 109 `Box<dyn Error>` signatures. About 35 SHA-256 validators and 13 hand-written hex encoders sit beside `rrflow-kernel::digest`. "engram" appears 3,100 times and "engram" 115, with miscased renames such as `InstalledengramRecord` |
 | Engine layering | Group directories do not match dependency tiers: `transport/` holds both the lowest crate (`rrd-contract`) and the highest (`rrd-server`). `rrd-maintenance` and `rrd-kubernetes` have no consumers |
@@ -62,8 +62,8 @@ The owner's words of 2026-11-13: "files that are far too long need to be clearly
    - `commit`
 
    Proof: the OpenAPI digest constant is unchanged, every SDK projection regenerates with no diff, and all `rrd-contract` tests pass untouched.
-2. **`rrd-lsm/src/database.rs`** → `database/{options, failpoints, open, transactions, reads, compaction, gc, snapshot}.rs`.
-3. **`rrflow-kernel/src/runtime.rs`**, **`rrd-lsm/src/segment/mod.rs`**, **`rrflow-kernel/src/trace.rs`**, **`rrd-engine/src/engine/installation.rs`**, **`rrd-store/src/backup.rs`**, **`rrd-store/src/rrflow_kv.rs`** and **`rrd-vector/src/hnsw.rs`**, by the split points recorded in the 2026-11-13 survey.
+2. **`rrflow-lsm/src/database.rs`** → `database/{options, failpoints, open, transactions, reads, compaction, gc, snapshot}.rs`.
+3. **`rrflow-kernel/src/runtime.rs`**, **`rrflow-lsm/src/segment/mod.rs`**, **`rrflow-kernel/src/trace.rs`**, **`rrd-engine/src/engine/installation.rs`**, **`rrd-store/src/backup.rs`**, **`rrd-store/src/rrflow_kv.rs`** and **`rrd-vector/src/hnsw.rs`**, by the split points recorded in the 2026-11-13 survey.
 4. The remaining files on the ratchet list, largest first.
 
 ## 3. Connectome rules
@@ -207,9 +207,9 @@ A crate depends only on crates in a lower tier, or in its own tier where the tab
 | 0 | `crates/foundation/` | `rrflow-kernel` | `rrflow-kernel` | 13,631 |
 | 0 | | `transport/rrd-contract` | `rrd-contract` | 37,718 |
 | 0 | | `compute/rrflow-arrow` | `rrflow-arrow` | 624 |
-| 1 | `crates/storage/` | `persistence/rrd-lsm` | `rrflow-lsm` | 39,473 |
-| 1 | | `persistence/rrflow-cld` | `rrflow-cld` | 2,752 |
-| 1 | | part of `persistence/rrd-store` | `rrflow-kv` (on `rrflow-lsm`) | see 6.3 |
+| 1 | `crates/storage/` | `storage/rrflow-lsm` | `rrflow-lsm` | 39,473 |
+| 1 | | `storage/rrflow-cld` | `rrflow-cld` | 2,752 |
+| 1 | | part of `storage/rrd-store` | `rrflow-kv` (on `rrflow-lsm`) | see 6.3 |
 | 1 | | part of `rrd-store` and of `rrd-engine` | `rrflow-tx` (on `rrflow-kv`) | see 6.3 |
 | 1 | | the rest of `rrd-store` | `rrflow-db` (on `rrflow-tx`) | see 6.3 |
 | 2 | `crates/compute/` | `rrd-query` | `rrflow-ql` | 15,291 |
@@ -231,7 +231,7 @@ A crate depends only on crates in a lower tier, or in its own tier where the tab
 | 5 | `crates/cloud/` | `operations/rrd-kubernetes` | `rrflow-cx-operator` | 927 |
 | — | `crates/evaluation/` | Lab and qualification crates | unchanged | |
 
-`rrd-cluster` sits below the engine today (it depends on `rrd-lsm`, `rrd-store` and the kernel, and the engine composes it behind the `cluster-transfer` feature), so `rrflow-cx` is tier 3 and stays optional. The Kubernetes operator has no consumer and depends only on the contract and kernel, so it is an interface-tier crate.
+`rrd-cluster` sits below the engine today (it depends on `rrflow-lsm`, `rrd-store` and the kernel, and the engine composes it behind the `cluster-transfer` feature), so `rrflow-cx` is tier 3 and stays optional. The Kubernetes operator has no consumer and depends only on the contract and kernel, so it is an interface-tier crate.
 
 Removed, each in the pull request named in 6.8: `rrd-maintenance` (no consumer; one file of 1,556 lines) and the empty untracked folders `crates/authority/rrd-estate/` and `engine/estate_control/`. `rrflow-lab-experiments` stays: no crate depends on it, but it is a binary with its own CI test (`provider_compatibility` in `ci-reusable.yml`).
 
@@ -241,7 +241,7 @@ Removed, each in the pull request named in 6.8: `rrd-maintenance` (no consumer; 
 
 - `key_codec` and `keyspaces` depend on nothing else in the crate.
 - `access/runtime_state.rs` (778 lines) is the root of the `access` layer: every other `access` module depends on it and it depends on none of them. It holds key checking, point reads, scans, sequences, read stamps and change pages.
-- `rrflow_kv/` (2,661 lines) depends on `access` only through `runtime_state` (11 references), and on `key_codec`, `keyspaces`, `transaction`, `control`, `engine`, `error` and `lexical`. Nothing in `access` or `repository` depends on `rrflow_kv`. It makes 24 direct `rrd_lsm::` uses; `access` makes 3.
+- `rrflow_kv/` (2,661 lines) depends on `access` only through `runtime_state` (11 references), and on `key_codec`, `keyspaces`, `transaction`, `control`, `engine`, `error` and `lexical`. Nothing in `access` or `repository` depends on `rrflow_kv`. It makes 24 direct `rrflow_lsm::` uses; `access` makes 3.
 - `access/semantic_commit/` (1,998 lines: plan, conflicts, constraints, effects, retirements) depends only on `runtime_state`; `access/index` and `access/vector` depend on it.
 - `repository` depends on `access` (16 references); `backup` depends on `access`, `archive`, `repository` and `snapshot`.
 
@@ -328,7 +328,7 @@ One pull request per package. A package is complete when nothing of the old shap
 | 2 | One architecture manifest and one checker (6.11) | the crate folders written into the architecture test (63 paths) and the limits written into the code-shape check; the rest of 6.11 lands with the package named there |
 | 3 | Dead code: `rrd-maintenance`, the empty folders, and the 29 files that still say "estate" | unconsumed crates and the retired name |
 | 4 | Foundation: `rrd-contract` → `foundation/`, `rrflow-arrow` → `foundation/`, one reasoning-tree definition | the duplicate type set |
-| 5 | `rrd-lsm` → `storage/rrflow-lsm`; `rrflow-cld` → `storage/` | `persistence/` |
+| 5 | `rrd-lsm` → `storage/rrflow-lsm`; `rrflow-cld` and `rrd-store` → `storage/` (done 2026-11-26) | `persistence/` and the name `rrd-lsm` |
 | 6 | `rrflow-kv` extracted, with the `VolatileStore` rename | the misnamed rrflowMX store |
 | 7 | `rrflow-tx` extracted from the store and the engine | transaction logic in two crates |
 | 8 | The rest of `rrd-store` → `storage/rrflow-db` | `rrd-store` |

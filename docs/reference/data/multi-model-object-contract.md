@@ -135,7 +135,7 @@ the executable sequence is owned by the
 
 ## Executable evidence
 
-`crates/persistence/rrd-store/tests/unified_data.rs` proves:
+`crates/storage/rrd-store/tests/unified_data.rs` proves:
 
 - the same mixed eight-mutation transaction on rrflowMX and rrflowKV;
 - seven deterministic projection-work records, a sealed audit envelope, and

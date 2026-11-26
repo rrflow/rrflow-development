@@ -9,7 +9,7 @@ priority or closure status.
 
 ## Observed deficiency
 
-Read on 2026-11-25 at `7f16ed4be`. Inventory decides whether a Git input changed by comparing two `SourceObservation` values (`crates/persistence/rrd-lsm/src/filesystem/source.rs`): native object identity, kind, byte length, modified time, changed time, mode, owner, group and link count. Content is not compared. `GitInputs::read_optional_with_after_open`, `revalidate` and `revalidate_selected` in `crates/authority/rrd-engine/src/engine/installation/inventory/git_inputs.rs` all use that comparison.
+Read on 2026-11-25 at `7f16ed4be`. Inventory decides whether a Git input changed by comparing two `SourceObservation` values (`crates/storage/rrflow-lsm/src/filesystem/source.rs`): native object identity, kind, byte length, modified time, changed time, mode, owner, group and link count. Content is not compared. `GitInputs::read_optional_with_after_open`, `revalidate` and `revalidate_selected` in `crates/authority/rrd-engine/src/engine/installation/inventory/git_inputs.rs` all use that comparison.
 
 A rewrite that keeps the file's length and lands in the same timestamp value as the previous write produces an equal observation. Measured on a Windows 11 host whose file timestamps step about every 1 ms: a temporary probe drove `read_optional_after_observation` 400 times with a `.gitignore` rewritten to the same length immediately before and during the observation, and 400 times with a rewrite of a different length. The same-length rewrite was accepted without an error 144 times; the different-length rewrite was refused every time. The probe was not committed because its result depends on timing.
 

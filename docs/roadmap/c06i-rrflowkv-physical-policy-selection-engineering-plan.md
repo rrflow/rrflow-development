@@ -85,7 +85,7 @@ At baseline `0dac17d21b39c9f50f23911d9be71cf23a8a6234`:
 - the existing semantic and AI hot-set programs do not provide the complete
   clean-revision and fixed-machine provenance needed to select these policies.
 
-The first widening check also proved that `rrd-lsm` was absent from the
+The first widening check also proved that `rrflow-lsm` was absent from the
 repository's exhaustive optional-feature CI matrix. Planning amendment
 `c169f6b204fbcbcb81ef635d5e8e94a377f44b8b` binds that discovered path before
 the workflow changes: the laboratory must pass locked all-target tests and
@@ -98,10 +98,10 @@ policy and not proof of Arrow/DataFusion streaming.
 
 | Path | Responsibility in this slice | Explicit exclusion |
 |---|---|---|
-| `rrd-lsm/src/segment/physical_policy_lab.rs` | deterministic corpus, real v4 page extraction, candidate mechanics, real reopen characterization, exact oracles | no production write/read policy |
-| `rrd-lsm/examples/rrflowkv_physical_policy.rs` | release-profile child isolation, provenance, raw trials, aggregates, JSON publication | no engine or lifecycle authority |
-| `rrd-lsm/Cargo.toml` | default-disabled lab feature and exact measurement-only codec dependencies | codecs absent from default/runtime closure |
-| `.github/workflows/ci-reusable.yml` | route `rrd-lsm` through the existing optional-feature qualification matrix | no second workflow, broader runner, or default feature |
+| `rrflow-lsm/src/segment/physical_policy_lab.rs` | deterministic corpus, real v4 page extraction, candidate mechanics, real reopen characterization, exact oracles | no production write/read policy |
+| `rrflow-lsm/examples/rrflowkv_physical_policy.rs` | release-profile child isolation, provenance, raw trials, aggregates, JSON publication | no engine or lifecycle authority |
+| `rrflow-lsm/Cargo.toml` | default-disabled lab feature and exact measurement-only codec dependencies | codecs absent from default/runtime closure |
+| `.github/workflows/ci-reusable.yml` | route `rrflow-lsm` through the existing optional-feature qualification matrix | no second workflow, broader runner, or default feature |
 | `rrflowkv-current-format.md` | truthful current bytes and measured gap | no future format declared current |
 | `rrflowkv-benchmark-harness.md` | reproduction and evidence eligibility | no release or competitor claim |
 | C-06i evidence JSON | exact host/revision/trial output | no roadmap authority |
@@ -222,7 +222,7 @@ governed reasoning/recall path.
 4. Run a bounded dirty smoke only to surface implementation errors.
 5. If widening exposes an undeclared path, preserve the implementation,
    commit a planning-only amendment, validate it, and only then resume edits.
-6. Route `rrd-lsm` through the existing optional-feature matrix and require
+6. Route `rrflow-lsm` through the existing optional-feature matrix and require
    locked all-target tests plus strict all-feature Clippy.
 7. Update current-format, benchmark, research, evidence-index, and journal
    records; regenerate the whole-repository inventory.
@@ -236,8 +236,8 @@ governed reasoning/recall path.
 
 ```bash
 python3 scripts/ci/check_change_plan.py
-cargo test -p rrd-lsm --features physical-policy-lab physical_policy_lab --locked -- --nocapture
-cargo run --release --locked -p rrd-lsm \
+cargo test -p rrflow-lsm --features physical-policy-lab physical_policy_lab --locked -- --nocapture
+cargo run --release --locked -p rrflow-lsm \
   --features physical-policy-lab \
   --example rrflowkv-physical-policy -- \
   --seed 14592251008053203194 \
@@ -248,9 +248,9 @@ cargo run --release --locked -p rrd-lsm \
   --misses 16384 \
   --cache-bytes 1048576 \
   --output docs/evidence/c06i-rrflowkv-physical-policy-linux-x86_64.json
-cargo tree -p rrd-lsm --locked -e normal --no-default-features
-cargo test -p rrd-lsm --locked
-cargo clippy -p rrd-lsm --all-targets --all-features --locked -- -D warnings
+cargo tree -p rrflow-lsm --locked -e normal --no-default-features
+cargo test -p rrflow-lsm --locked
+cargo clippy -p rrflow-lsm --all-targets --all-features --locked -- -D warnings
 python3 scripts/ci/check_workflow.py
 ```
 
