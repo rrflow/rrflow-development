@@ -42,11 +42,16 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
-ENTRY_LIMIT = 200
-SOURCE_LIMIT = 800
-HARNESS_LIMIT = 1500
+from check_architecture import load_manifest, read_members
+
+# The limits and the digest owner are recorded once, in `crates/architecture.toml`.
+_MANIFEST = load_manifest()
+ENTRY_LIMIT: int = _MANIFEST["limits"]["entry"]
+SOURCE_LIMIT: int = _MANIFEST["limits"]["source"]
+HARNESS_LIMIT: int = _MANIFEST["limits"]["harness"]
 BASELINE = Path(__file__).with_name("code_shape_baseline.json")
-DIGEST_OWNER = "crates/foundation/rrflow-kernel/src/digest.rs"
+_DIGEST = _MANIFEST["rules"]["digest_owner"]
+DIGEST_OWNER = f"{read_members()[_DIGEST['crate']].directory}/{_DIGEST['file']}"
 
 PATTERNS: dict[str, re.Pattern[str]] = {
     "path_attribute": re.compile(r"#\[path\s*="),

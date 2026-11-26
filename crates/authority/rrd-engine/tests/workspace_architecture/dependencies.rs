@@ -225,22 +225,7 @@ pub(super) fn public_contract_and_client_stay_implementation_free() {
 #[test]
 pub(super) fn outward_consumers_cannot_bypass_the_engine_boundary() {
     let metadata = workspace_metadata();
-    let internal_components = names(&[
-        "rrflow-arrow",
-        "rrflow-cld",
-        "rrd-attunement",
-        "rrd-engram",
-        "rrd-security",
-        "rrd-cluster",
-        "rrflow-kernel",
-        "rrd-inference",
-        "rrd-lsm",
-        "rrd-observation",
-        "rrd-query",
-        "rrd-operator-knowledge",
-        "rrd-store",
-        "rrd-vector",
-    ]);
+    let internal_components = metadata.components_below_the_engine();
 
     assert_exact(
         &forbidden_edges(&metadata, "rrflow-cli", &internal_components),
@@ -257,30 +242,21 @@ pub(super) fn outward_consumers_cannot_bypass_the_engine_boundary() {
 #[test]
 pub(super) fn outward_product_sources_do_not_import_physical_components() {
     let metadata = workspace_metadata();
-    let physical = [
-        "rrflow_arrow",
-        "rrflow_cld",
-        "rrd_attunement",
-        "rrd_cluster",
-        "rrflow_kernel",
-        "rrd_engram",
-        "rrd_graph",
-        "rrd_inference",
-        "rrd_lsm",
-        "rrd_observation",
-        "rrd_operator_knowledge",
-        "rrd_query",
-        "rrd_security",
-        "rrd_store",
-        "rrd_vector",
-    ];
+    // Each component's crate as source names it, and the graph crate that was removed.
+    let mut physical = metadata
+        .components_below_the_engine()
+        .iter()
+        .map(|name| name.replace('-', "_"))
+        .collect::<Vec<_>>();
+    physical.push("rrd_graph".to_owned());
+    let physical = physical.iter().map(String::as_str).collect::<Vec<_>>();
     let mut violations = Vec::new();
     for relative in [
-        "crates/transport/rrd-client/src",
-        "crates/transport/rrd-server/src",
-        "crates/adapters/rrflow-cli/src",
-        "crates/adapters/rrflow-cli/examples",
-        "crates/adapters/rrflow-mcp/src",
+        metadata.in_crate("rrd-client", "src"),
+        metadata.in_crate("rrd-server", "src"),
+        metadata.in_crate("rrflow-cli", "src"),
+        metadata.in_crate("rrflow-cli", "examples"),
+        metadata.in_crate("rrflow-mcp", "src"),
     ] {
         let directory = metadata.root.join(relative);
         if directory.is_dir() {
@@ -398,6 +374,32 @@ pub(super) fn first_party_dependencies_are_declared_once_in_the_root_manifest() 
                 .count(),
             1,
             "the root manifest must declare {name} once at {directory}"
+        );
+    }
+}
+
+/// The two outward-boundary rules above take their component list from the architecture
+/// manifest. An empty or wrong list would let them pass without checking anything.
+#[test]
+pub(super) fn components_below_the_engine_come_from_the_architecture_manifest() {
+    let metadata = workspace_metadata();
+    let components = metadata.components_below_the_engine();
+    for expected in ["rrflow-kernel", "rrd-lsm", "rrflow-cld", "rrd-store"] {
+        assert!(
+            components.contains(expected),
+            "{expected} must be a component below the engine"
+        );
+    }
+    for outward in ["rrd-contract", "rrd-engine", "rrd-client", "rrflow-cli"] {
+        assert!(
+            !components.contains(outward),
+            "{outward} is not a component below the engine"
+        );
+    }
+    for component in &components {
+        assert!(
+            metadata.packages.contains_key(component),
+            "{component} is in the architecture manifest but is not a workspace package"
         );
     }
 }

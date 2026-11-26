@@ -13,21 +13,24 @@ pub(super) fn one_engine_authority_owns_every_product_storage_opening() {
         "production code outside rrd-engine/rrd-store must not open physical storage or revive a second embedded handle: {violations:#?}"
     );
 
-    let engine_library =
-        fs::read_to_string(metadata.root.join("crates/authority/rrd-engine/src/lib.rs"))
-            .expect("rrd-engine library source must be readable");
+    let engine_library = fs::read_to_string(
+        metadata
+            .root
+            .join(metadata.in_crate("rrd-engine", "src/lib.rs")),
+    )
+    .expect("rrd-engine library source must be readable");
     assert!(
         !engine_library.contains("pub mod operator;"),
         "the engine-owned operator implementation must remain private"
     );
     let mut duplicate_handles = Vec::new();
     collect_rust_sources(
-        &metadata.root.join("crates/authority/rrd-engine/src"),
+        &metadata.root.join(metadata.in_crate("rrd-engine", "src")),
         &mut duplicate_handles,
         "EmbeddedOperator",
     );
     collect_rust_sources(
-        &metadata.root.join("crates/authority/rrd-engine/src"),
+        &metadata.root.join(metadata.in_crate("rrd-engine", "src")),
         &mut duplicate_handles,
         "pub fn runtime_store",
     );
@@ -44,14 +47,14 @@ pub(super) fn pre_canonical_startup_authorities_are_absent_from_product_tree() {
     let metadata = workspace_metadata();
     for relative in [
         ".rrflow/instance.toml",
-        "crates/authority/rrd-engine/src/runtime/instance.rs",
-        "crates/authority/rrd-engine/src/engine/security_bootstrap.rs",
-        "crates/authority/rrd-engine/tests/runtime_instance.rs",
-        "crates/adapters/rrflow-cli/src/dev.rs",
-        "crates/adapters/rrflow-cli/src/dev/supervisor.rs",
-        "crates/adapters/rrflow-cli/src/bin/rrd-security-bootstrap.rs",
-        "crates/adapters/rrflow-cli/tests/operator_surface.rs",
-        "crates/adapters/rrflow-cli/tests/security_bootstrap.rs",
+        metadata.in_crate("rrd-engine", "src/runtime/instance.rs"),
+        metadata.in_crate("rrd-engine", "src/engine/security_bootstrap.rs"),
+        metadata.in_crate("rrd-engine", "tests/runtime_instance.rs"),
+        metadata.in_crate("rrflow-cli", "src/dev.rs"),
+        metadata.in_crate("rrflow-cli", "src/dev/supervisor.rs"),
+        metadata.in_crate("rrflow-cli", "src/bin/rrd-security-bootstrap.rs"),
+        metadata.in_crate("rrflow-cli", "tests/operator_surface.rs"),
+        metadata.in_crate("rrflow-cli", "tests/security_bootstrap.rs"),
     ] {
         assert!(
             !metadata.root.join(relative).exists(),
@@ -61,13 +64,13 @@ pub(super) fn pre_canonical_startup_authorities_are_absent_from_product_tree() {
 
     let mut violations = Vec::new();
     for relative in [
-        "crates/authority/rrd-engine/src",
-        "crates/adapters/rrflow-cli/src",
-        "crates/adapters/rrflow-mcp/src",
-        "crates/transport/rrd-server/src",
-        "crates/transport/rrd-client/examples",
-        "crates/authority/rrd-engram/src/commands",
-        "crates/operations/rrd-kubernetes/src",
+        metadata.in_crate("rrd-engine", "src"),
+        metadata.in_crate("rrflow-cli", "src"),
+        metadata.in_crate("rrflow-mcp", "src"),
+        metadata.in_crate("rrd-server", "src"),
+        metadata.in_crate("rrd-client", "examples"),
+        metadata.in_crate("rrd-engram", "src/commands"),
+        metadata.in_crate("rrd-kubernetes", "src"),
     ] {
         for forbidden in [
             "InstanceManifest",
@@ -110,9 +113,9 @@ pub(super) fn pre_canonical_startup_authorities_are_absent_from_product_tree() {
             )
     };
     let server_product = read_sources(&[
-        "crates/transport/rrd-server/src/main.rs",
-        "crates/transport/rrd-server/src/process.rs",
-        "crates/transport/rrd-server/src/cli.rs",
+        metadata.in_crate("rrd-server", "src/main.rs"),
+        metadata.in_crate("rrd-server", "src/process.rs"),
+        metadata.in_crate("rrd-server", "src/cli.rs"),
     ]);
     assert!(
         !server_product.contains("InitializeArgs")
@@ -123,10 +126,10 @@ pub(super) fn pre_canonical_startup_authorities_are_absent_from_product_tree() {
 
     // The renderer is the crate root plus its spec, resources and validation modules.
     let kubernetes = read_sources(&[
-        "crates/operations/rrd-kubernetes/src/lib.rs",
-        "crates/operations/rrd-kubernetes/src/spec.rs",
-        "crates/operations/rrd-kubernetes/src/resources.rs",
-        "crates/operations/rrd-kubernetes/src/validation.rs",
+        metadata.in_crate("rrd-kubernetes", "src/lib.rs"),
+        metadata.in_crate("rrd-kubernetes", "src/spec.rs"),
+        metadata.in_crate("rrd-kubernetes", "src/resources.rs"),
+        metadata.in_crate("rrd-kubernetes", "src/validation.rs"),
     ]);
     assert!(
         kubernetes.contains("install")
@@ -139,7 +142,7 @@ pub(super) fn pre_canonical_startup_authorities_are_absent_from_product_tree() {
 
     let engram_control = module_source(
         &metadata.root,
-        "crates/authority/rrd-engine/src/engine/engram_control.rs",
+        metadata.in_crate("rrd-engine", "src/engine/engram_control.rs"),
     );
     assert!(
         !engram_control.contains("RrdEngine::open(")
@@ -329,15 +332,24 @@ pub(super) fn alpha_storage_closure_has_one_required_physical_dependency_and_cur
         "Zstd must remain gated behind rrd-lsm's physical-policy lab"
     );
 
-    let batch = module_source(&metadata.root, "crates/persistence/rrd-lsm/src/batch.rs");
-    let manifest = module_source(&metadata.root, "crates/persistence/rrd-lsm/src/manifest.rs");
-    let segment_module = module_source(&metadata.root, "crates/persistence/rrd-lsm/src/segment.rs");
+    let batch = module_source(&metadata.root, metadata.in_crate("rrd-lsm", "src/batch.rs"));
+    let manifest = module_source(
+        &metadata.root,
+        metadata.in_crate("rrd-lsm", "src/manifest.rs"),
+    );
+    let segment_module = module_source(
+        &metadata.root,
+        metadata.in_crate("rrd-lsm", "src/segment.rs"),
+    );
     let segment_format = module_source(
         &metadata.root,
-        "crates/persistence/rrd-lsm/src/segment/format.rs",
+        metadata.in_crate("rrd-lsm", "src/segment/format.rs"),
     );
     let segment = format!("{segment_module}\n{segment_format}");
-    let vector_catalog = module_source(&metadata.root, "crates/compute/rrd-vector/src/catalog.rs");
+    let vector_catalog = module_source(
+        &metadata.root,
+        metadata.in_crate("rrd-vector", "src/catalog.rs"),
+    );
     assert!(batch.contains("pub const BATCH_FORMAT_VERSION: u16 = 2;"));
     assert!(manifest.contains("pub const MANIFEST_FORMAT_VERSION: u16 = 3;"));
     assert!(segment.contains("pub const SEGMENT_FORMAT_VERSION: u16 = 6;"));
@@ -372,13 +384,16 @@ pub(super) fn schema_catalogue_has_one_explicit_logical_model_authority() {
     let metadata = workspace_metadata();
     let core_schema = module_source(
         &metadata.root,
-        "crates/foundation/rrflow-kernel/src/schema.rs",
+        metadata.in_crate("rrflow-kernel", "src/schema.rs"),
     );
     let core_runtime = module_source(
         &metadata.root,
-        "crates/foundation/rrflow-kernel/src/runtime.rs",
+        metadata.in_crate("rrflow-kernel", "src/runtime.rs"),
     );
-    let public_contract = module_source(&metadata.root, "crates/transport/rrd-contract/src/lib.rs");
+    let public_contract = module_source(
+        &metadata.root,
+        metadata.in_crate("rrd-contract", "src/lib.rs"),
+    );
 
     let optional_table_field =
         "#[serde(default, skip_serializing_if = \"BTreeMap::is_empty\")]\n    pub tables:";
@@ -430,37 +445,37 @@ pub(super) fn vector_writes_require_one_canonical_collection_address() {
     let required_address_sources = [
         (
             "kernel runtime vector",
-            "crates/foundation/rrflow-kernel/src/data.rs",
+            metadata.in_crate("rrflow-kernel", "src/data.rs"),
             "pub collection: VectorCollectionAddress,",
         ),
         (
             "inference embedding job",
-            "crates/compute/rrd-inference/src/lib.rs",
+            metadata.in_crate("rrd-inference", "src/lib.rs"),
             "pub collection: VectorCollectionAddress,",
         ),
         (
             "persistent vector source",
-            "crates/persistence/rrd-store/src/access/vector.rs",
+            metadata.in_crate("rrd-store", "src/access/vector.rs"),
             "pub collection: VectorCollectionAddress,",
         ),
         (
             "dense vector artifact",
-            "crates/compute/rrd-vector/src/compact.rs",
+            metadata.in_crate("rrd-vector", "src/compact.rs"),
             "collection: VectorCollectionAddress,",
         ),
         (
             "quantized vector artifact",
-            "crates/compute/rrd-vector/src/quantized_segment.rs",
+            metadata.in_crate("rrd-vector", "src/quantized_segment.rs"),
             "collection: VectorCollectionAddress,",
         ),
         (
             "TurboQuant vector artifact",
-            "crates/compute/rrd-vector/src/turbo_segment.rs",
+            metadata.in_crate("rrd-vector", "src/turbo_segment.rs"),
             "collection: VectorCollectionAddress,",
         ),
         (
             "offline edge embedding",
-            "crates/authority/rrd-engine/src/edge.rs",
+            metadata.in_crate("rrd-engine", "src/edge.rs"),
             "pub collection: VectorCollectionAddress,",
         ),
     ];
@@ -476,7 +491,10 @@ pub(super) fn vector_writes_require_one_canonical_collection_address() {
         );
     }
 
-    let contract = module_source(&metadata.root, "crates/transport/rrd-contract/src/lib.rs");
+    let contract = module_source(
+        &metadata.root,
+        metadata.in_crate("rrd-contract", "src/lib.rs"),
+    );
     let put_vector = contract
         .split_once("    PutVector {")
         .expect("public PutVector mutation must exist")
@@ -497,7 +515,7 @@ pub(super) fn vector_writes_require_one_canonical_collection_address() {
 
     let runtime = module_source(
         &metadata.root,
-        "crates/foundation/rrflow-kernel/src/runtime.rs",
+        metadata.in_crate("rrflow-kernel", "src/runtime.rs"),
     );
     for required in [
         "text(out, &vector.collection.collection_id);",
@@ -511,7 +529,7 @@ pub(super) fn vector_writes_require_one_canonical_collection_address() {
 
     let keyspaces = module_source(
         &metadata.root,
-        "crates/persistence/rrd-store/src/keyspaces.rs",
+        metadata.in_crate("rrd-store", "src/keyspaces.rs"),
     );
     assert!(
         keyspaces.contains("validate_vector_source_key_parts(collection_id, vector_name, field)?;"),
@@ -522,19 +540,25 @@ pub(super) fn vector_writes_require_one_canonical_collection_address() {
 #[test]
 pub(super) fn vector_projection_lifecycle_has_no_duplicate_turboquant_authority() {
     let metadata = workspace_metadata();
-    let vector_runtime = module_source(&metadata.root, "crates/compute/rrd-vector/src/runtime.rs");
+    let vector_runtime = module_source(
+        &metadata.root,
+        metadata.in_crate("rrd-vector", "src/runtime.rs"),
+    );
     let engine_runtime = module_source(
         &metadata.root,
-        "crates/authority/rrd-engine/src/runtime/vector_catalog.rs",
+        metadata.in_crate("rrd-engine", "src/runtime/vector_catalog.rs"),
     );
     let quantization = module_source(
         &metadata.root,
-        "crates/authority/rrd-engine/src/engine/vector/quantization.rs",
+        metadata.in_crate("rrd-engine", "src/engine/vector/quantization.rs"),
     );
-    let contract = module_source(&metadata.root, "crates/transport/rrd-contract/src/lib.rs");
+    let contract = module_source(
+        &metadata.root,
+        metadata.in_crate("rrd-contract", "src/lib.rs"),
+    );
     let collection = module_source(
         &metadata.root,
-        "crates/authority/rrd-engine/src/engine/vector/collection.rs",
+        metadata.in_crate("rrd-engine", "src/engine/vector/collection.rs"),
     );
 
     let suppression = ["suppress_legacy_", "turboquant"].concat();
@@ -581,7 +605,7 @@ pub(super) fn vector_projection_lifecycle_has_no_duplicate_turboquant_authority(
 #[test]
 pub(super) fn storage_semantics_use_repositories_over_one_transaction_port() {
     let metadata = workspace_metadata();
-    let store_source = metadata.root.join("crates/persistence/rrd-store/src");
+    let store_source = metadata.root.join(metadata.in_crate("rrd-store", "src"));
     let engine = fs::read_to_string(store_source.join("engine.rs"))
         .expect("rrd-store engine source must be readable");
     let trait_body = engine

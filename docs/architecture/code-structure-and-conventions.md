@@ -325,7 +325,7 @@ One pull request per package. A package is complete when nothing of the old shap
 | # | Package | Removes |
 |---|---|---|
 | 1 | Repair `main` (pull request 511, POAM-094) | the red nightly |
-| 2 | One architecture manifest and one checker (6.11) | the path tables repeated in two test files, four CI scripts, two script tests and a baseline, all of which the kernel move had to edit by hand |
+| 2 | One architecture manifest and one checker (6.11) | the crate folders written into the architecture test (63 paths) and the limits written into the code-shape check; the rest of 6.11 lands with the package named there |
 | 3 | Dead code: `rrd-maintenance`, the empty folders, and the 29 files that still say "estate" | unconsumed crates and the retired name |
 | 4 | Foundation: `rrd-contract` → `foundation/`, `rrflow-arrow` → `foundation/`, one reasoning-tree definition | the duplicate type set |
 | 5 | `rrd-lsm` → `storage/rrflow-lsm`; `rrflow-cld` → `storage/` | `persistence/` |
@@ -353,10 +353,10 @@ Each item is settled by reading code at the start of the package that needs it, 
 4. Which rows of `rrd-maintenance` the [context-maintenance record](../reference/context/context-maintenance.md) requires to be covered elsewhere before removal (package 3).
 5. The file-level split of `access/runtime_state.rs` between `rrflow-kv` and `rrflow-tx`, and which engine transaction functions need `RrdEngine` state (packages 6 and 7).
 6. Whether time-series and geospatial capability exist in code, as the system overview already notes.
-7. The module graph in 6.3 comes from a text scan of `crate::` and `super::` paths. It misses glob imports. Package 2 replaces it with a graph from the compiler.
+7. The module graph in 6.3 comes from a text scan of `crate::` and `super::` paths. It misses glob imports. A graph from the compiler replaces it before the store is split (package 6); package 2 did not build it.
 8. Whether `RrflowKvStore` and `StorageEngine` land in `rrflow-kv`. If they do, the `rrflow-cld` test of 6.12 conforms once it names `rrflow-kv`; if not, the test moves to `rrflow-db` (package 6).
 9. Which of the kernel product types that `rrd-store` uses are needed by the `rrflow-kv` part, and so whether `rrflow-kernel` as a whole is a fit dependency for a standalone key-value store or its `digest` module must be separable (package 6).
-10. Rule 3 of 6.12 has not been run for any crate (package 2).
+10. Rule 3 of 6.12 is not a CI job. It was run by hand on 2026-11-25 for the four standalone crates and all passed; `rrflow-cld` still builds `rrd-store` for one test. The result is in the [architecture manifest journal](../evidence/change-journals/repository/architecture-manifest-20261125.md).
 11. Which record owns the ACID proof and the SurrealDB capability map that gate package 14. OBJ-10 names SurrealDB as a measured baseline "where the compared capability exists" but lists no capabilities; Connectome's 348-capability parity list covers the UI client, not the engine. The owning record is found or written before package 13 merges.
 
 ### 6.10 Proof of no regression, every package
@@ -381,6 +381,10 @@ One file, `crates/architecture.toml`, is the only place that lists each crate's 
 
 The existing `workspace_architecture` test and `check_code_shape.py` read the same file instead of their own tables. A violation that exists when a rule lands is recorded with its current measure and may only shrink. Adding a crate, an engine folder or a rule is one edit to the manifest, and the same checker runs in Connectome against the mirrored folder list.
 
+Enforced since 2026-11-25 by `scripts/ci/check_architecture.py`, which the candidate gate runs: every workspace member is listed once at its recorded folder; a normal or build dependency is in a lower tier, or in the same tier and listed above; a product crate uses an evaluation crate only in its tests; a crate name is `rrflow-<name>` or one of the four daemon crates; standalone rules 1 and 2; nothing depends on a crate marked for removal; no source module is named `utils`, `common`, `helpers` or `misc`. A crate not yet at its target name or folder records the target in the manifest (12 renames, 17 moves, one removal and one standalone exception on that date); the checker fails when a record no longer applies, and a crate without a record must conform. The code-shape check takes its limits and the digest owner from the manifest, and the `workspace_architecture` test finds every crate by package name and takes its list of components below the engine from the manifest. Rule 4 of 6.12 stays in that test.
+
+Not yet enforced, each with the package that adds it: an engine folder importing another component's crate (package 12, when the folders exist); development code outside `dev/` (the package that creates `dev/`, 6.7); `lib.rs` holding logic beyond its line limit (package 12); rule 3 of 6.12 as a CI job (package 5, when the storage crates move); the file paths in `build_execution_inventory.py` (391) and in the script tests, which each move still edits (package 4, the first move). Connectome does not run the checker yet (package 14).
+
 ### 6.12 One repository, standalone crates
 
 The owner decided on 2026-11-25 that the storage engines and foundation crates stay in this repository for now. There is one Cargo workspace, one `Cargo.lock` and one CI. A crate that could later become its own repository is marked `standalone` in `crates/architecture.toml` and obeys four rules, each a hard error in the checker:
@@ -393,9 +397,9 @@ The owner decided on 2026-11-25 that the storage engines and foundation crates s
 | Standalone crate | First-party dependencies today | Measured at `058f459a8` |
 |---|---|---|
 | `rrflow-kernel` | none | conforms to rules 1 and 2 |
-| `rrflow-arrow` | none | conforms to rules 1 and 2 |
+| `rrflow-arrow` | `rrflow-kernel` | conforms to rules 1 and 2 |
 | `rrflow-lsm` | `rrflow-kernel` | conforms; all 7 kernel references are to `digest` (a 249-line module) |
-| `rrflow-cld` | `rrflow-arrow`; dev-dependency `rrd-store` | breaks rule 2: `tests/stamped_history.rs` uses `RrflowKvStore` and `StorageEngine` |
+| `rrflow-cld` | `rrflow-arrow`, `rrflow-kernel`; dev-dependency `rrd-store` | breaks rule 2: `tests/stamped_history.rs` uses `RrflowKvStore` and `StorageEngine` |
 | `rrflow-kv` | not a crate yet (package 6) | `rrd-store`, which holds it, uses kernel product types (`RuntimeLogicalModel` 18 references, `ScopeId` 14) |
 
 Not standalone: `rrflow-tx`, `rrflow-db` and everything above them. `rrflow-vector` depends on `rrd-store` (8 references, 7 of them its `Error`), so the vector index cannot stand alone today.

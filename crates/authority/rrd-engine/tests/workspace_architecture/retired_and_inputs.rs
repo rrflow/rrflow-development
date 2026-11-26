@@ -40,8 +40,12 @@ pub(super) fn outward_cli_owns_current_auxiliary_executables_while_physical_crat
 #[test]
 pub(super) fn mcp_uses_the_authoritative_context_operation() {
     let metadata = workspace_metadata();
-    let mcp = fs::read_to_string(metadata.root.join("crates/adapters/rrflow-mcp/src/main.rs"))
-        .expect("MCP source must be readable");
+    let mcp = fs::read_to_string(
+        metadata
+            .root
+            .join(metadata.in_crate("rrflow-mcp", "src/main.rs")),
+    )
+    .expect("MCP source must be readable");
     assert!(
         mcp.contains("rrflow_context") && mcp.contains("authority.assemble_context"),
         "MCP must expose only the engine context assembly boundary"
@@ -80,7 +84,10 @@ pub(super) fn retired_service_name_is_absent() {
     let forbidden = ["Rrd", "Service"].concat();
     let mut violations = Vec::new();
 
-    for relative in ["crates/authority/rrd-engine", "crates/transport/rrd-server"] {
+    for relative in [
+        metadata.in_crate("rrd-engine", ""),
+        metadata.in_crate("rrd-server", ""),
+    ] {
         collect_rust_sources(&metadata.root.join(relative), &mut violations, &forbidden);
     }
 
@@ -103,7 +110,10 @@ pub(super) fn retired_fixed_reasoning_ledger_api_is_absent() {
         ["reasoning ", "ledger"].concat(),
     ];
     let mut violations = Vec::new();
-    for relative in ["crates/authority/rrd-engine", "crates/adapters/rrflow-cli"] {
+    for relative in [
+        metadata.in_crate("rrd-engine", ""),
+        metadata.in_crate("rrflow-cli", ""),
+    ] {
         for retired in &retired_symbols {
             collect_rust_sources(&metadata.root.join(relative), &mut violations, retired);
         }
@@ -131,8 +141,8 @@ pub(super) fn retired_function_authority_vocabulary_is_absent() {
     ];
     let mut violations = Vec::new();
     for relative in [
-        "crates/transport/rrd-contract",
-        "crates/authority/rrd-engine",
+        metadata.in_crate("rrd-contract", ""),
+        metadata.in_crate("rrd-engine", ""),
     ] {
         for retired in &retired_symbols {
             collect_rust_sources(&metadata.root.join(relative), &mut violations, retired);
@@ -147,7 +157,7 @@ pub(super) fn retired_function_authority_vocabulary_is_absent() {
     assert!(
         !metadata
             .root
-            .join("crates/authority/rrd-engine/src/engine")
+            .join(metadata.in_crate("rrd-engine", "src/engine"))
             .join(["auto", "mation.rs"].concat())
             .exists(),
         "the overloaded engine function module must be removed"
