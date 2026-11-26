@@ -49,19 +49,19 @@ full = [
 ]
 
 [dependencies]
-rrflow-cld = { path = "../../persistence/rrflow-cld", optional = true }
-rrd-attunement = { path = "../../compute/rrd-attunement", optional = true }
-rrd-contract = { path = "../../transport/rrd-contract", optional = true }
-rrd-engram = { path = "../rrd-engram", optional = true }
-rrd-security = { path = "../rrd-security", optional = true }
+rrflow-cld = { workspace = true, optional = true }
+rrd-attunement = { workspace = true, optional = true }
+rrd-contract = { workspace = true, optional = true }
+rrd-engram = { workspace = true, optional = true }
+rrd-security = { workspace = true, optional = true }
 rrflow-kernel.workspace = true
-rrd-query = { path = "../../compute/rrd-query", optional = true }
-rrd-store = { path = "../../persistence/rrd-store", optional = true }
-rrd-vector = { path = "../../compute/rrd-vector", optional = true }
-rrd-inference = { path = "../../compute/rrd-inference", optional = true }
-rrd-operator-knowledge = { path = "../../operations/rrd-operator-knowledge", optional = true }
-rrd-observation = { path = "../../operations/rrd-observation", optional = true }
-rrd-cluster = { path = "../../operations/rrd-cluster", features = ["object-transfer"], optional = true }
+rrd-query = { workspace = true, optional = true }
+rrd-store = { workspace = true, optional = true }
+rrd-vector = { workspace = true, optional = true }
+rrd-inference = { workspace = true, optional = true }
+rrd-operator-knowledge = { workspace = true, optional = true }
+rrd-observation = { workspace = true, optional = true }
+rrd-cluster = { workspace = true, features = ["object-transfer"], optional = true }
 base64 = { version = "0.22", optional = true }
 serde = { workspace = true, optional = true }
 serde_json = { workspace = true, optional = true }

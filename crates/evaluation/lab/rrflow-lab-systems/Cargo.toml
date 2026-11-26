@@ -7,9 +7,9 @@ publish.workspace = true
 description = "RRFlow Lab's systems under test: their descriptions, adapters and registry"
 
 [dependencies]
-rrd-client = { path = "../../../transport/rrd-client" }
-rrd-contract = { path = "../../../transport/rrd-contract" }
-rrflow-evaluation-core = { path = "../../rrflow-evaluation-core" }
+rrd-client = { workspace = true }
+rrd-contract = { workspace = true }
+rrflow-evaluation-core = { workspace = true }
 schemars = "1.2"
 serde = { workspace = true }
 serde_json = { workspace = true }

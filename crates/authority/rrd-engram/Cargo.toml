@@ -11,9 +11,9 @@ name = "rrd-deployment-catalog"
 path = "src/commands/rrd-deployment-catalog.rs"
 
 [dependencies]
-rrd-contract = { path = "../../transport/rrd-contract" }
+rrd-contract = { workspace = true }
 rrflow-kernel = { workspace = true }
-rrd-store = { path = "../../persistence/rrd-store" }
+rrd-store = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 sha2 = "0.11"

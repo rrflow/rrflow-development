@@ -12,7 +12,7 @@ pgvector-postgres = ["dep:native-tls", "dep:postgres", "dep:postgres-native-tls"
 
 [dependencies]
 rrflow-kernel = { workspace = true }
-rrd-vector = { path = "../../compute/rrd-vector" }
+rrd-vector = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 native-tls = { version = "0.2.14", optional = true }

@@ -15,7 +15,7 @@ cld-vortex = ["dep:vortex"]
 rrflow-kernel.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-rrflow-arrow = { path = "../../compute/rrflow-arrow" }
+rrflow-arrow = { workspace = true }
 arrow-array = "=59.2.0"
 arrow-schema = "=59.2.0"
 arrow-cast = "=59.2.0"
@@ -28,5 +28,5 @@ name = "columnar"
 harness = false
 
 [dev-dependencies]
-rrd-store = { path = "../rrd-store" }
+rrd-store = { workspace = true }
 tempfile = "3"

@@ -7,9 +7,9 @@ publish.workspace = true
 description = "rrflowQL syntax, catalog binding, deterministic planning, and execution."
 
 [dependencies]
-rrflow-arrow = { path = "../../compute/rrflow-arrow" }
+rrflow-arrow = { workspace = true }
 rrflow-kernel = { workspace = true }
-rrd-store = { path = "../../persistence/rrd-store" }
+rrd-store = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true, features = ["raw_value"] }
 datafusion = { version = "=55.0.0", default-features = false, features = ["recursive_protection"] }

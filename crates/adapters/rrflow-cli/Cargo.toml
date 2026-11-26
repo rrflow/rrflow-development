@@ -12,10 +12,10 @@ cld-parquet = ["rrd-engine/cld-parquet"]
 crash-test = ["rrd-engine/crash-test"]
 
 [dependencies]
-rrd-engine = { path = "../../authority/rrd-engine" }
-rrd-contract = { path = "../../transport/rrd-contract" }
-rrd-client = { path = "../../transport/rrd-client" }
-rrd-server = { path = "../../transport/rrd-server" }
+rrd-engine = { workspace = true, features = ["default"] }
+rrd-contract = { workspace = true }
+rrd-client = { workspace = true }
+rrd-server = { workspace = true }
 clap = { version = "4", features = ["derive", "env"] }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
@@ -27,15 +27,15 @@ sysinfo = "0.39.6"
 tokio = { version = "1", features = ["rt-multi-thread", "signal", "time"] }
 
 [dev-dependencies]
-rrflow-qualification-storage = { path = "../../evaluation/qualification/rrflow-qualification-storage" }
+rrflow-qualification-storage = { workspace = true }
 bytes = "1"
 parquet = { version = "=59.2.0", default-features = false, features = ["arrow"] }
-rrd-query = { path = "../../compute/rrd-query" }
+rrd-query = { workspace = true }
 tempfile = "3"
 rrflow-kernel = { workspace = true }
-rrd-store = { path = "../../persistence/rrd-store" }
-rrd-security = { path = "../../authority/rrd-security" }
-rrd-engram = { path = "../../authority/rrd-engram" }
+rrd-store = { workspace = true }
+rrd-security = { workspace = true }
+rrd-engram = { workspace = true }
 
 [build-dependencies]
 serde = { workspace = true }
