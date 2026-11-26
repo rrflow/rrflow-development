@@ -384,7 +384,7 @@ pub(super) fn first_party_dependencies_are_declared_once_in_the_root_manifest() 
 pub(super) fn components_below_the_engine_come_from_the_architecture_manifest() {
     let metadata = workspace_metadata();
     let components = metadata.components_below_the_engine();
-    for expected in ["rrflow-kernel", "rrd-lsm", "rrflow-cld", "rrd-store"] {
+    for expected in ["rrflow-kernel", "rrflow-lsm", "rrflow-cld", "rrd-store"] {
         assert!(
             components.contains(expected),
             "{expected} must be a component below the engine"

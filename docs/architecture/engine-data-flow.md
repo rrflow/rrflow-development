@@ -154,12 +154,12 @@ Implementation placement and present gap:
   currently select authenticated adjacency ranges and relation histories.
   `rrd-query/src/execute.rs` uses expanding semantic reads and materializes
   changes. On rrflowKV, the repository transaction's range scan calls
-  `rrd-lsm/src/transaction/scan.rs::bounded`, which already uses the C-06g
+  `rrflow-lsm/src/transaction/scan.rs::bounded`, which already uses the C-06g
   projected reader underneath, then copies the batches into owned rows. This
   is not a streamed Arrow query or proof that every point/other read uses the
   physical page cache.
-- `rrd-lsm/src/database.rs::begin_projected_read` and
-  `rrd-lsm/src/segment/reader.rs::ProjectedReadStream` own the existing C-06g
+- `rrflow-lsm/src/database.rs::begin_projected_read` and
+  `rrflow-lsm/src/segment/reader.rs::ProjectedReadStream` own the existing C-06g
   physical stream and page/lease accounting. F-01 must adapt it through the
   same stamped query boundary; F-03 must make relationship expansion consume
   that path. The F-01 provider and streamed relationship execution do not yet

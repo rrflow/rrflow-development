@@ -23,11 +23,11 @@ production-code changes stops this package and requires a separate repair plan.
 
 | Path | Responsibility |
 |---|---|
-| `crates/persistence/rrd-lsm/tests/support/projected_read_model.rs` | Decode bounded operation programs; maintain an implementation-independent version history; compare point, range, multi-range, keys-only, and key-value reads; inject typed failures; retain exact replay coordinates and resource counters. |
-| `crates/persistence/rrd-lsm/tests/projected_read_adversarial.rs` | Run fixed seeds plus directed all-boundary and stream-lifetime programs on stable Rust. |
-| `crates/persistence/rrd-lsm/examples/rrflowkv_stress.rs` | Run configurable deterministic histories outside unit-test case budgets and print one stable evidence summary. |
-| `crates/persistence/rrd-lsm/fuzz/fuzz_targets/projected_read_state_machine.rs` | Feed coverage-guided byte programs through the same independent oracle under libFuzzer and AddressSanitizer. |
-| `crates/persistence/rrd-lsm/fuzz/fuzz_targets/segment_v4_open.rs` | Mutate the frozen authenticated segment-v4 fixture; accept only a typed open error or a segment that remains fully readable. |
+| `crates/storage/rrflow-lsm/tests/support/projected_read_model.rs` | Decode bounded operation programs; maintain an implementation-independent version history; compare point, range, multi-range, keys-only, and key-value reads; inject typed failures; retain exact replay coordinates and resource counters. |
+| `crates/storage/rrflow-lsm/tests/projected_read_adversarial.rs` | Run fixed seeds plus directed all-boundary and stream-lifetime programs on stable Rust. |
+| `crates/storage/rrflow-lsm/examples/rrflowkv_stress.rs` | Run configurable deterministic histories outside unit-test case budgets and print one stable evidence summary. |
+| `crates/storage/rrflow-lsm/fuzz/fuzz_targets/projected_read_state_machine.rs` | Feed coverage-guided byte programs through the same independent oracle under libFuzzer and AddressSanitizer. |
+| `crates/storage/rrflow-lsm/fuzz/fuzz_targets/segment_v4_open.rs` | Mutate the frozen authenticated segment-v4 fixture; accept only a typed open error or a segment that remains fully readable. |
 | `scripts/check_version.py` | Keep product workspace/version parity exact while separately validating an explicitly marked, unpublished, `0.0.0`, self-contained Cargo-fuzz workspace below a declared product crate. |
 
 The nested fuzz project is not a root-workspace member or runtime dependency.
@@ -92,7 +92,7 @@ Observed bounded evidence on Linux:
   no crash, timeout, or oracle mismatch;
 - the segment-v4 fuzzer completed 4,096 sanitizer executions with no parser
   panic or accepted-but-unreadable segment; and
-- the complete `rrd-lsm` suite passed 94 tests and strict all-target Clippy;
+- the complete `rrflow-lsm` suite passed 94 tests and strict all-target Clippy;
   seven direct version-policy probes rejected malformed fuzz-package shapes;
   and the architecture, locked workspace compilation, documentation, workflow,
   version, inventory, knowledge-export, generated-surface, and formatting
@@ -106,13 +106,13 @@ those obligations.
 ## Reproduction
 
 ```text
-cargo test -p rrd-lsm --test projected_read_adversarial --locked -- --nocapture
-cargo run -p rrd-lsm --example rrflowkv_stress --locked -- --seed 14592251008053203194 --cases 16 --operations 96
-cargo +nightly fuzz check --fuzz-dir crates/persistence/rrd-lsm/fuzz
-cargo +nightly fuzz run --fuzz-dir crates/persistence/rrd-lsm/fuzz projected-read-state-machine crates/persistence/rrd-lsm/fuzz/corpus/projected_read_state_machine -- -runs=512 -max_len=256 -timeout=10
-cargo +nightly fuzz run --fuzz-dir crates/persistence/rrd-lsm/fuzz segment-v4-open crates/persistence/rrd-lsm/fuzz/corpus/segment_v4_open -- -runs=4096 -max_len=128 -timeout=10
-cargo test -p rrd-lsm --locked
-cargo clippy -p rrd-lsm --all-targets --locked -- -D warnings
+cargo test -p rrflow-lsm --test projected_read_adversarial --locked -- --nocapture
+cargo run -p rrflow-lsm --example rrflowkv_stress --locked -- --seed 14592251008053203194 --cases 16 --operations 96
+cargo +nightly fuzz check --fuzz-dir crates/storage/rrflow-lsm/fuzz
+cargo +nightly fuzz run --fuzz-dir crates/storage/rrflow-lsm/fuzz projected-read-state-machine crates/storage/rrflow-lsm/fuzz/corpus/projected_read_state_machine -- -runs=512 -max_len=256 -timeout=10
+cargo +nightly fuzz run --fuzz-dir crates/storage/rrflow-lsm/fuzz segment-v4-open crates/storage/rrflow-lsm/fuzz/corpus/segment_v4_open -- -runs=4096 -max_len=128 -timeout=10
+cargo test -p rrflow-lsm --locked
+cargo clippy -p rrflow-lsm --all-targets --locked -- -D warnings
 ruff check scripts/check_version.py
 python3 scripts/check_version.py
 cargo test -p rrd-engine --test workspace_architecture --locked

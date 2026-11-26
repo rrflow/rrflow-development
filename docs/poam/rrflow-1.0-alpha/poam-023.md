@@ -12,7 +12,7 @@ independently.
 
 `rrd-cluster` is a parallel pre-release authority: it defines loose
 cluster/node/zone/region/tenant/table/scope identities, persists a self-installed 4 MiB JSON
-topology catalogue, opens `rrd_lsm`, `RrflowKvStore`, and object paths directly, accepts raw
+topology catalogue, opens `rrflow_lsm`, `RrflowKvStore`, and object paths directly, accepts raw
 probe/`RuntimeCommit` commands through process and TLS control, derives artifact closure by
 replaying semantic history from cursor zero, stores transfer sessions/receipts in private
 JSON/filesystem markers, and emits `cluster.*` traces through direct-store helpers. Its

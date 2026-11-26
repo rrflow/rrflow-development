@@ -186,17 +186,17 @@ in this review. Paths not listed remain unreviewed for this coverage claim.
 
 | Complete file | Git blob at inspected revision |
 |---|---|
-| [crates/persistence/rrd-store/Cargo.toml](../../../../crates/persistence/rrd-store/Cargo.toml) | `4ca888256f0346449b0716f8f2cc506afe145710` |
-| [crates/persistence/rrd-store/src/lib.rs](../../../../crates/persistence/rrd-store/src/lib.rs) | `5431d1b33f64e34426406439bca09260d095035c` |
-| [crates/persistence/rrd-store/src/engine.rs](../../../../crates/persistence/rrd-store/src/engine.rs) | `a05820095f8845d7e5018f4ca60c1b8648159475` |
-| [crates/persistence/rrd-store/src/transaction.rs](../../../../crates/persistence/rrd-store/src/transaction.rs) | `0daa7b16252e066c322a2ef6cf1fa5cf63451a29` |
-| [crates/persistence/rrd-store/src/columnar.rs](https://github.com/rrflow/rrflow-development/blob/38d1b3b1ceaa09e0c8a1266c8591490cc03d5257/crates/persistence/rrd-store/src/columnar.rs) | `5caba76e5685f344db636d60f894b8dfd4215da2` |
-| [crates/persistence/rrd-store/src/columnar_reference.rs](https://github.com/rrflow/rrflow-development/blob/38d1b3b1ceaa09e0c8a1266c8591490cc03d5257/crates/persistence/rrd-store/src/columnar_reference.rs) | `05379d91470837095e883ab5be22663b93244530` |
-| [crates/persistence/rrd-store/src/columnar_reference/vortex.rs](https://github.com/rrflow/rrflow-development/blob/38d1b3b1ceaa09e0c8a1266c8591490cc03d5257/crates/persistence/rrd-store/src/columnar_reference/vortex.rs) | `20799f0b425844abe38d2cdeb2d7632bbe356778` |
-| [crates/persistence/rrd-store/src/columnar_reference/parquet.rs](https://github.com/rrflow/rrflow-development/blob/38d1b3b1ceaa09e0c8a1266c8591490cc03d5257/crates/persistence/rrd-store/src/columnar_reference/parquet.rs) | `44b4b6368ea539c32e78745dfaaca58a3917ee19` |
-| [crates/persistence/rrd-store/src/access/semantic_commit/plan.rs](../../../../crates/persistence/rrd-store/src/access/semantic_commit/plan.rs) | `fe23b861c6dac25ff715812950a7287621bfc85f` |
-| [crates/persistence/rrd-store/tests/columnar_reference.rs](https://github.com/rrflow/rrflow-development/blob/38d1b3b1ceaa09e0c8a1266c8591490cc03d5257/crates/persistence/rrd-store/tests/columnar_reference.rs) | `d7c6ce4b87d87d01991bc3239070d61e40c7bbe3` |
-| [crates/persistence/rrd-store/examples/columnar_comparison.rs](https://github.com/rrflow/rrflow-development/blob/38d1b3b1ceaa09e0c8a1266c8591490cc03d5257/crates/persistence/rrd-store/examples/columnar_comparison.rs) | `2768646f8e889e1da08bafb677c87f97e96c4985` |
+| [crates/persistence/rrd-store/Cargo.toml](../../../../crates/storage/rrd-store/Cargo.toml) | `4ca888256f0346449b0716f8f2cc506afe145710` |
+| [crates/persistence/rrd-store/src/lib.rs](../../../../crates/storage/rrd-store/src/lib.rs) | `5431d1b33f64e34426406439bca09260d095035c` |
+| [crates/persistence/rrd-store/src/engine.rs](../../../../crates/storage/rrd-store/src/engine.rs) | `a05820095f8845d7e5018f4ca60c1b8648159475` |
+| [crates/persistence/rrd-store/src/transaction.rs](../../../../crates/storage/rrd-store/src/transaction.rs) | `0daa7b16252e066c322a2ef6cf1fa5cf63451a29` |
+| [crates/persistence/rrd-store/src/columnar.rs](https://github.com/rrflow/rrflow-development/blob/38d1b3b1ceaa09e0c8a1266c8591490cc03d5257/crates/storage/rrd-store/src/columnar.rs) | `5caba76e5685f344db636d60f894b8dfd4215da2` |
+| [crates/persistence/rrd-store/src/columnar_reference.rs](https://github.com/rrflow/rrflow-development/blob/38d1b3b1ceaa09e0c8a1266c8591490cc03d5257/crates/storage/rrd-store/src/columnar_reference.rs) | `05379d91470837095e883ab5be22663b93244530` |
+| [crates/persistence/rrd-store/src/columnar_reference/vortex.rs](https://github.com/rrflow/rrflow-development/blob/38d1b3b1ceaa09e0c8a1266c8591490cc03d5257/crates/storage/rrd-store/src/columnar_reference/vortex.rs) | `20799f0b425844abe38d2cdeb2d7632bbe356778` |
+| [crates/persistence/rrd-store/src/columnar_reference/parquet.rs](https://github.com/rrflow/rrflow-development/blob/38d1b3b1ceaa09e0c8a1266c8591490cc03d5257/crates/storage/rrd-store/src/columnar_reference/parquet.rs) | `44b4b6368ea539c32e78745dfaaca58a3917ee19` |
+| [crates/persistence/rrd-store/src/access/semantic_commit/plan.rs](../../../../crates/storage/rrd-store/src/access/semantic_commit/plan.rs) | `fe23b861c6dac25ff715812950a7287621bfc85f` |
+| [crates/persistence/rrd-store/tests/columnar_reference.rs](https://github.com/rrflow/rrflow-development/blob/38d1b3b1ceaa09e0c8a1266c8591490cc03d5257/crates/storage/rrd-store/tests/columnar_reference.rs) | `d7c6ce4b87d87d01991bc3239070d61e40c7bbe3` |
+| [crates/persistence/rrd-store/examples/columnar_comparison.rs](https://github.com/rrflow/rrflow-development/blob/38d1b3b1ceaa09e0c8a1266c8591490cc03d5257/crates/storage/rrd-store/examples/columnar_comparison.rs) | `2768646f8e889e1da08bafb677c87f97e96c4985` |
 | [crates/compute/rrd-query/Cargo.toml](../../../../crates/compute/rrd-query/Cargo.toml) | `0e9e54c39c76f44cd38376f7f9843e921223b99e` |
 | [crates/compute/rrd-query/src/lib.rs](../../../../crates/compute/rrd-query/src/lib.rs) | `586e90bb431b88f91b1c9d005a0f28d19ff26eee` |
 | [crates/compute/rrd-query/src/pipeline.rs](../../../../crates/compute/rrd-query/src/pipeline.rs) | `2ba3afe5e8a0750477224588eb9c838a3495b306` |
@@ -206,5 +206,5 @@ in this review. Paths not listed remain unreviewed for this coverage claim.
 | [crates/authority/rrd-engine/src/engine/cold_history/state.rs](../../../../crates/authority/rrd-engine/src/engine/cold_history/state.rs) | `c837450a853caa9b8c9bfdce982f1717f0ecb279` |
 | [crates/authority/rrd-engine/src/engine/cold_history/files.rs](../../../../crates/authority/rrd-engine/src/engine/cold_history/files.rs) | `841660adc72621386799ed83e0c2148b7cb42cb6` |
 | [crates/authority/rrd-engine/src/engine/cold_history/maintain.rs](../../../../crates/authority/rrd-engine/src/engine/cold_history/maintain.rs) | `fee840afd1391c5277326f7c2d553e24f1a0bce0` |
-| [crates/persistence/rrd-lsm/Cargo.toml](../../../../crates/persistence/rrd-lsm/Cargo.toml) | `b67bf599f33463adf846d41c87a8e9d3a18df8f7` |
-| [crates/persistence/rrd-lsm/src/database/transactions.rs](../../../../crates/persistence/rrd-lsm/src/database/transactions.rs) | `0424df210803d96830f288e28c4df5068d255ada` |
+| [crates/persistence/rrd-lsm/Cargo.toml](../../../../crates/storage/rrflow-lsm/Cargo.toml) | `b67bf599f33463adf846d41c87a8e9d3a18df8f7` |
+| [crates/persistence/rrd-lsm/src/database/transactions.rs](../../../../crates/storage/rrflow-lsm/src/database/transactions.rs) | `0424df210803d96830f288e28c4df5068d255ada` |

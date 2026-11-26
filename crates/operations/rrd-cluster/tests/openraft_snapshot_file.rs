@@ -2,7 +2,7 @@
 
 use openraft::storage::RaftStateMachine;
 use rrd_cluster::{ClusterError, RrdRaftStore, RrdSnapshotData, ShardId};
-use rrd_lsm::SNAPSHOT_BUNDLE_MAX_BYTES;
+use rrflow_lsm::SNAPSHOT_BUNDLE_MAX_BYTES;
 use std::io::SeekFrom;
 use tokio::io::{AsyncSeekExt, AsyncWriteExt};
 

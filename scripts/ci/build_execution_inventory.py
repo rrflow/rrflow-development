@@ -22,7 +22,7 @@ PACKAGE_GATES: dict[str, tuple[str, ...]] = {
     "rrflow-kernel": ("A-07", "C-01", "C-02", "C-03", "H-05", "I-01"),
     "rrflow-arrow": ("F-01", "F-02"),
     "rrflow-cld": ("D-06", "F-06"),
-    "rrd-lsm": ("A-07", "C-02", "C-06", "C-07", "D-09", "J-02", "J-04"),
+    "rrflow-lsm": ("A-07", "C-02", "C-06", "C-07", "D-09", "J-02", "J-04"),
     "rrd-store": (
         "A-07",
         "C-01",
@@ -222,7 +222,7 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "I-01",
     ),
     "crates/foundation/rrflow-kernel/tests/golden.rs": ("C-01", "J-01"),
-    "crates/persistence/rrd-lsm/src/database.rs": (
+    "crates/storage/rrflow-lsm/src/database.rs": (
         "C-02",
         "C-04",
         "C-06",
@@ -232,15 +232,15 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "F-06",
         "J-04",
     ),
-    "crates/persistence/rrd-lsm/src/manifest.rs": ("C-05", "C-06", "C-07", "D-01"),
-    "crates/persistence/rrd-lsm/src/memtable.rs": (
+    "crates/storage/rrflow-lsm/src/manifest.rs": ("C-05", "C-06", "C-07", "D-01"),
+    "crates/storage/rrflow-lsm/src/memtable.rs": (
         "C-02",
         "C-04",
         "C-06",
         "C-07",
         "F-01",
     ),
-    "crates/persistence/rrd-lsm/src/segment.rs": (
+    "crates/storage/rrflow-lsm/src/segment.rs": (
         "C-04",
         "C-05",
         "C-06",
@@ -250,7 +250,7 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "F-05",
         "J-04",
     ),
-    "crates/persistence/rrd-lsm/src/segment/format.rs": (
+    "crates/storage/rrflow-lsm/src/segment/format.rs": (
         "C-05",
         "C-06",
         "C-07",
@@ -258,10 +258,10 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "F-02",
         "J-04",
     ),
-    "crates/persistence/rrd-lsm/src/wal.rs": ("C-02", "C-05", "C-07", "J-04"),
-    "crates/persistence/rrd-lsm/src/write_diagnostics.rs": ("C-07", "J-04"),
-    "crates/persistence/rrd-store/src/engine.rs": ("C-02", "C-03", "C-04"),
-    "crates/persistence/rrd-store/src/keyspaces.rs": (
+    "crates/storage/rrflow-lsm/src/wal.rs": ("C-02", "C-05", "C-07", "J-04"),
+    "crates/storage/rrflow-lsm/src/write_diagnostics.rs": ("C-07", "J-04"),
+    "crates/storage/rrd-store/src/engine.rs": ("C-02", "C-03", "C-04"),
+    "crates/storage/rrd-store/src/keyspaces.rs": (
         "C-01",
         "C-03",
         "C-04",
@@ -271,7 +271,7 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "E-03",
         "E-04",
     ),
-    "crates/persistence/rrd-store/src/rrflow_kv.rs": (
+    "crates/storage/rrd-store/src/rrflow_kv.rs": (
         "C-01",
         "C-02",
         "C-03",
@@ -281,28 +281,28 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "D-01",
         "J-04",
     ),
-    "crates/persistence/rrd-store/src/outcome.rs": ("C-02", "C-03"),
-    "crates/persistence/rrd-store/src/control.rs": ("C-03", "H-05"),
-    "crates/persistence/rrd-store/examples/engine_benchmark.rs": (
+    "crates/storage/rrd-store/src/outcome.rs": ("C-02", "C-03"),
+    "crates/storage/rrd-store/src/control.rs": ("C-03", "H-05"),
+    "crates/storage/rrd-store/examples/engine_benchmark.rs": (
         "C-02",
         "C-04",
         "C-06",
         "C-07",
         "J-04",
     ),
-    "crates/persistence/rrd-store/examples/ai_hotset_benchmark.rs": (
+    "crates/storage/rrd-store/examples/ai_hotset_benchmark.rs": (
         "C-04",
         "C-06",
         "F-05",
         "J-04",
     ),
-    "crates/persistence/rrd-store/tests/rrflow_kv_model_soak.rs": (
+    "crates/storage/rrd-store/tests/rrflow_kv_model_soak.rs": (
         "C-02",
         "C-03",
         "C-05",
     ),
-    "crates/persistence/rrd-store/tests/rrflow_kv_open.rs": ("C-05",),
-    "crates/persistence/rrd-store/tests/rrflow_kv_operator.rs": (
+    "crates/storage/rrd-store/tests/rrflow_kv_open.rs": ("C-05",),
+    "crates/storage/rrd-store/tests/rrflow_kv_operator.rs": (
         "C-03",
         "C-04",
         "C-07",
@@ -327,7 +327,7 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "H-08",
         "H-12",
     ),
-    "crates/persistence/rrflow-cld/src/interchange.rs": (
+    "crates/storage/rrflow-cld/src/interchange.rs": (
         "B-05",
         "D-06",
         "E-01",
@@ -784,25 +784,25 @@ PLANNED_PATHS: dict[str, tuple[str, ...]] = {
     "crates/authority/rrd-engine/src/engine/project_link.rs": ("H-10",),
     "scripts/ci/check_change_plan.py": ("J-01", "J-02"),
     "scripts/ci/test_change_plan.py": ("J-01", "J-02"),
-    "crates/persistence/rrd-lsm/src/lib.rs": ("C-02", "C-07", "D-01"),
-    "crates/persistence/rrd-lsm/tests/inspection.rs": (
+    "crates/storage/rrflow-lsm/src/lib.rs": ("C-02", "C-07", "D-01"),
+    "crates/storage/rrflow-lsm/tests/inspection.rs": (
         "C-07",
         "D-01",
         "D-11",
         "J-02",
     ),
-    "crates/persistence/rrd-store/src/lib.rs": ("C-03", "D-01"),
-    "crates/persistence/rrd-store/src/repository/control.rs": (
+    "crates/storage/rrd-store/src/lib.rs": ("C-03", "D-01"),
+    "crates/storage/rrd-store/src/repository/control.rs": (
         "C-03",
         "D-01",
         "H-05",
     ),
-    "crates/persistence/rrd-store/src/repository/runtime.rs": (
+    "crates/storage/rrd-store/src/repository/runtime.rs": (
         "C-03",
         "D-01",
         "H-05",
     ),
-    "crates/persistence/rrd-store/tests/installed_lifecycle.rs": (
+    "crates/storage/rrd-store/tests/installed_lifecycle.rs": (
         "C-03",
         "D-01",
         "J-02",
@@ -1235,37 +1235,37 @@ PLANNED_PATHS: dict[str, tuple[str, ...]] = {
     ),
     "crates/compute/rrd-attunement/tests/incremental_parse.rs": ("D-04",),
     "crates/compute/rrd-attunement/tests/phases.rs": ("D-05",),
-    "crates/persistence/rrd-lsm/src/transaction.rs": ("C-02",),
-    "crates/persistence/rrd-lsm/tests/transaction_conformance.rs": ("C-02",),
-    "crates/persistence/rrd-lsm/tests/hybrid_segment.rs": ("C-06", "C-07"),
-    "crates/persistence/rrd-lsm/tests/mapped_page_lifetime.rs": ("C-07", "F-01"),
-    "crates/persistence/rrd-lsm/tests/write_diagnostics.rs": ("C-07", "J-04"),
-    "crates/persistence/rrd-lsm/src/segment.rs": ("C-06",),
-    "crates/persistence/rrd-lsm/src/segment/format.rs": ("C-06", "C-07"),
-    "crates/persistence/rrd-lsm/src/segment/spine.rs": ("C-06", "C-07"),
-    "crates/persistence/rrd-lsm/src/segment/column.rs": ("C-06", "C-07"),
-    "crates/persistence/rrd-lsm/src/segment/reader.rs": ("C-06", "C-07"),
-    "crates/persistence/rrd-lsm/src/segment/writer.rs": ("C-06", "C-07"),
-    "crates/persistence/rrd-lsm/src/segment/cache.rs": ("C-06", "C-07", "F-05"),
-    "crates/persistence/rrd-store/src/key_codec.rs": ("C-01",),
-    "crates/persistence/rrd-store/src/transaction.rs": ("C-02", "C-03"),
-    "crates/persistence/rrd-store/tests/key_codec.rs": ("C-01",),
-    "crates/persistence/rrd-store/tests/storage_profile_conformance.rs": ("C-02",),
-    "crates/persistence/rrd-store/tests/semantic_commit_atomicity.rs": ("C-03",),
-    "crates/persistence/rrd-store/tests/native_index_commit.rs": (
+    "crates/storage/rrflow-lsm/src/transaction.rs": ("C-02",),
+    "crates/storage/rrflow-lsm/tests/transaction_conformance.rs": ("C-02",),
+    "crates/storage/rrflow-lsm/tests/hybrid_segment.rs": ("C-06", "C-07"),
+    "crates/storage/rrflow-lsm/tests/mapped_page_lifetime.rs": ("C-07", "F-01"),
+    "crates/storage/rrflow-lsm/tests/write_diagnostics.rs": ("C-07", "J-04"),
+    "crates/storage/rrflow-lsm/src/segment.rs": ("C-06",),
+    "crates/storage/rrflow-lsm/src/segment/format.rs": ("C-06", "C-07"),
+    "crates/storage/rrflow-lsm/src/segment/spine.rs": ("C-06", "C-07"),
+    "crates/storage/rrflow-lsm/src/segment/column.rs": ("C-06", "C-07"),
+    "crates/storage/rrflow-lsm/src/segment/reader.rs": ("C-06", "C-07"),
+    "crates/storage/rrflow-lsm/src/segment/writer.rs": ("C-06", "C-07"),
+    "crates/storage/rrflow-lsm/src/segment/cache.rs": ("C-06", "C-07", "F-05"),
+    "crates/storage/rrd-store/src/key_codec.rs": ("C-01",),
+    "crates/storage/rrd-store/src/transaction.rs": ("C-02", "C-03"),
+    "crates/storage/rrd-store/tests/key_codec.rs": ("C-01",),
+    "crates/storage/rrd-store/tests/storage_profile_conformance.rs": ("C-02",),
+    "crates/storage/rrd-store/tests/semantic_commit_atomicity.rs": ("C-03",),
+    "crates/storage/rrd-store/tests/native_index_commit.rs": (
         "C-03",
         "E-02",
         "E-03",
         "E-04",
     ),
-    "crates/persistence/rrd-store/tests/direct_read_paths.rs": ("C-04",),
-    "crates/persistence/rrd-store/src/access/mod.rs": ("C-03", "C-04"),
-    "crates/persistence/rrd-store/src/access/runtime_state.rs": ("C-03", "C-04"),
-    "crates/persistence/rrd-store/src/access/semantic_commit.rs": ("C-03",),
-    "crates/persistence/rrd-store/src/access/record.rs": ("C-04",),
-    "crates/persistence/rrd-store/src/access/relation.rs": ("C-04", "E-01"),
-    "crates/persistence/rrd-store/src/access/index.rs": ("C-03", "E-02", "E-03"),
-    "crates/persistence/rrd-store/src/access/vector.rs": ("C-03", "E-04"),
+    "crates/storage/rrd-store/tests/direct_read_paths.rs": ("C-04",),
+    "crates/storage/rrd-store/src/access/mod.rs": ("C-03", "C-04"),
+    "crates/storage/rrd-store/src/access/runtime_state.rs": ("C-03", "C-04"),
+    "crates/storage/rrd-store/src/access/semantic_commit.rs": ("C-03",),
+    "crates/storage/rrd-store/src/access/record.rs": ("C-04",),
+    "crates/storage/rrd-store/src/access/relation.rs": ("C-04", "E-01"),
+    "crates/storage/rrd-store/src/access/index.rs": ("C-03", "E-02", "E-03"),
+    "crates/storage/rrd-store/src/access/vector.rs": ("C-03", "E-04"),
     "crates/transport/rrd-contract/fixtures/graphql-equivalence-v1.json": ("B-05",),
     "crates/compute/rrd-query/src/graphql.rs": ("B-05",),
     "crates/compute/rrd-query/tests/graphql_equivalence.rs": ("B-05",),
@@ -1587,8 +1587,8 @@ PLANNED_PATHS: dict[str, tuple[str, ...]] = {
     "crates/adapters/rrflow-devforge/tests/mounts.rs": ("D-08",),
     "crates/adapters/rrflow-devforge/tests/accounting.rs": ("D-09",),
     "crates/adapters/rrflow-devforge/tests/hibernation.rs": ("D-10",),
-    "crates/persistence/rrd-lsm/src/inspection.rs": ("D-01", "C-07", "D-11"),
-    "crates/persistence/rrd-store/src/integrity.rs": ("D-01", "D-11"),
+    "crates/storage/rrflow-lsm/src/inspection.rs": ("D-01", "C-07", "D-11"),
+    "crates/storage/rrd-store/src/integrity.rs": ("D-01", "D-11"),
     "crates/adapters/rrflow-cli/src/repair.rs": ("D-11",),
     "crates/adapters/rrflow-cli/src/automation_install.rs": ("I-06",),
     "crates/adapters/rrflow-cli/tests/installed_lifecycle/main.rs": (
@@ -1638,7 +1638,7 @@ PLANNED_PATHS: dict[str, tuple[str, ...]] = {
     "docs/evidence/comparisons/README.md": ("KB-05", "KB-08"),
     "docs/evidence/comparisons/rrflow-surrealdb-claim-differential.md": ("KB-05",),
     "docs/evidence/test-plans/README.md": ("KB-05", "KB-08"),
-    ".github/workflows/rrd-lsm-benchmark.yml": ("C-07", "J-02", "J-04"),
+    ".github/workflows/rrflow-lsm-benchmark.yml": ("C-07", "J-02", "J-04"),
     "docs/evidence/change-journals/gate-c/c-07-native-batch-write-tail-attribution.md": (
         "C-07",
         "J-04",

@@ -14,14 +14,14 @@ them; they are not a compatibility requirement or a current acceptance oracle.
 
 | Boundary | Checkout source | Current responsibility |
 |---|---|---|
-| Semantic storage | [`engine_benchmark.rs`](../../../crates/persistence/rrd-store/examples/engine_benchmark.rs) | Measures authoritative claim append, bounded replay, full-corpus verification, close/reopen recovery, maintenance, RSS, and physical footprint through `RrflowKvStore`; opt-in native write diagnostics retain raw batch phases and Linux thread-resource deltas. |
-| AI storage access | [`ai_hotset_benchmark.rs`](../../../crates/persistence/rrd-store/examples/ai_hotset_benchmark.rs) | Measures hot, cold, missing, historical, and metadata-fan-out access with repeated, structured, entropy-like, and embedding-shaped payloads over the underlying rrflowKV LSM. |
-| Physical-policy integration evidence | [`rrflowkv_physical_policy.rs`](../../../crates/persistence/rrd-lsm/examples/rrflowkv_physical_policy.rs) | Compares real segment-v6 none/adaptive-LZ4 output, independently measures laboratory Zstandard over the same logical pages, verifies production persisted row-group Bloom filters and normal reopen I/O, retains exact-byte cache trace simulation as screening history, and compares production exact versus scope-aware scan-resistant caches on the same persisted eight-family corpus. Filters, adaptive LZ4, and cache admission are integrated; Zstandard and value placement remain non-production. |
-| Persistent model oracle | [`rrflow_kv_model_soak.rs`](../../../crates/persistence/rrd-store/tests/rrflow_kv_model_soak.rs) | Compares randomized rrflowKV mutations, snapshots, compaction, and reopen behavior with an independent in-memory model. |
-| Retained historical storage provenance | [`benchmark_evidence.rs`](../../../crates/persistence/rrd-store/tests/benchmark_evidence.rs) | Parses the 35 retained rrflowKV/Fjall-era storage artifacts, requires both passing and failing recorded verdicts, and executes no current performance workload. |
-| Cross-engine comparison | [`storage_comparison.rs`](../../../crates/persistence/rrd-store/examples/storage_comparison.rs) over [`fjall_baseline.rs`](../../../crates/persistence/rrd-store/src/fjall_baseline.rs) | Runs the semantic workload through the `StorageEngine` port on rrflowKV and on the Fjall baseline, in isolated child processes, and reports both and their ratios; needs the `fjall-baseline` feature |
-| Columnar reference modules | [`columnar_comparison.rs`](../../../crates/persistence/rrflow-cld/examples/columnar_comparison.rs) over [`columnar.rs`](../../../crates/persistence/rrflow-cld/src/columnar.rs) | Puts one cold-history table through the Parquet and Vortex reference modules behind the columnar port and reports each one's encoded size and its encode, full-decode and two-column-decode times; needs the `cld-parquet` and `cld-vortex` features. It has no native rrflowCLD arm yet |
-| Scheduled diagnostics | [`rrd-lsm-benchmark.yml`](../../../.github/workflows/rrd-lsm-benchmark.yml) | Runs the semantic and AI-access matrices and the rrflowKV-against-Fjall comparison on `ubuntu-latest`, enables native write-phase capture for every semantic profile, writes every comparison ratio to the job summary, and uploads raw per-run artifacts. |
+| Semantic storage | [`engine_benchmark.rs`](../../../crates/storage/rrd-store/examples/engine_benchmark.rs) | Measures authoritative claim append, bounded replay, full-corpus verification, close/reopen recovery, maintenance, RSS, and physical footprint through `RrflowKvStore`; opt-in native write diagnostics retain raw batch phases and Linux thread-resource deltas. |
+| AI storage access | [`ai_hotset_benchmark.rs`](../../../crates/storage/rrd-store/examples/ai_hotset_benchmark.rs) | Measures hot, cold, missing, historical, and metadata-fan-out access with repeated, structured, entropy-like, and embedding-shaped payloads over the underlying rrflowKV LSM. |
+| Physical-policy integration evidence | [`rrflowkv_physical_policy.rs`](../../../crates/storage/rrflow-lsm/examples/rrflowkv_physical_policy.rs) | Compares real segment-v6 none/adaptive-LZ4 output, independently measures laboratory Zstandard over the same logical pages, verifies production persisted row-group Bloom filters and normal reopen I/O, retains exact-byte cache trace simulation as screening history, and compares production exact versus scope-aware scan-resistant caches on the same persisted eight-family corpus. Filters, adaptive LZ4, and cache admission are integrated; Zstandard and value placement remain non-production. |
+| Persistent model oracle | [`rrflow_kv_model_soak.rs`](../../../crates/storage/rrd-store/tests/rrflow_kv_model_soak.rs) | Compares randomized rrflowKV mutations, snapshots, compaction, and reopen behavior with an independent in-memory model. |
+| Retained historical storage provenance | [`benchmark_evidence.rs`](../../../crates/storage/rrd-store/tests/benchmark_evidence.rs) | Parses the 35 retained rrflowKV/Fjall-era storage artifacts, requires both passing and failing recorded verdicts, and executes no current performance workload. |
+| Cross-engine comparison | [`storage_comparison.rs`](../../../crates/storage/rrd-store/examples/storage_comparison.rs) over [`fjall_baseline.rs`](../../../crates/storage/rrd-store/src/fjall_baseline.rs) | Runs the semantic workload through the `StorageEngine` port on rrflowKV and on the Fjall baseline, in isolated child processes, and reports both and their ratios; needs the `fjall-baseline` feature |
+| Columnar reference modules | [`columnar_comparison.rs`](../../../crates/storage/rrflow-cld/examples/columnar_comparison.rs) over [`columnar.rs`](../../../crates/storage/rrflow-cld/src/columnar.rs) | Puts one cold-history table through the Parquet and Vortex reference modules behind the columnar port and reports each one's encoded size and its encode, full-decode and two-column-decode times; needs the `cld-parquet` and `cld-vortex` features. It has no native rrflowCLD arm yet |
+| Scheduled diagnostics | [`rrflow-lsm-benchmark.yml`](../../../.github/workflows/rrflow-lsm-benchmark.yml) | Runs the semantic and AI-access matrices and the rrflowKV-against-Fjall comparison on `ubuntu-latest`, enables native write-phase capture for every semantic profile, writes every comparison ratio to the job summary, and uploads raw per-run artifacts. |
 
 These programs cover physical and semantic storage only. They do not exercise
 the complete `RrdEngine` authorization, rrflowQL, graph, BM25, vector, RRF,
@@ -276,7 +276,7 @@ Run the current C-06j fixed-machine physical-policy integration proof from a
 clean implementation revision:
 
 ```bash
-cargo run --release --locked -p rrd-lsm \
+cargo run --release --locked -p rrflow-lsm \
   --features physical-policy-lab \
   --example rrflowkv-physical-policy -- \
   --seed 14592251008053203194 \
@@ -299,7 +299,7 @@ cargo test -p rrd-store --test rrflow_kv_model_soak --locked
 cargo test -p rrd-store --test durability --locked
 cargo test -p rrd-store --test snapshot --locked
 cargo test -p rrd-store --test benchmark_evidence --locked
-cargo test -p rrd-lsm --test write_diagnostics --locked
+cargo test -p rrflow-lsm --test write_diagnostics --locked
 cargo test -p rrd-store --example engine_benchmark --locked
 ```
 

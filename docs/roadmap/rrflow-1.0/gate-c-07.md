@@ -823,8 +823,8 @@ CI cannot stand in for an unrun native exhaustion or sustained-capacity case.
 Current baseline commands are executable:
 
 ```text
-cargo test -p rrd-lsm --test maintenance --test failure_matrix --test compaction
-cargo test -p rrd-lsm
+cargo test -p rrflow-lsm --test maintenance --test failure_matrix --test compaction
+cargo test -p rrflow-lsm
 python -X utf8 scripts/ci/check_documentation.py
 python -X utf8 scripts/knowledge/render_navigation.py --check
 python -X utf8 scripts/ci/build_execution_inventory.py --check

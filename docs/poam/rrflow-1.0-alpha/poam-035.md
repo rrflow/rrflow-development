@@ -371,7 +371,7 @@ At `b6052feef8df2aa86e5a866ff0c8da196bc8f2ab`, accepted C-06 supplies the
 physical reader/format/cache and D-01 supplies native installed lifecycle
 evidence. The [C-07 planning baseline](../../evidence/change-journals/gate-c/c-07-planning-baseline.md)
 confirms passing maintenance, compaction and failure fixtures, followed by
-the full local `rrd-lsm` suite. These do not complete installed storage
+the full local `rrflow-lsm` suite. These do not complete installed storage
 qualification:
 
 - `FailureMode::StorageFull`/`Crash` return injected errors at logical

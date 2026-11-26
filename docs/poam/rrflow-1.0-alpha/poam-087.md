@@ -40,7 +40,7 @@ merging. Its journal reached `main` and its entry did not, and the number went t
 another deficiency. Restored on 2026-11-19 with the text unchanged above. The
 measurements are the 2026-11-08 ones and were not repeated. The cause was read
 again on `main` `3fb03316a`: `try_maintenance_step` in
-`crates/persistence/rrd-store/src/rrflow_kv/store.rs` still takes the database's
+`crates/storage/rrd-store/src/rrflow_kv/store.rs` still takes the database's
 write lock for the whole maintenance step.
 
 ## Impact

@@ -108,7 +108,7 @@ def cleanup_owned_mount_fixture(fixture: Path) -> None:
 
 def main() -> None:
     require(sys.platform in {"linux", "darwin"}, "mount qualification requires native Linux or macOS")
-    build = run("cargo", "test", "--locked", "-p", "rrd-lsm", "--test", "filesystem",
+    build = run("cargo", "test", "--locked", "-p", "rrflow-lsm", "--test", "filesystem",
                 "--no-run", "--message-format=json", timeout=600, process_group=True)
     artifacts = {
         Path(row["executable"]).resolve(strict=True)

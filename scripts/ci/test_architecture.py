@@ -89,8 +89,8 @@ class CrateRuleTests(unittest.TestCase):
         self.assert_one(self.problems(crates=(*ALL, {**store, "target_name": "rrflow-kv"}), members=members), "already a workspace member")
 
     def test_a_folder_must_belong_to_the_tier_or_record_its_target(self):
-        kv = {**KV, "folder": "crates/persistence"}
-        members = {**MEMBERS, "rrflow-kv": member("crates/persistence/rrflow-kv", normal=["rrflow-lsm"])}
+        kv = {**KV, "folder": "crates/elsewhere"}
+        members = {**MEMBERS, "rrflow-kv": member("crates/elsewhere/rrflow-kv", normal=["rrflow-lsm"])}
         self.assert_one(self.problems(crates=(KERNEL, LSM, kv, ENGINE, LAB), members=members), "move it or record `target_folder`")
         recorded = {**kv, "target_folder": "crates/storage"}
         self.assertEqual(self.problems(crates=(KERNEL, LSM, recorded, ENGINE, LAB), members=members), [])

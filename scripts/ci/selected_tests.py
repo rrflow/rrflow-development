@@ -67,8 +67,8 @@ SELECTORS: tuple[Selector, ...] = (
     Selector("rrflow-cli", "installed_reopen", NATIVE_SAMPLE_ABRUPT, owner="native sample tests"),
     Selector("rrflow-cli", "installed_reopen", NATIVE_SAMPLE_TIMEOUT, owner="native sample tests"),
     Selector("rrflow-cli", "installed_reopen", NATIVE_SAMPLE_HELPER, owner="native sample tests"),
-    Selector("rrd-lsm", "filesystem", MOUNT_CROSSING_LINUX, owner="run_filesystem_containment.py"),
-    Selector("rrd-lsm", "filesystem", MOUNT_CROSSING_OTHER, owner="run_filesystem_containment.py"),
+    Selector("rrflow-lsm", "filesystem", MOUNT_CROSSING_LINUX, owner="run_filesystem_containment.py"),
+    Selector("rrflow-lsm", "filesystem", MOUNT_CROSSING_OTHER, owner="run_filesystem_containment.py"),
 )
 
 # Targets whose complete test set CI requires to equal a declared set.

@@ -133,7 +133,7 @@ The planner chooses paths by condition and records the matched row, the rejected
 | Scalar or commit index | equality or range on an index's leading field, and the index watermark covers the read stamp | `ql.index.max_selectivity` (default 1.0, observed) | both kept the index at 100% selectivity on 909 rows |
 | Full scan | no usable index | `ql.scan.max_keys` (default 100,000); a refusal names the budget | both full-scanned 17,021 records when no index existed |
 | BM25 | text predicate or a context lexical stage | `ql.bm25.min_should_match` (default 1 term, OR-ranked; observed), `lexical.identifiers` | Arango ranks OR terms; Surreal's AND returned 0 rows for a sentence |
-| Filter pushdown | a filter on an indexed field beside text or vector search | `ql.pushdown.enabled` (default on) | both pushed the crate filter into the text index; Surreal pushed it into HNSW; this put `rrd-lsm/src/database.rs` first |
+| Filter pushdown | a filter on an indexed field beside text or vector search | `ql.pushdown.enabled` (default on) | both pushed the crate filter into the text index; Surreal pushed it into HNSW; this put `rrflow-lsm/src/database.rs` first |
 | Vector | `NEAR` or a context semantic stage with an admitted embedding binding | `vector.recall_target` (default 0.95, owner decision of 2026-11-11), then cost within that target | Arango `use-vector-index`, Surreal `KnnScan` |
 | Graph traversal | a relation question or seed expansion | `graph.max_depth` and `graph.max_width` (default 3 and 3, Think-on-Graph), relation weights | cost grows with edges touched: 17 reads at 1 hop, 37 at 2 |
 | rrflowLSM hot | durable mutations, point and index reads, and the uncovered portion of a stamped read selected by DB | `storage.lsm.*` (K2 exposes tunable values) | — |
@@ -314,7 +314,7 @@ Order: K0, then K1, K2, K3, K4. K5, K6 and K7 follow; K7 can start once K2 has l
 
 Use the [installed HTTP correction/restart test](../../crates/transport/rrd-server/tests/http_process/query_transaction.rs)
 as the history oracle for both storage backends. Extend the
-[columnar reference conformance suite](../../crates/persistence/rrflow-cld/tests/columnar_backends.rs)
+[columnar reference conformance suite](../../crates/storage/rrflow-cld/tests/columnar_backends.rs)
 to the same installed generation, including digest and source-scope checks,
 corrupt input, deadlines, byte limits and empty pages. For the subsequent
 focus test, pivot away, apply a correction, then return with an active reader

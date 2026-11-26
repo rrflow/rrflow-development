@@ -87,7 +87,7 @@ Every answer carries its explanation: the seeds, each path's contribution to eac
 
 Rules for the loop:
 
-- **LSM and CLD settings join the same loop** once J9 makes them settings. `rrflow-lab-tuning` links `rrd-lsm`, `rrd-vector` and the CLD tier directly for component measurements, as the evaluation rules allow.
+- **LSM and CLD settings join the same loop** once J9 makes them settings. `rrflow-lab-tuning` links `rrflow-lsm`, `rrd-vector` and the CLD tier directly for component measurements, as the evaluation rules allow.
 - **Answer quality needs a judge.** Faithfulness and answer correctness are judged by a reader and judge model. The repository records that none may run until the owner chooses one (D-02 plan).
 
 ### 4.6 Layman-first configuration

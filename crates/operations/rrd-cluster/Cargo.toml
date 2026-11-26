@@ -9,7 +9,7 @@ description = "Canonical Multi-AZ contracts and deterministic failure simulation
 [features]
 default = []
 object-transfer = ["dep:rrd-store"]
-openraft-adapter = ["dep:openraft", "dep:rrd-lsm", "dep:tokio", "object-transfer"]
+openraft-adapter = ["dep:openraft", "dep:rrflow-lsm", "dep:tokio", "object-transfer"]
 openraft-transport = [
     "openraft-adapter",
     "dep:rustls",
@@ -20,7 +20,7 @@ openraft-transport = [
 
 [dependencies]
 rrflow-kernel = { workspace = true }
-rrd-lsm = { workspace = true, optional = true }
+rrflow-lsm = { workspace = true, optional = true }
 rrd-store = { workspace = true, optional = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

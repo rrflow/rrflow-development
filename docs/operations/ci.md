@@ -809,7 +809,7 @@ external GitHub setting cannot be proven by this checkout.
 
 ## Scheduled storage diagnostics
 
-`.github/workflows/rrd-lsm-benchmark.yml` is separate from candidate CI. It
+`.github/workflows/rrflow-lsm-benchmark.yml` is separate from candidate CI. It
 runs manually and weekly on `ubuntu-latest`, uses the same immutable checkout,
 toolchain, and cache action revisions, and uploads raw semantic-storage,
 AI-access and rrflowKV-against-Fjall comparison results with a pinned artifact
@@ -826,14 +826,14 @@ turn it into performance or competitive evidence.
 ## Diagnostic, performance, and fault lanes
 
 The Linux installed lane and Windows/macOS portability lanes run
-`cargo test -p rrd-lsm --lib fault_io --locked -- --nocapture` with a five-minute
+`cargo test -p rrflow-lsm --lib fault_io --locked -- --nocapture` with a five-minute
 step limit. This C-07b unit corpus wraps native file calls with deterministic
 faults, then reconstructs a temporary engram from an independent stable-byte
 and directory-entry model. Logs retain call/case counts and failing ordinals.
 The model has fixed byte/file/event bounds and exercises compound recovery
 failures. It is I/O-model evidence on each host, not native process-death,
 ENOSPC, OS-crash, device-cache or physical power-loss qualification. The fault
-controller is compiled only into `rrd-lsm` unit tests; no product feature or
+controller is compiled only into `rrflow-lsm` unit tests; no product feature or
 runtime setting enables it.
 
 The same filter also executes C-07c's `fault_io::crash` native process corpus.

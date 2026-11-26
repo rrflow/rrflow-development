@@ -22,7 +22,7 @@
   "mod_rs": {
    "crates/authority/rrd-engine": 4,
    "crates/evaluation/lab/rrflow-lab-systems": 1,
-   "crates/persistence/rrd-store": 2,
+   "crates/storage/rrd-store": 2,
    "crates/transport/rrd-server": 2
   },
   "path_attribute": {
@@ -30,9 +30,9 @@
    "crates/authority/rrd-engine": 1,
    "crates/compute/rrd-query": 1,
    "crates/evaluation/qualification/rrflow-qualification-storage": 6,
-   "crates/persistence/rrd-lsm": 5,
-   "crates/persistence/rrd-lsm/fuzz/fuzz_targets": 1,
-   "crates/persistence/rrd-store": 5,
+   "crates/storage/rrflow-lsm": 5,
+   "crates/storage/rrflow-lsm/fuzz/fuzz_targets": 1,
+   "crates/storage/rrd-store": 5,
    "crates/transport/rrd-contract": 1
   },
   "sha2_crate": {
@@ -42,7 +42,7 @@
    "crates/authority/rrd-security": 1,
    "crates/evaluation/qualification/rrflow-qualification-storage": 3,
    "crates/evaluation/rrflow-evaluation-core": 1,
-   "crates/persistence/rrd-store": 1,
+   "crates/storage/rrd-store": 1,
    "crates/transport/rrd-contract": 3,
    "crates/transport/rrd-server": 1
   },
@@ -68,7 +68,7 @@
    "crates/compute/rrd-query": 1,
    "crates/compute/rrd-vector": 2,
    "crates/foundation/rrflow-kernel": 6,
-   "crates/persistence/rrd-store": 1,
+   "crates/storage/rrd-store": 1,
    "crates/transport/rrd-client": 2,
    "crates/transport/rrd-contract": 1,
    "crates/transport/rrd-server": 3

@@ -12,7 +12,7 @@ independently.
 
 C-05a removes the pre-1.0 batch, manifest, and segment readers plus missing-accumulator
 cursor-zero reconstruction; C-05c proves the Fjall selector, migration runtime, and
-alternate stores are absent and that the active alpha reaches `rrd-lsm` through one required
+alternate stores are absent and that the active alpha reaches `rrflow-lsm` through one required
 production owner, `rrd-store`; C-05e removes vector artifact catalogue v1 and its alternate
 identity digest; C-05f requires one explicit nonempty schema table map and removes model
 inference; C-05g requires one collection plus named-vector address through mutation,

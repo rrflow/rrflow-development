@@ -46,7 +46,7 @@ either independently.
 
 ## C-02 evidence (2026-09-09):
 
-- `rrd-lsm` and `rrd-store` expose one consumed transaction with snapshot
+- `rrflow-lsm` and `rrd-store` expose one consumed transaction with snapshot
   reads, point and half-open bounded range access, read-your-writes, put,
   delete, commit, rollback, typed write conflict, and snapshot pinning.
   rrflowMX and rrflowKV run the same corpus; only rrflowKV promises reopen.
@@ -61,7 +61,7 @@ either independently.
   true compare-and-swap changes still fail; logical snapshot leases create and
   reconcile their physical rrflowKV checkpoint with commit outcome.
 - Source-boundary enforcement rejects semantic repositories that import
-  rrflowKV, rrflowMX, `rrd-lsm`, or raw database writes, and rejects restoration
+  rrflowKV, rrflowMX, `rrflow-lsm`, or raw database writes, and rejects restoration
   of broad semantic methods on `StorageEngine`. Exact searches found no such
   write-around or former semantic trait method.
 - All 157 `rrd-store` tests and all 119 `rrd-engine` tests passed, including
@@ -99,7 +99,7 @@ either independently.
   closes the session transaction with no second guest execution or cursor
   advance. A rejected receipt cannot leave domain state, outcome, or an orphan
   allowed receipt.
-- The complete locked `rrd-contract`, `rrd-lsm`, `rrd-store`, and `rrd-engine`
+- The complete locked `rrd-contract`, `rrflow-lsm`, `rrd-store`, and `rrd-engine`
   suites passed: 76, 76, 166, and 117 tests respectively. Strict affected-
   package Clippy, workspace all-target checking, architecture, documentation,
   generated-surface, inventory, formatting, and diff-integrity checks are
@@ -211,10 +211,10 @@ implements project inventory nor proves filesystem freshness or SWAG execution.
   one fresh engram/backup/recovery corpus is identical on rrflowMX, rrflowKV,
   and rrflowKV reopen. This accepts the evidence required to close POAM-018.
 - C-05c at `cd1bf495ece3c6698cde1cca413bfbe7be55588c` removes the unused
-  `rrflow-cli` development dependency on `rrd-lsm` and adds an executable
+  `rrflow-cli` development dependency on `rrflow-lsm` and adds an executable
   architecture guard over dependency kind, optionality, and feature
   resolution. The independently installable alpha has exactly one required
-  production edge into `rrd-lsm`, from `rrd-store`; `rrd-cluster` defaults to
+  production edge into `rrflow-lsm`, from `rrd-store`; `rrd-cluster` defaults to
   no implementation feature and `rrd-engine` enables only its pure
   `object-transfer` contracts. The guard also pins the sole current batch v2,
   manifest v2, and segment v3 readers and rejects revival of retired reader or
@@ -276,7 +276,7 @@ implements project inventory nor proves filesystem freshness or SWAG execution.
 ## C-06 accepted evidence (2026-09-10 through 2026-09-13):
 
 - C-06a through C-06f established the now-superseded segment-v4 proof. At that
-  revision, `rrd-lsm` wrote and exclusively read v4. Flush preserved one
+  revision, `rrflow-lsm` wrote and exclusively read v4. Flush preserved one
   sorted `(key, sequence)` MVCC spine and emits Arrow-compatible key offsets,
   key data, sequence values, value validity, value offsets, and value data for
   each row group. A key's complete version chain is never split by the target
@@ -334,7 +334,7 @@ implements project inventory nor proves filesystem freshness or SWAG execution.
   snapshots before/after reopen and protected compaction. Focused tests cover
   every declared request/operation/batch ceiling, cancellation/drop lease
   release, duplicate-sequence denial, and old-view survival through flush,
-  compaction, and garbage collection. The complete `rrd-lsm` and `rrd-store`
+  compaction, and garbage collection. The complete `rrflow-lsm` and `rrd-store`
   suites and strict affected-package Clippy pass at the C-06g candidate.
 - C-06h adds one reusable deterministic state-machine model over audit,
   incoming/outgoing edge, record, runtime, scalar, term, and vector families.
@@ -345,7 +345,7 @@ implements project inventory nor proves filesystem freshness or SWAG execution.
   boundary. Failures retain exact seed, input digest, and input bytes.
 - A configurable `rrflowkv_stress` run passed 1,536 operations with 283
   injected failures, 382 reopens, 189 compactions, 264 garbage collections,
-  and 1,334 projected reads. The complete `rrd-lsm` suite passed 94 tests and
+  and 1,334 projected reads. The complete `rrflow-lsm` suite passed 94 tests and
   strict all-target Clippy.
 - A locked nested cargo-fuzz project leaves the product dependency graph and
   root lockfile unchanged. The version policy separately validates its
@@ -397,7 +397,7 @@ implements project inventory nor proves filesystem freshness or SWAG execution.
   protected entries, stays within 1,048,576 bytes, and preserves identical
   manifest, semantic, and projected-row digests. The real reader, not the
   simulator, supplies the acceptance counters.
-- The same package preserves all 114 all-target/all-feature `rrd-lsm` tests,
+- The same package preserves all 114 all-target/all-feature `rrflow-lsm` tests,
   strict Clippy, the complete `rrd-store` suite, all 28 workspace-architecture
   guards, and the locked workspace all-target check. It records rather than
   claims concurrent load coalescing. C-07 owns lock contention, load

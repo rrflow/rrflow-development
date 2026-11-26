@@ -75,7 +75,7 @@ impl RrdSnapshotData {
 
     pub(super) async fn independent_file(&self) -> io::Result<std::fs::File> {
         let handle = self.file.try_clone().await?.into_std().await;
-        rrd_lsm::filesystem::reopen_read(&handle)
+        rrflow_lsm::filesystem::reopen_read(&handle)
     }
 
     pub fn path(&self) -> &Path {
