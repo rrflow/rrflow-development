@@ -4,7 +4,7 @@
 **Coordinate:** `rrflow://rrflow-instance/data/reference/vector/search`
 **Owner:** read-stamped vector visibility, scoring, filtering, planning, and execution semantics
 
-`rrd-vector` is RRFlow's rebuildable vector-search subsystem over canonical
+`rrflow-vector` is RRFlow's rebuildable vector-search subsystem over canonical
 `RuntimeVector` versions. It is not a sidecar service and cannot publish
 canonical data. `RrdEngine` captures and authorizes the read stamp, resolves
 collection policy, loads eligible artifacts, and returns plan and resource

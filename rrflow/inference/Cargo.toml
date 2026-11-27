@@ -1,0 +1,23 @@
+[package]
+name = "rrflow-inference"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "Provider-neutral model admission and provenance-bound embedding jobs for RRFlow."
+
+[features]
+default = []
+fastembed-local = ["dep:fastembed"]
+endpoint-chat = ["dep:ureq"]
+
+[dependencies]
+rrflow-core = { workspace = true }
+rrd-contract = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+fastembed = { version = "5.17.4", default-features = false, features = ["ort-load-dynamic"], optional = true }
+ureq = { version = "=3.4.2", default-features = false, features = ["rustls"], optional = true }
+
+[dev-dependencies]
+rrflow-db = { workspace = true }

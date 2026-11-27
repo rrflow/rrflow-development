@@ -20,7 +20,7 @@ E-04 stack above development/main `81fce08e`:
   '_', or '.'", and no page is returned.
 - **Why.** The vector artifact catalogue writes its record as
   `{projection}@{generation}`
-  (`rrd-vector/src/catalog.rs::VectorArtifactCatalogEntry::record_reference`)
+  (`rrflow-vector/src/catalog.rs::VectorArtifactCatalogEntry::record_reference`)
   and its object as `{projection}@{generation}:bytes`
   (`rrd-engine/src/runtime/vector_catalog.rs::publish_traced_vector_artifact`).
   The kernel accepts both identities. The public changefeed projects every
@@ -61,7 +61,7 @@ it. On the repository owner's direction of 2026-11-03, pull request #271 does no
 refuse such an id at that one writer. Every `rrd-cluster` identifier now has the
 canonical grammar in its type, so no path can construct one, and
 `RrdRaftNode::validate` checks a peer's id where it is still configuration text.
-The kernel owns the grammar (`rrflow_kernel::ident::canonical_id_problem`), and
+The kernel owns the grammar (`rrflow_core::ident::canonical_id_problem`), and
 `canonical_id_agrees_with_the_kernel_grammar` proves `CanonicalId` matches it. The
 oracles are `cluster_identifiers_accept_only_the_canonical_grammar` in
 `rrd-cluster`'s `contracts`, and the changefeed read in `rrd-engine`'s
@@ -79,7 +79,7 @@ identifier a client supplies can collide with an event. The public projection re
 the cursor with `event_cursor` instead of parsing text. `ScopeId` and `Reader` keep
 their namespaced forms; the
 [package's journal](../../evidence/change-journals/gate-h/h-04-kernel-identifier-grammar.md)
-gives each type's reason. The oracles are `rrflow-kernel`'s `identifier_grammar` and
+gives each type's reason. The oracles are `rrflow-core`'s `identifier_grammar` and
 `publication_refuses_an_identity_the_public_changefeed_cannot_project`, which now
 covers an id that is canonical alone and too long once publication adds to it.
 

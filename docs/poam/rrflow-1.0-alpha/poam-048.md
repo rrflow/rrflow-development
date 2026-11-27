@@ -99,7 +99,7 @@ The tests:
   after the moves and HNSW advanced from a graph built before them, scalar
   quantization, and TurboQuant built after the moves and extended from a
   generation built before them.
-- **A property test** in `rrd-vector` (`source::tests`) runs 20,000 randomized
+- **A property test** in `rrflow-vector` (`source::tests`) runs 20,000 randomized
   histories across three collections. At every valid time, a collection's own
   resolution of its view finds the identity live with the same value exactly
   when canonical resolution does, apart from that one allowed case.

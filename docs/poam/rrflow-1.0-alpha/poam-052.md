@@ -12,7 +12,7 @@ independently.
 
 The repository owner directed on 2026-11-03 that Connectome's search, which calls
 `context-assemble`, be "configurable to improve and experiment". `AssembleContext`
-(`crates/transport/rrd-contract/src/memory_context.rs`) denies unknown fields and
+(`rrd/contract/src/memory_context.rs`) denies unknown fields and
 takes only `scope`, `query`, `valid_at`, `seeds`, `max_graph_depth`, `max_items`,
 `max_output_bytes` and `max_storage_keys`. The engine ranks by reciprocal-rank
 fusion of seed anchors, BM25 text matches, exact vector scores and graph

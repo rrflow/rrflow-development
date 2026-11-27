@@ -147,12 +147,12 @@ path around it. A mutable memtable is not an immutable-page cache entry.
 
 Implementation placement and present gap:
 
-- `rrd-store/src/keyspaces.rs` and `access/semantic_commit.rs` own canonical
+- `rrflow-db/src/keyspaces.rs` and `access/semantic_commit.rs` own canonical
   relationship changes and both ordered adjacency directions in the same
   transaction; source/history, deletes and moves must stay equivalent.
-- `rrd-store/src/access/versioned_read.rs` and `rrd-query/src/physical/graph.rs`
+- `rrflow-db/src/access/versioned_read.rs` and `rrflow-ql/src/physical/graph.rs`
   currently select authenticated adjacency ranges and relation histories.
-  `rrd-query/src/execute.rs` uses expanding semantic reads and materializes
+  `rrflow-ql/src/execute.rs` uses expanding semantic reads and materializes
   changes. On rrflowKV, the repository transaction's range scan calls
   `rrflow-lsm/src/transaction/scan.rs::bounded`, which already uses the C-06g
   projected reader underneath, then copies the batches into owned rows. This
@@ -387,7 +387,7 @@ Arrow-to-tensor feature bridge. The model returns a grammar-constrained
 proposal; deterministic predicates, authorization, CAS, and persistence remain
 engine operations.
 
-Before a router model can be loaded, `rrd-inference` applies this admission
+Before a router model can be loaded, `rrflow-inference` applies this admission
 chain:
 
 ```text
@@ -669,7 +669,7 @@ rather than false synchronous parentage.
 ### Canonical operation catalogue
 
 Machine operation names are closed, low-cardinality values of the form
-`rrflow.<boundary>.<operation>`. `rrflow-kernel::TraceOperation` is the source-level
+`rrflow.<boundary>.<operation>`. `rrflow-core::TraceOperation` is the source-level
 catalogue and `TraceBoundary` is the persisted boundary. A canonical event is
 invalid when those two disagree. Dynamic record, scope, project, route, query,
 provider, model, file, index generation, error, or result values never enter
@@ -726,7 +726,7 @@ routine/resource coordinates; model or tool execution uses `Resource` plus
 provider, workflow, or external-database trace authority.
 
 The `attributes` map is for bounded measurements and decisions, not identities
-already represented by links. `rrflow-kernel::TraceAttribute` is the closed
+already represented by links. `rrflow-core::TraceAttribute` is the closed
 cross-boundary catalogue. Names are lowercase `snake_case`, fixed at the
 instrumenting call site, and may be extended only with the behavior's owning
 gate and a corresponding contract test. An arbitrary caller-supplied key is
@@ -750,7 +750,7 @@ bounded digest is recorded. `TraceDataClass` controls retention and diagnostic
 projection but never relaxes secret exclusion.
 
 Reviewed current producers also have one private, exact
-`DIRECT_CONVERGENCE_ATTRIBUTE_NAMES` inventory in `rrflow-kernel`. It admits their
+`DIRECT_CONVERGENCE_ATTRIBUTE_NAMES` inventory in `rrflow-core`. It admits their
 already-emitted physical and subsystem-specific fields while their C-through-I
 behavior is replaced. The list can only shrink: new work uses
 `TraceAttribute`, and an owning package must move stable identities/revisions
@@ -1219,7 +1219,7 @@ explicit apply(plan digest)
         -> authorize one bounded inventory read plan
         -> enumerate metadata under the project root
         -> stream eligible file bytes for digest/classification only
-        -> pure rrd-attunement inventory proposal
+        -> pure rrflow-attunement inventory proposal
         -> RrdEngine validates and atomically commits:
              source-tree snapshot + containment edges + change set
              + inventory checkpoint + runtime-log entry + audit
@@ -1228,7 +1228,7 @@ explicit apply(plan digest)
 
 The engine-side attunement executor coordinates filesystem effects,
 authorization, leases, cancellation, budgets, and commits. The planned
-`rrd-attunement` crate is pure compute: it accepts bounded enumerated entries
+`rrflow-attunement` crate is pure compute: it accepts bounded enumerated entries
 and content chunks, sorts and normalizes them, and returns a deterministic
 proposal. It cannot open paths, contact a provider, read secrets, access a
 store, emit lifecycle callbacks, or commit state. No client, watcher, hook,

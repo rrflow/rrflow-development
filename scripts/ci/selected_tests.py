@@ -208,7 +208,9 @@ def _walk(path: Path, prefix: list[str], mod_rs: bool, target: Target) -> None:
 
 
 def package_dir(package: str) -> Path:
-    for manifest in sorted(ROOT.joinpath("crates").rglob("Cargo.toml")):
+    for manifest in sorted(
+        manifest for group in ("rrflow", "rrd", "lab") for manifest in ROOT.joinpath(group).rglob("Cargo.toml")
+    ):
         if "target" in manifest.relative_to(ROOT).parts:
             continue
         if re.search(rf'(?m)^name\s*=\s*"{re.escape(package)}"', manifest.read_text(encoding="utf-8")):

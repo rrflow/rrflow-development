@@ -10,7 +10,7 @@ either independently.
 
 ## C-01 evidence (2026-09-08):
 
-- `rrd-store` now owns one strict `RRKV0001` application-key grammar with typed
+- `rrflow-db` now owns one strict `RRKV0001` application-key grammar with typed
   `format / tenant / scope / family / tuple` coordinates. It freezes current,
   temporal, outgoing/incoming edge, scalar, unique, term dictionary/statistic/
   posting, vector, projection-delta, catalogue, runtime-commit, outbox, audit,
@@ -33,7 +33,7 @@ either independently.
   LSM after a real store commit, compares the exact persisted claim, sequence,
   and watermark bytes, then reopens through `RrflowKvStore` and reads the same
   claim.
-- `cargo test -p rrd-core --locked`, `cargo test -p rrd-store --locked`, and
+- `cargo test -p rrd-core --locked`, `cargo test -p rrflow-db --locked`, and
   strict all-target Clippy for both packages passed. The focused black-box
   codec test passed, all 23 workspace-architecture checks passed, and
   `cargo check --workspace --all-targets --locked` passed all 20 packages.
@@ -46,7 +46,7 @@ either independently.
 
 ## C-02 evidence (2026-09-09):
 
-- `rrflow-lsm` and `rrd-store` expose one consumed transaction with snapshot
+- `rrflow-lsm` and `rrflow-db` expose one consumed transaction with snapshot
   reads, point and half-open bounded range access, read-your-writes, put,
   delete, commit, rollback, typed write conflict, and snapshot pinning.
   rrflowMX and rrflowKV run the same corpus; only rrflowKV promises reopen.
@@ -64,7 +64,7 @@ either independently.
   rrflowKV, rrflowMX, `rrflow-lsm`, or raw database writes, and rejects restoration
   of broad semantic methods on `StorageEngine`. Exact searches found no such
   write-around or former semantic trait method.
-- All 157 `rrd-store` tests and all 119 `rrd-engine` tests passed, including
+- All 157 `rrflow-db` tests and all 119 `rrd-engine` tests passed, including
   MX/KV differential, conflict, rollback, snapshot, crash/reopen, semantic
   repository, engine-authority, and workspace-architecture cases. The changed
   inference and downstream package suites passed, as did strict locked
@@ -99,7 +99,7 @@ either independently.
   closes the session transaction with no second guest execution or cursor
   advance. A rejected receipt cannot leave domain state, outcome, or an orphan
   allowed receipt.
-- The complete locked `rrd-contract`, `rrflow-lsm`, `rrd-store`, and `rrd-engine`
+- The complete locked `rrd-contract`, `rrflow-lsm`, `rrflow-db`, and `rrd-engine`
   suites passed: 76, 76, 166, and 117 tests respectively. Strict affected-
   package Clippy, workspace all-target checking, architecture, documentation,
   generated-surface, inventory, formatting, and diff-integrity checks are
@@ -214,7 +214,7 @@ implements project inventory nor proves filesystem freshness or SWAG execution.
   `rrflow-cli` development dependency on `rrflow-lsm` and adds an executable
   architecture guard over dependency kind, optionality, and feature
   resolution. The independently installable alpha has exactly one required
-  production edge into `rrflow-lsm`, from `rrd-store`; `rrd-cluster` defaults to
+  production edge into `rrflow-lsm`, from `rrflow-db`; `rrd-cluster` defaults to
   no implementation feature and `rrd-engine` enables only its pure
   `object-transfer` contracts. The guard also pins the sole current batch v2,
   manifest v2, and segment v3 readers and rejects revival of retired reader or
@@ -334,7 +334,7 @@ implements project inventory nor proves filesystem freshness or SWAG execution.
   snapshots before/after reopen and protected compaction. Focused tests cover
   every declared request/operation/batch ceiling, cancellation/drop lease
   release, duplicate-sequence denial, and old-view survival through flush,
-  compaction, and garbage collection. The complete `rrflow-lsm` and `rrd-store`
+  compaction, and garbage collection. The complete `rrflow-lsm` and `rrflow-db`
   suites and strict affected-package Clippy pass at the C-06g candidate.
 - C-06h adds one reusable deterministic state-machine model over audit,
   incoming/outgoing edge, record, runtime, scalar, term, and vector families.
@@ -398,7 +398,7 @@ implements project inventory nor proves filesystem freshness or SWAG execution.
   manifest, semantic, and projected-row digests. The real reader, not the
   simulator, supplies the acceptance counters.
 - The same package preserves all 114 all-target/all-feature `rrflow-lsm` tests,
-  strict Clippy, the complete `rrd-store` suite, all 28 workspace-architecture
+  strict Clippy, the complete `rrflow-db` suite, all 28 workspace-architecture
   guards, and the locked workspace all-target check. It records rather than
   claims concurrent load coalescing. C-07 owns lock contention, load
   coalescing, sustained maintenance, installed-path recovery, and cross-

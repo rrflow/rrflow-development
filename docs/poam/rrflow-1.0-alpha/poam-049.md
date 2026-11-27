@@ -11,7 +11,7 @@ independently.
 ## Observed deficiency
 
 Found by source review during [POAM-030](poam-030.md) (pull request #144).
-`SecurityRepository::audit_since` (`crates/authority/rrd-security/src/lib.rs`)
+`SecurityRepository::audit_since` (`rrflow/security/src/lib.rs`)
 limits the audit records it returns, but not the control-journal entries it
 examines. It keeps fetching pages of `limit` control entries until it holds
 `limit` audit records or reaches the tail, so a long run of other control

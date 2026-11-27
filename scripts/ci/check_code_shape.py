@@ -3,7 +3,7 @@
 
 Owner: docs/architecture/code-structure-and-conventions.md (rules R1, R2, R3, R5, R6, R7).
 
-Every tracked Rust file under `crates/` is classified and measured:
+Every tracked Rust file under `rrflow/`, `rrd/` and `lab/` is classified and measured:
 
 - `entry`   `src/lib.rs` and `src/main.rs`: at most ENTRY_LIMIT lines (R2).
 - `harness` files under `tests/`, `benches/`, `examples/`, or named `tests.rs` or `*_tests.rs`:
@@ -19,7 +19,7 @@ files of a crate is neutral:
 - `boxed_error`               `Box<dyn Error>` (R5)
 - `too_many_arguments_allow`  an allowed `clippy::too_many_arguments` (R7)
 - `sha2_crate`                any `sha2::` path outside the digest owner (R6); the owner's own
-                              `rrflow_kernel::digest::Sha256` hasher is the intended API and is not counted
+                              `rrflow_core::digest::Sha256` hasher is the intended API and is not counted
 
 The recorded baseline (`code_shape_baseline.json`) lists every file that broke a rule when the
 rules landed, with its size or count at that time. The check fails when:
@@ -44,7 +44,7 @@ from pathlib import Path
 
 from check_architecture import load_manifest, read_members
 
-# The limits and the digest owner are recorded once, in `crates/architecture.toml`.
+# The limits and the digest owner are recorded once, in `architecture.toml`.
 _MANIFEST = load_manifest()
 ENTRY_LIMIT: int = _MANIFEST["limits"]["entry"]
 SOURCE_LIMIT: int = _MANIFEST["limits"]["source"]
@@ -173,7 +173,7 @@ def tighten(baseline: Shape, current: Shape) -> Shape:
 
 
 def tracked_rust(root: Path) -> dict[str, str]:
-    listed = subprocess.run(["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", "crates/*.rs"], cwd=root, check=True,
+    listed = subprocess.run(["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", "rrflow/*.rs", "rrd/*.rs", "lab/*.rs"], cwd=root, check=True,
                             capture_output=True).stdout.decode("utf-8").split("\0")
     return {path: (root / path).read_text(encoding="utf-8") for path in listed if path}
 

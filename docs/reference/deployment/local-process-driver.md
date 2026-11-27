@@ -262,8 +262,8 @@ argument cases, and four real-process/effect-gap cases over a canonically
 preinstalled engram. The shortest replacement checks are:
 
 ```text
-cargo test -p rrd-engram --lib local_process --locked
-cargo test -p rrd-engram --test deployment_catalog --locked
+cargo test -p rrflow-engram --lib local_process --locked
+cargo test -p rrflow-engram --test deployment_catalog --locked
 cargo test -p rrflow-cli --bin rrd-engram-controller --locked
 cargo test -p rrd-server --test local_engram_driver real_rrd_child_survives_controller_reopen_and_stops_without_data_deletion --locked
 cargo test -p rrd-server --test local_engram_driver local_driver_refuses_to_signal_a_reused_or_forged_pid_identity --locked

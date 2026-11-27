@@ -41,16 +41,16 @@ Read at `81fce08e`:
 - **A search reads every vector version in the scope**
   (`read_vector_search_versions`) before it plans. Then:
   - an HNSW generation serves with an exact overlay of newer candidates
-    (`rrd-vector/src/runtime.rs::prepare_search_at`);
+    (`rrflow-vector/src/runtime.rs::prepare_search_at`);
   - a TurboQuant segment refuses a search whose required source cursor is
-    newer than its own (`rrd-vector/src/turbo_segment.rs`), so any vector
+    newer than its own (`rrflow-vector/src/turbo_segment.rs`), so any vector
     write after a build takes the generation out of service until a rebuild;
   - approximate candidates are reranked against every canonical candidate held
     in memory.
 - **The commit path already writes the atomic index delta E-04 needs.** It
   writes one `VectorSourceDelta` per collection, named vector and field, in
   cursor order, carrying before and after version pointers and the value
-  digest (`rrd-store/src/access/vector.rs::encode_vector_source_effects`). The
+  digest (`rrflow-db/src/access/vector.rs::encode_vector_source_effects`). The
   only reader is `RuntimeRepository::vector_source_deltas_since`, which has no
   read stamp, no key budget, no read evidence and no engine caller.
 - **The public `vector-search` already accepts approximate modes**

@@ -10,7 +10,7 @@ those independently.
 ## Observed deficiency
 
 On main `1fd7f163de3448c694e09c916b328540303eab1c`,
-`search_vectors_at` in `crates/authority/rrd-engine/src/engine/vector/search.rs`
+`search_vectors_at` in `rrd/engine/src/engine/vector/search.rs`
 tries the specialized TurboQuant generation path first. When that path does not
 serve a request, the named approximate route invokes `read_versioned` with a
 `Vectors { kind: None }` source and builds candidates from those changes before

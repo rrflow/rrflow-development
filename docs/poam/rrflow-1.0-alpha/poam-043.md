@@ -11,9 +11,9 @@ independently.
 ## Observed deficiency
 
 `RrdEngine::preview_transaction` in
-`crates/authority/rrd-engine/src/engine/transaction.rs` builds its prospective
+`rrd/engine/src/engine/transaction.rs` builds its prospective
 snapshot with `preview_data_snapshot` in
-`crates/storage/rrd-store/src/repository/runtime.rs`. That function:
+`rrflow/db/src/repository/runtime.rs`. That function:
 
 - reads every versioned source of the scope (`RuntimeVersionedSource::all()`)
   through `read_versioned_access`, within the request's `max_storage_keys`;

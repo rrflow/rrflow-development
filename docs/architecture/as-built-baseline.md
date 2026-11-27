@@ -38,13 +38,13 @@ on this date) changes some rows; they say so.
 |---|---|---|---|---|
 | Endpoint bindings | Configured through `endpoint-configuration-read/preview/apply` (`/v1/configuration/endpoints/*`). A binding has id, workload class, kind, `in_process` or `url`, model id, credential reference, placement and limits. No shipped default profile; no CLI or file setup. | `rrd-contract/src/endpoint_binding.rs:195-212`; `rrd-engine/src/engine/endpoint_configuration.rs:23-50` | Runs | |
 | Binding fields for routing | No protocol, capability, price, latency, health or locality fields; the routing policy in `lfg-swag.md` cannot be expressed. | `endpoint_binding.rs`; `docs/reference/inference/lfg-swag.md:45,247-256` | Docs only | |
-| Model protocols | One: OpenAI-style `POST {url}/chat/completions` with a Bearer key. No Anthropic Messages, no MCP-as-model, no in-process LLM. | `rrd-inference/src/endpoint_chat.rs:213-226,303,342` | Runs | |
+| Model protocols | One: OpenAI-style `POST {url}/chat/completions` with a Bearer key. No Anthropic Messages, no MCP-as-model, no in-process LLM. | `rrflow-inference/src/endpoint_chat.rs:213-226,303,342` | Runs | |
 | Worker adapter choice | `openai_chat_completions_v1`, `swag_…`, `lfg_…`, `other` exist, but the engine never reads the field, so every call is sent as OpenAI chat; `lfg-swag.md:258-263` says an unknown adapter fails closed. | `rrd-contract/src/endpoint_worker.rs:18-28,50` (no caller of `is_native_chat_adapter`, verified) | Unwired | |
 | SWAG | No code is named SWAG. "SWAG" is whichever binding the selection policy names as `controller_binding_id`; `task-endpoint-propose` sends it the task and candidates as JSON chat and records its choice. | `rrd-engine/src/engine/endpoint_proposal.rs:111-570,621-644` | Runs | |
 | Semantic router | Only a ranked candidate list the caller supplies in the request; nothing produces it. Likely defect: a list that removes candidates fails packet validation. | `rrd-contract/src/endpoint_proposal.rs:83-178,376-386`; `engine/endpoint_proposal.rs:187-191` | Docs only (input type exists) | |
-| LFG | Called only during endpoint selection, through a loopback-only URL inside the selection policy, not a configurable binding. | `rrd-inference/src/lfg_transport.rs:120-131,177-180`; `endpoint_policy.rs:15-47` | Runs (loopback only) | |
+| LFG | Called only during endpoint selection, through a loopback-only URL inside the selection policy, not a configurable binding. | `rrflow-inference/src/lfg_transport.rs:120-131,177-180`; `endpoint_policy.rs:15-47` | Runs (loopback only) | |
 | Route decisions, reasoning-tree router | Types and validation only; nothing in the engine or server uses them. | `rrd-contract/src/router.rs:33`; `rrd-core/src/reasoning_tree.rs` | Unwired | |
-| External stacks (jevdecisions, chef flash, Claude, Codex) | Not bindable. Claude, Codex and Gemini appear only as CLI subprocesses inside the Lab. | `crates/evaluation/lab/rrflow-lab-evals/src/provider.rs:16,46,120,284` | Docs only | |
+| External stacks (jevdecisions, chef flash, Claude, Codex) | Not bindable. Claude, Codex and Gemini appear only as CLI subprocesses inside the Lab. | `lab/evals/src/provider.rs:16,46,120,284` | Docs only | |
 | Hardcoded values | No provider host or model name in production Rust. Fixed: `/chat/completions`, Bearer, LFG loopback and path, port 9477, and Lab provider branches. | as cited above; `rrflow-cli/src/command.rs:51` | Runs | |
 | Stale records | `system-overview.md:84-85` calls LFG and SWAG execution unimplemented; `lfg-swag.md:3` calls it an unmerged draft. Both are on main. | as cited | Docs drift | |
 
@@ -55,18 +55,18 @@ on this date) changes some rows; they say so.
 | Question → context → LLM → answer | Only through a task: open, configure budget, `task-endpoint-propose`, then `task-worker-execute` with `AssembleContext`. Output is draft text. A raw question cannot be asked. | `engine/endpoint_worker.rs:368-518` | Runs | |
 | Real model with context | Never run. The one real-model receipt (BF16 SWAG model) had `context: null`; tests use synthetic loopback servers. | `docs/evidence/change-journals/gate-g/task-worker-native-receipts/available/native-worker.json` | Not run | |
 | Prompt flights | Assemble context and record events; no model is called (`Observe` only). | `rrd-contract/src/flight.rs:48-50` | Runs | |
-| MCP and edge adapters | `rrflow-mcp` exposes one read-only tool, `rrflow_context`; `rrflow-edge` is an offline feature-hash index. Nothing exposes RRFlow as an OpenAI- or Anthropic-compatible endpoint. | `crates/adapters/rrflow-mcp/src/main.rs:105-145` | Runs | |
+| MCP and edge adapters | `rrflow-mcp` exposes one read-only tool, `rrflow_context`; `rrflow-edge` is an offline feature-hash index. Nothing exposes RRFlow as an OpenAI- or Anthropic-compatible endpoint. | `rrflow/mcp/src/main.rs:105-145` | Runs | |
 | Answer-quality measurement | None. The Lab measures vector recall and file recall@10/50; no nDCG, no answer grading. | `rrflow-lab-benchmarks/src/driver.rs:97,363-395`; `eval/lab/retrieval_signal.py:153-276` | Docs only | |
 
 ## 3. What a request triggers, and whether it is visible
 
 | Area | Today | Evidence | Status | Decision |
 |---|---|---|---|---|
-| rrflowQL path choice | Fixed rules: identity, range, adjacency and traversal take their own path; otherwise a ready index by leading-field match; else a versioned read or DataFusion. No cost model. No vector operator (`NEAR` is plan item J5). | `rrd-query/src/plan.rs:292-341,440-490,651-684` | Runs | |
+| rrflowQL path choice | Fixed rules: identity, range, adjacency and traversal take their own path; otherwise a ready index by leading-field match; else a versioned read or DataFusion. No cost model. No vector operator (`NEAR` is plan item J5). | `rrflow-ql/src/plan.rs:292-341,440-490,651-684` | Runs | |
 | Context assembly | Not yet dynamic, contrary to the design. It runs the same stages every time (seed, BM25, exact vector if a local embedder exists, graph BFS, fusion with fixed weights) over the whole snapshot, and on main rebuilds BM25 per request; #376 reads persistent postings instead. The planned dynamic path is J6 (one planner for context and rrflowQL) and J11 (cycles that grow with effort until evidence stops improving) in the [one-engine joins plan](../roadmap/one-engine-joins-engineering-plan.md). | `rrd-engine/src/engine/context.rs:10-14,104,215,294,333` | Runs | |
-| Vector search | The only path chosen per request today: exact scan, HNSW or TurboQuant by a calibrated cost estimate. The owner's rule is selection by reasoning need, not cheapest; the planner does not yet take a quality target. | `rrd-vector/src/plan.rs:111-210`; `cost.rs:55-65` | Runs | |
+| Vector search | The only path chosen per request today: exact scan, HNSW or TurboQuant by a calibrated cost estimate. The owner's rule is selection by reasoning need, not cheapest; the planner does not yet take a quality target. | `rrflow-vector/src/plan.rs:111-210`; `cost.rs:55-65` | Runs | |
 | Hybrid retrieval and retrieval query | Defined, called only from tests. | `engine/retrieval.rs:17`; `engine/retrieval_query.rs:40` | Unwired | |
-| rrflowLSM | `rrflow-lsm` (WAL, memtable, segments, manifest); compaction constants are fixed (POAM-077). rrflowKV is the store over it. | `crates/storage/rrflow-lsm`; `rrd-store/src/rrflow_kv.rs:1-6` | Runs | |
+| rrflowLSM | `rrflow-lsm` (WAL, memtable, segments, manifest); compaction constants are fixed (POAM-077). rrflowKV is the store over it. | `rrflow/lsm`; `rrflow-db/src/rrflow_kv.rs:1-6` | Runs | |
 | rrflowCLD cold tier | Not built. Cold history copies changefeed pages to Parquet, never moves hot data, and only `cold-history-read` reads it. "rrflowCLD" in code is a set of process-local hit counters. | `engine/cold_history.rs:310`; `runtime/coldlight.rs:1-60`; plan item J8 | Docs only | |
 | Decision returned with the answer | Query plan with every candidate and the reason it was chosen or rejected; context stages with access path and reason; vector access path. | `rrd-contract/src/lib.rs:545-607,1859-1890`; `memory_context.rs:203-301` | Runs | |
 | Decision saved as a trace | Only prompt flights save their context stages. Spans across QL, KV and vector exist only in test-called methods. No hop tracing, no metrics endpoint, no per-layer timing. | `engine/flight.rs:892-968`; `runtime/query.rs:70`; plan items J1, J12 | Unwired | |
@@ -108,7 +108,7 @@ on this date) changes some rows; they say so.
 
 | Area | Today | Evidence | Status | Decision |
 |---|---|---|---|---|
-| Lab | `rrflow-lab` CLI and scripts; adapters for Qdrant, SurrealDB, Milvus, custom and RRFlow; Lance through a Python shim. | `crates/evaluation/lab/rrflow-lab-systems/src/adapters/` | Runs (CLI only) | |
+| Lab | `rrflow-lab` CLI and scripts; adapters for Qdrant, SurrealDB, Milvus, custom and RRFlow; Lance through a Python shim. | `lab/systems/src/adapters/` | Runs (CLI only) | |
 | ArangoDB, engine-routed RRFlow system | Not built (plan item J10). | `docs/roadmap/one-engine-joins-engineering-plan.md:104` | Docs only | |
 | Run from Connectome or an engine operation | Not possible. | — | Docs only | |
 
@@ -132,9 +132,9 @@ Engine and repository:
 | `rrd-maintenance` has no dependents; `rrd-cluster` (15k) is reachable only behind a feature no shipped binary enables; `pgvector_postgres.rs` and `fastembed_local.rs` compile only under `--all-features`. | `docs/poam/rrflow-1.0-alpha/poam-008.md:28`; `rrd-engine/Cargo.toml:16` | Unwired | |
 | The Lab is seven crates (13k lines) plus Python and shell; the agent-provider runner is written twice; `eval/lab/retrieval_signal.py` has its own BM25 and report builder; `eval/lab/rrflow_settings.py` rewrites engram TOML with regexes; install and serve are driven by hand in four places; about twelve benchmark runners live in crate `examples/`. | `lab-experiments/src/main.rs:87-101`; `lab-evals/src/provider.rs:14,284`; `run-real-project-workbench.ps1:569-631` | Duplicate | |
 | One contract source but seven SDK and signal generators; `sha256_hex` re-implemented about twelve times beside `rrd-core/src/digest.rs:57`; workspace member lists maintained by hand in six places. | `scripts/ci/check_generated_surfaces.py:497-611`; `scripts/ci/workspace_packages.py` | Duplicate | |
-| The legacy JSON vector segment is still a runtime artifact; the dissolved `rrflow-eval` crate is still documented in `eval/README.md` and nine other records. | `rrd-vector/src/compact.rs:3`; `runtime.rs:21,97` | Superseded | |
+| The legacy JSON vector segment is still a runtime artifact; the dissolved `rrflow-eval` crate is still documented in `eval/README.md` and nine other records. | `rrflow-vector/src/compact.rs:3`; `runtime.rs:21,97` | Superseded | |
 | Planning is spread thin: Gate D has five planning records, "one engine" has three, the Lab has four owners, alpha status spans six records, and 937 of 1,184 Markdown files are change journals. | `docs/roadmap/README.md:51-54,78-79` | Competing owners | |
-| Layered, not duplicated: `rrd-attunement` with engine attunement, `rrd-inference` behind the engine, one Rust BM25, one configuration loader. | — | OK | |
+| Layered, not duplicated: `rrflow-attunement` with engine attunement, `rrflow-inference` behind the engine, one Rust BM25, one configuration loader. | — | OK | |
 
 ## Reading this record
 

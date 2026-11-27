@@ -24,9 +24,9 @@ Do not copy an upstream crate/tree or add its hidden runtime as a second owner.
 
 | Research input | Native destination and evidence before adoption |
 |---|---|
-| DuckDB [vectorized execution](https://duckdb.org/internals/vector): column vectors and bounded data chunks | `rrd-query` / Arrow DataFusion execution over RRFlow-stamped reads; compare nulls, types, filtering, cancellation, batch memory and exact output. Do not copy DuckDB's default batch size as an RRFlow performance claim. |
-| ClickHouse [sparse index](https://clickhouse.com/docs/concepts/core-concepts/primary-indexes) and immutable sorted parts | `rrd-store` / rrflowKV derived index and `rrd-query` pruning; prove snapshot/ACL correctness, tombstones, compaction/recovery, no false-negative pruning and scan/write/memory tradeoffs against an exact full scan. |
-| Both: analytical execution and Parquet | Existing `rrd-query` Arrow/Parquet and D-06/F budgets; compare real typed results, streaming/resource bounds and source/read provenance, not vendor benchmark figures. |
+| DuckDB [vectorized execution](https://duckdb.org/internals/vector): column vectors and bounded data chunks | `rrflow-ql` / Arrow DataFusion execution over RRFlow-stamped reads; compare nulls, types, filtering, cancellation, batch memory and exact output. Do not copy DuckDB's default batch size as an RRFlow performance claim. |
+| ClickHouse [sparse index](https://clickhouse.com/docs/concepts/core-concepts/primary-indexes) and immutable sorted parts | `rrflow-db` / rrflowKV derived index and `rrflow-ql` pruning; prove snapshot/ACL correctness, tombstones, compaction/recovery, no false-negative pruning and scan/write/memory tradeoffs against an exact full scan. |
+| Both: analytical execution and Parquet | Existing `rrflow-ql` Arrow/Parquet and D-06/F budgets; compare real typed results, streaming/resource bounds and source/read provenance, not vendor benchmark figures. |
 
 Source review on 2026-11-02 used DuckDB revision
 [`4d77d9c103baca29a62af61cba9ebdc40e5d2023`](https://github.com/duckdb/duckdb/blob/4d77d9c103baca29a62af61cba9ebdc40e5d2023/src/common/types/data_chunk.cpp)

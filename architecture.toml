@@ -1,0 +1,203 @@
+# The workspace's architecture: where each crate sits, what it is named and what it may use.
+# This is the only hand-written list of crates and their allowed dependencies.
+#
+# Plan and history: .ai/plan-engine-restructure.md and .ai/lessons.md.
+# Read by: scripts/ci/check_architecture.py (the checker), scripts/ci/check_code_shape.py
+# (the limits and the digest owner) and the `workspace_architecture` test of `rrd-engine`.
+#
+# Layout. A crate sits at `<group>/<folder>` and its package is `<prefix><folder>`:
+#   rrflow/  the product's components     rrflow-<folder>
+#   rrd/     the daemon (RRD) that runs   rrd-<folder>
+#   lab/     measurement from outside     rrflow-lab-<folder>
+#
+# Rules the checker enforces as hard errors:
+#   - every workspace member is listed here once, at the folder and name its group gives it;
+#   - a crate's normal and build dependencies on workspace crates are exactly its `uses`;
+#   - every crate in `uses` is listed above the crate that uses it, so the list is the layering;
+#   - a crate outside `lab/` uses a lab crate only in its tests;
+#   - a `standalone` crate depends, in every dependency kind, only on standalone crates;
+#   - `pending` names dependencies the target layering removes; one that is no longer used
+#     must be deleted from `pending`, so the list only shrinks;
+#   - `rrflow-core` has exactly the modules in `[core]` and no more than its recorded lines;
+#   - no crate folder or source module is named one of `rules.banned_names`.
+#
+# The owner's component table (2026-11-26) is the target for the storage and query crates:
+#   LSM, CLD, MX: no dependencies.  TX: LSM, MX.  KV: TX, LSM, CLD, MX.
+#   CX: KV, TX.  QL: KV, TX, MX.  DB: all of them.
+
+version = 2
+
+[limits]
+entry = 200
+source = 800
+harness = 1500
+
+[rules]
+banned_names = ["utils", "common", "helpers", "misc", "kernel", "foundation", "shared", "base"]
+digest_owner = { crate = "rrflow-core", file = "src/digest.rs" }
+
+# rrflow-core is watched so it cannot become a dumping ground. A new module needs an entry
+# here, and the line count only goes down: `check_architecture.py --tighten` lowers it.
+[core]
+crate = "rrflow-core"
+modules = ["authenticated_log", "claim", "data", "digest", "error", "ident", "reasoning_tree", "reference", "result_identity", "runtime", "schema", "telemetry", "temporal", "trace"]
+max_lines = 12321
+
+[[group]]
+folder = "rrflow"
+prefix = "rrflow-"
+
+[[group]]
+folder = "rrd"
+prefix = "rrd-"
+
+[[group]]
+folder = "lab"
+prefix = "rrflow-lab-"
+outside = true
+
+# Types that two or more crates below the engine share. Watched by the [core] table.
+[[crate]]
+name = "rrflow-core"
+uses = []
+standalone = true
+
+# Typed Arrow rows and stamped batches. Separate so QL reads them without the cold codecs.
+[[crate]]
+name = "rrflow-arrow"
+uses = ["rrflow-core"]
+standalone = true
+
+# rrflowLSM: hot disk persistence. Leaf.
+[[crate]]
+name = "rrflow-lsm"
+uses = ["rrflow-core"]
+standalone = true
+
+# rrflowCLD: cold and warm columnar storage. Leaf.
+[[crate]]
+name = "rrflow-cld"
+uses = ["rrflow-arrow", "rrflow-core"]
+standalone = true
+standalone_exceptions = ["dev:rrflow-db"]
+
+# rrflowDB: the multimodal coordinator. Still holds the code that becomes rrflow-mx,
+# rrflow-tx and rrflow-kv (plan phases 4 to 6).
+[[crate]]
+name = "rrflow-db"
+uses = ["rrflow-core", "rrflow-lsm"]
+
+[[crate]]
+name = "rrflow-vector"
+uses = ["rrflow-core", "rrflow-db"]
+pending = ["rrflow-db"]
+
+# rrflowQL. Target: kv, tx, mx.
+[[crate]]
+name = "rrflow-ql"
+uses = ["rrflow-arrow", "rrflow-core", "rrflow-db"]
+pending = ["rrflow-db"]
+
+# rrflowCX. Target: kv, tx.
+[[crate]]
+name = "rrflow-cx"
+uses = ["rrflow-core", "rrflow-db", "rrflow-lsm"]
+pending = ["rrflow-db", "rrflow-lsm"]
+
+# The daemon (RRD): wire contract first, because product crates name its types.
+[[crate]]
+name = "rrd-contract"
+uses = []
+
+[[crate]]
+name = "rrflow-cx-operator"
+uses = ["rrd-contract", "rrflow-core"]
+
+[[crate]]
+name = "rrflow-inference"
+uses = ["rrd-contract", "rrflow-core"]
+
+[[crate]]
+name = "rrflow-attunement"
+uses = ["rrflow-core"]
+
+[[crate]]
+name = "rrflow-engram"
+uses = ["rrd-contract", "rrflow-core", "rrflow-db"]
+pending = ["rrflow-db"]
+
+[[crate]]
+name = "rrflow-security"
+uses = ["rrd-contract", "rrflow-core", "rrflow-db"]
+pending = ["rrflow-db"]
+
+[[crate]]
+name = "rrflow-observability"
+uses = ["rrd-contract", "rrflow-core"]
+
+[[crate]]
+name = "rrflow-knowledge"
+uses = ["rrflow-core", "rrflow-vector"]
+
+# The engine the daemon runs. Everything above this line is a component it composes.
+[[crate]]
+name = "rrd-engine"
+uses = ["rrd-contract", "rrflow-attunement", "rrflow-cld", "rrflow-core", "rrflow-cx", "rrflow-db", "rrflow-engram", "rrflow-inference", "rrflow-knowledge", "rrflow-observability", "rrflow-ql", "rrflow-security", "rrflow-vector"]
+
+[[crate]]
+name = "rrd-server"
+uses = ["rrd-contract", "rrd-engine"]
+
+[[crate]]
+name = "rrd-client"
+uses = ["rrd-contract"]
+
+# Programs a person or a host runs.
+[[crate]]
+name = "rrflow-cli"
+uses = ["rrd-client", "rrd-contract", "rrd-engine", "rrd-server"]
+
+[[crate]]
+name = "rrflow-mcp"
+uses = ["rrd-client", "rrd-contract", "rrd-engine"]
+
+[[crate]]
+name = "rrflow-edge"
+uses = ["rrd-engine"]
+
+# The lab measures the product from outside. A crate outside `lab/` uses one only in tests.
+[[crate]]
+name = "rrflow-lab-core"
+uses = []
+
+[[crate]]
+name = "rrflow-lab-systems"
+uses = ["rrd-client", "rrd-contract", "rrflow-lab-core"]
+
+[[crate]]
+name = "rrflow-lab-datasets"
+uses = ["rrflow-lab-core"]
+
+[[crate]]
+name = "rrflow-lab-benchmarks"
+uses = ["rrflow-lab-core", "rrflow-lab-datasets", "rrflow-lab-systems"]
+
+[[crate]]
+name = "rrflow-lab-evals"
+uses = ["rrflow-lab-core", "rrflow-lab-systems"]
+
+[[crate]]
+name = "rrflow-lab-definitions"
+uses = ["rrflow-lab-benchmarks", "rrflow-lab-core", "rrflow-lab-systems"]
+
+[[crate]]
+name = "rrflow-lab-experiments"
+uses = []
+
+[[crate]]
+name = "rrflow-lab-runner"
+uses = ["rrflow-lab-benchmarks", "rrflow-lab-core", "rrflow-lab-datasets", "rrflow-lab-definitions", "rrflow-lab-evals", "rrflow-lab-systems"]
+
+[[crate]]
+name = "rrflow-lab-qualification-storage"
+uses = ["rrd-contract", "rrflow-lab-core"]

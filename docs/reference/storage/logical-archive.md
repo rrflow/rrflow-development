@@ -140,7 +140,7 @@ coordinates must commit atomically through `RrdEngine` and rrflowKV.
 
 ## Executable evidence
 
-The focused `rrd-store` suites cover:
+The focused `rrflow-db` suites cover:
 
 - exact claim/runtime/audit coordinates after close and reopen;
 - 2,100 claims across source pages and one 1,100-mutation atomic commit across

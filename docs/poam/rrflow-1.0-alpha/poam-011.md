@@ -54,7 +54,7 @@ The owner's rrflowDB identity requires PostgreSQL compatibility. The new
 [core-profile contract](../../reference/protocol/postgresql.md) defines the
 first compatibility matrix and [H-08](../../roadmap/rrflow-1.0/gate-h.md#h-08-postgresql-compatibility-packages)
 defines bounded implementation packages. Neither is implementation evidence.
-The inspected server exposes RRD HTTP/WebSocket; `rrd-operator-knowledge`
+The inspected server exposes RRD HTTP/WebSocket; `rrflow-knowledge`
 contains an outbound PostgreSQL adapter. The native value/schema model and
 snapshot transaction port still need SQL type, relational constraint,
 statement-snapshot, savepoint and concurrency semantics. Wire/client conformance,
@@ -106,7 +106,7 @@ evidence, linked in its [package receipt](../../evidence/change-journals/gate-h/
 That bounded result does not close H-06. Its process fixture exposed a concrete
 query gap: a schemaless key/value table can persist a record, but querying it
 as `record:settings` fails with an unregistered record-type error. The binder
-in `crates/compute/rrd-query/src/plan.rs` (`fields_for_source`) requires the
+in `rrflow/ql/src/plan.rs` (`fields_for_source`) requires the
 registered record schema, while table metadata alone supplies none. The UI
 now disables unsupported Browse and explains the limitation. Gate F/public
 query qualification owns a canonical schemaless binding decision and positive,
@@ -155,7 +155,7 @@ and [project sharing/isolation requirements](../../reference/client/devpulse-clo
 now specify additional missing integration behavior: generated credential/
 capability requirements and live availability, source-provenance/ACL fidelity,
 governed Parquet exchange, and independent sharing/placement controls.
-Inspection of `rrd-query/Cargo.toml` at `3a8828b42a11899d03fd45db0b2d2fd694dc8ce9`
+Inspection of `rrflow-ql/Cargo.toml` at `3a8828b42a11899d03fd45db0b2d2fd694dc8ce9`
 shows DataFusion default features disabled; it does not establish an admitted
 Parquet operation. D-05/D-06 and H-04/H-07/H-09/H-10 own implementation and
 real-adapter/UI evidence. A configured endpoint or successful local query is

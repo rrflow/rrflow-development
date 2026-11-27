@@ -34,7 +34,7 @@ whatever is turned on. See [Definition packs](#definition-packs). This is the sa
 Build in release mode, because a debug build would misrepresent RRFlow:
 
 ```bash
-cargo build --locked --release -p rrflow-lab --bin rrflow-lab -p rrflow-cli --bin rrflow
+cargo build --locked --release -p rrflow-lab-runner --bin rrflow-lab -p rrflow-cli --bin rrflow
 export RRFLOW_LAB_BIN=$PWD/target/release/rrflow-lab RRFLOW_BIN=$PWD/target/release/rrflow
 export RRFLOW_LAB_CPUSET=5-9,15-19 RRFLOW_LAB_CLIENT_CPUSET=0-4,10-14 TMPDIR=$HOME/lab-tmp
 mkdir -p "$TMPDIR"
@@ -185,7 +185,7 @@ under `tests/`. Then run `rrflow-lab resolve-all --tests eval/lab/tests --system
 --out eval/lab`. Its results appear beside the others without any new client code or script change. Report evidence if you can, because an index
 that goes unused looks like a good result. A system with its own built-in
 adapter, like Qdrant, implements `SystemAdapter` in
-`crates/evaluation/lab/rrflow-lab-systems/src/adapters/`, is listed once in that crate's
+`lab/systems/src/adapters/`, is listed once in that crate's
 `registry.rs`, and has its responses captured into its `tests/adapters.rs`.
 
 Two things go wrong silently in a shim, and both happened to Lance's:
@@ -287,7 +287,7 @@ A report's runs record the pack's number and manifest digest, and whether it had
 - **Signed.** A pack's manifest is read only after its Ed25519 signature checks
   against a trusted key, and it names every file by size and SHA-256.
 - **Trust does not come from a folder.** A build pins its publisher's public keys in
-  [`lab-trusted-keys.json`](../../crates/evaluation/lab/rrflow-lab-definitions/assets/lab-trusted-keys.json).
+  [`lab-trusted-keys.json`](../../lab/definitions/assets/lab-trusted-keys.json).
   Another publisher is trusted only by `rrflow-lab definitions trust --file FILE`.
 - **It only moves forward.** A lower sequence is refused, and so is the same
   sequence with different content. `definitions revert` steps back locally, states

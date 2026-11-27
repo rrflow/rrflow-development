@@ -1,38 +1,37 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/transport/rrd-contract",
-    "crates/transport/rrd-client",
-    "crates/authority/rrd-engram",
-    "crates/authority/rrd-security",
-    "crates/authority/rrd-engine",
-    "crates/transport/rrd-server",
-    "crates/foundation/rrflow-kernel",
-    "crates/compute/rrd-query",
-    "crates/compute/rrflow-arrow",
-    "crates/storage/rrflow-cld",
-    "crates/storage/rrd-store",
-    "crates/compute/rrd-vector",
-    "crates/operations/rrd-operator-knowledge",
-    "crates/operations/rrd-observation",
-    "crates/compute/rrd-inference",
-    "crates/compute/rrd-attunement",
-    "crates/adapters/rrflow-edge",
-    "crates/operations/rrd-cluster",
-    "crates/operations/rrd-kubernetes",
-    "crates/operations/rrd-maintenance",
-    "crates/storage/rrflow-lsm",
-    "crates/adapters/rrflow-cli",
-    "crates/adapters/rrflow-mcp",
-    "crates/evaluation/rrflow-evaluation-core",
-    "crates/evaluation/lab/rrflow-lab-systems",
-    "crates/evaluation/lab/rrflow-lab-datasets",
-    "crates/evaluation/lab/rrflow-lab-benchmarks",
-    "crates/evaluation/lab/rrflow-lab-evals",
-    "crates/evaluation/lab/rrflow-lab-definitions",
-    "crates/evaluation/lab/rrflow-lab",
-    "crates/evaluation/lab/rrflow-lab-experiments",
-    "crates/evaluation/qualification/rrflow-qualification-storage",
+    "rrd/contract",
+    "rrd/client",
+    "rrflow/engram",
+    "rrflow/security",
+    "rrd/engine",
+    "rrd/server",
+    "rrflow/core",
+    "rrflow/ql",
+    "rrflow/arrow",
+    "rrflow/cld",
+    "rrflow/db",
+    "rrflow/vector",
+    "rrflow/knowledge",
+    "rrflow/observability",
+    "rrflow/inference",
+    "rrflow/attunement",
+    "rrflow/edge",
+    "rrflow/cx",
+    "rrflow/cx-operator",
+    "rrflow/lsm",
+    "rrflow/cli",
+    "rrflow/mcp",
+    "lab/core",
+    "lab/systems",
+    "lab/datasets",
+    "lab/benchmarks",
+    "lab/evals",
+    "lab/definitions",
+    "lab/runner",
+    "lab/experiments",
+    "lab/qualification-storage",
 ]
 
 # Storage and query consume the engine-owned kernel. RrdEngine composes both.
@@ -48,37 +47,37 @@ publish = false
 # Every first-party crate is declared here once; members write
 # `workspace = true`. rrd-engine declares no default features here, so a
 # member that wants the full engine names `default`.
-rrd-attunement = { path = "crates/compute/rrd-attunement" }
-rrd-client = { path = "crates/transport/rrd-client" }
-rrd-cluster = { path = "crates/operations/rrd-cluster" }
-rrd-contract = { path = "crates/transport/rrd-contract" }
-rrd-engine = { path = "crates/authority/rrd-engine", default-features = false }
-rrd-engram = { path = "crates/authority/rrd-engram" }
-rrd-inference = { path = "crates/compute/rrd-inference" }
-rrflow-lsm = { path = "crates/storage/rrflow-lsm" }
-rrd-observation = { path = "crates/operations/rrd-observation" }
-rrd-operator-knowledge = { path = "crates/operations/rrd-operator-knowledge" }
-rrd-query = { path = "crates/compute/rrd-query" }
-rrd-security = { path = "crates/authority/rrd-security" }
-rrd-server = { path = "crates/transport/rrd-server" }
-rrd-store = { path = "crates/storage/rrd-store" }
-rrd-vector = { path = "crates/compute/rrd-vector" }
-rrflow-arrow = { path = "crates/compute/rrflow-arrow" }
-rrflow-cld = { path = "crates/storage/rrflow-cld" }
-rrflow-evaluation-core = { path = "crates/evaluation/rrflow-evaluation-core" }
-rrflow-kernel = { path = "crates/foundation/rrflow-kernel" }
-rrflow-lab-benchmarks = { path = "crates/evaluation/lab/rrflow-lab-benchmarks" }
-rrflow-lab-datasets = { path = "crates/evaluation/lab/rrflow-lab-datasets" }
-rrflow-lab-definitions = { path = "crates/evaluation/lab/rrflow-lab-definitions" }
-rrflow-lab-evals = { path = "crates/evaluation/lab/rrflow-lab-evals" }
-rrflow-lab-systems = { path = "crates/evaluation/lab/rrflow-lab-systems" }
-rrflow-qualification-storage = { path = "crates/evaluation/qualification/rrflow-qualification-storage" }
+rrflow-attunement = { path = "rrflow/attunement" }
+rrd-client = { path = "rrd/client" }
+rrflow-cx = { path = "rrflow/cx" }
+rrd-contract = { path = "rrd/contract" }
+rrd-engine = { path = "rrd/engine", default-features = false }
+rrflow-engram = { path = "rrflow/engram" }
+rrflow-inference = { path = "rrflow/inference" }
+rrflow-lsm = { path = "rrflow/lsm" }
+rrflow-observability = { path = "rrflow/observability" }
+rrflow-knowledge = { path = "rrflow/knowledge" }
+rrflow-ql = { path = "rrflow/ql" }
+rrflow-security = { path = "rrflow/security" }
+rrd-server = { path = "rrd/server" }
+rrflow-db = { path = "rrflow/db" }
+rrflow-vector = { path = "rrflow/vector" }
+rrflow-arrow = { path = "rrflow/arrow" }
+rrflow-cld = { path = "rrflow/cld" }
+rrflow-lab-core = { path = "lab/core" }
+rrflow-core = { path = "rrflow/core" }
+rrflow-lab-benchmarks = { path = "lab/benchmarks" }
+rrflow-lab-datasets = { path = "lab/datasets" }
+rrflow-lab-definitions = { path = "lab/definitions" }
+rrflow-lab-evals = { path = "lab/evals" }
+rrflow-lab-systems = { path = "lab/systems" }
+rrflow-lab-qualification-storage = { path = "lab/qualification-storage" }
 serde = { version = "1", features = ["derive"] }
 # A count or digest over a float is checked after the wire, so parsing has to be exact.
 serde_json = { version = "1", features = ["float_roundtrip"] }
 toml = "0.8"
 # Step T: spans at subsystem boundaries, zero-cost with no subscriber
-# installed. The kernel (rrflow-kernel) stays out: serde and pure hashing only.
+# installed. The kernel (rrflow-core) stays out: serde and pure hashing only.
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 unicode-normalization = "0.1"

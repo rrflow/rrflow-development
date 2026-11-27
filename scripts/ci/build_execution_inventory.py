@@ -11,7 +11,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from workspace_packages import member_directories, package_of
+from workspace_packages import CRATE_GROUPS, member_directories, package_of
 
 ROOT = Path(__file__).resolve().parents[2]
 OUTPUT = ROOT / "target" / "rrflow-1.0-file-plan.jsonl"
@@ -19,11 +19,11 @@ ROADMAP = ROOT / "docs" / "roadmap" / "rrflow-1.0.md"
 ACTIVE_CHANGE_PLAN = "docs/roadmap/rrflow-1.0-active-change.json"
 
 PACKAGE_GATES: dict[str, tuple[str, ...]] = {
-    "rrflow-kernel": ("A-07", "C-01", "C-02", "C-03", "H-05", "I-01"),
+    "rrflow-core": ("A-07", "C-01", "C-02", "C-03", "H-05", "I-01"),
     "rrflow-arrow": ("F-01", "F-02"),
     "rrflow-cld": ("D-06", "F-06"),
     "rrflow-lsm": ("A-07", "C-02", "C-06", "C-07", "D-09", "J-02", "J-04"),
-    "rrd-store": (
+    "rrflow-db": (
         "A-07",
         "C-01",
         "C-02",
@@ -37,7 +37,7 @@ PACKAGE_GATES: dict[str, tuple[str, ...]] = {
         "F-01",
         "F-02",
     ),
-    "rrd-query": (
+    "rrflow-ql": (
         "A-07",
         "B-05",
         "E-01",
@@ -52,7 +52,7 @@ PACKAGE_GATES: dict[str, tuple[str, ...]] = {
         "H-02",
         "H-03",
     ),
-    "rrd-vector": (
+    "rrflow-vector": (
         "A-07",
         "D-05",
         "E-04",
@@ -62,7 +62,7 @@ PACKAGE_GATES: dict[str, tuple[str, ...]] = {
         "J-02",
         "J-04",
     ),
-    "rrd-inference": (
+    "rrflow-inference": (
         "A-07",
         "B-03",
         "D-05",
@@ -73,8 +73,8 @@ PACKAGE_GATES: dict[str, tuple[str, ...]] = {
         "H-01",
         "J-04",
     ),
-    "rrd-security": ("A-07", "D-01", "H-04", "H-05", "J-02"),
-    "rrd-engram": ("A-07", "D-01", "D-02", "D-10", "H-05", "J-03"),
+    "rrflow-security": ("A-07", "D-01", "H-04", "H-05", "J-02"),
+    "rrflow-engram": ("A-07", "D-01", "D-02", "D-10", "H-05", "J-03"),
     "rrd-engine": (
         "A-07",
         "C-03",
@@ -129,8 +129,8 @@ PACKAGE_GATES: dict[str, tuple[str, ...]] = {
         "J-03",
         "J-05",
     ),
-    "rrd-cluster": ("A-07", "D-10", "H-05", "J-02", "J-04"),
-    "rrd-kubernetes": (
+    "rrflow-cx": ("A-07", "D-10", "H-05", "J-02", "J-04"),
+    "rrflow-cx-operator": (
         "A-07",
         "C-02",
         "C-03",
@@ -172,22 +172,21 @@ PACKAGE_GATES: dict[str, tuple[str, ...]] = {
         "J-03",
         "J-05",
     ),
-    "rrd-maintenance": ("A-07", "D-02", "D-10", "I-07", "J-02"),
-    "rrd-operator-knowledge": ("A-07", "D-06", "H-01", "J-02"),
-    "rrflow-qualification-storage": ("A-07", "G-06", "J-02", "J-04"),
+    "rrflow-knowledge": ("A-07", "D-06", "H-01", "J-02"),
+    "rrflow-lab-qualification-storage": ("A-07", "G-06", "J-02", "J-04"),
     "rrflow-lab-experiments": ("A-07", "J-04"),
-    "rrflow-evaluation-core": ("A-07", "J-04"),
+    "rrflow-lab-core": ("A-07", "J-04"),
     "rrflow-lab-systems": ("A-07", "J-04"),
     "rrflow-lab-datasets": ("A-07", "J-04"),
     "rrflow-lab-benchmarks": ("A-07", "J-04"),
     "rrflow-lab-evals": ("A-07", "J-04"),
     "rrflow-lab-definitions": ("A-07", "J-04"),
-    "rrflow-lab": ("A-07", "J-04"),
+    "rrflow-lab-runner": ("A-07", "J-04"),
 }
 
 FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
     "Cargo.toml": ("H-05", "J-01", "J-02", "J-03", "J-04", "J-05"),
-    "crates/foundation/rrflow-kernel/src/claim.rs": (
+    "rrflow/core/src/claim.rs": (
         "C-03",
         "G-02",
         "G-04",
@@ -195,14 +194,14 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "H-05",
         "J-01",
     ),
-    "crates/foundation/rrflow-kernel/src/runtime.rs": (
+    "rrflow/core/src/runtime.rs": (
         "C-02",
         "C-03",
         "H-05",
         "I-01",
         "J-01",
     ),
-    "crates/foundation/rrflow-kernel/src/reasoning_tree.rs": (
+    "rrflow/core/src/reasoning_tree.rs": (
         "B-03",
         "G-01",
         "G-02",
@@ -210,8 +209,8 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "H-01",
         "H-05",
     ),
-    "crates/foundation/rrflow-kernel/src/trace.rs": ("C-04", "H-05"),
-    "crates/foundation/rrflow-kernel/src/schema.rs": (
+    "rrflow/core/src/trace.rs": ("C-04", "H-05"),
+    "rrflow/core/src/schema.rs": (
         "C-01",
         "C-02",
         "C-03",
@@ -221,8 +220,8 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "H-12",
         "I-01",
     ),
-    "crates/foundation/rrflow-kernel/tests/golden.rs": ("C-01", "J-01"),
-    "crates/storage/rrflow-lsm/src/database.rs": (
+    "rrflow/core/tests/golden.rs": ("C-01", "J-01"),
+    "rrflow/lsm/src/database.rs": (
         "C-02",
         "C-04",
         "C-06",
@@ -232,15 +231,15 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "F-06",
         "J-04",
     ),
-    "crates/storage/rrflow-lsm/src/manifest.rs": ("C-05", "C-06", "C-07", "D-01"),
-    "crates/storage/rrflow-lsm/src/memtable.rs": (
+    "rrflow/lsm/src/manifest.rs": ("C-05", "C-06", "C-07", "D-01"),
+    "rrflow/lsm/src/memtable.rs": (
         "C-02",
         "C-04",
         "C-06",
         "C-07",
         "F-01",
     ),
-    "crates/storage/rrflow-lsm/src/segment.rs": (
+    "rrflow/lsm/src/segment.rs": (
         "C-04",
         "C-05",
         "C-06",
@@ -250,7 +249,7 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "F-05",
         "J-04",
     ),
-    "crates/storage/rrflow-lsm/src/segment/format.rs": (
+    "rrflow/lsm/src/segment/format.rs": (
         "C-05",
         "C-06",
         "C-07",
@@ -258,10 +257,10 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "F-02",
         "J-04",
     ),
-    "crates/storage/rrflow-lsm/src/wal.rs": ("C-02", "C-05", "C-07", "J-04"),
-    "crates/storage/rrflow-lsm/src/write_diagnostics.rs": ("C-07", "J-04"),
-    "crates/storage/rrd-store/src/engine.rs": ("C-02", "C-03", "C-04"),
-    "crates/storage/rrd-store/src/keyspaces.rs": (
+    "rrflow/lsm/src/wal.rs": ("C-02", "C-05", "C-07", "J-04"),
+    "rrflow/lsm/src/write_diagnostics.rs": ("C-07", "J-04"),
+    "rrflow/db/src/engine.rs": ("C-02", "C-03", "C-04"),
+    "rrflow/db/src/keyspaces.rs": (
         "C-01",
         "C-03",
         "C-04",
@@ -271,7 +270,7 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "E-03",
         "E-04",
     ),
-    "crates/storage/rrd-store/src/rrflow_kv.rs": (
+    "rrflow/db/src/rrflow_kv.rs": (
         "C-01",
         "C-02",
         "C-03",
@@ -281,35 +280,35 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "D-01",
         "J-04",
     ),
-    "crates/storage/rrd-store/src/outcome.rs": ("C-02", "C-03"),
-    "crates/storage/rrd-store/src/control.rs": ("C-03", "H-05"),
-    "crates/storage/rrd-store/examples/engine_benchmark.rs": (
+    "rrflow/db/src/outcome.rs": ("C-02", "C-03"),
+    "rrflow/db/src/control.rs": ("C-03", "H-05"),
+    "rrflow/db/examples/engine_benchmark.rs": (
         "C-02",
         "C-04",
         "C-06",
         "C-07",
         "J-04",
     ),
-    "crates/storage/rrd-store/examples/ai_hotset_benchmark.rs": (
+    "rrflow/db/examples/ai_hotset_benchmark.rs": (
         "C-04",
         "C-06",
         "F-05",
         "J-04",
     ),
-    "crates/storage/rrd-store/tests/rrflow_kv_model_soak.rs": (
+    "rrflow/db/tests/rrflow_kv_model_soak.rs": (
         "C-02",
         "C-03",
         "C-05",
     ),
-    "crates/storage/rrd-store/tests/rrflow_kv_open.rs": ("C-05",),
-    "crates/storage/rrd-store/tests/rrflow_kv_operator.rs": (
+    "rrflow/db/tests/rrflow_kv_open.rs": ("C-05",),
+    "rrflow/db/tests/rrflow_kv_operator.rs": (
         "C-03",
         "C-04",
         "C-07",
         "J-04",
     ),
-    "crates/compute/rrflow-arrow/src/batch.rs": ("F-01", "F-02"),
-    "crates/compute/rrd-query/src/execute.rs": (
+    "rrflow/arrow/src/batch.rs": ("F-01", "F-02"),
+    "rrflow/ql/src/execute.rs": (
         "E-01",
         "E-03",
         "F-01",
@@ -317,9 +316,9 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "F-03",
         "F-04",
     ),
-    "crates/compute/rrd-query/src/live.rs": ("H-03",),
-    "crates/compute/rrd-query/src/pipeline.rs": ("B-05", "F-01", "F-04"),
-    "crates/compute/rrd-query/src/plan.rs": (
+    "rrflow/ql/src/live.rs": ("H-03",),
+    "rrflow/ql/src/pipeline.rs": ("B-05", "F-01", "F-04"),
+    "rrflow/ql/src/plan.rs": (
         "B-05",
         "E-05",
         "F-02",
@@ -327,7 +326,7 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "H-08",
         "H-12",
     ),
-    "crates/storage/rrflow-cld/src/interchange.rs": (
+    "rrflow/cld/src/interchange.rs": (
         "B-05",
         "D-06",
         "E-01",
@@ -343,33 +342,33 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "H-02",
         "H-03",
     ),
-    "crates/compute/rrd-query/src/bm25.rs": ("E-03", "F-03", "H-01"),
-    "crates/compute/rrd-query/src/index.rs": ("E-02", "E-03", "E-05"),
-    "crates/compute/rrd-query/src/syntax.rs": ("B-05", "F-03", "H-08", "H-12"),
-    "crates/compute/rrd-vector/src/exact.rs": ("E-04", "J-04"),
-    "crates/compute/rrd-vector/src/hnsw.rs": ("E-04", "E-05", "J-04"),
-    "crates/compute/rrd-vector/src/plan.rs": ("E-04", "E-05"),
-    "crates/compute/rrd-vector/src/runtime.rs": ("E-04", "E-05", "F-03"),
-    "crates/compute/rrd-inference/src/lib.rs": (
+    "rrflow/ql/src/bm25.rs": ("E-03", "F-03", "H-01"),
+    "rrflow/ql/src/index.rs": ("E-02", "E-03", "E-05"),
+    "rrflow/ql/src/syntax.rs": ("B-05", "F-03", "H-08", "H-12"),
+    "rrflow/vector/src/exact.rs": ("E-04", "J-04"),
+    "rrflow/vector/src/hnsw.rs": ("E-04", "E-05", "J-04"),
+    "rrflow/vector/src/plan.rs": ("E-04", "E-05"),
+    "rrflow/vector/src/runtime.rs": ("E-04", "E-05", "F-03"),
+    "rrflow/inference/src/lib.rs": (
         "B-03",
         "D-05",
         "E-04",
         "G-01",
         "H-01",
     ),
-    "crates/compute/rrd-inference/src/fastembed_local.rs": (
+    "rrflow/inference/src/fastembed_local.rs": (
         "D-05",
         "E-04",
         "H-01",
         "J-04",
     ),
-    "crates/compute/rrd-vector/src/contract.rs": ("D-05", "E-04", "J-04"),
-    "crates/compute/rrd-vector/src/catalog.rs": ("E-04", "E-05", "H-01"),
-    "crates/compute/rrd-vector/src/compact.rs": ("E-04", "F-03", "J-04"),
-    "crates/compute/rrd-vector/src/accelerator.rs": ("E-04", "J-04"),
-    "crates/compute/rrd-vector/src/turboquant.rs": ("E-04", "J-01", "J-04"),
-    "crates/compute/rrd-vector/src/turbo_segment.rs": ("E-04", "J-01", "J-04"),
-    "crates/transport/rrd-contract/src/function.rs": (
+    "rrflow/vector/src/contract.rs": ("D-05", "E-04", "J-04"),
+    "rrflow/vector/src/catalog.rs": ("E-04", "E-05", "H-01"),
+    "rrflow/vector/src/compact.rs": ("E-04", "F-03", "J-04"),
+    "rrflow/vector/src/accelerator.rs": ("E-04", "J-04"),
+    "rrflow/vector/src/turboquant.rs": ("E-04", "J-01", "J-04"),
+    "rrflow/vector/src/turbo_segment.rs": ("E-04", "J-01", "J-04"),
+    "rrd/contract/src/function.rs": (
         "A-07",
         "C-03",
         "D-01",
@@ -380,19 +379,19 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "J-01",
         "J-02",
     ),
-    "crates/transport/rrd-contract/src/read.rs": ("C-04", "F-04", "H-04", "H-05"),
-    "crates/authority/rrd-engine/src/runtime/read_evidence.rs": (
+    "rrd/contract/src/read.rs": ("C-04", "F-04", "H-04", "H-05"),
+    "rrd/engine/src/runtime/read_evidence.rs": (
         "C-04",
         "F-04",
         "H-05",
     ),
-    "crates/authority/rrd-engine/src/engine/context.rs": (
+    "rrd/engine/src/engine/context.rs": (
         "G-02",
         "G-05",
         "H-01",
         "H-02",
     ),
-    "crates/authority/rrd-engine/src/engine/memory_engram.rs": (
+    "rrd/engine/src/engine/memory_engram.rs": (
         "C-03",
         "D-01",
         "E-01",
@@ -403,7 +402,7 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "H-05",
         "J-01",
     ),
-    "crates/authority/rrd-engine/src/engine/tests/memory_engram.rs": (
+    "rrd/engine/src/engine/tests/memory_engram.rs": (
         "C-03",
         "D-01",
         "G-02",
@@ -413,29 +412,29 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "H-05",
         "J-01",
     ),
-    "crates/authority/rrd-engine/src/engine/retrieval.rs": ("F-03", "H-01", "H-02"),
-    "crates/authority/rrd-engine/src/engine/retrieval_query.rs": (
+    "rrd/engine/src/engine/retrieval.rs": ("F-03", "H-01", "H-02"),
+    "rrd/engine/src/engine/retrieval_query.rs": (
         "E-05",
         "F-03",
         "H-01",
         "H-02",
     ),
-    "crates/authority/rrd-engine/src/engine/query.rs": ("B-05", "F-04", "H-04"),
-    "crates/authority/rrd-engine/src/engine/query_transaction.rs": (
+    "rrd/engine/src/engine/query.rs": ("B-05", "F-04", "H-04"),
+    "rrd/engine/src/engine/query_transaction.rs": (
         "C-02",
         "C-03",
         "G-04",
     ),
-    "crates/authority/rrd-engine/src/engine/transaction.rs": (
+    "rrd/engine/src/engine/transaction.rs": (
         "C-02",
         "C-03",
         "G-04",
         "H-05",
         "J-02",
     ),
-    "crates/authority/rrd-engine/src/engine/session.rs": ("H-04", "H-05", "J-02"),
-    "crates/authority/rrd-engine/src/engine/security.rs": ("H-04", "H-05", "J-02"),
-    "crates/authority/rrd-engine/src/engine/security_bootstrap.rs": (
+    "rrd/engine/src/engine/session.rs": ("H-04", "H-05", "J-02"),
+    "rrd/engine/src/engine/security.rs": ("H-04", "H-05", "J-02"),
+    "rrd/engine/src/engine/security_bootstrap.rs": (
         "C-02",
         "C-03",
         "D-01",
@@ -446,12 +445,12 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "J-03",
         "J-05",
     ),
-    "crates/authority/rrd-engine/src/engine/invocation.rs": (
+    "rrd/engine/src/engine/invocation.rs": (
         "H-04",
         "H-05",
         "J-02",
     ),
-    "crates/authority/rrd-engine/src/operator.rs": (
+    "rrd/engine/src/operator.rs": (
         "C-03",
         "G-02",
         "G-04",
@@ -459,20 +458,20 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "H-05",
         "J-01",
     ),
-    "crates/authority/rrd-engine/src/engine/inference.rs": (
+    "rrd/engine/src/engine/inference.rs": (
         "D-05",
         "E-04",
         "H-01",
     ),
-    "crates/authority/rrd-engine/src/engine/vector.rs": (
+    "rrd/engine/src/engine/vector.rs": (
         "D-05",
         "E-04",
         "H-01",
     ),
-    "crates/authority/rrd-engine/src/edge.rs": ("H-04", "H-07", "J-03", "J-05"),
-    "crates/authority/rrd-engine/src/engine/subscription.rs": ("B-04", "H-03", "H-04"),
-    "crates/transport/rrd-server/src/http/websocket.rs": ("B-04", "H-03", "H-04"),
-    "crates/authority/rrd-security/src/lib.rs": (
+    "rrd/engine/src/edge.rs": ("H-04", "H-07", "J-03", "J-05"),
+    "rrd/engine/src/engine/subscription.rs": ("B-04", "H-03", "H-04"),
+    "rrd/server/src/http/websocket.rs": ("B-04", "H-03", "H-04"),
+    "rrflow/security/src/lib.rs": (
         "C-02",
         "C-03",
         "D-01",
@@ -481,7 +480,7 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "J-01",
         "J-02",
     ),
-    "crates/authority/rrd-security/tests/security_authority.rs": (
+    "rrflow/security/tests/security_authority.rs": (
         "C-02",
         "C-03",
         "D-01",
@@ -489,19 +488,19 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "H-05",
         "J-02",
     ),
-    "crates/adapters/rrflow-cli/src/bin/rrd-security-bootstrap.rs": (
+    "rrflow/cli/src/bin/rrd-security-bootstrap.rs": (
         "D-01",
         "J-01",
         "J-03",
     ),
-    "crates/adapters/rrflow-cli/tests/security_bootstrap.rs": (
+    "rrflow/cli/tests/security_bootstrap.rs": (
         "D-01",
         "D-02",
         "J-01",
         "J-02",
         "J-03",
     ),
-    "crates/adapters/rrflow-cli/src/dev/supervisor.rs": (
+    "rrflow/cli/src/dev/supervisor.rs": (
         "C-02",
         "C-03",
         "D-01",
@@ -513,7 +512,7 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "J-03",
         "J-05",
     ),
-    "crates/adapters/rrflow-cli/src/command.rs": (
+    "rrflow/cli/src/command.rs": (
         "C-03",
         "D-01",
         "G-02",
@@ -522,7 +521,7 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "H-05",
         "J-01",
     ),
-    "crates/adapters/rrflow-cli/tests/operator_surface.rs": (
+    "rrflow/cli/tests/operator_surface.rs": (
         "C-03",
         "D-01",
         "G-02",
@@ -532,8 +531,8 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "H-05",
         "J-01",
     ),
-    "crates/transport/rrd-contract/src/attunement.rs": ("D-01", "D-02", "D-05"),
-    "crates/transport/rrd-contract/src/memory_engram.rs": (
+    "rrd/contract/src/attunement.rs": ("D-01", "D-02", "D-05"),
+    "rrd/contract/src/memory_engram.rs": (
         "C-03",
         "D-01",
         "G-02",
@@ -541,8 +540,8 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "H-04",
         "J-01",
     ),
-    "crates/transport/rrd-contract/src/router.rs": ("B-03", "G-01", "G-02", "G-03"),
-    "crates/transport/rrd-contract/src/reasoning_tree.rs": (
+    "rrd/contract/src/router.rs": ("B-03", "G-01", "G-02", "G-03"),
+    "rrd/contract/src/reasoning_tree.rs": (
         "B-03",
         "G-01",
         "G-02",
@@ -550,7 +549,7 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "H-01",
         "H-05",
     ),
-    "crates/operations/rrd-cluster/src/node_runtime.rs": (
+    "rrflow/cx/src/node_runtime.rs": (
         "D-01",
         "G-02",
         "H-04",
@@ -632,76 +631,76 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
 }
 
 REMOVE_OR_REWRITE = {
-    "crates/foundation/rrflow-kernel/src/claim.rs": "derive any producer attribution from the authenticated principal and same-stamp provider representation; an arbitrary actor string cannot authorize, resolve a seat, or persist routed work",
-    "crates/transport/rrd-contract/src/memory_engram.rs": "rename the ambiguous MemoryEngram contract directly to canonical seat and provider-representation vocabulary while preserving validation, subject-digest redaction, and temporal relation semantics; leave no alias",
-    "crates/authority/rrd-engine/src/engine/memory_engram.rs": "move seat planning and commit into one authenticated engine operation, consume the installed specialization, and replace broad snapshot reconstruction with canonical native graph/index access; leave no old module or type alias",
-    "crates/authority/rrd-engine/src/operator.rs": "bind claim attribution to canonical authenticated identity and representation semantics rather than accepting Producer.actor as sufficient identity",
-    "crates/adapters/rrflow-cli/src/command.rs": "remove hardcoded Clyffy identity defaults and caller-selected actor attribution; consume the installed specialization and public authenticated engine operations",
-    "crates/authority/rrd-engine/src/engine/security_bootstrap.rs": "absorb strict validation, bounded secret input, atomic initial policy/audit, exact replay, and drift denial into the D-01 install authority; remove the static rrflowKV/path/time opener and manifest dialect",
-    "crates/adapters/rrflow-cli/src/bin/rrd-security-bootstrap.rs": "delete after the sole rrflow install preview/apply path performs engine-owned cold-start security; leave no forwarding binary",
-    "crates/adapters/rrflow-cli/tests/security_bootstrap.rs": "move useful validation, redaction, replay, drift, and reopen cases into install conformance plus engine crash/secret matrices; reject the old command and manifest shape",
-    "crates/adapters/rrflow-cli/src/dev/supervisor.rs": "preserve bounded process safety in rrflow-local-process and move security initialization to D-01; remove private supervisor/bootstrap state and direct companion-binary orchestration",
-    "crates/authority/rrd-security/src/lib.rs": "split pure identity, typed verifier, policy, and audit semantics from the direct StorageEngine repository; only RrdEngine may persist or mutate security state",
-    "crates/operations/rrd-kubernetes/Cargo.toml": "replace with the planned outward rrflow-kubernetes package manifest during A-07; leave no forwarding package",
-    "crates/operations/rrd-kubernetes/src/lib.rs": "split useful closed API and deterministic rendering behavior into planned rrflow-kubernetes seams over engine-issued plans; remove the direct desired-state and bootstrap authority",
-    "crates/operations/rrd-kubernetes/src/controller.rs": "replace with engine-fenced reconciliation, standard observations, authenticated readiness, explicit field conflicts, and receipt submission in the outward adapter",
-    "crates/operations/rrd-kubernetes/src/main.rs": "move controller process composition to rrflow-kubernetes after the public plan/client boundary exists",
-    "crates/operations/rrd-kubernetes/src/bin/rrd-kubernetes-crd.rs": "replace with the rrflow-kubernetes CRD generator for the sole current projection schema",
-    "crates/operations/rrd-kubernetes/tests/contract.rs": "preserve useful validation/rendering cases in the new contract corpus and replace successful old-authority assertions",
-    "crates/operations/rrd-kubernetes/tests/crd.rs": "preserve deterministic schema assertions and replace string-only qualification with API-server and security evidence",
+    "rrflow/core/src/claim.rs": "derive any producer attribution from the authenticated principal and same-stamp provider representation; an arbitrary actor string cannot authorize, resolve a seat, or persist routed work",
+    "rrd/contract/src/memory_engram.rs": "rename the ambiguous MemoryEngram contract directly to canonical seat and provider-representation vocabulary while preserving validation, subject-digest redaction, and temporal relation semantics; leave no alias",
+    "rrd/engine/src/engine/memory_engram.rs": "move seat planning and commit into one authenticated engine operation, consume the installed specialization, and replace broad snapshot reconstruction with canonical native graph/index access; leave no old module or type alias",
+    "rrd/engine/src/operator.rs": "bind claim attribution to canonical authenticated identity and representation semantics rather than accepting Producer.actor as sufficient identity",
+    "rrflow/cli/src/command.rs": "remove hardcoded Clyffy identity defaults and caller-selected actor attribution; consume the installed specialization and public authenticated engine operations",
+    "rrd/engine/src/engine/security_bootstrap.rs": "absorb strict validation, bounded secret input, atomic initial policy/audit, exact replay, and drift denial into the D-01 install authority; remove the static rrflowKV/path/time opener and manifest dialect",
+    "rrflow/cli/src/bin/rrd-security-bootstrap.rs": "delete after the sole rrflow install preview/apply path performs engine-owned cold-start security; leave no forwarding binary",
+    "rrflow/cli/tests/security_bootstrap.rs": "move useful validation, redaction, replay, drift, and reopen cases into install conformance plus engine crash/secret matrices; reject the old command and manifest shape",
+    "rrflow/cli/src/dev/supervisor.rs": "preserve bounded process safety in rrflow-local-process and move security initialization to D-01; remove private supervisor/bootstrap state and direct companion-binary orchestration",
+    "rrflow/security/src/lib.rs": "split pure identity, typed verifier, policy, and audit semantics from the direct StorageEngine repository; only RrdEngine may persist or mutate security state",
+    "rrflow/cx-operator/Cargo.toml": "replace with the planned outward rrflow-kubernetes package manifest during A-07; leave no forwarding package",
+    "rrflow/cx-operator/src/lib.rs": "split useful closed API and deterministic rendering behavior into planned rrflow-kubernetes seams over engine-issued plans; remove the direct desired-state and bootstrap authority",
+    "rrflow/cx-operator/src/controller.rs": "replace with engine-fenced reconciliation, standard observations, authenticated readiness, explicit field conflicts, and receipt submission in the outward adapter",
+    "rrflow/cx-operator/src/main.rs": "move controller process composition to rrflow-kubernetes after the public plan/client boundary exists",
+    "rrflow/cx-operator/src/bin/rrd-kubernetes-crd.rs": "replace with the rrflow-kubernetes CRD generator for the sole current projection schema",
+    "rrflow/cx-operator/tests/contract.rs": "preserve useful validation/rendering cases in the new contract corpus and replace successful old-authority assertions",
+    "rrflow/cx-operator/tests/crd.rs": "preserve deterministic schema assertions and replace string-only qualification with API-server and security evidence",
     "deploy/kubernetes/example-rrdinstance.json": "regenerate from the accepted install/effect projection and a verified release candidate; remove the placeholder bootstrap shape",
     "deploy/kubernetes/operator-rbac.json": "regenerate as a namespace-scoped least-privilege default with explicit client selection and negative Secret evidence",
     "deploy/kubernetes/rrdinstances.rrflow.io-crd.json": "regenerate from the sole rrflow-kubernetes projection schema with standard conditions and no earlier-shape reader",
-    "crates/compute/rrd-query/src/execute.rs": "decompose eager loading into native access operators and a streaming DataFusion execution boundary",
-    "crates/compute/rrflow-arrow/src/batch.rs": "replace Vec<QueryRow>-to-Arrow snapshot materialization with stamped page/batch adapters",
-    "crates/compute/rrd-query/src/live.rs": "replace two-snapshot diffing with commit-impact evaluation",
+    "rrflow/ql/src/execute.rs": "decompose eager loading into native access operators and a streaming DataFusion execution boundary",
+    "rrflow/arrow/src/batch.rs": "replace Vec<QueryRow>-to-Arrow snapshot materialization with stamped page/batch adapters",
+    "rrflow/ql/src/live.rs": "replace two-snapshot diffing with commit-impact evaluation",
 }
 
 C04_DIRECT_READ_PATHS = {
-    "crates/adapters/rrflow-cli/src/command.rs",
-    "crates/adapters/rrflow-mcp/src/authority.rs",
-    "crates/adapters/rrflow-mcp/src/main.rs",
-    "crates/adapters/rrflow-mcp/tests/stdio.rs",
-    "crates/authority/rrd-engine/src/engine/context.rs",
-    "crates/authority/rrd-engine/src/engine/data.rs",
-    "crates/authority/rrd-engine/src/engine/inference.rs",
-    "crates/authority/rrd-engine/src/engine/memory_engram.rs",
-    "crates/authority/rrd-engine/src/engine/query.rs",
-    "crates/authority/rrd-engine/src/engine/retrieval.rs",
-    "crates/authority/rrd-engine/src/engine/retrieval_query.rs",
-    "crates/authority/rrd-engine/src/engine/tests/context.rs",
-    "crates/authority/rrd-engine/src/engine/tests/data_crud.rs",
-    "crates/authority/rrd-engine/src/engine/tests/function.rs",
-    "crates/authority/rrd-engine/src/engine/tests/memory_engram.rs",
-    "crates/authority/rrd-engine/src/engine/tests/native_inference.rs",
-    "crates/authority/rrd-engine/src/engine/tests/query_transaction.rs",
-    "crates/authority/rrd-engine/src/engine/tests/recovery.rs",
-    "crates/authority/rrd-engine/src/engine/tests/security.rs",
-    "crates/authority/rrd-engine/src/engine/tests/vector_index.rs",
-    "crates/authority/rrd-engine/src/engine/transaction.rs",
-    "crates/authority/rrd-engine/src/engine/vector/collection.rs",
-    "crates/authority/rrd-engine/src/engine/vector/index.rs",
-    "crates/authority/rrd-engine/src/engine/vector/points.rs",
-    "crates/authority/rrd-engine/src/engine/vector/quantization.rs",
-    "crates/authority/rrd-engine/src/engine/vector/search.rs",
-    "crates/authority/rrd-engine/src/runtime/data_plane.rs",
-    "crates/authority/rrd-engine/src/runtime/operator_knowledge.rs",
-    "crates/authority/rrd-engine/src/runtime/query.rs",
-    "crates/authority/rrd-engine/tests/direct_read_source_closure.rs",
-    "crates/authority/rrd-engine/tests/engine_authority.rs",
-    "crates/authority/rrd-engine/tests/runtime_query_trace.rs",
-    "crates/foundation/rrflow-kernel/src/trace.rs",
-    "crates/transport/rrd-client/tests/real_server/main.rs",
-    "crates/transport/rrd-contract/fixtures/router-contract-v1.json",
-    "crates/transport/rrd-contract/fixtures/websocket-protocol-v1.json",
-    "crates/transport/rrd-contract/src/inference.rs",
-    "crates/transport/rrd-contract/src/lib.rs",
-    "crates/transport/rrd-contract/src/memory_context.rs",
-    "crates/transport/rrd-contract/src/memory_engram.rs",
-    "crates/transport/rrd-contract/src/router.rs",
-    "crates/transport/rrd-contract/tests/public_contract/main.rs",
-    "crates/transport/rrd-contract/tests/router_contract.rs",
-    "crates/transport/rrd-server/tests/http_process/main.rs",
+    "rrflow/cli/src/command.rs",
+    "rrflow/mcp/src/authority.rs",
+    "rrflow/mcp/src/main.rs",
+    "rrflow/mcp/tests/stdio.rs",
+    "rrd/engine/src/engine/context.rs",
+    "rrd/engine/src/engine/data.rs",
+    "rrd/engine/src/engine/inference.rs",
+    "rrd/engine/src/engine/memory_engram.rs",
+    "rrd/engine/src/engine/query.rs",
+    "rrd/engine/src/engine/retrieval.rs",
+    "rrd/engine/src/engine/retrieval_query.rs",
+    "rrd/engine/src/engine/tests/context.rs",
+    "rrd/engine/src/engine/tests/data_crud.rs",
+    "rrd/engine/src/engine/tests/function.rs",
+    "rrd/engine/src/engine/tests/memory_engram.rs",
+    "rrd/engine/src/engine/tests/native_inference.rs",
+    "rrd/engine/src/engine/tests/query_transaction.rs",
+    "rrd/engine/src/engine/tests/recovery.rs",
+    "rrd/engine/src/engine/tests/security.rs",
+    "rrd/engine/src/engine/tests/vector_index.rs",
+    "rrd/engine/src/engine/transaction.rs",
+    "rrd/engine/src/engine/vector/collection.rs",
+    "rrd/engine/src/engine/vector/index.rs",
+    "rrd/engine/src/engine/vector/points.rs",
+    "rrd/engine/src/engine/vector/quantization.rs",
+    "rrd/engine/src/engine/vector/search.rs",
+    "rrd/engine/src/runtime/data_plane.rs",
+    "rrd/engine/src/runtime/operator_knowledge.rs",
+    "rrd/engine/src/runtime/query.rs",
+    "rrd/engine/tests/direct_read_source_closure.rs",
+    "rrd/engine/tests/engine_authority.rs",
+    "rrd/engine/tests/runtime_query_trace.rs",
+    "rrflow/core/src/trace.rs",
+    "rrd/client/tests/real_server/main.rs",
+    "rrd/contract/fixtures/router-contract-v1.json",
+    "rrd/contract/fixtures/websocket-protocol-v1.json",
+    "rrd/contract/src/inference.rs",
+    "rrd/contract/src/lib.rs",
+    "rrd/contract/src/memory_context.rs",
+    "rrd/contract/src/memory_engram.rs",
+    "rrd/contract/src/router.rs",
+    "rrd/contract/tests/public_contract/main.rs",
+    "rrd/contract/tests/router_contract.rs",
+    "rrd/server/tests/http_process/main.rs",
     "fixtures/rrd-sdk-conformance-v1.json",
     "sdks/dotnet/src/Rrflow.Rrd.Client/Generated/OperationId.g.cs",
     "sdks/dotnet/tests/Rrflow.Rrd.Client.Tests/RrdClientTests.cs",
@@ -717,24 +716,24 @@ C04_DIRECT_READ_PATHS = {
 }
 
 H05_OBSERVABILITY_PATHS = {
-    "crates/adapters/rrflow-cli/Cargo.toml",
-    "crates/adapters/rrflow-cli/src/command.rs",
-    "crates/adapters/rrflow-cli/src/main.rs",
-    "crates/compute/rrd-query/src/fusion.rs",
-    "crates/evaluation/lab/rrflow-lab-experiments/Cargo.toml",
-    "crates/evaluation/lab/rrflow-lab-experiments/src/main.rs",
-    "crates/transport/rrd-client/Cargo.toml",
-    "crates/transport/rrd-client/src/client.rs",
-    "crates/transport/rrd-client/src/lib.rs",
-    "crates/transport/rrd-client/src/operation.rs",
-    "crates/transport/rrd-client/src/transport.rs",
-    "crates/transport/rrd-client/tests/real_server/main.rs",
-    "crates/transport/rrd-contract/Cargo.toml",
-    "crates/transport/rrd-contract/src/diagnostic.rs",
-    "crates/transport/rrd-contract/src/generated/signal_catalogue.rs",
-    "crates/transport/rrd-contract/src/lib.rs",
-    "crates/transport/rrd-contract/tests/public_contract/main.rs",
-    "crates/transport/rrd-contract/tests/signal_catalogue_projection.rs",
+    "rrflow/cli/Cargo.toml",
+    "rrflow/cli/src/command.rs",
+    "rrflow/cli/src/main.rs",
+    "rrflow/ql/src/fusion.rs",
+    "lab/experiments/Cargo.toml",
+    "lab/experiments/src/main.rs",
+    "rrd/client/Cargo.toml",
+    "rrd/client/src/client.rs",
+    "rrd/client/src/lib.rs",
+    "rrd/client/src/operation.rs",
+    "rrd/client/src/transport.rs",
+    "rrd/client/tests/real_server/main.rs",
+    "rrd/contract/Cargo.toml",
+    "rrd/contract/src/diagnostic.rs",
+    "rrd/contract/src/generated/signal_catalogue.rs",
+    "rrd/contract/src/lib.rs",
+    "rrd/contract/tests/public_contract/main.rs",
+    "rrd/contract/tests/signal_catalogue_projection.rs",
     "docs/reference/protocol/public-contract.md",
     "docs/reference/protocol/signal-catalogue.md",
     "docs/roadmap/rrflow-1.0-execution/generated-surfaces.md",
@@ -762,7 +761,7 @@ H05_OBSERVABILITY_PATHS = {
 }
 
 GENERATED_PROJECTIONS = {
-    "crates/transport/rrd-contract/src/generated/signal_catalogue.rs": "scripts/ci/check_generated_surfaces.py",
+    "rrd/contract/src/generated/signal_catalogue.rs": "scripts/ci/check_generated_surfaces.py",
     "docs/reference/protocol/signal-catalogue.md": "scripts/ci/check_generated_surfaces.py",
     "sdks/dotnet/src/Rrflow.Rrd.Client/Generated/OperationId.g.cs": "sdks/dotnet/scripts/generate.py",
     "sdks/dotnet/src/Rrflow.Rrd.Client/Generated/SignalCatalogue.g.cs": "scripts/ci/check_generated_surfaces.py",
@@ -778,41 +777,41 @@ GENERATED_PROJECTIONS = {
 }
 
 PLANNED_PATHS: dict[str, tuple[str, ...]] = {
-    "crates/transport/rrd-contract/src/graph_family.rs": ("H-09",),
-    "crates/authority/rrd-engine/src/engine/graph_family.rs": ("H-09",),
-    "crates/transport/rrd-contract/src/project_link.rs": ("H-10",),
-    "crates/authority/rrd-engine/src/engine/project_link.rs": ("H-10",),
+    "rrd/contract/src/graph_family.rs": ("H-09",),
+    "rrd/engine/src/engine/graph_family.rs": ("H-09",),
+    "rrd/contract/src/project_link.rs": ("H-10",),
+    "rrd/engine/src/engine/project_link.rs": ("H-10",),
     "scripts/ci/check_change_plan.py": ("J-01", "J-02"),
     "scripts/ci/test_change_plan.py": ("J-01", "J-02"),
-    "crates/storage/rrflow-lsm/src/lib.rs": ("C-02", "C-07", "D-01"),
-    "crates/storage/rrflow-lsm/tests/inspection.rs": (
+    "rrflow/lsm/src/lib.rs": ("C-02", "C-07", "D-01"),
+    "rrflow/lsm/tests/inspection.rs": (
         "C-07",
         "D-01",
         "D-11",
         "J-02",
     ),
-    "crates/storage/rrd-store/src/lib.rs": ("C-03", "D-01"),
-    "crates/storage/rrd-store/src/repository/control.rs": (
+    "rrflow/db/src/lib.rs": ("C-03", "D-01"),
+    "rrflow/db/src/repository/control.rs": (
         "C-03",
         "D-01",
         "H-05",
     ),
-    "crates/storage/rrd-store/src/repository/runtime.rs": (
+    "rrflow/db/src/repository/runtime.rs": (
         "C-03",
         "D-01",
         "H-05",
     ),
-    "crates/storage/rrd-store/tests/installed_lifecycle.rs": (
+    "rrflow/db/tests/installed_lifecycle.rs": (
         "C-03",
         "D-01",
         "J-02",
     ),
-    "crates/authority/rrd-engine/assets/install/default-profile-v3.json": (
+    "rrd/engine/assets/install/default-profile-v3.json": (
         "D-01",
         "J-03",
         "J-05",
     ),
-    "crates/authority/rrd-engine/src/engine/installation.rs": (
+    "rrd/engine/src/engine/installation.rs": (
         "D-01",
         "H-05",
         "J-01",
@@ -820,12 +819,12 @@ PLANNED_PATHS: dict[str, tuple[str, ...]] = {
         "J-03",
         "J-05",
     ),
-    "crates/authority/rrd-engine/src/engine/tests/installation.rs": (
+    "rrd/engine/src/engine/tests/installation.rs": (
         "D-01",
         "J-02",
         "J-03",
     ),
-    "crates/adapters/rrflow-cli/src/installed.rs": (
+    "rrflow/cli/src/installed.rs": (
         "D-01",
         "H-04",
         "H-05",
@@ -849,106 +848,106 @@ PLANNED_PATHS: dict[str, tuple[str, ...]] = {
         "KB-08",
         "J-01",
     ),
-    "crates/foundation/rrflow-kernel/src/telemetry.rs": ("H-05",),
-    "crates/foundation/rrflow-kernel/tests/telemetry_contract.rs": ("H-05", "J-02"),
-    "crates/transport/rrd-contract/src/observability.rs": ("H-05",),
-    "crates/transport/rrd-contract/fixtures/observability-v1.json": ("H-05",),
-    "crates/transport/rrd-contract/tests/observability_contract.rs": (
+    "rrflow/core/src/telemetry.rs": ("H-05",),
+    "rrflow/core/tests/telemetry_contract.rs": ("H-05", "J-02"),
+    "rrd/contract/src/observability.rs": ("H-05",),
+    "rrd/contract/fixtures/observability-v1.json": ("H-05",),
+    "rrd/contract/tests/observability_contract.rs": (
         "H-05",
         "J-02",
     ),
-    "crates/authority/rrd-engine/src/engine/observability/mod.rs": ("H-05",),
-    "crates/authority/rrd-engine/src/engine/observability/trace.rs": ("H-05",),
-    "crates/authority/rrd-engine/src/engine/observability/metrics.rs": ("H-05",),
-    "crates/authority/rrd-engine/src/engine/observability/capture.rs": ("H-05",),
-    "crates/authority/rrd-engine/tests/observability_conformance.rs": (
+    "rrd/engine/src/engine/observability/mod.rs": ("H-05",),
+    "rrd/engine/src/engine/observability/trace.rs": ("H-05",),
+    "rrd/engine/src/engine/observability/metrics.rs": ("H-05",),
+    "rrd/engine/src/engine/observability/capture.rs": ("H-05",),
+    "rrd/engine/tests/observability_conformance.rs": (
         "H-05",
         "J-02",
     ),
-    "crates/transport/rrd-server/src/observability.rs": ("H-05",),
-    "crates/transport/rrd-server/src/http/trace_context.rs": ("H-05",),
-    "crates/transport/rrd-server/tests/observability_process.rs": (
+    "rrd/server/src/observability.rs": ("H-05",),
+    "rrd/server/src/http/trace_context.rs": ("H-05",),
+    "rrd/server/tests/observability_process.rs": (
         "H-05",
         "J-02",
     ),
-    "crates/transport/rrd-client/src/trace_context.rs": ("H-05",),
-    "crates/adapters/rrflow-cli/src/diagnostics.rs": ("D-01", "H-05", "J-03"),
-    "crates/adapters/rrflow-cli/tests/diagnostic_identity.rs": (
+    "rrd/client/src/trace_context.rs": ("H-05",),
+    "rrflow/cli/src/diagnostics.rs": ("D-01", "H-05", "J-03"),
+    "rrflow/cli/tests/diagnostic_identity.rs": (
         "D-01",
         "H-05",
         "J-02",
         "J-03",
     ),
-    "crates/evaluation/qualification/rrflow-qualification-storage/src/latency.rs": ("H-05", "J-04"),
-    "crates/evaluation/qualification/rrflow-qualification-storage/tests/latency_evidence.rs": (
+    "lab/qualification-storage/src/latency.rs": ("H-05", "J-04"),
+    "lab/qualification-storage/tests/latency_evidence.rs": (
         "H-05",
         "J-02",
         "J-04",
     ),
-    "crates/transport/rrd-contract/src/read.rs": ("C-04", "F-04", "H-04", "H-05"),
-    "crates/transport/rrd-contract/fixtures/read-evidence-v1.json": (
+    "rrd/contract/src/read.rs": ("C-04", "F-04", "H-04", "H-05"),
+    "rrd/contract/fixtures/read-evidence-v1.json": (
         "C-04",
         "H-04",
     ),
-    "crates/transport/rrd-contract/tests/read_evidence_contract.rs": (
+    "rrd/contract/tests/read_evidence_contract.rs": (
         "C-04",
         "H-04",
     ),
-    "crates/authority/rrd-engine/src/runtime/read_evidence.rs": (
+    "rrd/engine/src/runtime/read_evidence.rs": (
         "C-04",
         "F-04",
         "H-05",
     ),
-    "crates/transport/rrd-contract/fixtures/knowledge-package-v1.json": ("KB-02",),
-    "crates/transport/rrd-contract/fixtures/function-contract-v1.json": (
+    "rrd/contract/fixtures/knowledge-package-v1.json": ("KB-02",),
+    "rrd/contract/fixtures/function-contract-v1.json": (
         "A-07",
         "I-01",
         "I-02",
     ),
-    "crates/transport/rrd-contract/fixtures/model-manifest-v1.json": ("B-03",),
-    "crates/transport/rrd-contract/fixtures/project-command-capability-v1.json": (
+    "rrd/contract/fixtures/model-manifest-v1.json": ("B-03",),
+    "rrd/contract/fixtures/project-command-capability-v1.json": (
         "D-06",
     ),
-    "crates/transport/rrd-contract/fixtures/activity-v1.json": ("I-03",),
-    "crates/transport/rrd-contract/fixtures/websocket-protocol-v1.json": ("B-04",),
-    "crates/transport/rrd-contract/tests/knowledge_contract.rs": ("KB-02",),
-    "crates/transport/rrd-contract/tests/function_contract.rs": (
+    "rrd/contract/fixtures/activity-v1.json": ("I-03",),
+    "rrd/contract/fixtures/websocket-protocol-v1.json": ("B-04",),
+    "rrd/contract/tests/knowledge_contract.rs": ("KB-02",),
+    "rrd/contract/tests/function_contract.rs": (
         "A-07",
         "I-01",
         "I-02",
     ),
-    "crates/transport/rrd-contract/tests/deployment_contract.rs": (
+    "rrd/contract/tests/deployment_contract.rs": (
         "A-07",
         "B-04",
         "H-04",
     ),
-    "crates/transport/rrd-contract/tests/model_manifest_contract.rs": ("B-03",),
-    "crates/transport/rrd-contract/tests/capability_contract.rs": ("D-06",),
-    "crates/transport/rrd-contract/tests/activity_contract.rs": ("I-03",),
-    "crates/transport/rrd-contract/tests/websocket_contract.rs": ("B-04",),
-    "crates/transport/rrd-client/src/client.rs": ("A-07", "D-01", "H-04"),
-    "crates/transport/rrd-client/src/endpoint.rs": ("A-07", "H-04", "H-07"),
-    "crates/transport/rrd-client/src/error.rs": ("A-07", "H-04", "J-02"),
-    "crates/transport/rrd-client/src/operation.rs": ("A-07", "H-04"),
-    "crates/transport/rrd-client/src/retry.rs": ("A-07", "H-04", "J-02"),
-    "crates/transport/rrd-client/src/session.rs": ("A-07", "H-04", "J-02"),
-    "crates/transport/rrd-client/src/subscription.rs": (
+    "rrd/contract/tests/model_manifest_contract.rs": ("B-03",),
+    "rrd/contract/tests/capability_contract.rs": ("D-06",),
+    "rrd/contract/tests/activity_contract.rs": ("I-03",),
+    "rrd/contract/tests/websocket_contract.rs": ("B-04",),
+    "rrd/client/src/client.rs": ("A-07", "D-01", "H-04"),
+    "rrd/client/src/endpoint.rs": ("A-07", "H-04", "H-07"),
+    "rrd/client/src/error.rs": ("A-07", "H-04", "J-02"),
+    "rrd/client/src/operation.rs": ("A-07", "H-04"),
+    "rrd/client/src/retry.rs": ("A-07", "H-04", "J-02"),
+    "rrd/client/src/session.rs": ("A-07", "H-04", "J-02"),
+    "rrd/client/src/subscription.rs": (
         "A-07",
         "B-04",
         "H-04",
     ),
-    "crates/transport/rrd-client/src/transport.rs": (
+    "rrd/client/src/transport.rs": (
         "A-07",
         "B-04",
         "H-07",
         "J-03",
     ),
-    "crates/transport/rrd-client/tests/operation_coverage.rs": ("H-04",),
-    "crates/transport/rrd-client/tests/protocol_validation.rs": (
+    "rrd/client/tests/operation_coverage.rs": ("H-04",),
+    "rrd/client/tests/protocol_validation.rs": (
         "H-04",
         "J-02",
     ),
-    "crates/transport/rrd-client/tests/transport_faults.rs": (
+    "rrd/client/tests/transport_faults.rs": (
         "B-04",
         "H-04",
         "H-07",
@@ -1219,89 +1218,89 @@ PLANNED_PATHS: dict[str, tuple[str, ...]] = {
         "H-07",
         "J-02",
     ),
-    "crates/compute/rrd-attunement/Cargo.toml": ("A-07", "D-03"),
-    "crates/compute/rrd-attunement/src/lib.rs": ("A-07", "D-03"),
-    "crates/compute/rrd-attunement/src/inventory.rs": ("D-03",),
-    "crates/compute/rrd-attunement/src/capability.rs": ("D-06",),
-    "crates/compute/rrd-attunement/src/parse.rs": ("D-04",),
-    "crates/compute/rrd-attunement/src/normalize.rs": ("D-05",),
-    "crates/compute/rrd-attunement/src/entity_link.rs": ("D-05",),
-    "crates/compute/rrd-attunement/src/ground.rs": ("D-05",),
-    "crates/compute/rrd-attunement/src/verify.rs": ("D-05",),
-    "crates/compute/rrd-attunement/tests/inventory.rs": ("D-03",),
-    "crates/compute/rrd-attunement/tests/capability_discovery.rs": ("D-06",),
-    "crates/compute/rrd-attunement/tests/fixtures/project-command-capabilities.toml": (
+    "rrflow/attunement/Cargo.toml": ("A-07", "D-03"),
+    "rrflow/attunement/src/lib.rs": ("A-07", "D-03"),
+    "rrflow/attunement/src/inventory.rs": ("D-03",),
+    "rrflow/attunement/src/capability.rs": ("D-06",),
+    "rrflow/attunement/src/parse.rs": ("D-04",),
+    "rrflow/attunement/src/normalize.rs": ("D-05",),
+    "rrflow/attunement/src/entity_link.rs": ("D-05",),
+    "rrflow/attunement/src/ground.rs": ("D-05",),
+    "rrflow/attunement/src/verify.rs": ("D-05",),
+    "rrflow/attunement/tests/inventory.rs": ("D-03",),
+    "rrflow/attunement/tests/capability_discovery.rs": ("D-06",),
+    "rrflow/attunement/tests/fixtures/project-command-capabilities.toml": (
         "D-06",
     ),
-    "crates/compute/rrd-attunement/tests/incremental_parse.rs": ("D-04",),
-    "crates/compute/rrd-attunement/tests/phases.rs": ("D-05",),
-    "crates/storage/rrflow-lsm/src/transaction.rs": ("C-02",),
-    "crates/storage/rrflow-lsm/tests/transaction_conformance.rs": ("C-02",),
-    "crates/storage/rrflow-lsm/tests/hybrid_segment.rs": ("C-06", "C-07"),
-    "crates/storage/rrflow-lsm/tests/mapped_page_lifetime.rs": ("C-07", "F-01"),
-    "crates/storage/rrflow-lsm/tests/write_diagnostics.rs": ("C-07", "J-04"),
-    "crates/storage/rrflow-lsm/src/segment.rs": ("C-06",),
-    "crates/storage/rrflow-lsm/src/segment/format.rs": ("C-06", "C-07"),
-    "crates/storage/rrflow-lsm/src/segment/spine.rs": ("C-06", "C-07"),
-    "crates/storage/rrflow-lsm/src/segment/column.rs": ("C-06", "C-07"),
-    "crates/storage/rrflow-lsm/src/segment/reader.rs": ("C-06", "C-07"),
-    "crates/storage/rrflow-lsm/src/segment/writer.rs": ("C-06", "C-07"),
-    "crates/storage/rrflow-lsm/src/segment/cache.rs": ("C-06", "C-07", "F-05"),
-    "crates/storage/rrd-store/src/key_codec.rs": ("C-01",),
-    "crates/storage/rrd-store/src/transaction.rs": ("C-02", "C-03"),
-    "crates/storage/rrd-store/tests/key_codec.rs": ("C-01",),
-    "crates/storage/rrd-store/tests/storage_profile_conformance.rs": ("C-02",),
-    "crates/storage/rrd-store/tests/semantic_commit_atomicity.rs": ("C-03",),
-    "crates/storage/rrd-store/tests/native_index_commit.rs": (
+    "rrflow/attunement/tests/incremental_parse.rs": ("D-04",),
+    "rrflow/attunement/tests/phases.rs": ("D-05",),
+    "rrflow/lsm/src/transaction.rs": ("C-02",),
+    "rrflow/lsm/tests/transaction_conformance.rs": ("C-02",),
+    "rrflow/lsm/tests/hybrid_segment.rs": ("C-06", "C-07"),
+    "rrflow/lsm/tests/mapped_page_lifetime.rs": ("C-07", "F-01"),
+    "rrflow/lsm/tests/write_diagnostics.rs": ("C-07", "J-04"),
+    "rrflow/lsm/src/segment.rs": ("C-06",),
+    "rrflow/lsm/src/segment/format.rs": ("C-06", "C-07"),
+    "rrflow/lsm/src/segment/spine.rs": ("C-06", "C-07"),
+    "rrflow/lsm/src/segment/column.rs": ("C-06", "C-07"),
+    "rrflow/lsm/src/segment/reader.rs": ("C-06", "C-07"),
+    "rrflow/lsm/src/segment/writer.rs": ("C-06", "C-07"),
+    "rrflow/lsm/src/segment/cache.rs": ("C-06", "C-07", "F-05"),
+    "rrflow/db/src/key_codec.rs": ("C-01",),
+    "rrflow/db/src/transaction.rs": ("C-02", "C-03"),
+    "rrflow/db/tests/key_codec.rs": ("C-01",),
+    "rrflow/db/tests/storage_profile_conformance.rs": ("C-02",),
+    "rrflow/db/tests/semantic_commit_atomicity.rs": ("C-03",),
+    "rrflow/db/tests/native_index_commit.rs": (
         "C-03",
         "E-02",
         "E-03",
         "E-04",
     ),
-    "crates/storage/rrd-store/tests/direct_read_paths.rs": ("C-04",),
-    "crates/storage/rrd-store/src/access/mod.rs": ("C-03", "C-04"),
-    "crates/storage/rrd-store/src/access/runtime_state.rs": ("C-03", "C-04"),
-    "crates/storage/rrd-store/src/access/semantic_commit.rs": ("C-03",),
-    "crates/storage/rrd-store/src/access/record.rs": ("C-04",),
-    "crates/storage/rrd-store/src/access/relation.rs": ("C-04", "E-01"),
-    "crates/storage/rrd-store/src/access/index.rs": ("C-03", "E-02", "E-03"),
-    "crates/storage/rrd-store/src/access/vector.rs": ("C-03", "E-04"),
-    "crates/transport/rrd-contract/fixtures/graphql-equivalence-v1.json": ("B-05",),
-    "crates/compute/rrd-query/src/graphql.rs": ("B-05",),
-    "crates/compute/rrd-query/tests/graphql_equivalence.rs": ("B-05",),
-    "crates/compute/rrd-query/tests/provider_streaming.rs": ("F-01", "F-02"),
-    "crates/compute/rrd-query/tests/native_operators.rs": ("F-03",),
-    "crates/compute/rrd-query/tests/resource_budgets.rs": ("F-04",),
-    "crates/compute/rrd-query/src/budget.rs": ("F-04",),
-    "crates/compute/rrd-query/src/provider/mod.rs": ("F-01",),
-    "crates/compute/rrd-query/src/provider/scan.rs": ("F-01", "F-02"),
-    "crates/compute/rrd-query/src/provider/stream.rs": ("F-01", "F-04"),
-    "crates/compute/rrd-query/src/provider/metrics.rs": ("F-02", "F-04"),
-    "crates/compute/rrd-query/src/physical/mod.rs": ("F-03",),
-    "crates/compute/rrd-query/src/physical/graph.rs": ("E-01", "F-03"),
-    "crates/compute/rrd-query/src/physical/bm25.rs": ("E-03", "F-03"),
-    "crates/compute/rrd-query/src/physical/vector.rs": ("E-04", "F-03"),
-    "crates/compute/rrd-query/src/physical/rrf.rs": ("F-03", "H-02"),
-    "crates/compute/rrd-inference/src/router.rs": ("G-01",),
-    "crates/transport/rrd-contract/src/knowledge.rs": ("KB-02",),
-    "crates/transport/rrd-contract/src/deployment.rs": (
+    "rrflow/db/tests/direct_read_paths.rs": ("C-04",),
+    "rrflow/db/src/access/mod.rs": ("C-03", "C-04"),
+    "rrflow/db/src/access/runtime_state.rs": ("C-03", "C-04"),
+    "rrflow/db/src/access/semantic_commit.rs": ("C-03",),
+    "rrflow/db/src/access/record.rs": ("C-04",),
+    "rrflow/db/src/access/relation.rs": ("C-04", "E-01"),
+    "rrflow/db/src/access/index.rs": ("C-03", "E-02", "E-03"),
+    "rrflow/db/src/access/vector.rs": ("C-03", "E-04"),
+    "rrd/contract/fixtures/graphql-equivalence-v1.json": ("B-05",),
+    "rrflow/ql/src/graphql.rs": ("B-05",),
+    "rrflow/ql/tests/graphql_equivalence.rs": ("B-05",),
+    "rrflow/ql/tests/provider_streaming.rs": ("F-01", "F-02"),
+    "rrflow/ql/tests/native_operators.rs": ("F-03",),
+    "rrflow/ql/tests/resource_budgets.rs": ("F-04",),
+    "rrflow/ql/src/budget.rs": ("F-04",),
+    "rrflow/ql/src/provider/mod.rs": ("F-01",),
+    "rrflow/ql/src/provider/scan.rs": ("F-01", "F-02"),
+    "rrflow/ql/src/provider/stream.rs": ("F-01", "F-04"),
+    "rrflow/ql/src/provider/metrics.rs": ("F-02", "F-04"),
+    "rrflow/ql/src/physical/mod.rs": ("F-03",),
+    "rrflow/ql/src/physical/graph.rs": ("E-01", "F-03"),
+    "rrflow/ql/src/physical/bm25.rs": ("E-03", "F-03"),
+    "rrflow/ql/src/physical/vector.rs": ("E-04", "F-03"),
+    "rrflow/ql/src/physical/rrf.rs": ("F-03", "H-02"),
+    "rrflow/inference/src/router.rs": ("G-01",),
+    "rrd/contract/src/knowledge.rs": ("KB-02",),
+    "rrd/contract/src/deployment.rs": (
         "A-07",
         "B-04",
         "H-04",
     ),
-    "crates/transport/rrd-contract/src/lifecycle.rs": ("D-01", "D-11"),
-    "crates/transport/rrd-contract/src/model_manifest.rs": ("B-03",),
-    "crates/transport/rrd-contract/src/websocket.rs": ("B-04",),
-    "crates/transport/rrd-contract/src/engine_event.rs": ("I-01",),
-    "crates/transport/rrd-contract/src/capability.rs": ("D-06", "I-06"),
-    "crates/transport/rrd-contract/src/activity.rs": ("I-03",),
-    "crates/transport/rrd-contract/src/skill.rs": ("I-05",),
-    "crates/authority/rrd-engine/src/engine/attunement.rs": (
+    "rrd/contract/src/lifecycle.rs": ("D-01", "D-11"),
+    "rrd/contract/src/model_manifest.rs": ("B-03",),
+    "rrd/contract/src/websocket.rs": ("B-04",),
+    "rrd/contract/src/engine_event.rs": ("I-01",),
+    "rrd/contract/src/capability.rs": ("D-06", "I-06"),
+    "rrd/contract/src/activity.rs": ("I-03",),
+    "rrd/contract/src/skill.rs": ("I-05",),
+    "rrd/engine/src/engine/attunement.rs": (
         "D-02",
         "D-05",
         "KB-06",
     ),
-    "crates/authority/rrd-engine/src/engine/function/mod.rs": (
+    "rrd/engine/src/engine/function/mod.rs": (
         "A-07",
         "C-03",
         "H-04",
@@ -1309,7 +1308,7 @@ PLANNED_PATHS: dict[str, tuple[str, ...]] = {
         "I-02",
         "I-06",
     ),
-    "crates/authority/rrd-engine/src/engine/function/catalogue.rs": (
+    "rrd/engine/src/engine/function/catalogue.rs": (
         "A-07",
         "C-01",
         "C-03",
@@ -1317,44 +1316,44 @@ PLANNED_PATHS: dict[str, tuple[str, ...]] = {
         "D-01",
         "I-06",
     ),
-    "crates/authority/rrd-engine/src/engine/function/execution.rs": (
+    "rrd/engine/src/engine/function/execution.rs": (
         "A-07",
         "C-03",
         "H-04",
         "H-05",
         "J-02",
     ),
-    "crates/authority/rrd-engine/src/engine/function/javascript.rs": (
+    "rrd/engine/src/engine/function/javascript.rs": (
         "A-07",
         "J-02",
         "J-05",
     ),
-    "crates/authority/rrd-engine/src/engine/function/webassembly.rs": (
+    "rrd/engine/src/engine/function/webassembly.rs": (
         "A-07",
         "J-02",
         "J-05",
     ),
-    "crates/authority/rrd-engine/src/engine/function/transaction_binding.rs": (
+    "rrd/engine/src/engine/function/transaction_binding.rs": (
         "A-07",
         "C-03",
         "I-01",
         "I-02",
     ),
-    "crates/authority/rrd-engine/src/engine/integrity.rs": ("D-01", "D-11"),
-    "crates/authority/rrd-engine/src/engine/repair.rs": ("D-11",),
-    "crates/authority/rrd-engine/src/engine/capabilities.rs": ("D-06", "I-06"),
-    "crates/authority/rrd-engine/src/engine/activities.rs": ("I-03",),
-    "crates/authority/rrd-engine/src/engine/routing.rs": ("G-02", "G-04", "G-05"),
-    "crates/authority/rrd-engine/src/engine/events.rs": ("I-01", "I-02"),
-    "crates/authority/rrd-engine/src/engine/routines.rs": ("I-03", "I-07"),
-    "crates/authority/rrd-engine/src/engine/skills.rs": ("I-05", "I-07"),
-    "crates/authority/rrd-engine/tests/attunement_resume.rs": (
+    "rrd/engine/src/engine/integrity.rs": ("D-01", "D-11"),
+    "rrd/engine/src/engine/repair.rs": ("D-11",),
+    "rrd/engine/src/engine/capabilities.rs": ("D-06", "I-06"),
+    "rrd/engine/src/engine/activities.rs": ("I-03",),
+    "rrd/engine/src/engine/routing.rs": ("G-02", "G-04", "G-05"),
+    "rrd/engine/src/engine/events.rs": ("I-01", "I-02"),
+    "rrd/engine/src/engine/routines.rs": ("I-03", "I-07"),
+    "rrd/engine/src/engine/skills.rs": ("I-05", "I-07"),
+    "rrd/engine/tests/attunement_resume.rs": (
         "D-02",
         "D-05",
         "KB-06",
         "KB-07",
     ),
-    "crates/authority/rrd-engine/tests/function_conformance.rs": (
+    "rrd/engine/tests/function_conformance.rs": (
         "A-07",
         "C-03",
         "H-04",
@@ -1366,27 +1365,27 @@ PLANNED_PATHS: dict[str, tuple[str, ...]] = {
         "J-03",
         "J-05",
     ),
-    "crates/authority/rrd-engine/tests/install_security.rs": (
+    "rrd/engine/tests/install_security.rs": (
         "D-01",
         "D-02",
         "J-02",
         "J-03",
     ),
-    "crates/authority/rrd-engine/tests/routing_conformance.rs": (
+    "rrd/engine/tests/routing_conformance.rs": (
         "G-02",
         "G-04",
         "G-05",
     ),
-    "crates/authority/rrd-engine/tests/context_flow.rs": ("H-01", "H-02"),
-    "crates/authority/rrd-engine/tests/commit_impact_live.rs": ("H-03",),
-    "crates/authority/rrd-engine/tests/automation_conformance.rs": (
+    "rrd/engine/tests/context_flow.rs": ("H-01", "H-02"),
+    "rrd/engine/tests/commit_impact_live.rs": ("H-03",),
+    "rrd/engine/tests/automation_conformance.rs": (
         "I-01",
         "I-02",
         "I-03",
         "I-05",
         "I-07",
     ),
-    "crates/authority/rrd-engine/tests/capability_activity_conformance.rs": (
+    "rrd/engine/tests/capability_activity_conformance.rs": (
         "D-06",
         "I-03",
         "I-06",
@@ -1587,33 +1586,33 @@ PLANNED_PATHS: dict[str, tuple[str, ...]] = {
     "crates/adapters/rrflow-devforge/tests/mounts.rs": ("D-08",),
     "crates/adapters/rrflow-devforge/tests/accounting.rs": ("D-09",),
     "crates/adapters/rrflow-devforge/tests/hibernation.rs": ("D-10",),
-    "crates/storage/rrflow-lsm/src/inspection.rs": ("D-01", "C-07", "D-11"),
-    "crates/storage/rrd-store/src/integrity.rs": ("D-01", "D-11"),
-    "crates/adapters/rrflow-cli/src/repair.rs": ("D-11",),
-    "crates/adapters/rrflow-cli/src/automation_install.rs": ("I-06",),
-    "crates/adapters/rrflow-cli/tests/installed_lifecycle/main.rs": (
+    "rrflow/lsm/src/inspection.rs": ("D-01", "C-07", "D-11"),
+    "rrflow/db/src/integrity.rs": ("D-01", "D-11"),
+    "rrflow/cli/src/repair.rs": ("D-11",),
+    "rrflow/cli/src/automation_install.rs": ("I-06",),
+    "rrflow/cli/tests/installed_lifecycle/main.rs": (
         "D-01",
         "D-11",
         "J-03",
         "J-05",
     ),
-    "crates/adapters/rrflow-cli/tests/repair_conformance.rs": ("D-11", "J-02"),
-    "crates/adapters/rrflow-cli/tests/automation_install_conformance.rs": ("I-06",),
-    "crates/authority/rrd-engine/assets/install/clyffy-profile-v3.json": ("D-01",),
-    "crates/authority/rrd-engine/assets/install/templates/generic-project-v1.md": (
+    "rrflow/cli/tests/repair_conformance.rs": ("D-11", "J-02"),
+    "rrflow/cli/tests/automation_install_conformance.rs": ("I-06",),
+    "rrd/engine/assets/install/clyffy-profile-v3.json": ("D-01",),
+    "rrd/engine/assets/install/templates/generic-project-v1.md": (
         "D-01",
     ),
-    "crates/authority/rrd-engine/assets/install/.gitattributes": ("D-01", "J-05"),
-    "crates/adapters/rrflow-cli/tests/fixtures/install-empty/.keep": ("D-01",),
-    "crates/adapters/rrflow-cli/tests/fixtures/install-existing/README.md": ("D-01",),
-    "crates/adapters/rrflow-cli/tests/fixtures/install-existing/AGENTS.md": ("D-01",),
-    "crates/compute/rrd-attunement/src/source.rs": ("D-06",),
-    "crates/compute/rrd-attunement/tests/source_discovery.rs": ("D-06",),
-    "crates/compute/rrd-attunement/tests/fixtures/external-sources.toml": ("D-06",),
-    "crates/operations/rrd-operator-knowledge/src/source.rs": ("D-06",),
-    "crates/transport/rrd-server/src/http/handlers/graphql.rs": ("H-04",),
-    "crates/transport/rrd-server/tests/cross_surface_conformance.rs": ("H-04",),
-    "crates/evaluation/qualification/rrflow-qualification-storage/src/bin/release-evidence.rs": ("J-02", "J-04"),
+    "rrd/engine/assets/install/.gitattributes": ("D-01", "J-05"),
+    "rrflow/cli/tests/fixtures/install-empty/.keep": ("D-01",),
+    "rrflow/cli/tests/fixtures/install-existing/README.md": ("D-01",),
+    "rrflow/cli/tests/fixtures/install-existing/AGENTS.md": ("D-01",),
+    "rrflow/attunement/src/source.rs": ("D-06",),
+    "rrflow/attunement/tests/source_discovery.rs": ("D-06",),
+    "rrflow/attunement/tests/fixtures/external-sources.toml": ("D-06",),
+    "rrflow/knowledge/src/source.rs": ("D-06",),
+    "rrd/server/src/http/handlers/graphql.rs": ("H-04",),
+    "rrd/server/tests/cross_surface_conformance.rs": ("H-04",),
+    "lab/qualification-storage/src/bin/release-evidence.rs": ("J-02", "J-04"),
     "docs/evidence/integration/connectome-conformance.json": ("H-06", "J-03"),
     "eval/connectome_conformance.py": ("H-06", "J-03"),
     "scripts/knowledge/export.py": ("KB-03",),
@@ -1790,8 +1789,11 @@ def file_kind(path: str) -> str:
     return "repository-asset"
 
 
+CRATE_FOLDERS = tuple(f"{group}/" for group in CRATE_GROUPS)
+
+
 def package_name(path: str) -> str | None:
-    return package_of(path, member_directories(ROOT)) if path.startswith("crates/") else None
+    return package_of(path, member_directories(ROOT)) if path.startswith(CRATE_FOLDERS) else None
 
 
 def planned_gates(path: str) -> tuple[str, ...]:

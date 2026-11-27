@@ -415,7 +415,7 @@ either independently.
 
 ## A-07 correction (2026-10-17):
 
-- The `rrd-security` crate header still claimed that the crate owns policy
+- The `rrflow-security` crate header still claimed that the crate owns policy
   truth and named a retired provisioning role. The
   [security authority reference](../../reference/security/authority.md)
   assigns the removal of both to A-07, and A-07's closure left them in place.

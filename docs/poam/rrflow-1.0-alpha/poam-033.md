@@ -35,7 +35,7 @@ and an authoritative absent-outcome check. The transaction can then be
 explicitly aborted. Unknown storage/I/O failures retain their intent for exact
 retry and recovery. No storage format or second coordinator is introduced.
 
-The [native database regression](../../../crates/transport/rrd-client/tests/rrflowdb_local.rs)
+The [native database regression](../../../rrd/client/tests/rrflowdb_local.rs)
 proves unique/type/stale-cursor rejection, unchanged rows/cursor, successful
 explicit abort, subsequent valid work, receipt replay and reopen. Existing
 engine recovery/function tests must also remain green. Local passing evidence

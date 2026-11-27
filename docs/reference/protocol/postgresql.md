@@ -40,14 +40,14 @@ all required profile cases pass against a real installed binary.
 
 | Inspected boundary | Existing behavior | Work still required |
 |---|---|---|
-| `rrflow-lsm`, `rrd-store` | Native WAL, MVCC, hybrid immutable segments, transaction port, recovery and storage evidence | Finish existing C-04/C-07 qualification; prove SQL workloads over these paths |
-| `rrflow-kernel/src/runtime.rs`, `schema.rs` | Canonical temporal records/relations, property values, schema catalogue | SQL type identity, typmods, nullability, defaults, constraints and relational schema evolution |
-| `rrd-query/src/syntax.rs`, `plan.rs` | Narrow rrflowQL grammar and stamped plans | PostgreSQL parsing, SQL binding/coercion/NULL semantics, relational DDL/DML and supported SELECT lowering |
-| `rrd-query/src/fusion.rs`, `arrow.rs` | DataFusion execution with materialized rows | Existing Gate F streaming work plus SQL semantic parity; parser dialect selection alone is insufficient |
-| `rrd-store/src/transaction.rs` | Snapshot-isolated byte transaction and write-conflict detection | PostgreSQL statement snapshots, read/write overlay, savepoints, abort state, locks and constraint concurrency |
+| `rrflow-lsm`, `rrflow-db` | Native WAL, MVCC, hybrid immutable segments, transaction port, recovery and storage evidence | Finish existing C-04/C-07 qualification; prove SQL workloads over these paths |
+| `rrflow-core/src/runtime.rs`, `schema.rs` | Canonical temporal records/relations, property values, schema catalogue | SQL type identity, typmods, nullability, defaults, constraints and relational schema evolution |
+| `rrflow-ql/src/syntax.rs`, `plan.rs` | Narrow rrflowQL grammar and stamped plans | PostgreSQL parsing, SQL binding/coercion/NULL semantics, relational DDL/DML and supported SELECT lowering |
+| `rrflow-ql/src/fusion.rs`, `arrow.rs` | DataFusion execution with materialized rows | Existing Gate F streaming work plus SQL semantic parity; parser dialect selection alone is insufficient |
+| `rrflow-db/src/transaction.rs` | Snapshot-isolated byte transaction and write-conflict detection | PostgreSQL statement snapshots, read/write overlay, savepoints, abort state, locks and constraint concurrency |
 | `rrd-engine/src/engine/transaction.rs` | Authorized leases, prepared mutations, idempotency and receipts | SQL session/transaction lifecycle mapped into that authority |
 | `rrd-server/src/http/` | RRD HTTP and WebSocket | Bounded PostgreSQL listener, authentication, wire state machine and codecs |
-| `rrd-operator-knowledge/src/pgvector_postgres.rs` | Outbound client to an external PostgreSQL/pgvector instance | No inbound PostgreSQL server capability is supplied by this adapter |
+| `rrflow-knowledge/src/pgvector_postgres.rs` | Outbound client to an external PostgreSQL/pgvector instance | No inbound PostgreSQL server capability is supplied by this adapter |
 
 The inspected workspace manifests and lockfile contain no Turso/libSQL/SQLite
 database dependency. This does not prove deployed projects contain no such
@@ -61,22 +61,22 @@ flowchart TD
   PG[PostgreSQL clients] --> W[rrd-server protocol adapter]
   RRD[RRD clients and Connectome] --> E[RrdEngine authorization and sessions]
   W --> E
-  E --> Q[rrd-query parsing binding and planning]
+  E --> Q[rrflow-ql parsing binding and planning]
   Q --> N[Native operators and bounded DataFusion]
-  N --> S[rrd-store stamped reads]
+  N --> S[rrflow-db stamped reads]
   Q --> M[Canonical mutation proposal]
   M --> E
-  E --> T[rrd-store semantic transaction]
+  E --> T[rrflow-db semantic transaction]
   S --> KV[rrflowKV]
   T --> KV
 ```
 
 `rrd-server` handles bytes, connection-local statement/portal handles and
-responses; it has no direct storage access. `rrflow-kernel` owns canonical values
-and schema meaning. `rrd-query` parses SQL into a bounded AST, binds it against
+responses; it has no direct storage access. `rrflow-core` owns canonical values
+and schema meaning. `rrflow-ql` parses SQL into a bounded AST, binds it against
 an authorized catalogue snapshot, and produces the same canonical plans and
 mutation proposals used by native callers. `RrdEngine` chooses read identity,
-authorizes effects, enforces budgets and commits through `rrd-store`.
+authorizes effects, enforces budgets and commits through `rrflow-db`.
 
 All PostgreSQL-originated durable actions map to catalogue-declared engine
 capabilities. Existing capability entries are reused; missing SQL capabilities

@@ -11,7 +11,7 @@ independently.
 ## Observed deficiency
 
 `RrdEngine::read_diagnostic_snapshot`
-(`crates/authority/rrd-engine/src/engine/diagnostic.rs`) assembles under a
+(`rrd/engine/src/engine/diagnostic.rs`) assembles under a
 before/after stamp that includes the control-journal sequence, and retries up
 to `MAX_DIAGNOSTIC_ASSEMBLY_ATTEMPTS` (3) times. Every audited request, reads
 included, appends to the control journal. One audited request inside an

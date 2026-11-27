@@ -207,7 +207,7 @@ artifact changed in that closure.
 | `segment/format.rs` | v5 bytes, canonical filter, bounded parser, deep reconstruction | golden and checksum-rewritten corruption tests |
 | `segment/mod.rs` | persisted descriptor filter and evidence; no allow-all path | reopened miss has negatives and no semantic page load |
 | physical-policy lab/example | reuse production filter; separate evidence artifact | zero member false negatives and stable corpus identity |
-| `rrd-store` | propagate open evidence into existing trace | store-level open/query phase separation |
+| `rrflow-db` | propagate open evidence into existing trace | store-level open/query phase separation |
 | segment/hybrid tests | exact MVCC and malformed-byte coverage on v5 | full `rrflow-lsm` suite |
 | fuzz target/corpus | direct v4-to-v5 rename | bounded sanitizer run with tracked seeds |
 | frozen fixtures | v5 segment and affected manifest/snapshot closure | deterministic golden checks and import/reopen tests |

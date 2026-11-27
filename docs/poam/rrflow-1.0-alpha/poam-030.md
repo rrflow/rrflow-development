@@ -16,7 +16,7 @@ memory, persistent-reopen and engine read/export tests pass for the tested page
 sizes. Candidate CI and final closure reconciliation remain pending; this
 deficiency and the separate POAM-029 remain open.
 
-`SecurityRepository::audit_since` (`crates/authority/rrd-security/src/lib.rs`)
+`SecurityRepository::audit_since` (`rrflow/security/src/lib.rs`)
 reads control-journal pages of `limit` entries and keeps audit records until it
 holds `limit` of them. It marks the control tail as reached whenever the last
 page it read was shorter than `limit`, including when it stopped inside that
@@ -25,7 +25,7 @@ the journal's final, partial page and a later audit record exists, the read
 fails its head-closure check with 400 `InvalidArgument` "audit chain does not
 reach its durable head", although the chain is valid.
 
-The `rrd-security` test
+The `rrflow-security` test
 `a_record_limit_met_inside_the_final_partial_journal_page_fails_the_audit_read`
 reproduces it: over one valid 14-entry journal, a six-record read reaches the
 head and a five-record read fails. A one-record page cannot trigger it, because

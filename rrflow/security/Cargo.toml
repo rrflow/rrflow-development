@@ -1,0 +1,20 @@
+[package]
+name = "rrflow-security"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "Persistent RRD principals, deny-by-default policy, and authenticated audit."
+
+[dependencies]
+rrd-contract = { workspace = true }
+rrflow-core = { workspace = true }
+rrflow-db = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+base64 = "0.22"
+hmac = "0.13"
+sha2 = "0.11"
+
+[dev-dependencies]
+tempfile = "3"

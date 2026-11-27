@@ -312,9 +312,9 @@ The first package is a working skeleton: one end-to-end test that every later pa
 
 Order: K0, then K1, K2, K3, K4. K5, K6 and K7 follow; K7 can start once K2 has landed. K8 needs K3 and K7. K9 needs K4 and K7. K10 records measurements using K1 and K3. For CLD, move authenticated generation publication and readback behind the port before admitting that source to ordinary DB scans. Prove source coverage before MX prefetch and any reclamation. K11 follows K2 and K3. K12 ships with each package. K13 is continuous, and K14 comes after K3's baseline. K15 starts after K4 and K10, once the local engine's planner and storage tiers are measured, because synchronization replicates them.
 
-Use the [installed HTTP correction/restart test](../../crates/transport/rrd-server/tests/http_process/query_transaction.rs)
+Use the [installed HTTP correction/restart test](../../rrd/server/tests/http_process/query_transaction.rs)
 as the history oracle for both storage backends. Extend the
-[columnar reference conformance suite](../../crates/storage/rrflow-cld/tests/columnar_backends.rs)
+[columnar reference conformance suite](../../rrflow/cld/tests/columnar_backends.rs)
 to the same installed generation, including digest and source-scope checks,
 corrupt input, deadlines, byte limits and empty pages. For the subsequent
 focus test, pivot away, apply a correction, then return with an active reader

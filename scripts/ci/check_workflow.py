@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 import tomllib
-from workspace_packages import member_directories
+from workspace_packages import crate_manifests, member_directories
 
 ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW_DIRECTORY = ROOT / ".github/workflows"
@@ -190,8 +190,8 @@ def verify_linux_arm64_ci(caller: str, reusable: str) -> None:
         'test "$(uname -m)" = aarch64',
         "host: aarch64-unknown-linux-gnu",
         "cargo test -p rrflow-lsm --test filesystem --test manifest --locked",
-        "cargo test -p rrd-store --test installed_lifecycle --test semantic_commit_atomicity --locked",
-        "cargo test -p rrd-attunement --locked",
+        "cargo test -p rrflow-db --test installed_lifecycle --test semantic_commit_atomicity --locked",
+        "cargo test -p rrflow-attunement --locked",
         "cargo test -p rrflow-cli --test installed_lifecycle --locked -- --nocapture",
     ]:
         require(arm.count(required) == 1, f"native ARM64 qualification missing: {required}")
@@ -508,7 +508,7 @@ def workspace_packages() -> set[str]:
 def optional_feature_packages() -> set[str]:
     packages = set()
     diagnostic_packages = set()
-    for manifest in (ROOT / "crates").rglob("Cargo.toml"):
+    for manifest in crate_manifests(ROOT):
         with manifest.open("rb") as source:
             document = tomllib.load(source)
         features = set(document.get("features", {})) - {"default"}
@@ -520,7 +520,7 @@ def optional_feature_packages() -> set[str]:
             features.remove("crash-test")
         if features:
             packages.add(document["package"]["name"])
-    require(diagnostic_packages == {"rrflow-lsm", "rrd-store", "rrd-engine", "rrflow-cli"},
+    require(diagnostic_packages == {"rrflow-lsm", "rrflow-db", "rrd-engine", "rrflow-cli"},
             "diagnostic feature must remain within its four-crate composition")
     return packages
 
@@ -668,7 +668,7 @@ def verify_engine_suites(block: str) -> tuple[int, int]:
         block,
     )
     required_suites = {
-        "kernel-storage",
+        "core-storage",
         "query-retrieval",
         "engine-authority",
         "service-protocol",
@@ -722,12 +722,12 @@ def verify_optional_features(optional: str, pgvector: str) -> int:
     routed = set(re.findall(r"(?m)^\s+- ([a-z][a-z0-9-]*)\s*$", package_lines))
     expected = optional_feature_packages()
     require(
-        routed | {"rrd-operator-knowledge"} == expected,
+        routed | {"rrflow-knowledge"} == expected,
         f"optional-feature coverage mismatch: expected={sorted(expected)} routed={sorted(routed)}",
     )
     # The served primary's diagnostic feature cannot join its ordinary suites,
     # so that one package names every other feature its manifest declares.
-    with (ROOT / "crates/adapters/rrflow-cli/Cargo.toml").open("rb") as source:
+    with (ROOT / "rrflow/cli/Cargo.toml").open("rb") as source:
         installed = sorted(set(tomllib.load(source)["features"]) - {"default", "crash-test"})
     selection = (
         "${{ matrix.package == 'rrflow-cli' && '--features "
@@ -743,7 +743,7 @@ def verify_optional_features(optional: str, pgvector: str) -> int:
     )
     require(
         "RRFLOW_PGVECTOR_TEST_URL" in pgvector
-        and "cargo test -p rrd-operator-knowledge --all-targets --all-features --locked"
+        and "cargo test -p rrflow-knowledge --all-targets --all-features --locked"
         in pgvector,
         "PostgreSQL operator knowledge must retain its real pgvector qualification",
     )
@@ -990,10 +990,10 @@ def verify_storage_contract_preflight(jobs: dict[str, str]) -> None:
         "        shell: bash\n"
         "        run: |\n"
         "          set -euo pipefail\n"
-        "          cargo test --locked -p rrflow-qualification-storage --test storage_contract "
+        "          cargo test --locked -p rrflow-lab-qualification-storage --test storage_contract "
         "generated_schemas_and_synthetic_receipts_match_goldens -- --exact --list | "
         "grep -Fx 'generated_schemas_and_synthetic_receipts_match_goldens: test'\n"
-        "          cargo test --locked -p rrflow-qualification-storage --test storage_contract "
+        "          cargo test --locked -p rrflow-lab-qualification-storage --test storage_contract "
         "generated_schemas_and_synthetic_receipts_match_goldens -- --exact"
     )
     require(preflight.count(command + "\n") == 1, "storage preflight must run the exact golden test")
@@ -1246,7 +1246,7 @@ def main() -> None:
         for command in [
             "cargo test -p rrflow-lsm --lib admission_tests --locked",
             "cargo test -p rrflow-lsm --test write_admission --locked",
-            "cargo test -p rrd-store --test write_admission --test semantic_commit_atomicity --locked",
+            "cargo test -p rrflow-db --test write_admission --test semantic_commit_atomicity --locked",
             "cargo test -p rrd-engine --lib engine::tests::write_admission --locked",
         ]:
             require(jobs[job].count(command) == 1,
@@ -1258,10 +1258,10 @@ def main() -> None:
         )
         for command in [
             "cargo test -p rrflow-lsm --test mutable_limits --locked",
-            "cargo test -p rrd-store --test mutable_admission --locked",
-            "cargo test -p rrd-store --test logical_archive_resilience --test backup_catalogue configured_ --locked",
+            "cargo test -p rrflow-db --test mutable_admission --locked",
+            "cargo test -p rrflow-db --test logical_archive_resilience --test backup_catalogue configured_ --locked",
             "cargo test -p rrflow-lsm --test write_diagnostics --locked",
-            "cargo test -p rrd-store --test rrflow_kv_operator --locked",
+            "cargo test -p rrflow-db --test rrflow_kv_operator --locked",
             "cargo test -p rrflow-lsm --test projected_lifetime --locked",
             "cargo test -p rrflow-lsm --lib reader::lifetime_tests --locked",
             "cargo test -p rrflow-lsm --test projected_output_limits --locked",

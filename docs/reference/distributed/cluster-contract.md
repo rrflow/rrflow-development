@@ -332,7 +332,7 @@ At clean baseline `03ba77c` on 2026-09-08, the complete package and test files
 were read before this classification. The current tests demonstrate useful
 mechanics, but the strongest suite is not green:
 
-- `cargo test -p rrd-cluster --all-features --all-targets --locked` passed 12
+- `cargo test -p rrflow-cx --all-features --all-targets --locked` passed 12
   unit tests, nine artifact-transfer tests, ten contract tests, three
   distributed-catalogue tests, and two small simulator schedule tests before
   failing in `openraft_cluster`; the other all-target binaries were not reached.

@@ -42,7 +42,7 @@ model. It is one Rust engine with one mutation authority
 | Time travel | Bi-temporal: valid time and known cursor on every read (`AT VALID … KNOWN …`) | Implemented; Postgres has no equivalent |
 | Typed schema and DDL | `RuntimeSchemaRegistry`: record, relation, event, vector, series, geo, and object tables with logical models, revisioned per scope ([schema catalogue](schema-catalogue.md)) | Implemented |
 | B-tree and unique indexes | Scalar and unique entries written with each record mutation | Write side implemented; native reader is E-02 |
-| pgvector | Native collections, named dense/sparse/multi vectors, payload filters, exact and HNSW search, quantization | Implemented in `rrd-vector`; native generations are E-04 |
+| pgvector | Native collections, named dense/sparse/multi vectors, payload filters, exact and HNSW search, quantization | Implemented in `rrflow-vector`; native generations are E-04 |
 | Apache AGE (graph) | Typed temporal relations with outgoing and incoming adjacency; rrflowQL `traverse:` reads native adjacency ranges | Adjacency written (C-03); rrflowQL traversal reads it natively (E-01a, pull request #21); context expansion still reads a snapshot |
 | Full-text search | BM25 with highlights | Implemented over artifacts; incremental postings are E-03 |
 | SQL over the wire | The rrflowDB PostgreSQL core profile | Planned, H-08 ([PostgreSQL contract](../protocol/postgresql.md)) |
@@ -163,10 +163,10 @@ link lets one project read another, never write it.
 | One engram per project, rrflowKV storage, one authority | [instance topology](../../architecture/instance-topology.md), ADR-0001 |
 | Typed temporal relations with both adjacency directions written atomically | C-03; [multi-model contract](multi-model-object-contract.md) |
 | rrflowQL traversal reads native adjacency ranges and matches an independent full-replay oracle | Implemented: E-01a, pull request #21 |
-| Claims are bi-temporal with tier, promotion, confidence, and supersession in the kernel | `rrflow-kernel/src/claim.rs`; `ClaimChangeSnapshot` exposes them on reads |
+| Claims are bi-temporal with tier, promotion, confidence, and supersession in the kernel | `rrflow-core/src/claim.rs`; `ClaimChangeSnapshot` exposes them on reads |
 | The public claim mutation omits `valid_to`, tier, promotion, and supersession | `TransactionMutation::AssertClaim` in `rrd-contract` |
 | No project-link record and no graph-family registry; PostgreSQL compatibility is planned under H-08 | Repository search at this record's revision |
-| DataFusion 55 is embedded in `rrd-query` and evaluates stamped Arrow batches | `crates/compute/rrd-query/Cargo.toml`; OBJ-05 |
+| DataFusion 55 is embedded in `rrflow-ql` and evaluates stamped Arrow batches | `rrflow/ql/Cargo.toml`; OBJ-05 |
 
 ## Build order
 

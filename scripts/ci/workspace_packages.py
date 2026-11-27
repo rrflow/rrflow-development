@@ -4,7 +4,7 @@
 The root `Cargo.toml` lists every member's directory, the same list Cargo
 builds from, and each member's own manifest names its package. A crate can
 therefore sit at any depth under `crates/`, such as
-`crates/evaluation/lab/rrflow-lab-core`. A path belongs to the member whose
+`lab/runner-core`. A path belongs to the member whose
 directory is its longest prefix, so a nested package that is not a member,
 such as a fuzz target, belongs to the member around it. Every script that
 maps a path to a package asks here instead of counting path parts.
@@ -17,6 +17,15 @@ from functools import lru_cache
 from pathlib import Path, PurePosixPath
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+# The top-level folders that hold Rust crates: the product, the daemon and the lab.
+CRATE_GROUPS = ("rrflow", "rrd", "lab")
+
+
+def crate_manifests(root: Path = ROOT) -> list[Path]:
+    """Every `Cargo.toml` under the crate groups, sorted."""
+    return sorted(manifest for group in CRATE_GROUPS for manifest in (root / group).rglob("Cargo.toml"))
 
 
 @lru_cache(maxsize=None)

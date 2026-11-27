@@ -43,13 +43,13 @@ smallest coherent step before C-07 recovery/concurrency and D-01 installation.
 
 | Path and symbols | Current behavior | Required change |
 |---|---|---|
-| `crates/storage/rrflow-lsm/src/segment.rs` — `PageCacheStats`, `PageCache`, `CacheEntry`, `new_page_cache`, `load_page_with_evidence`, `impl PageCache` | One `HashMap`, one lazy LRU heap, one global mutex, admit every fitting miss; duplicate losing loads are unclassified. | Add the closed policy type, exact/probationary/protected regions, validated basis-point target, exact state transitions, strict region/total accounting, admissions/promotions/demotions/rejections/duplicate-load evidence, and policy-aware lookup/insertion helpers. |
-| `crates/storage/rrflow-lsm/src/segment/reader.rs` — `ProjectedReadStream`, `SegmentProjectedCursor`, `load_projected_page` | One projected stream can request the same row-group page repeatedly while preparing and copying rows; no logical cache-reuse scope exists. | Allocate one checked opaque scope per stream and pass it through every segment page request so same-stream hits refresh without promoting; later streams get distinct scopes. |
-| `crates/storage/rrflow-lsm/src/database.rs` — `DatabaseOptions`, create/open cache construction, open trace | Configures bytes only and always constructs exact LRU. | Add non-durable `page_cache_policy`, validate before filesystem mutation, pass it to the sole cache constructor, expose current policy, and trace low-cardinality kind/ratio on open. |
-| `crates/storage/rrflow-lsm/src/lib.rs` — database/segment exports | Exposes bytes and cumulative stats but no policy. | Export the closed policy and default protected-target constant; expose no cache internals. |
-| `crates/storage/rrflow-lsm/src/segment/physical_policy_lab.rs` — cache simulator, reopened integration, decisions | Compares simulated exact/segmented LRU; real reopen uses the implicit default and does not compare policies. | Keep the simulator as a deterministic screen, add a real same-database exact-versus-scan-resistant mixed-family workload, bind semantic digests and production counters, and call the selected policy integrated only when the real invariant passes. |
-| `crates/storage/rrflow-lsm/examples/rrflowkv_physical_policy.rs` — child identity, aggregate evidence, artifact envelope | Emits C-06i codec/filter evidence and simulated cache hit counts. | Rev the evidence envelope, authenticate the integrated per-policy observations across children, aggregate post-scan loads/hits, emit C-06j scope/limitations, and reject a false or vacuous cache result. |
-| `crates/storage/rrflow-lsm/tests/page_cache.rs` | Absent. | Add black-box configuration, exact differential, mixed-family pollution, reopening, and capacity/evidence tests through public `Database` and projected-read APIs. |
+| `rrflow/lsm/src/segment.rs` — `PageCacheStats`, `PageCache`, `CacheEntry`, `new_page_cache`, `load_page_with_evidence`, `impl PageCache` | One `HashMap`, one lazy LRU heap, one global mutex, admit every fitting miss; duplicate losing loads are unclassified. | Add the closed policy type, exact/probationary/protected regions, validated basis-point target, exact state transitions, strict region/total accounting, admissions/promotions/demotions/rejections/duplicate-load evidence, and policy-aware lookup/insertion helpers. |
+| `rrflow/lsm/src/segment/reader.rs` — `ProjectedReadStream`, `SegmentProjectedCursor`, `load_projected_page` | One projected stream can request the same row-group page repeatedly while preparing and copying rows; no logical cache-reuse scope exists. | Allocate one checked opaque scope per stream and pass it through every segment page request so same-stream hits refresh without promoting; later streams get distinct scopes. |
+| `rrflow/lsm/src/database.rs` — `DatabaseOptions`, create/open cache construction, open trace | Configures bytes only and always constructs exact LRU. | Add non-durable `page_cache_policy`, validate before filesystem mutation, pass it to the sole cache constructor, expose current policy, and trace low-cardinality kind/ratio on open. |
+| `rrflow/lsm/src/lib.rs` — database/segment exports | Exposes bytes and cumulative stats but no policy. | Export the closed policy and default protected-target constant; expose no cache internals. |
+| `rrflow/lsm/src/segment/physical_policy_lab.rs` — cache simulator, reopened integration, decisions | Compares simulated exact/segmented LRU; real reopen uses the implicit default and does not compare policies. | Keep the simulator as a deterministic screen, add a real same-database exact-versus-scan-resistant mixed-family workload, bind semantic digests and production counters, and call the selected policy integrated only when the real invariant passes. |
+| `rrflow/lsm/examples/rrflowkv_physical_policy.rs` — child identity, aggregate evidence, artifact envelope | Emits C-06i codec/filter evidence and simulated cache hit counts. | Rev the evidence envelope, authenticate the integrated per-policy observations across children, aggregate post-scan loads/hits, emit C-06j scope/limitations, and reject a false or vacuous cache result. |
+| `rrflow/lsm/tests/page_cache.rs` | Absent. | Add black-box configuration, exact differential, mixed-family pollution, reopening, and capacity/evidence tests through public `Database` and projected-read APIs. |
 
 No production cache module is moved in this package. Moving the current cache
 out of `segment/mod.rs` would mix a structural rewrite with the policy proof;
@@ -410,7 +410,7 @@ cargo test -p rrflow-lsm --test segment database_page_cache_is_shared_bounded_an
 cargo test -p rrflow-lsm --features physical-policy-lab cache_candidates_preserve_identity_and_exact_capacity --locked
 cargo test -p rrflow-lsm --all-targets --all-features --locked
 cargo clippy -p rrflow-lsm --all-targets --all-features --locked -- -D warnings
-cargo test -p rrd-store --locked
+cargo test -p rrflow-db --locked
 cargo test -p rrd-engine --test workspace_architecture --locked
 cargo check --workspace --all-targets --locked
 cargo run --release --locked -p rrflow-lsm --features physical-policy-lab --example rrflowkv-physical-policy -- --seed 14592251008053203194 --trials 3 --records-per-family 1024 --versions-per-key 2 --value-bytes 512 --misses 16384 --cache-bytes 1048576 --output docs/evidence/c06j-rrflowkv-scan-resistant-cache-linux-x86_64.json
@@ -474,7 +474,7 @@ policies remain within 1,048,576 bytes and return identical manifest,
 semantic, hot-value, and projected-row identities.
 
 All 114 `rrflow-lsm` all-target/all-feature tests, strict Clippy, the complete
-locked `rrd-store` suite, all 28 workspace-architecture tests, and the locked
+locked `rrflow-db` suite, all 28 workspace-architecture tests, and the locked
 workspace all-target check pass. The first 45-versus-45 real-reader failure,
 the resulting scope correction, the initially untracked-target architecture
 failure, and the corrected example target name are retained in the execution

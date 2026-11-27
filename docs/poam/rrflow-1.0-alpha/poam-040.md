@@ -37,12 +37,12 @@ and the public readback and installed-process requirements remain open.
 Verified at development `main` `04fae276`:
 
 - The operation catalogue (`endpoint_catalogue` in
-  [`rrd-contract`](../../../crates/transport/rrd-contract/src/lib.rs)) advertises
+  [`rrd-contract`](../../../rrd/contract/src/lib.rs)) advertises
   no attunement, job, routine, backup-job, function-receipt or control-journal
   operation. `read_attunement` and `control_attunement` are embedded Rust calls
   only, and the CLI offers no job or receipt inspection.
 - The public audit read keeps only `security.audit` entries from the control
-  journal (`audit_since` in [`rrd-security`](../../../crates/authority/rrd-security/src/lib.rs)),
+  journal (`audit_since` in [`rrflow-security`](../../../rrflow/security/src/lib.rs)),
   so attunement and engram control transitions cannot be read through it.
 - `CommitReceipt` carries no principal or read stamp and has no read-by-id
   operation; it is returned again only on a retried commit.

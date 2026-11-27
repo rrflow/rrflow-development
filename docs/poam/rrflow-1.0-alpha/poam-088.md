@@ -17,7 +17,7 @@ and removed `rrd-server`'s own shutdown files and its literal 10 ms poll. What
 that package left:
 
 - **Fixed timings in the local process driver.**
-  `crates/authority/rrd-engram/src/local_process` waits on four literal 10 ms
+  `rrflow/engram/src/local_process` waits on four literal 10 ms
   sleeps (`driver.rs` identity discovery, `lifecycle.rs` readiness and owned
   exit, `preparation.rs`) and four fixed bounds in `deployment.rs`
   (`PROCESS_DISCOVERY_TIMEOUT` 3 s, `PROCESS_START_STABILITY` 250 ms,

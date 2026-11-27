@@ -11,7 +11,7 @@ independently.
 ## Observed deficiency
 
 `validate_schema_and_objects` in
-`crates/storage/rrd-store/src/access/semantic_commit.rs` validates schema
+`rrflow/db/src/access/semantic_commit.rs` validates schema
 constraints against everything stored in the commit's scope:
 
 - when any record schema in the effective registry declares

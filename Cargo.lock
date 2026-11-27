@@ -5698,24 +5698,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rrd-attunement"
-version = "1.0.0"
-dependencies = [
- "filetime",
- "gix-config",
- "gix-ignore",
- "gix-index",
- "rrflow-kernel",
- "serde",
- "serde_json",
- "streaming-iterator",
- "tree-sitter",
- "tree-sitter-go",
- "tree-sitter-python",
- "tree-sitter-rust",
-]
-
-[[package]]
 name = "rrd-client"
 version = "1.0.0"
 dependencies = [
@@ -5728,11 +5710,11 @@ dependencies = [
  "rcgen",
  "rrd-contract",
  "rrd-engine",
- "rrd-engram",
- "rrd-security",
  "rrd-server",
- "rrd-store",
- "rrflow-kernel",
+ "rrflow-core",
+ "rrflow-db",
+ "rrflow-engram",
+ "rrflow-security",
  "rustls",
  "serde",
  "serde_json",
@@ -5742,29 +5724,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "rrd-cluster"
-version = "1.0.0"
-dependencies = [
- "openraft",
- "rcgen",
- "rrd-store",
- "rrflow-kernel",
- "rrflow-lsm",
- "rustls",
- "serde",
- "serde_json",
- "tempfile",
- "tokio",
- "tokio-rustls",
- "x509-parser",
-]
-
-[[package]]
 name = "rrd-contract"
 version = "1.0.0"
 dependencies = [
  "base64 0.22.1",
- "rrflow-kernel",
+ "rrflow-core",
  "schemars",
  "serde",
  "serde_json",
@@ -5781,19 +5745,19 @@ dependencies = [
  "libc",
  "parquet",
  "rquickjs",
- "rrd-attunement",
- "rrd-cluster",
  "rrd-contract",
- "rrd-engram",
- "rrd-inference",
- "rrd-observation",
- "rrd-operator-knowledge",
- "rrd-query",
- "rrd-security",
- "rrd-store",
- "rrd-vector",
+ "rrflow-attunement",
  "rrflow-cld",
- "rrflow-kernel",
+ "rrflow-core",
+ "rrflow-cx",
+ "rrflow-db",
+ "rrflow-engram",
+ "rrflow-inference",
+ "rrflow-knowledge",
+ "rrflow-observability",
+ "rrflow-ql",
+ "rrflow-security",
+ "rrflow-vector",
  "schemars",
  "serde",
  "serde_json",
@@ -5808,129 +5772,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rrd-engram"
-version = "1.0.0"
-dependencies = [
- "rrd-contract",
- "rrd-store",
- "rrflow-kernel",
- "serde",
- "serde_json",
- "sha2",
- "sysinfo",
- "tempfile",
- "windows-sys 0.61.2",
-]
-
-[[package]]
-name = "rrd-inference"
-version = "1.0.0"
-dependencies = [
- "fastembed",
- "rrd-contract",
- "rrd-store",
- "rrflow-kernel",
- "serde",
- "serde_json",
- "ureq",
-]
-
-[[package]]
-name = "rrd-kubernetes"
-version = "1.0.0"
-dependencies = [
- "futures",
- "k8s-openapi",
- "kube",
- "rrd-contract",
- "rrflow-kernel",
- "schemars",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror 2.0.20",
- "tokio",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "rrd-maintenance"
-version = "1.0.0"
-dependencies = [
- "rrd-contract",
- "rrd-store",
- "rrflow-kernel",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror 2.0.20",
-]
-
-[[package]]
-name = "rrd-observation"
-version = "1.0.0"
-dependencies = [
- "chrono",
- "rrd-contract",
- "rrflow-kernel",
- "serde",
- "serde_json",
- "ureq",
-]
-
-[[package]]
-name = "rrd-operator-knowledge"
-version = "1.0.0"
-dependencies = [
- "native-tls",
- "postgres",
- "postgres-native-tls",
- "rrd-vector",
- "rrflow-kernel",
- "serde",
- "serde_json",
- "tempfile",
-]
-
-[[package]]
-name = "rrd-query"
-version = "1.0.0"
-dependencies = [
- "async-graphql-parser",
- "async-graphql-value",
- "async-trait",
- "datafusion",
- "datafusion-datasource",
- "datafusion-session",
- "futures",
- "futures-timer",
- "rrd-store",
- "rrflow-arrow",
- "rrflow-kernel",
- "serde",
- "serde_json",
- "tempfile",
- "tokio",
- "unicode-normalization",
-]
-
-[[package]]
-name = "rrd-security"
-version = "1.0.0"
-dependencies = [
- "base64 0.22.1",
- "hmac",
- "rrd-contract",
- "rrd-store",
- "rrflow-kernel",
- "serde",
- "serde_json",
- "sha2",
- "tempfile",
-]
-
-[[package]]
 name = "rrd-server"
 version = "1.0.0"
 dependencies = [
@@ -5941,10 +5782,10 @@ dependencies = [
  "rcgen",
  "rrd-contract",
  "rrd-engine",
- "rrd-engram",
- "rrd-security",
- "rrd-store",
- "rrflow-kernel",
+ "rrflow-core",
+ "rrflow-db",
+ "rrflow-engram",
+ "rrflow-security",
  "rustls",
  "rustls-pemfile",
  "serde",
@@ -5959,42 +5800,32 @@ dependencies = [
 ]
 
 [[package]]
-name = "rrd-store"
-version = "1.0.0"
-dependencies = [
- "fjall",
- "rrflow-kernel",
- "rrflow-lsm",
- "serde",
- "serde_json",
- "sha2",
- "tempfile",
- "tracing",
- "tracing-subscriber",
- "unicode-normalization",
-]
-
-[[package]]
-name = "rrd-vector"
-version = "1.0.0"
-dependencies = [
- "memmap2",
- "rrd-store",
- "rrflow-kernel",
- "serde",
- "serde_json",
- "tempfile",
-]
-
-[[package]]
 name = "rrflow-arrow"
 version = "1.0.0"
 dependencies = [
  "arrow-array",
  "arrow-schema",
- "rrflow-kernel",
+ "rrflow-core",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "rrflow-attunement"
+version = "1.0.0"
+dependencies = [
+ "filetime",
+ "gix-config",
+ "gix-ignore",
+ "gix-index",
+ "rrflow-core",
+ "serde",
+ "serde_json",
+ "streaming-iterator",
+ "tree-sitter",
+ "tree-sitter-go",
+ "tree-sitter-python",
+ "tree-sitter-rust",
 ]
 
 [[package]]
@@ -6006,9 +5837,9 @@ dependencies = [
  "arrow-schema",
  "bytes",
  "parquet",
- "rrd-store",
  "rrflow-arrow",
- "rrflow-kernel",
+ "rrflow-core",
+ "rrflow-db",
  "serde",
  "serde_json",
  "tempfile",
@@ -6026,13 +5857,13 @@ dependencies = [
  "rrd-client",
  "rrd-contract",
  "rrd-engine",
- "rrd-engram",
- "rrd-query",
- "rrd-security",
  "rrd-server",
- "rrd-store",
- "rrflow-kernel",
- "rrflow-qualification-storage",
+ "rrflow-core",
+ "rrflow-db",
+ "rrflow-engram",
+ "rrflow-lab-qualification-storage",
+ "rrflow-ql",
+ "rrflow-security",
  "serde",
  "serde_json",
  "sha2",
@@ -6045,6 +5876,68 @@ dependencies = [
 ]
 
 [[package]]
+name = "rrflow-core"
+version = "1.0.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "sha2",
+]
+
+[[package]]
+name = "rrflow-cx"
+version = "1.0.0"
+dependencies = [
+ "openraft",
+ "rcgen",
+ "rrflow-core",
+ "rrflow-db",
+ "rrflow-lsm",
+ "rustls",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "tokio-rustls",
+ "x509-parser",
+]
+
+[[package]]
+name = "rrflow-cx-operator"
+version = "1.0.0"
+dependencies = [
+ "futures",
+ "k8s-openapi",
+ "kube",
+ "rrd-contract",
+ "rrflow-core",
+ "schemars",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.20",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "rrflow-db"
+version = "1.0.0"
+dependencies = [
+ "fjall",
+ "rrflow-core",
+ "rrflow-lsm",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+ "tracing",
+ "tracing-subscriber",
+ "unicode-normalization",
+]
+
+[[package]]
 name = "rrflow-edge"
 version = "1.0.0"
 dependencies = [
@@ -6054,36 +5947,42 @@ dependencies = [
 ]
 
 [[package]]
-name = "rrflow-evaluation-core"
-version = "1.0.0"
-dependencies = [
- "schemars",
- "serde",
- "serde_json",
- "sha2",
-]
-
-[[package]]
-name = "rrflow-kernel"
-version = "1.0.0"
-dependencies = [
- "serde",
- "serde_json",
- "sha2",
-]
-
-[[package]]
-name = "rrflow-lab"
+name = "rrflow-engram"
 version = "1.0.0"
 dependencies = [
  "rrd-contract",
- "rrflow-evaluation-core",
- "rrflow-lab-benchmarks",
- "rrflow-lab-datasets",
- "rrflow-lab-definitions",
- "rrflow-lab-evals",
- "rrflow-lab-systems",
- "schemars",
+ "rrflow-core",
+ "rrflow-db",
+ "serde",
+ "serde_json",
+ "sha2",
+ "sysinfo",
+ "tempfile",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "rrflow-inference"
+version = "1.0.0"
+dependencies = [
+ "fastembed",
+ "rrd-contract",
+ "rrflow-core",
+ "rrflow-db",
+ "serde",
+ "serde_json",
+ "ureq",
+]
+
+[[package]]
+name = "rrflow-knowledge"
+version = "1.0.0"
+dependencies = [
+ "native-tls",
+ "postgres",
+ "postgres-native-tls",
+ "rrflow-core",
+ "rrflow-vector",
  "serde",
  "serde_json",
  "tempfile",
@@ -6093,7 +5992,7 @@ dependencies = [
 name = "rrflow-lab-benchmarks"
 version = "1.0.0"
 dependencies = [
- "rrflow-evaluation-core",
+ "rrflow-lab-core",
  "rrflow-lab-datasets",
  "rrflow-lab-systems",
  "schemars",
@@ -6103,10 +6002,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "rrflow-lab-core"
+version = "1.0.0"
+dependencies = [
+ "schemars",
+ "serde",
+ "serde_json",
+ "sha2",
+]
+
+[[package]]
 name = "rrflow-lab-datasets"
 version = "1.0.0"
 dependencies = [
- "rrflow-evaluation-core",
+ "rrflow-lab-core",
  "schemars",
  "serde",
  "serde_json",
@@ -6118,8 +6027,8 @@ version = "1.0.0"
 dependencies = [
  "ed25519-dalek",
  "getrandom 0.4.3",
- "rrflow-evaluation-core",
  "rrflow-lab-benchmarks",
+ "rrflow-lab-core",
  "rrflow-lab-systems",
  "serde",
  "serde_json",
@@ -6130,7 +6039,7 @@ name = "rrflow-lab-evals"
 version = "1.0.0"
 dependencies = [
  "rrd-contract",
- "rrflow-evaluation-core",
+ "rrflow-lab-core",
  "rrflow-lab-datasets",
  "rrflow-lab-systems",
  "schemars",
@@ -6148,12 +6057,42 @@ dependencies = [
 ]
 
 [[package]]
+name = "rrflow-lab-qualification-storage"
+version = "1.0.0"
+dependencies = [
+ "rrd-contract",
+ "rrflow-lab-core",
+ "schemars",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+]
+
+[[package]]
+name = "rrflow-lab-runner"
+version = "1.0.0"
+dependencies = [
+ "rrd-contract",
+ "rrflow-lab-benchmarks",
+ "rrflow-lab-core",
+ "rrflow-lab-datasets",
+ "rrflow-lab-definitions",
+ "rrflow-lab-evals",
+ "rrflow-lab-systems",
+ "schemars",
+ "serde",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
 name = "rrflow-lab-systems"
 version = "1.0.0"
 dependencies = [
  "rrd-client",
  "rrd-contract",
- "rrflow-evaluation-core",
+ "rrflow-lab-core",
  "schemars",
  "serde",
  "serde_json",
@@ -6174,7 +6113,7 @@ dependencies = [
  "lz4_flex 0.14.0",
  "memmap2",
  "ring",
- "rrflow-kernel",
+ "rrflow-core",
  "serde",
  "serde_json",
  "tempfile",
@@ -6190,10 +6129,10 @@ dependencies = [
  "rrd-client",
  "rrd-contract",
  "rrd-engine",
- "rrd-security",
  "rrd-server",
- "rrd-store",
- "rrflow-kernel",
+ "rrflow-core",
+ "rrflow-db",
+ "rrflow-security",
  "serde",
  "serde_json",
  "tempfile",
@@ -6201,15 +6140,63 @@ dependencies = [
 ]
 
 [[package]]
-name = "rrflow-qualification-storage"
+name = "rrflow-observability"
 version = "1.0.0"
 dependencies = [
+ "chrono",
  "rrd-contract",
- "rrflow-evaluation-core",
- "schemars",
+ "rrflow-core",
+ "serde",
+ "serde_json",
+ "ureq",
+]
+
+[[package]]
+name = "rrflow-ql"
+version = "1.0.0"
+dependencies = [
+ "async-graphql-parser",
+ "async-graphql-value",
+ "async-trait",
+ "datafusion",
+ "datafusion-datasource",
+ "datafusion-session",
+ "futures",
+ "futures-timer",
+ "rrflow-arrow",
+ "rrflow-core",
+ "rrflow-db",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "unicode-normalization",
+]
+
+[[package]]
+name = "rrflow-security"
+version = "1.0.0"
+dependencies = [
+ "base64 0.22.1",
+ "hmac",
+ "rrd-contract",
+ "rrflow-core",
+ "rrflow-db",
  "serde",
  "serde_json",
  "sha2",
+ "tempfile",
+]
+
+[[package]]
+name = "rrflow-vector"
+version = "1.0.0"
+dependencies = [
+ "memmap2",
+ "rrflow-core",
+ "rrflow-db",
+ "serde",
+ "serde_json",
  "tempfile",
 ]
 

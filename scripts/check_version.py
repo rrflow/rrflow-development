@@ -85,7 +85,9 @@ def main() -> int:
             failures,
         )
 
-    manifests = sorted((ROOT / "crates").rglob("Cargo.toml"))
+    manifests = sorted(
+        manifest for group in ("rrflow", "rrd", "lab") for manifest in (ROOT / group).rglob("Cargo.toml")
+    )
     manifest_documents = {manifest: load_toml(manifest) for manifest in manifests}
     declared_manifests = sorted(
         ROOT / member / "Cargo.toml"
@@ -201,7 +203,7 @@ def main() -> int:
 
     contract = json.loads(
         (
-            ROOT / "crates/transport/rrd-contract/fixtures/public-contract-v1.json"
+            ROOT / "rrd/contract/fixtures/public-contract-v1.json"
         ).read_text(encoding="utf-8")
     )
     implementation_version = contract["service"]["implementation_version"]

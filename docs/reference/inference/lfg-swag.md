@@ -269,7 +269,7 @@ selector-activation claim.
 
 ### Native selector transport prerequisite
 
-The optional `rrd-inference/endpoint-chat` feature provides
+The optional `rrflow-inference/endpoint-chat` feature provides
 `PreparedEndpointChat` for one explicitly prepared chat request. It derives the
 URL, service identity, credential reference and limits from the supplied
 configuration, validates the allowance, and accepts a caller-owned deadline,
@@ -290,7 +290,7 @@ The `endpoint_chat` example is an operator transport probe, not a public engine
 operation. It takes `CONFIG ALLOWANCE CONTROLLER_ID REQUEST KEY_ENV OUTPUT_DIR
 TIMEOUT_MS [CANCEL_AFTER_MS]`, requires a fresh output directory and retains
 actual request/response bytes and observations. Build with
-`cargo build --locked -p rrd-inference --features endpoint-chat --example endpoint_chat`.
+`cargo build --locked -p rrflow-inference --features endpoint-chat --example endpoint_chat`.
 Its [native transport journal](../../evidence/change-journals/gate-g/controller-native-chat.md)
 records real BF16 calls and limitations. Engine-derived context/candidates,
 authorization, durable reservation/fencing, admitted installation and dispatch
@@ -387,7 +387,7 @@ qualification. Missing training labels do not authorize fabricated examples.
    reusing endpoint identities and existing task/configuration types. Resolve the
    operation's authorization action and activity semantics before publishing it
    in the catalogue; generate outward schemas and SDKs from that owner.
-2. At `rrd-inference`, implement the configured selector adapter and bounded
+2. At `rrflow-inference`, implement the configured selector adapter and bounded
    execution using G-01a's admission/accounting owner. Qualify an actual selected
    endpoint's identity, response bounds, timeout and cancellation behavior.
 3. At `rrd-engine`, compose current task/source admission, eligible packet,

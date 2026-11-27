@@ -9,7 +9,7 @@ priority or closure status.
 
 ## Observed deficiency
 
-On 2026-11-18, full-matrix run 44398147981 failed `optional feature (rrd-cluster)` (job 135133823563) on a branch that changes no cluster code. In `crates/operations/rrd-cluster/tests/openraft_cluster.rs`, `real_consensus_elects_fails_over_installs_snapshot_and_changes_membership` partitions node 1 from nodes 2 and 3, sleeps 400 ms, triggers an election on node 2 and waits 15 seconds for node 2 to lead. It timed out at line 307: node 2 was still a candidate in term 2 with an uncommitted vote and no leader.
+On 2026-11-18, full-matrix run 44398147981 failed `optional feature (rrd-cluster)` (job 135133823563) on a branch that changes no cluster code. In `rrflow/cx/tests/openraft_cluster.rs`, `real_consensus_elects_fails_over_installs_snapshot_and_changes_membership` partitions node 1 from nodes 2 and 3, sleeps 400 ms, triggers an election on node 2 and waits 15 seconds for node 2 to lead. It timed out at line 307: node 2 was still a candidate in term 2 with an uncommitted vote and no leader.
 
 The same job passed in the six full runs before it (44320993635, 44123191670, 44104264596, 43886905368, 43878604248, 43715666883). The cause is not known. It is either a test that assumes an election finishes within its wait on a loaded runner, or a real case where the majority side does not elect after a partition.
 

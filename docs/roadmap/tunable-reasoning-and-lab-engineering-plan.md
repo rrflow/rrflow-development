@@ -87,7 +87,7 @@ Every answer carries its explanation: the seeds, each path's contribution to eac
 
 Rules for the loop:
 
-- **LSM and CLD settings join the same loop** once J9 makes them settings. `rrflow-lab-tuning` links `rrflow-lsm`, `rrd-vector` and the CLD tier directly for component measurements, as the evaluation rules allow.
+- **LSM and CLD settings join the same loop** once J9 makes them settings. `rrflow-lab-tuning` links `rrflow-lsm`, `rrflow-vector` and the CLD tier directly for component measurements, as the evaluation rules allow.
 - **Answer quality needs a judge.** Faithfulness and answer correctness are judged by a reader and judge model. The repository records that none may run until the owner chooses one (D-02 plan).
 
 ### 4.6 Layman-first configuration
@@ -101,7 +101,7 @@ Most users never customize, and defaults decide outcomes. So:
 
 ### 4.7 The Lab is optional
 
-- **Development:** `cargo run -p rrflow-lab` and the Connectome Lab routes are always available in a checkout.
+- **Development:** `cargo run -p rrflow-lab-runner` and the Connectome Lab routes are always available in a checkout.
 - **Release:** J-03's bundle gains an optional Lab component, holding the `rrflow-lab` binary and its definition packs. The default distribution leaves it out unless the person installing chooses it.
 - **Engine boundary:** the engine never depends on Lab code (the #370 rule). The engine exposes the operations the Lab needs: settings read, explain and plan/apply; diagnostics; J1 traces; J12 replay. The Lab composes them.
 - **Connectome:** it loads the Lab's routes on demand and shows them when a Lab is reachable. Connectome renders; the Lab and the engine do the work.

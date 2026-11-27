@@ -30,7 +30,7 @@ seconds each.
 vector catalogue before it reads any vector. When `search_turboquant_generation`
 declines, it continues to `read_versioned` over every stored vector. Only then
 does `prepare_search_at` reach `VectorPlanner::plan_at` in
-`rrd-vector/src/plan.rs`, which refuses because no candidate path covers the
+`rrflow-vector/src/plan.rs`, which refuses because no candidate path covers the
 filter's properties.
 
 ## Impact

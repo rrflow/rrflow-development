@@ -1,0 +1,53 @@
+[package]
+name = "rrflow-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "RRFlow installed reasoning and recall engine command-line product surface."
+
+[features]
+cld-vortex = ["rrd-engine/cld-vortex"]
+cld-parquet = ["rrd-engine/cld-parquet"]
+crash-test = ["rrd-engine/crash-test"]
+
+[dependencies]
+rrd-engine = { workspace = true, features = ["default"] }
+rrd-contract = { workspace = true }
+rrd-client = { workspace = true }
+rrd-server = { workspace = true }
+clap = { version = "4", features = ["derive", "env"] }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+toml = { workspace = true }
+sha2 = "0.11"
+sysinfo = "0.39.6"
+tokio = { version = "1", features = ["rt-multi-thread", "signal", "time"] }
+
+[dev-dependencies]
+rrflow-lab-qualification-storage = { workspace = true }
+bytes = "1"
+parquet = { version = "=59.2.0", default-features = false, features = ["arrow"] }
+rrflow-ql = { workspace = true }
+tempfile = "3"
+rrflow-core = { workspace = true }
+rrflow-db = { workspace = true }
+rrflow-security = { workspace = true }
+rrflow-engram = { workspace = true }
+
+[build-dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+[target.'cfg(any(target_os = "linux", target_os = "macos"))'.dev-dependencies]
+libc = "0.2"
+
+[[bin]]
+name = "rrflow"
+path = "src/main.rs"
+
+[[test]]
+name = "installed_crash"
+required-features = ["crash-test"]

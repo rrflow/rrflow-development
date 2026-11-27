@@ -12,7 +12,7 @@ independently.
 
 Found by source review while checking what Connectome's restored Stream and
 Activity views can read. `RuntimeChangeSnapshot`
-(`crates/transport/rrd-contract/src/lib.rs`) carries the cursor, commit digest,
+(`rrd/contract/src/lib.rs`) carries the cursor, commit digest,
 scope, time, actor, mutation and change digest. `AuditRecordSnapshot` carries the
 sequence, time, principal, action, request and operation ids, decision, status
 and digests of the request and response. The two share no field, and audit runs

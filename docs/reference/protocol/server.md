@@ -167,7 +167,7 @@ dispatcher. No transport frame or connection sequence enters `RrdEngine`.
 ## Public operation families
 
 Each catalogue operation names its family and carries its own summary and
-description (`crates/transport/rrd-contract/src/operation_reference.rs`); the
+description (`rrd/contract/src/operation_reference.rs`); the
 catalogue's `families` list and the OpenAPI tags project them, and client
 references read them from `endpoint-catalogue` rather than restating them. A
 family groups operations for readers and carries no authorization meaning.
@@ -282,8 +282,8 @@ direct-read evidence rather than rescheduling either as server work.
 
 ## Implementation anchors
 
-- Public catalogue and wire types: `crates/transport/rrd-contract`
-- Server composition and transport: `crates/transport/rrd-server`
-- Sole semantic authority: `crates/authority/rrd-engine`
+- Public catalogue and wire types: `rrd/contract`
+- Server composition and transport: `rrd/server`
+- Sole semantic authority: `rrd/engine`
 - Target architecture: [engine data flow](../../architecture/engine-data-flow.md)
 - Observed gaps: [RRFlow 1.0 alpha POA&M](../../poam/rrflow-1.0-alpha.md)

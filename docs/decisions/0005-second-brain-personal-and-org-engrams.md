@@ -18,7 +18,7 @@ The repository owner described the second brain on 2026-11-11 as "global and use
 At `b2d0d722` none of this has a home.
 
 - A workspace "is never an engine scope, resource, or authorization boundary" ([system overview](../architecture/system-overview.md)).
-- The installed identity has no organization: "a local installation must not fabricate a tenant merely to address itself" (`crates/transport/rrd-contract/src/deployment.rs:21-22`).
+- The installed identity has no organization: "a local installation must not fabricate a tenant merely to address itself" (`rrd/contract/src/deployment.rs:21-22`).
 - Preference resolution exists only as a description: run, then project, then global, for effort. Its own text says this is unimplemented ([LFG and SWAG reference](../reference/inference/lfg-swag.md#inheriting-effort-from-the-calling-ai)).
 - No code resolves preferences or records where a value came from (POAM-077, pull request #357).
 - One project reads another only through [project links](../reference/data/rrflowdb-capability.md#project-links). Links are opt-in and read-only, carry both read stamps, and are audited in both engrams. H-10 owns them, and they are not implemented.

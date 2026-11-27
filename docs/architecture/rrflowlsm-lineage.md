@@ -11,7 +11,7 @@ Vyrm was renamed during pre-release convergence; no compatibility name is kept
 in code. This record exists so the earlier name resolves to the current one in
 one place. The name appears in this repository only in the records the
 architecture test lists for it (`LINEAGE_RECORDS` in
-`crates/authority/rrd-engine/tests/workspace_architecture/retired_and_inputs.rs`);
+`rrd/engine/tests/workspace_architecture/retired_and_inputs.rs`);
 anywhere else it is a violation.
 
 The original migration control document, with its full target map and rules,
@@ -28,7 +28,7 @@ that exist are the `rrd-*` ones below.
 | VyrmQL, `vyrm-ql` | rrflowQL, crate `compute/rrd-query` | **verified** by capability: tokenizer, planner modes, filter algebra |
 | `vyrm-vector` | crate `compute/rrd-vector` | **verified** by capability: HNSW, TurboQuant, sparse, MaxSim, payload indexes |
 | VyrmMX (`vyrm-mx`) | folded into the one query contract | decision 2026-11-14; the test oracle remains |
-| `vyrm-core` | `kernel/rrflow-kernel` | mapped by role, not read |
+| `vyrm-core` | `kernel/rrflow-core` | mapped by role, not read |
 | `vyrm-embed` | `compute/rrd-inference` | mapped by role, not read |
 | `vyrm-edge` | `adapters/rrflow-edge` | mapped by role, not read |
 | `vyrm-cluster` | `operations/rrd-cluster` | mapped by role, not read |
@@ -60,7 +60,7 @@ value is identical.
 - The earlier native-versus-Fjall harness was removed with its dependency; its
   old store could not be ported, because semantics and Fjall were interleaved.
   The comparison is restored on the current boundary as the optional
-  `fjall-baseline` feature of `rrd-store`; see
+  `fjall-baseline` feature of `rrflow-db`; see
   [fjall-baseline-20261117](../evidence/change-journals/repository/fjall-baseline-20261117.md).
 - Vyrm-era documents with no counterpart by name (33 were found absent) were
   not each read. The database pillar is not fully verified.
@@ -68,7 +68,7 @@ value is identical.
 ## Open
 
 1. The earlier native application identity `VYRSK002` (the keyspace encoding
-   of `rrd-store`) has no confirmed counterpart; `RRDSNP01` is a different
+   of `rrflow-db`) has no confirmed counterpart; `RRDSNP01` is a different
    structure (the snapshot bundle file) and is not its successor.
 2. Read the six crates marked "mapped by role" and the four with no identified
    counterpart.

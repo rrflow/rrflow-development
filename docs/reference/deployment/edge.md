@@ -26,7 +26,7 @@ model.
 
 ## What this profile proves
 
-`crates/adapters/rrflow-edge/tests/offline.rs` proves deterministic build,
+`rrflow/edge/tests/offline.rs` proves deterministic build,
 model mismatch rejection, mmap search, no-network policy, and shared-corpus
 results. CI rejects common networking dependencies from the edge tree and from
 the optional local FastEmbed tree, and currently enforces a 2 MiB release

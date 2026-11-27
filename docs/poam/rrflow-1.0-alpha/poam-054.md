@@ -22,7 +22,7 @@ StorageAdmission("projected-read output_buffer_bytes limit 134217728 would be ex
 The same defaults serve 20,000 points and refuse 100,000. The exact size where
 refusal starts has not been measured. An exact search or a build reads every stored
 vector version into one output buffer: `scan_source` in
-`rrd-store/src/access/versioned_read.rs` scans the whole range with no row limit,
+`rrflow-db/src/access/versioned_read.rs` scans the whole range with no row limit,
 and `projected_output_bytes` caps that buffer.
 
 Writes give no warning as a corpus nears the limit, and the refusal arrives as a

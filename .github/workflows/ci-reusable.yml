@@ -115,9 +115,9 @@ jobs:
       - name: Test native storage and recovery
         run: |
           cargo test -p rrflow-lsm --test filesystem --test manifest --locked
-          cargo test -p rrd-store --test installed_lifecycle --test semantic_commit_atomicity --locked
+          cargo test -p rrflow-db --test installed_lifecycle --test semantic_commit_atomicity --locked
       - name: Test source inventory and Git admission components
-        run: cargo test -p rrd-attunement --locked
+        run: cargo test -p rrflow-attunement --locked
       - name: Test installed primary executable lifecycle
         run: cargo test -p rrflow-cli --test installed_lifecycle --locked -- --nocapture
 
@@ -148,15 +148,15 @@ jobs:
       - name: Test native staged write admission
         run: cargo test -p rrflow-lsm --test write_admission --locked
       - name: Test composed store admission and semantic atomicity
-        run: cargo test -p rrd-store --test write_admission --test semantic_commit_atomicity --locked
+        run: cargo test -p rrflow-db --test write_admission --test semantic_commit_atomicity --locked
       - name: Test engine rejected-commit recovery and reuse
         run: cargo test -p rrd-engine --lib engine::tests::write_admission --locked
       - name: Test typed mutable rejection and read-only replay admission
         timeout-minutes: 5
-        run: cargo test -p rrd-store --test mutable_admission --locked
+        run: cargo test -p rrflow-db --test mutable_admission --locked
       - name: Require configured restore admission and exact resume
         timeout-minutes: 5
-        run: cargo test -p rrd-store --test logical_archive_resilience --test backup_catalogue configured_ --locked
+        run: cargo test -p rrflow-db --test logical_archive_resilience --test backup_catalogue configured_ --locked
       - name: Test hard mutable admission and bounded WAL materialization
         timeout-minutes: 5
         run: cargo test -p rrflow-lsm --test mutable_limits --locked
@@ -169,7 +169,7 @@ jobs:
         run: cargo test -p rrflow-lsm --test projected_output_limits --locked
       - name: Test retained native store inspection cursors
         timeout-minutes: 5
-        run: cargo test -p rrd-store --test storage_inspection --locked
+        run: cargo test -p rrflow-db --test storage_inspection --locked
       - name: Test output reservation arithmetic and partial release
         timeout-minutes: 5
         run: cargo test -p rrflow-lsm --lib segment::output::tests --locked
@@ -182,7 +182,7 @@ jobs:
         run: cargo test -p rrflow-lsm --test write_diagnostics --locked
       - name: Test store diagnostic timing and durable readback
         timeout-minutes: 5
-        run: cargo test -p rrd-store --test rrflow_kv_operator --locked
+        run: cargo test -p rrflow-db --test rrflow_kv_operator --locked
       - name: Test bounded storage I/O model and compound recovery
         timeout-minutes: 5
         run: cargo test -p rrflow-lsm --lib fault_io --locked -- --nocapture
@@ -244,7 +244,7 @@ jobs:
           cache-on-failure: true
           save-if: ${{ github.event_name != 'merge_group' }}
       - name: Test persistent engram authority and commands
-        run: cargo test -p rrd-engram --all-targets --locked
+        run: cargo test -p rrflow-engram --all-targets --locked
       - name: Test RRD daemon process contract
         run: cargo test -p rrd-server --bin rrd-server --locked
       - name: Test native secret file permissions and handle identity
@@ -258,15 +258,15 @@ jobs:
       - name: Test native staged write admission
         run: cargo test -p rrflow-lsm --test write_admission --locked
       - name: Test composed store admission and semantic atomicity
-        run: cargo test -p rrd-store --test write_admission --test semantic_commit_atomicity --locked
+        run: cargo test -p rrflow-db --test write_admission --test semantic_commit_atomicity --locked
       - name: Test engine rejected-commit recovery and reuse
         run: cargo test -p rrd-engine --lib engine::tests::write_admission --locked
       - name: Test typed mutable rejection and read-only replay admission
         timeout-minutes: 5
-        run: cargo test -p rrd-store --test mutable_admission --locked
+        run: cargo test -p rrflow-db --test mutable_admission --locked
       - name: Require configured restore admission and exact resume
         timeout-minutes: 5
-        run: cargo test -p rrd-store --test logical_archive_resilience --test backup_catalogue configured_ --locked
+        run: cargo test -p rrflow-db --test logical_archive_resilience --test backup_catalogue configured_ --locked
       - name: Test hard mutable admission and bounded WAL materialization
         timeout-minutes: 5
         run: cargo test -p rrflow-lsm --test mutable_limits --locked
@@ -279,7 +279,7 @@ jobs:
         run: cargo test -p rrflow-lsm --test projected_output_limits --locked
       - name: Test retained native store inspection cursors
         timeout-minutes: 5
-        run: cargo test -p rrd-store --test storage_inspection --locked
+        run: cargo test -p rrflow-db --test storage_inspection --locked
       - name: Test output reservation arithmetic and partial release
         timeout-minutes: 5
         run: cargo test -p rrflow-lsm --lib segment::output::tests --locked
@@ -292,7 +292,7 @@ jobs:
         run: cargo test -p rrflow-lsm --test write_diagnostics --locked
       - name: Test store diagnostic timing and durable readback
         timeout-minutes: 5
-        run: cargo test -p rrd-store --test rrflow_kv_operator --locked
+        run: cargo test -p rrflow-db --test rrflow_kv_operator --locked
       - name: Test bounded storage I/O model and compound recovery
         timeout-minutes: 5
         run: cargo test -p rrflow-lsm --lib fault_io --locked -- --nocapture
@@ -332,7 +332,7 @@ jobs:
       - name: Test process fault injection (not product-readiness evidence)
         run: cargo test -p rrd-server --test local_engram_driver --locked -- --nocapture
       - name: Deny process-boundary warnings
-        run: cargo clippy -p rrd-engram -p rrd-server --all-targets --locked -- -D warnings
+        run: cargo clippy -p rrflow-engram -p rrd-server --all-targets --locked -- -D warnings
 
   verify:
     name: verify
@@ -451,7 +451,7 @@ jobs:
         run: cargo test --locked -p rrflow-lab-experiments --test provider_compatibility
       - name: Enforce kernel dependency boundary
         run: |
-          tree="$(cargo tree --locked -p rrflow-kernel --edges normal --depth 1 --prefix none --format '{p}' --color never)"
+          tree="$(cargo tree --locked -p rrflow-core --edges normal --depth 1 --prefix none --format '{p}' --color never)"
           printf '%s\n' "$tree"
           dependencies="$(printf '%s\n' "$tree" | tail -n +2 | cut -d ' ' -f 1 | sort)"
           test "$dependencies" = "$(printf 'serde\nsha2')"
@@ -460,7 +460,7 @@ jobs:
           tree="$(cargo tree --locked -p rrflow-edge --edges normal)"
           printf '%s\n' "$tree"
           ! printf '%s\n' "$tree" | grep -Eiq 'reqwest|hyper|tokio|rustls|openssl|ureq|curl|quinn|tonic'
-          local_model_tree="$(cargo tree --locked -p rrd-inference --features fastembed-local --edges normal)"
+          local_model_tree="$(cargo tree --locked -p rrflow-inference --features fastembed-local --edges normal)"
           printf '%s\n' "$local_model_tree"
           ! printf '%s\n' "$local_model_tree" | grep -Eiq 'reqwest|hyper|tokio|rustls|openssl|ureq|curl|quinn|tonic|hf-hub'
           cargo build --locked --release -p rrflow-edge
@@ -477,16 +477,16 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: kernel-storage
-            packages: "-p rrflow-kernel -p rrflow-cld -p rrflow-lsm -p rrd-store -p rrd-maintenance"
+          - name: core-storage
+            packages: "-p rrflow-core -p rrflow-cld -p rrflow-lsm -p rrflow-db"
           - name: query-retrieval
-            packages: "-p rrflow-arrow -p rrd-query -p rrd-vector -p rrd-inference -p rrd-attunement -p rrd-operator-knowledge"
+            packages: "-p rrflow-arrow -p rrflow-ql -p rrflow-vector -p rrflow-inference -p rrflow-attunement -p rrflow-knowledge"
           - name: engine-authority
-            packages: "-p rrd-contract -p rrd-cluster -p rrd-engine -p rrd-engram -p rrd-security"
+            packages: "-p rrd-contract -p rrflow-cx -p rrd-engine -p rrflow-engram -p rrflow-security"
           - name: service-protocol
             packages: "-p rrd-server -p rrd-client -p rrflow-mcp -p rrflow-cli"
           - name: product-operations
-            packages: "-p rrd-kubernetes -p rrd-observation -p rrflow-edge -p rrflow-qualification-storage -p rrflow-evaluation-core -p rrflow-lab-systems -p rrflow-lab-datasets -p rrflow-lab-benchmarks -p rrflow-lab-evals -p rrflow-lab-definitions -p rrflow-lab -p rrflow-lab-experiments"
+            packages: "-p rrflow-cx-operator -p rrflow-observability -p rrflow-edge -p rrflow-lab-qualification-storage -p rrflow-lab-core -p rrflow-lab-systems -p rrflow-lab-datasets -p rrflow-lab-benchmarks -p rrflow-lab-evals -p rrflow-lab-definitions -p rrflow-lab-runner -p rrflow-lab-experiments"
     env:
       CARGO_BUILD_JOBS: "2"
       CARGO_PROFILE_TEST_DEBUG: "0"
@@ -608,14 +608,14 @@ jobs:
       fail-fast: false
       matrix:
         package:
-          - rrd-cluster
+          - rrflow-cx
           - rrd-engine
-          - rrd-inference
+          - rrflow-inference
           - rrflow-lsm
-          - rrd-store
+          - rrflow-db
           - rrflow-cld
           - rrflow-cli
-          - rrd-vector
+          - rrflow-vector
     env:
       CARGO_BUILD_JOBS: "2"
       CARGO_PROFILE_TEST_DEBUG: "0"
@@ -642,7 +642,7 @@ jobs:
         run: cargo clippy -p ${{ matrix.package }} --all-targets ${{ matrix.package == 'rrflow-cli' && '--features cld-parquet,cld-vortex' || '--all-features' }} --locked -- -D warnings
 
   pgvector-feature:
-    name: optional feature (rrd-operator-knowledge)
+    name: optional feature (rrflow-knowledge)
     needs: [changes]
     if: ${{ needs.changes.outputs.full == 'true' }}
     runs-on: ${{ fromJSON(inputs.linux-heavy-runner) }}
@@ -682,9 +682,9 @@ jobs:
         env:
           RRFLOW_PGVECTOR_TEST_URL: postgresql://rrflow_test:rrflow_test_password@127.0.0.1:5432/rrd_operator_knowledge_test?sslmode=disable
           RRFLOW_PGVECTOR_TEST_DISPOSABLE: "1"
-        run: cargo test -p rrd-operator-knowledge --all-targets --all-features --locked
+        run: cargo test -p rrflow-knowledge --all-targets --all-features --locked
       - name: Deny PostgreSQL operator-knowledge warnings
-        run: cargo clippy -p rrd-operator-knowledge --all-targets --all-features --locked -- -D warnings
+        run: cargo clippy -p rrflow-knowledge --all-targets --all-features --locked -- -D warnings
 
   storage-contract-preflight:
     name: synthetic storage contract preflight
@@ -711,8 +711,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cargo test --locked -p rrflow-qualification-storage --test storage_contract generated_schemas_and_synthetic_receipts_match_goldens -- --exact --list | grep -Fx 'generated_schemas_and_synthetic_receipts_match_goldens: test'
-          cargo test --locked -p rrflow-qualification-storage --test storage_contract generated_schemas_and_synthetic_receipts_match_goldens -- --exact
+          cargo test --locked -p rrflow-lab-qualification-storage --test storage_contract generated_schemas_and_synthetic_receipts_match_goldens -- --exact --list | grep -Fx 'generated_schemas_and_synthetic_receipts_match_goldens: test'
+          cargo test --locked -p rrflow-lab-qualification-storage --test storage_contract generated_schemas_and_synthetic_receipts_match_goldens -- --exact
 
   installed-reopen:
     name: installed 100-cycle reopen (${{ matrix.os }})

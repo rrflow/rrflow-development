@@ -117,12 +117,12 @@ authority.
 
 ## Current executable evidence
 
-`crates/compute/rrd-query/tests/query.rs` proves record and claim corrections
+`rrflow/ql/tests/query.rs` proves record and claim corrections
 return different exact values at `KNOWN 10` and `KNOWN HEAD`, with identical
 results on rrflowMX, rrflowKV, and rrflowKV after reopen.
-`crates/compute/rrd-query/tests/index_catalogue.rs` proves an index newer than
+`rrflow/ql/tests/index_catalogue.rs` proves an index newer than
 a historical cursor is rejected in favor of the authoritative scan.
-`crates/transport/rrd-contract/tests/public_contract.rs` proves strict rollback
+`rrd/contract/tests/public_contract.rs` proves strict rollback
 request decoding and checked compensation counts.
 
 Those tests do not execute `plan_forward_rollback`; the missing plan and commit

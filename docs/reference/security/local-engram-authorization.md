@@ -195,20 +195,20 @@ J-03/J-05. Passing the current tests is characterization evidence only.
 ## Implementation anchors and focused characterization
 
 - File policy and permission enum:
-  `crates/authority/rrd-engram/src/local_authorization.rs`
+  `rrflow/engram/src/local_authorization.rs`
 - Engram aggregate, backup, and recovery behavior:
-  `crates/authority/rrd-engram/src/{lib,backup_job,recovery}.rs`
+  `rrflow/engram/src/{lib,backup_job,recovery}.rs`
 - Current engine-owned-looking but bypassing entry points:
-  `crates/authority/rrd-engine/src/engine/engram_control.rs`
+  `rrd/engine/src/engine/engram_control.rs`
 - Canonical invocation mapping that those entry points do not use:
-  `crates/authority/rrd-engine/src/engine/invocation.rs`
+  `rrd/engine/src/engine/invocation.rs`
 - CLI adapters:
-  `crates/adapters/rrflow-cli/src/bin/{rrd-engram-admin,rrd-recovery-controller}.rs`
+  `rrflow/cli/src/bin/{rrd-engram-admin,rrd-recovery-controller}.rs`
 
 Focused current-behavior commands are:
 
 ```text
-cargo test -p rrd-engram --test local_authorization --locked
+cargo test -p rrflow-engram --test local_authorization --locked
 cargo test -p rrflow-cli --bin rrd-engram-admin --locked
 cargo test -p rrflow-cli --test engram_admin --locked
 cargo test -p rrd-engine --test engine_authority --locked

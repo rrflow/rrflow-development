@@ -23,7 +23,7 @@ This record owns only their Kubernetes projection and proof boundary.
 ## Accepted decision
 
 The target package is `crates/adapters/rrflow-kubernetes`, named as an outward
-RRFlow adapter. The current `crates/operations/rrd-kubernetes` package is not
+RRFlow adapter. The current `rrflow/cx-operator` package is not
 renamed in place and declared correct: A-07 must preserve its useful
 Kubernetes mechanics while moving them behind the accepted engine plan and
 receipt contracts, then remove the old package directly.
@@ -326,7 +326,7 @@ The current package and checked manifests are characterization inputs only:
 
 | Current path or behavior | Observed reality | Required disposition |
 |---|---|---|
-| `crates/operations/rrd-kubernetes/Cargo.toml` | Depends on `rrd-contract` and `rrflow-kernel`, not `rrd-engine`; the controller receives no prepared engine operation or receipt port. | Move useful pure/API mechanics into `rrflow-kubernetes`; consume the accepted implementation-free plan/observation contracts and an injected public client boundary. |
+| `rrflow/cx-operator/Cargo.toml` | Depends on `rrd-contract` and `rrflow-core`, not `rrd-engine`; the controller receives no prepared engine operation or receipt port. | Move useful pure/API mechanics into `rrflow-kubernetes`; consume the accepted implementation-free plan/observation contracts and an injected public client boundary. |
 | `RrdInstanceSpec` | Now carries contract version, digest-pinned image, PVC policy, TLS Secret name, and one installation-plan ConfigMap name plus exact SHA-256. Caller-selected instance ID, caller time, bootstrap manifest, and credential Secret fields are absent. | This is the correct cold-start projection shape, but it is not yet an engine-issued/fenced effect contract and still exposes hardcoded controller policy. Preserve the sealed-plan handoff while moving lifecycle authority outward. |
 | `desired_resources` | Deterministically hardcodes five resources, paths, commands, CPU/memory, ports, storage behavior, and security settings. It now renders one `rrflow install apply --plan ... --expect ...` init container and an installed-only `rrd-server --project ... --distribution-executable ...` main process. | Preserve the single plan handoff and deterministic closed rendering, but drive all operational values from a versioned, previewed, digest-bound template/plan with explained bounds. |
 | removed initializer/bootstrap containers | The server initializer, standalone security bootstrap, caller time, raw database root, caller identity, and credential-file arguments are absent from the CRD and rendered startup. | Retain no second cold-start path; prove idempotent real-volume install/reopen and engine-accepted observations before this renderer counts as deployment evidence. |

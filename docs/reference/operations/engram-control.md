@@ -276,7 +276,7 @@ equal-or-stronger evidence at its canonical destination.
    process, cluster, Kubernetes, server, client, and CLI caller before moving
    code.
 2. Make `rrd-engram` a pure domain/validation boundary. Remove its
-   `rrd-store` dependency, `EngramRepository`, and direct-store reconciler
+   `rrflow-db` dependency, `EngramRepository`, and direct-store reconciler
    constructors without a wrapper or alias.
 3. Reconcile `EngramAuthorityState` against the accepted
    [instance topology](../../architecture/instance-topology.md).
@@ -310,7 +310,7 @@ equal-or-stronger evidence at its canonical destination.
 | Evidence | What it proves now | What it does not prove |
 |---|---|---|
 | `rrd-engram --all-targets` | current validation, desired/observed, idempotency, activity, authority-catalogue, backup/recovery, selected MX/KV reopen, lease takeover, lost-ack, and local authorization behavior | accepted transaction/storage boundary; it also requires successful older document/job shapes |
-| `rrd-store/tests/control_journal.rs` | MX and KV materialize the same generic CAS transitions; KV state and hash chain survive restart | engram semantic parity, native record/index access, bounded write amplification, or one state/index/audit/outbox transaction |
+| `rrflow-db/tests/control_journal.rs` | MX and KV materialize the same generic CAS transitions; KV state and hash chain survive restart | engram semantic parity, native record/index access, bounded write amplification, or one state/index/audit/outbox transaction |
 | `rrd-server/tests/local_engram_driver.rs` | a real RRD child starts/stops, preserves its data directory, rejects forged process identity, uses bounded kill fallback, and converges across controller/effect-gap process kills | canonical authorization, installed adapter resolution, MX parity, release qualification, or absence of direct repository access |
 | `rrflow-cli/tests/backup_controller.rs` | current backup controller converges after an archive effect-gap kill | one canonical engine operation, object/filesystem failure coverage, restore/prune equivalence, or shared public surface |
 | `rrd-engine/tests/engine_authority.rs` | current local engram/recovery work coexists with engine state and survives selected reopen paths | one authority or atomic transaction; the engram operation bypasses canonical grants and audit remains split |
@@ -325,28 +325,28 @@ an external manifest is supplied; its presence is not a normal-run proof.
 ## Implementation anchors and focused characterization
 
 - Domain aggregate and direct repository:
-  `crates/authority/rrd-engram/src/lib.rs`
+  `rrflow/engram/src/lib.rs`
 - Operational inventory catalogue:
-  `crates/authority/rrd-engram/src/authority.rs`
+  `rrflow/engram/src/authority.rs`
 - Desired/observed and backup reconciliation:
-  `crates/authority/rrd-engram/src/{reconcile,backup_reconcile}.rs`
+  `rrflow/engram/src/{reconcile,backup_reconcile}.rs`
 - Backup and recovery state:
-  `crates/authority/rrd-engram/src/{backup_job,recovery}.rs`
+  `rrflow/engram/src/{backup_job,recovery}.rs`
 - Current static composition and recovery operations:
-  `crates/authority/rrd-engine/src/engine/engram_control.rs`
+  `rrd/engine/src/engine/engram_control.rs`
 - Generic control-value/journal persistence:
-  `crates/storage/rrd-store/src/control.rs`
+  `rrflow/db/src/control.rs`
 - Current public read:
-  `crates/authority/rrd-engine/src/engine/engram.rs` and
-  `crates/transport/rrd-server/src/http/handlers/data.rs`
+  `rrd/engine/src/engine/engram.rs` and
+  `rrd/server/src/http/handlers/data.rs`
 - Real child/effect crash characterization:
-  `crates/transport/rrd-server/tests/local_engram_driver.rs`
+  `rrd/server/tests/local_engram_driver.rs`
 
 Focused current-behavior commands are:
 
 ```text
-cargo test -p rrd-engram --locked
-cargo test -p rrd-store --test control_journal --locked
+cargo test -p rrflow-engram --locked
+cargo test -p rrflow-db --test control_journal --locked
 cargo test -p rrd-engine --test engine_authority --locked
 cargo test -p rrd-server --test local_engram_driver --locked
 cargo test -p rrd-server --test http_process \

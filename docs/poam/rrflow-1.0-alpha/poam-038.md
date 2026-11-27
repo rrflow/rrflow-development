@@ -26,21 +26,21 @@ is remediation. This limitation remains open under D-02/D-03 and this POA&M.
 
 Verified at development `main` `04fae276`:
 
-**Correction, 2026-11-11, at main `ab32ec16`.** The first bullet below no longer holds: `control_attunement` re-observes `project_inventory_sha256(root, profile)` on `Start`, `Resume` and every non-cancel `Step` and returns `AttunementSourceChanged` on a mismatch (`attunement_source_observation`, `crates/authority/rrd-engine/src/engine/attunement.rs:244-256`, used at `:813-820`). The Connect checkpoint still takes `plan.source_sha256` as its `input_sha256` by the checkpoint-chain rule, and installation verification still reports as described, so the record stays open for those parts.
+**Correction, 2026-11-11, at main `ab32ec16`.** The first bullet below no longer holds: `control_attunement` re-observes `project_inventory_sha256(root, profile)` on `Start`, `Resume` and every non-cancel `Step` and returns `AttunementSourceChanged` on a mismatch (`attunement_source_observation`, `rrd/engine/src/engine/attunement.rs:244-256`, used at `:813-820`). The Connect checkpoint still takes `plan.source_sha256` as its `input_sha256` by the checkpoint-chain rule, and installation verification still reports as described, so the record stays open for those parts.
 
 
-- [`control_attunement`](../../../crates/authority/rrd-engine/src/engine/attunement.rs)
+- [`control_attunement`](../../../rrd/engine/src/engine/attunement.rs)
   admits `Start` when the command's `plan_sha256` equals the pending plan's. It
   does not recompute the project inventory the plan was derived from.
 - The Connect checkpoint copies `plan.source_sha256` into its `input_sha256`
   without recomputing it. The checkpoint, and the receipt committed with it,
   therefore claim a source binding that no one re-verified at that boundary.
-- [Installation verification](../../../crates/authority/rrd-engine/src/engine/installation.rs)
+- [Installation verification](../../../rrd/engine/src/engine/installation.rs)
   computes `attunement_source_current` and reports `Passed` when it is false;
-  the [installation test](../../../crates/authority/rrd-engine/src/engine/tests/installation.rs)
+  the [installation test](../../../rrd/engine/src/engine/tests/installation.rs)
   asserts exactly that after a README edit. Reporting drift during
   verification is correct; acting on the stale binding is the gap.
-- [Restore publication](../../../crates/authority/rrd-engine/src/engine/restore_publication.rs)
+- [Restore publication](../../../rrd/engine/src/engine/restore_publication.rs)
   rejects with "a storage root changed since the publication plan; plan again",
   but no test changes a storage root between planning and applying it.
 

@@ -2,7 +2,7 @@
 
 **Status:** active implementation reference for the single current typed application-key and accepted C-06 hybrid immutable-segment formats
 **Coordinate:** `rrflow://rrflow-instance/data/reference/storage/rrflowkv-current-format`
-**Owner:** physical bytes, limits, recovery rules, and pre-release format debt implemented by `rrd-store` and `rrflow-lsm`
+**Owner:** physical bytes, limits, recovery rules, and pre-release format debt implemented by `rrflow-db` and `rrflow-lsm`
 
 This record describes the bytes the current checkout can create or read. It is
 not the accepted RRFlow 1.0 target. The target architecture is owned by the
@@ -56,13 +56,13 @@ otherwise.
 
 | Object | New-write format | Current role | Implementation |
 |---|---:|---|---|
-| Application keys | `RRKV0001` | Typed ordered family/address/tuple spine for every `RrflowKvStore` key | [`key_codec.rs`](../../../crates/storage/rrd-store/src/key_codec.rs) and [`keyspaces.rs`](../../../crates/storage/rrd-store/src/keyspaces.rs) |
-| WAL | 1 | Ordered atomic-batch frames and durability boundary | [`wal.rs`](../../../crates/storage/rrflow-lsm/src/wal.rs) |
-| Mutation batch | 2 | Canonical put/delete payload inside one WAL frame | [`batch.rs`](../../../crates/storage/rrflow-lsm/src/batch.rs) |
-| Manifest | 3 | Immutable reachable-state inventory, sequence boundary, and authenticated segment schema/codec/page-format identities | [`manifest.rs`](../../../crates/storage/rrflow-lsm/src/manifest.rs) |
-| `CURRENT` and checkpoint controls | 1 | Authenticated manifest and retention pointers | [`manifest.rs`](../../../crates/storage/rrflow-lsm/src/manifest.rs) |
-| Immutable segment | 6 | Ordered key/version spine plus raw or adaptive-LZ4 aligned Arrow-layout column pages and authenticated row-group membership filters | [`segment/mod.rs`](../../../crates/storage/rrflow-lsm/src/segment.rs) and [`segment/format.rs`](../../../crates/storage/rrflow-lsm/src/segment/format.rs) |
-| Physical snapshot bundle | 1 | Authenticated flush-bounded manifest closure | [`snapshot_bundle.rs`](../../../crates/storage/rrflow-lsm/src/snapshot_bundle.rs) |
+| Application keys | `RRKV0001` | Typed ordered family/address/tuple spine for every `RrflowKvStore` key | [`key_codec.rs`](../../../rrflow/db/src/key_codec.rs) and [`keyspaces.rs`](../../../rrflow/db/src/keyspaces.rs) |
+| WAL | 1 | Ordered atomic-batch frames and durability boundary | [`wal.rs`](../../../rrflow/lsm/src/wal.rs) |
+| Mutation batch | 2 | Canonical put/delete payload inside one WAL frame | [`batch.rs`](../../../rrflow/lsm/src/batch.rs) |
+| Manifest | 3 | Immutable reachable-state inventory, sequence boundary, and authenticated segment schema/codec/page-format identities | [`manifest.rs`](../../../rrflow/lsm/src/manifest.rs) |
+| `CURRENT` and checkpoint controls | 1 | Authenticated manifest and retention pointers | [`manifest.rs`](../../../rrflow/lsm/src/manifest.rs) |
+| Immutable segment | 6 | Ordered key/version spine plus raw or adaptive-LZ4 aligned Arrow-layout column pages and authenticated row-group membership filters | [`segment/mod.rs`](../../../rrflow/lsm/src/segment.rs) and [`segment/format.rs`](../../../rrflow/lsm/src/segment/format.rs) |
+| Physical snapshot bundle | 1 | Authenticated flush-bounded manifest closure | [`snapshot_bundle.rs`](../../../rrflow/lsm/src/snapshot_bundle.rs) |
 
 Current default and hard bounds are implementation policy, not values for
 callers to duplicate:
@@ -251,7 +251,7 @@ is calculated. Each descriptor authenticates content identity, key and
 sequence ranges, entry count, and byte count. L0 may overlap; higher levels
 must contain ordered, non-overlapping key ranges.
 
-Manifest v3 may carry one non-zero opaque `application_format`. `rrd-store`
+Manifest v3 may carry one non-zero opaque `application_format`. `rrflow-db`
 binds the eight ASCII bytes `RRKV0001` as a big-endian `u64`. Every reachable
 segment descriptor additionally authenticates segment format v6 plus the
 current schema, key-codec, and page-format SHA-256 identities. Unknown, absent,
@@ -502,7 +502,7 @@ source manifest history.
 
 These are checked-in, executable examples rather than illustrative pseudocode:
 
-1. [`batch-v2.hex`](../../../crates/storage/rrflow-lsm/fixtures/batch-v2.hex)
+1. [`batch-v2.hex`](../../../rrflow/lsm/fixtures/batch-v2.hex)
    encodes exactly three operations: put `alpha=one`, put `beta=two`, then
    delete `alpha`. The frozen-codec test decodes the bytes, rejects every
    truncation and a trailing byte, checks malformed delete length and version
@@ -558,15 +558,15 @@ These are checked-in, executable examples rather than illustrative pseudocode:
 
 ## Frozen vectors
 
-- [`rrflow-kv-key-codec-v1.hex`](../../../crates/storage/rrd-store/fixtures/rrflow-kv-key-codec-v1.hex)
-- [`rrflow-kv-store-layout-v1.hex`](../../../crates/storage/rrd-store/fixtures/rrflow-kv-store-layout-v1.hex)
-- [`wal-v1.hex`](../../../crates/storage/rrflow-lsm/fixtures/wal-v1.hex)
-- [`batch-v1.hex`](../../../crates/storage/rrflow-lsm/fixtures/batch-v1.hex) — rejection input only
-- [`batch-v2.hex`](../../../crates/storage/rrflow-lsm/fixtures/batch-v2.hex)
-- [`manifest-v1.json`](../../../crates/storage/rrflow-lsm/fixtures/manifest-v1.json) — rejection input only
-- [`manifest-v3.json`](../../../crates/storage/rrflow-lsm/fixtures/manifest-v3.json)
-- [`segment-v6.hex`](../../../crates/storage/rrflow-lsm/fixtures/segment-v6.hex)
-- [`snapshot-bundle-v1.hex`](../../../crates/storage/rrflow-lsm/fixtures/snapshot-bundle-v1.hex)
+- [`rrflow-kv-key-codec-v1.hex`](../../../rrflow/db/fixtures/rrflow-kv-key-codec-v1.hex)
+- [`rrflow-kv-store-layout-v1.hex`](../../../rrflow/db/fixtures/rrflow-kv-store-layout-v1.hex)
+- [`wal-v1.hex`](../../../rrflow/lsm/fixtures/wal-v1.hex)
+- [`batch-v1.hex`](../../../rrflow/lsm/fixtures/batch-v1.hex) — rejection input only
+- [`batch-v2.hex`](../../../rrflow/lsm/fixtures/batch-v2.hex)
+- [`manifest-v1.json`](../../../rrflow/lsm/fixtures/manifest-v1.json) — rejection input only
+- [`manifest-v3.json`](../../../rrflow/lsm/fixtures/manifest-v3.json)
+- [`segment-v6.hex`](../../../rrflow/lsm/fixtures/segment-v6.hex)
+- [`snapshot-bundle-v1.hex`](../../../rrflow/lsm/fixtures/snapshot-bundle-v1.hex)
 
 Changing current pre-alpha bytes requires changing the explicit version and
 updating the relevant vector through the test-controlled
@@ -577,10 +577,10 @@ updating the relevant vector through the test-controlled
 Run focused contract evidence before the package suite:
 
 ```bash
-cargo test -p rrd-store --test key_codec --locked
-cargo test -p rrd-store --test native_index_commit --locked
-cargo test -p rrd-store --lib rrflow_kv::tests::rrflow_kv_multi_family_transaction_recovers_all_or_none_at_every_wal_boundary --locked -- --exact
-cargo test -p rrd-store --locked
+cargo test -p rrflow-db --test key_codec --locked
+cargo test -p rrflow-db --test native_index_commit --locked
+cargo test -p rrflow-db --lib rrflow_kv::tests::rrflow_kv_multi_family_transaction_recovers_all_or_none_at_every_wal_boundary --locked -- --exact
+cargo test -p rrflow-db --locked
 cargo test -p rrflow-lsm --test failure_matrix --locked
 cargo test -p rrflow-lsm --test mvcc batch_codec_is_canonical_strict_and_frozen -- --exact
 cargo test -p rrflow-lsm --test wal torn_tail_is_reported_and_only_explicit_repair_truncates_it -- --exact
@@ -594,8 +594,8 @@ cargo test -p rrflow-lsm --test hybrid_segment --locked
 cargo test -p rrflow-lsm --test projected_read_adversarial --locked -- --nocapture
 cargo run -p rrflow-lsm --example rrflowkv_stress --locked -- --seed 14592251008053203194 --cases 16 --operations 96
 cargo run --release --locked -p rrflow-lsm --features physical-policy-lab --example rrflowkv-physical-policy -- --seed 14592251008053203194 --trials 3 --records-per-family 1024 --versions-per-key 2 --value-bytes 512 --misses 16384 --cache-bytes 1048576 --output docs/evidence/c06j-rrflowkv-scan-resistant-cache-linux-x86_64.json
-cargo +nightly fuzz check --fuzz-dir crates/storage/rrflow-lsm/fuzz
-cargo +nightly fuzz run --fuzz-dir crates/storage/rrflow-lsm/fuzz segment-v6-open -- -runs=4096 -max_len=256 -timeout=10
+cargo +nightly fuzz check --fuzz-dir rrflow/lsm/fuzz
+cargo +nightly fuzz run --fuzz-dir rrflow/lsm/fuzz segment-v6-open -- -runs=4096 -max_len=256 -timeout=10
 cargo test -p rrflow-lsm --test tiered_io mmap_and_bounded_reads_are_identical_and_measure_page_ownership -- --exact
 cargo test -p rrflow-lsm --test snapshot_bundle physical_snapshot_bundle_round_trips_installs_atomically_and_continues_writes -- --exact
 cargo test -p rrflow-lsm

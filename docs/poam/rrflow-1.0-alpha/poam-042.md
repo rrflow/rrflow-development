@@ -13,10 +13,10 @@ it cannot close a roadmap gate independently.
 Verified at development `main` `2e3a67d2`:
 
 - The only grouping field in the schema registry is one label pair.
-  [`DataCatalogueIdentity`](../../../crates/transport/rrd-contract/src/lib.rs)
+  [`DataCatalogueIdentity`](../../../rrd/contract/src/lib.rs)
   holds a `namespace` and a `database`, both `default`, once per
   `DataSchemaRegistry`. No operation, rrflowQL syntax or `SecurityAction`
-  selects either value, and `rrd-query` never reads them. The
+  selects either value, and `rrflow-ql` never reads them. The
   [instance topology](../../architecture/instance-topology.md#canonical-identities-and-cardinality)
   reserves other values for a later schema contract.
 - A table kind carries a logical model, a schema mode and properties
@@ -29,7 +29,7 @@ Verified at development `main` `2e3a67d2`:
   vector search can be limited to part of the engram.
 - A grant binds one action to an exact resource prefix, with an optional
   `DataPolicy` of tenant and row equality predicates and an allowed-field set
-  (`rrd-security/src/lib.rs`). No resource kind or action names a part of the
+  (`rrflow-security/src/lib.rs`). No resource kind or action names a part of the
   engram, so a project can isolate data only through row predicates that every
   caller must already know.
 - `DiagnosticSnapshot` (`diagnostic.rs`) and the storage counters report the

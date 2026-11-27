@@ -21,7 +21,7 @@ On bi-temporal and multi-session folding:
 
 > you understand that the in-process reasoning needs to allow it so when we have the devtoggle for schemas we need to learn the techniques to haev behavioral state properly then generating the necessary templates, the lexicon/dictionary, all of these micro optimzations folded into rrflow are what make this bleeding edge and truely bi-temporal
 
-On the macOS retained-install test, the owner challenged its source. The refusal comes from `directory_security_sha256` in `crates/authority/rrd-engine/src/engine/token_key/private_file/unix.rs`, introduced by commit `fb78758d4` (2026-11-15), which implements the read for Linux only. It is an engine gap, not a documented macOS limit, and a test asserting the refusal does not close [POAM-006](../poam/rrflow-1.0-alpha/poam-006.md).
+On the macOS retained-install test, the owner challenged its source. The refusal comes from `directory_security_sha256` in `rrd/engine/src/engine/token_key/private_file/unix.rs`, introduced by commit `fb78758d4` (2026-11-15), which implements the read for Linux only. It is an engine gap, not a documented macOS limit, and a test asserting the refusal does not close [POAM-006](../poam/rrflow-1.0-alpha/poam-006.md).
 
 ## Where each part is owned today
 
