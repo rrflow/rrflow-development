@@ -4,8 +4,6 @@
 //! composed here. Daemon and embedded faces consume this API instead of
 //! constructing those components independently.
 
-/// The temporal values and invariants shared by the engine and its storage ports.
-
 #[cfg(feature = "full")]
 mod capabilities;
 pub mod edge;
