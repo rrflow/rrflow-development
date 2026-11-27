@@ -52,9 +52,9 @@ provider's subject digest, and a valid representation cannot bypass a denied
 operation.
 
 The provider-neutral schemas are implemented in
-[`memory_engram.rs`](../../crates/transport/rrd-contract/src/memory_engram.rs),
+[`memory_engram.rs`](../../rrd/contract/src/memory_engram.rs),
 and their authorized planning and resolution are composed by
-[`RrdEngine`](../../crates/authority/rrd-engine/src/engine/memory_engram.rs).
+[`RrdEngine`](../../rrd/engine/src/engine/memory_engram.rs).
 
 ## Stable record warps
 
@@ -101,7 +101,7 @@ from that owner. Documentation examples cannot make that operation available.
 ## Executable proof and remaining boundary
 
 The focused engine corpus
-[`seat_becomes_self_through_provider_neutral_edges_and_survives_reopen`](../../crates/authority/rrd-engine/src/engine/tests/memory_engram.rs)
+[`seat_becomes_self_through_provider_neutral_edges_and_survives_reopen`](../../rrd/engine/src/engine/tests/memory_engram.rs)
 binds an identity through an authenticated transaction, proves the persisted
 provider value is a subject digest, reopens the persistent engine, resolves the
 same seat URI, follows the warp through context assembly, and verifies the

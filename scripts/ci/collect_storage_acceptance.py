@@ -91,7 +91,7 @@ def main():
             os.fsync(output.fileno())
     # The executable evidence owner checks raw API provenance and mandatory
     # native steps; this collector does not duplicate those acceptance rules.
-    result = run("cargo", "run", "--quiet", "--locked", "-p", "rrflow-qualification-storage", "--",
+    result = run("cargo", "run", "--quiet", "--locked", "-p", "rrflow-lab-qualification-storage", "--",
                  "acceptance", "ci-receipt", str(args.output.resolve()),
                  cwd=ROOT, timeout=1800, output_limit=MAX_BYTES)
     print(result.stdout, end="")

@@ -12,20 +12,20 @@ priority or closure status.
 A code read at `de435238` on 2026-11-11 found these gaps.
 
 **The configuration cannot change after install.**
-- `EngramConfiguration` is immutable once installed. Its contract says "Mutating it requires a future governed configure-plan/configure-apply operation" (`crates/transport/rrd-contract/src/deployment.rs:643-645`).
-- Only the endpoint profile can be revised (`crates/authority/rrd-engine/src/engine/endpoint_configuration.rs:106`).
+- `EngramConfiguration` is immutable once installed. Its contract says "Mutating it requires a future governed configure-plan/configure-apply operation" (`rrd/contract/src/deployment.rs:643-645`).
+- Only the endpoint profile can be revised (`rrd/engine/src/engine/endpoint_configuration.rs:106`).
 
 **Most parts have no configuration at all.**
 - The configuration has clock, storage, reasoning, recall and query sections (`deployment.rs:646-655`).
 - It has no vector, BM25, fusion, embedding or graph section.
 
 **Several values are hardcoded:**
-- LSM compaction trigger, target size and levels (`crates/storage/rrflow-lsm/src/database.rs:29-32`);
-- segment row groups and compression (`crates/storage/rrflow-lsm/src/segment/format.rs:19-30`);
-- vector residency (`crates/authority/rrd-engine/src/runtime/vector_residency.rs:16-17`);
+- LSM compaction trigger, target size and levels (`rrflow/lsm/src/database.rs:29-32`);
+- segment row groups and compression (`rrflow/lsm/src/segment/format.rs:19-30`);
+- vector residency (`rrd/engine/src/runtime/vector_residency.rs:16-17`);
 - context fusion constants ([POAM-052](poam-052.md)).
 
-**BM25 parameters have two owners:** `crates/transport/rrd-contract/src/lib.rs:739-804` and `crates/compute/rrd-query/src/bm25.rs:77-88`.
+**BM25 parameters have two owners:** `rrd/contract/src/lib.rs:739-804` and `rrflow/ql/src/bm25.rs:77-88`.
 
 **No record of where a value came from.** A request's value is intersected with the sealed ceiling, but nothing records which level supplied the value.
 

@@ -72,7 +72,7 @@ and CI remain separate from this historical evidence.
   manifest, backend, artifacts, schema, capabilities, limits, ABI/device,
   quantization, and grammar; its own domain-separated digest cannot repair a
   stale manifest or backend digest.
-- `rrd-inference::load_router_model_after_handshake` invokes its loader closure
+- `rrflow-inference::load_router_model_after_handshake` invokes its loader closure
   only after the manifest and handshake validate and the supplied model,
   tokenizer, runtime, and grammar byte slices match both declared lengths and
   digests. The returned admission token is opaque and grants no route,
@@ -85,7 +85,7 @@ and CI remain separate from this historical evidence.
   model-limit, ABI, device, quantization, and grammar drift. Three inference
   admission cases prove a matching loader runs exactly once while every
   declaration or byte mismatch leaves its call count at zero. The full
-  `rrd-contract` package passed 66 tests, `rrd-inference` passed 10 integration
+  `rrd-contract` package passed 66 tests, `rrflow-inference` passed 10 integration
   cases, both packages passed strict all-target Clippy, and all 23 workspace
   architecture checks passed.
 - The required full-file inference review also corrected the malformed
@@ -130,7 +130,7 @@ and CI remain separate from this historical evidence.
 
 ## B-05 evidence (2026-09-08):
 
-- `rrd-query` now owns a bounded GraphQL query-ingress adapter. It parses with
+- `rrflow-ql` now owns a bounded GraphQL query-ingress adapter. It parses with
   a standards-based GraphQL parser, selects exactly one query operation and
   one root source, derives permitted source/field definitions from the
   catalogue at the requested historical cursor, validates declared scalar
@@ -148,9 +148,9 @@ and CI remain separate from this historical evidence.
   `BoundQuery` and bound digest from GraphQL and rrflowQL; the derived schema
   digest is also frozen. A historical-schema test and typed-default test prove
   the adapter cannot invent a second field or parameter model.
-- `cargo test -p rrd-query --locked` passed 50 tests across all package
+- `cargo test -p rrflow-ql --locked` passed 50 tests across all package
   targets, including all four GraphQL equivalence/denial cases. Strict
-  all-target Clippy passed for `rrd-query` and `rrd-engine`; all 23 workspace
+  all-target Clippy passed for `rrflow-ql` and `rrd-engine`; all 23 workspace
   architecture checks passed; and `cargo check --workspace --all-targets
   --locked` passed all 20 packages. This closes Gate B only. H-04 still owns
   the public GraphQL HTTP adapter and cross-surface authorization/semantic

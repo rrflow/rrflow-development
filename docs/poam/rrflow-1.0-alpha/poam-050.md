@@ -13,7 +13,7 @@ independently.
 Found by source review while checking what Connectome's restored Runs view can
 read. `task-attempt-read` returns one attempt for a known `scope`, `task_id` and
 `attempt_id`, and `RrdEngine::read_task_attempt`
-(`crates/authority/rrd-engine/src/engine/reasoning_budget/public.rs`) serves it
+(`rrd/engine/src/engine/reasoning_budget/public.rs`) serves it
 with a point read of a control-store key. No public operation lists a task's
 attempts. Because attempts live in the control store rather than the runtime
 graph, rrflowQL cannot traverse to them as it can to a task's flights through

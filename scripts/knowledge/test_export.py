@@ -77,7 +77,7 @@ class KnowledgeExportTests(unittest.TestCase):
         fixture = json.loads(
             (
                 ROOT
-                / "crates/transport/rrd-contract/fixtures/knowledge-package-v1.json"
+                / "rrd/contract/fixtures/knowledge-package-v1.json"
             ).read_text(encoding="utf-8")
         )
         package = fixture["package"]

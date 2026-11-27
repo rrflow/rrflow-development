@@ -452,7 +452,7 @@ startup slice without claiming the complete target above:
 
 Installation can seal reasoning ceilings from `install plan --configuration
 <toml>`. Copy the complete bundled
-[`default-engram-configuration-v3.toml`](../../../crates/authority/rrd-engine/assets/install/default-engram-configuration-v3.toml)
+[`default-engram-configuration-v3.toml`](../../../rrd/engine/assets/install/default-engram-configuration-v3.toml)
 as the input and edit its existing `[reasoning]` table, for example:
 
 ```toml

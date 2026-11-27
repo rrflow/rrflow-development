@@ -23,7 +23,7 @@ class Fixture(unittest.TestCase):
         self.original = (owned.ROOT, owned.SELECTORS, owned.EXACT_TEST_SETS)
         self.directory = tempfile.TemporaryDirectory()
         self.root = Path(self.directory.name)
-        write(self.root, "crates/adapters/demo/Cargo.toml", '[package]\nname = "demo"\n')
+        write(self.root, "rrflow/demo/Cargo.toml", '[package]\nname = "demo"\n')
         write(self.root, ".github/workflows/ci.yml", "")
         owned.ROOT = self.root
         owned.SELECTORS = ()
@@ -34,9 +34,9 @@ class Fixture(unittest.TestCase):
         self.directory.cleanup()
 
     def suite(self, main: str, **files: str) -> None:
-        write(self.root, "crates/adapters/demo/tests/suite/main.rs", main)
+        write(self.root, "rrflow/demo/tests/suite/main.rs", main)
         for relative, text in files.items():
-            write(self.root, f"crates/adapters/demo/tests/suite/{relative}", text)
+            write(self.root, f"rrflow/demo/tests/suite/{relative}", text)
 
 
 class ResolverTests(Fixture):
@@ -57,9 +57,9 @@ class ResolverTests(Fixture):
             """,
             **{"plans.rs": "#[test]\npub(super) fn moved_case() {}\n// #[test] fn commented() {}\n"},
         )
-        write(self.root, "crates/adapters/demo/tests/support/shared.rs",
+        write(self.root, "rrflow/demo/tests/support/shared.rs",
               "mod child;\n#[tokio::test(flavor = \"current_thread\")]\nasync fn shared_case() {}\n")
-        write(self.root, "crates/adapters/demo/tests/support/child.rs",
+        write(self.root, "rrflow/demo/tests/support/child.rs",
               "#[cfg(target_os = \"linux\")]\n#[test]\nfn linux_only() {}\n")
         resolved = owned.resolve_target("demo", "suite")
         self.assertEqual(resolved.tests, {

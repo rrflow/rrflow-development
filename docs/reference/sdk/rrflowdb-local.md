@@ -28,8 +28,8 @@ flowchart TB
     subgraph DB[rrflowDB: logical database within RRFlow]
         API --> Engine[RrdEngine: authorization, transactions, read stamps]
         Engine --> QL[rrflowQL: parse, bind, plan, execute]
-        QL --> Reads[rrd-store: stamped semantic reads]
-        Engine --> Writes[rrd-store: schema and constraint validation]
+        QL --> Reads[rrflow-db: stamped semantic reads]
+        Engine --> Writes[rrflow-db: schema and constraint validation]
         Writes --> Commit[One atomic semantic commit and receipt]
         Reads --> KV
         Commit --> KV
@@ -171,8 +171,8 @@ Parameters remain typed values. This is rrflowQL syntax, not PostgreSQL SQL.
 
 ## Application integration
 
-The runnable source is [rrflowdb.rs](../../../crates/transport/rrd-client/examples/rrflowdb.rs);
-its [application operations](../../../crates/transport/rrd-client/examples/support/rrflowdb.rs)
+The runnable source is [rrflowdb.rs](../../../rrd/client/examples/rrflowdb.rs);
+its [application operations](../../../rrd/client/examples/support/rrflowdb.rs)
 use `RrdClient` and public contract types. Adapt these operations inside
 DevPulse's backend, using its installed process adapter and secure credential
 handling. The example is integration source, not a second supported database
@@ -205,7 +205,7 @@ Commit requests bind a payload digest, idempotency key and lease-bounded
 deadline. An unknown transport or storage outcome must be reconciled with its
 original identity; do not blindly retry a write with a new key.
 
-The [real-server regression](../../../crates/transport/rrd-client/tests/rrflowdb_local.rs)
+The [real-server regression](../../../rrd/client/tests/rrflowdb_local.rs)
 tests schema preservation, parameterized joins, typed/unique rejection with
 no partial write, explicit abort, receipt replay, historical reads, scope and
 budget denial, closed-session denial, and disk reopen. It also checks an

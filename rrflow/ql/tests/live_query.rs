@@ -1,0 +1,239 @@
+use rrflow_core::{
+    RuntimeCommit, RuntimeLogicalModel, RuntimeMutation, RuntimeProperties, RuntimePropertySchema,
+    RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry, RuntimeType,
+    RuntimeValue, RuntimeValueType, ScopeId,
+};
+use rrflow_db::{Repositories, RrflowKvStore, RrflowMxStore, StorageEngine};
+use rrflow_ql::parse;
+use rrflow_ql::{poll_live_query, Error, LiveQueryBudget, LiveQueryDelta, Parameters};
+use std::collections::BTreeMap;
+
+fn scope() -> ScopeId {
+    ScopeId::new("instance:live-test").unwrap()
+}
+
+fn record(id: &str, status: &str) -> RuntimeRecord {
+    RuntimeRecord {
+        reference: RuntimeRef::new("document", id).unwrap(),
+        valid_from: 10,
+        valid_to: None,
+        properties: RuntimeProperties::from([(
+            "status".into(),
+            RuntimeValue::String(status.into()),
+        )]),
+    }
+}
+
+fn seed<E: StorageEngine>(engine: &E) {
+    let mut registry = RuntimeSchemaRegistry::empty(1, "live query fixture");
+    registry
+        .define_record_table(
+            RuntimeType::new("document").unwrap(),
+            RuntimeLogicalModel::Relational,
+            RuntimeRecordSchema {
+                properties: BTreeMap::from([(
+                    "status".into(),
+                    RuntimePropertySchema::required(RuntimeValueType::String),
+                )]),
+                ..RuntimeRecordSchema::default()
+            },
+        )
+        .unwrap();
+    engine
+        .runtime()
+        .commit(&RuntimeCommit {
+            scope: scope(),
+            at: 10,
+            actor: "test".into(),
+            expected_cursor: 0,
+            mutations: vec![
+                RuntimeMutation::Schema { registry },
+                RuntimeMutation::Record {
+                    record: record("a", "open"),
+                },
+            ],
+        })
+        .unwrap();
+}
+
+fn exercise<E: StorageEngine>(engine: &E) -> LiveQueryDelta {
+    seed(engine);
+    engine
+        .runtime()
+        .commit(&RuntimeCommit {
+            scope: scope(),
+            at: 20,
+            actor: "test".into(),
+            expected_cursor: 2,
+            mutations: vec![
+                RuntimeMutation::Record {
+                    record: record("a", "closed"),
+                },
+                RuntimeMutation::Record {
+                    record: record("b", "open"),
+                },
+            ],
+        })
+        .unwrap();
+    let query =
+        parse("FROM record:document AT VALID 100 KNOWN HEAD PROJECT id, status EXPLAIN CONTRACT")
+            .unwrap();
+    let delta = poll_live_query(
+        engine,
+        &scope(),
+        &query,
+        &Parameters::new(),
+        2,
+        Some(rrflow_core::result_identity::RESULT_IDENTITY_VERSION),
+        &LiveQueryBudget::default(),
+    )
+    .unwrap();
+    assert_eq!(delta.from_cursor, 2);
+    assert_eq!(delta.through_cursor, 4);
+    assert_eq!(delta.head_cursor, 4);
+    assert_eq!(delta.change_count(), 2);
+    assert_eq!(delta.added[0].identity, "record:document:b");
+    assert_eq!(delta.updated[0].before.identity, "record:document:a");
+    assert_eq!(
+        delta.updated[0].before.values["status"],
+        RuntimeValue::String("open".into())
+    );
+    assert_eq!(
+        delta.updated[0].after.values["status"],
+        RuntimeValue::String("closed".into())
+    );
+    assert!(delta.removed.is_empty());
+    let open_query = parse(
+        "FROM record:document AT VALID 100 KNOWN HEAD WHERE status = \"open\" PROJECT id, status",
+    )
+    .unwrap();
+    let membership = poll_live_query(
+        engine,
+        &scope(),
+        &open_query,
+        &Parameters::new(),
+        2,
+        Some(rrflow_core::result_identity::RESULT_IDENTITY_VERSION),
+        &LiveQueryBudget::default(),
+    )
+    .unwrap();
+    assert_eq!(membership.added[0].identity, "record:document:b");
+    assert_eq!(membership.removed[0].identity, "record:document:a");
+    assert!(membership.updated.is_empty());
+    assert!(poll_live_query(
+        engine,
+        &scope(),
+        &query,
+        &Parameters::new(),
+        4,
+        Some(rrflow_core::result_identity::RESULT_IDENTITY_VERSION),
+        &LiveQueryBudget::default(),
+    )
+    .unwrap()
+    .is_empty());
+    assert!(matches!(
+        poll_live_query(
+            engine,
+            &scope(),
+            &query,
+            &Parameters::new(),
+            2,
+            Some(rrflow_core::result_identity::RESULT_IDENTITY_VERSION),
+            &LiveQueryBudget {
+                max_delta_rows: 1,
+                ..LiveQueryBudget::default()
+            },
+        ),
+        Err(Error::Budget(_))
+    ));
+    delta
+}
+
+#[test]
+fn semantic_deltas_are_identical_across_every_engine() {
+    let expected = exercise(&RrflowMxStore::new());
+    let rrflow_kv_root = tempfile::tempdir().unwrap();
+    assert_eq!(
+        expected,
+        exercise(&RrflowKvStore::open(rrflow_kv_root.path()).unwrap())
+    );
+}
+
+#[test]
+fn resume_and_snapshot_contracts_fail_closed() {
+    let engine = RrflowMxStore::new();
+    seed(&engine);
+    let fixed = parse("FROM record:document AT VALID 100 KNOWN 2 PROJECT id").unwrap();
+    assert!(matches!(
+        poll_live_query(
+            &engine,
+            &scope(),
+            &fixed,
+            &Parameters::new(),
+            0,
+            None,
+            &LiveQueryBudget::default(),
+        ),
+        Err(Error::Binding(_))
+    ));
+    let live = parse("FROM record:document AT VALID 100 KNOWN HEAD PROJECT id").unwrap();
+    for version in [None, Some(1), Some(u16::MAX)] {
+        assert!(
+            matches!(
+                poll_live_query(
+                    &engine,
+                    &scope(),
+                    &live,
+                    &Parameters::new(),
+                    2,
+                    version,
+                    &LiveQueryBudget::default(),
+                ),
+                Err(Error::Binding(_))
+            ),
+            "unsafe resume version {version:?}"
+        );
+    }
+    let initial = poll_live_query(
+        &engine,
+        &scope(),
+        &live,
+        &Parameters::new(),
+        0,
+        None,
+        &LiveQueryBudget::default(),
+    )
+    .unwrap();
+    assert_eq!(
+        initial.result_identity_version,
+        rrflow_core::result_identity::RESULT_IDENTITY_VERSION
+    );
+    assert!(matches!(
+        poll_live_query(
+            &engine,
+            &scope(),
+            &live,
+            &Parameters::new(),
+            3,
+            Some(rrflow_core::result_identity::RESULT_IDENTITY_VERSION),
+            &LiveQueryBudget::default(),
+        ),
+        Err(Error::Binding(_))
+    ));
+    assert!(poll_live_query(
+        &engine,
+        &scope(),
+        &live,
+        &Parameters::new(),
+        0,
+        None,
+        &LiveQueryBudget {
+            execution: rrflow_ql::ExecutionBudget {
+                max_rows: 1,
+                ..rrflow_ql::ExecutionBudget::default()
+            },
+            max_delta_rows: 10,
+        },
+    )
+    .is_ok());
+}

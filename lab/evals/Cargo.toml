@@ -1,0 +1,18 @@
+[package]
+name = "rrflow-lab-evals"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "RRFlow Lab's reasoning evaluations: tasks with known answers, studies and agent providers"
+
+[dependencies]
+rrflow-lab-core = { workspace = true }
+rrflow-lab-systems = { workspace = true }
+schemars = "1.2"
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+[dev-dependencies]
+rrflow-lab-datasets = { workspace = true }
+rrd-contract = { workspace = true }

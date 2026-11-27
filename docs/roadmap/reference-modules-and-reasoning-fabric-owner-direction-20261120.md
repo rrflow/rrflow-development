@@ -36,9 +36,9 @@ A reference module is a proven outside implementation that can be plugged in bes
 
 | Module | For | On `main` |
 |---|---|---|
-| Fjall | rrflowLSM | Meets all five: `rrd-store` feature `fjall-baseline`, the `StorageEngine` port, `tests/fjall_baseline.rs`, `examples/storage_comparison.rs` weekly on Linux, and the Fjall rule in `workspace_architecture/storage.rs` |
-| Parquet | rrflowCLD | As a module it meets all five since 2026-11-20: `rrd-store` feature `parquet-reference` behind the columnar port ([journal](../evidence/change-journals/gate-f/columnar-port-reference-modules-20261120.md)). Separately, it is still a dependency of the product: `rrd-query` writes the cold tier and the query export with it, on by default ([POAM-090](../poam/rrflow-1.0-alpha/poam-090.md)) |
-| Vortex | rrflowCLD | Meets all five since 2026-11-20: `rrd-store` feature `vortex-reference` behind the columnar port, `vortex` `=0.93.0`, Apache-2.0. Built and tested on Windows; Linux and macOS are for the candidate gate |
+| Fjall | rrflowLSM | Meets all five: `rrflow-db` feature `fjall-baseline`, the `StorageEngine` port, `tests/fjall_baseline.rs`, `examples/storage_comparison.rs` weekly on Linux, and the Fjall rule in `workspace_architecture/storage.rs` |
+| Parquet | rrflowCLD | As a module it meets all five since 2026-11-20: `rrflow-db` feature `parquet-reference` behind the columnar port ([journal](../evidence/change-journals/gate-f/columnar-port-reference-modules-20261120.md)). Separately, it is still a dependency of the product: `rrflow-ql` writes the cold tier and the query export with it, on by default ([POAM-090](../poam/rrflow-1.0-alpha/poam-090.md)) |
+| Vortex | rrflowCLD | Meets all five since 2026-11-20: `rrflow-db` feature `vortex-reference` behind the columnar port, `vortex` `=0.93.0`, Apache-2.0. Built and tested on Windows; Linux and macOS are for the candidate gate |
 
 rrflowCLD has no native format to compare either against: the cold tier is the Parquet writer.
 

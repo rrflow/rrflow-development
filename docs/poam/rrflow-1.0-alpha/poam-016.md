@@ -30,7 +30,7 @@ initialization or claim that the original-principal post-install mutation path
 works.
 
 Security policy, sessions, and audit have useful validation and denial behavior, but
-`rrd-security` still exposes a direct `StorageEngine` repository; policy and runtime data
+`rrflow-security` still exposes a direct `StorageEngine` repository; policy and runtime data
 use separate observations; transaction authorization is operation-wide rather than
 effect-complete; missing policy enables anonymous loopback application access; and
 authorized/domain/completed audit writes are split commits. Initial local security now

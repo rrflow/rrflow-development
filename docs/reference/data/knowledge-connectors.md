@@ -349,7 +349,7 @@ binds the joined acceptance journey. This adds no gate-completion claim.
 ## Parquet and external knowledge services
 
 Apache Parquet is a columnar interchange/analytical artifact format, not
-rrflowKV's WAL or transactional store. `rrd-query` pins DataFusion 55 and the
+rrflowKV's WAL or transactional store. `rrflow-ql` pins DataFusion 55 and the
 matching Arrow/Parquet 59.2.0 family. The bundled query-result export below is
 the first implemented exchange profile; arbitrary-file import and streaming
 exchange remain open.

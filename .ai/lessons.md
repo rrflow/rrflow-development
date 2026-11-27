@@ -2,6 +2,18 @@
 
 Each entry is something that cost the owner time, what the repository shows about it, and the rule that replaces it. Newest first.
 
+## 2026-11-27: a rename broke a digest, and a suite that was not run hid three failures
+
+1. **A rename rewrote history.** Pull request 519 replaced folder paths inside `eval/lab/tasks/rrflow-package-planning.json`. Each task there names a repository revision, and its file list is the paths at that revision. A study pins the catalog's SHA-256, so the nightly on `main` went red (issue 520). The same pass on 2026-11-27 first rewrote `eval/inputs`, `eval/results`, `docs/history` and `docs/research` before they were restored.
+2. **"Not run" was left standing.** The `Repositories` change was committed with the engine suites not run. Three `workspace_architecture` tests had been failing since.
+3. **The plan was wrong about `rrflow-arrow`.** It said `rrflow-cld` absorbs it. A test already forbade the dependency that would create. The plan had not been checked against the tests.
+
+**Rules that replace it**
+
+- A record that names a revision, a digest or a date of measurement is history. A rename script excludes `eval/inputs`, `eval/results`, `eval/lab/tasks`, `docs/evidence`, `docs/history` and `docs/research`; only a link the checker rejects is repointed.
+- A structural change is not committed with a suite "not run" when that suite is the one that tests structure. `workspace_architecture` and `direct_read_source_closure` run before any commit that moves or renames.
+- Before a plan merges or splits a crate, search the architecture tests for that crate's name.
+
 ## 2026-11-26: the first alignment plan was wrong in shape and in method
 
 The plan was section 6 of `docs/architecture/code-structure-and-conventions.md`, written 2026-11-25.

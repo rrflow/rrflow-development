@@ -11,11 +11,11 @@ priority or closure status.
 
 A code read at `de435238` on 2026-11-11 found the following:
 
-- Every commit on a schema-bound lexical index writes an `IndexSourceDelta` (`crates/storage/rrd-store/src/access/index.rs:538-560`).
-- Its only reader is `index_source_deltas_since` (`crates/storage/rrd-store/src/repository/runtime.rs:482`). Nothing outside `crates/storage/rrd-store/tests/native_index_commit.rs` calls it.
+- Every commit on a schema-bound lexical index writes an `IndexSourceDelta` (`rrflow/db/src/access/index.rs:538-560`).
+- Its only reader is `index_source_deltas_since` (`rrflow/db/src/repository/runtime.rs:482`). Nothing outside `rrflow/db/tests/native_index_commit.rs` calls it.
 - No path applies the deltas to persisted BM25 postings.
-- An rrflowQL `MATCH` against a stale index rebuilds BM25 on every query (`crates/compute/rrd-query/src/execute.rs:1338-1360`).
-- Context assembly builds its own BM25 index on every request (`crates/authority/rrd-engine/src/engine/context.rs:216`).
+- An rrflowQL `MATCH` against a stale index rebuilds BM25 on every query (`rrflow/ql/src/execute.rs:1338-1360`).
+- Context assembly builds its own BM25 index on every request (`rrd/engine/src/engine/context.rs:216`).
 
 ## Impact
 

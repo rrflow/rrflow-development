@@ -64,11 +64,11 @@ execution occurred.
 
 ## Executable evidence and open work
 
-`rrd-vector/tests/compact_dense.rs` proves deterministic format bytes,
+`rrflow-vector/tests/compact_dense.rs` proves deterministic format bytes,
 owned/mmap parity, scalar/SIMD parity, corruption rejection, stale-read
-rejection, and non-overwriting publication. `rrd-vector/tests/accelerator.rs`
+rejection, and non-overwriting publication. `rrflow-vector/tests/accelerator.rs`
 proves accelerator admission and fallback policy. Model-space rejection is
-covered by `rrd-vector/tests/model_binding.rs`.
+covered by `rrflow-vector/tests/model_binding.rs`.
 
 Sparse and multivector compact layouts, compact HNSW storage, native payload
 bitmap access, background optimization, Arrow-compatible pages, and

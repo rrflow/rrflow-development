@@ -33,7 +33,7 @@ Observed at development/main `81fce08e` while writing E-04b's oracle
   returns through those paths.
 - **What the store already has.** The commit path records a move as a removal
   from the old source (`VectorSourceDelta` with `before` and no `after`, in
-  `rrd-store/src/access/vector.rs`).
+  `rrflow-db/src/access/vector.rs`).
 
 ## Impact
 
@@ -66,7 +66,7 @@ collection that every identity has left refusing deletion
 ([POAM-047](poam-047.md)). Pull request #217 fixes both.
 
 The oracle is `engine::tests::vector_index::collection_moves` (seven tests)
-and `rrd-vector` `runtime::tests::an_accelerator_never_answers_with_an_identity_that_moved_away`.
+and `rrflow-vector` `runtime::tests::an_accelerator_never_answers_with_an_identity_that_moved_away`.
 The row is Verifying until Gate C and Gate E record that evidence at the
 merged revision.
 

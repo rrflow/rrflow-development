@@ -50,7 +50,7 @@ jobs:
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
       - name: Run isolated rrflowKV semantic profile
         run: >-
-          cargo run --release --locked -p rrd-store --example engine_benchmark --
+          cargo run --release --locked -p rrflow-db --example engine_benchmark --
           --trials 9 --operations ${{ matrix.operations }}
           --batch-size ${{ matrix.batch_size }} --reads ${{ matrix.reads }}
           --read-width ${{ matrix.read_width }}
@@ -96,7 +96,7 @@ jobs:
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
       - name: Run isolated AI-read profile
         run: >-
-          cargo run --release --locked -p rrd-store --example ai_hotset_benchmark --
+          cargo run --release --locked -p rrflow-db --example ai_hotset_benchmark --
           --workload ${{ matrix.workload }} --payload-profile ${{ matrix.payload }}
           --trials 5 --cold-keys 8192
           --hot-keys 128 --reads 8192 --batch-size 128 --value-bytes 128
@@ -173,7 +173,7 @@ jobs:
         env:
           TMPDIR: ${{ runner.temp }}/comparison
         run: >-
-          cargo run --release --locked -p rrd-store --features fjall-baseline
+          cargo run --release --locked -p rrflow-db --features fjall-baseline
           --example storage_comparison --
           --trials ${{ matrix.trials }} --operations ${{ matrix.operations }}
           --batch-size ${{ matrix.batch_size }} --reads ${{ matrix.reads }}

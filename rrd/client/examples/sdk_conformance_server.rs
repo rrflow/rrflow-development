@@ -1,0 +1,460 @@
+use rrd_contract::{
+    CanonicalId, InstallationManagedPathKind, InstallationTargetKind, ResourceId, ResourceKind,
+    ResourcePath, SdkConformanceCorpus, SecurityAction,
+};
+use rrd_engine::RrdEngine;
+use rrd_server::RrdHttpServer;
+use rrflow_core::{
+    digest, RuntimeCommit, RuntimeLogicalModel, RuntimeMutation, RuntimePropertySchema,
+    RuntimeRecordSchema, RuntimeTableSchema, RuntimeType, RuntimeValueType, ScopeId,
+};
+use rrflow_db::{Repositories, RrflowKvStore};
+use rrflow_engram::{EngramRepository, MutationContext};
+use rrflow_security::{
+    Principal, PrincipalKind, ResourceGrant, SecurityRepository, SECURITY_FORMAT,
+};
+use serde::Serialize;
+use std::collections::BTreeMap;
+use std::fs::OpenOptions;
+use std::io::Write;
+use std::net::SocketAddr;
+use std::path::{Path, PathBuf};
+use std::time::Duration;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::task::JoinHandle;
+
+const LANGUAGES: [&str; 6] = ["rust", "typescript", "python", "go", "java", "dotnet"];
+const INSTALL_ANCHOR_BYTES: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../fixtures/rrflow-sdk-conformance-install-anchor-v1.bin"
+));
+
+#[derive(Debug, Serialize)]
+#[serde(deny_unknown_fields)]
+struct HarnessManifest {
+    format_version: u16,
+    corpus_sha256: String,
+    corpus_path: String,
+    base_url: String,
+    retry_base_urls: BTreeMap<String, String>,
+    incompatible_version_url: String,
+    shutdown_path: String,
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let arguments = Arguments::parse()?;
+    let corpus_bytes = std::fs::read(&arguments.corpus)?;
+    let corpus: SdkConformanceCorpus = serde_json::from_slice(&corpus_bytes)?;
+    corpus.validate()?;
+
+    let temporary = tempfile::tempdir()?;
+    let distribution = temporary
+        .path()
+        .join("rrflow-sdk-conformance-install-anchor-v1.bin");
+    std::fs::write(&distribution, INSTALL_ANCHOR_BYTES)?;
+    let project = temporary.path().join("project");
+    std::fs::create_dir_all(&project)?;
+    let preview = RrdEngine::plan_installation(
+        &project,
+        InstallationTargetKind::FreshProject,
+        // A fixed explicit identity keeps the single checked-in SDK corpus reproducible.
+        &digest::sha256_hex(INSTALL_ANCHOR_BYTES),
+        "default",
+        None,
+        &distribution,
+    )?;
+    if preview.installation.target.instance_id != corpus.identity.instance
+        || preview.installation.target.engram_id != corpus.identity.engram
+    {
+        return Err(format!(
+            "checked SDK corpus identity drifted: expected instance={} engram={}, planned instance={} engram={}",
+            corpus.identity.instance,
+            corpus.identity.engram,
+            preview.installation.target.instance_id,
+            preview.installation.target.engram_id,
+        )
+        .into());
+    }
+    let plan_sha256 = preview.installation.plan_sha256.clone();
+    RrdEngine::apply_installation(
+        &project,
+        InstallationTargetKind::FreshProject,
+        &preview,
+        &plan_sha256,
+        &distribution,
+    )?;
+    let root = project.join(
+        &preview
+            .installation
+            .managed_path(InstallationManagedPathKind::StorageRoot)
+            .relative_path,
+    );
+    let storage = RrflowKvStore::open(&root)?;
+    seed_schema(&storage, &corpus)?;
+    seed_engram(&storage, &corpus)?;
+    seed_security(&storage, &corpus)?;
+    drop(storage);
+
+    let engine = RrdEngine::open_installed(&project, &distribution)?;
+    // The seeded history is authoritative. Prepare and publish one real cold
+    // generation before any language client is given the harness.
+    if !engine.maintain_cold_history()? || !engine.maintain_cold_history()? {
+        return Err("SDK cold-history fixture did not publish its seeded generation".into());
+    }
+    let server = RrdHttpServer::bind(engine, "127.0.0.1:0".parse::<SocketAddr>()?)?;
+    let server_address = server.local_addr();
+    let (server_shutdown, receiver) = tokio::sync::oneshot::channel();
+    let server_task = tokio::spawn(server.serve_until(async move {
+        let _ = receiver.await;
+    }));
+
+    let mut retry_base_urls = BTreeMap::new();
+    let mut proxy_tasks = Vec::new();
+    for language in LANGUAGES {
+        let (address, task) = spawn_drop_once_proxy(server_address).await?;
+        retry_base_urls.insert(language.to_owned(), loopback_url(address));
+        proxy_tasks.push(task);
+    }
+    let (version_address, version_task) =
+        spawn_incompatible_version_server(corpus.incompatible_protocol_version).await?;
+
+    let manifest = HarnessManifest {
+        format_version: corpus.format_version,
+        corpus_sha256: digest::sha256_hex(&corpus_bytes),
+        corpus_path: arguments.corpus.to_string_lossy().into_owned(),
+        base_url: loopback_url(server_address),
+        retry_base_urls,
+        incompatible_version_url: loopback_url(version_address),
+        shutdown_path: arguments.shutdown.to_string_lossy().into_owned(),
+    };
+    write_owner_only_json(
+        &arguments.manifest,
+        arguments.manifest_staging.as_deref(),
+        &manifest,
+    )?;
+
+    while !arguments.shutdown.is_file() {
+        tokio::time::sleep(Duration::from_millis(25)).await;
+    }
+    let _ = server_shutdown.send(());
+    server_task.await??;
+    for task in proxy_tasks {
+        task.abort();
+        let _ = task.await;
+    }
+    version_task.abort();
+    let _ = version_task.await;
+    Ok(())
+}
+
+struct Arguments {
+    corpus: PathBuf,
+    manifest: PathBuf,
+    manifest_staging: Option<PathBuf>,
+    shutdown: PathBuf,
+}
+
+impl Arguments {
+    fn parse() -> Result<Self, String> {
+        let mut corpus = None;
+        let mut manifest = None;
+        let mut manifest_staging = None;
+        let mut shutdown = None;
+        let mut arguments = std::env::args().skip(1);
+        while let Some(argument) = arguments.next() {
+            let value = arguments
+                .next()
+                .ok_or_else(|| format!("{argument} requires a path"))?;
+            match argument.as_str() {
+                "--corpus" => corpus = Some(PathBuf::from(value)),
+                "--manifest" => manifest = Some(PathBuf::from(value)),
+                "--manifest-staging" => manifest_staging = Some(PathBuf::from(value)),
+                "--shutdown" => shutdown = Some(PathBuf::from(value)),
+                _ => return Err(format!("unknown argument {argument}")),
+            }
+        }
+        Ok(Self {
+            corpus: corpus.ok_or("--corpus is required")?,
+            manifest: manifest.ok_or("--manifest is required")?,
+            manifest_staging,
+            shutdown: shutdown.ok_or("--shutdown is required")?,
+        })
+    }
+}
+
+fn seed_schema(
+    storage: &RrflowKvStore,
+    corpus: &SdkConformanceCorpus,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let scope = ScopeId::new(format!("instance:{}", corpus.identity.instance))?;
+    let read = storage.runtime().read_stamp(&scope)?;
+    let mut registry = storage
+        .runtime()
+        .schema(&scope)?
+        .ok_or_else(|| std::io::Error::other("canonical SDK installation has no runtime schema"))?;
+    registry.revision += 1;
+    registry.migration = "extend canonical installation for SDK conformance".into();
+    registry.define_record_table(
+        RuntimeType::new("document")?,
+        RuntimeLogicalModel::Relational,
+        RuntimeRecordSchema {
+            properties: BTreeMap::from([(
+                "title".into(),
+                RuntimePropertySchema::required(RuntimeValueType::String),
+            )]),
+            ..RuntimeRecordSchema::default()
+        },
+    )?;
+    registry.tables.insert(
+        RuntimeType::new("embedding")?,
+        RuntimeTableSchema::schemaless(RuntimeLogicalModel::Vector),
+    );
+    storage.runtime().commit(&RuntimeCommit {
+        scope,
+        at: 100,
+        actor: "sdk-conformance-harness".into(),
+        expected_cursor: read.commit_cursor,
+        mutations: vec![RuntimeMutation::Schema { registry }],
+    })?;
+    Ok(())
+}
+
+fn seed_engram(
+    storage: &RrflowKvStore,
+    corpus: &SdkConformanceCorpus,
+) -> Result<(), Box<dyn std::error::Error>> {
+    EngramRepository::new(storage, corpus.identity.engram.clone()).create(&MutationContext {
+        at: 110,
+        actor: "sdk-conformance-harness".into(),
+        request_id: "request-sdk-engram".into(),
+        operation_id: CanonicalId::new("sdk-engram-create")?,
+    })?;
+    Ok(())
+}
+
+fn seed_security(
+    storage: &RrflowKvStore,
+    corpus: &SdkConformanceCorpus,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let instance_resource = ResourcePath {
+        segments: vec![ResourceId::new(
+            ResourceKind::Instance,
+            corpus.identity.instance.as_str(),
+        )?],
+    };
+    let engram_resource = ResourcePath {
+        segments: vec![ResourceId::new(
+            ResourceKind::Engram,
+            corpus.identity.engram.as_str(),
+        )?],
+    };
+    let actions = [
+        SecurityAction::SessionCreate,
+        SecurityAction::SessionRenew,
+        SecurityAction::SessionClose,
+        SecurityAction::TransactionBegin,
+        SecurityAction::TransactionPreview,
+        SecurityAction::TransactionCommit,
+        SecurityAction::TransactionAbort,
+        SecurityAction::QueryExecute,
+        SecurityAction::VectorCollectionEnsure,
+        SecurityAction::VectorCollectionList,
+        SecurityAction::VectorPayloadIndexEnsure,
+        SecurityAction::VectorPayloadIndexDelete,
+        SecurityAction::VectorSearch,
+        SecurityAction::ChangefeedRead,
+        SecurityAction::ChangefeedFollow,
+        SecurityAction::BackupCreate,
+        SecurityAction::BackupList,
+        SecurityAction::EngramRead,
+    ];
+    let mut grants = actions
+        .into_iter()
+        .map(|action| ResourceGrant {
+            action,
+            resource_prefix: instance_resource.clone(),
+            data_policy: None,
+        })
+        .collect::<Vec<_>>();
+    grants.push(ResourceGrant {
+        action: SecurityAction::EngramRead,
+        resource_prefix: engram_resource,
+        data_policy: None,
+    });
+    let principal = Principal {
+        id: corpus.identity.principal.clone(),
+        kind: PrincipalKind::Service,
+        credential_sha256: digest::sha256_hex(corpus.identity.api_key.as_bytes()),
+        credential_revision: 1,
+        not_before_unix_ms: 1,
+        expires_at_unix_ms: u64::MAX,
+        disabled: false,
+        role_ids: Default::default(),
+        grants,
+    };
+    let security = SecurityRepository::new(storage, corpus.identity.instance.clone());
+    let mut state = security
+        .load()?
+        .ok_or_else(|| std::io::Error::other("canonical SDK installation has no security state"))?;
+    if state.format_version != SECURITY_FORMAT || state.revision != 1 {
+        return Err(std::io::Error::other(
+            "canonical SDK installation security state has an unexpected revision",
+        )
+        .into());
+    }
+    state.revision = 2;
+    state.principals.insert(principal.id.clone(), principal);
+    security.replace(
+        1,
+        state,
+        120,
+        "sdk-conformance-harness",
+        "request-sdk-security",
+        "operation-sdk-security",
+    )?;
+    Ok(())
+}
+
+async fn spawn_drop_once_proxy(
+    upstream: SocketAddr,
+) -> Result<(SocketAddr, JoinHandle<()>), Box<dyn std::error::Error>> {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+    let address = listener.local_addr()?;
+    let task = tokio::spawn(async move {
+        let mut drop_next = true;
+        loop {
+            let Ok((mut downstream, _)) = listener.accept().await else {
+                break;
+            };
+            if drop_next {
+                drop_next = false;
+                drop(downstream);
+                continue;
+            }
+            tokio::spawn(async move {
+                let Ok(mut upstream_stream) = tokio::net::TcpStream::connect(upstream).await else {
+                    return;
+                };
+                let _ = tokio::io::copy_bidirectional(&mut downstream, &mut upstream_stream).await;
+            });
+        }
+    });
+    Ok((address, task))
+}
+
+async fn spawn_incompatible_version_server(
+    protocol_version: u16,
+) -> Result<(SocketAddr, JoinHandle<()>), Box<dyn std::error::Error>> {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+    let address = listener.local_addr()?;
+    let task = tokio::spawn(async move {
+        loop {
+            let Ok((mut stream, _)) = listener.accept().await else {
+                break;
+            };
+            tokio::spawn(async move {
+                let mut request = vec![0_u8; 8 * 1024];
+                let _ = stream.read(&mut request).await;
+                let body = format!(
+                    "{{\"protocol\":\"rrd\",\"protocol_version\":{protocol_version},\"request_id\":\"version-mismatch\",\"operation_id\":\"capabilities-read\",\"outcome\":{{\"status\":\"ok\",\"payload\":{{}}}}}}"
+                );
+                let response = format!(
+                    "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                    body.len()
+                );
+                let _ = stream.write_all(response.as_bytes()).await;
+                let _ = stream.shutdown().await;
+            });
+        }
+    });
+    Ok((address, task))
+}
+
+fn loopback_url(address: SocketAddr) -> String {
+    format!("http://{address}/")
+}
+
+fn write_owner_only_json(
+    path: &Path,
+    staging: Option<&Path>,
+    value: &impl Serialize,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let encoded = serde_json::to_vec_pretty(value)?;
+    #[cfg(windows)]
+    if staging.is_none() {
+        return Err("Windows SDK manifest requires a private staging file".into());
+    }
+    if let Some(staging) = staging {
+        #[cfg(not(windows))]
+        {
+            let _ = staging;
+            return Err("precreated SDK manifest staging is only supported on Windows".into());
+        }
+        #[cfg(windows)]
+        {
+            use std::os::windows::fs::{MetadataExt, OpenOptionsExt};
+            if staging == path || staging.parent() != path.parent() {
+                return Err(
+                    "SDK manifest staging must be a distinct file in the same directory".into(),
+                );
+            }
+            let metadata = std::fs::symlink_metadata(staging)?;
+            if !metadata.is_file() || metadata.len() != 0 || metadata.file_attributes() & 0x400 != 0
+            {
+                return Err("SDK manifest staging must be an empty non-reparse file".into());
+            }
+            // The Python harness created the staging file with a protected
+            // current-user DACL and owner. Do not follow a reparse point.
+            let mut file = OpenOptions::new()
+                .write(true)
+                .custom_flags(0x00200000)
+                .open(staging)?;
+            file.write_all(&encoded)?;
+            file.write_all(b"\n")?;
+            file.sync_all()?;
+            drop(file);
+            // Hard-link creation is atomic and fails if the final name exists.
+            std::fs::hard_link(staging, path)?;
+            std::fs::remove_file(staging)?;
+            return Ok(());
+        }
+    }
+    #[cfg(unix)]
+    let mut file = {
+        use std::os::unix::fs::OpenOptionsExt;
+        OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .mode(0o600)
+            .open(path)?
+    };
+    #[cfg(not(unix))]
+    let mut file = OpenOptions::new().write(true).create_new(true).open(path)?;
+    file.write_all(&encoded)?;
+    file.write_all(b"\n")?;
+    file.sync_all()?;
+    Ok(())
+}
+
+#[cfg(all(test, windows))]
+mod manifest_tests {
+    use super::*;
+
+    #[test]
+    fn staged_publication_rejects_existing_target_and_nonempty_or_foreign_staging() {
+        let directory = tempfile::tempdir().unwrap();
+        let staging = directory.path().join("pending");
+        let target = directory.path().join("manifest.json");
+        assert!(write_owner_only_json(&target, None, &"value").is_err());
+        std::fs::write(&staging, b"").unwrap();
+        std::fs::write(&target, b"preserve").unwrap();
+        assert!(write_owner_only_json(&target, Some(&staging), &"value").is_err());
+        assert_eq!(std::fs::read(&target).unwrap(), b"preserve");
+        assert!(write_owner_only_json(&target, Some(&staging), &"value").is_err());
+        let other = tempfile::tempdir().unwrap();
+        let foreign = other.path().join("pending");
+        std::fs::write(&foreign, b"").unwrap();
+        assert!(write_owner_only_json(&target, Some(&foreign), &"value").is_err());
+    }
+}

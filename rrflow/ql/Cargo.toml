@@ -1,0 +1,27 @@
+[package]
+name = "rrflow-ql"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "rrflowQL syntax, catalog binding, deterministic planning, and execution."
+
+[dependencies]
+rrflow-arrow = { workspace = true }
+rrflow-core = { workspace = true }
+rrflow-db = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true, features = ["raw_value"] }
+datafusion = { version = "=55.0.0", default-features = false, features = ["recursive_protection"] }
+datafusion-datasource = "=55.0.0"
+datafusion-session = "=55.0.0"
+futures = "0.3"
+futures-timer = "3"
+async-trait = "0.1"
+async-graphql-parser = "=7.2.1"
+async-graphql-value = "=7.2.1"
+tokio = { version = "1", features = ["fs", "rt", "time"] }
+unicode-normalization = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3"

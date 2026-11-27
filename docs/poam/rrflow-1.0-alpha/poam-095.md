@@ -18,7 +18,7 @@ The project's terms are instead written by hand in five places that no check kee
 | Place | Holds | Read by |
 |---|---|---|
 | [System overview, canonical component terminology](../../architecture/system-overview.md#canonical-component-terminology) | 44 terms with meaning and code boundary | people and agents |
-| `PLATFORM_TERMS` in `crates/transport/rrd-contract/src/platform.rs` | 25 terms with a role; none of rrflowDB, rrflowKV, rrflowTX, rrflowCX, rrflowQL, rrflowMX | the public contract and its test |
+| `PLATFORM_TERMS` in `rrd/contract/src/platform.rs` | 25 terms with a role; none of rrflowDB, rrflowKV, rrflowTX, rrflowCX, rrflowQL, rrflowMX | the public contract and its test |
 | `connectome/src/features/runtime/components/glossary.tsx` | 31 terms with plain-language text | the Connectome screens |
 | [Platform vocabulary note](../../history/platform-vocabulary-note.md) | an older term table | history |
 | `rrflow-core/src/trace/vocabulary.rs` | trace names | the trace code |

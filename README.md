@@ -350,7 +350,7 @@ the remaining [POAM-028](docs/poam/rrflow-1.0-alpha/poam-028.md) closure work. E
 rrflowMX/rrflowKV, rrflowKV reopen, and physical-counter evidence passes for
 the direct reads. C-05 is complete
 for the single-node alpha composition: retired physical readers are absent;
-`rrd-store` is the only required production owner of `rrflow-lsm`; schemas require
+`rrflow-db` is the only required production owner of `rrflow-lsm`; schemas require
 one explicit logical table map; and every persisted vector requires its
 canonical collection plus named-vector address. The generic vector artifact
 catalogue now admits only exact/compact and HNSW projections. Scalar, product,

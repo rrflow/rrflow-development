@@ -10,7 +10,7 @@ independently.
 
 ## Observed deficiency
 
-`rrd-engram` publicly depends on `rrd-store` through `EngramRepository`, `Reconciler`, and
+`rrd-engram` publicly depends on `rrflow-db` through `EngramRepository`, `Reconciler`, and
 `BackupReconciler`; every engram mutation decodes and rewrites one JSON `EngramDocument` at
 `server/state/engram/{engram}/document`, and the control journal copies that full
 replacement. The one-MiB value cap can preempt the advertised aggregate cardinalities. The

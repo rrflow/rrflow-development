@@ -188,16 +188,16 @@ The focused characterization commands are:
 ```text
 cargo test -p rrd-contract --test websocket_contract --locked
 cargo test -p rrd-engine subscription --locked
-cargo test -p rrd-query --test live_query --locked
+cargo test -p rrflow-ql --test live_query --locked
 cargo test -p rrd-client --test real_server --locked
 cargo test -p rrd-client --test transport_faults --locked
 ```
 
 ## Implementation anchors
 
-- Public stream contract: `crates/transport/rrd-contract/src/lib.rs`
-- Multiplexed frame contract: `crates/transport/rrd-contract/src/websocket.rs`
-- Durable subscription authority: `crates/authority/rrd-engine/src/engine/subscription.rs`
-- Current semantic delta computation: `crates/compute/rrd-query/src/live.rs`
-- WebSocket adapter: `crates/transport/rrd-server/src/http/websocket.rs`
-- Supported Rust client: `crates/transport/rrd-client`
+- Public stream contract: `rrd/contract/src/lib.rs`
+- Multiplexed frame contract: `rrd/contract/src/websocket.rs`
+- Durable subscription authority: `rrd/engine/src/engine/subscription.rs`
+- Current semantic delta computation: `rrflow/ql/src/live.rs`
+- WebSocket adapter: `rrd/server/src/http/websocket.rs`
+- Supported Rust client: `rrd/client`

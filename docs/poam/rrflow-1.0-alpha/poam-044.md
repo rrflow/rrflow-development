@@ -16,7 +16,7 @@ Connectome's real-engine process tests (`rrd::client::process::language` and
 
 - **No query is checked without running it.** No public operation parses or
   binds a query without executing it. `EXPLAIN CONTRACT` is carried into the
-  bound query and its canonical text (`rrd-query/src/syntax.rs`,
+  bound query and its canonical text (`rrflow-ql/src/syntax.rs`,
   `plan.rs`), but nothing reads it afterwards, so the query executes in full
   and returns rows.
 - **A refusal's location is only in debug text.** `ServiceError`'s display is
@@ -38,7 +38,7 @@ Connectome's real-engine process tests (`rrd::client::process::language` and
 The cited code is unchanged at `development/main` `618269b4`.
 
 At main `ed3027b79e41dfcdf5b27e57f07346f11f6da347`,
-`rrd-query/src/syntax.rs` supports RRFlow's bounded relational grammar with
+`rrflow-ql/src/syntax.rs` supports RRFlow's bounded relational grammar with
 sources, equijoins, filters and projection, and its transaction program uses
 bound `MUTATE` operations. This is not the PostgreSQL SQL/client profile or
 a qualified SQLite compatibility surface. H-08 owns PostgreSQL semantics;

@@ -14,9 +14,9 @@ Preparing an offline experiment does not authorize or qualify runtime effects.
 
 | Major boundary | Required extension and preserved behavior |
 |---|---|
-| `crates/transport/rrd-contract` | Extend the existing configuration, endpoint, router and model-manifest families. Generate outward schemas and SDKs from the executable catalogue. Keep endpoint selection separate from the existing three recipe/branch/context proposals. |
-| `crates/compute/rrd-inference` | Preserve byte-verified model/tokenizer/runtime/grammar admission. Implement optional LFG and executable SWAG at the existing compute boundary; a training checkpoint cannot bypass admission. |
-| `crates/authority/rrd-engine` | Own effective configuration, permission checks, durable state, accepted evidence and promotion receipts. Reuse the generic routine authority for improvement rather than introduce a training scheduler inside Python. |
+| `rrd/contract` | Extend the existing configuration, endpoint, router and model-manifest families. Generate outward schemas and SDKs from the executable catalogue. Keep endpoint selection separate from the existing three recipe/branch/context proposals. |
+| `rrflow/inference` | Preserve byte-verified model/tokenizer/runtime/grammar admission. Implement optional LFG and executable SWAG at the existing compute boundary; a training checkpoint cannot bypass admission. |
+| `rrd/engine` | Own effective configuration, permission checks, durable state, accepted evidence and promotion receipts. Reuse the generic routine authority for improvement rather than introduce a training scheduler inside Python. |
 | `crates/kernel` and `crates/persistence` | Extend canonical semantic values and their existing transaction mapping only when a durable family is specified. No separate learning database or training-owned canonical log. |
 | `scripts` | Future first-party offline training/evaluation tools belong under an inference subdirectory, grouped by dataset, experiment and packaging responsibility as executable packages land. Python may run here or through an explicitly configured external activity. It is not an engine bootstrap or readiness dependency. |
 | `docs/reference/inference/learning` | Own this contract and the Spark preparation guide. Reference and journal links provide navigation; no duplicate implementation inventory or roadmap. |

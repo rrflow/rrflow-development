@@ -377,7 +377,7 @@ already accepted responsibilities. `lib.rs` is now only the crate contract,
 module declarations, and public exports; there is no forwarding monolith:
 
 ```text
-crates/transport/rrd-client/src/
+rrd/client/src/
 ├── lib.rs             # narrow public exports
 ├── client.rs          # client identity plus capability/schema discovery
 ├── endpoint.rs        # explicit loopback or mutual-TLS construction
@@ -388,7 +388,7 @@ crates/transport/rrd-client/src/
 ├── subscription.rs    # bounded generic multiplexed WebSocket client
 └── transport.rs       # current bounded HTTP carriage
 
-crates/transport/rrd-client/tests/
+rrd/client/tests/
 ├── operation_coverage.rs      # planned H-04
 ├── protocol_validation.rs     # planned H-04/J-02
 ├── transport_faults.rs        # B-04 faults; extended by H-04/H-07/J-02

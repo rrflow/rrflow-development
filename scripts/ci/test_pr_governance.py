@@ -52,7 +52,7 @@ class GovernanceTests(unittest.TestCase):
             "120\t30\tsdks/python/src/rrd_client/generated/endpoints.py",
             "10\t2\teval/schemas/storage-manifest-v1.json",
             "5\t5\tCargo.lock",
-            "40\t1\tcrates/authority/rrd-engine/src/engine/context.rs",
+            "40\t1\trrd/engine/src/engine/context.rs",
             "-\t-\tdocs/evidence/image.png",
         ])
         self.assertEqual(generated_line_count(numstat), 172)

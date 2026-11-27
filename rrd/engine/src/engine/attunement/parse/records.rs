@@ -1,0 +1,16 @@
+//! Runtime records for parsed source. `source-parse` is the per-file state that
+//! makes Parse resumable; its fact counts name the records a later edit retires.
+
+use super::*;
+use rrflow_core::RuntimeRetirement;
+use rrflow_db::{RuntimeReadBudget, RuntimeVersionedSource};
+use std::collections::{BTreeMap, BTreeSet};
+
+mod facts;
+mod mutations;
+
+pub(super) use facts::*;
+pub(super) use mutations::*;
+
+#[cfg(test)]
+mod tests;

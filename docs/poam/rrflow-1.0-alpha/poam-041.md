@@ -13,8 +13,8 @@ it cannot close a roadmap gate independently.
 Verified at development `main` `04fae276`:
 
 - `InstallationResult.action_results` is built by zipping the plan's own
-  actions with the produced outputs ([installation](../../../crates/authority/rrd-engine/src/engine/installation.rs)
-  and [restore publication](../../../crates/authority/rrd-engine/src/engine/restore_publication.rs)),
+  actions with the produced outputs ([installation](../../../rrd/engine/src/engine/installation.rs)
+  and [restore publication](../../../rrd/engine/src/engine/restore_publication.rs)),
   so `validate_for(&plan)` confirms structure, not that the applied effects
   match the plan. `validate_for` is otherwise tested only against a contract
   fixture, and the bootstrap test compares the journal with a literal list

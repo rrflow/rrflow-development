@@ -11,7 +11,7 @@ priority or closure status.
 
 The F-06 worktree found this on 2026-11-07 and recorded it only there. It was archived uncommitted and absorbed on 2026-11-14 ([ledger](../../evidence/change-journals/repository/archive-absorption-20261114.md)). A code read of `main` at `fdb339d08` confirms it still holds:
 
-- `crates/transport/rrd-client/tests/sdk_conformance.rs:51-53`: `rust_sdk_passes_shared_real_daemon_conformance` returns at once when `RRD_SDK_CONFORMANCE_MANIFEST` is not set. `cargo test -p rrd-client` therefore reports it as passed although it checked nothing.
+- `rrd/client/tests/sdk_conformance.rs:51-53`: `rust_sdk_passes_shared_real_daemon_conformance` returns at once when `RRD_SDK_CONFORMANCE_MANIFEST` is not set. `cargo test -p rrd-client` therefore reports it as passed although it checked nothing.
 - `scripts/ci/run_sdk_conformance.py` sets that variable when it runs the Rust client, but accepts the process's exit status alone. If the variable were ever dropped or misnamed, the Rust leg would pass empty and nothing would notice.
 
 The archived work marked the test `#[ignore]`, made the manifest mandatory, and made the runner require the line `SDK conformance OK: language=rust corpus_sha256=…` in the output.

@@ -61,7 +61,7 @@ or an explicit optional adapter; a vendor label never establishes support.
 |---|---|---|
 | Durable records, relations and native vectors | Native rrflowDB/rrflowKV, vector catalogues/search, public transactions and diagnostic lenses | Existing release gates still own full persistence, corpus and recovery qualification |
 | Knowledge-tree and path configuration | Versioned contract, engine CAS/journal and public operation/SDK; older authored UI remains unmerged | Installed native client roundtrip, restart/concurrency/security and candidate CI |
-| External PostgreSQL/pgvector | Real optional Rust adapter in rrd-operator-knowledge | Product-facing binding resolution and live deployment qualification; this is a client adapter, not an embedded PostgreSQL server |
+| External PostgreSQL/pgvector | Real optional Rust adapter in rrflow-knowledge | Product-facing binding resolution and live deployment qualification; this is a client adapter, not an embedded PostgreSQL server |
 | HydraDB databases, collections, metadata, context ingestion/query and connectors | No HydraDB adapter yet | Typed v2 protocol mapping, scoped auth, bounded I/O, asynchronous ingestion/status/deletion, provenance and live account evidence |
 | MongoDB Atlas vector search | No Atlas adapter yet | Supported Rust driver, explicit database/collection/index/field binding, query/filter isolation, errors and live evidence |
 | Pinecone Nexus curated context and retrieval | No Nexus adapter yet; separate from raw Pinecone vector indexes | Accepted deployment/API contract, typed async query/poll/cancel and source/citation mapping; published demo documentation is not a production default |

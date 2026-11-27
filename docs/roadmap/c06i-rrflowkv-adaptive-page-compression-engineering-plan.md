@@ -400,7 +400,7 @@ plan before that path changes.
 
 | Path | Exact responsibility |
 |---|---|
-| `crates/storage/rrflow-lsm/Cargo.toml`, root `Cargo.lock` | promote safe checked LZ4 block support; retain Zstandard as laboratory-only |
+| `rrflow/lsm/Cargo.toml`, root `Cargo.lock` | promote safe checked LZ4 block support; retain Zstandard as laboratory-only |
 | `rrflow-lsm/src/segment/format.rs` | policy type/default/validation; v6 identity; header and descriptor bytes; adaptive selection; stored-byte digest; logical envelope |
 | `rrflow-lsm/src/segment.rs` | policy propagation; stored-page acquisition; checksum-before-decode; owned aligned decode; cache charge; open/write evidence |
 | `rrflow-lsm/src/segment/reader.rs` | retain request-before-load logical budgets; make existing decompression/allocation counters exact; no query semantic change |
@@ -414,8 +414,8 @@ plan before that path changes.
 | `rrflow-lsm/tests/manifest.rs`, `tests/snapshot_bundle.rs` | current segment identity through manifest and snapshot install; corruption and failure boundaries |
 | `rrflow-lsm/tests/support/projected_read_model.rs` and its stable/stress consumers | policy-parameterized independent semantic differential; preserve the restored shared oracle |
 | `rrflow-lsm/fuzz/Cargo.toml`, `fuzz/README.md`, target/corpus | direct v6 rename and bounded codec/length/digest mutation coverage |
-| `crates/storage/rrd-store/src/rrflow_kv.rs`, `tests/rrflow_kv_open.rs` | propagate open evidence and prove startup/query accounting remain distinct |
-| `crates/authority/rrd-engine/tests/workspace_architecture.rs` | require v6 identity, one production LZ4 codec, no prior reader, no default Zstandard |
+| `rrflow/db/src/rrflow_kv.rs`, `tests/rrflow_kv_open.rs` | propagate open evidence and prove startup/query accounting remain distinct |
+| `rrd/engine/tests/workspace_architecture.rs` | require v6 identity, one production LZ4 codec, no prior reader, no default Zstandard |
 | current-format, benchmark, architecture-flow, test-plan, POA&M, roadmap-supporting records | state actual v6 behavior/evidence and remaining C-06/F/J gaps without changing canonical status early |
 | new C-06i evidence JSON and evidence index | clean revision-bound none/adaptive integration observations and limitations |
 
@@ -488,11 +488,11 @@ cargo test -p rrflow-lsm --test hybrid_segment \
   none_and_adaptive_lz4_match_the_independent_mvcc_model --locked -- --exact
 cargo test -p rrflow-lsm --test tiered_io --locked
 cargo test -p rrflow-lsm --test manifest --test snapshot_bundle --locked
-cargo test -p rrd-store --test rrflow_kv_open --locked
+cargo test -p rrflow-db --test rrflow_kv_open --locked
 cargo test -p rrflow-lsm --all-targets --all-features --locked
 cargo clippy -p rrflow-lsm --all-targets --all-features --locked -- -D warnings
-cargo clippy -p rrd-store --all-targets --locked -- -D warnings
-cargo +nightly fuzz run --fuzz-dir crates/storage/rrflow-lsm/fuzz \
+cargo clippy -p rrflow-db --all-targets --locked -- -D warnings
+cargo +nightly fuzz run --fuzz-dir rrflow/lsm/fuzz \
   segment-v6-open -- -runs=4096 -max_len=256 -timeout=10
 cargo test -p rrd-engine --test workspace_architecture --locked
 cargo check --workspace --all-targets --locked

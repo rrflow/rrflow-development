@@ -10,7 +10,7 @@ verification, commit, and development-push handoff complete; C-06 remains open
 **Baseline:** `6de083f9cdf9a4ffe4a6904199745b49304d8fe5`
 **Planning commit:** resolved by `scripts/ci/check_change_plan.py`
 **Owner boundary:** `rrflow-lsm`, with a narrow diagnostic integration in
-`rrd-store`
+`rrflow-db`
 
 This is the readable engineering plan the machine JSON enforces and the C-06g
 execution journal records. It does not replace the canonical roadmap, create
@@ -147,9 +147,9 @@ current batch is red for an unexplained reason.
 
 **Files changed**
 
-- `crates/storage/rrflow-lsm/tests/hybrid_segment.rs`
-- `crates/storage/rrflow-lsm/tests/compaction.rs`
-- `crates/storage/rrd-store/tests/rrflow_kv_open.rs`
+- `rrflow/lsm/tests/hybrid_segment.rs`
+- `rrflow/lsm/tests/compaction.rs`
+- `rrflow/db/tests/rrflow_kv_open.rs`
 
 **Work**
 
@@ -180,10 +180,10 @@ unchanged and green when run independently.
 
 **Files changed**
 
-- `crates/storage/rrflow-lsm/src/database.rs`
-- `crates/storage/rrflow-lsm/src/error.rs`
-- `crates/storage/rrflow-lsm/src/lib.rs`
-- `crates/storage/rrflow-lsm/tests/compaction.rs`
+- `rrflow/lsm/src/database.rs`
+- `rrflow/lsm/src/error.rs`
+- `rrflow/lsm/src/lib.rs`
+- `rrflow/lsm/tests/compaction.rs`
 
 **Exact symbol work**
 
@@ -223,12 +223,12 @@ path, stop and revise the machine plan before editing it.
 
 **Files changed**
 
-- `crates/storage/rrflow-lsm/src/memtable.rs`
-- `crates/storage/rrflow-lsm/src/segment.rs`
-- new `crates/storage/rrflow-lsm/src/segment/reader.rs`
-- `crates/storage/rrflow-lsm/src/lib.rs`
-- `crates/storage/rrflow-lsm/src/error.rs`
-- `crates/storage/rrflow-lsm/tests/hybrid_segment.rs`
+- `rrflow/lsm/src/memtable.rs`
+- `rrflow/lsm/src/segment.rs`
+- new `rrflow/lsm/src/segment/reader.rs`
+- `rrflow/lsm/src/lib.rs`
+- `rrflow/lsm/src/error.rs`
+- `rrflow/lsm/tests/hybrid_segment.rs`
 
 **Exact symbol work**
 
@@ -263,10 +263,10 @@ path, stop and revise the machine plan before editing it.
 
 **Files changed**
 
-- `crates/storage/rrflow-lsm/src/segment/reader.rs`
-- `crates/storage/rrflow-lsm/src/error.rs`
-- `crates/storage/rrflow-lsm/src/lib.rs`
-- `crates/storage/rrflow-lsm/tests/hybrid_segment.rs`
+- `rrflow/lsm/src/segment/reader.rs`
+- `rrflow/lsm/src/error.rs`
+- `rrflow/lsm/src/lib.rs`
+- `rrflow/lsm/tests/hybrid_segment.rs`
 
 **Exact symbol work**
 
@@ -295,12 +295,12 @@ path, stop and revise the machine plan before editing it.
 
 **Files changed**
 
-- `crates/storage/rrflow-lsm/src/io.rs`
-- `crates/storage/rrflow-lsm/src/segment/format.rs`
-- `crates/storage/rrflow-lsm/src/segment.rs`
-- `crates/storage/rrd-store/src/rrflow_kv.rs`
-- `crates/storage/rrd-store/src/lib.rs`
-- `crates/storage/rrd-store/tests/rrflow_kv_open.rs`
+- `rrflow/lsm/src/io.rs`
+- `rrflow/lsm/src/segment/format.rs`
+- `rrflow/lsm/src/segment.rs`
+- `rrflow/db/src/rrflow_kv.rs`
+- `rrflow/db/src/lib.rs`
+- `rrflow/db/tests/rrflow_kv_open.rs`
 
 **Exact symbol work**
 
@@ -374,13 +374,13 @@ python3 scripts/ci/check_change_plan.py
 cargo test -p rrflow-lsm --test hybrid_segment projected_stream_matches_model_across_ranges_snapshots_and_projections --locked -- --exact --nocapture
 cargo test -p rrflow-lsm --test hybrid_segment projected_stream_enforces_bounds_and_reports_selected_pages --locked -- --exact --nocapture
 cargo test -p rrflow-lsm --test compaction pinned_projected_stream_survives_flush_compaction_and_gc_until_drop --locked -- --exact --nocapture
-cargo test -p rrd-store rrflow_kv_open_separates_segment_validation_and_reconciliation_io --locked -- --exact --nocapture
+cargo test -p rrflow-db rrflow_kv_open_separates_segment_validation_and_reconciliation_io --locked -- --exact --nocapture
 cargo test -p rrflow-lsm --test segment v4_bytes_match_the_checked_in_format_vector --locked -- --exact
-cargo test -p rrd-store --test direct_read_paths --locked
+cargo test -p rrflow-db --test direct_read_paths --locked
 cargo test -p rrflow-lsm --locked
-cargo test -p rrd-store --locked
+cargo test -p rrflow-db --locked
 cargo clippy -p rrflow-lsm --all-targets --locked -- -D warnings
-cargo clippy -p rrd-store --all-targets --locked -- -D warnings
+cargo clippy -p rrflow-db --all-targets --locked -- -D warnings
 cargo test -p rrd-engine --test workspace_architecture --locked
 cargo check --workspace --all-targets --locked
 python3 scripts/ci/build_execution_inventory.py --check

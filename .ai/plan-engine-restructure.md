@@ -192,3 +192,41 @@ One branch, `restructure/workspace`, cut from the current working branch so the 
 - Which engine transaction functions need engine state (phase 5).
 - How long `cargo test --workspace` takes on this host end to end; the LSM suite alone is about nine minutes.
 - "These all trigger in ms" has no number and nothing measures it. It is not part of this plan.
+
+## 7. File-level moves (given to the owner 2026-11-26)
+
+**Out of `rrflow/db/src` (today `rrd-store/src`)**
+
+| To | From |
+|---|---|
+| `mx/src/store.rs` | the in-memory map in `engine.rs` (`RrflowMxStore` and its transaction) |
+| `tx/src/write_set.rs` | `transaction.rs` |
+| `tx/src/commit/` | `access/semantic_commit/` |
+| `tx/src/stamp.rs` | `access/runtime_state.rs`, line 202 to the end |
+| `tx/src/identity_ranges.rs` | `access/versioned_identity_ranges.rs` |
+| `tx/src/audit_log/` | `core/src/authenticated_log/` |
+| `kv/src/port.rs` | `engine.rs` (`StorageEngine`, `StorageProfile`, `PhysicalStoreEvidence`) |
+| `kv/src/hot/` | `rrflow_kv/` |
+| `kv/src/read.rs` | `access/runtime_state.rs`, lines 1 to 200 |
+| `kv/src/repository/` | `repository/` |
+| `kv/src/{key_codec, keyspaces, control, snapshot, gc, footprint, fjall_baseline, error}` | the same names |
+| `kv/src/claims/` | `core/src/temporal.rs`, `core/src/reference.rs` |
+
+Stays in `db/src`: `access/{index, lexical_index, vector, referential, function, versioned_read, proof_nodes}` (lifted out of `access/`), `lexical`, `projection`, `ds`, `writer`, `invocation`, `outcome`, `object/`, `s3/`, `archive/`, `backup/`.
+
+**Inside `rrflow/core/src`:** `record/` ← `runtime/{model, ids, graph, encoding, validate, referential}`; `commit/` ← `runtime/{stamps, transaction, audit, data_snapshot, projection}`; `value.rs` ← `data.rs`; `identifier.rs` ← `ident.rs`; `schema/`, `trace/`, `claim.rs`, `digest.rs`, `error.rs`, `result_identity.rs` stay. `telemetry.rs` and `reasoning_tree.rs` go to `rrd/contract/src/`.
+
+**Inside `rrd/engine/src`:** `kv/` (storage_cursor, tail_repair, maintenance), `cld/` (cold_history), `tx/` (transaction, transaction_admission, session, session_transactions, query_transaction, rollback, clock), `db/` (data, changefeed, subscription, backup, restore_publication, function, invocation), `ql/` (query, query_export, retrieval, retrieval_query), `vector/`, `cx/` (distributed), `inference/` (inference, model, endpoint_configuration, endpoint_proposal, endpoint_worker, source_language), `security/` (security, token_key), `attunement/`, `engram/` (engram, engram_control, engram_layout), `memory/` (knowledge, memory_engram, context, task, task_assessment, reasoning_budget, project_map), `installation/` (installation, scoped_configuration), `lifecycle/` (instance, instance_registry, serving, control), `observability/` (diagnostic, flight, observation_delivery, observation_source), `error.rs`; `src/engine/tests/` moves to `tests/`.
+
+## 8. Log
+
+- 2026-11-26 10:15: the editor committed the working tree as `c30f62806` on `restructure/workspace` (577 files: the `Repositories` port change, `rrflow-kernel` → `rrflow-core` at `crates/core`, this folder). Before it, `2d42a4605` changed the Connectome submodule pointer; that was not part of this plan and is not verified.
+- 2026-11-26, phase 0 on that tree: `cargo check` and `cargo clippy -D warnings` with all features clean; `cargo test` for core, store, contract, query, vector, cluster, engram and security: 847 passed, 0 failed, 6 ignored. Engine, server, client and CLI suites not run yet.
+- 2026-11-27, phases 1 and 2 on `restructure/workspace` (journal: `docs/evidence/change-journals/repository/workspace-layout-rrflow-rrd-lab-20261127.md`):
+  - Every crate moved to `rrflow/`, `rrd/` or `lab/` with `git mv`; packages and libraries renamed in the same pass; `rrd-maintenance` deleted; binary names kept.
+  - `architecture.toml` is version 2 at the repository root: groups, one ordered crate list with exact `uses`, `pending` for the six dependencies the owner's table removes, a fixed module list and a falling line limit for `rrflow-core`. Checker and tests rewritten.
+  - The engine's `kernel` alias for `rrflow-core` is removed; `Error::Kernel` is `Error::Core`.
+  - **Decision changed: `rrflow-arrow` stays its own crate.** Section 2.1 had `rrflow-cld` absorb it. An existing test forbids QL from depending on `rrflow-cld`, and QL uses the Arrow row types.
+  - **Correction to earlier work:** pull request 519 rewrote folder paths inside `eval/lab/tasks/rrflow-package-planning.json`. Those paths belong to pinned revisions. That broke the study's catalog digest and turned the nightly red (issue 520). The catalog is restored. Rule: a record that names a revision is history; a rename does not touch it.
+  - Phase 0 gap closed: three `workspace_architecture` tests had been failing since the `Repositories` change because the engine suites were not run then. They are fixed here.
+  - Not started: phases 3 to 9 (core reorganized; `rrflow-mx`, `rrflow-tx`, `rrflow-kv` created; ql, cx and vector cut to their allowed dependencies; engine folders).

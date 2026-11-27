@@ -70,7 +70,7 @@ Sessions share the owner's machine with other projects. A session removes only w
 | Red candidate or red main repaired first | The `merge-alarm` workflow opens `merge-blocked` and `Main is red` issues |
 | Pull request, `pipeline / ci-gate` and the merge queue required on `main`; force push and deletion denied | The `main` ruleset on `rrflow/rrflow-development` (applied 2026-11-17) |
 | Code shape does not regress | `scripts/ci/check_code_shape.py` |
-| Every crate sits in its tier, folder and name, and depends only downward | `scripts/ci/check_architecture.py` over `crates/architecture.toml` |
+| Every crate sits in its tier, folder and name, and depends only downward | `scripts/ci/check_architecture.py` over `architecture.toml` |
 | Records link, classify and name their owner | `scripts/ci/check_documentation.py` |
 
 Not yet enforced, so a session must follow and report them: claim levels, container labels, scratch location and the absorption order. Turning them into checks is POAM work, not a promise made here.

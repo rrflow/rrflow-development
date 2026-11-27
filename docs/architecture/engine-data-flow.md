@@ -147,12 +147,12 @@ path around it. A mutable memtable is not an immutable-page cache entry.
 
 Implementation placement and present gap:
 
-- `rrd-store/src/keyspaces.rs` and `access/semantic_commit.rs` own canonical
+- `rrflow-db/src/keyspaces.rs` and `access/semantic_commit.rs` own canonical
   relationship changes and both ordered adjacency directions in the same
   transaction; source/history, deletes and moves must stay equivalent.
-- `rrd-store/src/access/versioned_read.rs` and `rrd-query/src/physical/graph.rs`
+- `rrflow-db/src/access/versioned_read.rs` and `rrflow-ql/src/physical/graph.rs`
   currently select authenticated adjacency ranges and relation histories.
-  `rrd-query/src/execute.rs` uses expanding semantic reads and materializes
+  `rrflow-ql/src/execute.rs` uses expanding semantic reads and materializes
   changes. On rrflowKV, the repository transaction's range scan calls
   `rrflow-lsm/src/transaction/scan.rs::bounded`, which already uses the C-06g
   projected reader underneath, then copies the batches into owned rows. This
@@ -387,7 +387,7 @@ Arrow-to-tensor feature bridge. The model returns a grammar-constrained
 proposal; deterministic predicates, authorization, CAS, and persistence remain
 engine operations.
 
-Before a router model can be loaded, `rrd-inference` applies this admission
+Before a router model can be loaded, `rrflow-inference` applies this admission
 chain:
 
 ```text
@@ -1219,7 +1219,7 @@ explicit apply(plan digest)
         -> authorize one bounded inventory read plan
         -> enumerate metadata under the project root
         -> stream eligible file bytes for digest/classification only
-        -> pure rrd-attunement inventory proposal
+        -> pure rrflow-attunement inventory proposal
         -> RrdEngine validates and atomically commits:
              source-tree snapshot + containment edges + change set
              + inventory checkpoint + runtime-log entry + audit
@@ -1228,7 +1228,7 @@ explicit apply(plan digest)
 
 The engine-side attunement executor coordinates filesystem effects,
 authorization, leases, cancellation, budgets, and commits. The planned
-`rrd-attunement` crate is pure compute: it accepts bounded enumerated entries
+`rrflow-attunement` crate is pure compute: it accepts bounded enumerated entries
 and content chunks, sorts and normalizes them, and returns a deterministic
 proposal. It cannot open paths, contact a provider, read secrets, access a
 store, emit lifecycle callbacks, or commit state. No client, watcher, hook,

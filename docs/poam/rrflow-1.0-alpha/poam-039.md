@@ -19,8 +19,8 @@ Verified at development `main` `04fae276`:
   No record carries a plan from one agent, session or step to another with its
   digest, bound sources, sender, receiver and approval.
 - Contracts that would carry such work exist without engine behaviour:
-  [`RouteStepRequest`](../../../crates/transport/rrd-contract/src/router.rs) has
-  no engine caller, [`KnowledgePackageV1`](../../../crates/transport/rrd-contract/src/knowledge.rs)
+  [`RouteStepRequest`](../../../rrd/contract/src/router.rs) has
+  no engine caller, [`KnowledgePackageV1`](../../../rrd/contract/src/knowledge.rs)
   is used only by the contract crate and its tests, and `ActivityPlan` exists
   only in the [project command capabilities](../../reference/automation/project-command-capabilities.md)
   document.

@@ -145,8 +145,8 @@ matrix.
 |---|---|---|
 | `docs` | `docs/**`, Markdown anywhere, issue and PR templates, `LICENSE` | `docs-policy`: documentation authority and local links, generated navigation, execution inventory, capacity projection rendering, whitespace |
 | `scripts` | `scripts/**`, `eval/**`, `.github/workflows/**`, `.devcontainer/**`, `deploy/**`, `.gitmodules`, `.gitignore`, `.gitattributes`, `VERSION`, the Connectome gitlink | `scripts-policy`: the repository's Python test files that need no build, plus the CI policy tests and `check_workflow.py` |
-| `engine` | `crates/**`; also `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml` and `.cargo/**` | `engine-fast` on Linux: formatting, generated-surface parity, `cargo test` and clippy for the changed crates, `cargo check --all-targets` for every workspace dependent. A workspace input selects no single crate, so the whole workspace is compiled |
-| `sdk` | `sdks/**`, `fixtures/**`, `crates/transport/**` | `sdk-conformance`; transport crate edits also run `engine-fast` |
+| `engine` | `rrflow/**`, `rrd/**` and `lab/**`; also `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml` and `.cargo/**` | `engine-fast` on Linux: formatting, generated-surface parity, `cargo test` and clippy for the changed crates, `cargo check --all-targets` for every workspace dependent. A workspace input selects no single crate, so the whole workspace is compiled |
+| `sdk` | `sdks/**`, `fixtures/**`, `rrd/contract/**`, `rrd/client/**`, `rrd/server/**` | `sdk-conformance`; edits to those three crates also run `engine-fast` |
 
 A path the classifier does not recognize runs every light lane, compiles the
 whole workspace, and is named in the job log.
@@ -290,7 +290,7 @@ check for branch protection:
 - repository policy, formatting, architecture, evaluation, dependency, and
   binary-budget gates on a heavy Linux runner;
 - five default-feature engine suites on isolated heavy Linux runners:
-  `kernel-storage`, `query-retrieval`, `engine-authority`, `service-protocol`,
+  `core-storage`, `query-retrieval`, `engine-authority`, `service-protocol`,
   and `product-operations`;
 - one current shared SDK harness, isolated optional-feature checks, and a real
   PostgreSQL/pgvector integration;
@@ -760,7 +760,7 @@ and credentials on host networking, so the CI test URL works unchanged:
 podman compose -f .devcontainer/compose.yaml --profile pgvector up -d pgvector
 RRFLOW_PGVECTOR_TEST_URL='postgresql://rrflow_test:rrflow_test_password@127.0.0.1:5432/rrd_operator_knowledge_test?sslmode=disable' \
   RRFLOW_PGVECTOR_TEST_DISPOSABLE=1 \
-  cargo test -p rrd-operator-knowledge --all-targets --all-features --locked
+  cargo test -p rrflow-knowledge --all-targets --all-features --locked
 ```
 
 Toolchain downloads are development build inputs, like the CI setup actions;

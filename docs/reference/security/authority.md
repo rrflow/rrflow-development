@@ -8,7 +8,7 @@ RRFlow Security is a cross-cutting capability of the one RRFlow engine. It is
 not an independently authoritative database or service. `RrdEngine` is the
 only boundary allowed to authenticate an operation, compile its authorization,
 capture its read or transaction stamp, authorize its semantic effects, and
-commit state. The `rrd-security` package supplies useful identity, policy, and
+commit state. The `rrflow-security` package supplies useful identity, policy, and
 audit vocabulary today, but its current public storage repository is
 implementation inventory rather than the accepted final authority boundary.
 
@@ -49,7 +49,7 @@ write around this sequence.
 | Boundary | Owns | Must not own |
 |---|---|---|
 | `rrd-contract` | closed public actions, resource paths, request coordinates, audit envelopes, and error vocabulary | credential verification, policy decisions, storage, or a second operation registry |
-| `rrd-security` target | bounded principal/role/grant/credential metadata, pure validation and policy compilation, audit value semantics, and cryptographic helpers | opening a physical store, committing control/runtime state, issuing an independent read stamp, or accepting an operation outside `RrdEngine` |
+| `rrflow-security` target | bounded principal/role/grant/credential metadata, pure validation and policy compilation, audit value semantics, and cryptographic helpers | opening a physical store, committing control/runtime state, issuing an independent read stamp, or accepting an operation outside `RrdEngine` |
 | `RrdEngine` | identity/session authentication, current-policy resolution, authorization, effect validation, stamps, transaction coordination, audit causality, and adapter-independent outcomes | transport parsing or provider-specific identity lifecycle |
 | rrflowMX / rrflowKV | equivalent transactional point/range/CAS semantics; rrflowKV additionally owns durability and recovery | interpreting principals, granting actions, or selecting policy |
 | rrflowQL, native graph/BM25/vector operators, and DataFusion | execute the already-authorized plan at its exact stamp and budget | widening rows/fields, bypassing filters, changing policy, or committing results |
@@ -394,7 +394,7 @@ catalogued public inspection may remain anonymous.
 
 The complete review found these direct-convergence requirements:
 
-1. `rrd-security` depends on `rrd-store` and exports a `SecurityRepository`
+1. `rrflow-security` depends on `rrflow-db` and exports a `SecurityRepository`
    that can commit directly to any `StorageEngine`. A-07 must retain its useful
    values and pure decisions while making `RrdEngine` the only caller that can
    persist or replace authority and audit state.
@@ -433,7 +433,7 @@ pre-release security mode.
 
 | Evidence or gate | Proven now or required outcome |
 |---|---|
-| `rrd-security` tests | Current validation, exact-scope denial, role inheritance failure, API-key/JWT/identity binding, rotation/revocation, audit chain, concurrent append, and rrflowKV reopen behavior. The suite is not an engine-authority or MX/KV semantic differential. |
+| `rrflow-security` tests | Current validation, exact-scope denial, role inheritance failure, API-key/JWT/identity binding, rotation/revocation, audit chain, concurrent append, and rrflowKV reopen behavior. The suite is not an engine-authority or MX/KV semantic differential. |
 | `rrd-engine` security tests | Current engine invocation, embedded denial, credential-revision invalidation, query policy injection, context fail-closed behavior, and audit phases. They do not prove atomic policy/data stamps or effect-level write authorization. |
 | Server/client real-process tests | Current API-key sessions, denials, redaction, audit read/export, TLS 1.3 mTLS identity, authenticated HTTP/WSS, and selected reopen behavior. They do not qualify every adapter, provider, rotation mode, or deployment. |
 | A-07 | Remove the direct-store/public-repository authority, the retired provisioning-role vocabulary, ambiguous action vocabulary, and dependency-direction conflicts while mapping every retained invariant to its one owner. |
@@ -446,20 +446,20 @@ pre-release security mode.
 ## Implementation anchors and focused verification
 
 - Policy, identity, JWT, audit values, and current direct repository:
-  `crates/authority/rrd-security/src/lib.rs`
+  `rrflow/security/src/lib.rs`
 - Sole accepted composition boundary and invocation policy:
-  `crates/authority/rrd-engine/src/engine/{security,session,invocation}.rs`
+  `rrd/engine/src/engine/{security,session,invocation}.rs`
 - Canonical installation and private recovery staging:
-  `crates/authority/rrd-engine/src/engine/{installation,installation/recovery,token_key}.rs`
+  `rrd/engine/src/engine/{installation,installation/recovery,token_key}.rs`
 - HTTP credentials and invocation wrapping:
-  `crates/transport/rrd-server/src/http/{auth,envelope,server}.rs`
+  `rrd/server/src/http/{auth,envelope,server}.rs`
 - Public action and audit shapes:
-  `crates/transport/rrd-contract/src/lib.rs`
+  `rrd/contract/src/lib.rs`
 
 Focused characterization starts with:
 
 ```text
-cargo test -p rrd-security --all-targets --locked
+cargo test -p rrflow-security --all-targets --locked
 cargo test -p rrd-engine --lib engine::tests::security --locked
 cargo test -p rrd-server --test http_process initialized_security_authority_binds_sessions_and_denies_ungranted_routes --locked
 cargo test -p rrd-client --test real_server remote_transport_requires_mutual_tls_and_exact_server_identity --locked

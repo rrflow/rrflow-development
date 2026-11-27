@@ -12,7 +12,7 @@ priority or closure status.
 A code read and a release-mode measurement at `99095df7` on 2026-11-11, recorded in [the baseline](../../evidence/e04-vector-cost-calibration-before-20000-windows.json), found three related faults:
 
 - **Every vector scan pays fixed work per candidate.** At 20,000 cosine vectors an exact scan costs 1,237 to 2,675 ns per candidate at 128 to 768 dimensions, at least ten times the arithmetic of one score. TurboQuant at 4, 2 and 1 bits costs the same 0.61 to 0.67 of exact, although its codes differ in size by four times.
-  - The TurboQuant scan built a `BTreeMap` keyed by reference over every stored version for each query, and cloned two references for every scored code even when its bounded heap discarded it (`crates/compute/rrd-vector/src/turbo_segment.rs`).
+  - The TurboQuant scan built a `BTreeMap` keyed by reference over every stored version for each query, and cloned two references for every scored code even when its bounded heap discarded it (`rrflow/vector/src/turbo_segment.rs`).
   - The exact path materializes visible versions, clones every hit's references and sorts every hit to keep the top k (`exact.rs:85-105`).
 - **The planner prices a TurboQuant or quantized generation at its candidate count**, the unit of an exact scan (`runtime.rs:450-455`), then adds any overlay, and breaks ties by path id (`plan.rs:175-179`). A request that allows approximation therefore never chooses TurboQuant by cost: at 2,048 vectors of 64 dimensions with a 4-bit generation and four newer writes, exact scan is selected at cost 2,048.
 - **TurboQuant's remaining scan cost does not fall with bit width**, which points at the scoring kernel rather than the codes.

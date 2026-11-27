@@ -16,7 +16,7 @@ appears below.
 C-04's accepted evidence records that vector-search admission has no
 causal-log source. Two vector catalogues were rebuilt by replaying the
 scope's whole runtime change log from cursor 0, in
-`crates/authority/rrd-engine/src/runtime/vector_catalog.rs`:
+`rrd/engine/src/runtime/vector_catalog.rs`:
 
 - `vector_artifact_catalog_entries` pages `changes_since` from cursor 0 at the
   current head, with no `ReadStamp`;
@@ -24,7 +24,7 @@ scope's whole runtime change log from cursor 0, in
   at a freshly captured stamp, not the request's.
 
 `reopen_vector_runtime_metadata` ran both inside every vector search
-(`crates/authority/rrd-engine/src/engine/vector/search.rs`). HNSW build,
+(`rrd/engine/src/engine/vector/search.rs`). HNSW build,
 artifact publication preflight, collection deletion, and payload-index
 deletion rebuild both catalogues; quantization build, list, activate, and
 retire rebuild the quantization catalogue. Recursive retrieval and hybrid
@@ -33,7 +33,7 @@ crate, which has no in-tree caller, rebuilds maintenance-run state the same
 way.
 
 C-04's source-closure test
-(`crates/authority/rrd-engine/tests/direct_read_source_closure.rs`) did not
+(`rrd/engine/tests/direct_read_source_closure.rs`) did not
 search for `changes_since(` or `snapshot_changes(`, and it allowlisted the
 per-search `read_changes(` call as an explicit quantization
 projection-catalogue rebuild. The correction enumerated every public runtime

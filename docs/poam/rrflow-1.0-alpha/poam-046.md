@@ -20,7 +20,7 @@ E-04 stack above development/main `81fce08e`:
   '_', or '.'", and no page is returned.
 - **Why.** The vector artifact catalogue writes its record as
   `{projection}@{generation}`
-  (`rrd-vector/src/catalog.rs::VectorArtifactCatalogEntry::record_reference`)
+  (`rrflow-vector/src/catalog.rs::VectorArtifactCatalogEntry::record_reference`)
   and its object as `{projection}@{generation}:bytes`
   (`rrd-engine/src/runtime/vector_catalog.rs::publish_traced_vector_artifact`).
   The kernel accepts both identities. The public changefeed projects every

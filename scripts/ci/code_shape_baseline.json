@@ -6,72 +6,71 @@
   "harness": 1500
  },
  "oversize": {
-  "crates/operations/rrd-maintenance/src/lib.rs": 1556,
-  "crates/transport/rrd-contract/src/lib.rs": 321
+  "rrd/contract/src/lib.rs": 321
  },
  "patterns": {
   "boxed_error": {
-   "crates/adapters/rrflow-cli": 7,
-   "crates/adapters/rrflow-edge": 1,
-   "crates/adapters/rrflow-mcp": 6,
-   "crates/authority/rrd-engine": 63,
-   "crates/authority/rrd-engram": 1,
-   "crates/evaluation/lab/rrflow-lab-experiments": 8,
-   "crates/transport/rrd-server": 3
+   "lab/experiments": 8,
+   "rrd/engine": 63,
+   "rrd/server": 3,
+   "rrflow/cli": 7,
+   "rrflow/edge": 1,
+   "rrflow/engram": 1,
+   "rrflow/mcp": 6
   },
   "mod_rs": {
-   "crates/authority/rrd-engine": 4,
-   "crates/evaluation/lab/rrflow-lab-systems": 1,
-   "crates/storage/rrd-store": 2,
-   "crates/transport/rrd-server": 2
+   "lab/systems": 1,
+   "rrd/engine": 4,
+   "rrd/server": 2,
+   "rrflow/db": 2
   },
   "path_attribute": {
-   "crates/adapters/rrflow-cli": 1,
-   "crates/authority/rrd-engine": 1,
-   "crates/compute/rrd-query": 1,
-   "crates/evaluation/qualification/rrflow-qualification-storage": 6,
-   "crates/storage/rrflow-lsm": 5,
-   "crates/storage/rrflow-lsm/fuzz/fuzz_targets": 1,
-   "crates/storage/rrd-store": 5,
-   "crates/transport/rrd-contract": 1
+   "lab/qualification-storage": 6,
+   "rrd/contract": 1,
+   "rrd/engine": 1,
+   "rrflow/cli": 1,
+   "rrflow/db": 5,
+   "rrflow/lsm": 5,
+   "rrflow/lsm/fuzz/fuzz_targets": 1,
+   "rrflow/ql": 1
   },
   "sha2_crate": {
-   "crates/adapters/rrflow-cli": 1,
-   "crates/authority/rrd-engine": 1,
-   "crates/authority/rrd-engram": 2,
-   "crates/authority/rrd-security": 1,
-   "crates/evaluation/qualification/rrflow-qualification-storage": 3,
-   "crates/evaluation/rrflow-evaluation-core": 1,
-   "crates/storage/rrd-store": 1,
-   "crates/transport/rrd-contract": 3,
-   "crates/transport/rrd-server": 1
+   "lab/core": 1,
+   "lab/qualification-storage": 3,
+   "rrd/contract": 3,
+   "rrd/engine": 1,
+   "rrd/server": 1,
+   "rrflow/cli": 1,
+   "rrflow/db": 1,
+   "rrflow/engram": 2,
+   "rrflow/security": 1
   },
   "string_error": {
-   "crates/adapters/rrflow-cli": 11,
-   "crates/adapters/rrflow-edge": 4,
-   "crates/adapters/rrflow-mcp": 5,
-   "crates/authority/rrd-engine": 2,
-   "crates/authority/rrd-engram": 19,
-   "crates/compute/rrd-inference": 2,
-   "crates/evaluation/lab/rrflow-lab": 2,
-   "crates/evaluation/lab/rrflow-lab-benchmarks": 1,
-   "crates/evaluation/lab/rrflow-lab-definitions": 3,
-   "crates/evaluation/lab/rrflow-lab-evals": 1,
-   "crates/evaluation/qualification/rrflow-qualification-storage": 1,
-   "crates/evaluation/rrflow-evaluation-core": 1,
-   "crates/operations/rrd-cluster": 4,
-   "crates/operations/rrd-kubernetes": 9,
-   "crates/transport/rrd-client": 3
+   "lab/benchmarks": 1,
+   "lab/core": 1,
+   "lab/definitions": 3,
+   "lab/evals": 1,
+   "lab/qualification-storage": 1,
+   "lab/runner": 2,
+   "rrd/client": 3,
+   "rrd/engine": 2,
+   "rrflow/cli": 11,
+   "rrflow/cx": 4,
+   "rrflow/cx-operator": 9,
+   "rrflow/edge": 4,
+   "rrflow/engram": 19,
+   "rrflow/inference": 2,
+   "rrflow/mcp": 5
   },
   "too_many_arguments_allow": {
-   "crates/authority/rrd-engine": 108,
-   "crates/compute/rrd-query": 1,
-   "crates/compute/rrd-vector": 2,
-   "crates/core": 6,
-   "crates/storage/rrd-store": 1,
-   "crates/transport/rrd-client": 2,
-   "crates/transport/rrd-contract": 1,
-   "crates/transport/rrd-server": 3
+   "rrd/client": 2,
+   "rrd/contract": 1,
+   "rrd/engine": 108,
+   "rrd/server": 3,
+   "rrflow/core": 6,
+   "rrflow/db": 1,
+   "rrflow/ql": 1,
+   "rrflow/vector": 2
   }
  }
 }

@@ -11,13 +11,13 @@ priority or closure status.
 
 A code read at `de435238` on 2026-11-11 found the following:
 
-- **Two planners for one concept.** `crates/authority/rrd-engine/src/engine/memory_engram.rs` and `memory_estate.rs` are both public planners. `memory_estate.rs:216` delegates to the engram planner, and their tests are duplicated in `crates/authority/rrd-engine/tests/memory_engram.rs` and `memory_estate.rs`.
-- **Names with a lowercase "engram" mid-word.** Thirty occurrences, among them `MemoryengramPlan` and `PersistMemoryengram` (`crates/transport/rrd-contract/src/memory_engram.rs`), `DataengramOrganisation` and `InstalledengramRecord`.
-- **Two resource kinds.** `ResourceKind` has both `Estate` and `Engram` (`crates/transport/rrd-contract/src/lib.rs:5656-5657`), and nothing uses `ResourceKind::Engram`.
+- **Two planners for one concept.** `rrd/engine/src/engine/memory_engram.rs` and `memory_estate.rs` are both public planners. `memory_estate.rs:216` delegates to the engram planner, and their tests are duplicated in `rrd/engine/tests/memory_engram.rs` and `memory_estate.rs`.
+- **Names with a lowercase "engram" mid-word.** Thirty occurrences, among them `MemoryengramPlan` and `PersistMemoryengram` (`rrd/contract/src/memory_engram.rs`), `DataengramOrganisation` and `InstalledengramRecord`.
+- **Two resource kinds.** `ResourceKind` has both `Estate` and `Engram` (`rrd/contract/src/lib.rs:5656-5657`), and nothing uses `ResourceKind::Engram`.
 - **Other inconsistent names:**
   - The `rrd-estate` crate and its routes keep "estate".
   - "Organisation" and "Organization" are both used.
-  - "CLD" names both the process-local hit counters (`crates/authority/rrd-engine/src/runtime/coldlight.rs`) and the cold tier.
+  - "CLD" names both the process-local hit counters (`rrd/engine/src/runtime/coldlight.rs`) and the cold tier.
 
 ## Plan input
 

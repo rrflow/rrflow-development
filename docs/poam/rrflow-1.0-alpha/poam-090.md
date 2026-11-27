@@ -11,13 +11,13 @@ priority or closure status.
 
 Read on 2026-11-20 at `33159f8e2`. The original [reference-module direction](../../roadmap/reference-modules-and-reasoning-fabric-owner-direction-20261120.md) explains the initial comparison harness. At that revision:
 
-- `parquet` is a normal dependency of `rrd-query` (`crates/compute/rrd-query/Cargo.toml`), reached by every product binary through `rrd-engine`'s default `full` feature.
-- The cold tier is that writer. `encode_cold_history_page` and `decode_cold_history_page` (`rrd-query/src/cold_history.rs`) call the Parquet crate directly, the file extension `.parquet` is in `rrd-engine/src/engine/cold_history/maintain.rs`, and the bundled install configuration turns it on (`[storage.cold_history]`).
+- `parquet` is a normal dependency of `rrflow-ql` (`rrflow/ql/Cargo.toml`), reached by every product binary through `rrd-engine`'s default `full` feature.
+- The cold tier is that writer. `encode_cold_history_page` and `decode_cold_history_page` (`rrflow-ql/src/cold_history.rs`) call the Parquet crate directly, the file extension `.parquet` is in `rrd-engine/src/engine/cold_history/maintain.rs`, and the bundled install configuration turns it on (`[storage.cold_history]`).
 - No trait or versioned reader stands between the cold tier and the format.
 - rrflowCLD has no storage-tier home and no format of its own, so there is nothing native to compare Parquet or Vortex against.
 - Vortex is named nowhere.
 
-The November 22 ownership change moves the codec, columnar port, physical adapters and their workloads into `crates/storage/rrflow-cld`. Publication and receipt-directed readback use its `ColdStorageBackend` trait. [Candidate evidence](../../evidence/change-journals/gate-f/cld-storage-owner.md) records acceptance and remaining gaps.
+The November 22 ownership change moves the codec, columnar port, physical adapters and their workloads into `rrflow/cld`. Publication and receipt-directed readback use its `ColdStorageBackend` trait. [Candidate evidence](../../evidence/change-journals/gate-f/cld-storage-owner.md) records acceptance and remaining gaps.
 
 The [database semantics audit](../../reference/data/database-semantics.md) at
 `b7def0fc7` confirms authenticated, bounded Parquet generation readback with

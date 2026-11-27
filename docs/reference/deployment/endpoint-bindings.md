@@ -17,7 +17,7 @@ machine identities exist.
 
 ## Contract
 
-Binding types live in `crates/transport/rrd-contract/src/endpoint_binding.rs`;
+Binding types live in `rrd/contract/src/endpoint_binding.rs`;
 the optional selector policy lives in `endpoint_policy.rs`, and observation
 delivery policy lives in `observation_delivery.rs`. These derive
 `JsonSchema` and reject unknown fields.
@@ -107,7 +107,7 @@ cleanup, and source tasks remain independent of export capacity.
 
 ## Fixture
 
-`crates/transport/rrd-contract/tests/fixtures/endpoint-profile-v1.json` is the
+`rrd/contract/tests/fixtures/endpoint-profile-v1.json` is the
 first profile, `ring-3`: large-model serving on two machines with a
 subscription and an API fallback behind them, the brain classes (small models,
 embedding, vectors, the canonical store) on a third, weight updates beside the
@@ -127,14 +127,14 @@ no value in it is a secret.
   work. Explicit experimental proposal and observation-delivery operations can
   call their configured bindings under current authorization and limits.
   The embedding registry remains process-local, and `rrflow install` seals
-  [`EngramConfiguration`](../../../crates/transport/rrd-contract/src/deployment.rs)
+  [`EngramConfiguration`](../../../rrd/contract/src/deployment.rs)
   limits. Admitted runtime resolution on configuration changes remains separate
   from storing a profile.
 - Activation. A binding is configuration. Discovery creates an inactive typed
   candidate, and only an exact previewed immutable binding plus explicit
   configuration, policy, and authorization may activate it (D-06).
 - Model identity. A local model's bytes are identified by its
-  [router model manifest](../../../crates/transport/rrd-contract/src/model_manifest.rs)
+  [router model manifest](../../../rrd/contract/src/model_manifest.rs)
   or embedding backend snapshot; a binding points at that identity through
   `service_id` and may pin it through `manifest_sha256`.
 - A profile guideline, not a rule: on unified-memory hardware an inference

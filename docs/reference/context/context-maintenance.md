@@ -153,7 +153,7 @@ ideas: digest-chained revisions, complete evidence-gate sets, projection
 generations, explicit review, rollback, and fail-closed recovery checks. It is
 not the accepted implementation. The crate currently:
 
-- depends directly on `rrd-store::StorageEngine` and commits outside
+- depends directly on `rrflow-db::StorageEngine` and commits outside
   `RrdEngine` authorization;
 - owns a fixed seven-stage state machine, private `maintenance:*` scope, and
   maintenance-specific event family;

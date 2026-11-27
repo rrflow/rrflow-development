@@ -96,7 +96,7 @@ binds it with `x-rrd-signal-catalogue-sha256`. The
 [generated signal reference](signal-catalogue.md) and five SDK constants are
 derived from those fields. They expose stable diagnostic, trace, and metric
 identity for tooling; they neither activate telemetry nor report runtime state.
-`crates/core/src/telemetry.rs` remains the sole semantic owner. Its
+`rrflow/core/src/telemetry.rs` remains the sole semantic owner. Its
 test-verified golden projection drives the private generated contract source;
 the focused parity test compares OpenAPI back to the live kernel value.
 
@@ -258,7 +258,7 @@ D-01 engram/configuration slice.
 | `cargo test -p rrd-contract --test public_contract --locked` | Strict selected wire shapes, bounds, 42-operation catalogue, one generic WebSocket descriptor, OpenAPI digest, deployment/SDK corpus validation, and selected cross-language digest vectors. | Server dispatch, storage semantics, DataFusion streaming, native indexes, reasoning execution, or all-language SDK conformance. |
 | `cargo test -p rrd-contract --test signal_catalogue_projection --locked` | Exact kernel-to-OpenAPI catalogue/fingerprint equality, 4/9/22 closure, and a discovery-only field boundary. | Signal emission, level activation, propagation, export, diagnostic parity, overhead, or engine behavior. |
 | `cargo test -p rrd-contract --test websocket_contract --locked` | The B-04 golden frame contract, sender directions, sequence and connection integrity, exact correlations/resume coordinates, negotiated/hard resource limits, and malformed/unknown representation rejection. | H-04 operation execution, generated-language carriage, or release qualification. |
-| `cargo test -p rrd-query --test graphql_equivalence --locked` | B-05 schema-derived GraphQL parsing, lowering, bound-query/digest equality with rrflowQL, historical-schema binding, typed variables, and fail-closed unsupported shapes. | A public GraphQL route, transport authentication, engine execution, storage/index behavior, or cross-surface qualification. |
+| `cargo test -p rrflow-ql --test graphql_equivalence --locked` | B-05 schema-derived GraphQL parsing, lowering, bound-query/digest equality with rrflowQL, historical-schema binding, typed variables, and fail-closed unsupported shapes. | A public GraphQL route, transport authentication, engine execution, storage/index behavior, or cross-surface qualification. |
 | Normal-dependency inspection | `rrd-contract` retains no RRFlow workspace package in its normal dependency graph; `rrflow-core` remains test-only for live-kernel parity. | That every adapter depends inward correctly or lowers every type through `RrdEngine`. |
 | Generated-surface parity check | The private Rust bridge, coordinated reference, and five SDK identities reproduce exactly; OpenAPI retains 40 endpoint descriptors and exact kernel signal/fingerprint equality. | Real-process semantic equivalence, complete SDK operation coverage, or runtime telemetry. |
 | Server and client suites | Separately documented real-process HTTP, mutual-TLS, WebSocket, and durable-subscription behavior. | The complete target engine or released deployment. |
@@ -266,37 +266,37 @@ D-01 engram/configuration slice.
 ## Implementation anchors and focused verification
 
 - Shared wire types, validation, catalogue, and OpenAPI projection:
-  `crates/transport/rrd-contract/src/lib.rs`
+  `rrd/contract/src/lib.rs`
 - Installed identity, deployment, and effective-configuration contract:
-  `crates/transport/rrd-contract/src/deployment.rs`
-- Signal semantic owner: `crates/core/src/telemetry.rs`
+  `rrd/contract/src/deployment.rs`
+- Signal semantic owner: `rrflow/core/src/telemetry.rs`
 - Private generated contract projection:
-  `crates/transport/rrd-contract/src/generated/signal_catalogue.rs`
+  `rrd/contract/src/generated/signal_catalogue.rs`
 - Generated signal reference: `docs/reference/protocol/signal-catalogue.md`
 - Signal projection characterization:
-  `crates/transport/rrd-contract/tests/signal_catalogue_projection.rs`
+  `rrd/contract/tests/signal_catalogue_projection.rs`
 - Multiplexed WebSocket frame contract:
-  `crates/transport/rrd-contract/src/websocket.rs`
+  `rrd/contract/src/websocket.rs`
 - Frozen WebSocket protocol sample:
-  `crates/transport/rrd-contract/fixtures/websocket-protocol-v1.json`
+  `rrd/contract/fixtures/websocket-protocol-v1.json`
 - Cross-surface capability schema:
-  `crates/transport/rrd-contract/src/capability_surface.rs`
+  `rrd/contract/src/capability_surface.rs`
 - Shared SDK corpus schema:
-  `crates/transport/rrd-contract/src/sdk_conformance.rs`
+  `rrd/contract/src/sdk_conformance.rs`
 - Frozen selected wire sample:
-  `crates/transport/rrd-contract/fixtures/public-contract-v1.json`
+  `rrd/contract/fixtures/public-contract-v1.json`
 - Frozen GraphQL/rrflowQL equivalence sample:
-  `crates/transport/rrd-contract/fixtures/graphql-equivalence-v1.json`
+  `rrd/contract/fixtures/graphql-equivalence-v1.json`
 - GraphQL lowering and equivalence proof:
-  `crates/compute/rrd-query/src/graphql.rs` and
-  `crates/compute/rrd-query/tests/graphql_equivalence.rs`
+  `rrflow/ql/src/graphql.rs` and
+  `rrflow/ql/tests/graphql_equivalence.rs`
 - Contract characterization:
-  `crates/transport/rrd-contract/tests/public_contract.rs`
+  `rrd/contract/tests/public_contract.rs`
 - Runtime capability composition:
-  `crates/authority/rrd-engine/src/capabilities.rs`
+  `rrd/engine/src/capabilities.rs`
 - HTTP capability snapshot:
-  `crates/transport/rrd-server/src/http/capabilities.rs`
-- Supported Rust client: `crates/transport/rrd-client`
+  `rrd/server/src/http/capabilities.rs`
+- Supported Rust client: `rrd/client`
 
 Focused verification starts with:
 

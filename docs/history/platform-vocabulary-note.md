@@ -158,27 +158,27 @@ gap, while G01 must first preserve one security authority.
 
 ## Code-backed migration facts
 
-- [`PLATFORM_TERMS`](../../crates/transport/rrd-contract/src/platform.rs) is the
+- [`PLATFORM_TERMS`](../../rrd/contract/src/platform.rs) is the
   machine-readable mirror of this exact table and maps every public resource
-  term to [`ResourceKind`](../../crates/transport/rrd-contract/src/lib.rs). Contract tests
+  term to [`ResourceKind`](../../rrd/contract/src/lib.rs). Contract tests
   fail on term/order drift and rejected public resource synonyms. Resource-path
   validation still checks uniqueness rather than enforcing every hierarchy
   shown above.
-- The removed `crates/authority/rrd-engine/src/runtime/instance.rs` accepted
+- The removed `rrd/engine/src/runtime/instance.rs` accepted
   only the format-1 `Dedicated` plus `members = ["."]` shape. The
   [canonical topology](../architecture/instance-topology.md#installation-and-binding-resolution)
   now uses one project-local locator plus engine-owned installed record, and
   the linked [D-01 convergence evidence](../evidence/change-journals/gate-d/d-01-precanonical-authority-convergence-and-install-recovery.md)
   proves direct reader/caller removal. This historical shape has no current
   parser, alias, or migration authority.
-- [`rrd-vector/collection.rs`](../../crates/compute/rrd-vector/src/collection.rs)
+- [`rrd-vector/collection.rs`](../../rrflow/vector/src/collection.rs)
   implements a separate vector collection catalogue that must become an
   internal operator of the unified RRD catalogue.
-- [`rrd-security`](../../crates/authority/rrd-security/src/lib.rs) owns persistent policy
+- [`rrd-security`](../../rrflow/security/src/lib.rs) owns persistent policy
   truth but still uses per-principal direct grants and the warm-path behavior
   described above.
-- [`rrd-estate`](../../crates/authority/rrd-engram/src/lib.rs) and
-  [`rrd-cluster`](../../crates/operations/rrd-cluster/src/contract.rs) already model the
+- [`rrd-estate`](../../rrflow/engram/src/lib.rs) and
+  [`rrd-cluster`](../../rrflow/cx/src/contract.rs) already model the
   distinct control-plane and physical-topology concepts; they must remain
   distinct while routing through `rrd-engine`.
 - Logical `namespace` and `database` kinds now exist in the RRD public

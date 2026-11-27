@@ -4,37 +4,37 @@
 import copy
 import unittest
 
-from check_architecture import Member, check_crates, check_module_names, load_manifest, read_members
+from check_architecture import Member, check_core, check_crates, check_module_names, load_manifest, read_members
 
-RULES = {
-    "component_prefix": "rrflow-",
-    "daemon_crates": ["rrd-engine"],
-    "banned_module_names": ["utils", "common", "helpers", "misc"],
-}
-TIERS = [{"id": 0, "folders": ["crates/core"]}, {"id": 1, "folders": ["crates/storage"]}, {"id": 4, "folders": ["crates/engine"]}]
+RULES = {"banned_names": ["utils", "common", "helpers", "misc", "kernel", "foundation", "shared", "base"]}
+GROUPS = [
+    {"folder": "rrflow", "prefix": "rrflow-"},
+    {"folder": "rrd", "prefix": "rrd-"},
+    {"folder": "lab", "prefix": "rrflow-lab-", "outside": True},
+]
 
 
 def manifest(*crates: dict) -> dict:
-    return {"rules": RULES, "tier": TIERS, "crate": [copy.deepcopy(crate) for crate in crates]}
+    return {"rules": RULES, "group": GROUPS, "crate": [copy.deepcopy(crate) for crate in crates]}
 
 
 def member(directory: str, normal=(), build=(), dev=()) -> Member:
     return Member(directory, {"normal": set(normal), "build": set(build), "dev": set(dev)})
 
 
-KERNEL = {"name": "rrflow-core", "tier": 0, "folder": "crates/core", "standalone": True}
-LSM = {"name": "rrflow-lsm", "tier": 1, "folder": "crates/storage", "standalone": True}
-KV = {"name": "rrflow-kv", "tier": 1, "folder": "crates/storage"}
-ENGINE = {"name": "rrd-engine", "tier": 4, "folder": "crates/engine"}
-LAB = {"name": "rrflow-lab", "tier": "evaluation", "folder": "crates/evaluation/lab"}
+CORE = {"name": "rrflow-core", "uses": [], "standalone": True}
+LSM = {"name": "rrflow-lsm", "uses": ["rrflow-core"], "standalone": True}
+KV = {"name": "rrflow-kv", "uses": ["rrflow-core", "rrflow-lsm"]}
+ENGINE = {"name": "rrd-engine", "uses": ["rrflow-kv"]}
+RUNNER = {"name": "rrflow-lab-runner", "uses": ["rrd-engine"]}
 MEMBERS = {
-    "rrflow-core": member("crates/core"),
-    "rrflow-lsm": member("crates/storage/rrflow-lsm", normal=["rrflow-core"]),
-    "rrflow-kv": member("crates/storage/rrflow-kv", normal=["rrflow-lsm", "rrflow-core"]),
-    "rrd-engine": member("crates/engine/rrd-engine", normal=["rrflow-kv"], dev=["rrflow-lab"]),
-    "rrflow-lab": member("crates/evaluation/lab/rrflow-lab", normal=["rrd-engine"]),
+    "rrflow-core": member("rrflow/core"),
+    "rrflow-lsm": member("rrflow/lsm", normal=["rrflow-core"]),
+    "rrflow-kv": member("rrflow/kv", normal=["rrflow-lsm", "rrflow-core"]),
+    "rrd-engine": member("rrd/engine", normal=["rrflow-kv"], dev=["rrflow-lab-runner"]),
+    "rrflow-lab-runner": member("lab/runner", normal=["rrd-engine"]),
 }
-ALL = (KERNEL, LSM, KV, ENGINE, LAB)
+ALL = (CORE, LSM, KV, ENGINE, RUNNER)
 
 
 class CrateRuleTests(unittest.TestCase):
@@ -52,84 +52,106 @@ class CrateRuleTests(unittest.TestCase):
         self.assertEqual(self.problems(), [])
 
     def test_an_unlisted_member_and_a_stale_entry_fail(self):
-        self.assert_one(self.problems(crates=(KERNEL, LSM, KV, ENGINE)), "rrflow-lab: a workspace member")
-        members = {name: value for name, value in MEMBERS.items() if name != "rrflow-lab"}
-        members["rrd-engine"] = member("crates/engine/rrd-engine", normal=["rrflow-kv"])
-        self.assert_one(self.problems(members=members), "rrflow-lab: listed in")
+        self.assert_one(self.problems(crates=(CORE, LSM, KV, ENGINE)), "rrflow-lab-runner: a workspace member")
+        members = {name: value for name, value in MEMBERS.items() if name != "rrflow-lab-runner"}
+        members["rrd-engine"] = member("rrd/engine", normal=["rrflow-kv"])
+        self.assert_one(self.problems(members=members), "rrflow-lab-runner: listed in")
 
-    def test_a_crate_outside_its_recorded_folder_fails(self):
-        moved = member("crates/compute/rrflow-kv", normal=["rrflow-lsm", "rrflow-core"])
-        self.assert_one(self.problems(rrflow_kv=moved), "is at crates/compute/rrflow-kv")
+    def test_a_crate_sits_one_folder_below_a_group(self):
+        nested = member("rrflow/storage/kv", normal=["rrflow-lsm", "rrflow-core"])
+        self.assert_one(self.problems(rrflow_kv=nested), "one folder below")
+        elsewhere = member("crates/kv", normal=["rrflow-lsm", "rrflow-core"])
+        self.assert_one(self.problems(rrflow_kv=elsewhere), "one folder below")
 
-    def test_a_dependency_on_a_higher_tier_fails(self):
-        upward = member("crates/storage/rrflow-kv", normal=["rrflow-lsm", "rrd-engine"])
-        self.assert_one(self.problems(rrflow_kv=upward), "higher tier 4")
+    def test_a_package_is_named_for_its_group_and_folder(self):
+        moved = member("rrflow/keyvalue", normal=["rrflow-lsm", "rrflow-core"])
+        self.assert_one(self.problems(rrflow_kv=moved), "its package name is rrflow-keyvalue")
+        daemon = member("rrd/kv", normal=["rrflow-lsm", "rrflow-core"])
+        self.assert_one(self.problems(rrflow_kv=daemon), "its package name is rrd-kv")
 
-    def test_a_build_dependency_obeys_the_tiers_and_a_dev_dependency_does_not(self):
-        build = member("crates/storage/rrflow-kv", normal=["rrflow-lsm"], build=["rrd-engine"])
-        self.assert_one(self.problems(rrflow_kv=build), "higher tier 4")
-        dev = member("crates/storage/rrflow-kv", normal=["rrflow-lsm"], dev=["rrd-engine"])
+    def test_a_crate_folder_cannot_take_a_banned_name(self):
+        crates = (CORE, LSM, {"name": "rrflow-kernel", "uses": ["rrflow-core", "rrflow-lsm"]})
+        members = {name: MEMBERS[name] for name in ("rrflow-core", "rrflow-lsm")}
+        members["rrflow-kernel"] = member("rrflow/kernel", normal=["rrflow-lsm", "rrflow-core"])
+        self.assert_one(check_crates(manifest(*crates), members), "a folder named `kernel`")
+
+    def test_dependencies_are_exactly_the_recorded_uses(self):
+        extra = member("rrflow/lsm", normal=["rrflow-core", "rrflow-kv"])
+        problems = self.problems(rrflow_lsm=extra)
+        self.assertTrue(any("which its `uses` does not allow" in problem for problem in problems), problems)
+        fewer = member("rrflow/kv", normal=["rrflow-core"])
+        self.assert_one(self.problems(rrflow_kv=fewer), "which it does not depend on")
+
+    def test_a_build_dependency_counts_and_a_dev_dependency_does_not(self):
+        build = member("rrflow/kv", normal=["rrflow-lsm", "rrflow-core"], build=["rrd-engine"])
+        self.assert_one(self.problems(rrflow_kv=build), "depends on rrd-engine")
+        dev = member("rrflow/kv", normal=["rrflow-lsm", "rrflow-core"], dev=["rrd-engine"])
         self.assertEqual(self.problems(rrflow_kv=dev), [])
 
-    def test_a_same_tier_dependency_must_be_listed_above(self):
-        backwards = member("crates/storage/rrflow-lsm", normal=["rrflow-core", "rrflow-kv"])
-        problems = self.problems(rrflow_lsm=backwards)
-        self.assertTrue(any("lists below it" in problem for problem in problems), problems)
+    def test_a_used_crate_must_be_listed_above(self):
+        self.assert_one(self.problems(crates=(CORE, KV, LSM, ENGINE, RUNNER)), "lists below it")
 
-    def test_a_product_crate_uses_an_evaluation_crate_only_in_tests(self):
-        engine = member("crates/engine/rrd-engine", normal=["rrflow-kv", "rrflow-lab"])
-        self.assert_one(self.problems(rrd_engine=engine), "only in its tests")
+    def test_a_product_crate_uses_a_lab_crate_only_in_tests(self):
+        engine = member("rrd/engine", normal=["rrflow-kv", "rrflow-lab-runner"])
+        crates = (CORE, LSM, KV, {"name": "rrflow-lab-runner", "uses": []}, {"name": "rrd-engine", "uses": ["rrflow-kv", "rrflow-lab-runner"]})
+        members = {**MEMBERS, "rrd-engine": engine, "rrflow-lab-runner": member("lab/runner")}
+        self.assert_one(check_crates(manifest(*crates), members), "only in its tests")
 
-    def test_a_name_must_conform_or_record_its_target(self):
-        store = {"name": "rrd-store", "tier": 1, "folder": "crates/storage"}
-        members = {**MEMBERS, "rrd-store": member("crates/storage/rrd-store")}
-        self.assert_one(self.problems(crates=(*ALL, store), members=members), "rename it or record `target_name`")
-        self.assertEqual(self.problems(crates=(*ALL, {**store, "target_name": "rrflow-db"}), members=members), [])
-        self.assert_one(self.problems(crates=(*ALL, {**store, "target_name": "rrd-db"}), members=members), "target name rrd-db")
-        self.assert_one(self.problems(crates=(*ALL, {**store, "target_name": "rrflow-kv"}), members=members), "already a workspace member")
-
-    def test_a_folder_must_belong_to_the_tier_or_record_its_target(self):
-        kv = {**KV, "folder": "crates/elsewhere"}
-        members = {**MEMBERS, "rrflow-kv": member("crates/elsewhere/rrflow-kv", normal=["rrflow-lsm"])}
-        self.assert_one(self.problems(crates=(KERNEL, LSM, kv, ENGINE, LAB), members=members), "move it or record `target_folder`")
-        recorded = {**kv, "target_folder": "crates/storage"}
-        self.assertEqual(self.problems(crates=(KERNEL, LSM, recorded, ENGINE, LAB), members=members), [])
-        wrong = {**kv, "target_folder": "crates/engine"}
-        self.assert_one(self.problems(crates=(KERNEL, LSM, wrong, ENGINE, LAB), members=members), "target folder crates/engine")
-
-    def test_a_reached_target_must_be_removed(self):
-        self.assert_one(self.problems(crates=(KERNEL, LSM, {**KV, "target_folder": "crates/storage"}, ENGINE, LAB)), "remove `target_folder`")
-        self.assert_one(self.problems(crates=(KERNEL, LSM, {**KV, "target_name": "rrflow-kv"}, ENGINE, LAB)), "remove `target_name`")
+    def test_a_pending_dependency_that_is_gone_must_be_removed(self):
+        kept = {**KV, "pending": ["rrflow-lsm"]}
+        self.assertEqual(self.problems(crates=(CORE, LSM, kept, ENGINE, RUNNER)), [])
+        gone = {"name": "rrflow-kv", "uses": ["rrflow-core"], "pending": ["rrflow-lsm"]}
+        cut = member("rrflow/kv", normal=["rrflow-core"])
+        self.assert_one(self.problems(crates=(CORE, LSM, gone, ENGINE, RUNNER), rrflow_kv=cut), "remove it from `pending`")
 
     def test_a_standalone_crate_depends_only_on_standalone_crates_in_every_kind(self):
-        lsm = member("crates/storage/rrflow-lsm", normal=["rrflow-core"], dev=["rrflow-kv"])
+        lsm = member("rrflow/lsm", normal=["rrflow-core"], dev=["rrflow-kv"])
         self.assert_one(self.problems(rrflow_lsm=lsm), "dev dependency on rrflow-kv")
         excepted = {**LSM, "standalone_exceptions": ["dev:rrflow-kv"]}
-        self.assertEqual(self.problems(crates=(KERNEL, excepted, KV, ENGINE, LAB), rrflow_lsm=lsm), [])
-        self.assert_one(self.problems(crates=(KERNEL, excepted, KV, ENGINE, LAB)), "no longer applies")
-
-    def test_nothing_depends_on_a_retiring_crate(self):
-        old = {"name": "rrd-maintenance", "tier": 1, "folder": "crates/operations", "retire": True}
-        members = {**MEMBERS, "rrd-maintenance": member("crates/operations/rrd-maintenance")}
-        self.assertEqual(self.problems(crates=(*ALL, old), members=members), [])
-        members["rrd-engine"] = member("crates/engine/rrd-engine", normal=["rrflow-kv", "rrd-maintenance"], dev=["rrflow-lab"])
-        self.assert_one(self.problems(crates=(*ALL, old), members=members), "marked retire")
+        self.assertEqual(self.problems(crates=(CORE, excepted, KV, ENGINE, RUNNER), rrflow_lsm=lsm), [])
+        self.assert_one(self.problems(crates=(CORE, excepted, KV, ENGINE, RUNNER)), "no longer applies")
 
 
 class ModuleNameTests(unittest.TestCase):
     def test_banned_file_and_folder_modules_fail_and_harness_trees_do_not(self):
-        banned = RULES["banned_module_names"]
         problems = check_module_names([
-            "crates/storage/rrflow-kv/src/utils.rs",
-            "crates/storage/rrflow-kv/src/common/keys.rs",
-            "crates/storage/rrflow-kv/src/keys.rs",
-            "crates/storage/rrflow-kv/src/common_keys.rs",
-            "crates/storage/rrflow-kv/tests/common/mod.rs",
-            "crates/storage/rrflow-kv/src/read/tests/helpers.rs",
-        ], banned)
+            "rrflow/kv/src/utils.rs",
+            "rrflow/kv/src/common/keys.rs",
+            "rrflow/kv/src/keys.rs",
+            "rrflow/kv/src/common_keys.rs",
+            "rrflow/kv/tests/common/mod.rs",
+            "rrflow/kv/src/read/tests/helpers.rs",
+        ], RULES["banned_names"])
         self.assertEqual(len(problems), 2, problems)
         self.assertIn("`common`", problems[0])
         self.assertIn("`utils`", problems[1])
+
+
+class CoreTests(unittest.TestCase):
+    CORE = {"crate": "rrflow-core", "modules": ["digest", "record"], "max_lines": 30}
+    SOURCES = {"rrflow/core/src/lib.rs": 5, "rrflow/core/src/digest.rs": 10, "rrflow/core/src/record/model.rs": 15,
+               "rrflow/core/tests/digest.rs": 500, "rrflow/kv/src/extra.rs": 500}
+
+    def problems(self, core=None, **sources) -> list[str]:
+        return check_core(core or self.CORE, "rrflow/core", {**self.SOURCES, **sources})
+
+    def test_the_recorded_shape_passes(self):
+        self.assertEqual(self.problems(), [])
+
+    def test_a_new_module_fails(self):
+        problems = self.problems(**{"rrflow/core/src/extra.rs": 0})
+        self.assertEqual(len(problems), 1, problems)
+        self.assertIn("module `extra`", problems[0])
+
+    def test_a_removed_module_must_leave_the_list(self):
+        problems = self.problems(core={**self.CORE, "modules": ["digest", "record", "trace"]})
+        self.assertEqual(len(problems), 1, problems)
+        self.assertIn("which is gone", problems[0])
+
+    def test_core_does_not_grow(self):
+        problems = self.problems(**{"rrflow/core/src/digest.rs": 11})
+        self.assertEqual(len(problems), 1, problems)
+        self.assertIn("core does not grow", problems[0])
 
 
 class RepositoryTests(unittest.TestCase):

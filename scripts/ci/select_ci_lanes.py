@@ -60,8 +60,8 @@ POLICY_PATTERNS = (
     "VERSION",
     "deploy/**",
 )
-SDK_PATTERNS = ("sdks/**", "fixtures/**", "crates/transport/**")
-ENGINE_PATTERNS = ("crates/**",)
+SDK_PATTERNS = ("sdks/**", "fixtures/**", "rrd/contract/**", "rrd/client/**", "rrd/server/**")
+ENGINE_PATTERNS = ("rrflow/**", "rrd/**", "lab/**")
 SCRIPTS_PATTERNS = ("scripts/**", "eval/**")
 DOCS_PATTERNS = (
     "docs/**",
@@ -77,7 +77,7 @@ DOCS_PATTERNS = (
 # fixture's `public_catalogue_sha256` went stale; the next push that touched a
 # crate reading that fixture found main already broken.
 PINNED_BY: dict[str, tuple[str, ...]] = {
-    "rrd-contract": ("rrflow-qualification-storage",),
+    "rrd-contract": ("rrflow-lab-qualification-storage",),
 }
 # Crate -> the workspace binary of another package that its tests execute.
 # `cargo test -p <crate>` builds only that crate's own binaries, so the lane
@@ -101,8 +101,6 @@ def matches(path: str, patterns: tuple[str, ...]) -> bool:
 
 def crate_of(path: str, root: Path = ROOT) -> str | None:
     """The workspace package that owns `path`, from the workspace member list at any depth."""
-    if not path.startswith("crates/"):
-        return None
     return package_of(path, member_directories(root))
 
 
